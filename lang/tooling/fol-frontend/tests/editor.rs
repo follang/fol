@@ -16,7 +16,7 @@ fn temp_root(label: &str) -> PathBuf {
 
 #[test]
 fn editor_lsp_command_is_publicly_dispatchable() {
-    let (_, result) = run_command_from_args(["fol", "editor", "lsp"])
+    let (_, result) = run_command_from_args_in_dir(["fol", "editor", "lsp"], "xtra/logtiny")
         .expect("editor lsp should dispatch");
 
     assert_eq!(result.command, "lsp");
@@ -116,4 +116,24 @@ fn editor_command_json_errors_keep_stable_shapes() {
         .expect("message should be a string")
         .contains("failed to read"));
     assert!(parsed["notes"].is_array());
+}
+
+#[test]
+fn editor_lsp_reports_workspace_guidance_when_no_root_is_present() {
+    let root = temp_root("missing_lsp_root");
+    fs::create_dir_all(&root).expect("should create temp root");
+    let error = run_command_from_args_in_dir(["fol", "editor", "lsp"], &root)
+        .expect_err("editor lsp should require a discovered root");
+    let rendered = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig {
+        mode: fol_frontend::OutputMode::Json,
+    })
+    .render_error(&error)
+    .expect("json render should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&rendered).expect("stderr should be json");
+
+    assert_eq!(parsed["kind"], "FrontendWorkspaceNotFound");
+    let notes = parsed["notes"].as_array().expect("notes should be an array");
+    assert!(notes.iter().any(|note| note.as_str().unwrap_or("").contains("start the editor inside a FOL package or workspace root")));
+
+    fs::remove_dir_all(root).ok();
 }

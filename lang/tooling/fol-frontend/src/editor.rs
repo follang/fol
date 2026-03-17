@@ -1,5 +1,6 @@
 use crate::{
-    FrontendCommandResult, FrontendConfig, FrontendError, FrontendErrorKind, FrontendResult,
+    require_discovered_root, FrontendCommandResult, FrontendConfig, FrontendError,
+    FrontendErrorKind, FrontendResult,
 };
 use std::path::Path;
 
@@ -22,7 +23,15 @@ fn editor_summary_to_result(summary: fol_editor::EditorCommandSummary) -> Fronte
     FrontendCommandResult::new(summary.command, rendered)
 }
 
-pub fn editor_lsp_command() -> FrontendResult<FrontendCommandResult> {
+pub fn editor_lsp_command(config: &FrontendConfig) -> FrontendResult<FrontendCommandResult> {
+    require_discovered_root(&config.working_directory).map_err(|error| {
+        if error.kind() == FrontendErrorKind::WorkspaceNotFound {
+            error.with_note("start the editor inside a FOL package or workspace root")
+                .with_note("or open a package directory before launching `fol editor lsp`")
+        } else {
+            error
+        }
+    })?;
     fol_editor::editor_lsp_entrypoint()
         .map(editor_summary_to_result)
         .map_err(lower_editor_error)
@@ -67,7 +76,7 @@ mod tests {
         let config = FrontendConfig::default();
         let path = "test/apps/fixtures/record_flow/main.fol";
 
-        let lsp = editor_lsp_command().expect("lsp command should succeed");
+        let lsp = editor_lsp_command(&config).expect("lsp command should succeed");
         let parse = editor_parse_command(path, &config).expect("parse command should succeed");
         let highlight =
             editor_highlight_command(path, &config).expect("highlight command should succeed");
@@ -94,5 +103,35 @@ mod tests {
 
         assert_eq!(error.kind(), FrontendErrorKind::CommandFailed);
         assert!(error.message().contains("failed to read"));
+    }
+
+    #[test]
+    fn editor_lsp_command_adds_editor_specific_workspace_guidance() {
+        let config = FrontendConfig {
+            working_directory: std::env::temp_dir().join(format!(
+                "fol_frontend_editor_missing_root_{}_{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .expect("system time should be after epoch")
+                    .as_nanos()
+            )),
+            ..FrontendConfig::default()
+        };
+        std::fs::create_dir_all(&config.working_directory).unwrap();
+
+        let error = editor_lsp_command(&config).expect_err("missing roots should fail");
+
+        assert_eq!(error.kind(), FrontendErrorKind::WorkspaceNotFound);
+        assert!(error
+            .notes()
+            .iter()
+            .any(|note| note.contains("start the editor inside a FOL package or workspace root")));
+        assert!(error
+            .notes()
+            .iter()
+            .any(|note| note.contains("fol editor lsp")));
+
+        std::fs::remove_dir_all(&config.working_directory).ok();
     }
 }

@@ -375,7 +375,7 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
             }
         }
         Some(FrontendCommand::Editor(command)) => match &command.command {
-            EditorSubcommand::Lsp(_) => editor_lsp_command(),
+            EditorSubcommand::Lsp(_) => editor_lsp_command(config),
             EditorSubcommand::Parse(command) => editor_parse_command(&command.path, config),
             EditorSubcommand::Highlight(command) => editor_highlight_command(&command.path, config),
             EditorSubcommand::Symbols(command) => editor_symbols_command(&command.path, config),

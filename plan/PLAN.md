@@ -381,7 +381,7 @@ The minimum real fixture sources should include:
 
 ### Phase 10: Hardening
 
-- `10.1` add editor-facing guidance for workspace-not-found situations
+- `10.1` complete: added editor-facing guidance for workspace-not-found situations
 - `10.2` complete: added editor-facing guidance for unsupported future-version syntax
 - `10.3` complete: added stable JSON error shapes for CLI editor subcommands
 - `10.4` complete: added deterministic fixture snapshots for parse/highlight/symbol output
@@ -393,7 +393,7 @@ The minimum real fixture sources should include:
 - `11.2` complete: added a dedicated book entry for editor tooling
 - `11.3` complete: updated `README.md`
 - `11.4` complete: updated `PROGRESS.md`
-- `11.5` close the plan only after Tree-sitter, queries, LSP basics, and frontend exposure are real
+- `11.5` complete: closed the plan after Tree-sitter, queries, LSP basics, and frontend exposure became real
 
 ## Definition Of Done
 
