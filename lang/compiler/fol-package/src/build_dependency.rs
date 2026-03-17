@@ -3,6 +3,9 @@ pub struct DependencyBuildSurface {
     pub alias: String,
     pub modules: Vec<DependencyModuleSurface>,
     pub source_roots: Vec<DependencySourceRootSurface>,
+    pub artifacts: Vec<DependencyArtifactSurface>,
+    pub steps: Vec<DependencyStepSurface>,
+    pub generated_outputs: Vec<DependencyGeneratedOutputSurface>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,6 +18,24 @@ pub struct DependencyModuleSurface {
 pub struct DependencySourceRootSurface {
     pub relative_path: String,
     pub namespace_prefix: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DependencyArtifactSurface {
+    pub name: String,
+    pub artifact_kind: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DependencyStepSurface {
+    pub name: String,
+    pub step_kind: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DependencyGeneratedOutputSurface {
+    pub name: String,
+    pub relative_path: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -39,8 +60,9 @@ impl DependencyBuildSurfaceSet {
 #[cfg(test)]
 mod tests {
     use super::{
-        DependencyBuildSurface, DependencyBuildSurfaceSet, DependencyModuleSurface,
-        DependencySourceRootSurface,
+        DependencyArtifactSurface, DependencyBuildSurface, DependencyBuildSurfaceSet,
+        DependencyGeneratedOutputSurface, DependencyModuleSurface, DependencySourceRootSurface,
+        DependencyStepSurface,
     };
 
     #[test]
@@ -63,11 +85,26 @@ mod tests {
                 relative_path: "src".to_string(),
                 namespace_prefix: "logtiny::src".to_string(),
             }],
+            artifacts: vec![DependencyArtifactSurface {
+                name: "logtiny".to_string(),
+                artifact_kind: "static-lib".to_string(),
+            }],
+            steps: vec![DependencyStepSurface {
+                name: "test".to_string(),
+                step_kind: "test".to_string(),
+            }],
+            generated_outputs: vec![DependencyGeneratedOutputSurface {
+                name: "bindings".to_string(),
+                relative_path: "gen/bindings.fol".to_string(),
+            }],
         });
 
         assert_eq!(set.surfaces().len(), 1);
         assert_eq!(set.surfaces()[0].alias, "logtiny");
         assert_eq!(set.surfaces()[0].modules.len(), 1);
         assert_eq!(set.surfaces()[0].source_roots.len(), 1);
+        assert_eq!(set.surfaces()[0].artifacts.len(), 1);
+        assert_eq!(set.surfaces()[0].steps.len(), 1);
+        assert_eq!(set.surfaces()[0].generated_outputs.len(), 1);
     }
 }
