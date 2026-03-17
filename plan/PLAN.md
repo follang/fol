@@ -917,6 +917,22 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Extend prepared-package modeling to retain optional dependency build-surface exports alongside compatibility exports.
 10. `[complete]` Re-export the draft dependency build-surface model from `fol-package`.
 
+## Round 9 Slice Tracker
+
+This round focuses on Phase 9 generated files, codegen, and external tools in `fol-package`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the ninth implementation round around generated-file and codegen modeling.
+2. `[pending]` Introduce a dedicated `build_codegen` module with generated-file shell types.
+3. `[pending]` Add generated-file action definitions for write, copy, and captured-tool outputs.
+4. `[pending]` Add generated-file install/helper projection types for install-file style flows.
+5. `[pending]` Add controlled system-tool invocation request/result model types.
+6. `[pending]` Add codegen request/result model types for FOL generation, schema generation, and asset preprocessing.
+7. `[pending]` Add generated-output dependency collection and lookup helpers.
+8. `[pending]` Extend the draft build API with write-file, copy-file, system-tool, and codegen helpers.
+9. `[pending]` Extend the build evaluator operation model to replay generated-file and tool/codegen actions.
+10. `[pending]` Re-export the draft generated-file and codegen surface from `fol-package`.
+
 ## Success Criteria
 
 This plan is complete when:
