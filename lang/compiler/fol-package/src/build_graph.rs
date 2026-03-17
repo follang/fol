@@ -28,11 +28,60 @@ define_graph_id!(BuildGeneratedFileId, "generated:");
 define_graph_id!(BuildOptionId, "option:");
 define_graph_id!(BuildInstallId, "install:");
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildStepKind {
+    Default,
+    Install,
+    Run,
+    Test,
+    Check,
+    CustomCommand,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildArtifactKind {
+    Executable,
+    StaticLibrary,
+    SharedLibrary,
+    Object,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildModuleKind {
+    Source,
+    Generated,
+    Imported,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildGeneratedFileKind {
+    Write,
+    Copy,
+    CaptureOutput,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildOptionKind {
+    Target,
+    Optimize,
+    Bool,
+    String,
+    Enum,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildInstallKind {
+    Artifact,
+    File,
+    Directory,
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildArtifactId, BuildGeneratedFileId, BuildInstallId, BuildModuleId, BuildOptionId,
-        BuildStepId,
+        BuildArtifactId, BuildArtifactKind, BuildGeneratedFileId, BuildGeneratedFileKind,
+        BuildInstallId, BuildInstallKind, BuildModuleId, BuildModuleKind, BuildOptionId,
+        BuildOptionKind, BuildStepId, BuildStepKind,
     };
 
     #[test]
@@ -53,5 +102,15 @@ mod tests {
         assert_eq!(BuildGeneratedFileId(3).to_string(), "generated:3");
         assert_eq!(BuildOptionId(4).to_string(), "option:4");
         assert_eq!(BuildInstallId(5).to_string(), "install:5");
+    }
+
+    #[test]
+    fn build_graph_kind_enums_cover_the_round_two_ir_vocab() {
+        assert_eq!(BuildStepKind::Run, BuildStepKind::Run);
+        assert_eq!(BuildArtifactKind::Executable, BuildArtifactKind::Executable);
+        assert_eq!(BuildModuleKind::Generated, BuildModuleKind::Generated);
+        assert_eq!(BuildGeneratedFileKind::CaptureOutput, BuildGeneratedFileKind::CaptureOutput);
+        assert_eq!(BuildOptionKind::Optimize, BuildOptionKind::Optimize);
+        assert_eq!(BuildInstallKind::Directory, BuildInstallKind::Directory);
     }
 }
