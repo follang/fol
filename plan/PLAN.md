@@ -486,7 +486,7 @@ Round 1 slice tracker:
   metadata from `fol-package`.
 - [x] Slice 7. Translate the supported `build.fol` subset from parsed AST build
   entries instead of line-based source splitting.
-- [ ] Slice 8. Delete the old extractor-era structs and helper functions from
+- [x] Slice 8. Delete the old extractor-era structs and helper functions from
   the active build-evaluation path.
 - [ ] Slice 9. Remove remaining extractor-era re-exports, tests, and call sites
   from package/frontend code.
