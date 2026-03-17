@@ -26,7 +26,9 @@ pub use documents::{EditorDocument, EditorDocumentStore};
 pub use error::{EditorError, EditorErrorKind, EditorResult};
 pub use lsp::{
     EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
-    JsonRpcError, run_lsp_stdio,
+    JsonRpcError, run_lsp_stdio, EditorCompletionItem,
+    LspCompletionContext, LspCompletionItem, LspCompletionList, LspCompletionOptions,
+    LspCompletionParams,
     LspDefinitionParams, LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
     LspDidOpenTextDocumentParams, LspDocumentSymbol, LspDocumentSymbolParams, LspHover,
     LspHoverParams, LspInitializeParams, LspInitializeResult, LspPublishDiagnosticsParams,

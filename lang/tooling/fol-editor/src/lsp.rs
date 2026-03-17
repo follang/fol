@@ -76,6 +76,15 @@ pub struct LspServerCapabilities {
     pub hover_provider: bool,
     pub definition_provider: bool,
     pub document_symbol_provider: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion_provider: Option<LspCompletionOptions>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionOptions {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub trigger_characters: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -170,6 +179,48 @@ pub struct LspDocumentSymbolParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct LspCompletionContext {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_character: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionParams {
+    pub text_document: LspTextDocumentIdentifier,
+    pub position: LspPosition,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<LspCompletionContext>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionList {
+    pub is_incomplete: bool,
+    pub items: Vec<LspCompletionItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionItem {
+    pub label: String,
+    pub kind: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub insert_text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct EditorCompletionItem {
+    pub label: String,
+    pub kind: u8,
+    pub detail: Option<String>,
+    pub insert_text: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspHover {
     pub contents: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -213,6 +264,7 @@ impl EditorLspServer {
                         hover_provider: true,
                         definition_provider: true,
                         document_symbol_provider: true,
+                        completion_provider: None,
                     },
                     server_info: LspServerInfo {
                         name: "fol-editor".to_string(),
@@ -267,6 +319,21 @@ impl EditorLspServer {
                     id: request.id,
                     result: Some(
                         serde_json::to_value(result).expect("document symbols should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "textDocument/completion" => {
+                let params: LspCompletionParams = from_params(request.params)?;
+                let result = self.completion(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                    params.position,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("completion result should serialize"),
                     ),
                     error: None,
                 }))
@@ -381,6 +448,20 @@ impl EditorLspServer {
         let mapping = self.document_mapping(document, uri)?;
         let snapshot = analyze_document_semantics(document, &mapping)?;
         Ok(snapshot.document_symbols_for_current_path())
+    }
+
+    pub fn completion(
+        &self,
+        uri: &EditorDocumentUri,
+        _position: LspPosition,
+    ) -> EditorResult<LspCompletionList> {
+        let document = self.open_document(uri)?;
+        let mapping = self.document_mapping(document, uri)?;
+        let _snapshot = analyze_document_semantics(document, &mapping)?;
+        Ok(LspCompletionList {
+            is_incomplete: false,
+            items: Vec::new(),
+        })
     }
 
     fn open_document(&self, uri: &EditorDocumentUri) -> EditorResult<&EditorDocument> {
@@ -1042,7 +1123,8 @@ fn render_checked_type(
 mod tests {
     use super::{
         EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
-        LspDefinitionParams, LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
+        LspCompletionList, LspCompletionParams, LspDefinitionParams,
+        LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
         LspDidOpenTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
         LspInitializeResult, LspLocation, LspPosition, LspPublishDiagnosticsParams,
         LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
@@ -1394,6 +1476,45 @@ mod tests {
             serde_json::from_value(symbols.result.unwrap()).unwrap();
         assert!(symbols.iter().any(|symbol| symbol.name == "helper"));
         assert!(symbols.iter().any(|symbol| symbol.name == "main"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_handles_completion_requests() {
+        let (root, uri) = sample_package_root("completion_request");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(30),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 2,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(!completion.is_incomplete);
+        assert!(completion.items.is_empty());
 
         fs::remove_dir_all(root).ok();
     }
