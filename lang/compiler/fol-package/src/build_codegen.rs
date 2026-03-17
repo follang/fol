@@ -17,6 +17,27 @@ pub struct GeneratedFileSet {
     definitions: Vec<GeneratedFileDefinition>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GeneratedFileInstallProjection {
+    pub generated_file_name: String,
+    pub install_name: String,
+    pub install_path: String,
+}
+
+impl GeneratedFileInstallProjection {
+    pub fn new(
+        generated_file_name: impl Into<String>,
+        install_name: impl Into<String>,
+        install_path: impl Into<String>,
+    ) -> Self {
+        Self {
+            generated_file_name: generated_file_name.into(),
+            install_name: install_name.into(),
+            install_path: install_path.into(),
+        }
+    }
+}
+
 impl GeneratedFileSet {
     pub fn new() -> Self {
         Self::default()
@@ -33,7 +54,10 @@ impl GeneratedFileSet {
 
 #[cfg(test)]
 mod tests {
-    use super::{GeneratedFileAction, GeneratedFileDefinition, GeneratedFileSet};
+    use super::{
+        GeneratedFileAction, GeneratedFileDefinition, GeneratedFileInstallProjection,
+        GeneratedFileSet,
+    };
 
     #[test]
     fn generated_file_set_starts_empty() {
@@ -78,5 +102,18 @@ mod tests {
         assert!(matches!(write, GeneratedFileAction::Write { .. }));
         assert!(matches!(copy, GeneratedFileAction::Copy { .. }));
         assert!(matches!(capture, GeneratedFileAction::CaptureToolOutput { .. }));
+    }
+
+    #[test]
+    fn generated_file_install_projection_keeps_install_helper_metadata() {
+        let projection = GeneratedFileInstallProjection::new(
+            "config",
+            "install-config",
+            "share/config.json",
+        );
+
+        assert_eq!(projection.generated_file_name, "config");
+        assert_eq!(projection.install_name, "install-config");
+        assert_eq!(projection.install_path, "share/config.json");
     }
 }
