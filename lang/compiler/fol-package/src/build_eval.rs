@@ -382,18 +382,20 @@ pub fn evaluate_build_plan(
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
             }
             _ => {
-                return Err(BuildEvaluationError::new(
+                return Err(evaluation_error(
                     BuildEvaluationErrorKind::Unsupported,
-                    "build evaluator option-only pass does not support this operation yet",
+                    "build evaluator does not support this operation yet",
+                    operation.origin.clone(),
                 ));
             }
         }
     }
 
     if let Some(validation_error) = graph.validate().into_iter().next() {
-        return Err(BuildEvaluationError::new(
+        return Err(evaluation_error(
             BuildEvaluationErrorKind::ValidationFailed,
             validation_error.message,
+            None,
         ));
     }
 
@@ -412,12 +414,7 @@ fn evaluation_invalid_input(
     message: impl Into<String>,
     origin: Option<SyntaxOrigin>,
 ) -> BuildEvaluationError {
-    match origin {
-        Some(origin) => {
-            BuildEvaluationError::with_origin(BuildEvaluationErrorKind::InvalidInput, message, origin)
-        }
-        None => BuildEvaluationError::new(BuildEvaluationErrorKind::InvalidInput, message),
-    }
+    evaluation_error(BuildEvaluationErrorKind::InvalidInput, message, origin)
 }
 
 fn evaluation_api_error(
@@ -425,6 +422,17 @@ fn evaluation_api_error(
     origin: Option<SyntaxOrigin>,
 ) -> BuildEvaluationError {
     evaluation_invalid_input(error.to_string(), origin)
+}
+
+fn evaluation_error(
+    kind: BuildEvaluationErrorKind,
+    message: impl Into<String>,
+    origin: Option<SyntaxOrigin>,
+) -> BuildEvaluationError {
+    match origin {
+        Some(origin) => BuildEvaluationError::with_origin(kind, message, origin),
+        None => BuildEvaluationError::new(kind, message),
+    }
 }
 
 #[cfg(test)]
@@ -696,5 +704,50 @@ mod tests {
         assert_eq!(result.graph.steps().len(), 2);
         assert_eq!(result.graph.installs().len(), 2);
         assert_eq!(result.graph.modules().len(), 2);
+    }
+
+    #[test]
+    fn build_evaluator_rejects_unsupported_operations_with_source_origins() {
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs::default(),
+            operations: vec![BuildEvaluationOperation {
+                origin: Some(SyntaxOrigin {
+                    file: Some("build.fol".to_string()),
+                    line: 8,
+                    column: 1,
+                    length: 4,
+                }),
+                kind: BuildEvaluationOperationKind::Unsupported {
+                    label: "clock_now".to_string(),
+                },
+            }],
+        };
+
+        let error = evaluate_build_plan(&request).expect_err("unsupported operations should fail");
+
+        assert_eq!(error.kind(), BuildEvaluationErrorKind::Unsupported);
+        assert_eq!(error.origin().and_then(|origin| origin.file.as_deref()), Some("build.fol"));
+        assert_eq!(error.origin().map(|origin| origin.line), Some(8));
+    }
+
+    #[test]
+    fn build_evaluator_surfaces_graph_validation_failures_as_evaluation_errors() {
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs::default(),
+            operations: vec![BuildEvaluationOperation {
+                origin: None,
+                kind: BuildEvaluationOperationKind::InstallDir(InstallDirRequest {
+                    name: "install-assets".to_string(),
+                    path: String::new(),
+                }),
+            }],
+        };
+
+        let error = evaluate_build_plan(&request).expect_err("invalid install dirs should fail");
+
+        assert_eq!(error.kind(), BuildEvaluationErrorKind::ValidationFailed);
+        assert!(error.message().contains("directory target must not be empty"));
     }
 }

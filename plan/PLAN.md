@@ -850,7 +850,7 @@ Each slice must land green with `make build` and `make test` before commit.
 6. `[complete]` Add draft build-evaluation operation types for the public build API surface.
 7. `[complete]` Evaluate option operations into a graph-backed `BuildApi`.
 8. `[complete]` Evaluate artifact, step, run, install, and dependency operations into a validated graph.
-9. `[pending]` Reject unsupported operations and graph-validation failures with explicit evaluation diagnostics.
+9. `[complete]` Reject unsupported operations and graph-validation failures with explicit evaluation diagnostics.
 10. `[pending]` Re-export the draft build-evaluator surface from `fol-package`.
 
 ## Success Criteria
