@@ -463,7 +463,7 @@ impl EditorLspServer {
         Ok(LspCompletionList {
             is_incomplete: false,
             items: snapshot
-                .local_completion_items(position)
+                .plain_completion_items(position)
                 .into_iter()
                 .map(|item| LspCompletionItem {
                     label: item.label,
@@ -675,6 +675,12 @@ struct SemanticSnapshot {
 }
 
 impl SemanticSnapshot {
+    fn plain_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
+        let mut items = self.local_completion_items(position);
+        items.extend(self.current_package_top_level_completion_items());
+        items
+    }
+
     fn local_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
         let Some((program, scope_id)) = self.scope_at_position(position) else {
             return Vec::new();
@@ -708,22 +714,64 @@ impl SemanticSnapshot {
         items
     }
 
+    fn current_package_top_level_completion_items(&self) -> Vec<EditorCompletionItem> {
+        let Some(program) = self.current_program() else {
+            return Vec::new();
+        };
+        program
+            .all_symbols()
+            .filter(|symbol| symbol.mounted_from.is_none())
+            .filter(|symbol| {
+                matches!(
+                    program.scope(symbol.scope).map(|scope| &scope.kind),
+                    Some(
+                        fol_resolver::ScopeKind::ProgramRoot { .. }
+                            | fol_resolver::ScopeKind::NamespaceRoot { .. }
+                            | fol_resolver::ScopeKind::SourceUnitRoot { .. }
+                    )
+                )
+            })
+            .filter(|symbol| {
+                matches!(
+                    symbol.kind,
+                    fol_resolver::SymbolKind::Routine
+                        | fol_resolver::SymbolKind::Type
+                        | fol_resolver::SymbolKind::Alias
+                        | fol_resolver::SymbolKind::Definition
+                        | fol_resolver::SymbolKind::ValueBinding
+                )
+            })
+            .map(|symbol| EditorCompletionItem {
+                label: symbol.name.clone(),
+                kind: symbol_kind_code(symbol.kind),
+                detail: Some(render_symbol_kind(symbol.kind).to_string()),
+                insert_text: None,
+            })
+            .collect()
+    }
+
+    fn current_program(&self) -> Option<&fol_resolver::ResolvedProgram> {
+        let typed = self.typed_workspace.as_ref()?;
+        let analyzed_path = self.analyzed_path.as_ref()?;
+        let path_text = analyzed_path.to_string_lossy();
+        typed.packages().find_map(|package| {
+            let program = package.program.resolved();
+            program
+                .source_units
+                .iter()
+                .any(|unit| unit.path == path_text)
+                .then_some(program)
+        })
+    }
+
     fn scope_at_position(
         &self,
         position: LspPosition,
     ) -> Option<(&fol_resolver::ResolvedProgram, fol_resolver::ScopeId)> {
-        let typed = self.typed_workspace.as_ref()?;
+        let program = self.current_program()?;
         let analyzed_path = self.analyzed_path.as_ref()?;
-        for package in typed.packages() {
-            let program = package.program.resolved();
-            let Some(syntax_id) = syntax_at_position(program, analyzed_path.as_path(), position) else {
-                continue;
-            };
-            if let Some(scope_id) = program.scope_for_syntax(syntax_id) {
-                return Some((program, scope_id));
-            }
-        }
-        None
+        let syntax_id = syntax_at_position(program, analyzed_path.as_path(), position)?;
+        program.scope_for_syntax(syntax_id).map(|scope_id| (program, scope_id))
     }
 
     fn reference_at(&self, position: LspPosition) -> Option<&fol_resolver::ResolvedReference> {
@@ -1632,6 +1680,50 @@ mod tests {
             .find(|item| item.label == "total")
             .and_then(|item| item.detail.as_deref())
             == Some("parameter"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_current_package_top_level_completions() {
+        let (root, uri) = sample_package_root("completion_top_level");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(32),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 4,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(completion.items.iter().any(|item| item.label == "helper"));
+        assert!(completion
+            .items
+            .iter()
+            .find(|item| item.label == "helper")
+            .and_then(|item| item.detail.as_deref())
+            == Some("routine"));
 
         fs::remove_dir_all(root).ok();
     }

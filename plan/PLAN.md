@@ -361,7 +361,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 - `7.1` complete: return local binding completions
 - `7.2` complete: return routine parameter completions
-- `7.3` return current-package top-level declaration completions
+- `7.3` complete: return current-package top-level declaration completions
 - `7.4` return imported visible declaration completions
 - `7.5` filter duplicate/irrelevant candidates deterministically
 - `7.6` lock tests for local/imported symbol completion
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `29 / 49` slices complete
-- `59%`
+- `30 / 49` slices complete
+- `61%`
