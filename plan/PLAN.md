@@ -228,6 +228,20 @@ Tests required:
 Exit criteria:
 - `build.fol` signatures can be typechecked against real build API types
 
+Round 1 slice tracker:
+
+- [x] Slice 1. Add a concrete Phase 1 implementation tracker with completion
+  rules.
+- [ ] Slice 2. Add canonical semantic build stdlib module identity types.
+- [ ] Slice 3. Add semantic build surface type families for graph/handles.
+- [ ] Slice 4. Add semantic method signature types for the build stdlib.
+- [ ] Slice 5. Add canonical graph method signatures.
+- [ ] Slice 6. Add canonical handle method signatures.
+- [ ] Slice 7. Add object-style artifact config shape types.
+- [ ] Slice 8. Add option value/config shape types for semantic build calls.
+- [ ] Slice 9. Add chaining metadata for `.depend_on(...)` and related flows.
+- [ ] Slice 10. Re-export and test the full Phase 1 semantic build surface.
+
 ## Phase 2: Admit `build.fol` Into The Normal Semantic Pipeline
 
 Goal:
