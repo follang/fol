@@ -175,12 +175,68 @@ impl BuildOptionDeclarationSet {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildOptionOverrideParseError {
+    MissingName,
+    MissingValue,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildOptionOverride {
+    pub name: String,
+    pub raw_value: String,
+}
+
+impl BuildOptionOverride {
+    pub fn parse(raw: &str) -> Result<Self, BuildOptionOverrideParseError> {
+        let (name, raw_value) = raw
+            .split_once('=')
+            .ok_or(BuildOptionOverrideParseError::MissingValue)?;
+        if name.is_empty() {
+            return Err(BuildOptionOverrideParseError::MissingName);
+        }
+        if raw_value.is_empty() {
+            return Err(BuildOptionOverrideParseError::MissingValue);
+        }
+        Ok(Self {
+            name: name.to_string(),
+            raw_value: raw_value.to_string(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ResolvedBuildOptionSet {
+    values: BTreeMap<String, String>,
+}
+
+impl ResolvedBuildOptionSet {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn insert(&mut self, name: impl Into<String>, raw_value: impl Into<String>) {
+        self.values.insert(name.into(), raw_value.into());
+    }
+
+    pub fn get(&self, name: &str) -> Option<&str> {
+        self.values.get(name).map(String::as_str)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.values
+            .iter()
+            .map(|(name, value)| (name.as_str(), value.as_str()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet, BuildTargetArch,
-        BuildTargetEnvironment, BuildTargetOs, BuildTargetTriple,
-        StandardOptimizeDeclaration, StandardTargetDeclaration, UserOptionDeclaration,
+        BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet,
+        BuildOptionOverride, BuildOptionOverrideParseError, BuildTargetArch, BuildTargetEnvironment,
+        BuildTargetOs, BuildTargetTriple, ResolvedBuildOptionSet, StandardOptimizeDeclaration,
+        StandardTargetDeclaration, UserOptionDeclaration,
     };
 
     #[test]
@@ -272,4 +328,47 @@ mod tests {
         );
         assert_eq!(BuildOptimizeMode::from_frontend_profile_name("bench"), None);
     }
+
+    #[test]
+    fn build_option_override_parses_named_equals_value_pairs() {
+        let override_value =
+            BuildOptionOverride::parse("jobs=16").expect("named overrides should parse");
+
+        assert_eq!(override_value.name, "jobs");
+        assert_eq!(override_value.raw_value, "16");
+    }
+
+    #[test]
+    fn build_option_override_rejects_missing_names_or_values() {
+        assert_eq!(
+            BuildOptionOverride::parse("=fast"),
+            Err(BuildOptionOverrideParseError::MissingName)
+        );
+        assert_eq!(
+            BuildOptionOverride::parse("jobs"),
+            Err(BuildOptionOverrideParseError::MissingValue)
+        );
+        assert_eq!(
+            BuildOptionOverride::parse("jobs="),
+            Err(BuildOptionOverrideParseError::MissingValue)
+        );
+    }
+
+    #[test]
+    fn resolved_build_option_set_supports_named_lookup() {
+        let mut resolved = ResolvedBuildOptionSet::new();
+        resolved.insert("target", "aarch64-macos-gnu");
+        resolved.insert("optimize", "release-fast");
+
+        assert_eq!(resolved.get("target"), Some("aarch64-macos-gnu"));
+        assert_eq!(resolved.get("optimize"), Some("release-fast"));
+        assert_eq!(
+            resolved.iter().collect::<Vec<_>>(),
+            vec![
+                ("optimize", "release-fast"),
+                ("target", "aarch64-macos-gnu")
+            ]
+        );
+    }
 }
+use std::collections::BTreeMap;
