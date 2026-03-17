@@ -59,6 +59,12 @@ pub use build_graph::{
     BuildModuleKind, BuildOption, BuildOptionId, BuildOptionKind, BuildStep,
     BuildStepDependency, BuildStepId, BuildStepKind,
 };
+pub use build_step::{
+    plan_step_order, project_graph_steps, BuildDefaultStepKind, BuildRequestedStep,
+    BuildStepCacheBoundary, BuildStepCacheKey, BuildStepDefinition, BuildStepEvent,
+    BuildStepEventKind, BuildStepExecutionRequest, BuildStepExecutionResult, BuildStepPlanError,
+    BuildStepReport,
+};
 pub use config::PackageConfig;
 pub use errors::{PackageError, PackageErrorKind};
 pub use git::{
