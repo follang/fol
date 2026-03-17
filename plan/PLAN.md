@@ -353,7 +353,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 ### Phase 6: Completion protocol foundation
 
 - `6.1` complete: add `textDocument/completion` request handling to the LSP server
-- `6.2` advertise a real completion provider from `initialize`
+- `6.2` complete: advertise a real completion provider from `initialize`
 - `6.3` define the internal completion item model in `fol-editor`
 - `6.4` add focused stdio/request tests for completion request/response framing
 
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `24 / 49` slices complete
-- `49%`
+- `25 / 49` slices complete
+- `51%`

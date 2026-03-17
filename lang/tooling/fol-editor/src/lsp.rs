@@ -264,7 +264,9 @@ impl EditorLspServer {
                         hover_provider: true,
                         definition_provider: true,
                         document_symbol_provider: true,
-                        completion_provider: None,
+                        completion_provider: Some(LspCompletionOptions {
+                            trigger_characters: vec![".".to_string()],
+                        }),
                     },
                     server_info: LspServerInfo {
                         name: "fol-editor".to_string(),
@@ -1220,6 +1222,11 @@ mod tests {
             .unwrap();
         let result: LspInitializeResult = serde_json::from_value(initialize.result.unwrap()).unwrap();
         assert!(result.capabilities.text_document_sync.open_close);
+        let completion_provider = result
+            .capabilities
+            .completion_provider
+            .expect("completion provider should be advertised");
+        assert_eq!(completion_provider.trigger_characters, vec![".".to_string()]);
 
         let shutdown = server
             .handle_request(JsonRpcRequest {
