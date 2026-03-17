@@ -974,7 +974,7 @@ Each slice must land green with `make build` and `make test` before commit.
 2. `[complete]` Update frontend package scaffolding so generated `build.fol` files explain the current root/export path and future build entrypoint direction.
 3. `[complete]` Add scaffold regression tests that lock the new generated `build.fol` template for bin and lib packages.
 4. `[complete]` Rewrite `README.md` build/package descriptions around `build.fol` as the documented entry file and current routed workflow status.
-5. `[pending]` Rewrite the `book` package/import/build-root sections so they teach the current `build.fol` model clearly.
+5. `[complete]` Rewrite the `book` package/import/build-root sections so they teach the current `build.fol` model clearly.
 6. `[pending]` Update `book` tooling/editor sections so build-file workflows and LSP/editor entrypoints are documented together.
 7. `[pending]` Add frontend editor-command regression coverage for `build.fol` parse/highlight/symbol extraction.
 8. `[pending]` Add LSP regression coverage for `build.fol` symbol extraction and completion affordances.
