@@ -186,6 +186,29 @@ mod tests {
     }
 
     #[test]
+    fn highlight_query_uses_current_declaration_field_shapes() {
+        let grammar = fol_tree_sitter_grammar();
+        let query = fol_tree_sitter_highlights_query();
+
+        assert!(grammar.contains("field('declaration', choice($.plain_fun_decl, $.method_decl))"));
+        assert!(grammar.contains("field('declaration', choice($.plain_log_decl, $.method_decl))"));
+        assert!(grammar.contains("seq('var', $.typed_binding"));
+
+        for needle in [
+            "(fun_decl declaration: (plain_fun_decl",
+            "(fun_decl declaration: (method_decl",
+            "(log_decl declaration: (plain_log_decl",
+            "(log_decl declaration: (method_decl",
+            "(var_decl (typed_binding name: (identifier) @variable))",
+        ] {
+            assert!(
+                query.contains(needle),
+                "highlight query drifted away from the current grammar shape: {needle}"
+            );
+        }
+    }
+
+    #[test]
     fn locals_query_captures_bindings_parameters_and_function_names() {
         let query = fol_tree_sitter_locals_query();
         for needle in [
