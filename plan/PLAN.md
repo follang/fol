@@ -830,7 +830,7 @@ Each slice must land green with `make build` and `make test` before commit.
 2. `[complete]` Introduce a dedicated `build_api` module with a graph-backed `BuildApi` entry type.
 3. `[complete]` Add draft `standard_target` and `standard_optimize` request/response types.
 4. `[complete]` Add generic user-option request types and graph-backed `option` helpers.
-5. `[pending]` Add structured artifact argument records and stable build-name validation helpers.
+5. `[complete]` Add structured artifact argument records and stable build-name validation helpers.
 6. `[pending]` Add draft `add_exe` / `add_static_lib` / `add_shared_lib` / `add_test` methods.
 7. `[pending]` Add draft `step` and `add_run` API methods with graph-backed step wiring.
 8. `[pending]` Add draft `install` / `install_file` / `install_dir` API methods.

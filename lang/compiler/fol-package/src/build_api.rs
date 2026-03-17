@@ -103,6 +103,51 @@ pub struct UserOption {
     pub default: Option<BuildOptionValue>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExecutableRequest {
+    pub name: String,
+    pub root_module: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StaticLibraryRequest {
+    pub name: String,
+    pub root_module: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SharedLibraryRequest {
+    pub name: String,
+    pub root_module: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TestArtifactRequest {
+    pub name: String,
+    pub root_module: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildApiNameError {
+    Empty,
+    InvalidCharacter(char),
+}
+
+pub fn validate_build_name(name: &str) -> Result<(), BuildApiNameError> {
+    if name.is_empty() {
+        return Err(BuildApiNameError::Empty);
+    }
+
+    for ch in name.chars() {
+        if ch.is_ascii_lowercase() || ch.is_ascii_digit() || matches!(ch, '-' | '_' | '.') {
+            continue;
+        }
+        return Err(BuildApiNameError::InvalidCharacter(ch));
+    }
+
+    Ok(())
+}
+
 #[derive(Debug)]
 pub struct BuildApi<'a> {
     graph: &'a mut BuildGraph,
@@ -156,8 +201,9 @@ impl<'a> BuildApi<'a> {
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildApi, BuildOptionValue, StandardOptimizeRequest, StandardTargetRequest,
-        UserOptionRequest,
+        validate_build_name, BuildApi, BuildApiNameError, BuildOptionValue, ExecutableRequest,
+        SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest,
+        TestArtifactRequest, UserOptionRequest,
     };
     use crate::build_graph::BuildGraph;
     use crate::build_graph::BuildOptionKind;
@@ -238,5 +284,46 @@ mod tests {
         );
         assert_eq!(api.graph().options()[0].kind, BuildOptionKind::String);
         assert_eq!(api.graph().options()[1].kind, BuildOptionKind::Enum);
+    }
+
+    #[test]
+    fn build_name_validation_accepts_the_draft_public_naming_rules() {
+        assert_eq!(validate_build_name("app"), Ok(()));
+        assert_eq!(validate_build_name("app-main"), Ok(()));
+        assert_eq!(validate_build_name("app.main_1"), Ok(()));
+    }
+
+    #[test]
+    fn build_name_validation_rejects_empty_and_mixed_case_names() {
+        assert_eq!(validate_build_name(""), Err(BuildApiNameError::Empty));
+        assert_eq!(
+            validate_build_name("App"),
+            Err(BuildApiNameError::InvalidCharacter('A'))
+        );
+    }
+
+    #[test]
+    fn structured_artifact_requests_keep_name_and_root_module_fields() {
+        let exe = ExecutableRequest {
+            name: "app".to_string(),
+            root_module: "src/app.fol".to_string(),
+        };
+        let static_lib = StaticLibraryRequest {
+            name: "support".to_string(),
+            root_module: "src/support.fol".to_string(),
+        };
+        let shared_lib = SharedLibraryRequest {
+            name: "plugin".to_string(),
+            root_module: "src/plugin.fol".to_string(),
+        };
+        let tests = TestArtifactRequest {
+            name: "app-tests".to_string(),
+            root_module: "test/app.fol".to_string(),
+        };
+
+        assert_eq!(exe.root_module, "src/app.fol");
+        assert_eq!(static_lib.name, "support");
+        assert_eq!(shared_lib.name, "plugin");
+        assert_eq!(tests.root_module, "test/app.fol");
     }
 }
