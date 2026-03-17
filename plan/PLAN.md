@@ -456,7 +456,7 @@ Round 1 slice tracker:
 - [x] Slice 8. Add runtime method invocation modeling for graph and handle
   receivers.
 - [x] Slice 9. Add runtime translation/evaluation diagnostic kinds and tests.
-- [ ] Slice 10. Re-export and test the Phase 5 runtime-IR surface.
+- [x] Slice 10. Re-export and test the Phase 5 runtime-IR surface.
 
 ## Phase 6: Remove Textual Build-Body Extraction
 

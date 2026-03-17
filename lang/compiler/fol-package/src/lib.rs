@@ -98,6 +98,12 @@ pub use build_option::{
     BuildTargetTriple, ResolvedBuildOptionSet, StandardOptimizeDeclaration,
     StandardTargetDeclaration, UserOptionDeclaration,
 };
+pub use build_runtime::{
+    find_record_field, BuildExecutionRepresentation, BuildRuntimeDiagnostic,
+    BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeHandle,
+    BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram,
+    BuildRuntimeReceiverKind, BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue,
+};
 pub use build_native::{
     project_compatibility_native_artifact, project_compatibility_native_artifacts,
     NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeIncludePath,
@@ -151,10 +157,13 @@ mod tests {
         canonical_option_value_kinds, classify_semantic_build_mode,
         collect_build_entry_candidates, forbidden_capability_message,
         validate_parsed_build_entry, AllowedBuildTimeOperation, BuildEntrySignatureExpectation,
-        BuildSemanticChainKind, BuildSemanticType, BuildSemanticTypeFamily,
-        ForbiddenBuildTimeOperation, NativeArtifactDefinition, NativeArtifactKind,
-        NativeArtifactSet, NativeLinkDirective, NativeLinkInput, NativeLinkMode,
-        PackageBuildMode, ParsedSourceUnitKind,
+        BuildExecutionRepresentation, BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind,
+        BuildRuntimeExpr, BuildRuntimeHandle, BuildRuntimeHandleKind, BuildRuntimeLocalId,
+        BuildRuntimeMethodCall, BuildRuntimeReceiverKind, BuildRuntimeRecordField,
+        BuildRuntimeStmt, BuildRuntimeValue, BuildSemanticChainKind, BuildSemanticType,
+        BuildSemanticTypeFamily, ForbiddenBuildTimeOperation, NativeArtifactDefinition,
+        NativeArtifactKind, NativeArtifactSet, NativeLinkDirective, NativeLinkInput,
+        NativeLinkMode, PackageBuildMode, ParsedSourceUnitKind,
     };
 
     #[test]
@@ -195,6 +204,45 @@ mod tests {
     #[test]
     fn crate_root_reexports_parsed_source_unit_kinds() {
         assert_eq!(ParsedSourceUnitKind::Build, fol_parser::ast::ParsedSourceUnitKind::Build);
+    }
+
+    #[test]
+    fn crate_root_reexports_runtime_ir_surface() {
+        let graph = BuildRuntimeValue::Handle(BuildRuntimeHandle::new(
+            BuildRuntimeHandleKind::Graph,
+            "graph",
+        ));
+        let method = BuildRuntimeMethodCall::new(
+            BuildRuntimeExpr::Local(BuildRuntimeLocalId(0)),
+            BuildRuntimeReceiverKind::Graph,
+            "add_exe",
+            vec![BuildRuntimeExpr::Value(BuildRuntimeValue::String("demo".to_string()))],
+        );
+        let stmt = BuildRuntimeStmt::Expr(BuildRuntimeExpr::Local(BuildRuntimeLocalId(0)));
+        let field = BuildRuntimeRecordField::new(
+            "name",
+            BuildRuntimeExpr::Value(BuildRuntimeValue::String("demo".to_string())),
+        );
+        let diagnostic = BuildRuntimeDiagnostic::new(
+            BuildRuntimeDiagnosticKind::UnknownMethod,
+            "unknown build method",
+        );
+
+        assert!(matches!(
+            graph,
+            BuildRuntimeValue::Handle(BuildRuntimeHandle {
+                kind: BuildRuntimeHandleKind::Graph,
+                ..
+            })
+        ));
+        assert_eq!(
+            BuildExecutionRepresentation::RestrictedRuntimeIr,
+            BuildExecutionRepresentation::RestrictedRuntimeIr
+        );
+        assert_eq!(method.method, "add_exe");
+        assert!(matches!(stmt, BuildRuntimeStmt::Expr(_)));
+        assert_eq!(field.name, "name");
+        assert_eq!(diagnostic.kind, BuildRuntimeDiagnosticKind::UnknownMethod);
     }
 
     #[test]
