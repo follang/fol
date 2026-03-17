@@ -47,6 +47,13 @@ pub use build_artifact::{
     BuildArtifactPipelinePlan, BuildArtifactPipelineStage, BuildArtifactReport,
     BuildArtifactRootSource, BuildArtifactSet, BuildArtifactTargetConfig,
 };
+pub use build_dependency::{
+    dependency_modules_from_exports, DependencyArtifactSurface, DependencyArtifactSurfaceSet,
+    DependencyBuildEvaluationMode, DependencyBuildHandle, DependencyBuildSurface,
+    DependencyBuildSurfaceSet, DependencyGeneratedOutputSurface,
+    DependencyGeneratedOutputSurfaceSet, DependencyModuleSurface, DependencyModuleSurfaceSet,
+    DependencySourceRootSurface, DependencyStepSurface, DependencyStepSurfaceSet,
+};
 pub use build_eval::{
     evaluate_build_plan, AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
     BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationInstallArtifactRequest,
