@@ -706,7 +706,7 @@ impl SemanticSnapshot {
             CompletionContext::DotTrigger => return self.dot_intrinsic_fallback_completion_items(),
         }
         let mut items = self.local_completion_items(position);
-        items.extend(self.current_package_top_level_completion_items());
+        items.extend(self.current_package_top_level_completion_items(position));
         items.extend(self.import_alias_completion_items(position));
         dedupe_completion_items(items)
     }
@@ -721,12 +721,7 @@ impl SemanticSnapshot {
             "never",
         ]
         .into_iter()
-        .map(|label| EditorCompletionItem {
-            label: label.to_string(),
-            kind: 5,
-            detail: Some("type".to_string()),
-            insert_text: None,
-        })
+        .map(completion_builtin_type_item)
         .collect()
     }
 
@@ -742,12 +737,8 @@ impl SemanticSnapshot {
                     fol_resolver::SymbolKind::Type | fol_resolver::SymbolKind::Alias
                 )
             })
-            .map(|symbol| EditorCompletionItem {
-                label: symbol.name.clone(),
-                kind: 5,
-                detail: Some(render_symbol_kind(symbol.kind).to_string()),
-                insert_text: None,
-            })
+            .filter(|symbol| completion_symbol_is_root_visible(program, symbol))
+            .map(completion_item_from_symbol)
             .collect()
     }
 
@@ -767,12 +758,7 @@ impl SemanticSnapshot {
                     .symbols_in_scope(scope_id)
                     .into_iter()
                     .filter(|symbol| symbol_visibility_matches_namespace_root(symbol, imported_root))
-                    .map(|symbol| EditorCompletionItem {
-                        label: symbol.name.clone(),
-                        kind: symbol_kind_code(symbol.kind),
-                        detail: Some(render_symbol_kind(symbol.kind).to_string()),
-                        insert_text: None,
-                    }),
+                    .map(completion_item_from_symbol),
             );
         }
 
@@ -785,12 +771,7 @@ impl SemanticSnapshot {
                     .symbols_in_scope(source_unit.scope_id)
                     .into_iter()
                     .filter(|symbol| symbol_visibility_matches_namespace_root(symbol, imported_root))
-                    .map(|symbol| EditorCompletionItem {
-                        label: symbol.name.clone(),
-                        kind: symbol_kind_code(symbol.kind),
-                        detail: Some(render_symbol_kind(symbol.kind).to_string()),
-                        insert_text: None,
-                    }),
+                    .map(completion_item_from_symbol),
             );
         }
 
@@ -808,12 +789,7 @@ impl SemanticSnapshot {
                 child_namespaces.insert(child.to_string());
             }
         }
-        items.extend(child_namespaces.into_iter().map(|label| EditorCompletionItem {
-            label,
-            kind: 3,
-            detail: Some("namespace".to_string()),
-            insert_text: None,
-        }));
+        items.extend(child_namespaces.into_iter().map(completion_namespace_item));
 
         dedupe_completion_items(items)
     }
@@ -824,12 +800,7 @@ impl SemanticSnapshot {
             .filter(|entry| entry.surface == IntrinsicSurface::DotRootCall)
             .filter(|entry| entry.availability == IntrinsicAvailability::V1)
             .filter(|entry| entry.status == IntrinsicStatus::Implemented)
-            .map(|entry| EditorCompletionItem {
-                label: entry.name.to_string(),
-                kind: 12,
-                detail: Some(entry.category.as_str().to_string()),
-                insert_text: Some(entry.name.to_string()),
-            })
+            .map(completion_intrinsic_item)
             .collect()
     }
 
@@ -854,52 +825,45 @@ impl SemanticSnapshot {
                 ) {
                     continue;
                 }
-                items.push(EditorCompletionItem {
-                    label: symbol.name.clone(),
-                    kind: symbol_kind_code(symbol.kind),
-                    detail: Some(render_symbol_kind(symbol.kind).to_string()),
-                    insert_text: None,
-                });
+                items.push(completion_item_from_symbol(symbol));
             }
             cursor = program.scope(current_scope_id).and_then(|scope| scope.parent);
         }
         items
     }
 
-    fn current_package_top_level_completion_items(&self) -> Vec<EditorCompletionItem> {
+    fn current_package_top_level_completion_items(
+        &self,
+        position: LspPosition,
+    ) -> Vec<EditorCompletionItem> {
         let Some(program) = self.current_program() else {
             return Vec::new();
         };
-        program
-            .all_symbols()
-            .filter(|symbol| symbol.mounted_from.is_none())
-            .filter(|symbol| {
-                matches!(
-                    program.scope(symbol.scope).map(|scope| &scope.kind),
-                    Some(
-                        fol_resolver::ScopeKind::ProgramRoot { .. }
-                            | fol_resolver::ScopeKind::NamespaceRoot { .. }
-                            | fol_resolver::ScopeKind::SourceUnitRoot { .. }
-                    )
-                )
-            })
-            .filter(|symbol| {
-                matches!(
-                    symbol.kind,
-                    fol_resolver::SymbolKind::Routine
-                        | fol_resolver::SymbolKind::Type
-                        | fol_resolver::SymbolKind::Alias
-                        | fol_resolver::SymbolKind::Definition
-                        | fol_resolver::SymbolKind::ValueBinding
-                )
-            })
-            .map(|symbol| EditorCompletionItem {
-                label: symbol.name.clone(),
-                kind: symbol_kind_code(symbol.kind),
-                detail: Some(render_symbol_kind(symbol.kind).to_string()),
-                insert_text: None,
-            })
-            .collect()
+        let Some(namespace) = self.current_namespace_for_position(position) else {
+            return Vec::new();
+        };
+        let mut items = Vec::new();
+        if let Some(scope_id) = program.namespace_scope(namespace.as_str()) {
+            items.extend(
+                program
+                    .symbols_in_scope(scope_id)
+                    .into_iter()
+                    .filter(|symbol| symbol.mounted_from.is_none())
+                    .filter(|symbol| completion_symbol_is_plain_top_level_candidate(program, symbol))
+                    .map(completion_item_from_symbol),
+            );
+        }
+        for source_unit in program.source_units.iter().filter(|unit| unit.namespace == namespace) {
+            items.extend(
+                program
+                    .symbols_in_scope(source_unit.scope_id)
+                    .into_iter()
+                    .filter(|symbol| symbol.mounted_from.is_none())
+                    .filter(|symbol| completion_symbol_is_plain_top_level_candidate(program, symbol))
+                    .map(completion_item_from_symbol),
+            );
+        }
+        items
     }
 
     fn import_alias_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
@@ -913,12 +877,7 @@ impl SemanticSnapshot {
                 if symbol.kind != fol_resolver::SymbolKind::ImportAlias {
                     continue;
                 }
-                items.push(EditorCompletionItem {
-                    label: symbol.name.clone(),
-                    kind: symbol_kind_code(symbol.kind),
-                    detail: Some(render_symbol_kind(symbol.kind).to_string()),
-                    insert_text: None,
-                });
+                items.push(completion_item_from_symbol(symbol));
             }
             cursor = program.scope(current_scope_id).and_then(|scope| scope.parent);
         }
@@ -947,6 +906,17 @@ impl SemanticSnapshot {
         let analyzed_path = self.analyzed_path.as_ref()?;
         let syntax_id = syntax_at_position(program, analyzed_path.as_path(), position)?;
         program.scope_for_syntax(syntax_id).map(|scope_id| (program, scope_id))
+    }
+
+    fn current_namespace_for_position(&self, position: LspPosition) -> Option<String> {
+        let (program, _) = self.scope_at_position(position)?;
+        let analyzed_path = self.analyzed_path.as_ref()?;
+        let path_text = analyzed_path.to_string_lossy();
+        program
+            .source_units
+            .iter()
+            .find(|unit| unit.path == path_text)
+            .map(|unit| unit.namespace.clone())
     }
 
     fn reference_at(&self, position: LspPosition) -> Option<&fol_resolver::ResolvedReference> {
@@ -1415,7 +1385,130 @@ fn dedupe_completion_items(items: Vec<EditorCompletionItem>) -> Vec<EditorComple
             filtered.push(item);
         }
     }
+    filtered.sort_by(completion_item_cmp);
     filtered
+}
+
+fn completion_item_cmp(left: &EditorCompletionItem, right: &EditorCompletionItem) -> std::cmp::Ordering {
+    completion_item_priority(left)
+        .cmp(&completion_item_priority(right))
+        .then(left.label.cmp(&right.label))
+        .then(left.detail.cmp(&right.detail))
+        .then(left.insert_text.cmp(&right.insert_text))
+}
+
+fn completion_item_priority(item: &EditorCompletionItem) -> u8 {
+    match item.kind {
+        6 => 0,
+        3 | 12 => 1,
+        22 => 2,
+        9 => 3,
+        2 => 4,
+        _ => 5,
+    }
+}
+
+fn completion_builtin_type_item(label: &str) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label: label.to_string(),
+        kind: 22,
+        detail: Some("builtin type".to_string()),
+        insert_text: None,
+    }
+}
+
+fn completion_namespace_item(label: String) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label,
+        kind: 9,
+        detail: Some("namespace".to_string()),
+        insert_text: None,
+    }
+}
+
+fn completion_intrinsic_item(entry: &fol_intrinsics::IntrinsicEntry) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label: entry.name.to_string(),
+        kind: 2,
+        detail: Some(format!("intrinsic {}", entry.category.as_str())),
+        insert_text: Some(entry.name.to_string()),
+    }
+}
+
+fn completion_item_from_symbol(symbol: &fol_resolver::ResolvedSymbol) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label: symbol.name.clone(),
+        kind: completion_symbol_kind(symbol.kind),
+        detail: Some(completion_symbol_detail(symbol.kind).to_string()),
+        insert_text: None,
+    }
+}
+
+fn completion_symbol_detail(kind: fol_resolver::SymbolKind) -> &'static str {
+    match kind {
+        fol_resolver::SymbolKind::Type => "type",
+        fol_resolver::SymbolKind::Alias => "type alias",
+        fol_resolver::SymbolKind::Routine => "routine",
+        fol_resolver::SymbolKind::Definition => "definition",
+        fol_resolver::SymbolKind::ValueBinding
+        | fol_resolver::SymbolKind::LabelBinding
+        | fol_resolver::SymbolKind::DestructureBinding
+        | fol_resolver::SymbolKind::LoopBinder
+        | fol_resolver::SymbolKind::RollingBinder => "binding",
+        fol_resolver::SymbolKind::Parameter | fol_resolver::SymbolKind::GenericParameter => "parameter",
+        fol_resolver::SymbolKind::Capture => "capture",
+        fol_resolver::SymbolKind::ImportAlias => "namespace",
+        fol_resolver::SymbolKind::Segment => "namespace segment",
+        fol_resolver::SymbolKind::Implementation => "implementation",
+        fol_resolver::SymbolKind::Standard => "standard",
+    }
+}
+
+fn completion_symbol_kind(kind: fol_resolver::SymbolKind) -> u8 {
+    match kind {
+        fol_resolver::SymbolKind::Routine => 3,
+        fol_resolver::SymbolKind::Definition => 12,
+        fol_resolver::SymbolKind::Type | fol_resolver::SymbolKind::Alias => 22,
+        fol_resolver::SymbolKind::ImportAlias | fol_resolver::SymbolKind::Segment => 9,
+        fol_resolver::SymbolKind::Implementation | fol_resolver::SymbolKind::Standard => 12,
+        fol_resolver::SymbolKind::ValueBinding
+        | fol_resolver::SymbolKind::LabelBinding
+        | fol_resolver::SymbolKind::DestructureBinding
+        | fol_resolver::SymbolKind::Parameter
+        | fol_resolver::SymbolKind::Capture
+        | fol_resolver::SymbolKind::GenericParameter
+        | fol_resolver::SymbolKind::LoopBinder
+        | fol_resolver::SymbolKind::RollingBinder => 6,
+    }
+}
+
+fn completion_symbol_is_root_visible(
+    program: &fol_resolver::ResolvedProgram,
+    symbol: &fol_resolver::ResolvedSymbol,
+) -> bool {
+    matches!(
+        program.scope(symbol.scope).map(|scope| &scope.kind),
+        Some(
+            fol_resolver::ScopeKind::ProgramRoot { .. }
+                | fol_resolver::ScopeKind::NamespaceRoot { .. }
+                | fol_resolver::ScopeKind::SourceUnitRoot { .. }
+        )
+    )
+}
+
+fn completion_symbol_is_plain_top_level_candidate(
+    program: &fol_resolver::ResolvedProgram,
+    symbol: &fol_resolver::ResolvedSymbol,
+) -> bool {
+    completion_symbol_is_root_visible(program, symbol)
+        && matches!(
+            symbol.kind,
+            fol_resolver::SymbolKind::Routine
+                | fol_resolver::SymbolKind::Type
+                | fol_resolver::SymbolKind::Alias
+                | fol_resolver::SymbolKind::Definition
+                | fol_resolver::SymbolKind::ValueBinding
+        )
 }
 
 fn symbol_visibility_matches_namespace_root(
@@ -2666,6 +2759,114 @@ mod tests {
         assert!(labels.contains(&"local_helper"));
         assert!(labels.contains(&"shared"));
         assert!(!labels.contains(&"helper"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_keeps_plain_completion_free_of_child_namespace_noise() {
+        let (root, uri) = sample_package_root("completion_plain_namespace_filter");
+        fs::create_dir_all(root.join("src/api")).unwrap();
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return \n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/api/lib.fol"),
+            "fun[exp] child_helper(): int = {\n    return 9\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(47),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 4,
+                            character: 11,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let labels = serde_json::from_value::<LspCompletionList>(completion.result.unwrap())
+            .unwrap()
+            .items
+            .into_iter()
+            .map(|item| item.label)
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"helper".to_string()));
+        assert!(!labels.contains(&"child_helper".to_string()));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_locks_completion_item_labels_kinds_and_order() {
+        let (root, uri) = sample_loc_workspace_root("completion_item_shape_matrix");
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nali[] LocalAlias = int\n\ntyp[] LocalRec: rec = {\n    value: int\n}\n\nfun[] helper(): int = {\n    return 7\n}\n\nfun[] main(total: int): int = {\n    var value: int = 9\n    return \n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/src/lib.fol"),
+            "fun[exp] helper(): int = {\n    return 8\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(48),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 11,
+                            character: 11,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let summary = completion
+            .items
+            .iter()
+            .map(|item| format!("{}:{}:{}", item.label, item.kind, item.detail.clone().unwrap_or_default()))
+            .collect::<Vec<_>>();
+        assert_eq!(
+            summary,
+            vec![
+                "total:6:parameter",
+                "value:6:binding",
+                "helper:3:routine",
+                "LocalAlias:22:type alias",
+                "LocalRec:22:type",
+                "shared:9:namespace",
+            ]
+        );
 
         fs::remove_dir_all(root).ok();
     }

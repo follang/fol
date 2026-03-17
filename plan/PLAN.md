@@ -391,10 +391,10 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 ### Phase 11: Ranking, filtering, and response shaping
 
-- `11.1` choose stable completion item kinds/details for FOL symbols
-- `11.2` return deterministic ordering for repeated requests
-- `11.3` avoid noisy suggestions from unrelated packages/files
-- `11.4` add plain tests locking item labels/kinds/order
+- `11.1` complete: choose stable completion item kinds/details for FOL symbols
+- `11.2` complete: return deterministic ordering for repeated requests
+- `11.3` complete: avoid noisy suggestions from unrelated packages/files
+- `11.4` complete: add plain tests locking item labels/kinds/order
 
 ### Phase 12: Frontend and tool command coverage
 
