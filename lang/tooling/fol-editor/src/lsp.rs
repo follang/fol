@@ -690,7 +690,11 @@ impl SemanticSnapshot {
     ) -> Vec<EditorCompletionItem> {
         match completion_context(document, position) {
             CompletionContext::Plain => {}
-            CompletionContext::TypePosition => return self.builtin_type_completion_items(),
+            CompletionContext::TypePosition => {
+                let mut items = self.builtin_type_completion_items();
+                items.extend(self.visible_named_type_completion_items());
+                return dedupe_completion_items(items);
+            }
             _ => return Vec::new(),
         }
         let mut items = self.local_completion_items(position);
@@ -716,6 +720,27 @@ impl SemanticSnapshot {
             insert_text: None,
         })
         .collect()
+    }
+
+    fn visible_named_type_completion_items(&self) -> Vec<EditorCompletionItem> {
+        let Some(program) = self.current_program() else {
+            return Vec::new();
+        };
+        program
+            .all_symbols()
+            .filter(|symbol| {
+                matches!(
+                    symbol.kind,
+                    fol_resolver::SymbolKind::Type | fol_resolver::SymbolKind::Alias
+                )
+            })
+            .map(|symbol| EditorCompletionItem {
+                label: symbol.name.clone(),
+                kind: 5,
+                detail: Some(render_symbol_kind(symbol.kind).to_string()),
+                insert_text: None,
+            })
+            .collect()
     }
 
     fn local_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
@@ -1880,6 +1905,55 @@ mod tests {
         assert!(labels.contains(&"int"));
         assert!(labels.contains(&"str"));
         assert!(labels.contains(&"never"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_visible_named_type_completions_in_type_positions() {
+        let (root, uri) = sample_loc_workspace_root("completion_named_types");
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nfun[] main(): shared::Status = {\n    var report: shared::Report = \n    return shared::Pending\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/src/lib.fol"),
+            "typ[exp] Status: ent = {\n    case Pending\n}\n\ntyp[exp] Report: rec = {\n    value: int\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(37),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 31,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"Status"));
+        assert!(labels.contains(&"Report"));
 
         fs::remove_dir_all(root).ok();
     }
