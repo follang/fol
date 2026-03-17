@@ -345,7 +345,7 @@ Round 2 slice tracker:
   metadata.
 - [x] Slice 7. Move package-session coverage from legacy build-entry metadata to
   semantic build validation.
-- [ ] Slice 8. Add regression coverage proving parse-error fallback no longer
+- [x] Slice 8. Add regression coverage proving parse-error fallback no longer
   classifies broken modern builds as valid modern/hybrid builds.
 - [ ] Slice 9. Re-export and test the migrated Phase 3 semantic build-mode
   surface.

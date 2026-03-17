@@ -936,6 +936,47 @@ mod tests {
     }
 
     #[test]
+    fn package_build_parser_keeps_broken_modern_builds_out_of_modern_mode() {
+        let temp_root = unique_temp_root("broken_modern_build");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(&build_path, "def build(graph: Graph): Graph = {\n")
+            .expect("Should write the broken modern build fixture");
+
+        let error = parse_package_build(&build_path)
+            .expect_err("Broken modern-only build files should stay parse failures");
+
+        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
+        assert!(error
+            .to_string()
+            .contains("package loader could not parse package build file"));
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_build_parser_recovers_compatibility_mode_from_hybrid_parse_failures() {
+        let temp_root = unique_temp_root("broken_hybrid_build");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(
+            &build_path,
+            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = {\n",
+        )
+        .expect("Should write the broken hybrid build fixture");
+
+        let build = parse_package_build(&build_path)
+            .expect("Broken hybrid build files should still recover compatibility controls");
+
+        assert_eq!(build.mode(), PackageBuildMode::CompatibilityOnly);
+        assert_eq!(build.exports().len(), 1);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
     fn package_build_mode_classifies_empty_and_compatibility_builds() {
         let empty = PackageBuildDefinition::default();
         assert_eq!(empty.mode(), PackageBuildMode::Empty);
