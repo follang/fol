@@ -276,6 +276,14 @@ mod tests {
             "(use_decl name: (identifier) @namespace)",
             "(typ_decl name: (identifier) @type)",
             "(ali_decl name: (identifier) @type.definition)",
+            "(record_type) @type.builtin",
+            "(entry_type) @type.builtin",
+            "(typed_binding type: (identifier) @type.builtin",
+            "(param type: (identifier) @type.builtin",
+            "(typed_binding type: (identifier) @type",
+            "(param type: (identifier) @type",
+            "(typed_binding type: (qualified_path) @type)",
+            "(param type: (qualified_path) @type)",
             "(error_type \"/\" @operator)",
             "(fun_decl declaration: (plain_fun_decl name: (identifier) @function))",
             "(fun_decl declaration: (method_decl name: (identifier) @function.method))",
@@ -587,6 +595,40 @@ mod tests {
             assert!(
                 panic_fixture.contains(needle),
                 "panic/check fixture lost keyword snapshot capture: {needle}\n{panic_fixture}"
+            );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn builtin_and_named_type_references_keep_distinct_highlight_captures() {
+        let root = build_bundle_root("type_references");
+        let logtiny_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("xtra/logtiny/src/log.fol"),
+        );
+        assert!(logtiny_output.status.success());
+        let logtiny = String::from_utf8_lossy(&logtiny_output.stdout);
+        for needle in ["type.builtin", "type.definition", "type"] {
+            assert!(
+                logtiny.contains(needle),
+                "logtiny fixture lost type capture: {needle}\n{logtiny}"
+            );
+        }
+
+        let showcase_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/showcases/full_v1_showcase/shared/lib.fol"),
+        );
+        assert!(showcase_output.status.success());
+        let showcase = String::from_utf8_lossy(&showcase_output.stdout);
+        for needle in ["type.builtin", "type", "namespace"] {
+            assert!(
+                showcase.contains(needle),
+                "showcase fixture lost named type reference capture: {needle}\n{showcase}"
             );
         }
 
