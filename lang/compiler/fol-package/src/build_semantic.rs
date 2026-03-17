@@ -247,10 +247,36 @@ pub fn canonical_graph_method_signatures() -> Vec<BuildSemanticMethodSignature> 
     ]
 }
 
+pub fn canonical_handle_method_signatures() -> Vec<BuildSemanticMethodSignature> {
+    vec![
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::StepHandle, "depend_on")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "step",
+                BuildSemanticTypeFamily::StepHandle,
+            ))
+            .returning(BuildSemanticTypeFamily::StepHandle)
+            .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::RunHandle, "depend_on")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "step",
+                BuildSemanticTypeFamily::StepHandle,
+            ))
+            .returning(BuildSemanticTypeFamily::RunHandle)
+            .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::InstallHandle, "depend_on")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "step",
+                BuildSemanticTypeFamily::StepHandle,
+            ))
+            .returning(BuildSemanticTypeFamily::InstallHandle)
+            .chainable(),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        canonical_graph_method_signatures,
+        canonical_graph_method_signatures, canonical_handle_method_signatures,
         BuildSemanticMethodParameter, BuildSemanticMethodSignature, BuildSemanticParameterShape,
         BuildSemanticType, BuildSemanticTypeFamily, BuildStdlibImportSurface,
         BuildStdlibModuleKind, BuildStdlibModulePath,
@@ -367,6 +393,30 @@ mod tests {
         );
         assert_eq!(
             install.and_then(|signature| signature.returns),
+            Some(BuildSemanticTypeFamily::InstallHandle)
+        );
+    }
+
+    #[test]
+    fn canonical_handle_methods_cover_depend_on_chains() {
+        let signatures = canonical_handle_method_signatures();
+
+        assert_eq!(signatures.len(), 3);
+        assert!(signatures.iter().all(|signature| signature.name == "depend_on"));
+        assert!(signatures.iter().all(|signature| signature.chainable));
+    }
+
+    #[test]
+    fn canonical_handle_methods_preserve_receiver_specific_returns() {
+        let signatures = canonical_handle_method_signatures();
+
+        assert_eq!(signatures[0].receiver, BuildSemanticTypeFamily::StepHandle);
+        assert_eq!(signatures[0].returns, Some(BuildSemanticTypeFamily::StepHandle));
+        assert_eq!(signatures[1].receiver, BuildSemanticTypeFamily::RunHandle);
+        assert_eq!(signatures[1].returns, Some(BuildSemanticTypeFamily::RunHandle));
+        assert_eq!(signatures[2].receiver, BuildSemanticTypeFamily::InstallHandle);
+        assert_eq!(
+            signatures[2].returns,
             Some(BuildSemanticTypeFamily::InstallHandle)
         );
     }
