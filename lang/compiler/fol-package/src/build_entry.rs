@@ -150,11 +150,32 @@ pub fn validate_build_entry_cardinality(
     }
 }
 
+pub fn validate_build_entry_parameter_shape(
+    entry: ValidatedBuildEntry,
+) -> Result<ValidatedBuildEntry, Vec<BuildEntryValidationError>> {
+    if entry.candidate.parameter_names.len() != 1 {
+        return Err(vec![BuildEntryValidationError::new(
+            BuildEntryValidationErrorKind::WrongParameterCount,
+            "semantic `build` entry must declare exactly one parameter",
+        )]);
+    }
+
+    if entry.candidate.parameter_names[0].trim().is_empty() {
+        return Err(vec![BuildEntryValidationError::new(
+            BuildEntryValidationErrorKind::WrongParameterCount,
+            "semantic `build` entry parameter must have a non-empty binding name",
+        )]);
+    }
+
+    Ok(entry)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        collect_build_entry_candidates, validate_build_entry_cardinality, BuildEntryCandidate,
-        BuildEntrySignatureExpectation, BuildEntryValidationError,
+        collect_build_entry_candidates, validate_build_entry_cardinality,
+        validate_build_entry_parameter_shape, BuildEntryCandidate, BuildEntrySignatureExpectation,
+        BuildEntryValidationError,
         BuildEntryValidationErrorKind, ValidatedBuildEntry,
     };
 
@@ -267,5 +288,34 @@ mod tests {
         let validated = validate_build_entry_cardinality(&syntax, &[candidate.clone()])
             .expect("one semantic build entry should pass cardinality validation");
         assert_eq!(validated.candidate, candidate);
+    }
+
+    #[test]
+    fn parameter_shape_validation_requires_exactly_one_named_parameter() {
+        let valid = ValidatedBuildEntry {
+            candidate: BuildEntryCandidate {
+                source_unit_path: "build.fol".to_string(),
+                syntax_id: fol_parser::ast::SyntaxNodeId(1),
+                name: "build".to_string(),
+                parameter_names: vec!["graph".to_string()],
+                parameter_type_names: vec![Some("Graph".to_string())],
+                return_type_name: Some("Graph".to_string()),
+            },
+        };
+        assert!(validate_build_entry_parameter_shape(valid).is_ok());
+
+        let invalid = ValidatedBuildEntry {
+            candidate: BuildEntryCandidate {
+                source_unit_path: "build.fol".to_string(),
+                syntax_id: fol_parser::ast::SyntaxNodeId(2),
+                name: "build".to_string(),
+                parameter_names: vec!["left".to_string(), "right".to_string()],
+                parameter_type_names: vec![Some("Graph".to_string()), Some("Graph".to_string())],
+                return_type_name: Some("Graph".to_string()),
+            },
+        };
+        let errors = validate_build_entry_parameter_shape(invalid)
+            .expect_err("multiple parameters should fail semantic build entry validation");
+        assert_eq!(errors[0].kind, BuildEntryValidationErrorKind::WrongParameterCount);
     }
 }
