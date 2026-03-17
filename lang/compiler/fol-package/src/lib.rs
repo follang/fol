@@ -28,6 +28,14 @@ pub use build::{
     PackageBuildDefinition, PackageBuildEntryPoint, PackageBuildEntryPointKind, PackageBuildMode,
     PackageNativeArtifact, PackageNativeArtifactKind,
 };
+pub use build_api::{
+    validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildArtifactHandle,
+    BuildOptionValue, DependencyHandle, DependencyRequest, ExecutableRequest,
+    InstallArtifactRequest, InstallDirRequest, InstallFileRequest, InstallHandle, RunHandle,
+    RunRequest, SharedLibraryRequest, StandardOptimizeOption, StandardOptimizeRequest,
+    StandardTargetOption, StandardTargetRequest, StaticLibraryRequest, StepHandle, StepRequest,
+    TestArtifactRequest, UserOption, UserOptionRequest,
+};
 pub use build_graph::{
     BuildArtifact, BuildArtifactDependency, BuildArtifactId, BuildArtifactInput,
     BuildArtifactKind, BuildGeneratedFile, BuildGeneratedFileId, BuildGeneratedFileKind,

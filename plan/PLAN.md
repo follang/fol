@@ -835,7 +835,7 @@ Each slice must land green with `make build` and `make test` before commit.
 7. `[complete]` Add draft `step` and `add_run` API methods with graph-backed step wiring.
 8. `[complete]` Add draft `install` / `install_file` / `install_dir` API methods.
 9. `[complete]` Add a draft `dependency` request model and graph-backed placeholder surface.
-10. `[pending]` Re-export the draft build API surface from `fol-package`.
+10. `[complete]` Re-export the draft build API surface from `fol-package`.
 
 ## Success Criteria
 
