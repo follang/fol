@@ -4,6 +4,11 @@ use crate::{
     SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest,
     TestArtifactRequest, UserOptionRequest,
 };
+use crate::build_option::{
+    BuildOptionDeclaration, BuildOptionDeclarationSet, BuildOptimizeMode, BuildTargetTriple,
+    ResolvedBuildOptionSet, StandardOptimizeDeclaration, StandardTargetDeclaration,
+    UserOptionDeclaration,
+};
 use fol_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
 };
@@ -241,6 +246,8 @@ pub struct BuildEvaluationResult {
     pub boundary: BuildEvaluationBoundary,
     pub allowed_operations: Vec<AllowedBuildTimeOperation>,
     pub package_root: String,
+    pub option_declarations: BuildOptionDeclarationSet,
+    pub resolved_options: ResolvedBuildOptionSet,
     pub graph: BuildGraph,
 }
 
@@ -249,12 +256,16 @@ impl BuildEvaluationResult {
         boundary: BuildEvaluationBoundary,
         allowed_operations: Vec<AllowedBuildTimeOperation>,
         package_root: impl Into<String>,
+        option_declarations: BuildOptionDeclarationSet,
+        resolved_options: ResolvedBuildOptionSet,
         graph: BuildGraph,
     ) -> Self {
         Self {
             boundary,
             allowed_operations,
             package_root: package_root.into(),
+            option_declarations,
+            resolved_options,
             graph,
         }
     }
@@ -265,18 +276,46 @@ pub fn evaluate_build_plan(
 ) -> Result<BuildEvaluationResult, BuildEvaluationError> {
     let mut step_names = BTreeMap::new();
     let mut artifact_names = BTreeMap::new();
+    let mut option_declarations = BuildOptionDeclarationSet::new();
+    let mut resolved_options = ResolvedBuildOptionSet::new();
     let mut graph = BuildGraph::new();
     let mut api = BuildApi::new(&mut graph);
+
+    for (name, value) in &request.inputs.options {
+        resolved_options.insert(name.clone(), value.clone());
+    }
 
     for operation in &request.operations {
         match &operation.kind {
             BuildEvaluationOperationKind::StandardTarget(operation_request) => {
+                option_declarations.add(BuildOptionDeclaration::StandardTarget(
+                    StandardTargetDeclaration {
+                        name: operation_request.name.clone(),
+                        default: operation_request
+                            .default
+                            .as_deref()
+                            .and_then(BuildTargetTriple::parse),
+                    },
+                ));
                 api.standard_target(operation_request.clone());
             }
             BuildEvaluationOperationKind::StandardOptimize(operation_request) => {
+                option_declarations.add(BuildOptionDeclaration::StandardOptimize(
+                    StandardOptimizeDeclaration {
+                        name: operation_request.name.clone(),
+                        default: operation_request
+                            .default
+                            .as_deref()
+                            .and_then(BuildOptimizeMode::parse),
+                    },
+                ));
                 api.standard_optimize(operation_request.clone());
             }
             BuildEvaluationOperationKind::Option(operation_request) => {
+                option_declarations.add(BuildOptionDeclaration::User(UserOptionDeclaration {
+                    name: operation_request.name.clone(),
+                    help: None,
+                }));
                 api.option(operation_request.clone());
             }
             BuildEvaluationOperationKind::AddExe(operation_request) => {
@@ -406,6 +445,8 @@ pub fn evaluate_build_plan(
             AllowedBuildTimeOperation::OptionRead,
         ],
         request.package_root.clone(),
+        option_declarations,
+        resolved_options,
         graph,
     ))
 }
@@ -444,6 +485,7 @@ mod tests {
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
         BuildEvaluationRunRequest, BuildEvaluationStepRequest,
     };
+    use crate::build_option::{BuildOptimizeMode, BuildOptionDeclaration, BuildTargetTriple};
     use crate::build_graph::BuildGraph;
     use crate::{ExecutableRequest, StandardOptimizeRequest, StandardTargetRequest, UserOptionRequest};
     use fol_diagnostics::{DiagnosticCode, ToDiagnostic};
@@ -466,6 +508,8 @@ mod tests {
             BuildEvaluationBoundary::GraphConstructionSubset,
             vec![AllowedBuildTimeOperation::GraphMutation],
             "app",
+            crate::BuildOptionDeclarationSet::new(),
+            crate::ResolvedBuildOptionSet::new(),
             graph.clone(),
         );
 
@@ -482,6 +526,8 @@ mod tests {
                 AllowedBuildTimeOperation::OptionRead,
             ],
             "pkg",
+            crate::BuildOptionDeclarationSet::new(),
+            crate::ResolvedBuildOptionSet::new(),
             BuildGraph::new(),
         );
 
@@ -496,6 +542,30 @@ mod tests {
                 AllowedBuildTimeOperation::OptionRead,
             ]
         );
+    }
+
+    #[test]
+    fn build_evaluation_result_keeps_declared_and_resolved_options() {
+        let mut declarations = crate::BuildOptionDeclarationSet::new();
+        declarations.add(BuildOptionDeclaration::StandardOptimize(
+            crate::StandardOptimizeDeclaration {
+                name: "optimize".to_string(),
+                default: Some(BuildOptimizeMode::Debug),
+            },
+        ));
+        let mut resolved = crate::ResolvedBuildOptionSet::new();
+        resolved.insert("optimize", "release-fast");
+        let result = BuildEvaluationResult::new(
+            BuildEvaluationBoundary::GraphConstructionSubset,
+            vec![AllowedBuildTimeOperation::OptionRead],
+            "pkg",
+            declarations,
+            resolved,
+            BuildGraph::new(),
+        );
+
+        assert_eq!(result.option_declarations.declarations().len(), 1);
+        assert_eq!(result.resolved_options.get("optimize"), Some("release-fast"));
     }
 
     #[test]
@@ -749,5 +819,53 @@ mod tests {
 
         assert_eq!(error.kind(), BuildEvaluationErrorKind::ValidationFailed);
         assert!(error.message().contains("directory target must not be empty"));
+    }
+
+    #[test]
+    fn build_evaluator_replays_option_declarations_and_input_overrides() {
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: "/tmp/pkg".to_string(),
+                options: BTreeMap::from([
+                    ("target".to_string(), "aarch64-macos-gnu".to_string()),
+                    ("optimize".to_string(), "release-fast".to_string()),
+                ]),
+                environment: BTreeMap::new(),
+            },
+            operations: vec![
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::StandardTarget(
+                        StandardTargetRequest::new("target")
+                            .with_default("x86_64-linux-gnu"),
+                    ),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::StandardOptimize(
+                        StandardOptimizeRequest::new("optimize").with_default("debug"),
+                    ),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::Option(UserOptionRequest::bool(
+                        "strip",
+                        false,
+                    )),
+                },
+            ],
+        };
+
+        let result = evaluate_build_plan(&request).expect("option replay should succeed");
+
+        assert_eq!(result.option_declarations.declarations().len(), 3);
+        assert!(matches!(
+            &result.option_declarations.declarations()[0],
+            BuildOptionDeclaration::StandardTarget(declaration)
+            if declaration.default == BuildTargetTriple::parse("x86_64-linux-gnu")
+        ));
+        assert_eq!(result.resolved_options.get("target"), Some("aarch64-macos-gnu"));
+        assert_eq!(result.resolved_options.get("optimize"), Some("release-fast"));
     }
 }
