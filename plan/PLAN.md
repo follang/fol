@@ -933,6 +933,22 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Extend the build evaluator operation model to replay generated-file and tool/codegen actions.
 10. `[complete]` Re-export the draft generated-file and codegen surface from `fol-package`.
 
+## Round 10 Slice Tracker
+
+This round focuses on Phase 10 native artifacts and C ABI work in `fol-package`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the tenth implementation round around native-artifact and C-ABI modeling.
+2. `[pending]` Introduce a dedicated `build_native` module with native-artifact shell types.
+3. `[pending]` Add first-class native artifact kinds for headers, objects, static libraries, and shared libraries.
+4. `[pending]` Add include-path and library-path model types for native artifact search semantics.
+5. `[pending]` Add native link mode and link input records for backend-produced artifacts.
+6. `[pending]` Add cross-platform native naming/path convention helpers for headers and libraries.
+7. `[pending]` Add compatibility projection helpers from parsed placeholder native artifacts into the new native-artifact model.
+8. `[pending]` Extend artifact definitions to retain structured native artifact attachments instead of plain strings.
+9. `[pending]` Extend prepared-package modeling to retain optional native artifact surfaces alongside compatibility native placeholders.
+10. `[pending]` Re-export the draft native-artifact surface from `fol-package`.
+
 ## Success Criteria
 
 This plan is complete when:
