@@ -303,6 +303,17 @@ impl BuildSemanticRecordShape {
             fields: fields.into_iter().collect(),
         }
     }
+
+    pub fn option(
+        name: impl Into<String>,
+        fields: impl IntoIterator<Item = BuildSemanticRecordField>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            kind: BuildSemanticRecordShapeKind::OptionConfig,
+            fields: fields.into_iter().collect(),
+        }
+    }
 }
 
 impl BuildSemanticRecordField {
@@ -337,14 +348,66 @@ pub fn canonical_artifact_config_shapes() -> Vec<BuildSemanticRecordShape> {
     ]
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildSemanticOptionValueKind {
+    Target,
+    Optimize,
+    Bool,
+    Int,
+    String,
+    Enum,
+    Path,
+}
+
+pub fn canonical_option_config_shapes() -> Vec<BuildSemanticRecordShape> {
+    vec![
+        BuildSemanticRecordShape::option(
+            "StandardTargetConfig",
+            [
+                BuildSemanticRecordField::optional("name"),
+                BuildSemanticRecordField::optional("default"),
+            ],
+        ),
+        BuildSemanticRecordShape::option(
+            "StandardOptimizeConfig",
+            [
+                BuildSemanticRecordField::optional("name"),
+                BuildSemanticRecordField::optional("default"),
+            ],
+        ),
+        BuildSemanticRecordShape::option(
+            "UserOptionConfig",
+            [
+                BuildSemanticRecordField::required("name"),
+                BuildSemanticRecordField::required("kind"),
+                BuildSemanticRecordField::optional("default"),
+            ],
+        ),
+    ]
+}
+
+pub fn canonical_option_value_kinds() -> Vec<BuildSemanticOptionValueKind> {
+    vec![
+        BuildSemanticOptionValueKind::Target,
+        BuildSemanticOptionValueKind::Optimize,
+        BuildSemanticOptionValueKind::Bool,
+        BuildSemanticOptionValueKind::Int,
+        BuildSemanticOptionValueKind::String,
+        BuildSemanticOptionValueKind::Enum,
+        BuildSemanticOptionValueKind::Path,
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         canonical_artifact_config_shapes, canonical_graph_method_signatures,
-        canonical_handle_method_signatures, BuildSemanticMethodParameter,
-        BuildSemanticMethodSignature, BuildSemanticParameterShape, BuildSemanticRecordShapeKind,
-        BuildSemanticType, BuildSemanticTypeFamily, BuildStdlibImportSurface,
-        BuildStdlibModuleKind, BuildStdlibModulePath,
+        canonical_handle_method_signatures, canonical_option_config_shapes,
+        canonical_option_value_kinds, BuildSemanticMethodParameter,
+        BuildSemanticMethodSignature, BuildSemanticOptionValueKind,
+        BuildSemanticParameterShape, BuildSemanticRecordShapeKind, BuildSemanticType,
+        BuildSemanticTypeFamily, BuildStdlibImportSurface, BuildStdlibModuleKind,
+        BuildStdlibModulePath,
     };
 
     #[test]
@@ -508,5 +571,31 @@ mod tests {
             assert!(shape.fields.iter().any(|field| field.name == "name" && field.required));
             assert!(shape.fields.iter().any(|field| field.name == "root" && field.required));
         }
+    }
+
+    #[test]
+    fn canonical_option_config_shapes_cover_standard_and_user_option_forms() {
+        let shapes = canonical_option_config_shapes();
+        let names = shapes.iter().map(|shape| shape.name.as_str()).collect::<Vec<_>>();
+
+        assert!(names.contains(&"StandardTargetConfig"));
+        assert!(names.contains(&"StandardOptimizeConfig"));
+        assert!(names.contains(&"UserOptionConfig"));
+        assert!(shapes
+            .iter()
+            .all(|shape| shape.kind == BuildSemanticRecordShapeKind::OptionConfig));
+    }
+
+    #[test]
+    fn canonical_option_value_kinds_cover_all_current_build_option_families() {
+        let kinds = canonical_option_value_kinds();
+
+        assert!(kinds.contains(&BuildSemanticOptionValueKind::Target));
+        assert!(kinds.contains(&BuildSemanticOptionValueKind::Optimize));
+        assert!(kinds.contains(&BuildSemanticOptionValueKind::Bool));
+        assert!(kinds.contains(&BuildSemanticOptionValueKind::Int));
+        assert!(kinds.contains(&BuildSemanticOptionValueKind::String));
+        assert!(kinds.contains(&BuildSemanticOptionValueKind::Enum));
+        assert!(kinds.contains(&BuildSemanticOptionValueKind::Path));
     }
 }

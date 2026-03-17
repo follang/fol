@@ -238,7 +238,7 @@ Round 1 slice tracker:
 - [x] Slice 5. Add canonical graph method signatures.
 - [x] Slice 6. Add canonical handle method signatures.
 - [x] Slice 7. Add object-style artifact config shape types.
-- [ ] Slice 8. Add option value/config shape types for semantic build calls.
+- [x] Slice 8. Add option value/config shape types for semantic build calls.
 - [ ] Slice 9. Add chaining metadata for `.depend_on(...)` and related flows.
 - [ ] Slice 10. Re-export and test the full Phase 1 semantic build surface.
 
