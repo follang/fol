@@ -304,14 +304,14 @@ The minimum real fixture sources should include:
 
 ### Phase 2: Tree-sitter Grammar Foundation
 
-- `2.1` add the Tree-sitter grammar scaffold
-- `2.2` add base lexical tokens
-- `2.3` add declaration parsing rules
-- `2.4` add routine/type/body parsing rules
-- `2.5` add expression and control-flow parsing rules
-- `2.6` add comments and doc-comment handling
-- `2.7` add error-recovery rules suitable for editors
-- `2.8` add corpus smoke tests
+- `2.1` complete: added the Tree-sitter grammar scaffold
+- `2.2` complete: added base lexical tokens
+- `2.3` complete: added declaration parsing rules
+- `2.4` complete: added routine/type/body parsing rules
+- `2.5` complete: added expression and control-flow parsing rules
+- `2.6` complete: added comments and doc-comment handling
+- `2.7` complete: added error-recovery rules suitable for editors
+- `2.8` complete: added corpus smoke tests
 
 ### Phase 3: Tree-sitter V1 Coverage
 
@@ -326,8 +326,8 @@ The minimum real fixture sources should include:
 
 ### Phase 4: Query Layer
 
-- `4.1` add `highlights.scm`
-- `4.2` highlight declarations, types, keywords, and literals
+- `4.1` complete: added `highlights.scm`
+- `4.2` complete: highlighted declarations, types, keywords, and literals
 - `4.3` highlight intrinsics and qualified paths
 - `4.4` add `locals.scm`
 - `4.5` add `symbols.scm`
