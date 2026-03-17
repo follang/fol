@@ -976,7 +976,7 @@ Each slice must land green with `make build` and `make test` before commit.
 4. `[complete]` Rewrite `README.md` build/package descriptions around `build.fol` as the documented entry file and current routed workflow status.
 5. `[complete]` Rewrite the `book` package/import/build-root sections so they teach the current `build.fol` model clearly.
 6. `[complete]` Update `book` tooling/editor sections so build-file workflows and LSP/editor entrypoints are documented together.
-7. `[pending]` Add frontend editor-command regression coverage for `build.fol` parse/highlight/symbol extraction.
+7. `[complete]` Add frontend editor-command regression coverage for `build.fol` parse/highlight/symbol extraction.
 8. `[pending]` Add LSP regression coverage for `build.fol` symbol extraction and completion affordances.
 9. `[pending]` Add a checked-in `examples/` tree with simple exe, static-lib, shared-lib, generated-file, and dependency-workspace sample projects.
 10. `[pending]` Add tests that validate the checked-in examples are discoverable and their formal package `build.fol` files parse cleanly.

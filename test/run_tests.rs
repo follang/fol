@@ -3458,6 +3458,60 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_editor_file_commands_cover_build_fol_entry_files() {
+        let parse = run_fol(&["tool", "--output", "json", "parse", "xtra/logtiny/build.fol"]);
+        assert!(
+            parse.status.success(),
+            "build.fol parse should succeed: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&parse.stdout),
+            String::from_utf8_lossy(&parse.stderr)
+        );
+        let parse_json = parse_cli_json(&parse);
+        assert_eq!(parse_json["command"], "parse");
+        assert!(parse_json["summary"]
+            .as_str()
+            .expect("parse summary should be a string")
+            .contains("xtra/logtiny/build.fol"));
+
+        let highlight =
+            run_fol(&["tool", "--output", "json", "highlight", "xtra/logtiny/build.fol"]);
+        assert!(
+            highlight.status.success(),
+            "build.fol highlight should succeed: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&highlight.stdout),
+            String::from_utf8_lossy(&highlight.stderr)
+        );
+        let highlight_json = parse_cli_json(&highlight);
+        assert_eq!(highlight_json["command"], "highlight");
+        assert!(highlight_json["summary"]
+            .as_str()
+            .expect("highlight summary should be a string")
+            .contains("capture_count="));
+        assert!(highlight_json["summary"]
+            .as_str()
+            .expect("highlight summary should be a string")
+            .contains("xtra/logtiny/build.fol"));
+
+        let symbols = run_fol(&["tool", "--output", "json", "symbols", "xtra/logtiny/build.fol"]);
+        assert!(
+            symbols.status.success(),
+            "build.fol symbols should succeed: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&symbols.stdout),
+            String::from_utf8_lossy(&symbols.stderr)
+        );
+        let symbols_json = parse_cli_json(&symbols);
+        assert_eq!(symbols_json["command"], "symbols");
+        assert!(symbols_json["summary"]
+            .as_str()
+            .expect("symbols summary should be a string")
+            .contains("query_snapshots="));
+        assert!(symbols_json["summary"]
+            .as_str()
+            .expect("symbols summary should be a string")
+            .contains("xtra/logtiny/build.fol"));
+    }
+
+    #[test]
     #[ignore = "requires network access to github.com"]
     fn test_frontend_fetches_public_logtiny_from_github() {
         let temp_root = unique_temp_root("frontend_fetch_public_logtiny");
