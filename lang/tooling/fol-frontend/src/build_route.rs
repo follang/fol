@@ -980,6 +980,109 @@ mod tests {
     }
 
     #[test]
+    fn modern_members_plan_custom_steps_without_compatibility_controls() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_modern_custom_steps_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: modern\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "def build(graph: int): int = {\n",
+                "    graph.step(\"docs\");\n",
+                "    return graph\n",
+                "}\n",
+            ),
+        )
+        .unwrap();
+        fs::write(root.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        let route = plan_workspace_build_route(
+            &FrontendWorkspace {
+                root: WorkspaceRoot::new(root.clone()),
+                members: vec![PackageRoot::new(root.clone())],
+                std_root_override: None,
+                package_store_root_override: None,
+                build_root: root.join(".fol/build"),
+                cache_root: root.join(".fol/cache"),
+                git_cache_root: root.join(".fol/cache/git"),
+            },
+            "docs",
+        )
+        .expect("modern workspace route should classify successfully");
+        assert_eq!(route.members[0].mode, FrontendBuildWorkflowMode::Modern);
+
+        let plan = plan_member_execution(&route.members[0])
+            .expect("modern member should plan custom graph steps");
+        let docs = plan
+            .steps
+            .iter()
+            .find(|step| step.name == "docs")
+            .expect("modern member should keep the custom docs step");
+        assert_eq!(docs.execution, Some(FrontendStepExecutionKind::Build));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn hybrid_members_plan_custom_steps_without_falling_back_to_compatibility_only() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_hybrid_custom_steps_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: hybrid\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "def root: loc = \"src\";\n",
+                "def build(graph: int): int = {\n",
+                "    graph.step(\"docs\");\n",
+                "    return graph\n",
+                "}\n",
+            ),
+        )
+        .unwrap();
+        fs::write(root.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+
+        let route = plan_workspace_build_route(
+            &FrontendWorkspace {
+                root: WorkspaceRoot::new(root.clone()),
+                members: vec![PackageRoot::new(root.clone())],
+                std_root_override: None,
+                package_store_root_override: None,
+                build_root: root.join(".fol/build"),
+                cache_root: root.join(".fol/cache"),
+                git_cache_root: root.join(".fol/cache/git"),
+            },
+            "docs",
+        )
+        .expect("hybrid workspace route should classify successfully");
+        assert_eq!(route.members[0].mode, FrontendBuildWorkflowMode::Hybrid);
+
+        let plan = plan_member_execution(&route.members[0])
+            .expect("hybrid member should plan custom graph steps");
+        let docs = plan
+            .steps
+            .iter()
+            .find(|step| step.name == "docs")
+            .expect("hybrid member should keep the custom docs step");
+        assert_eq!(docs.execution, Some(FrontendStepExecutionKind::Build));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn compatibility_executor_maps_build_steps_back_onto_existing_workspace_commands() {
         let workspace = compatibility_workspace_fixture("compat_exec_build");
 

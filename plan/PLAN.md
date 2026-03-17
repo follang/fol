@@ -547,7 +547,7 @@ Round 1 slice tracker:
   explicit named build steps.
 - [x] Slice 8. Tighten ambiguous default multi-artifact execution errors so they
   fail clearly without legacy `src/main.fol` fallback guessing.
-- [ ] Slice 9. Add modern/hybrid workspace regressions proving routed commands
+- [x] Slice 9. Add modern/hybrid workspace regressions proving routed commands
   stay off compatibility-only assumptions.
 - [ ] Slice 10. Re-export, test, and lock the full Phase 7 graph-driven
   frontend routing round.
