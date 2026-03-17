@@ -138,6 +138,21 @@ pub enum BuildApiError {
     InvalidName(BuildApiNameError),
 }
 
+impl std::fmt::Display for BuildApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidName(BuildApiNameError::Empty) => {
+                write!(f, "build API names must not be empty")
+            }
+            Self::InvalidName(BuildApiNameError::InvalidCharacter(ch)) => {
+                write!(f, "build API names must not contain '{}'", ch)
+            }
+        }
+    }
+}
+
+impl std::error::Error for BuildApiError {}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildArtifactHandle {
     pub artifact_id: crate::build_graph::BuildArtifactId,

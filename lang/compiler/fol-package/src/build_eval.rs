@@ -1,8 +1,8 @@
 use crate::build_graph::BuildGraph;
 use crate::{
-    BuildApi, DependencyRequest, ExecutableRequest, InstallArtifactRequest, InstallDirRequest,
-    InstallFileRequest, SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest,
-    StaticLibraryRequest, StepRequest, TestArtifactRequest, UserOptionRequest,
+    BuildApi, DependencyRequest, ExecutableRequest, InstallDirRequest, InstallFileRequest,
+    SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest,
+    TestArtifactRequest, UserOptionRequest,
 };
 use fol_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
@@ -206,14 +206,34 @@ pub enum BuildEvaluationOperationKind {
     AddStaticLib(StaticLibraryRequest),
     AddSharedLib(SharedLibraryRequest),
     AddTest(TestArtifactRequest),
-    Step(StepRequest),
-    InstallArtifact(InstallArtifactRequest),
+    Step(BuildEvaluationStepRequest),
+    AddRun(BuildEvaluationRunRequest),
+    InstallArtifact(BuildEvaluationInstallArtifactRequest),
     InstallFile(InstallFileRequest),
     InstallDir(InstallDirRequest),
     Dependency(DependencyRequest),
     Unsupported {
         label: String,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildEvaluationStepRequest {
+    pub name: String,
+    pub depends_on: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildEvaluationRunRequest {
+    pub name: String,
+    pub artifact: String,
+    pub depends_on: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildEvaluationInstallArtifactRequest {
+    pub name: String,
+    pub artifact: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -243,6 +263,8 @@ impl BuildEvaluationResult {
 pub fn evaluate_build_plan(
     request: &BuildEvaluationRequest,
 ) -> Result<BuildEvaluationResult, BuildEvaluationError> {
+    let mut step_names = BTreeMap::new();
+    let mut artifact_names = BTreeMap::new();
     let mut graph = BuildGraph::new();
     let mut api = BuildApi::new(&mut graph);
 
@@ -257,6 +279,108 @@ pub fn evaluate_build_plan(
             BuildEvaluationOperationKind::Option(operation_request) => {
                 api.option(operation_request.clone());
             }
+            BuildEvaluationOperationKind::AddExe(operation_request) => {
+                let handle = api
+                    .add_exe(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                artifact_names.insert(operation_request.name.clone(), handle);
+            }
+            BuildEvaluationOperationKind::AddStaticLib(operation_request) => {
+                let handle = api
+                    .add_static_lib(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                artifact_names.insert(operation_request.name.clone(), handle);
+            }
+            BuildEvaluationOperationKind::AddSharedLib(operation_request) => {
+                let handle = api
+                    .add_shared_lib(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                artifact_names.insert(operation_request.name.clone(), handle);
+            }
+            BuildEvaluationOperationKind::AddTest(operation_request) => {
+                let handle = api
+                    .add_test(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                artifact_names.insert(operation_request.name.clone(), handle);
+            }
+            BuildEvaluationOperationKind::Step(operation_request) => {
+                let depends_on = operation_request
+                    .depends_on
+                    .iter()
+                    .map(|name| {
+                        step_names.get(name).copied().ok_or_else(|| {
+                            evaluation_invalid_input(
+                                format!("unknown step dependency '{name}'"),
+                                operation.origin.clone(),
+                            )
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let handle = api
+                    .step(crate::StepRequest {
+                        name: operation_request.name.clone(),
+                        depends_on,
+                    })
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                step_names.insert(operation_request.name.clone(), handle.step_id);
+            }
+            BuildEvaluationOperationKind::AddRun(operation_request) => {
+                let artifact = artifact_names.get(&operation_request.artifact).cloned().ok_or_else(
+                    || {
+                        evaluation_invalid_input(
+                            format!("unknown run artifact '{}'", operation_request.artifact),
+                            operation.origin.clone(),
+                        )
+                    },
+                )?;
+                let depends_on = operation_request
+                    .depends_on
+                    .iter()
+                    .map(|name| {
+                        step_names.get(name).copied().ok_or_else(|| {
+                            evaluation_invalid_input(
+                                format!("unknown step dependency '{name}'"),
+                                operation.origin.clone(),
+                            )
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                let handle = api
+                    .add_run(crate::RunRequest {
+                        name: operation_request.name.clone(),
+                        artifact,
+                        depends_on,
+                    })
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                step_names.insert(operation_request.name.clone(), handle.step_id);
+            }
+            BuildEvaluationOperationKind::InstallArtifact(operation_request) => {
+                let artifact = artifact_names.get(&operation_request.artifact).cloned().ok_or_else(
+                    || {
+                        evaluation_invalid_input(
+                            format!("unknown install artifact '{}'", operation_request.artifact),
+                            operation.origin.clone(),
+                        )
+                    },
+                )?;
+                api.install(crate::InstallArtifactRequest {
+                    name: operation_request.name.clone(),
+                    artifact,
+                })
+                .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+            }
+            BuildEvaluationOperationKind::InstallFile(operation_request) => {
+                api.install_file(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+            }
+            BuildEvaluationOperationKind::InstallDir(operation_request) => {
+                api.install_dir(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+            }
+            BuildEvaluationOperationKind::Dependency(operation_request) => {
+                api.dependency(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+            }
             _ => {
                 return Err(BuildEvaluationError::new(
                     BuildEvaluationErrorKind::Unsupported,
@@ -264,6 +388,13 @@ pub fn evaluate_build_plan(
                 ));
             }
         }
+    }
+
+    if let Some(validation_error) = graph.validate().into_iter().next() {
+        return Err(BuildEvaluationError::new(
+            BuildEvaluationErrorKind::ValidationFailed,
+            validation_error.message,
+        ));
     }
 
     Ok(BuildEvaluationResult::new(
@@ -277,13 +408,33 @@ pub fn evaluate_build_plan(
     ))
 }
 
+fn evaluation_invalid_input(
+    message: impl Into<String>,
+    origin: Option<SyntaxOrigin>,
+) -> BuildEvaluationError {
+    match origin {
+        Some(origin) => {
+            BuildEvaluationError::with_origin(BuildEvaluationErrorKind::InvalidInput, message, origin)
+        }
+        None => BuildEvaluationError::new(BuildEvaluationErrorKind::InvalidInput, message),
+    }
+}
+
+fn evaluation_api_error(
+    error: crate::BuildApiError,
+    origin: Option<SyntaxOrigin>,
+) -> BuildEvaluationError {
+    evaluation_invalid_input(error.to_string(), origin)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         evaluate_build_plan, AllowedBuildTimeOperation, BuildEvaluationBoundary,
         BuildEvaluationError, BuildEvaluationErrorKind, BuildEvaluationInputs,
-        BuildEvaluationOperation, BuildEvaluationOperationKind, BuildEvaluationRequest,
-        BuildEvaluationResult,
+        BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
+        BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
+        BuildEvaluationRunRequest, BuildEvaluationStepRequest,
     };
     use crate::build_graph::BuildGraph;
     use crate::{ExecutableRequest, StandardOptimizeRequest, StandardTargetRequest, UserOptionRequest};
@@ -436,10 +587,10 @@ mod tests {
                 column: 1,
                 length: 3,
             }),
-            kind: BuildEvaluationOperationKind::AddExe(ExecutableRequest {
-                name: "app".to_string(),
-                root_module: "src/app.fol".to_string(),
-            }),
+                kind: BuildEvaluationOperationKind::AddExe(ExecutableRequest {
+                    name: "app".to_string(),
+                    root_module: "src/app.fol".to_string(),
+                }),
         };
 
         assert_eq!(operation.origin.as_ref().map(|origin| origin.line), Some(2));
@@ -483,5 +634,67 @@ mod tests {
 
         assert_eq!(result.graph.options().len(), 3);
         assert_eq!(result.package_root, "/pkg");
+    }
+
+    #[test]
+    fn build_evaluator_replays_graph_building_operations_into_a_validated_graph() {
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs::default(),
+            operations: vec![
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::AddExe(ExecutableRequest {
+                        name: "app".to_string(),
+                        root_module: "src/app.fol".to_string(),
+                    }),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::Step(BuildEvaluationStepRequest {
+                        name: "build".to_string(),
+                        depends_on: Vec::new(),
+                    }),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::AddRun(BuildEvaluationRunRequest {
+                        name: "run".to_string(),
+                        artifact: "app".to_string(),
+                        depends_on: vec!["build".to_string()],
+                    }),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::InstallArtifact(
+                        BuildEvaluationInstallArtifactRequest {
+                            name: "install-app".to_string(),
+                            artifact: "app".to_string(),
+                        },
+                    ),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::InstallDir(InstallDirRequest {
+                        name: "install-assets".to_string(),
+                        path: "share/assets".to_string(),
+                    }),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
+                        alias: "logtiny".to_string(),
+                        package: "org/logtiny".to_string(),
+                    }),
+                },
+            ],
+        };
+
+        let result = evaluate_build_plan(&request).expect("graph replay should succeed");
+
+        assert_eq!(result.graph.artifacts().len(), 1);
+        assert_eq!(result.graph.steps().len(), 2);
+        assert_eq!(result.graph.installs().len(), 2);
+        assert_eq!(result.graph.modules().len(), 2);
     }
 }
