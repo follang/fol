@@ -45,6 +45,14 @@ pub enum PackageBuildEntryPointKind {
     BuildFunction,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PackageBuildMode {
+    Empty,
+    CompatibilityOnly,
+    ModernOnly,
+    Hybrid,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PackageBuildEntryPoint {
     pub kind: PackageBuildEntryPointKind,
@@ -86,6 +94,15 @@ impl PackageBuildDefinition {
 
     pub fn has_entry_point(&self) -> bool {
         self.entry_point().is_some()
+    }
+
+    pub fn mode(&self) -> PackageBuildMode {
+        match (self.has_compatibility_controls(), self.has_entry_point()) {
+            (false, false) => PackageBuildMode::Empty,
+            (true, false) => PackageBuildMode::CompatibilityOnly,
+            (false, true) => PackageBuildMode::ModernOnly,
+            (true, true) => PackageBuildMode::Hybrid,
+        }
     }
 }
 
@@ -335,7 +352,8 @@ mod tests {
     use super::{
         extract_package_build_definition, parse_package_build, BuildDependency, BuildExport,
         PackageBuildCompatibility, PackageBuildDefinition, PackageBuildEntryPoint,
-        PackageBuildEntryPointKind, PackageNativeArtifact, PackageNativeArtifactKind,
+        PackageBuildEntryPointKind, PackageBuildMode, PackageNativeArtifact,
+        PackageNativeArtifactKind,
     };
     use crate::{PackageErrorKind, PackageLocator, PackageLocatorKind};
     use fol_parser::ast::AstParser;
@@ -730,8 +748,29 @@ mod tests {
             })
         );
         assert!(!build.has_compatibility_controls());
+        assert_eq!(build.mode(), PackageBuildMode::ModernOnly);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn package_build_mode_classifies_empty_and_compatibility_builds() {
+        let empty = PackageBuildDefinition::default();
+        assert_eq!(empty.mode(), PackageBuildMode::Empty);
+
+        let compatibility = PackageBuildDefinition {
+            compatibility: PackageBuildCompatibility {
+                dependencies: vec![BuildDependency {
+                    alias: "core".to_string(),
+                    locator: PackageLocator::installed_store("core", vec!["core".to_string()]),
+                }],
+                exports: Vec::new(),
+                native_artifacts: Vec::new(),
+            },
+            entry_point: None,
+        };
+
+        assert_eq!(compatibility.mode(), PackageBuildMode::CompatibilityOnly);
     }
 }
