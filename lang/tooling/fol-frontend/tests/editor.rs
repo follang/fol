@@ -46,8 +46,9 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
     assert_eq!(parse.command, "parse");
     assert!(parse.summary.contains("grammar_bytes="));
     assert_eq!(highlight.command, "highlight");
-    assert!(highlight.summary.contains("query_bytes="));
-    assert!(highlight.summary.contains("keyword_hits="));
+    assert!(highlight.summary.contains("capture_count="));
+    assert!(highlight.summary.contains("captures="));
+    assert!(highlight.summary.contains("intrinsic_names="));
     assert_eq!(symbols.command, "symbols");
     assert!(symbols.summary.contains("query_snapshots=3"));
 }

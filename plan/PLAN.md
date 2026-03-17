@@ -344,7 +344,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 ### Phase 5: Highlight command and bundle hardening
 
-- `5.1` make `fol tool highlight` output more inspection-friendly for query work
+- `5.1` complete: make `fol tool highlight` output more inspection-friendly for query work
 - `5.2` ensure `fol tool tree generate` always exports the latest query set
 - `5.3` add regression coverage so generated bundles contain the current query
   files exactly
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `19 / 49` slices complete
-- `39%`
+- `20 / 49` slices complete
+- `41%`

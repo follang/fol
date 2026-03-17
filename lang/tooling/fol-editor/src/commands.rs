@@ -39,6 +39,19 @@ fn source_line_count(source: &str) -> usize {
     source.lines().count()
 }
 
+fn sorted_query_captures(query: &str) -> Vec<String> {
+    let mut captures = query
+        .split(|ch: char| ch.is_whitespace() || matches!(ch, ')' | '(' | '[' | ']'))
+        .filter_map(|part| part.strip_prefix('@'))
+        .map(|capture| capture.trim_end_matches(|ch: char| ch == ')' || ch == ']'))
+        .filter(|capture| !capture.is_empty())
+        .map(|capture| capture.to_string())
+        .collect::<Vec<_>>();
+    captures.sort();
+    captures.dedup();
+    captures
+}
+
 pub fn editor_parse_file(path: &Path) -> EditorResult<EditorCommandSummary> {
     let source = std::fs::read_to_string(path).map_err(|error| {
         EditorError::new(
@@ -64,19 +77,18 @@ pub fn editor_highlight_file(path: &Path) -> EditorResult<EditorCommandSummary> 
         )
     })?;
     let query = fol_tree_sitter_highlights_query();
-    let keyword_hits = source
-        .matches("fun")
-        .count()
-        + source.matches("typ").count()
-        + source.matches("var").count();
+    let captures = sorted_query_captures(query);
     Ok(EditorCommandSummary::new(
         "highlight",
-        format!("highlight query ready with {} bytes", query.len()),
+        format!("highlight query ready with {} captures", captures.len()),
     )
     .with_detail(format!("path={}", path.display()))
     .with_detail(format!("lines={}", source_line_count(&source)))
     .with_detail(format!("query_bytes={}", query.len()))
-    .with_detail(format!("keyword_hits={keyword_hits}")))
+    .with_detail(format!("capture_count={}", captures.len()))
+    .with_detail(format!("captures={}", captures.join(",")))
+    .with_detail("import_kinds=loc,pkg,std")
+    .with_detail("intrinsic_names=echo,eq,ge,gt,le,len,lt,not,nq"))
 }
 
 pub fn editor_symbols_file(path: &Path) -> EditorResult<EditorCommandSummary> {
@@ -251,7 +263,7 @@ fn write_bundle_file(path: &Path, contents: &str) -> EditorResult<()> {
 mod tests {
     use super::{
         editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
-        editor_tree_generate_bundle,
+        editor_tree_generate_bundle, sorted_query_captures,
     };
     use crate::{fol_tree_sitter_grammar, fol_tree_sitter_query_snapshots};
     use std::path::PathBuf;
@@ -275,7 +287,11 @@ mod tests {
         assert!(highlight
             .details
             .iter()
-            .any(|detail| detail.contains("keyword_hits=")));
+            .any(|detail| detail.contains("capture_count=")));
+        assert!(highlight
+            .details
+            .iter()
+            .any(|detail| detail.contains("captures=")));
         assert!(symbols
             .details
             .iter()
@@ -290,6 +306,7 @@ mod tests {
         let parse = editor_parse_file(&showcase).unwrap();
         let highlight = editor_highlight_file(&showcase).unwrap();
         let symbols = editor_symbols_file(&package).unwrap();
+        let highlight_captures = sorted_query_captures(crate::fol_tree_sitter_highlights_query());
 
         assert_eq!(parse.command, "parse");
         assert_eq!(
@@ -308,7 +325,10 @@ mod tests {
                 "path=test/apps/showcases/full_v1_showcase/app/main.fol".to_string(),
                 "lines=98".to_string(),
                 format!("query_bytes={}", crate::fol_tree_sitter_highlights_query().len()),
-                "keyword_hits=19".to_string(),
+                format!("capture_count={}", highlight_captures.len()),
+                format!("captures={}", highlight_captures.join(",")),
+                "import_kinds=loc,pkg,std".to_string(),
+                "intrinsic_names=echo,eq,ge,gt,le,len,lt,not,nq".to_string(),
             ]
         );
         assert_eq!(symbols.command, "symbols");
