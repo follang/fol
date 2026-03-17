@@ -131,6 +131,12 @@ pub struct BuildOptionArgs {
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct BuildStepArgs {
+    #[arg(long, value_name = "NAME", help = "Select a named build step")]
+    pub step: Option<String>,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 pub struct FetchCommand {
     #[command(flatten)]
     pub output: FrontendOutputArgs,
@@ -174,6 +180,9 @@ pub struct BuildCommand {
     #[command(flatten)]
     pub options: BuildOptionArgs,
 
+    #[command(flatten)]
+    pub step: BuildStepArgs,
+
     #[arg(long, help = "Require the existing fol.lock to match the manifest")]
     pub locked: bool,
 
@@ -198,6 +207,9 @@ pub struct RunCommand {
     #[command(flatten)]
     pub options: BuildOptionArgs,
 
+    #[command(flatten)]
+    pub step: BuildStepArgs,
+
     #[arg(long, help = "Require the existing fol.lock to match the manifest")]
     pub locked: bool,
 
@@ -218,6 +230,9 @@ pub struct TestCommand {
 
     #[command(flatten)]
     pub options: BuildOptionArgs,
+
+    #[command(flatten)]
+    pub step: BuildStepArgs,
 
     #[arg(long, value_name = "PATH", help = "Override the workspace or package root")]
     pub path: Option<String>,
@@ -242,6 +257,9 @@ pub struct CheckCommand {
 
     #[command(flatten)]
     pub options: BuildOptionArgs,
+
+    #[command(flatten)]
+    pub step: BuildStepArgs,
 
     #[arg(long, help = "Require the existing fol.lock to match the manifest")]
     pub locked: bool,
@@ -543,7 +561,7 @@ impl FrontendCli {
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildCommand, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand,
+        BuildCommand, BuildStepArgs, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand,
         CompletionCommand, CompletionShellArg, CompileRootArgs, DirectTargetArg,
         EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand,
         EmitSubcommand, FetchCommand, FrontendCli, FrontendCommand, FrontendOutputArgs,
@@ -940,8 +958,70 @@ mod tests {
                             "strip=true".to_string()
                         ],
                     },
+                    step: BuildStepArgs::default(),
                     locked: false,
                     keep_build_dir: false,
+                }),
+            }))
+        );
+    }
+
+    #[test]
+    fn workspace_code_commands_parse_explicit_step_selection() {
+        let build = parse_clean(["fol", "code", "build", "--step", "docs"]);
+        let run = parse_clean(["fol", "code", "run", "--step", "bench"]);
+        let test = parse_clean(["fol", "code", "test", "--step", "unit"]);
+        let check = parse_clean(["fol", "code", "check", "--step", "lint"]);
+
+        assert_eq!(
+            build.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Build(BuildCommand {
+                    step: BuildStepArgs {
+                        step: Some("docs".to_string()),
+                    },
+                    ..BuildCommand::default()
+                }),
+            }))
+        );
+        assert_eq!(
+            run.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Run(RunCommand {
+                    step: BuildStepArgs {
+                        step: Some("bench".to_string()),
+                    },
+                    ..RunCommand::default()
+                }),
+            }))
+        );
+        assert_eq!(
+            test.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Test(TestCommand {
+                    step: BuildStepArgs {
+                        step: Some("unit".to_string()),
+                    },
+                    ..TestCommand::default()
+                }),
+            }))
+        );
+        assert_eq!(
+            check.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Check(CheckCommand {
+                    step: BuildStepArgs {
+                        step: Some("lint".to_string()),
+                    },
+                    ..CheckCommand::default()
                 }),
             }))
         );
