@@ -233,7 +233,7 @@ Round 1 slice tracker:
 - [x] Slice 1. Add a concrete Phase 1 implementation tracker with completion
   rules.
 - [x] Slice 2. Add canonical semantic build stdlib module identity types.
-- [ ] Slice 3. Add semantic build surface type families for graph/handles.
+- [x] Slice 3. Add semantic build surface type families for graph/handles.
 - [ ] Slice 4. Add semantic method signature types for the build stdlib.
 - [ ] Slice 5. Add canonical graph method signatures.
 - [ ] Slice 6. Add canonical handle method signatures.

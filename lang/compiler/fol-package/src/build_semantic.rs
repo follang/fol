@@ -44,9 +44,72 @@ impl BuildStdlibImportSurface {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildSemanticTypeFamily {
+    Graph,
+    ArtifactHandle,
+    StepHandle,
+    RunHandle,
+    InstallHandle,
+    DependencyHandle,
+    GeneratedFileHandle,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildSemanticType {
+    pub module: BuildStdlibModulePath,
+    pub name: String,
+    pub family: BuildSemanticTypeFamily,
+}
+
+impl BuildSemanticType {
+    pub fn graph() -> Self {
+        Self {
+            module: BuildStdlibModulePath::root(),
+            name: "Graph".to_string(),
+            family: BuildSemanticTypeFamily::Graph,
+        }
+    }
+
+    pub fn artifact_handle() -> Self {
+        Self::types_named("Artifact", BuildSemanticTypeFamily::ArtifactHandle)
+    }
+
+    pub fn step_handle() -> Self {
+        Self::types_named("Step", BuildSemanticTypeFamily::StepHandle)
+    }
+
+    pub fn run_handle() -> Self {
+        Self::types_named("Run", BuildSemanticTypeFamily::RunHandle)
+    }
+
+    pub fn install_handle() -> Self {
+        Self::types_named("Install", BuildSemanticTypeFamily::InstallHandle)
+    }
+
+    pub fn dependency_handle() -> Self {
+        Self::types_named("Dependency", BuildSemanticTypeFamily::DependencyHandle)
+    }
+
+    pub fn generated_file_handle() -> Self {
+        Self::types_named("GeneratedFile", BuildSemanticTypeFamily::GeneratedFileHandle)
+    }
+
+    fn types_named(name: &str, family: BuildSemanticTypeFamily) -> Self {
+        Self {
+            module: BuildStdlibModulePath::types(),
+            name: name.to_string(),
+            family,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{BuildStdlibImportSurface, BuildStdlibModuleKind, BuildStdlibModulePath};
+    use super::{
+        BuildSemanticType, BuildSemanticTypeFamily, BuildStdlibImportSurface,
+        BuildStdlibModuleKind, BuildStdlibModulePath,
+    };
 
     #[test]
     fn build_stdlib_module_paths_keep_canonical_package_and_module_names() {
@@ -68,5 +131,30 @@ mod tests {
 
         assert_eq!(surface.canonical_import_alias, "build");
         assert_eq!(surface.root_module, BuildStdlibModulePath::root());
+    }
+
+    #[test]
+    fn semantic_build_surface_types_keep_canonical_modules() {
+        let graph = BuildSemanticType::graph();
+        let artifact = BuildSemanticType::artifact_handle();
+        let step = BuildSemanticType::step_handle();
+
+        assert_eq!(graph.module, BuildStdlibModulePath::root());
+        assert_eq!(graph.family, BuildSemanticTypeFamily::Graph);
+        assert_eq!(artifact.module, BuildStdlibModulePath::types());
+        assert_eq!(artifact.family, BuildSemanticTypeFamily::ArtifactHandle);
+        assert_eq!(step.module, BuildStdlibModulePath::types());
+        assert_eq!(step.family, BuildSemanticTypeFamily::StepHandle);
+    }
+
+    #[test]
+    fn semantic_build_surface_handle_names_stay_stable() {
+        assert_eq!(BuildSemanticType::run_handle().name, "Run");
+        assert_eq!(BuildSemanticType::install_handle().name, "Install");
+        assert_eq!(BuildSemanticType::dependency_handle().name, "Dependency");
+        assert_eq!(
+            BuildSemanticType::generated_file_handle().name,
+            "GeneratedFile"
+        );
     }
 }
