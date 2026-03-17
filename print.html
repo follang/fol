@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f72c28fa.js";
+            window.path_to_searchindex_js = "searchindex-4b987114.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-0ba44881.js"></script>
+        <script src="toc-53f6a814.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -266,6 +266,8 @@ fun[exp] add(a, b: int): int = {
 <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
 <p>This opening section explains what FOL is, how this book is organized, and how syntax examples are written.</p>
 <p>Use it before diving into the detailed lexical, type, item, and runtime chapters.</p>
+<p>It also describes the user-facing workflow tool and the first editor-tooling
+surface before the language chapters begin.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="notation-and-conventions"><a class="header" href="#notation-and-conventions">Notation And Conventions</a></h1>
 <p>This book is the language specification for FOL.</p>
@@ -366,177 +368,21 @@ namespace/package surface addressed through <code>use</code>, <code>def</code>, 
 <h1 id="frontend-workflow"><a class="header" href="#frontend-workflow">Frontend Workflow</a></h1>
 <p>FOL now has a dedicated frontend layer above the compiler pipeline.</p>
 <p>That layer is the <code>fol</code> tool itself.</p>
-<p>The frontend is implemented in the <code>fol-frontend</code> crate. It sits above:</p>
+<p>The frontend is implemented in <code>fol-frontend</code>, and it is the user-facing
+workflow shell for:</p>
 <ul>
-<li><code>fol-package</code></li>
-<li><code>fol-resolver</code></li>
-<li><code>fol-typecheck</code></li>
-<li><code>fol-lower</code></li>
-<li><code>fol-backend</code></li>
+<li>project/workspace setup</li>
+<li>fetch/update flows</li>
+<li>build/run/test/emit flows</li>
+<li>editor tooling dispatch under <code>fol tool</code></li>
 </ul>
-<p>Its job is not to replace those crates. Its job is to orchestrate them into one
-coherent user tool.</p>
-<h2 id="what-the-frontend-owns"><a class="header" href="#what-the-frontend-owns">What The Frontend Owns</a></h2>
-<p>The frontend owns:</p>
+<p>The detailed reference has moved to the Tooling section:</p>
 <ul>
-<li>derive-based <code>clap</code> command parsing</li>
-<li>command aliases and grouped help</li>
-<li>frontend-owned root help and version output</li>
-<li>workspace and package discovery</li>
-<li>package/workspace scaffolding</li>
-<li>package preparation over <code>fol-package</code></li>
-<li>build/run/test orchestration</li>
-<li>emit workflows</li>
-<li>clean workflows</li>
-<li>shell completions</li>
-<li>human/plain/json output</li>
-<li>user-facing summaries and diagnostics</li>
+<li><a href="#tooling">Tooling</a></li>
+<li><a href="#frontend-workflow-1">Frontend Workflow</a></li>
+<li><a href="#tool-commands">Tool Commands</a></li>
 </ul>
-<p>So the frontend is the workflow shell.</p>
-<p>It is not another compiler stage.</p>
-<h2 id="command-surface"><a class="header" href="#command-surface">Command Surface</a></h2>
-<p>The current command surface is:</p>
-<ul>
-<li><code>fol init</code></li>
-<li><code>fol new</code></li>
-<li><code>fol work info</code></li>
-<li><code>fol work list</code></li>
-<li><code>fol work deps</code></li>
-<li><code>fol work status</code></li>
-<li><code>fol fetch</code></li>
-<li><code>fol update</code></li>
-<li><code>fol check</code></li>
-<li><code>fol build</code></li>
-<li><code>fol run</code></li>
-<li><code>fol test</code></li>
-<li><code>fol emit rust</code></li>
-<li><code>fol emit lowered</code></li>
-<li><code>fol clean</code></li>
-<li><code>fol completion</code></li>
-<li>hidden <code>_complete</code></li>
-</ul>
-<p>The root help contract is:</p>
-<ul>
-<li><code>fol</code></li>
-<li><code>fol --help</code></li>
-</ul>
-<p>Both render the same frontend-owned help surface.</p>
-<p>Aliases are part of the tool contract too. Examples:</p>
-<ul>
-<li><code>fol build</code>, <code>fol b</code>, <code>fol make</code></li>
-<li><code>fol fetch</code>, <code>fol f</code>, <code>fol sync</code></li>
-<li><code>fol clean</code>, <code>fol cl</code>, <code>fol purge</code></li>
-<li><code>fol check</code>, <code>fol c</code>, <code>fol verify</code></li>
-<li><code>fol work</code>, <code>fol w</code>, <code>fol ws</code>, <code>fol workspace</code></li>
-</ul>
-<h2 id="one-tool"><a class="header" href="#one-tool">One Tool</a></h2>
-<p>The intended workflow is entrypoint-first:</p>
-<pre><code class="language-text">fol init --bin
-fol fetch
-fol check
-fol build --release
-fol run -- --flag value
-</code></pre>
-<p>The goal is to make <code>fol</code> feel like the canonical language tool, not just a
-compiler executable with a growing list of flags.</p>
-<p>Direct compile is still supported too, but it is frontend-owned now:</p>
-<pre><code class="language-text">fol path/to/package
-fol build path/to/package
-fol check path/to/package
-fol run path/to/package -- --flag value
-fol emit rust path/to/package
-fol emit lowered path/to/package
-</code></pre>
-<h2 id="how-dispatch-works"><a class="header" href="#how-dispatch-works">How Dispatch Works</a></h2>
-<p>The frontend flow is:</p>
-<ol>
-<li>parse CLI arguments with <code>clap</code></li>
-<li>resolve output/profile policy</li>
-<li>detect the target root</li>
-<li>load the frontend workspace model</li>
-<li>dispatch the selected command</li>
-<li>call down into package/compiler/backend layers as needed</li>
-<li>render a frontend-owned command summary or frontend-owned error</li>
-</ol>
-<p>For example:</p>
-<ul>
-<li><code>fol check</code> loads the workspace and drives the compile pipeline through
-typecheck/lower without backend artifact production</li>
-<li><code>fol build</code> drives the full compiler and backend path</li>
-<li><code>fol run</code> builds first, then executes the produced binary</li>
-<li><code>fol emit rust</code> keeps the backend in source-emission mode</li>
-<li><code>fol emit lowered</code> writes lowered IR snapshots instead of invoking the backend</li>
-</ul>
-<p>Compile-oriented flags belong to the commands that use them. For example:</p>
-<ul>
-<li><code>--std-root</code> and <code>--package-store-root</code> belong to compile/fetch flows</li>
-<li><code>--keep-build-dir</code> belongs to backend-producing flows such as <code>build</code>, <code>run</code>,
-and <code>emit rust</code></li>
-<li><code>dump lowered</code> is represented as <code>fol emit lowered</code>, not as a root flag in the
-public CLI</li>
-</ul>
-<h2 id="root-discovery"><a class="header" href="#root-discovery">Root Discovery</a></h2>
-<p>For workflow commands, the frontend discovers roots upward from the current
-directory or from an explicit path:</p>
-<ul>
-<li>package roots use <code>package.yaml</code></li>
-<li>workspace roots use <code>fol.work.yaml</code></li>
-</ul>
-<p>Package roots and workspace roots are different frontend concepts.</p>
-<p>A package root is one runnable/buildable package.</p>
-<p>A workspace root is a parent root that owns multiple member packages plus
-frontend-owned roots such as build and cache directories.</p>
-<p>If no root is found, frontend diagnostics explain how to bootstrap one with
-<code>fol init --bin</code> or <code>fol init --workspace</code>.</p>
-<h2 id="configuration-and-precedence"><a class="header" href="#configuration-and-precedence">Configuration And Precedence</a></h2>
-<p>The frontend currently supports environment and flag control for:</p>
-<ul>
-<li>output mode</li>
-<li>profile</li>
-<li>std root</li>
-<li>package store root</li>
-<li>build root</li>
-<li>cache root</li>
-<li>keep-build-dir</li>
-</ul>
-<p>The intended precedence is:</p>
-<ol>
-<li>explicit CLI flags</li>
-<li>workspace-owned config where applicable</li>
-<li>frontend environment variables</li>
-<li>frontend defaults</li>
-</ol>
-<p>That precedence is test-backed.</p>
-<h2 id="output-modes"><a class="header" href="#output-modes">Output Modes</a></h2>
-<p>Frontend command summaries support:</p>
-<ul>
-<li><code>human</code></li>
-<li><code>plain</code></li>
-<li><code>json</code></li>
-</ul>
-<p><code>human</code> is for interactive usage.</p>
-<p><code>plain</code> is for scripts.</p>
-<p><code>json</code> is for machine-readable tooling and wrappers.</p>
-<p>The frontend also owns human highlighting behavior. Actions and paths can be
-highlighted in human mode, while plain mode stays stable and ANSI-free.</p>
-<p>Human mode is always colorized. There is no public color-policy switch.</p>
-<h2 id="build-artifacts"><a class="header" href="#build-artifacts">Build Artifacts</a></h2>
-<p>Frontend commands report explicit artifact roots.</p>
-<p>That includes:</p>
-<ul>
-<li>workspace roots</li>
-<li>package roots</li>
-<li>build roots</li>
-<li>emitted Rust crate roots</li>
-<li>lowered snapshot roots</li>
-<li>final binary paths</li>
-</ul>
-<p>This keeps the frontend closer to a build tool than to a thin compiler shell.</p>
-<h2 id="relationship-to-the-root-binary"><a class="header" href="#relationship-to-the-root-binary">Relationship To The Root Binary</a></h2>
-<p>The repo still has a root <code>src/main.rs</code>, but it is now just a thin entry shim
-into <code>fol-frontend</code>.</p>
-<p>The CLI behavior itself lives in <code>fol-frontend</code>.</p>
-<p>That includes:</p>
+<p>Use this overview page only as the entrypoint pointer.</p>
 <ul>
 <li>workflow commands</li>
 <li>direct compile dispatch</li>
@@ -557,6 +403,7 @@ into <code>fol-frontend</code>.</p>
 <li>workspace dependency/status reporting</li>
 <li>full <code>V1</code> build/run/test orchestration</li>
 <li>emitted Rust and lowered IR output</li>
+<li>editor-tooling entrypoints for parse, highlight, symbols, and LSP startup</li>
 <li>shell completions</li>
 <li>safe cleanup of build/cache/git/package-store roots</li>
 <li>frontend-owned direct compile routing</li>
@@ -567,6 +414,462 @@ into <code>fol-frontend</code>.</p>
 <li>lockfile/version solving beyond the current pinned git contract</li>
 <li>additional backend targets</li>
 </ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="editor-tooling"><a class="header" href="#editor-tooling">Editor Tooling</a></h1>
+<p>FOL now has a dedicated editor-tooling crate:</p>
+<ul>
+<li><code>fol-editor</code></li>
+</ul>
+<p>It owns:</p>
+<ul>
+<li>Tree-sitter assets for syntax/highlighting/query work</li>
+<li>the language server for compiler-backed editor services</li>
+</ul>
+<p>The detailed operational reference now lives in the Tooling section:</p>
+<ul>
+<li><a href="#editor-tooling-1">Editor Tooling</a></li>
+<li><a href="#tree-sitter-integration">Tree-sitter Integration</a></li>
+<li><a href="#language-server">Language Server</a></li>
+<li><a href="#neovim-integration">Neovim Integration</a></li>
+</ul>
+<p>Use this page as the overview pointer, not the full reference.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="tooling"><a class="header" href="#tooling">Tooling</a></h1>
+<p>FOL now has a real tooling layer above the compiler.</p>
+<p>That layer is split into:</p>
+<ul>
+<li>the <code>fol</code> frontend workflow tool</li>
+<li>editor-facing tooling under <code>fol tool ...</code></li>
+</ul>
+<p>Use this section for:</p>
+<ul>
+<li>creating and organizing projects</li>
+<li>fetching and updating packages</li>
+<li>building, running, testing, and emitting artifacts</li>
+<li>understanding the editor stack</li>
+<li>integrating FOL with Neovim</li>
+</ul>
+<p>The overview chapter only introduces the existence of these pieces.</p>
+<p>This section is the detailed operational reference.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="frontend-workflow-1"><a class="header" href="#frontend-workflow-1">Frontend Workflow</a></h1>
+<p>The public FOL entrypoint is the <code>fol</code> tool.</p>
+<p><code>fol</code> is implemented by the <code>fol-frontend</code> crate. It sits above:</p>
+<ul>
+<li><code>fol-package</code></li>
+<li><code>fol-resolver</code></li>
+<li><code>fol-typecheck</code></li>
+<li><code>fol-lower</code></li>
+<li><code>fol-backend</code></li>
+</ul>
+<p>Its job is orchestration, not semantic analysis.</p>
+<h2 id="what-the-frontend-owns"><a class="header" href="#what-the-frontend-owns">What The Frontend Owns</a></h2>
+<p>The frontend owns:</p>
+<ul>
+<li>CLI parsing with <code>clap</code></li>
+<li>grouped command structure</li>
+<li>package and workspace discovery</li>
+<li>project scaffolding</li>
+<li>package preparation and fetch/update workflows</li>
+<li>build, run, test, and emit orchestration</li>
+<li>editor command dispatch under <code>fol tool</code></li>
+<li>shell completions</li>
+<li>user-facing summaries and workflow errors</li>
+</ul>
+<p>Compiler truth remains in the compiler crates.</p>
+<h2 id="public-command-groups"><a class="header" href="#public-command-groups">Public Command Groups</a></h2>
+<p>The root command groups are:</p>
+<ul>
+<li><code>fol work</code></li>
+<li><code>fol pack</code></li>
+<li><code>fol code</code></li>
+<li><code>fol tool</code></li>
+</ul>
+<p>Root aliases are single-letter only:</p>
+<ul>
+<li><code>fol w</code></li>
+<li><code>fol p</code></li>
+<li><code>fol c</code></li>
+<li><code>fol t</code></li>
+</ul>
+<p>Run:</p>
+<pre><code class="language-text">fol --help
+fol &lt;group&gt; --help
+fol &lt;group&gt; &lt;command&gt; --help
+</code></pre>
+<p>for the relevant usage surface.</p>
+<h2 id="root-discovery"><a class="header" href="#root-discovery">Root Discovery</a></h2>
+<p>For workflow commands, the frontend discovers roots upward from the current
+directory or from an explicit path.</p>
+<p>It recognizes:</p>
+<ul>
+<li>package roots via <code>package.yaml</code></li>
+<li>workspace roots via <code>fol.work.yaml</code></li>
+</ul>
+<p>A package root is one buildable package.</p>
+<p>A workspace root is a parent root that owns multiple member packages and
+frontend-managed roots like build/cache/package-store locations.</p>
+<h2 id="direct-package-use"><a class="header" href="#direct-package-use">Direct Package Use</a></h2>
+<p>The normal workflow shape is group-first:</p>
+<pre><code class="language-text">fol work init --bin
+fol pack fetch
+fol code check
+fol code build
+fol code run
+</code></pre>
+<p>There is still a frontend-owned direct package path for compile-oriented use,
+but the grouped commands are the public workflow shape.</p>
+<h2 id="output"><a class="header" href="#output">Output</a></h2>
+<p>Frontend summaries support:</p>
+<ul>
+<li><code>human</code></li>
+<li><code>plain</code></li>
+<li><code>json</code></li>
+</ul>
+<p>The frontend also owns workflow-level errors such as:</p>
+<ul>
+<li>missing workspace roots</li>
+<li>fetch/update/store failures</li>
+<li>clean/completion/workflow command failures</li>
+</ul>
+<p>Compiler diagnostics stay separate and flow through compiler-owned diagnostic
+models.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="tool-commands"><a class="header" href="#tool-commands">Tool Commands</a></h1>
+<p>This chapter lists the current frontend surface by workflow area.</p>
+<h2 id="work"><a class="header" href="#work">Work</a></h2>
+<p>Project and workspace commands:</p>
+<ul>
+<li><code>fol work init</code></li>
+<li><code>fol work new</code></li>
+<li><code>fol work info</code></li>
+<li><code>fol work list</code></li>
+<li><code>fol work deps</code></li>
+<li><code>fol work status</code></li>
+</ul>
+<p>Examples:</p>
+<pre><code class="language-text">fol work init --bin
+fol work init --workspace
+fol work new demo --lib
+fol work info
+fol work deps
+</code></pre>
+<p>Use <code>work</code> for:</p>
+<ul>
+<li>creating package/workspace roots</li>
+<li>inspecting workspace structure</li>
+<li>seeing member and dependency state</li>
+</ul>
+<h2 id="pack"><a class="header" href="#pack">Pack</a></h2>
+<p>Package acquisition commands:</p>
+<ul>
+<li><code>fol pack fetch</code></li>
+<li><code>fol pack update</code></li>
+</ul>
+<p>Examples:</p>
+<pre><code class="language-text">fol pack fetch
+fol pack fetch --locked
+fol pack fetch --offline
+fol pack fetch --refresh
+fol pack update
+</code></pre>
+<p>Use <code>pack</code> for:</p>
+<ul>
+<li>materializing dependencies</li>
+<li>writing or honoring <code>fol.lock</code></li>
+<li>refreshing pinned git dependencies</li>
+</ul>
+<h2 id="code"><a class="header" href="#code">Code</a></h2>
+<p>Build-oriented commands:</p>
+<ul>
+<li><code>fol code check</code></li>
+<li><code>fol code build</code></li>
+<li><code>fol code run</code></li>
+<li><code>fol code test</code></li>
+<li><code>fol code emit rust</code></li>
+<li><code>fol code emit lowered</code></li>
+</ul>
+<p>Examples:</p>
+<pre><code class="language-text">fol code check
+fol code build --release
+fol code run -- --flag value
+fol code emit rust
+fol code emit lowered
+</code></pre>
+<p>Use <code>code</code> for:</p>
+<ul>
+<li>driving the compile pipeline</li>
+<li>building binaries through the current Rust backend</li>
+<li>running produced binaries</li>
+<li>emitting backend/debug artifacts</li>
+</ul>
+<h2 id="tool"><a class="header" href="#tool">Tool</a></h2>
+<p>Tooling commands:</p>
+<ul>
+<li><code>fol tool lsp</code></li>
+<li><code>fol tool parse &lt;PATH&gt;</code></li>
+<li><code>fol tool highlight &lt;PATH&gt;</code></li>
+<li><code>fol tool symbols &lt;PATH&gt;</code></li>
+<li><code>fol tool tree generate &lt;PATH&gt;</code></li>
+<li><code>fol tool clean</code></li>
+<li><code>fol tool completion</code></li>
+</ul>
+<p>Examples:</p>
+<pre><code class="language-text">fol tool parse src/main.fol
+fol tool highlight src/main.fol
+fol tool symbols src/main.fol
+fol tool tree generate /tmp/fol
+fol tool lsp
+fol tool completion bash
+</code></pre>
+<p>Use <code>tool</code> for:</p>
+<ul>
+<li>editor integration</li>
+<li>Tree-sitter debugging</li>
+<li>LSP serving</li>
+<li>generated tool assets</li>
+</ul>
+<h2 id="artifact-reporting"><a class="header" href="#artifact-reporting">Artifact Reporting</a></h2>
+<p>Frontend commands report explicit artifact roots when applicable, including:</p>
+<ul>
+<li>emitted Rust crate roots</li>
+<li>lowered snapshot roots</li>
+<li>final binary paths</li>
+<li>fetch/store/cache roots where relevant</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="editor-tooling-1"><a class="header" href="#editor-tooling-1">Editor Tooling</a></h1>
+<p>FOL editor support lives in one crate:</p>
+<ul>
+<li><code>fol-editor</code></li>
+</ul>
+<p>That crate owns two related subsystems:</p>
+<ul>
+<li>Tree-sitter assets for syntax-oriented editor work</li>
+<li>the language server for compiler-backed editor services</li>
+</ul>
+<h2 id="public-entry"><a class="header" href="#public-entry">Public Entry</a></h2>
+<p>The public entrypoints are exposed through <code>fol tool</code>:</p>
+<ul>
+<li><code>fol tool lsp</code></li>
+<li><code>fol tool parse &lt;PATH&gt;</code></li>
+<li><code>fol tool highlight &lt;PATH&gt;</code></li>
+<li><code>fol tool symbols &lt;PATH&gt;</code></li>
+<li><code>fol tool tree generate &lt;PATH&gt;</code></li>
+</ul>
+<p>This keeps editor workflows under the same <code>fol</code> binary rather than introducing
+a second public tool.</p>
+<h2 id="split-of-responsibilities"><a class="header" href="#split-of-responsibilities">Split Of Responsibilities</a></h2>
+<p>Tree-sitter is the editor syntax layer.</p>
+<p>It is responsible for:</p>
+<ul>
+<li>syntax trees while typing</li>
+<li>query-driven highlighting</li>
+<li>locals and symbol-style structure captures</li>
+<li>editor-facing structural parsing</li>
+</ul>
+<p>The language server is the semantic editor layer.</p>
+<p>It is responsible for:</p>
+<ul>
+<li>JSON-RPC/LSP transport</li>
+<li>open-document state</li>
+<li>compiler-backed diagnostics</li>
+<li>hover</li>
+<li>go-to-definition</li>
+<li>document symbols</li>
+<li>completion, as that feature grows</li>
+</ul>
+<h2 id="compiler-truth"><a class="header" href="#compiler-truth">Compiler Truth</a></h2>
+<p><code>fol-editor</code> does not create a second semantic engine.</p>
+<p>Semantic truth still comes from:</p>
+<ul>
+<li><code>fol-package</code></li>
+<li><code>fol-resolver</code></li>
+<li><code>fol-typecheck</code></li>
+<li><code>fol-diagnostics</code></li>
+</ul>
+<p>So the model is:</p>
+<ul>
+<li>Tree-sitter answers “what does this text structurally look like?”</li>
+<li>compiler crates answer “what does this code mean?”</li>
+</ul>
+<h2 id="current-practical-workflow"><a class="header" href="#current-practical-workflow">Current Practical Workflow</a></h2>
+<p>Use:</p>
+<pre><code class="language-text">fol tool lsp
+</code></pre>
+<p>as the language server entrypoint.</p>
+<p>Use:</p>
+<pre><code class="language-text">fol tool parse path/to/file.fol
+fol tool highlight path/to/file.fol
+fol tool symbols path/to/file.fol
+</code></pre>
+<p>for parser/query debugging and validation.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="tree-sitter-integration"><a class="header" href="#tree-sitter-integration">Tree-sitter Integration</a></h1>
+<p>The Tree-sitter side of FOL is the editor-facing syntax layer.</p>
+<p>It is not the compiler parser.</p>
+<h2 id="what-is-in-the-repo"><a class="header" href="#what-is-in-the-repo">What Is In The Repo</a></h2>
+<p>The editor crate carries:</p>
+<ul>
+<li>the grammar source</li>
+<li>corpus fixtures</li>
+<li>query files on disk</li>
+</ul>
+<p>Canonical query assets live as real files, not just embedded Rust strings:</p>
+<ul>
+<li><code>queries/fol/highlights.scm</code></li>
+<li><code>queries/fol/locals.scm</code></li>
+<li><code>queries/fol/symbols.scm</code></li>
+</ul>
+<p>This is intentional because editors such as Neovim expect query files on disk in
+the standard Tree-sitter layout.</p>
+<h2 id="generated-bundle"><a class="header" href="#generated-bundle">Generated Bundle</a></h2>
+<p>To generate a Neovim-consumable bundle, run:</p>
+<pre><code class="language-text">fol tool tree generate /tmp/fol
+</code></pre>
+<p>That writes a bundle containing the grammar and query assets under the target
+directory.</p>
+<p>The intended consumer path is:</p>
+<ul>
+<li>generate bundle</li>
+<li>point the editor’s Tree-sitter parser configuration at that bundle</li>
+<li>let the editor compile/use the parser from there</li>
+</ul>
+<h2 id="why-use-fol-tool-tree-generate"><a class="header" href="#why-use-fol-tool-tree-generate">Why Use <code>fol tool tree generate</code></a></h2>
+<p>This command exists so editor integration can consume a generated FOL parser
+bundle without forcing you to manually copy query files around.</p>
+<p>It also gives one stable place to inspect what the editor will actually use.</p>
+<h2 id="what-tree-sitter-is-for"><a class="header" href="#what-tree-sitter-is-for">What Tree-sitter Is For</a></h2>
+<p>Use the Tree-sitter layer for:</p>
+<ul>
+<li>highlighting</li>
+<li>locals and capture queries</li>
+<li>symbol-style structural views</li>
+<li>editor textobjects and movement later</li>
+</ul>
+<p>Do not use it as a substitute for typechecking or resolution.</p>
+<p>Those remain compiler tasks.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="language-server"><a class="header" href="#language-server">Language Server</a></h1>
+<p>The FOL language server is started with:</p>
+<pre><code class="language-text">fol tool lsp
+</code></pre>
+<p>It runs over stdio and is meant to be launched by editors.</p>
+<h2 id="current-feature-set"><a class="header" href="#current-feature-set">Current Feature Set</a></h2>
+<p>The current working surface includes:</p>
+<ul>
+<li>initialize / shutdown / exit</li>
+<li>document open / change / close</li>
+<li>diagnostics</li>
+<li>hover</li>
+<li>go-to-definition</li>
+<li>document symbols</li>
+</ul>
+<p>Completion is the next active milestone after the first editor bring-up.</p>
+<h2 id="analysis-model"><a class="header" href="#analysis-model">Analysis Model</a></h2>
+<p>The server works like this:</p>
+<ol>
+<li>receive editor request/notification</li>
+<li>map the open document to a package/workspace context</li>
+<li>materialize an analysis overlay for the in-memory document state</li>
+<li>run parse/package/resolve/typecheck as needed</li>
+<li>convert compiler results into LSP responses</li>
+</ol>
+<p>That means diagnostics and navigation are compiler-backed, not guessed from
+Tree-sitter alone.</p>
+<h2 id="diagnostics"><a class="header" href="#diagnostics">Diagnostics</a></h2>
+<p>Compiler diagnostics remain canonical.</p>
+<p>The server adapts them into LSP diagnostics for the currently open document.</p>
+<p>This is why CLI compiler failures and editor diagnostics should stay aligned in
+message quality and meaning.</p>
+<h2 id="expected-behavior"><a class="header" href="#expected-behavior">Expected Behavior</a></h2>
+<p>If the LSP client is attached correctly, you should expect:</p>
+<ul>
+<li>source-file diagnostics in the open file</li>
+<li>hover on resolved symbols</li>
+<li>go-to-definition across current-package and imported symbols where supported</li>
+<li>document symbols for the current file</li>
+</ul>
+<p>If the client is attached but you see no diagnostics at all, the likely issue is
+not Tree-sitter. It is the LSP request/attach path.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="neovim-integration"><a class="header" href="#neovim-integration">Neovim Integration</a></h1>
+<p>Neovim integration has two separate pieces:</p>
+<ul>
+<li>Tree-sitter for syntax/highlighting/queries</li>
+<li>LSP for diagnostics and semantic editor features</li>
+</ul>
+<p>They should be configured together, but they do different jobs.</p>
+<h2 id="lsp-setup"><a class="header" href="#lsp-setup">LSP Setup</a></h2>
+<p>The language server command is:</p>
+<pre><code class="language-lua">vim.lsp.config("fol", {
+  cmd = { "fol", "tool", "lsp" },
+  filetypes = { "fol" },
+  root_markers = { "build.fol", "package.yaml", ".git" },
+})
+
+vim.lsp.enable("fol")
+</code></pre>
+<p>Also ensure Neovim recognizes <code>.fol</code> files:</p>
+<pre><code class="language-lua">vim.filetype.add({
+  extension = { fol = "fol" },
+})
+</code></pre>
+<h2 id="tree-sitter-setup"><a class="header" href="#tree-sitter-setup">Tree-sitter Setup</a></h2>
+<p>First generate a bundle:</p>
+<pre><code class="language-text">fol tool tree generate /tmp/fol
+</code></pre>
+<p>Then point Neovim’s Tree-sitter parser config at that bundle:</p>
+<pre><code class="language-lua">local parser_config = require("nvim-treesitter.parsers").get_parser_configs()
+
+parser_config.fol = {
+  install_info = {
+    url = "/tmp/fol",
+    files = { "src/parser.c" },
+    requires_generate_from_grammar = false,
+  },
+  filetype = "fol",
+}
+</code></pre>
+<p>The query files are expected at:</p>
+<ul>
+<li><code>/tmp/fol/queries/fol/highlights.scm</code></li>
+<li><code>/tmp/fol/queries/fol/locals.scm</code></li>
+<li><code>/tmp/fol/queries/fol/symbols.scm</code></li>
+</ul>
+<p>Neovim also needs that bundle on <code>runtimepath</code> so it can find the queries.</p>
+<h2 id="practical-model"><a class="header" href="#practical-model">Practical Model</a></h2>
+<p>Tree-sitter provides:</p>
+<ul>
+<li>highlight captures</li>
+<li>locals captures</li>
+<li>symbol-style structure queries</li>
+</ul>
+<p>LSP provides:</p>
+<ul>
+<li>diagnostics</li>
+<li>hover</li>
+<li>definitions</li>
+<li>document symbols</li>
+</ul>
+<p>So the normal editor shape is:</p>
+<ol>
+<li>Neovim opens a <code>.fol</code> file</li>
+<li>Tree-sitter handles syntax/highlighting</li>
+<li>Neovim launches <code>fol tool lsp</code></li>
+<li>the server provides semantic editor features</li>
+</ol>
+<h2 id="debugging-a-setup"><a class="header" href="#debugging-a-setup">Debugging A Setup</a></h2>
+<p>Useful checks:</p>
+<pre><code class="language-vim">:echo &amp;filetype
+:lua print(vim.inspect(vim.lsp.get_clients({ bufnr = 0 })))
+</code></pre>
+<p>And from the shell:</p>
+<pre><code class="language-text">fol tool tree generate /tmp/fol
+fol tool lsp
+</code></pre>
+<p>If <code>fol tool lsp</code> prints nothing and waits, that is correct.</p>
+<p>It is a stdio server, not an interactive shell command.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="lexical-structure"><a class="header" href="#lexical-structure">Lexical Structure</a></h1>
 <p>This section defines the smallest syntactic building blocks of FOL source code.</p>

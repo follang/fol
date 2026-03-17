@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Overview - FOL Language Specification</title>
+        <title>Tree-sitter Integration - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,21 +174,60 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
-<p>This opening section explains what FOL is, how this book is organized, and how syntax examples are written.</p>
-<p>Use it before diving into the detailed lexical, type, item, and runtime chapters.</p>
-<p>It also describes the user-facing workflow tool and the first editor-tooling
-surface before the language chapters begin.</p>
+                        <h1 id="tree-sitter-integration"><a class="header" href="#tree-sitter-integration">Tree-sitter Integration</a></h1>
+<p>The Tree-sitter side of FOL is the editor-facing syntax layer.</p>
+<p>It is not the compiler parser.</p>
+<h2 id="what-is-in-the-repo"><a class="header" href="#what-is-in-the-repo">What Is In The Repo</a></h2>
+<p>The editor crate carries:</p>
+<ul>
+<li>the grammar source</li>
+<li>corpus fixtures</li>
+<li>query files on disk</li>
+</ul>
+<p>Canonical query assets live as real files, not just embedded Rust strings:</p>
+<ul>
+<li><code>queries/fol/highlights.scm</code></li>
+<li><code>queries/fol/locals.scm</code></li>
+<li><code>queries/fol/symbols.scm</code></li>
+</ul>
+<p>This is intentional because editors such as Neovim expect query files on disk in
+the standard Tree-sitter layout.</p>
+<h2 id="generated-bundle"><a class="header" href="#generated-bundle">Generated Bundle</a></h2>
+<p>To generate a Neovim-consumable bundle, run:</p>
+<pre><code class="language-text">fol tool tree generate /tmp/fol
+</code></pre>
+<p>That writes a bundle containing the grammar and query assets under the target
+directory.</p>
+<p>The intended consumer path is:</p>
+<ul>
+<li>generate bundle</li>
+<li>point the editor’s Tree-sitter parser configuration at that bundle</li>
+<li>let the editor compile/use the parser from there</li>
+</ul>
+<h2 id="why-use-fol-tool-tree-generate"><a class="header" href="#why-use-fol-tool-tree-generate">Why Use <code>fol tool tree generate</code></a></h2>
+<p>This command exists so editor integration can consume a generated FOL parser
+bundle without forcing you to manually copy query files around.</p>
+<p>It also gives one stable place to inspect what the editor will actually use.</p>
+<h2 id="what-tree-sitter-is-for"><a class="header" href="#what-tree-sitter-is-for">What Tree-sitter Is For</a></h2>
+<p>Use the Tree-sitter layer for:</p>
+<ul>
+<li>highlighting</li>
+<li>locals and capture queries</li>
+<li>symbol-style structural views</li>
+<li>editor textobjects and movement later</li>
+</ul>
+<p>Do not use it as a substitute for typechecking or resolution.</p>
+<p>Those remain compiler tasks.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../follang.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../050_tooling/300_editor.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../000_overview/100_conventions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../050_tooling/500_lsp.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -198,11 +237,11 @@ surface before the language chapters begin.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../follang.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../050_tooling/300_editor.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../000_overview/100_conventions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../050_tooling/500_lsp.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

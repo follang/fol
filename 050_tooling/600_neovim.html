@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Overview - FOL Language Specification</title>
+        <title>Neovim Integration - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,21 +174,93 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
-<p>This opening section explains what FOL is, how this book is organized, and how syntax examples are written.</p>
-<p>Use it before diving into the detailed lexical, type, item, and runtime chapters.</p>
-<p>It also describes the user-facing workflow tool and the first editor-tooling
-surface before the language chapters begin.</p>
+                        <h1 id="neovim-integration"><a class="header" href="#neovim-integration">Neovim Integration</a></h1>
+<p>Neovim integration has two separate pieces:</p>
+<ul>
+<li>Tree-sitter for syntax/highlighting/queries</li>
+<li>LSP for diagnostics and semantic editor features</li>
+</ul>
+<p>They should be configured together, but they do different jobs.</p>
+<h2 id="lsp-setup"><a class="header" href="#lsp-setup">LSP Setup</a></h2>
+<p>The language server command is:</p>
+<pre><code class="language-lua">vim.lsp.config("fol", {
+  cmd = { "fol", "tool", "lsp" },
+  filetypes = { "fol" },
+  root_markers = { "build.fol", "package.yaml", ".git" },
+})
+
+vim.lsp.enable("fol")
+</code></pre>
+<p>Also ensure Neovim recognizes <code>.fol</code> files:</p>
+<pre><code class="language-lua">vim.filetype.add({
+  extension = { fol = "fol" },
+})
+</code></pre>
+<h2 id="tree-sitter-setup"><a class="header" href="#tree-sitter-setup">Tree-sitter Setup</a></h2>
+<p>First generate a bundle:</p>
+<pre><code class="language-text">fol tool tree generate /tmp/fol
+</code></pre>
+<p>Then point Neovim’s Tree-sitter parser config at that bundle:</p>
+<pre><code class="language-lua">local parser_config = require("nvim-treesitter.parsers").get_parser_configs()
+
+parser_config.fol = {
+  install_info = {
+    url = "/tmp/fol",
+    files = { "src/parser.c" },
+    requires_generate_from_grammar = false,
+  },
+  filetype = "fol",
+}
+</code></pre>
+<p>The query files are expected at:</p>
+<ul>
+<li><code>/tmp/fol/queries/fol/highlights.scm</code></li>
+<li><code>/tmp/fol/queries/fol/locals.scm</code></li>
+<li><code>/tmp/fol/queries/fol/symbols.scm</code></li>
+</ul>
+<p>Neovim also needs that bundle on <code>runtimepath</code> so it can find the queries.</p>
+<h2 id="practical-model"><a class="header" href="#practical-model">Practical Model</a></h2>
+<p>Tree-sitter provides:</p>
+<ul>
+<li>highlight captures</li>
+<li>locals captures</li>
+<li>symbol-style structure queries</li>
+</ul>
+<p>LSP provides:</p>
+<ul>
+<li>diagnostics</li>
+<li>hover</li>
+<li>definitions</li>
+<li>document symbols</li>
+</ul>
+<p>So the normal editor shape is:</p>
+<ol>
+<li>Neovim opens a <code>.fol</code> file</li>
+<li>Tree-sitter handles syntax/highlighting</li>
+<li>Neovim launches <code>fol tool lsp</code></li>
+<li>the server provides semantic editor features</li>
+</ol>
+<h2 id="debugging-a-setup"><a class="header" href="#debugging-a-setup">Debugging A Setup</a></h2>
+<p>Useful checks:</p>
+<pre><code class="language-vim">:echo &amp;filetype
+:lua print(vim.inspect(vim.lsp.get_clients({ bufnr = 0 })))
+</code></pre>
+<p>And from the shell:</p>
+<pre><code class="language-text">fol tool tree generate /tmp/fol
+fol tool lsp
+</code></pre>
+<p>If <code>fol tool lsp</code> prints nothing and waits, that is correct.</p>
+<p>It is a stdio server, not an interactive shell command.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../follang.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../050_tooling/500_lsp.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../000_overview/100_conventions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../100_lexical/_index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -198,11 +270,11 @@ surface before the language chapters begin.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../follang.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../050_tooling/500_lsp.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../000_overview/100_conventions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../100_lexical/_index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

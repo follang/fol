@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Overview - FOL Language Specification</title>
+        <title>Tool Commands - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,21 +174,118 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
-<p>This opening section explains what FOL is, how this book is organized, and how syntax examples are written.</p>
-<p>Use it before diving into the detailed lexical, type, item, and runtime chapters.</p>
-<p>It also describes the user-facing workflow tool and the first editor-tooling
-surface before the language chapters begin.</p>
+                        <h1 id="tool-commands"><a class="header" href="#tool-commands">Tool Commands</a></h1>
+<p>This chapter lists the current frontend surface by workflow area.</p>
+<h2 id="work"><a class="header" href="#work">Work</a></h2>
+<p>Project and workspace commands:</p>
+<ul>
+<li><code>fol work init</code></li>
+<li><code>fol work new</code></li>
+<li><code>fol work info</code></li>
+<li><code>fol work list</code></li>
+<li><code>fol work deps</code></li>
+<li><code>fol work status</code></li>
+</ul>
+<p>Examples:</p>
+<pre><code class="language-text">fol work init --bin
+fol work init --workspace
+fol work new demo --lib
+fol work info
+fol work deps
+</code></pre>
+<p>Use <code>work</code> for:</p>
+<ul>
+<li>creating package/workspace roots</li>
+<li>inspecting workspace structure</li>
+<li>seeing member and dependency state</li>
+</ul>
+<h2 id="pack"><a class="header" href="#pack">Pack</a></h2>
+<p>Package acquisition commands:</p>
+<ul>
+<li><code>fol pack fetch</code></li>
+<li><code>fol pack update</code></li>
+</ul>
+<p>Examples:</p>
+<pre><code class="language-text">fol pack fetch
+fol pack fetch --locked
+fol pack fetch --offline
+fol pack fetch --refresh
+fol pack update
+</code></pre>
+<p>Use <code>pack</code> for:</p>
+<ul>
+<li>materializing dependencies</li>
+<li>writing or honoring <code>fol.lock</code></li>
+<li>refreshing pinned git dependencies</li>
+</ul>
+<h2 id="code"><a class="header" href="#code">Code</a></h2>
+<p>Build-oriented commands:</p>
+<ul>
+<li><code>fol code check</code></li>
+<li><code>fol code build</code></li>
+<li><code>fol code run</code></li>
+<li><code>fol code test</code></li>
+<li><code>fol code emit rust</code></li>
+<li><code>fol code emit lowered</code></li>
+</ul>
+<p>Examples:</p>
+<pre><code class="language-text">fol code check
+fol code build --release
+fol code run -- --flag value
+fol code emit rust
+fol code emit lowered
+</code></pre>
+<p>Use <code>code</code> for:</p>
+<ul>
+<li>driving the compile pipeline</li>
+<li>building binaries through the current Rust backend</li>
+<li>running produced binaries</li>
+<li>emitting backend/debug artifacts</li>
+</ul>
+<h2 id="tool"><a class="header" href="#tool">Tool</a></h2>
+<p>Tooling commands:</p>
+<ul>
+<li><code>fol tool lsp</code></li>
+<li><code>fol tool parse &lt;PATH&gt;</code></li>
+<li><code>fol tool highlight &lt;PATH&gt;</code></li>
+<li><code>fol tool symbols &lt;PATH&gt;</code></li>
+<li><code>fol tool tree generate &lt;PATH&gt;</code></li>
+<li><code>fol tool clean</code></li>
+<li><code>fol tool completion</code></li>
+</ul>
+<p>Examples:</p>
+<pre><code class="language-text">fol tool parse src/main.fol
+fol tool highlight src/main.fol
+fol tool symbols src/main.fol
+fol tool tree generate /tmp/fol
+fol tool lsp
+fol tool completion bash
+</code></pre>
+<p>Use <code>tool</code> for:</p>
+<ul>
+<li>editor integration</li>
+<li>Tree-sitter debugging</li>
+<li>LSP serving</li>
+<li>generated tool assets</li>
+</ul>
+<h2 id="artifact-reporting"><a class="header" href="#artifact-reporting">Artifact Reporting</a></h2>
+<p>Frontend commands report explicit artifact roots when applicable, including:</p>
+<ul>
+<li>emitted Rust crate roots</li>
+<li>lowered snapshot roots</li>
+<li>final binary paths</li>
+<li>fetch/store/cache roots where relevant</li>
+</ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../follang.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../050_tooling/100_frontend.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../000_overview/100_conventions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../050_tooling/300_editor.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -198,11 +295,11 @@ surface before the language chapters begin.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../follang.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../050_tooling/100_frontend.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../000_overview/100_conventions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../050_tooling/300_editor.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

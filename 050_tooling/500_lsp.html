@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Overview - FOL Language Specification</title>
+        <title>Language Server - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,21 +174,58 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
-<p>This opening section explains what FOL is, how this book is organized, and how syntax examples are written.</p>
-<p>Use it before diving into the detailed lexical, type, item, and runtime chapters.</p>
-<p>It also describes the user-facing workflow tool and the first editor-tooling
-surface before the language chapters begin.</p>
+                        <h1 id="language-server"><a class="header" href="#language-server">Language Server</a></h1>
+<p>The FOL language server is started with:</p>
+<pre><code class="language-text">fol tool lsp
+</code></pre>
+<p>It runs over stdio and is meant to be launched by editors.</p>
+<h2 id="current-feature-set"><a class="header" href="#current-feature-set">Current Feature Set</a></h2>
+<p>The current working surface includes:</p>
+<ul>
+<li>initialize / shutdown / exit</li>
+<li>document open / change / close</li>
+<li>diagnostics</li>
+<li>hover</li>
+<li>go-to-definition</li>
+<li>document symbols</li>
+</ul>
+<p>Completion is the next active milestone after the first editor bring-up.</p>
+<h2 id="analysis-model"><a class="header" href="#analysis-model">Analysis Model</a></h2>
+<p>The server works like this:</p>
+<ol>
+<li>receive editor request/notification</li>
+<li>map the open document to a package/workspace context</li>
+<li>materialize an analysis overlay for the in-memory document state</li>
+<li>run parse/package/resolve/typecheck as needed</li>
+<li>convert compiler results into LSP responses</li>
+</ol>
+<p>That means diagnostics and navigation are compiler-backed, not guessed from
+Tree-sitter alone.</p>
+<h2 id="diagnostics"><a class="header" href="#diagnostics">Diagnostics</a></h2>
+<p>Compiler diagnostics remain canonical.</p>
+<p>The server adapts them into LSP diagnostics for the currently open document.</p>
+<p>This is why CLI compiler failures and editor diagnostics should stay aligned in
+message quality and meaning.</p>
+<h2 id="expected-behavior"><a class="header" href="#expected-behavior">Expected Behavior</a></h2>
+<p>If the LSP client is attached correctly, you should expect:</p>
+<ul>
+<li>source-file diagnostics in the open file</li>
+<li>hover on resolved symbols</li>
+<li>go-to-definition across current-package and imported symbols where supported</li>
+<li>document symbols for the current file</li>
+</ul>
+<p>If the client is attached but you see no diagnostics at all, the likely issue is
+not Tree-sitter. It is the LSP request/attach path.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../follang.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../050_tooling/400_treesitter.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../000_overview/100_conventions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../050_tooling/600_neovim.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -198,11 +235,11 @@ surface before the language chapters begin.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../follang.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../050_tooling/400_treesitter.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../000_overview/100_conventions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../050_tooling/600_neovim.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

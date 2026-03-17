@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f72c28fa.js";
+            window.path_to_searchindex_js = "../searchindex-4b987114.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-0ba44881.js"></script>
+        <script src="../toc-53f6a814.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -177,177 +177,21 @@
                         <h1 id="frontend-workflow"><a class="header" href="#frontend-workflow">Frontend Workflow</a></h1>
 <p>FOL now has a dedicated frontend layer above the compiler pipeline.</p>
 <p>That layer is the <code>fol</code> tool itself.</p>
-<p>The frontend is implemented in the <code>fol-frontend</code> crate. It sits above:</p>
+<p>The frontend is implemented in <code>fol-frontend</code>, and it is the user-facing
+workflow shell for:</p>
 <ul>
-<li><code>fol-package</code></li>
-<li><code>fol-resolver</code></li>
-<li><code>fol-typecheck</code></li>
-<li><code>fol-lower</code></li>
-<li><code>fol-backend</code></li>
+<li>project/workspace setup</li>
+<li>fetch/update flows</li>
+<li>build/run/test/emit flows</li>
+<li>editor tooling dispatch under <code>fol tool</code></li>
 </ul>
-<p>Its job is not to replace those crates. Its job is to orchestrate them into one
-coherent user tool.</p>
-<h2 id="what-the-frontend-owns"><a class="header" href="#what-the-frontend-owns">What The Frontend Owns</a></h2>
-<p>The frontend owns:</p>
+<p>The detailed reference has moved to the Tooling section:</p>
 <ul>
-<li>derive-based <code>clap</code> command parsing</li>
-<li>command aliases and grouped help</li>
-<li>frontend-owned root help and version output</li>
-<li>workspace and package discovery</li>
-<li>package/workspace scaffolding</li>
-<li>package preparation over <code>fol-package</code></li>
-<li>build/run/test orchestration</li>
-<li>emit workflows</li>
-<li>clean workflows</li>
-<li>shell completions</li>
-<li>human/plain/json output</li>
-<li>user-facing summaries and diagnostics</li>
+<li><a href="../050_tooling/_index.html">Tooling</a></li>
+<li><a href="../050_tooling/100_frontend.html">Frontend Workflow</a></li>
+<li><a href="../050_tooling/200_tool_commands.html">Tool Commands</a></li>
 </ul>
-<p>So the frontend is the workflow shell.</p>
-<p>It is not another compiler stage.</p>
-<h2 id="command-surface"><a class="header" href="#command-surface">Command Surface</a></h2>
-<p>The current command surface is:</p>
-<ul>
-<li><code>fol init</code></li>
-<li><code>fol new</code></li>
-<li><code>fol work info</code></li>
-<li><code>fol work list</code></li>
-<li><code>fol work deps</code></li>
-<li><code>fol work status</code></li>
-<li><code>fol fetch</code></li>
-<li><code>fol update</code></li>
-<li><code>fol check</code></li>
-<li><code>fol build</code></li>
-<li><code>fol run</code></li>
-<li><code>fol test</code></li>
-<li><code>fol emit rust</code></li>
-<li><code>fol emit lowered</code></li>
-<li><code>fol clean</code></li>
-<li><code>fol completion</code></li>
-<li>hidden <code>_complete</code></li>
-</ul>
-<p>The root help contract is:</p>
-<ul>
-<li><code>fol</code></li>
-<li><code>fol --help</code></li>
-</ul>
-<p>Both render the same frontend-owned help surface.</p>
-<p>Aliases are part of the tool contract too. Examples:</p>
-<ul>
-<li><code>fol build</code>, <code>fol b</code>, <code>fol make</code></li>
-<li><code>fol fetch</code>, <code>fol f</code>, <code>fol sync</code></li>
-<li><code>fol clean</code>, <code>fol cl</code>, <code>fol purge</code></li>
-<li><code>fol check</code>, <code>fol c</code>, <code>fol verify</code></li>
-<li><code>fol work</code>, <code>fol w</code>, <code>fol ws</code>, <code>fol workspace</code></li>
-</ul>
-<h2 id="one-tool"><a class="header" href="#one-tool">One Tool</a></h2>
-<p>The intended workflow is entrypoint-first:</p>
-<pre><code class="language-text">fol init --bin
-fol fetch
-fol check
-fol build --release
-fol run -- --flag value
-</code></pre>
-<p>The goal is to make <code>fol</code> feel like the canonical language tool, not just a
-compiler executable with a growing list of flags.</p>
-<p>Direct compile is still supported too, but it is frontend-owned now:</p>
-<pre><code class="language-text">fol path/to/package
-fol build path/to/package
-fol check path/to/package
-fol run path/to/package -- --flag value
-fol emit rust path/to/package
-fol emit lowered path/to/package
-</code></pre>
-<h2 id="how-dispatch-works"><a class="header" href="#how-dispatch-works">How Dispatch Works</a></h2>
-<p>The frontend flow is:</p>
-<ol>
-<li>parse CLI arguments with <code>clap</code></li>
-<li>resolve output/profile policy</li>
-<li>detect the target root</li>
-<li>load the frontend workspace model</li>
-<li>dispatch the selected command</li>
-<li>call down into package/compiler/backend layers as needed</li>
-<li>render a frontend-owned command summary or frontend-owned error</li>
-</ol>
-<p>For example:</p>
-<ul>
-<li><code>fol check</code> loads the workspace and drives the compile pipeline through
-typecheck/lower without backend artifact production</li>
-<li><code>fol build</code> drives the full compiler and backend path</li>
-<li><code>fol run</code> builds first, then executes the produced binary</li>
-<li><code>fol emit rust</code> keeps the backend in source-emission mode</li>
-<li><code>fol emit lowered</code> writes lowered IR snapshots instead of invoking the backend</li>
-</ul>
-<p>Compile-oriented flags belong to the commands that use them. For example:</p>
-<ul>
-<li><code>--std-root</code> and <code>--package-store-root</code> belong to compile/fetch flows</li>
-<li><code>--keep-build-dir</code> belongs to backend-producing flows such as <code>build</code>, <code>run</code>,
-and <code>emit rust</code></li>
-<li><code>dump lowered</code> is represented as <code>fol emit lowered</code>, not as a root flag in the
-public CLI</li>
-</ul>
-<h2 id="root-discovery"><a class="header" href="#root-discovery">Root Discovery</a></h2>
-<p>For workflow commands, the frontend discovers roots upward from the current
-directory or from an explicit path:</p>
-<ul>
-<li>package roots use <code>package.yaml</code></li>
-<li>workspace roots use <code>fol.work.yaml</code></li>
-</ul>
-<p>Package roots and workspace roots are different frontend concepts.</p>
-<p>A package root is one runnable/buildable package.</p>
-<p>A workspace root is a parent root that owns multiple member packages plus
-frontend-owned roots such as build and cache directories.</p>
-<p>If no root is found, frontend diagnostics explain how to bootstrap one with
-<code>fol init --bin</code> or <code>fol init --workspace</code>.</p>
-<h2 id="configuration-and-precedence"><a class="header" href="#configuration-and-precedence">Configuration And Precedence</a></h2>
-<p>The frontend currently supports environment and flag control for:</p>
-<ul>
-<li>output mode</li>
-<li>profile</li>
-<li>std root</li>
-<li>package store root</li>
-<li>build root</li>
-<li>cache root</li>
-<li>keep-build-dir</li>
-</ul>
-<p>The intended precedence is:</p>
-<ol>
-<li>explicit CLI flags</li>
-<li>workspace-owned config where applicable</li>
-<li>frontend environment variables</li>
-<li>frontend defaults</li>
-</ol>
-<p>That precedence is test-backed.</p>
-<h2 id="output-modes"><a class="header" href="#output-modes">Output Modes</a></h2>
-<p>Frontend command summaries support:</p>
-<ul>
-<li><code>human</code></li>
-<li><code>plain</code></li>
-<li><code>json</code></li>
-</ul>
-<p><code>human</code> is for interactive usage.</p>
-<p><code>plain</code> is for scripts.</p>
-<p><code>json</code> is for machine-readable tooling and wrappers.</p>
-<p>The frontend also owns human highlighting behavior. Actions and paths can be
-highlighted in human mode, while plain mode stays stable and ANSI-free.</p>
-<p>Human mode is always colorized. There is no public color-policy switch.</p>
-<h2 id="build-artifacts"><a class="header" href="#build-artifacts">Build Artifacts</a></h2>
-<p>Frontend commands report explicit artifact roots.</p>
-<p>That includes:</p>
-<ul>
-<li>workspace roots</li>
-<li>package roots</li>
-<li>build roots</li>
-<li>emitted Rust crate roots</li>
-<li>lowered snapshot roots</li>
-<li>final binary paths</li>
-</ul>
-<p>This keeps the frontend closer to a build tool than to a thin compiler shell.</p>
-<h2 id="relationship-to-the-root-binary"><a class="header" href="#relationship-to-the-root-binary">Relationship To The Root Binary</a></h2>
-<p>The repo still has a root <code>src/main.rs</code>, but it is now just a thin entry shim
-into <code>fol-frontend</code>.</p>
-<p>The CLI behavior itself lives in <code>fol-frontend</code>.</p>
-<p>That includes:</p>
+<p>Use this overview page only as the entrypoint pointer.</p>
 <ul>
 <li>workflow commands</li>
 <li>direct compile dispatch</li>
@@ -368,6 +212,7 @@ into <code>fol-frontend</code>.</p>
 <li>workspace dependency/status reporting</li>
 <li>full <code>V1</code> build/run/test orchestration</li>
 <li>emitted Rust and lowered IR output</li>
+<li>editor-tooling entrypoints for parse, highlight, symbols, and LSP startup</li>
 <li>shell completions</li>
 <li>safe cleanup of build/cache/git/package-store roots</li>
 <li>frontend-owned direct compile routing</li>
@@ -387,7 +232,7 @@ into <code>fol-frontend</code>.</p>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../100_lexical/_index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../000_overview/300_editor.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -401,7 +246,7 @@ into <code>fol-frontend</code>.</p>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../100_lexical/_index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../000_overview/300_editor.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

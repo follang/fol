@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Overview - FOL Language Specification</title>
+        <title>Frontend Workflow - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,21 +174,98 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
-<p>This opening section explains what FOL is, how this book is organized, and how syntax examples are written.</p>
-<p>Use it before diving into the detailed lexical, type, item, and runtime chapters.</p>
-<p>It also describes the user-facing workflow tool and the first editor-tooling
-surface before the language chapters begin.</p>
+                        <h1 id="frontend-workflow"><a class="header" href="#frontend-workflow">Frontend Workflow</a></h1>
+<p>The public FOL entrypoint is the <code>fol</code> tool.</p>
+<p><code>fol</code> is implemented by the <code>fol-frontend</code> crate. It sits above:</p>
+<ul>
+<li><code>fol-package</code></li>
+<li><code>fol-resolver</code></li>
+<li><code>fol-typecheck</code></li>
+<li><code>fol-lower</code></li>
+<li><code>fol-backend</code></li>
+</ul>
+<p>Its job is orchestration, not semantic analysis.</p>
+<h2 id="what-the-frontend-owns"><a class="header" href="#what-the-frontend-owns">What The Frontend Owns</a></h2>
+<p>The frontend owns:</p>
+<ul>
+<li>CLI parsing with <code>clap</code></li>
+<li>grouped command structure</li>
+<li>package and workspace discovery</li>
+<li>project scaffolding</li>
+<li>package preparation and fetch/update workflows</li>
+<li>build, run, test, and emit orchestration</li>
+<li>editor command dispatch under <code>fol tool</code></li>
+<li>shell completions</li>
+<li>user-facing summaries and workflow errors</li>
+</ul>
+<p>Compiler truth remains in the compiler crates.</p>
+<h2 id="public-command-groups"><a class="header" href="#public-command-groups">Public Command Groups</a></h2>
+<p>The root command groups are:</p>
+<ul>
+<li><code>fol work</code></li>
+<li><code>fol pack</code></li>
+<li><code>fol code</code></li>
+<li><code>fol tool</code></li>
+</ul>
+<p>Root aliases are single-letter only:</p>
+<ul>
+<li><code>fol w</code></li>
+<li><code>fol p</code></li>
+<li><code>fol c</code></li>
+<li><code>fol t</code></li>
+</ul>
+<p>Run:</p>
+<pre><code class="language-text">fol --help
+fol &lt;group&gt; --help
+fol &lt;group&gt; &lt;command&gt; --help
+</code></pre>
+<p>for the relevant usage surface.</p>
+<h2 id="root-discovery"><a class="header" href="#root-discovery">Root Discovery</a></h2>
+<p>For workflow commands, the frontend discovers roots upward from the current
+directory or from an explicit path.</p>
+<p>It recognizes:</p>
+<ul>
+<li>package roots via <code>package.yaml</code></li>
+<li>workspace roots via <code>fol.work.yaml</code></li>
+</ul>
+<p>A package root is one buildable package.</p>
+<p>A workspace root is a parent root that owns multiple member packages and
+frontend-managed roots like build/cache/package-store locations.</p>
+<h2 id="direct-package-use"><a class="header" href="#direct-package-use">Direct Package Use</a></h2>
+<p>The normal workflow shape is group-first:</p>
+<pre><code class="language-text">fol work init --bin
+fol pack fetch
+fol code check
+fol code build
+fol code run
+</code></pre>
+<p>There is still a frontend-owned direct package path for compile-oriented use,
+but the grouped commands are the public workflow shape.</p>
+<h2 id="output"><a class="header" href="#output">Output</a></h2>
+<p>Frontend summaries support:</p>
+<ul>
+<li><code>human</code></li>
+<li><code>plain</code></li>
+<li><code>json</code></li>
+</ul>
+<p>The frontend also owns workflow-level errors such as:</p>
+<ul>
+<li>missing workspace roots</li>
+<li>fetch/update/store failures</li>
+<li>clean/completion/workflow command failures</li>
+</ul>
+<p>Compiler diagnostics stay separate and flow through compiler-owned diagnostic
+models.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../follang.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../050_tooling/_index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../000_overview/100_conventions.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../050_tooling/200_tool_commands.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -198,11 +275,11 @@ surface before the language chapters begin.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../follang.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../050_tooling/_index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../000_overview/100_conventions.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../050_tooling/200_tool_commands.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
