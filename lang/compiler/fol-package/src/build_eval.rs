@@ -6,6 +6,9 @@ use crate::{
 };
 use crate::build_api::{CopyFileRequest, WriteFileRequest};
 use crate::build_codegen::{CodegenRequest, SystemToolRequest};
+use crate::build_runtime::{
+    BuildRuntimeArtifact, BuildRuntimeProgram, BuildRuntimeStepBinding,
+};
 use crate::build_option::{
     BuildOptionDeclaration, BuildOptionDeclarationSet, BuildOptimizeMode, BuildTargetTriple,
     ResolvedBuildOptionSet, StandardOptimizeDeclaration, StandardTargetDeclaration,
@@ -442,6 +445,14 @@ pub struct ExtractedBuildProgram {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvaluatedBuildSource {
     pub extracted: ExtractedBuildProgram,
+    pub result: BuildEvaluationResult,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EvaluatedBuildProgram {
+    pub program: BuildRuntimeProgram,
+    pub artifacts: Vec<BuildRuntimeArtifact>,
+    pub step_bindings: Vec<BuildRuntimeStepBinding>,
     pub result: BuildEvaluationResult,
 }
 
@@ -1273,12 +1284,15 @@ mod tests {
         forbidden_capability_error, forbidden_capability_message, AllowedBuildTimeOperation,
         BuildEvaluationBoundary, BuildEvaluationError, BuildEnvironmentSelectionPolicy,
         BuildEvaluationErrorKind, BuildEvaluationInputEnvelope, BuildEvaluationInputs,
-        BuildRuntimeCapabilityModel, ForbiddenBuildTimeOperation,
+        BuildRuntimeCapabilityModel, EvaluatedBuildProgram, ForbiddenBuildTimeOperation,
         BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
         BuildEvaluationRunRequest, BuildEvaluationStepRequest,
     };
-    use crate::build_option::{BuildOptimizeMode, BuildOptionDeclaration, BuildTargetTriple};
+    use crate::build_option::{
+        BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet, BuildTargetTriple,
+        ResolvedBuildOptionSet,
+    };
     use crate::build_graph::BuildGraph;
     use crate::{
         CodegenKind, CodegenRequest, DependencyRequest, ExecutableRequest, InstallDirRequest,
@@ -1979,5 +1993,37 @@ mod tests {
         assert_eq!(evaluated.result.graph.artifacts().len(), 1);
         assert_eq!(evaluated.result.graph.installs().len(), 1);
         assert_eq!(evaluated.result.graph.steps().len(), 1);
+    }
+
+    #[test]
+    fn evaluated_build_program_surface_keeps_runtime_metadata_and_graph_result() {
+        let result = BuildEvaluationResult::new(
+            BuildEvaluationBoundary::GraphConstructionSubset,
+            canonical_graph_construction_capabilities(),
+            "/pkg",
+            BuildOptionDeclarationSet::new(),
+            ResolvedBuildOptionSet::new(),
+            BuildGraph::new(),
+        );
+        let evaluated = EvaluatedBuildProgram {
+            program: crate::build_runtime::BuildRuntimeProgram::new(
+                crate::build_runtime::BuildExecutionRepresentation::RestrictedRuntimeIr,
+            ),
+            artifacts: vec![crate::build_runtime::BuildRuntimeArtifact::new(
+                "app",
+                crate::build_runtime::BuildRuntimeArtifactKind::Executable,
+                "src/app.fol",
+            )],
+            step_bindings: vec![crate::build_runtime::BuildRuntimeStepBinding::new(
+                "run",
+                crate::build_runtime::BuildRuntimeStepBindingKind::DefaultRun,
+                Some("app"),
+            )],
+            result,
+        };
+
+        assert_eq!(evaluated.artifacts.len(), 1);
+        assert_eq!(evaluated.step_bindings.len(), 1);
+        assert_eq!(evaluated.result.package_root, "/pkg");
     }
 }
