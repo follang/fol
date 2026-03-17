@@ -2,6 +2,7 @@ use crate::build_dependency::{
     DependencyArtifactSurfaceSet, DependencyBuildHandle, DependencyGeneratedOutputSurfaceSet,
     DependencyModuleSurfaceSet, DependencyStepSurfaceSet,
 };
+use crate::build_codegen::{CodegenRequest, GeneratedFileInstallProjection, SystemToolRequest};
 use crate::build_graph::BuildGraph;
 use crate::build_graph::{BuildOptionId, BuildOptionKind};
 
@@ -219,6 +220,20 @@ pub struct InstallFileRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WriteFileRequest {
+    pub name: String,
+    pub path: String,
+    pub contents: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CopyFileRequest {
+    pub name: String,
+    pub source_path: String,
+    pub destination_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstallDirRequest {
     pub name: String,
     pub path: String,
@@ -227,6 +242,11 @@ pub struct InstallDirRequest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstallHandle {
     pub install_id: crate::build_graph::BuildInstallId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GeneratedFileHandle {
+    pub generated_file_id: crate::build_graph::BuildGeneratedFileId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -430,6 +450,62 @@ impl<'a> BuildApi<'a> {
         Ok(InstallHandle { install_id })
     }
 
+    pub fn write_file(&mut self, request: WriteFileRequest) -> Result<GeneratedFileHandle, BuildApiError> {
+        validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let generated_file_id = self.graph.add_generated_file(
+            crate::build_graph::BuildGeneratedFileKind::Write,
+            request.path,
+        );
+        Ok(GeneratedFileHandle { generated_file_id })
+    }
+
+    pub fn copy_file(&mut self, request: CopyFileRequest) -> Result<GeneratedFileHandle, BuildApiError> {
+        validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let generated_file_id = self.graph.add_generated_file(
+            crate::build_graph::BuildGeneratedFileKind::Copy,
+            request.destination_path,
+        );
+        Ok(GeneratedFileHandle { generated_file_id })
+    }
+
+    pub fn add_system_tool(
+        &mut self,
+        request: SystemToolRequest,
+    ) -> Result<Vec<GeneratedFileHandle>, BuildApiError> {
+        validate_build_name(&request.tool.replace('_', "-")).map_err(BuildApiError::InvalidName)?;
+        Ok(request
+            .outputs
+            .into_iter()
+            .map(|output| GeneratedFileHandle {
+                generated_file_id: self.graph.add_generated_file(
+                    crate::build_graph::BuildGeneratedFileKind::CaptureOutput,
+                    output,
+                ),
+            })
+            .collect())
+    }
+
+    pub fn add_codegen(
+        &mut self,
+        request: CodegenRequest,
+    ) -> Result<GeneratedFileHandle, BuildApiError> {
+        let generated_file_id = self.graph.add_generated_file(
+            crate::build_graph::BuildGeneratedFileKind::Write,
+            request.output,
+        );
+        Ok(GeneratedFileHandle { generated_file_id })
+    }
+
+    pub fn project_install_file(
+        &mut self,
+        projection: GeneratedFileInstallProjection,
+    ) -> Result<InstallHandle, BuildApiError> {
+        self.install_file(InstallFileRequest {
+            name: projection.install_name,
+            path: projection.install_path,
+        })
+    }
+
     pub fn install_dir(&mut self, request: InstallDirRequest) -> Result<InstallHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
         let install_id = self.graph.add_install_with_target(
@@ -470,15 +546,19 @@ impl<'a> BuildApi<'a> {
 mod tests {
     use super::{
         validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
-        DependencyRequest, ExecutableRequest, InstallArtifactRequest, InstallDirRequest,
-        InstallFileRequest, RunRequest, SharedLibraryRequest, StandardOptimizeRequest,
-        StandardTargetRequest, StaticLibraryRequest, StepRequest, TestArtifactRequest,
-        UserOptionRequest,
+        CopyFileRequest, DependencyRequest, ExecutableRequest, GeneratedFileHandle,
+        InstallArtifactRequest, InstallDirRequest, InstallFileRequest, RunRequest,
+        SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest,
+        StaticLibraryRequest, StepRequest, TestArtifactRequest, UserOptionRequest,
+        WriteFileRequest,
+    };
+    use crate::build_codegen::{
+        CodegenKind, CodegenRequest, GeneratedFileInstallProjection, SystemToolRequest,
     };
     use crate::build_graph::BuildGraph;
     use crate::build_graph::{
-        BuildArtifactInput, BuildArtifactKind, BuildInstallKind, BuildInstallTarget,
-        BuildModuleKind, BuildOptionKind, BuildStepKind,
+        BuildArtifactInput, BuildArtifactKind, BuildGeneratedFileKind, BuildInstallKind,
+        BuildInstallTarget, BuildModuleKind, BuildOptionKind, BuildStepKind,
     };
 
     #[test]
@@ -814,5 +894,73 @@ mod tests {
         assert!(dependency.artifacts.artifacts.is_empty());
         assert!(dependency.steps.steps.is_empty());
         assert!(dependency.generated_outputs.generated_outputs.is_empty());
+    }
+
+    #[test]
+    fn build_api_write_and_copy_file_helpers_add_generated_file_nodes() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let write = api
+            .write_file(WriteFileRequest {
+                name: "version".to_string(),
+                path: "gen/version.fol".to_string(),
+                contents: "generated".to_string(),
+            })
+            .expect("write file should succeed");
+        let copy = api
+            .copy_file(CopyFileRequest {
+                name: "config".to_string(),
+                source_path: "assets/config.json".to_string(),
+                destination_path: "gen/config.json".to_string(),
+            })
+            .expect("copy file should succeed");
+
+        assert_eq!(write, GeneratedFileHandle { generated_file_id: crate::build_graph::BuildGeneratedFileId(0) });
+        assert_eq!(copy.generated_file_id, crate::build_graph::BuildGeneratedFileId(1));
+        assert_eq!(api.graph().generated_files()[0].kind, BuildGeneratedFileKind::Write);
+        assert_eq!(api.graph().generated_files()[1].kind, BuildGeneratedFileKind::Copy);
+    }
+
+    #[test]
+    fn build_api_system_tool_and_codegen_helpers_add_generated_outputs() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let tool_outputs = api
+            .add_system_tool(SystemToolRequest {
+                tool: "schema-gen".to_string(),
+                args: vec!["api.yaml".to_string()],
+                outputs: vec!["gen/api.fol".to_string()],
+            })
+            .expect("system tool should succeed");
+        let codegen = api
+            .add_codegen(CodegenRequest {
+                kind: CodegenKind::Schema,
+                input: "api.yaml".to_string(),
+                output: "gen/api_bindings.fol".to_string(),
+            })
+            .expect("codegen should succeed");
+
+        assert_eq!(tool_outputs.len(), 1);
+        assert_eq!(api.graph().generated_files()[0].kind, BuildGeneratedFileKind::CaptureOutput);
+        assert_eq!(codegen.generated_file_id, crate::build_graph::BuildGeneratedFileId(1));
+    }
+
+    #[test]
+    fn build_api_can_project_generated_file_installs() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let install = api
+            .project_install_file(GeneratedFileInstallProjection::new(
+                "config",
+                "install-config",
+                "share/config.json",
+            ))
+            .expect("install projection should succeed");
+
+        assert_eq!(install.install_id, crate::build_graph::BuildInstallId(0));
+        assert_eq!(api.graph().installs()[0].kind, BuildInstallKind::File);
     }
 }
