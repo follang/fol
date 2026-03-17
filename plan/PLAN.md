@@ -386,6 +386,21 @@ Tests required:
 Exit criteria:
 - build runtime permissions are explicit and testable
 
+Round 1 slice tracker:
+
+- [ ] Slice 1. Add a concrete Phase 4 implementation tracker with completion
+  rules.
+- [ ] Slice 2. Add explicit forbidden build-time capability categories.
+- [ ] Slice 3. Add a first-class runtime capability model for allowed and
+  forbidden operations.
+- [ ] Slice 4. Add a canonical graph-construction capability preset.
+- [ ] Slice 5. Add explicit target/optimize fields to the build input envelope.
+- [ ] Slice 6. Add declared environment selection policy types and helpers.
+- [ ] Slice 7. Make determinism keys derive from the explicit input envelope.
+- [ ] Slice 8. Add forbidden-capability diagnostic helpers and regression tests.
+- [ ] Slice 9. Re-export and test the Phase 4 capability-model surface.
+- [ ] Slice 10. Clean remaining capability-model call sites and lock the round.
+
 ## Phase 5: Real Build Routine Evaluation
 
 Goal:
