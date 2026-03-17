@@ -449,7 +449,7 @@ Round 1 slice tracker:
   repeated handle flow through locals.
 - [x] Slice 5. Add restricted runtime expression nodes for locals, literals,
   records, and method calls.
-- [ ] Slice 6. Add restricted runtime statement nodes for `var`, effectful
+- [x] Slice 6. Add restricted runtime statement nodes for `var`, effectful
   expression statements, and returns.
 - [ ] Slice 7. Add runtime record-field helpers for object-style build config
   values.

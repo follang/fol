@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildExecutionRepresentation {
     RestrictedRuntimeIr,
@@ -92,11 +94,21 @@ pub enum BuildRuntimeExpr {
     Record(Vec<(String, BuildRuntimeExpr)>),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildRuntimeStmt {
+    Bind {
+        local: BuildRuntimeLocalId,
+        value: BuildRuntimeExpr,
+    },
+    Expr(BuildRuntimeExpr),
+    Return(BuildRuntimeExpr),
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildExecutionRepresentation, BuildRuntimeExpr, BuildRuntimeFrame,
-        BuildRuntimeHandle, BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeProgram,
+        BuildExecutionRepresentation, BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeHandle,
+        BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeProgram, BuildRuntimeStmt,
         BuildRuntimeValue,
     };
 
@@ -166,5 +178,32 @@ mod tests {
                 && matches!(fields[1].1, BuildRuntimeExpr::Local(BuildRuntimeLocalId(3)))
         ));
     }
+
+    #[test]
+    fn runtime_statements_cover_bind_effect_and_return_flow() {
+        let bind = BuildRuntimeStmt::Bind {
+            local: BuildRuntimeLocalId(0),
+            value: BuildRuntimeExpr::Value(BuildRuntimeValue::Target(
+                "x86_64-linux-gnu".to_string(),
+            )),
+        };
+        let effect = BuildRuntimeStmt::Expr(BuildRuntimeExpr::Local(BuildRuntimeLocalId(0)));
+        let ret = BuildRuntimeStmt::Return(BuildRuntimeExpr::Value(BuildRuntimeValue::Void));
+
+        assert!(matches!(
+            bind,
+            BuildRuntimeStmt::Bind {
+                local: BuildRuntimeLocalId(0),
+                ..
+            }
+        ));
+        assert!(matches!(
+            effect,
+            BuildRuntimeStmt::Expr(BuildRuntimeExpr::Local(BuildRuntimeLocalId(0)))
+        ));
+        assert!(matches!(
+            ret,
+            BuildRuntimeStmt::Return(BuildRuntimeExpr::Value(BuildRuntimeValue::Void))
+        ));
+    }
 }
-use std::collections::BTreeMap;
