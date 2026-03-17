@@ -111,6 +111,13 @@ pub enum BuildArtifactPipelineStage {
     Backend,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BuildArtifactNativeAttachmentSet {
+    pub include_paths: Vec<crate::build_native::NativeIncludePath>,
+    pub library_paths: Vec<crate::build_native::NativeLibraryPath>,
+    pub link_inputs: Vec<crate::build_native::NativeLinkDirective>,
+}
+
 pub fn project_graph_artifacts(graph: &BuildGraph) -> Vec<BuildArtifactDefinition> {
     graph.artifacts()
         .iter()
@@ -156,7 +163,7 @@ pub fn project_graph_artifacts(graph: &BuildGraph) -> Vec<BuildArtifactDefinitio
                 target: None,
                 optimize: None,
             },
-            native_artifacts: Vec::new(),
+            native_attachments: BuildArtifactNativeAttachmentSet::default(),
         })
         .collect()
 }
@@ -170,7 +177,7 @@ pub struct BuildArtifactDefinition {
     pub output_name: String,
     pub linkage: BuildArtifactLinkage,
     pub target: BuildArtifactTargetConfig,
-    pub native_artifacts: Vec<String>,
+    pub native_attachments: BuildArtifactNativeAttachmentSet,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -196,14 +203,17 @@ impl BuildArtifactSet {
 mod tests {
     use super::{
         project_graph_artifacts, BuildArtifactDefinition, BuildArtifactLinkage,
-        BuildArtifactModelKind,
-        BuildArtifactModuleConfig, BuildArtifactOutput, BuildArtifactReport,
+        BuildArtifactModelKind, BuildArtifactModuleConfig, BuildArtifactNativeAttachmentSet,
+        BuildArtifactOutput, BuildArtifactReport,
         BuildArtifactPipelinePlan, BuildArtifactPipelineStage, BuildArtifactRootSource,
-        BuildArtifactSet,
-        BuildArtifactTargetConfig,
+        BuildArtifactSet, BuildArtifactTargetConfig,
     };
     use crate::build_option::ResolvedBuildOptionSet;
     use crate::build_graph::{BuildArtifactKind, BuildGraph, BuildModuleKind};
+    use crate::build_native::{
+        NativeArtifactDefinition, NativeArtifactKind, NativeIncludePath, NativeLibraryPath,
+        NativeLinkDirective, NativeLinkInput, NativeLinkMode, NativeSearchPathOrigin,
+    };
 
     #[test]
     fn build_artifact_set_starts_empty() {
@@ -230,7 +240,7 @@ mod tests {
                 target: None,
                 optimize: None,
             },
-            native_artifacts: Vec::new(),
+            native_attachments: BuildArtifactNativeAttachmentSet::default(),
         });
 
         assert_eq!(set.definitions()[0].name, "app");
@@ -263,7 +273,30 @@ mod tests {
                 target: Some("x86_64-linux-gnu".to_string()),
                 optimize: Some("release".to_string()),
             },
-            native_artifacts: vec!["ssl".to_string(), "zlib".to_string()],
+            native_attachments: BuildArtifactNativeAttachmentSet {
+                include_paths: vec![NativeIncludePath {
+                    origin: NativeSearchPathOrigin::PackageRoot,
+                    relative_path: "include".to_string(),
+                }],
+                library_paths: vec![NativeLibraryPath {
+                    origin: NativeSearchPathOrigin::BuildRoot,
+                    relative_path: ".fol/build/native".to_string(),
+                }],
+                link_inputs: vec![
+                    NativeLinkDirective {
+                        input: NativeLinkInput::LibraryName("ssl".to_string()),
+                        mode: NativeLinkMode::Dynamic,
+                    },
+                    NativeLinkDirective {
+                        input: NativeLinkInput::Artifact(NativeArtifactDefinition {
+                            name: "zlib".to_string(),
+                            kind: NativeArtifactKind::StaticLibrary,
+                            relative_path: "native/libz.a".to_string(),
+                        }),
+                        mode: NativeLinkMode::Static,
+                    },
+                ],
+            },
         };
 
         assert_eq!(definition.root_source.path, "src/plugin.fol");
@@ -272,7 +305,9 @@ mod tests {
         assert_eq!(definition.linkage, BuildArtifactLinkage::Shared);
         assert_eq!(definition.target.target.as_deref(), Some("x86_64-linux-gnu"));
         assert_eq!(definition.target.optimize.as_deref(), Some("release"));
-        assert_eq!(definition.native_artifacts, vec!["ssl".to_string(), "zlib".to_string()]);
+        assert_eq!(definition.native_attachments.include_paths.len(), 1);
+        assert_eq!(definition.native_attachments.library_paths.len(), 1);
+        assert_eq!(definition.native_attachments.link_inputs.len(), 2);
     }
 
     #[test]
@@ -372,7 +407,7 @@ mod tests {
                     target: Some("native".to_string()),
                     optimize: Some("debug".to_string()),
                 },
-                native_artifacts: Vec::new(),
+                native_attachments: BuildArtifactNativeAttachmentSet::default(),
             },
             stages: vec![
                 BuildArtifactPipelineStage::Package,

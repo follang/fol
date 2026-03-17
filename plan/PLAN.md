@@ -945,7 +945,7 @@ Each slice must land green with `make build` and `make test` before commit.
 5. `[complete]` Add native link mode and link input records for backend-produced artifacts.
 6. `[complete]` Add cross-platform native naming/path convention helpers for headers and libraries.
 7. `[complete]` Add compatibility projection helpers from parsed placeholder native artifacts into the new native-artifact model.
-8. `[pending]` Extend artifact definitions to retain structured native artifact attachments instead of plain strings.
+8. `[complete]` Extend artifact definitions to retain structured native artifact attachments instead of plain strings.
 9. `[pending]` Extend prepared-package modeling to retain optional native artifact surfaces alongside compatibility native placeholders.
 10. `[pending]` Re-export the draft native-artifact surface from `fol-package`.
 
