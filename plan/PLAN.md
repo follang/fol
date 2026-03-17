@@ -388,7 +388,7 @@ Exit criteria:
 
 Round 1 slice tracker:
 
-- [ ] Slice 1. Add a concrete Phase 4 implementation tracker with completion
+- [x] Slice 1. Add a concrete Phase 4 implementation tracker with completion
   rules.
 - [x] Slice 2. Add explicit forbidden build-time capability categories.
 - [x] Slice 3. Add a first-class runtime capability model for allowed and
