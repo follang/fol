@@ -679,7 +679,7 @@ impl SemanticSnapshot {
         let mut items = self.local_completion_items(position);
         items.extend(self.current_package_top_level_completion_items());
         items.extend(self.import_alias_completion_items(position));
-        items
+        dedupe_completion_items(items)
     }
 
     fn local_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
@@ -1253,6 +1253,20 @@ fn render_checked_type(
     }
 }
 
+fn dedupe_completion_items(items: Vec<EditorCompletionItem>) -> Vec<EditorCompletionItem> {
+    let mut seen = std::collections::BTreeSet::new();
+    let mut filtered = Vec::new();
+    for item in items {
+        if item.label.is_empty() {
+            continue;
+        }
+        if seen.insert(item.label.clone()) {
+            filtered.push(item);
+        }
+    }
+    filtered
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -1787,6 +1801,50 @@ mod tests {
             .find(|item| item.label == "shared")
             .and_then(|item| item.detail.as_deref())
             == Some("namespace"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_prefers_nearer_symbols_when_completion_names_conflict() {
+        let (root, uri) = sample_package_root("completion_shadowing");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    var helper: int = 9\n    return helper\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(34),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 5,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let helpers = completion
+            .items
+            .iter()
+            .filter(|item| item.label == "helper")
+            .collect::<Vec<_>>();
+        assert_eq!(helpers.len(), 1);
+        assert_eq!(helpers[0].detail.as_deref(), Some("binding"));
 
         fs::remove_dir_all(root).ok();
     }

@@ -363,7 +363,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 - `7.2` complete: return routine parameter completions
 - `7.3` complete: return current-package top-level declaration completions
 - `7.4` complete: return imported visible declaration completions
-- `7.5` filter duplicate/irrelevant candidates deterministically
+- `7.5` complete: filter duplicate/irrelevant candidates deterministically
 - `7.6` lock tests for local/imported symbol completion
 
 ### Phase 8: Type-position completion
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `31 / 49` slices complete
-- `63%`
+- `32 / 49` slices complete
+- `65%`
