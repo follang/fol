@@ -60,6 +60,12 @@ pub use build_graph::{
     BuildModuleKind, BuildOption, BuildOptionId, BuildOptionKind, BuildStep,
     BuildStepDependency, BuildStepId, BuildStepKind,
 };
+pub use build_option::{
+    BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet, BuildOptionOverride,
+    BuildOptionOverrideParseError, BuildTargetArch, BuildTargetEnvironment, BuildTargetOs,
+    BuildTargetTriple, ResolvedBuildOptionSet, StandardOptimizeDeclaration,
+    StandardTargetDeclaration, UserOptionDeclaration,
+};
 pub use build_step::{
     plan_step_order, project_graph_steps, BuildDefaultStepKind, BuildRequestedStep,
     BuildStepCacheBoundary, BuildStepCacheKey, BuildStepDefinition, BuildStepEvent,
