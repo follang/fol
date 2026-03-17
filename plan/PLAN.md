@@ -315,6 +315,21 @@ Tests required:
 Exit criteria:
 - `build.fol` entry selection is semantic, not textual
 
+Round 1 slice tracker:
+
+- [x] Slice 1. Add a concrete Phase 3 implementation tracker with completion
+  rules.
+- [ ] Slice 2. Add semantic build-entry signature expectation types.
+- [ ] Slice 3. Add semantic build-entry candidate model types.
+- [ ] Slice 4. Collect build-entry candidates from parsed build source units.
+- [ ] Slice 5. Validate semantic build-entry cardinality.
+- [ ] Slice 6. Validate semantic build-entry parameter count and binding shape.
+- [ ] Slice 7. Validate semantic build-entry parameter type names.
+- [ ] Slice 8. Validate semantic build-entry return type names.
+- [ ] Slice 9. Surface semantic build-entry validation through prepared-package
+  helpers.
+- [ ] Slice 10. Re-export and test the Phase 3 semantic build-entry surface.
+
 ## Phase 4: Build-Time Capability Model
 
 Goal:
