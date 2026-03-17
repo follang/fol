@@ -77,8 +77,8 @@ pub fn require_discovered_root(path: &std::path::Path) -> FrontendResult<Discove
                 path.display()
             ),
         )
-        .with_note("run `fol init --bin` to initialize a package in the current directory")
-        .with_note("run `fol init --workspace` to initialize a workspace root")
+        .with_note("run `fol work init --bin` to initialize a package in the current directory")
+        .with_note("run `fol work init --workspace` to initialize a workspace root")
     })
 }
 
@@ -153,7 +153,7 @@ mod tests {
         assert_eq!(error.kind(), crate::FrontendErrorKind::WorkspaceNotFound);
         assert!(error.message().contains("could not find a FOL workspace or package root"));
         assert_eq!(error.notes().len(), 2);
-        assert!(error.notes()[0].contains("fol init --bin"));
+        assert!(error.notes()[0].contains("fol work init --bin"));
 
         fs::remove_dir_all(root).ok();
     }

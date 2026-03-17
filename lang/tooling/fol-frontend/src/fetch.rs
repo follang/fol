@@ -382,15 +382,15 @@ fn load_existing_lockfile(workspace: &FrontendWorkspace) -> FrontendResult<fol_p
                 error
             ),
         )
-        .with_note("run `fol fetch` first to create fol.lock")
+        .with_note("run `fol pack fetch` first to create fol.lock")
     })?;
     fol_package::parse_package_lockfile(&raw).map_err(FrontendError::from)
 }
 
 fn lock_mismatch_error(message: impl Into<String>) -> FrontendError {
     FrontendError::new(crate::FrontendErrorKind::InvalidInput, message.into())
-        .with_note("run `fol fetch` or `fol update` to refresh fol.lock")
-        .with_note("use `fol fetch --locked` only when package.yaml and fol.lock are intentionally in sync")
+        .with_note("run `fol pack fetch` or `fol pack update` to refresh fol.lock")
+        .with_note("use `fol pack fetch --locked` only when package.yaml and fol.lock are intentionally in sync")
 }
 
 fn with_fetch_guidance(mut error: FrontendError, config: &FrontendConfig) -> FrontendError {
@@ -411,7 +411,7 @@ fn with_fetch_guidance(mut error: FrontendError, config: &FrontendConfig) -> Fro
         || message.contains("name or service not known")
         || message.contains("failed to connect")
     {
-        error = error.with_note("check your network connection or rerun with `fol fetch --offline` after warming the cache");
+        error = error.with_note("check your network connection or rerun with `fol pack fetch --offline` after warming the cache");
     }
     error
 }

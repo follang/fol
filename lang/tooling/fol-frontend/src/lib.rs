@@ -252,8 +252,12 @@ fn frontend_config_from_cli(
     if let Some(working_directory) = working_directory {
         config.working_directory = working_directory;
     }
-    config.output.mode = if cli.json { OutputMode::Json } else { cli.output };
-    config.profile_override = Some(cli.selected_profile());
+    config.output.mode = if cli.json {
+        OutputMode::Json
+    } else {
+        command_output_mode(cli).unwrap_or(cli.output)
+    };
+    config.profile_override = Some(command_profile(cli).unwrap_or_else(|| cli.selected_profile()));
     if let Some(std_root) = &cli.std_root {
         config.std_root_override = Some(std_root.into());
     }
@@ -289,29 +293,26 @@ fn frontend_config_from_cli(
             }
             CodeSubcommand::Emit(_) => {}
         },
-        Some(FrontendCommand::LegacyFetch(command)) => {
-            config.locked_fetch = command.locked;
-            config.offline_fetch = command.offline;
-            config.refresh_fetch = command.refresh;
-        }
-        Some(FrontendCommand::LegacyUpdate(_)) => {
-            config.refresh_fetch = true;
-        }
-        Some(FrontendCommand::LegacyBuild(command)) => {
-            config.locked_fetch = command.locked;
-        }
-        Some(FrontendCommand::LegacyRun(command)) => {
-            config.locked_fetch = command.locked;
-        }
-        Some(FrontendCommand::LegacyTest(command)) => {
-            config.locked_fetch = command.locked;
-        }
-        Some(FrontendCommand::LegacyCheck(command)) => {
-            config.locked_fetch = command.locked;
-        }
         _ => {}
     }
     config
+}
+
+fn command_output_mode(cli: &FrontendCli) -> Option<OutputMode> {
+    match cli.command.as_ref() {
+        Some(FrontendCommand::Work(command)) => Some(command.output.output),
+        Some(FrontendCommand::Pack(command)) => Some(command.output.output),
+        Some(FrontendCommand::Code(command)) => Some(command.output.output),
+        Some(FrontendCommand::Tool(command)) => Some(command.output.output),
+        Some(FrontendCommand::Complete(_)) | None => None,
+    }
+}
+
+fn command_profile(cli: &FrontendCli) -> Option<FrontendProfile> {
+    match cli.command.as_ref() {
+        Some(FrontendCommand::Code(command)) => Some(command.profile.selected_profile()),
+        _ => None,
+    }
 }
 
 fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<FrontendCommandResult> {
@@ -378,89 +379,8 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
                 dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
             }
         },
-        Some(FrontendCommand::LegacyInit(command)) => init_root(
-            &config.working_directory,
-            command.workspace,
-            package_target_kind(command.bin, command.lib),
-        ),
-        Some(FrontendCommand::LegacyNew(command)) => new_project_with_mode(
-            &config.working_directory,
-            &command.name,
-            command.workspace,
-            package_target_kind(command.bin, command.lib),
-        ),
-        Some(FrontendCommand::LegacyCompletion(command)) => {
-            completion_command(parse_completion_shell(command.shell))
-        }
         Some(FrontendCommand::Complete(command)) => {
             internal_complete_command_with_tokens(&command.tokens)
-        }
-        Some(FrontendCommand::LegacyBuild(command)) if command.target.input.is_some() => {
-            run_direct_compile(
-                &DirectCompileConfig {
-                    input: command.target.input.clone().unwrap_or_default(),
-                    std_root: command.roots.std_root.clone(),
-                    package_store_root: command.roots.package_store_root.clone(),
-                    mode: DirectCompileMode::Build {
-                        keep_build_dir: command.keep_build_dir,
-                    },
-                },
-                &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
-            )
-        }
-        Some(FrontendCommand::LegacyCheck(command)) if command.target.input.is_some() => {
-            run_direct_compile(
-                &DirectCompileConfig {
-                    input: command.target.input.clone().unwrap_or_default(),
-                    std_root: command.roots.std_root.clone(),
-                    package_store_root: command.roots.package_store_root.clone(),
-                    mode: DirectCompileMode::Check,
-                },
-                &config_for_roots(config, &command.roots),
-            )
-        }
-        Some(FrontendCommand::LegacyRun(command)) if command.target.input.is_some() => {
-            run_direct_compile(
-                &DirectCompileConfig {
-                    input: command.target.input.clone().unwrap_or_default(),
-                    std_root: command.roots.std_root.clone(),
-                    package_store_root: command.roots.package_store_root.clone(),
-                    mode: DirectCompileMode::Run {
-                        keep_build_dir: command.keep_build_dir,
-                        args: command.args.clone(),
-                    },
-                },
-                &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
-            )
-        }
-        Some(FrontendCommand::LegacyEmit(command)) if emit_has_direct_target(command) => {
-            match &command.command {
-                EmitSubcommand::Rust(emit) => run_direct_compile(
-                    &DirectCompileConfig {
-                        input: emit.target.input.clone().unwrap_or_default(),
-                        std_root: emit.roots.std_root.clone(),
-                        package_store_root: emit.roots.package_store_root.clone(),
-                        mode: DirectCompileMode::EmitRust {
-                            keep_build_dir: emit.keep_build_dir,
-                        },
-                    },
-                    &config_for_roots_keep_build(config, &emit.roots, emit.keep_build_dir),
-                ),
-                EmitSubcommand::Lowered(emit) => run_direct_compile(
-                    &DirectCompileConfig {
-                        input: emit.target.input.clone().unwrap_or_default(),
-                        std_root: emit.roots.std_root.clone(),
-                        package_store_root: emit.roots.package_store_root.clone(),
-                        mode: DirectCompileMode::EmitLowered,
-                    },
-                    &config_for_roots(config, &emit.roots),
-                ),
-            }
-        }
-        Some(command) => {
-            let discovered = discovered_root_for_command(command, &config.working_directory)?;
-            let workspace = load_frontend_workspace(&discovered, config)?;
-            dispatch_workspace_command(command, &workspace, config)
         }
     }
 }
@@ -599,108 +519,7 @@ fn dispatch_workspace_command(
                 "unexpected completion command reached workspace dispatcher",
             )),
         },
-        FrontendCommand::LegacyFetch(command) => {
-            fetch_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
-        }
-        FrontendCommand::LegacyUpdate(command) => {
-            update_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
-        }
-        FrontendCommand::LegacyBuild(command) => {
-            if let Some(input) = &command.target.input {
-                return run_direct_compile(
-                    &DirectCompileConfig {
-                        input: input.clone(),
-                        std_root: command.roots.std_root.clone(),
-                        package_store_root: command.roots.package_store_root.clone(),
-                        mode: DirectCompileMode::Build {
-                            keep_build_dir: command.keep_build_dir,
-                        },
-                    },
-                    &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
-                );
-            }
-            build_workspace_for_profile_with_config(
-                workspace,
-                &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
-                config.profile_override.unwrap_or(FrontendProfile::Debug),
-            )
-        }
-        FrontendCommand::LegacyCheck(command) => {
-            if let Some(input) = &command.target.input {
-                return run_direct_compile(
-                    &DirectCompileConfig {
-                        input: input.clone(),
-                        std_root: command.roots.std_root.clone(),
-                        package_store_root: command.roots.package_store_root.clone(),
-                        mode: DirectCompileMode::Check,
-                    },
-                    &config_for_roots(config, &command.roots),
-                );
-            }
-            check_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
-        }
-        FrontendCommand::LegacyRun(command) => {
-            if let Some(input) = &command.target.input {
-                return run_direct_compile(
-                    &DirectCompileConfig {
-                        input: input.clone(),
-                        std_root: command.roots.std_root.clone(),
-                        package_store_root: command.roots.package_store_root.clone(),
-                        mode: DirectCompileMode::Run {
-                            keep_build_dir: command.keep_build_dir,
-                            args: command.args.clone(),
-                        },
-                    },
-                    &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
-                );
-            }
-            run_workspace_with_args_and_config(
-                workspace,
-                &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
-                &command.args,
-            )
-        }
-        FrontendCommand::LegacyTest(_) => test_workspace_with_config(workspace, config),
-        FrontendCommand::LegacyEmit(command) => match command.command {
-            EmitSubcommand::Rust(ref emit) => {
-                if let Some(input) = &emit.target.input {
-                    return run_direct_compile(
-                        &DirectCompileConfig {
-                            input: input.clone(),
-                            std_root: emit.roots.std_root.clone(),
-                            package_store_root: emit.roots.package_store_root.clone(),
-                            mode: DirectCompileMode::EmitRust {
-                                keep_build_dir: emit.keep_build_dir,
-                            },
-                        },
-                        &config_for_roots_keep_build(config, &emit.roots, emit.keep_build_dir),
-                    );
-                }
-                emit_rust_with_config(
-                    workspace,
-                    &config_for_roots_keep_build(config, &emit.roots, emit.keep_build_dir),
-                )
-            }
-            EmitSubcommand::Lowered(ref emit) => {
-                if let Some(input) = &emit.target.input {
-                    return run_direct_compile(
-                        &DirectCompileConfig {
-                            input: input.clone(),
-                            std_root: emit.roots.std_root.clone(),
-                            package_store_root: emit.roots.package_store_root.clone(),
-                            mode: DirectCompileMode::EmitLowered,
-                        },
-                        &config_for_roots(config, &emit.roots),
-                    );
-                }
-                emit_lowered_with_config(workspace, &config_for_roots(config, &emit.roots))
-            }
-        },
-        FrontendCommand::LegacyClean(_) => clean_workspace_with_config(workspace, config),
-        FrontendCommand::LegacyCompletion(_)
-        | FrontendCommand::Complete(_)
-        | FrontendCommand::LegacyInit(_)
-        | FrontendCommand::LegacyNew(_) => Err(FrontendError::new(
+        FrontendCommand::Complete(_) => Err(FrontendError::new(
             FrontendErrorKind::Internal,
             "unexpected command reached workspace dispatcher",
         )),
@@ -745,7 +564,6 @@ fn discovered_root_for_command(
             CodeSubcommand::Test(command) => command.path.as_deref(),
             _ => None,
         },
-        FrontendCommand::LegacyTest(command) => command.path.as_deref(),
         _ => None,
     };
     if let Some(path) = explicit {
@@ -788,7 +606,7 @@ mod tests {
         std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
         std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
 
-        let (_, result) = run_command_from_args_in_dir(["fol", "check"], &root).unwrap();
+        let (_, result) = run_command_from_args_in_dir(["fol", "code", "check"], &root).unwrap();
 
         assert_eq!(result.command, "check");
         assert!(result.summary.contains("checked 1 workspace package(s)"));
@@ -816,12 +634,12 @@ mod tests {
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
 
-        let code = run_from_args_with_io(["fol", "emit", "--help"], &mut stdout, &mut stderr);
+        let code = run_from_args_with_io(["fol", "code", "emit", "--help"], &mut stdout, &mut stderr);
         let rendered = String::from_utf8(stdout).expect("help output should be utf8");
 
         assert_eq!(code, 0);
         assert!(stderr.is_empty());
-        assert!(rendered.contains("Usage: fol emit"));
+        assert!(rendered.contains("Usage: fol code emit"));
         assert!(rendered.contains("Commands:"));
         assert!(rendered.contains("rust"));
         assert!(rendered.contains("lowered"));

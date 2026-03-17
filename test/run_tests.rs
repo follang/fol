@@ -3334,7 +3334,7 @@ mod integration_tests {
         create_git_package_repo(&remote_root, "logtiny", "0.1.0");
         create_app_with_git_dependency(&app_root, &remote_root);
 
-        let output = run_fol_in_dir(&app_root, &["fetch"]);
+        let output = run_fol_in_dir(&app_root, &["pack", "fetch"]);
 
         assert!(
             output.status.success(),
@@ -3371,7 +3371,7 @@ mod integration_tests {
         fs::write(temp_root.join("fol.work.yaml"), "members:\n  - app\n  - tool\n")
             .expect("Should write workspace config");
 
-        let output = run_fol_in_dir(&temp_root, &["fetch"]);
+        let output = run_fol_in_dir(&temp_root, &["pack", "fetch"]);
 
         assert!(
             output.status.success(),
@@ -3402,7 +3402,7 @@ mod integration_tests {
         create_git_package_repo(&remote_root, "logtiny", "0.1.0");
         create_app_with_git_dependency(&app_root, &remote_root);
 
-        let initial = run_fol_in_dir(&app_root, &["fetch"]);
+        let initial = run_fol_in_dir(&app_root, &["pack", "fetch"]);
         assert!(initial.status.success(), "initial fetch should succeed");
         let lockfile = app_root.join("fol.lock");
         let pinned_before = read_lock_revision(&lockfile);
@@ -3418,7 +3418,7 @@ mod integration_tests {
             assert!(status.success(), "git {:?} should succeed", args);
         }
 
-        let locked = run_fol_in_dir(&app_root, &["fetch", "--locked"]);
+        let locked = run_fol_in_dir(&app_root, &["pack", "fetch", "--locked"]);
         assert!(
             locked.status.success(),
             "locked fetch should succeed after remote changes: stdout=\n{}\nstderr=\n{}",
@@ -3439,10 +3439,10 @@ mod integration_tests {
         create_git_package_repo(&remote_root, "logtiny", "0.1.0");
         create_app_with_git_dependency(&app_root, &remote_root);
 
-        let initial = run_fol_in_dir(&app_root, &["fetch"]);
+        let initial = run_fol_in_dir(&app_root, &["pack", "fetch"]);
         assert!(initial.status.success(), "initial fetch should succeed");
 
-        let offline = run_fol_in_dir(&app_root, &["fetch", "--offline"]);
+        let offline = run_fol_in_dir(&app_root, &["pack", "fetch", "--offline"]);
         assert!(
             offline.status.success(),
             "offline fetch should succeed with a warm cache: stdout=\n{}\nstderr=\n{}",
@@ -3467,7 +3467,7 @@ mod integration_tests {
             "https://github.com/bresilla/logtiny",
         );
 
-        let output = run_fol_in_dir(&app_root, &["fetch"]);
+        let output = run_fol_in_dir(&app_root, &["pack", "fetch"]);
 
         assert!(
             output.status.success(),

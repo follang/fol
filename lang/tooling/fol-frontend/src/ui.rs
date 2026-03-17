@@ -282,7 +282,7 @@ mod tests {
     fn human_error_rendering_uses_labeled_lines() {
         let output = FrontendOutput::new(FrontendOutputConfig::default());
         let error = FrontendError::new(FrontendErrorKind::WorkspaceNotFound, "missing root")
-            .with_note("run `fol init --bin`");
+            .with_note("run `fol work init --bin`");
 
         let rendered = output.render_human_error(&error);
 
