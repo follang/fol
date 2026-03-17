@@ -750,27 +750,43 @@ impl SemanticSnapshot {
         let Some(program) = self.current_program() else {
             return Vec::new();
         };
+        let qualifier_root = qualifier.split("::").next().unwrap_or(qualifier);
+        let imported_root = program
+            .all_symbols()
+            .any(|symbol| symbol.kind == fol_resolver::SymbolKind::ImportAlias && symbol.name == qualifier_root);
         let mut items = Vec::new();
 
         if let Some(scope_id) = program.namespace_scope(qualifier) {
-            items.extend(program.symbols_in_scope(scope_id).into_iter().map(|symbol| EditorCompletionItem {
-                label: symbol.name.clone(),
-                kind: symbol_kind_code(symbol.kind),
-                detail: Some(render_symbol_kind(symbol.kind).to_string()),
-                insert_text: None,
-            }));
+            items.extend(
+                program
+                    .symbols_in_scope(scope_id)
+                    .into_iter()
+                    .filter(|symbol| symbol_visibility_matches_namespace_root(symbol, imported_root))
+                    .map(|symbol| EditorCompletionItem {
+                        label: symbol.name.clone(),
+                        kind: symbol_kind_code(symbol.kind),
+                        detail: Some(render_symbol_kind(symbol.kind).to_string()),
+                        insert_text: None,
+                    }),
+            );
         }
 
         for source_unit in program.source_units.iter() {
             if source_unit.namespace != qualifier {
                 continue;
             }
-            items.extend(program.symbols_in_scope(source_unit.scope_id).into_iter().map(|symbol| EditorCompletionItem {
-                label: symbol.name.clone(),
-                kind: symbol_kind_code(symbol.kind),
-                detail: Some(render_symbol_kind(symbol.kind).to_string()),
-                insert_text: None,
-            }));
+            items.extend(
+                program
+                    .symbols_in_scope(source_unit.scope_id)
+                    .into_iter()
+                    .filter(|symbol| symbol_visibility_matches_namespace_root(symbol, imported_root))
+                    .map(|symbol| EditorCompletionItem {
+                        label: symbol.name.clone(),
+                        kind: symbol_kind_code(symbol.kind),
+                        detail: Some(render_symbol_kind(symbol.kind).to_string()),
+                        insert_text: None,
+                    }),
+            );
         }
 
         let prefix = format!("{qualifier}::");
@@ -1380,6 +1396,17 @@ fn dedupe_completion_items(items: Vec<EditorCompletionItem>) -> Vec<EditorComple
         }
     }
     filtered
+}
+
+fn symbol_visibility_matches_namespace_root(
+    symbol: &fol_resolver::ResolvedSymbol,
+    imported_root: bool,
+) -> bool {
+    if imported_root {
+        symbol.mounted_from.is_some()
+    } else {
+        symbol.mounted_from.is_none()
+    }
 }
 
 fn completion_context(document: &EditorDocument, position: LspPosition) -> CompletionContext {
@@ -2128,6 +2155,61 @@ mod tests {
 
         let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
         assert!(completion.items.iter().any(|item| item.label == "helper"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_keeps_local_and_imported_namespace_members_separate() {
+        let (root, uri) = sample_loc_workspace_root("completion_namespace_separation");
+        fs::create_dir_all(root.join("app/src/api")).unwrap();
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return api::\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("app/src/api/lib.fol"),
+            "fun[exp] local_helper(): int = {\n    return 7\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/src/lib.fol"),
+            "fun[exp] helper(): int = {\n    return 9\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(40),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 16,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"local_helper"));
+        assert!(!labels.contains(&"helper"));
 
         fs::remove_dir_all(root).ok();
     }
