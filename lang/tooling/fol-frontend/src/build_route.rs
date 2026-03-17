@@ -29,6 +29,13 @@ pub struct FrontendWorkspaceBuildRoute {
     pub members: Vec<FrontendMemberBuildRoute>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FrontendCompatibilityBuildRequest {
+    pub requested_step: String,
+    pub profile: crate::FrontendProfile,
+    pub run_args: Vec<String>,
+}
+
 impl FrontendBuildWorkflowMode {
     pub fn from_package_build_mode(mode: fol_package::PackageBuildMode) -> Option<Self> {
         match mode {
@@ -97,14 +104,62 @@ pub fn plan_workspace_build_route(
     })
 }
 
+pub fn execute_compatibility_build_route(
+    workspace: &FrontendWorkspace,
+    config: &crate::FrontendConfig,
+    request: &FrontendCompatibilityBuildRequest,
+) -> FrontendResult<crate::FrontendCommandResult> {
+    match request.requested_step.as_str() {
+        "build" => crate::build_workspace_for_profile_with_config(workspace, config, request.profile),
+        "check" => crate::check_workspace_with_config(workspace, config),
+        "run" => crate::run_workspace_with_args_and_config(workspace, config, &request.run_args),
+        "test" => crate::test_workspace_with_config(workspace, config),
+        step => Err(FrontendError::new(
+            FrontendErrorKind::InvalidInput,
+            format!("compatibility build execution does not support step '{step}'"),
+        )),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        plan_workspace_build_route, FrontendBuildStep, FrontendBuildWorkflowMode,
+        execute_compatibility_build_route, plan_workspace_build_route,
+        FrontendBuildStep, FrontendBuildWorkflowMode, FrontendCompatibilityBuildRequest,
         FrontendMemberBuildRoute, FrontendWorkspaceBuildRoute,
     };
-    use crate::{FrontendWorkspace, PackageRoot, WorkspaceRoot};
+    use crate::{FrontendConfig, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
+
+    fn compatibility_workspace_fixture(label: &str) -> FrontendWorkspace {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_{label}_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        let app = root.join("app");
+        fs::create_dir_all(app.join("src")).unwrap();
+        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(
+            app.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
+
+        FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app)],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        }
+    }
 
     #[test]
     fn workflow_mode_maps_package_build_modes_into_frontend_route_modes() {
@@ -261,5 +316,72 @@ mod tests {
         assert_eq!(route.members[2].mode, FrontendBuildWorkflowMode::Modern);
 
         fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn compatibility_executor_maps_build_steps_back_onto_existing_workspace_commands() {
+        let workspace = compatibility_workspace_fixture("compat_exec_build");
+
+        let result = execute_compatibility_build_route(
+            &workspace,
+            &FrontendConfig::default(),
+            &FrontendCompatibilityBuildRequest {
+                requested_step: "build".to_string(),
+                profile: crate::FrontendProfile::Debug,
+                run_args: Vec::new(),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.command, "build");
+        assert!(result.summary.contains("built 1 workspace package(s) into "));
+
+        fs::remove_dir_all(&workspace.root.root).ok();
+    }
+
+    #[test]
+    fn compatibility_executor_routes_run_steps_with_arguments() {
+        let workspace = compatibility_workspace_fixture("compat_exec_run");
+
+        let result = execute_compatibility_build_route(
+            &workspace,
+            &FrontendConfig::default(),
+            &FrontendCompatibilityBuildRequest {
+                requested_step: "run".to_string(),
+                profile: crate::FrontendProfile::Debug,
+                run_args: vec!["--demo".to_string()],
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.command, "run");
+        assert!(result.summary.contains("ran "));
+
+        fs::remove_dir_all(&workspace.root.root).ok();
+    }
+
+    #[test]
+    fn compatibility_executor_rejects_unknown_named_steps() {
+        let workspace = compatibility_workspace_fixture("compat_exec_unknown");
+
+        let error = execute_compatibility_build_route(
+            &workspace,
+            &FrontendConfig::default(),
+            &FrontendCompatibilityBuildRequest {
+                requested_step: "docs".to_string(),
+                profile: crate::FrontendProfile::Debug,
+                run_args: Vec::new(),
+            },
+        )
+        .expect_err("unknown compatibility step should fail");
+
+        assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
+        assert!(
+            error
+                .message()
+                .contains("compatibility build execution does not support step 'docs'")
+        );
+
+        fs::remove_dir_all(&workspace.root.root).ok();
     }
 }
