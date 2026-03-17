@@ -561,14 +561,13 @@ impl FrontendCli {
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildCommand, BuildStepArgs, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand,
-        CompletionCommand, CompletionShellArg, CompileRootArgs, DirectTargetArg,
-        EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand,
-        EmitSubcommand, FetchCommand, FrontendCli, FrontendCommand, FrontendOutputArgs,
-        FrontendProfile, FrontendProfileArgs, InitCommand, NewCommand, PackCommand,
-        PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand, TreeCommand,
-        TreeGenerateCommand, TreeSubcommand, UnitCommand, UpdateCommand, WorkCommand,
-        WorkSubcommand,
+        BuildCommand, BuildOptionArgs, BuildStepArgs, CheckCommand, CodeCommand, CodeSubcommand,
+        CompleteCommand, CompletionCommand, CompletionShellArg, CompileRootArgs, DirectTargetArg,
+        EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand,
+        FetchCommand, FrontendCli, FrontendCommand, FrontendOutputArgs, FrontendProfile,
+        FrontendProfileArgs, InitCommand, NewCommand, PackCommand, PackSubcommand, RunCommand,
+        TestCommand, ToolCommand, ToolSubcommand, TreeCommand, TreeGenerateCommand,
+        TreeSubcommand, UnitCommand, UpdateCommand, WorkCommand, WorkSubcommand,
     };
     use crate::OutputMode;
     use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -636,6 +635,8 @@ mod tests {
                     profile: default_profile_args(),
                     target: DirectTargetArg::default(),
                     roots: CompileRootArgs::default(),
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     locked: false,
                     keep_build_dir: false,
                     args: vec!["--flag".to_string(), "value".to_string()],
@@ -1250,6 +1251,8 @@ mod tests {
                         std_root: Some("/tmp/std".to_string()),
                         package_store_root: Some("/tmp/pkg".to_string()),
                     },
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     locked: false,
                     keep_build_dir: true,
                 }),
@@ -1288,6 +1291,8 @@ mod tests {
                     profile: default_profile_args(),
                     target: DirectTargetArg::default(),
                     roots: CompileRootArgs::default(),
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     locked: true,
                     keep_build_dir: false,
                 }),
@@ -1303,6 +1308,8 @@ mod tests {
                     profile: default_profile_args(),
                     target: DirectTargetArg::default(),
                     roots: CompileRootArgs::default(),
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     locked: true,
                     keep_build_dir: false,
                     args: Vec::new(),
@@ -1317,6 +1324,8 @@ mod tests {
                 command: CodeSubcommand::Test(TestCommand {
                     output: default_output_args(),
                     profile: default_profile_args(),
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     path: None,
                     locked: true,
                 }),
@@ -1332,6 +1341,8 @@ mod tests {
                     profile: default_profile_args(),
                     target: DirectTargetArg::default(),
                     roots: CompileRootArgs::default(),
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     locked: true,
                 }),
             }))

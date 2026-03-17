@@ -633,23 +633,6 @@ fn dispatch_workspace_code_route(
         .build_step_override
         .clone()
         .unwrap_or_else(|| FrontendBuildStep::default_for_code_subcommand(command).as_str().to_string());
-    let route = build_route::plan_workspace_build_route(workspace, requested_step.clone())?;
-    if route
-        .members
-        .iter()
-        .all(|member| member.mode == FrontendBuildWorkflowMode::Compatibility)
-    {
-        return build_route::execute_compatibility_build_route(
-            workspace,
-            config,
-            &FrontendCompatibilityBuildRequest {
-                requested_step,
-                profile: config.profile_override.unwrap_or(default_profile),
-                run_args: run_args.to_vec(),
-            },
-        );
-    }
-
     if matches!(command, CodeSubcommand::Emit(_)) {
         return Err(FrontendError::new(
             FrontendErrorKind::Internal,
@@ -657,39 +640,15 @@ fn dispatch_workspace_code_route(
         ));
     }
 
-    Err(unsupported_workspace_build_route_error(&route))
-}
-
-fn unsupported_workspace_build_route_error(
-    route: &FrontendWorkspaceBuildRoute,
-) -> FrontendError {
-    let unsupported_members = route
-        .members
-        .iter()
-        .filter(|member| member.mode != FrontendBuildWorkflowMode::Compatibility)
-        .map(|member| {
-            format!(
-                "{} ({})",
-                member.package_name,
-                match member.mode {
-                    FrontendBuildWorkflowMode::Compatibility => "compatibility",
-                    FrontendBuildWorkflowMode::Modern => "modern",
-                    FrontendBuildWorkflowMode::Hybrid => "hybrid",
-                }
-            )
-        })
-        .collect::<Vec<_>>();
-
-    FrontendError::new(
-        FrontendErrorKind::InvalidInput,
-        format!(
-            "workspace build-step routing does not support modern build.fol entry points yet for step '{}': {}",
-            route.requested_step,
-            unsupported_members.join(", ")
-        ),
+    build_route::execute_workspace_build_route(
+        workspace,
+        config,
+        &FrontendCompatibilityBuildRequest {
+            requested_step,
+            profile: config.profile_override.unwrap_or(default_profile),
+            run_args: run_args.to_vec(),
+        },
     )
-    .with_note("Only compatibility-only build.fol packages can run through workspace build/run/test/check right now.")
-    .with_note("Graph-backed modern build.fol execution still needs to be implemented.")
 }
 
 fn emit_has_direct_target(command: &EmitCommand) -> bool {
@@ -750,6 +709,7 @@ fn parse_completion_shell(shell: CompletionShellArg) -> CompletionShell {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::{FrontendOutputArgs, FrontendProfileArgs};
 
     fn compatibility_dispatch_fixture(label: &str) -> FrontendWorkspace {
         let root = std::env::temp_dir().join(format!(
@@ -763,7 +723,7 @@ mod tests {
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        std::fs::write(root.join("build.fol"), "def root: loc = \"src\";\n").unwrap();
         std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
 
         FrontendWorkspace {
@@ -790,7 +750,7 @@ mod tests {
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         let build_fol = if hybrid {
-            "def root: loc = \"src\"\ndef build(graph: int): int = graph;\n"
+            "def root: loc = \"src\";\ndef build(graph: int): int = graph;\n"
         } else {
             "def build(graph: int): int = graph;\n"
         };
@@ -906,6 +866,8 @@ mod tests {
     fn workspace_dispatch_routes_compatibility_build_steps_through_named_step_selection() {
         let workspace = compatibility_dispatch_fixture("check_step");
         let command = FrontendCommand::Code(CodeCommand {
+            output: FrontendOutputArgs::default(),
+            profile: FrontendProfileArgs::default(),
             command: CodeSubcommand::Build(BuildCommand::default()),
         });
         let config = FrontendConfig {
@@ -925,6 +887,8 @@ mod tests {
     fn workspace_dispatch_keeps_build_artifacts_on_routed_compatibility_execution() {
         let workspace = compatibility_dispatch_fixture("build_artifacts");
         let command = FrontendCommand::Code(CodeCommand {
+            output: FrontendOutputArgs::default(),
+            profile: FrontendProfileArgs::default(),
             command: CodeSubcommand::Build(BuildCommand::default()),
         });
 
@@ -950,6 +914,8 @@ mod tests {
     fn workspace_dispatch_keeps_run_summary_and_binary_artifact_on_routed_execution() {
         let workspace = compatibility_dispatch_fixture("run_artifacts");
         let command = FrontendCommand::Code(CodeCommand {
+            output: FrontendOutputArgs::default(),
+            profile: FrontendProfileArgs::default(),
             command: CodeSubcommand::Run(RunCommand::default()),
         });
 
@@ -965,37 +931,37 @@ mod tests {
     }
 
     #[test]
-    fn workspace_dispatch_rejects_modern_build_entry_packages_until_graph_execution_exists() {
+    fn workspace_dispatch_executes_modern_build_entry_packages_through_workspace_route() {
         let workspace = modern_dispatch_fixture("modern_only", false);
         let command = FrontendCommand::Code(CodeCommand {
+            output: FrontendOutputArgs::default(),
+            profile: FrontendProfileArgs::default(),
             command: CodeSubcommand::Build(BuildCommand::default()),
         });
 
-        let error = dispatch_workspace_command(&command, &workspace, &FrontendConfig::default())
-            .expect_err("modern build entry packages should be rejected");
+        let result = dispatch_workspace_command(&command, &workspace, &FrontendConfig::default())
+            .expect("modern build entry packages should execute");
 
-        assert_eq!(error.kind(), FrontendErrorKind::InvalidInput);
-        assert!(error
-            .message()
-            .contains("does not support modern build.fol entry points yet"));
-        assert!(error.message().contains("demo (modern)"));
-        assert_eq!(error.notes().len(), 2);
+        assert_eq!(result.command, "build");
+        assert!(result.summary.contains("built 1 workspace package(s) into "));
 
         std::fs::remove_dir_all(&workspace.root.root).ok();
     }
 
     #[test]
-    fn workspace_dispatch_rejects_hybrid_build_entry_packages_until_graph_execution_exists() {
+    fn workspace_dispatch_executes_hybrid_build_entry_packages_through_workspace_route() {
         let workspace = modern_dispatch_fixture("hybrid", true);
         let command = FrontendCommand::Code(CodeCommand {
+            output: FrontendOutputArgs::default(),
+            profile: FrontendProfileArgs::default(),
             command: CodeSubcommand::Check(CheckCommand::default()),
         });
 
-        let error = dispatch_workspace_command(&command, &workspace, &FrontendConfig::default())
-            .expect_err("hybrid build entry packages should be rejected");
+        let result = dispatch_workspace_command(&command, &workspace, &FrontendConfig::default())
+            .expect("hybrid build entry packages should execute");
 
-        assert_eq!(error.kind(), FrontendErrorKind::InvalidInput);
-        assert!(error.message().contains("demo (hybrid)"));
+        assert_eq!(result.command, "check");
+        assert!(result.summary.contains("checked 1 workspace package(s)"));
 
         std::fs::remove_dir_all(&workspace.root.root).ok();
     }

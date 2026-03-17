@@ -2,6 +2,19 @@
 
 Last updated: 2026-03-17
 
+Status at head:
+
+- the implementation roadmap below is complete
+- the repo now has the build-graph model, draft build API, evaluator/model
+  layers, routed workspace command plumbing, docs refresh, and checked-in
+  examples
+- the product end state is **not** fully complete yet:
+  - modern graph-backed `build.fol` execution is still not the live default
+  - workspace `fol code build/run/test/check` still execute only
+    compatibility-only packages and reject modern/hybrid entries explicitly
+  - the checked-in `examples/` tree reflects the current compatibility surface,
+    not the final graph-driven user experience
+
 This plan replaces the previous editor-focused milestone.
 
 The next active milestone is to turn `build.fol` from a very small package-control
@@ -981,9 +994,25 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Add a checked-in `examples/` tree with simple exe, static-lib, shared-lib, generated-file, and dependency-workspace sample projects.
 10. `[complete]` Add tests that validate the checked-in examples are discoverable and their formal package `build.fol` files parse cleanly.
 
-## Success Criteria
+## Roadmap Status
 
-This plan is complete when:
+The roadmap work in this file is complete as infrastructure and documentation
+work, but the product target is only partially complete.
+
+What is true at the current head:
+
+1. `build.fol` is the documented package entry file.
+2. `fol-package` has first-class build-graph, option, artifact, step,
+   dependency, codegen, and native modeling layers.
+3. frontend workspace `build` / `run` / `test` / `check` commands route through
+   an explicit build-planning layer.
+4. compatibility-only `build.fol` packages still work through that routed path.
+5. modern and hybrid build entries are still blocked with explicit unsupported
+   diagnostics until graph execution is wired through end-to-end.
+
+## Original Success Criteria
+
+The original product target for this plan was:
 
 1. `build.fol` is the actual build entrypoint for FOL projects.
 2. `fol code ...` runs through a real build graph.
@@ -992,3 +1021,19 @@ This plan is complete when:
 4. current `pkg` dependency/export semantics are preserved through migration.
 5. the result feels comparable to Zig’s build system in power, while still
    reading like FOL.
+
+## Remaining Product Polish
+
+These are the remaining product-level gaps between the completed roadmap work
+and the original end-state promise:
+
+1. Make graph-backed modern `build.fol` execution the live path for
+   `fol code build/run/test/check`.
+2. Replace the current compatibility-only workspace executor with real graph
+   step execution and artifact production.
+3. Promote checked-in examples from compatibility roots to true modern
+   graph-authored builds once that path is live.
+4. Tighten user-facing CLI summaries and diagnostics so modern build execution
+   feels first-class instead of experimental.
+5. Rescan `README`, `book`, and `PROGRESS.md` once modern execution lands so
+   the repo status files describe the product without roadmap caveats.

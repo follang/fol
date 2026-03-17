@@ -1,4 +1,6 @@
-use crate::{FrontendError, FrontendErrorKind, FrontendResult, FrontendWorkspace};
+use crate::{
+    FrontendError, FrontendErrorKind, FrontendProfile, FrontendResult, FrontendWorkspace,
+};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -32,8 +34,13 @@ pub struct FrontendWorkspaceBuildRoute {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FrontendCompatibilityBuildRequest {
     pub requested_step: String,
-    pub profile: crate::FrontendProfile,
+    pub profile: FrontendProfile,
     pub run_args: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FrontendMemberExecutionPlan {
+    available_steps: Vec<String>,
 }
 
 impl FrontendBuildWorkflowMode {
@@ -79,17 +86,7 @@ pub fn plan_workspace_build_route(
         .iter()
         .map(|member| {
             let metadata = fol_package::parse_package_metadata(&member.manifest_file)?;
-            let build = fol_package::parse_package_build(&member.root.join("build.fol"))?;
-            let mode = FrontendBuildWorkflowMode::from_package_build_mode(build.mode())
-                .ok_or_else(|| {
-                    FrontendError::new(
-                        FrontendErrorKind::Internal,
-                        format!(
-                            "workspace member '{}' has an unmappable build mode",
-                            member.root.display()
-                        ),
-                    )
-                })?;
+            let mode = load_member_build_mode(&member.root.join("build.fol"))?;
             Ok(FrontendMemberBuildRoute {
                 member_root: member.root.clone(),
                 package_name: metadata.name,
@@ -104,11 +101,68 @@ pub fn plan_workspace_build_route(
     })
 }
 
-pub fn execute_compatibility_build_route(
+fn load_member_build_mode(build_path: &std::path::Path) -> FrontendResult<FrontendBuildWorkflowMode> {
+    match fol_package::parse_package_build(build_path) {
+        Ok(build) => FrontendBuildWorkflowMode::from_package_build_mode(build.mode()).ok_or_else(|| {
+            FrontendError::new(
+                FrontendErrorKind::Internal,
+                format!(
+                    "workspace member build '{}' has an unmappable build mode",
+                    build_path.display()
+                ),
+            )
+        }),
+        Err(error) => {
+            let contents = std::fs::read_to_string(build_path)
+                .map_err(|_| FrontendError::from(error.clone()))?;
+            classify_build_mode_from_source(&contents).ok_or_else(|| FrontendError::from(error))
+        }
+    }
+}
+
+fn classify_build_mode_from_source(contents: &str) -> Option<FrontendBuildWorkflowMode> {
+    let mut has_compatibility_controls = false;
+    let mut has_build_entry = false;
+
+    for line in contents.lines().map(str::trim) {
+        if line.is_empty() || line.starts_with("//") || line.starts_with('#') {
+            continue;
+        }
+        if line.contains("def build(") {
+            has_build_entry = true;
+        }
+        if line.starts_with("def ") && (line.contains(": pkg") || line.contains(": loc")) {
+            has_compatibility_controls = true;
+        }
+    }
+
+    match (has_compatibility_controls, has_build_entry) {
+        (false, false) => None,
+        (true, false) => Some(FrontendBuildWorkflowMode::Compatibility),
+        (false, true) => Some(FrontendBuildWorkflowMode::Modern),
+        (true, true) => Some(FrontendBuildWorkflowMode::Hybrid),
+    }
+}
+
+pub fn execute_workspace_build_route(
     workspace: &FrontendWorkspace,
     config: &crate::FrontendConfig,
     request: &FrontendCompatibilityBuildRequest,
 ) -> FrontendResult<crate::FrontendCommandResult> {
+    let route = plan_workspace_build_route(workspace, request.requested_step.clone())?;
+    let member_plans = route
+        .members
+        .iter()
+        .map(plan_member_execution)
+        .collect::<FrontendResult<Vec<_>>>()?;
+    let requested_step = request.requested_step.as_str();
+    if !member_plans
+        .iter()
+        .any(|plan| plan.available_steps.iter().any(|step| step == requested_step))
+    {
+        return Err(unknown_workspace_build_step_error(requested_step, &route));
+    }
+
     match request.requested_step.as_str() {
         "build" => crate::build_workspace_for_profile_with_config(workspace, config, request.profile),
         "check" => crate::check_workspace_with_config(workspace, config),
@@ -116,19 +170,124 @@ pub fn execute_compatibility_build_route(
         "test" => crate::test_workspace_with_config(workspace, config),
         step => Err(FrontendError::new(
             FrontendErrorKind::InvalidInput,
-            format!("compatibility build execution does not support step '{step}'"),
+            format!("workspace build execution does not support step '{step}'"),
         )),
     }
+}
+
+fn plan_member_execution(
+    member: &FrontendMemberBuildRoute,
+) -> FrontendResult<FrontendMemberExecutionPlan> {
+    let requested_step = fol_package::BuildRequestedStep::Default(fol_package::BuildDefaultStepKind::Check);
+    let mut graph = fol_package::BuildGraph::new();
+    let check = graph.add_step(
+        fol_package::BuildStepKind::Check,
+        requested_step.name().to_string(),
+    );
+    let mut available_steps = vec![requested_step.name().to_string()];
+
+    if let Some(root_module) = default_runnable_root_module(&member.member_root)? {
+        let build = graph.add_step(fol_package::BuildStepKind::Default, "build");
+        graph.add_step_dependency(check, build);
+
+        let artifact = graph.add_artifact(fol_package::BuildArtifactKind::Executable, member.package_name.clone());
+        let module = graph.add_module(fol_package::BuildModuleKind::Source, root_module);
+        graph.add_artifact_module_input(artifact, module);
+
+        let run = graph.add_step(fol_package::BuildStepKind::Run, "run");
+        graph.add_step_dependency(run, build);
+        let test = graph.add_step(fol_package::BuildStepKind::Test, "test");
+        graph.add_step_dependency(test, build);
+
+        for step in [build, run, test] {
+            let order = fol_package::plan_step_order(&graph, step).map_err(|error| {
+                FrontendError::new(
+                    FrontendErrorKind::Internal,
+                    format!(
+                        "failed to plan build graph for package '{}': {error:?}",
+                        member.package_name
+                    ),
+                )
+            })?;
+            if order.is_empty() {
+                return Err(FrontendError::new(
+                    FrontendErrorKind::Internal,
+                    format!(
+                        "planned build graph for package '{}' produced an empty step order",
+                        member.package_name
+                    ),
+                ));
+            }
+        }
+
+        available_steps.extend(["build", "run", "test"].into_iter().map(str::to_string));
+    } else {
+        let order = fol_package::plan_step_order(&graph, check).map_err(|error| {
+            FrontendError::new(
+                FrontendErrorKind::Internal,
+                format!(
+                    "failed to plan build graph for package '{}': {error:?}",
+                    member.package_name
+                ),
+            )
+        })?;
+        if order.is_empty() {
+            return Err(FrontendError::new(
+                FrontendErrorKind::Internal,
+                format!(
+                    "planned build graph for package '{}' produced an empty step order",
+                    member.package_name
+                ),
+            ));
+        }
+    }
+
+    Ok(FrontendMemberExecutionPlan { available_steps })
+}
+
+fn default_runnable_root_module(member_root: &std::path::Path) -> FrontendResult<Option<String>> {
+    let main_path = member_root.join("src/main.fol");
+    if !main_path.is_file() {
+        return Ok(None);
+    }
+    let relative = main_path.strip_prefix(member_root).map_err(|error| {
+        FrontendError::new(
+            FrontendErrorKind::Internal,
+            format!(
+                "failed to compute build graph root module for '{}': {error}",
+                member_root.display()
+            ),
+        )
+    })?;
+    Ok(Some(relative.to_string_lossy().replace('\\', "/")))
+}
+
+fn unknown_workspace_build_step_error(
+    requested_step: &str,
+    route: &FrontendWorkspaceBuildRoute,
+) -> FrontendError {
+    let members = route
+        .members
+        .iter()
+        .map(|member| member.package_name.as_str())
+        .collect::<Vec<_>>();
+    FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "workspace build execution does not define step '{requested_step}' for workspace members: {}",
+            members.join(", ")
+        ),
+    )
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        execute_compatibility_build_route, plan_workspace_build_route,
+        execute_workspace_build_route, plan_workspace_build_route,
         FrontendBuildStep, FrontendBuildWorkflowMode, FrontendCompatibilityBuildRequest,
         FrontendMemberBuildRoute, FrontendWorkspaceBuildRoute,
     };
-    use crate::{FrontendConfig, FrontendWorkspace, PackageRoot, WorkspaceRoot};
+    use crate::{FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
 
     fn compatibility_workspace_fixture(label: &str) -> FrontendWorkspace {
@@ -143,7 +302,7 @@ mod tests {
         let app = root.join("app");
         fs::create_dir_all(app.join("src")).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), "def root: loc = \"src\";\n").unwrap();
         fs::write(
             app.join("src/main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -281,10 +440,10 @@ mod tests {
             )
             .unwrap();
         }
-        fs::write(compatibility.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(compatibility.join("build.fol"), "def root: loc = \"src\";\n").unwrap();
         fs::write(
             hybrid.join("build.fol"),
-            "def root: loc = \"src\"\ndef build(graph: int): int = graph;\n",
+            "def root: loc = \"src\";\ndef build(graph: int): int = graph;\n",
         )
         .unwrap();
         fs::write(
@@ -322,7 +481,7 @@ mod tests {
     fn compatibility_executor_maps_build_steps_back_onto_existing_workspace_commands() {
         let workspace = compatibility_workspace_fixture("compat_exec_build");
 
-        let result = execute_compatibility_build_route(
+        let result = execute_workspace_build_route(
             &workspace,
             &FrontendConfig::default(),
             &FrontendCompatibilityBuildRequest {
@@ -343,7 +502,7 @@ mod tests {
     fn compatibility_executor_routes_run_steps_with_arguments() {
         let workspace = compatibility_workspace_fixture("compat_exec_run");
 
-        let result = execute_compatibility_build_route(
+        let result = execute_workspace_build_route(
             &workspace,
             &FrontendConfig::default(),
             &FrontendCompatibilityBuildRequest {
@@ -364,7 +523,7 @@ mod tests {
     fn compatibility_executor_rejects_unknown_named_steps() {
         let workspace = compatibility_workspace_fixture("compat_exec_unknown");
 
-        let error = execute_compatibility_build_route(
+        let error = execute_workspace_build_route(
             &workspace,
             &FrontendConfig::default(),
             &FrontendCompatibilityBuildRequest {
@@ -379,9 +538,103 @@ mod tests {
         assert!(
             error
                 .message()
-                .contains("compatibility build execution does not support step 'docs'")
+                .contains("workspace build execution does not define step 'docs'")
         );
 
         fs::remove_dir_all(&workspace.root.root).ok();
+    }
+
+    #[test]
+    fn workspace_executor_routes_modern_build_members_through_default_graph_planning() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_modern_exec_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "def build(graph: int): int = graph;\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(root.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        };
+
+        let result = execute_workspace_build_route(
+            &workspace,
+            &FrontendConfig::default(),
+            &FrontendCompatibilityBuildRequest {
+                requested_step: "build".to_string(),
+                profile: FrontendProfile::Debug,
+                run_args: Vec::new(),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.command, "build");
+        assert!(result.summary.contains("built 1 workspace package(s) into "));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_executor_routes_modern_check_steps_even_without_a_runnable_binary() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_modern_check_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "def build(graph: int): int = graph;\n",
+        )
+        .unwrap();
+        fs::write(root.join("src/lib.fol"), "var[exp] answer: int = 42;\n").unwrap();
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(root.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        };
+
+        let result = execute_workspace_build_route(
+            &workspace,
+            &FrontendConfig::default(),
+            &FrontendCompatibilityBuildRequest {
+                requested_step: "check".to_string(),
+                profile: FrontendProfile::Debug,
+                run_args: Vec::new(),
+            },
+        )
+        .unwrap();
+
+        assert_eq!(result.command, "check");
+        assert!(result.summary.contains("checked 1 workspace package(s)"));
+
+        fs::remove_dir_all(root).ok();
     }
 }
