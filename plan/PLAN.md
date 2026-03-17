@@ -545,7 +545,7 @@ Round 1 slice tracker:
   explicit named run steps.
 - [x] Slice 7. Add graph-driven coverage for multiple buildable artifacts with
   explicit named build steps.
-- [ ] Slice 8. Tighten ambiguous default multi-artifact execution errors so they
+- [x] Slice 8. Tighten ambiguous default multi-artifact execution errors so they
   fail clearly without legacy `src/main.fol` fallback guessing.
 - [ ] Slice 9. Add modern/hybrid workspace regressions proving routed commands
   stay off compatibility-only assumptions.
