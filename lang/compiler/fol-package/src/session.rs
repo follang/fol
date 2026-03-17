@@ -286,6 +286,7 @@ impl PackageSession {
                 metadata,
                 build,
                 exports,
+                None,
                 syntax,
             ))
         });

@@ -1,4 +1,7 @@
-use crate::{PackageBuildDefinition, PackageIdentity, PackageMetadata, PackageSourceKind};
+use crate::{
+    build_dependency::DependencyBuildSurfaceSet, PackageBuildDefinition, PackageIdentity,
+    PackageMetadata, PackageSourceKind,
+};
 use fol_parser::ast::ParsedPackage;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -13,6 +16,7 @@ pub struct PreparedPackage {
     pub metadata: Option<PackageMetadata>,
     pub build: Option<PackageBuildDefinition>,
     pub exports: Vec<PreparedExportMount>,
+    pub dependency_surfaces: Option<DependencyBuildSurfaceSet>,
     pub syntax: ParsedPackage,
 }
 
@@ -23,6 +27,7 @@ impl PreparedPackage {
             metadata: None,
             build: None,
             exports: Vec::new(),
+            dependency_surfaces: None,
             syntax,
         }
     }
@@ -32,6 +37,7 @@ impl PreparedPackage {
         metadata: PackageMetadata,
         build: PackageBuildDefinition,
         exports: Vec<PreparedExportMount>,
+        dependency_surfaces: Option<DependencyBuildSurfaceSet>,
         syntax: ParsedPackage,
     ) -> Self {
         Self {
@@ -39,6 +45,7 @@ impl PreparedPackage {
             metadata: Some(metadata),
             build: Some(build),
             exports,
+            dependency_surfaces,
             syntax,
         }
     }
@@ -64,6 +71,7 @@ impl PreparedPackage {
 mod tests {
     use super::PreparedPackage;
     use crate::{
+        build_dependency::DependencyBuildSurfaceSet,
         build::{PackageBuildCompatibility, PackageBuildEntryPoint, PackageBuildEntryPointKind},
         BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageDependencyDecl,
         PackageDependencySourceKind, PackageIdentity, PackageLocator, PackageMetadata,
@@ -109,6 +117,7 @@ mod tests {
         assert!(prepared.metadata.is_none());
         assert!(prepared.build.is_none());
         assert!(prepared.exports.is_empty());
+        assert!(prepared.dependency_surfaces.is_none());
         assert_eq!(prepared.syntax.source_units.len(), 1);
     }
 
@@ -158,6 +167,7 @@ mod tests {
                 source_namespace: "json::src".to_string(),
                 mounted_namespace_suffix: None,
             }],
+            Some(DependencyBuildSurfaceSet::new()),
             syntax,
         );
 
@@ -177,6 +187,7 @@ mod tests {
             Some(1)
         );
         assert_eq!(prepared.exports.len(), 1);
+        assert!(prepared.dependency_surfaces.is_some());
         assert!(prepared.has_build_entry_point());
         assert_eq!(
             prepared.build_entry_point(),
