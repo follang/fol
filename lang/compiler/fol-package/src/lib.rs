@@ -154,16 +154,39 @@ mod tests {
         canonical_chain_metadata, canonical_graph_construction_capabilities,
         canonical_graph_method_signatures, canonical_handle_method_signatures,
         canonical_option_value_kinds, classify_semantic_build_mode,
-        collect_build_entry_candidates, forbidden_capability_message,
+        collect_build_entry_candidates, evaluate_build_source, forbidden_capability_message,
         validate_parsed_build_entry, AllowedBuildTimeOperation, BuildEntrySignatureExpectation,
-        BuildExecutionRepresentation, BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind,
-        BuildRuntimeExpr, BuildRuntimeHandle, BuildRuntimeHandleKind, BuildRuntimeLocalId,
-        BuildRuntimeMethodCall, BuildRuntimeReceiverKind, BuildRuntimeRecordField,
-        BuildRuntimeStmt, BuildRuntimeValue, BuildSemanticChainKind, BuildSemanticType,
-        BuildSemanticTypeFamily, ForbiddenBuildTimeOperation, NativeArtifactDefinition,
-        NativeArtifactKind, NativeArtifactSet, NativeLinkDirective, NativeLinkInput,
-        NativeLinkMode, PackageBuildMode, ParsedSourceUnitKind,
+        BuildEvaluationInputs, BuildEvaluationRequest, BuildExecutionRepresentation,
+        BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeHandle,
+        BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall,
+        BuildRuntimeReceiverKind, BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue,
+        BuildSemanticChainKind, BuildSemanticType, BuildSemanticTypeFamily,
+        ForbiddenBuildTimeOperation, NativeArtifactDefinition, NativeArtifactKind,
+        NativeArtifactSet, NativeLinkDirective, NativeLinkInput, NativeLinkMode,
+        PackageBuildMode, ParsedSourceUnitKind,
     };
+    use std::fs;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    fn temp_build_package(source: &str) -> (PathBuf, PathBuf) {
+        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+
+        let package_root = std::env::temp_dir().join(format!(
+            "fol_pkg_lib_eval_{}_{}",
+            std::process::id(),
+            NEXT_ID.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&package_root).expect("temp package root should be created");
+        fs::write(
+            package_root.join("package.yaml"),
+            "name: buildlib\nversion: 1.0.0\n",
+        )
+        .expect("package metadata should be written");
+        fs::write(package_root.join("build.fol"), source)
+            .expect("build source should be written");
+        (package_root.clone(), package_root.join("build.fol"))
+    }
 
     #[test]
     fn crate_root_reexports_native_surface_types() {
@@ -341,5 +364,40 @@ mod tests {
             ForbiddenBuildTimeOperation::AmbientEnvironmentAccess
         )
         .contains("declared inputs"));
+    }
+
+    #[test]
+    fn crate_root_reexports_phase_six_build_evaluation_surface() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var app = graph.add_exe({\n",
+            "        name = \"demo\",\n",
+            "        root = \"src/demo.fol\",\n",
+            "    });\n",
+            "    graph.add_run(app);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("crate root build evaluation should succeed")
+            .expect("crate root build evaluation should produce a graph");
+
+        assert_eq!(evaluated.evaluated.artifacts.len(), 1);
+        assert!(evaluated
+            .evaluated
+            .step_bindings
+            .iter()
+            .any(|binding| binding.step_name == "run"));
+        assert_eq!(evaluated.result.graph.artifacts().len(), 1);
     }
 }

@@ -490,7 +490,7 @@ Round 1 slice tracker:
   the active build-evaluation path.
 - [x] Slice 9. Remove remaining extractor-era re-exports, tests, and call sites
   from package/frontend code.
-- [ ] Slice 10. Re-export and test the full Phase 6 semantic build-evaluation
+- [x] Slice 10. Re-export and test the full Phase 6 semantic build-evaluation
   surface and lock the round.
 
 Tests required:
