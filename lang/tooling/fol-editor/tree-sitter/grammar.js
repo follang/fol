@@ -67,6 +67,8 @@ module.exports = grammar({
       $.var_decl,
       $.return_stmt,
       $.report_stmt,
+      $.panic_stmt,
+      $.unreachable_stmt,
       $.break_stmt,
       $.when_expr,
       $.loop_expr,
@@ -75,11 +77,14 @@ module.exports = grammar({
 
     return_stmt: $ => prec.right(seq('return', optional($.expr))),
     report_stmt: $ => prec.right(seq('report', $.expr)),
+    panic_stmt: $ => prec.right(seq('panic', $.expr)),
+    unreachable_stmt: _ => 'unreachable',
     break_stmt: $ => prec.right(seq('break', optional($.expr))),
     when_expr: $ => seq('when', '(', $.expr, ')', $.block),
     loop_expr: $ => seq('loop', optional($.expr), $.block),
 
     expr: $ => choice(
+      $.check_expr,
       $.call_expr,
       $.dot_intrinsic,
       $.qualified_path,
@@ -93,6 +98,7 @@ module.exports = grammar({
     ),
 
     call_expr: $ => seq(field('callee', $.qualified_path), '(', optional(commaSep1($.expr)), ')'),
+    check_expr: $ => seq('check', '(', $.expr, ')'),
     dot_intrinsic: $ => seq('.', field('name', $.identifier), '(', optional(commaSep1($.expr)), ')'),
     unwrap_expr: $ => seq(choice($.identifier, $.qualified_path), '!'),
     record_literal: $ => seq('{', optional(commaSep1($.field_init)), '}'),

@@ -8,6 +8,9 @@
 (loop_expr "loop" @keyword.repeat)
 (return_stmt "return" @keyword.return)
 (report_stmt "report" @keyword.exception)
+(panic_stmt "panic" @keyword.exception)
+(unreachable_stmt "unreachable" @keyword.exception)
+(check_expr "check" @keyword.exception)
 (break_stmt "break" @keyword.repeat)
 (source_kind) @keyword.import
 (decl_modifiers (modifier_list (identifier) @attribute))

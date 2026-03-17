@@ -162,6 +162,8 @@ mod tests {
             "loop_expr",
             "return_stmt",
             "report_stmt",
+            "panic_stmt",
+            "unreachable_stmt",
             "break_stmt",
         ] {
             assert!(grammar.contains(needle), "missing grammar rule marker: {needle}");
@@ -184,6 +186,7 @@ mod tests {
             "entry_type",
             "qualified_path",
             "dot_intrinsic",
+            "check_expr",
             "container_type",
             "shell_type",
             "nil_literal",
@@ -210,6 +213,7 @@ mod tests {
             "@keyword.type",
             "@keyword.conditional",
             "@keyword.return",
+            "@keyword.exception",
             "@type",
             "@function",
             "@method",
@@ -250,6 +254,14 @@ mod tests {
             "(log_decl \"log\" @keyword.function)",
             "(typ_decl \"typ\" @keyword.type)",
             "(ali_decl \"ali\" @keyword.type)",
+            "(when_expr \"when\" @keyword.conditional)",
+            "(loop_expr \"loop\" @keyword.repeat)",
+            "(return_stmt \"return\" @keyword.return)",
+            "(report_stmt \"report\" @keyword.exception)",
+            "(panic_stmt \"panic\" @keyword.exception)",
+            "(unreachable_stmt \"unreachable\" @keyword.exception)",
+            "(check_expr \"check\" @keyword.exception)",
+            "(break_stmt \"break\" @keyword.repeat)",
         ] {
             assert!(query.contains(needle), "missing declaration head capture: {needle}");
         }
@@ -437,6 +449,31 @@ mod tests {
             assert!(
                 showcase.contains(needle),
                 "showcase fixture lost declaration highlight capture: {needle}\n{showcase}"
+            );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn control_and_effect_keywords_stay_highlighted_in_real_fixtures() {
+        let root = build_bundle_root("keyword_effects");
+        let output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/intrinsics_panic_check/main.fol"),
+        );
+        assert!(output.status.success());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for needle in [
+            "keyword.conditional",
+            "keyword.return",
+            "keyword.exception",
+            "keyword.repeat",
+        ] {
+            assert!(
+                stdout.contains(needle),
+                "control/effect fixture lost keyword capture: {needle}\n{stdout}"
             );
         }
 
