@@ -470,6 +470,29 @@ Required work:
 - keep only minimal compatibility scanning for top-level migration-only controls
   if still needed
 
+Round 1 slice tracker:
+
+- [ ] Slice 1. Add a concrete Phase 6 implementation tracker for removing the
+  textual build-body extractor path.
+- [ ] Slice 2. Add semantic runtime artifact metadata for executable, test, and
+  library outputs produced by evaluated build programs.
+- [ ] Slice 3. Add semantic runtime step-binding metadata for default and named
+  steps that target evaluated artifacts.
+- [ ] Slice 4. Add a package-layer evaluated build-program surface that carries
+  runtime metadata plus the evaluated graph result.
+- [ ] Slice 5. Migrate package-layer build-source translation internals onto the
+  runtime metadata surface instead of extractor-era result objects.
+- [ ] Slice 6. Switch frontend build-route planning to consume semantic runtime
+  metadata from `fol-package`.
+- [ ] Slice 7. Translate the supported `build.fol` subset from parsed AST build
+  entries instead of line-based source splitting.
+- [ ] Slice 8. Delete the old extractor-era structs and helper functions from
+  the active build-evaluation path.
+- [ ] Slice 9. Remove remaining extractor-era re-exports, tests, and call sites
+  from package/frontend code.
+- [ ] Slice 10. Re-export and test the full Phase 6 semantic build-evaluation
+  surface and lock the round.
+
 Tests required:
 - prove modern packages execute without textual extraction
 - prove editor and CLI behavior stays stable
