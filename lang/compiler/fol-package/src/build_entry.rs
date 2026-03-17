@@ -116,11 +116,45 @@ pub fn collect_build_entry_candidates(
     candidates
 }
 
+pub fn validate_build_entry_cardinality(
+    syntax: &fol_parser::ast::ParsedPackage,
+    candidates: &[BuildEntryCandidate],
+) -> Result<ValidatedBuildEntry, Vec<BuildEntryValidationError>> {
+    match candidates {
+        [] => Err(vec![BuildEntryValidationError::new(
+            BuildEntryValidationErrorKind::MissingEntry,
+            "build.fol must declare exactly one semantic `build` entry",
+        )]),
+        [candidate] => Ok(ValidatedBuildEntry {
+            candidate: candidate.clone(),
+        }),
+        many => Err(many
+            .iter()
+            .map(|candidate| {
+                BuildEntryValidationError::with_origin(
+                    BuildEntryValidationErrorKind::MultipleEntries,
+                    "multiple semantic `build` entries were found in build source units",
+                    syntax
+                        .syntax_index
+                        .origin(candidate.syntax_id)
+                        .cloned()
+                        .unwrap_or(fol_parser::ast::SyntaxOrigin {
+                            file: Some(candidate.source_unit_path.clone()),
+                            line: 1,
+                            column: 1,
+                            length: 5,
+                        }),
+                )
+            })
+            .collect()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        collect_build_entry_candidates, BuildEntryCandidate, BuildEntrySignatureExpectation,
-        BuildEntryValidationError,
+        collect_build_entry_candidates, validate_build_entry_cardinality, BuildEntryCandidate,
+        BuildEntrySignatureExpectation, BuildEntryValidationError,
         BuildEntryValidationErrorKind, ValidatedBuildEntry,
     };
 
@@ -209,5 +243,29 @@ mod tests {
         assert_eq!(candidates[0].source_unit_path, "build.fol");
         assert_eq!(candidates[0].parameter_names, vec!["graph".to_string()]);
         assert_eq!(candidates[0].return_type_name.as_deref(), Some("Graph"));
+    }
+
+    #[test]
+    fn cardinality_validation_requires_exactly_one_build_entry() {
+        let syntax = fol_parser::ast::ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![],
+            syntax_index: fol_parser::ast::SyntaxIndex::default(),
+        };
+        let missing = validate_build_entry_cardinality(&syntax, &[])
+            .expect_err("missing semantic build entries should fail");
+        assert_eq!(missing[0].kind, BuildEntryValidationErrorKind::MissingEntry);
+
+        let candidate = BuildEntryCandidate {
+            source_unit_path: "build.fol".to_string(),
+            syntax_id: fol_parser::ast::SyntaxNodeId(1),
+            name: "build".to_string(),
+            parameter_names: vec!["graph".to_string()],
+            parameter_type_names: vec![Some("Graph".to_string())],
+            return_type_name: Some("Graph".to_string()),
+        };
+        let validated = validate_build_entry_cardinality(&syntax, &[candidate.clone()])
+            .expect("one semantic build entry should pass cardinality validation");
+        assert_eq!(validated.candidate, candidate);
     }
 }

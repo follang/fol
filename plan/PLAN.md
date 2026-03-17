@@ -322,7 +322,7 @@ Round 1 slice tracker:
 - [x] Slice 2. Add semantic build-entry signature expectation types.
 - [x] Slice 3. Add semantic build-entry candidate model types.
 - [x] Slice 4. Collect build-entry candidates from parsed build source units.
-- [ ] Slice 5. Validate semantic build-entry cardinality.
+- [x] Slice 5. Validate semantic build-entry cardinality.
 - [ ] Slice 6. Validate semantic build-entry parameter count and binding shape.
 - [ ] Slice 7. Validate semantic build-entry parameter type names.
 - [ ] Slice 8. Validate semantic build-entry return type names.
