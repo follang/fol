@@ -343,7 +343,7 @@ Round 2 slice tracker:
   state in `PackageBuildDefinition`.
 - [x] Slice 6. Remove prepared-package helper APIs that expose legacy build-entry
   metadata.
-- [ ] Slice 7. Move package-session coverage from legacy build-entry metadata to
+- [x] Slice 7. Move package-session coverage from legacy build-entry metadata to
   semantic build validation.
 - [ ] Slice 8. Add regression coverage proving parse-error fallback no longer
   classifies broken modern builds as valid modern/hybrid builds.

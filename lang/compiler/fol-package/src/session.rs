@@ -1128,7 +1128,7 @@ mod tests {
     }
 
     #[test]
-    fn package_session_keeps_modern_build_entry_metadata_for_formal_pkg_roots() {
+    fn package_session_keeps_semantic_build_entries_for_formal_pkg_roots() {
         let temp_root = unique_temp_root("pkg_modern_build_entry");
         let store_root = temp_root.join("store");
         fs::create_dir_all(store_root.join("json"))
@@ -1142,7 +1142,7 @@ mod tests {
             .expect("Should write the package source fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "def build(graph: int): int = graph;\n",
+            "def build(graph: Graph): Graph = graph;\n",
         )
         .expect("Should write the modern build entry fixture");
         let mut session = PackageSession::new();
@@ -1158,10 +1158,10 @@ mod tests {
             .expect("Package session should load pkg roots with modern build entry metadata");
 
         assert!(loaded.exports.is_empty());
-        assert_eq!(loaded.build_mode(), crate::build::PackageBuildMode::Empty);
-        assert!(loaded
-            .validate_semantic_build_entry(&crate::build_entry::BuildEntrySignatureExpectation::canonical())
-            .is_err());
+        assert_eq!(loaded.build_mode(), crate::build::PackageBuildMode::ModernOnly);
+        assert!(loaded.has_semantic_build_entry(
+            &crate::build_entry::BuildEntrySignatureExpectation::canonical()
+        ));
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary package-store fixture should be removable after the test");
