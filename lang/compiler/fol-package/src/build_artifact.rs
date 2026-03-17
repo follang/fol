@@ -53,6 +53,34 @@ pub struct BuildArtifactReport {
     pub output: BuildArtifactOutput,
 }
 
+impl BuildArtifactReport {
+    pub fn summary(&self) -> String {
+        match &self.output {
+            BuildArtifactOutput::EmittedRustCrate { crate_root } => {
+                format!("emitted-rust:{} root={crate_root}", self.artifact_name)
+            }
+            BuildArtifactOutput::Binary { binary_path } => {
+                format!("binary:{} path={binary_path}", self.artifact_name)
+            }
+            BuildArtifactOutput::GeneratedSourceBundle { root } => {
+                format!("generated:{} root={root}", self.artifact_name)
+            }
+            BuildArtifactOutput::DocsBundle { root } => {
+                format!("docs:{} root={root}", self.artifact_name)
+            }
+        }
+    }
+
+    pub fn primary_path(&self) -> &str {
+        match &self.output {
+            BuildArtifactOutput::EmittedRustCrate { crate_root } => crate_root,
+            BuildArtifactOutput::Binary { binary_path } => binary_path,
+            BuildArtifactOutput::GeneratedSourceBundle { root } => root,
+            BuildArtifactOutput::DocsBundle { root } => root,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildArtifactPipelinePlan {
     pub definition: BuildArtifactDefinition,
@@ -270,6 +298,28 @@ mod tests {
             }
             other => panic!("unexpected docs output: {other:?}"),
         }
+    }
+
+    #[test]
+    fn artifact_report_summaries_keep_frontend_facing_words_and_paths() {
+        let emitted = BuildArtifactReport {
+            artifact_name: "app".to_string(),
+            output: BuildArtifactOutput::EmittedRustCrate {
+                crate_root: ".fol/build/emit/rust/app".to_string(),
+            },
+        };
+        let binary = BuildArtifactReport {
+            artifact_name: "app".to_string(),
+            output: BuildArtifactOutput::Binary {
+                binary_path: ".fol/build/debug/app".to_string(),
+            },
+        };
+
+        assert!(emitted.summary().contains("emitted-rust:app"));
+        assert!(emitted.summary().contains(".fol/build/emit/rust/app"));
+        assert_eq!(emitted.primary_path(), ".fol/build/emit/rust/app");
+        assert!(binary.summary().contains("binary:app"));
+        assert_eq!(binary.primary_path(), ".fol/build/debug/app");
     }
 
     #[test]
