@@ -16,9 +16,7 @@ pub enum Typo {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum Slip {
-    // Parser errors
-}
+pub struct Slip;
 
 impl std::error::Error for Flaw {}
 impl std::error::Error for Typo {}
