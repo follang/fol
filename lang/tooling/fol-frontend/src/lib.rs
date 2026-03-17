@@ -173,7 +173,7 @@ where
                 stdout,
             )
         }
-        Ok(cli) if cli.command.is_none() && cli.input.is_none() => {
+        Ok(cli) if cli.command.is_none() => {
             let mut command = FrontendCli::command();
             match writeln!(stdout, "{}", command.render_long_help()) {
                 Ok(()) => 0,

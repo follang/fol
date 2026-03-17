@@ -398,7 +398,8 @@ pub struct NewCommand {
 pub struct FrontendCli {
     #[arg(
         value_name = "FILE_OR_FOLDER",
-        help = "Input FOL file or folder to build directly"
+        help = "Input FOL file or folder to build directly",
+        hide = true
     )]
     pub input: Option<String>,
 
@@ -864,8 +865,8 @@ mod tests {
         assert!(!help.contains("--dump-lowered"));
         assert!(!help.contains("--emit-rust"));
         assert!(!help.contains("--keep-build-dir"));
-        assert!(help.contains("Arguments:"));
-        assert!(help.contains("FILE_OR_FOLDER"));
+        assert!(!help.contains("Arguments:"));
+        assert!(!help.contains("FILE_OR_FOLDER"));
     }
 
     #[test]
@@ -878,8 +879,6 @@ mod tests {
         assert!(help.contains("[aliases: p]"));
         assert!(help.contains("code"));
         assert!(help.contains("[aliases: c]"));
-        assert!(help.contains("editor"));
-        assert!(help.contains("[aliases: e]"));
         assert!(help.contains("tool"));
         assert!(help.contains("[aliases: t]"));
     }

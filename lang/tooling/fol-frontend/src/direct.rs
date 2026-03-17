@@ -308,8 +308,10 @@ pub fn run_direct_compile_with_io(
 
     match compile_file(&config.input, &resolver_config, &mut diagnostics) {
         Ok(lowered) => {
-            if matches!(config.mode, DirectCompileMode::EmitLowered | DirectCompileMode::Auto { dump_lowered: true, .. })
-                && frontend_config.output.mode != OutputMode::Json
+            if matches!(
+                config.mode,
+                DirectCompileMode::EmitLowered | DirectCompileMode::Auto { dump_lowered: true, .. }
+            ) && frontend_config.output.mode != OutputMode::Json
                 && !diagnostics.has_errors()
             {
                 let _ = writeln!(stdout, "{}", render_lowered_workspace(&lowered));
@@ -323,12 +325,15 @@ pub fn run_direct_compile_with_io(
                             let _ = writeln!(stdout, "✓ Compilation successful!");
                         }
                     } else {
-                    diagnostics.add_error(
-                        &BasicError {
-                            message: format!("{} does not contain a runnable entrypoint", config.input),
-                        },
-                        None,
-                    );
+                        diagnostics.add_error(
+                            &BasicError {
+                                message: format!(
+                                    "{} does not contain a runnable entrypoint",
+                                    config.input
+                                ),
+                            },
+                            None,
+                        );
                     }
                 } else if !matches!(config.mode, DirectCompileMode::Check | DirectCompileMode::EmitLowered) {
                     let backend_session = BackendSession::new(lowered);

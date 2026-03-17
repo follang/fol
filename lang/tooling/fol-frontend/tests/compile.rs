@@ -138,10 +138,11 @@ fn build_command_reports_emitted_crate_and_binary_through_public_api() {
     let result = build_workspace(&workspace).expect("build should succeed");
 
     assert_eq!(result.command, "build");
-    assert_eq!(result.artifacts.len(), 2);
-    assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::EmittedRust);
-    assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::Binary);
-    assert!(result.artifacts[1]
+    assert_eq!(result.artifacts.len(), 3);
+    assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
+    assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::EmittedRust);
+    assert_eq!(result.artifacts[2].kind, FrontendArtifactKind::Binary);
+    assert!(result.artifacts[2]
         .path
         .as_ref()
         .expect("binary path should exist")
@@ -204,9 +205,10 @@ fn emit_rust_command_reports_generated_crate_paths_through_public_api() {
     let result = emit_rust(&workspace).expect("emit rust should succeed");
 
     assert_eq!(result.command, "emit rust");
-    assert_eq!(result.artifacts.len(), 1);
-    assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::EmittedRust);
-    assert!(result.artifacts[0].path.as_ref().expect("crate path should exist").is_dir());
+    assert_eq!(result.artifacts.len(), 2);
+    assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
+    assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::EmittedRust);
+    assert!(result.artifacts[1].path.as_ref().expect("crate path should exist").is_dir());
 
     fs::remove_dir_all(root).ok();
 }
@@ -219,9 +221,10 @@ fn emit_lowered_command_reports_snapshot_paths_through_public_api() {
     let result = emit_lowered(&workspace).expect("emit lowered should succeed");
 
     assert_eq!(result.command, "emit lowered");
-    assert_eq!(result.artifacts.len(), 1);
-    assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::LoweredSnapshot);
-    assert!(result.artifacts[0]
+    assert_eq!(result.artifacts.len(), 2);
+    assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
+    assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::LoweredSnapshot);
+    assert!(result.artifacts[1]
         .path
         .as_ref()
         .expect("snapshot path should exist")
@@ -231,30 +234,34 @@ fn emit_lowered_command_reports_snapshot_paths_through_public_api() {
 }
 
 #[test]
-fn direct_file_or_folder_compilation_is_frontend_owned() {
+fn direct_file_or_folder_compilation_is_code_subcommand_owned() {
     let root = temp_root("direct_compile");
     let workspace = sample_workspace(&root);
-    let package_root = workspace.members[0].root.clone();
+    let entry_file = workspace.members[0].root.join("src/main.fol");
 
-    let (_, built) =
-        run_command_from_args_in_dir(["fol", package_root.to_string_lossy().as_ref()], &root)
-            .expect("direct package compile should succeed");
+    let (_, built) = run_command_from_args_in_dir(
+        ["fol", "code", "build", entry_file.to_string_lossy().as_ref()],
+        &root,
+    )
+    .expect("direct package compile should succeed");
     let (_, emitted) = run_command_from_args_in_dir(
         [
             "fol",
-            "--emit-rust",
-            package_root.to_string_lossy().as_ref(),
+            "code",
+            "emit",
+            "rust",
+            entry_file.to_string_lossy().as_ref(),
         ],
         &root,
     )
     .expect("direct emit rust should succeed");
 
-    assert_eq!(built.command, "compile");
+    assert_eq!(built.command, "build");
     assert!(built
         .artifacts
         .iter()
         .any(|artifact| artifact.kind == FrontendArtifactKind::Binary));
-    assert_eq!(emitted.command, "compile");
+    assert_eq!(emitted.command, "emit rust");
     assert!(emitted
         .artifacts
         .iter()
