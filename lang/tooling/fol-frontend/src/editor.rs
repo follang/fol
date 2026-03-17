@@ -37,6 +37,11 @@ pub fn editor_lsp_command(config: &FrontendConfig) -> FrontendResult<FrontendCom
         .map_err(lower_editor_error)
 }
 
+pub fn editor_lsp_stdio(config: &FrontendConfig) -> FrontendResult<()> {
+    let _ = config;
+    fol_editor::run_lsp_stdio(fol_editor::EditorConfig::default()).map_err(lower_editor_error)
+}
+
 pub fn editor_parse_command(
     path: &str,
     _config: &FrontendConfig,

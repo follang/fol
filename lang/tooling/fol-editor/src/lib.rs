@@ -26,6 +26,7 @@ pub use documents::{EditorDocument, EditorDocumentStore};
 pub use error::{EditorError, EditorErrorKind, EditorResult};
 pub use lsp::{
     EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
+    JsonRpcError, run_lsp_stdio,
     LspDefinitionParams, LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
     LspDidOpenTextDocumentParams, LspDocumentSymbol, LspDocumentSymbolParams, LspHover,
     LspHoverParams, LspInitializeParams, LspInitializeResult, LspPublishDiagnosticsParams,
@@ -71,6 +72,7 @@ mod tests {
         EditorDocumentPath, EditorDocumentStore, EditorDocumentUri, EditorError, EditorErrorKind,
         EditorLspServer, EditorResult, EditorSession, LspDiagnosticSeverity, CRATE_NAME,
     };
+    use std::io::Cursor;
     use std::path::PathBuf;
 
     #[test]
@@ -155,5 +157,29 @@ mod tests {
         assert!(mapping.package_root.is_some());
         assert!(server.session.documents.is_empty());
         assert_eq!(diagnostic.severity, LspDiagnosticSeverity::Error);
+    }
+
+    #[test]
+    fn lsp_stdio_loop_handles_initialize_and_exit() {
+        let initialize = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}";
+        let exit = "{\"jsonrpc\":\"2.0\",\"method\":\"exit\",\"params\":null}";
+        let input = format!(
+            "Content-Length: {}\r\n\r\n{}Content-Length: {}\r\n\r\n{}",
+            initialize.len(),
+            initialize,
+            exit.len(),
+            exit,
+        );
+        let mut output = Vec::new();
+        crate::lsp::run_lsp_stdio_with_io(
+            Cursor::new(input.into_bytes()),
+            &mut output,
+            EditorConfig::default(),
+        )
+        .unwrap();
+        let rendered = String::from_utf8(output).unwrap();
+        assert!(rendered.contains("Content-Length:"));
+        assert!(!rendered.contains("\"method\":\"initialize\""));
+        assert!(rendered.contains("\"hover_provider\":true"));
     }
 }

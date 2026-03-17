@@ -45,7 +45,7 @@ pub use direct::{
     run_direct_compile, run_direct_compile_with_io, DirectCompileConfig, DirectCompileMode,
 };
 pub use editor::{
-    editor_highlight_command, editor_lsp_command, editor_parse_command, editor_symbols_command,
+    editor_highlight_command, editor_lsp_command, editor_lsp_stdio, editor_parse_command, editor_symbols_command,
     editor_tree_generate_command,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
@@ -180,6 +180,24 @@ where
                 Ok(()) => 0,
                 Err(error) => {
                     let _ = writeln!(stderr, "FrontendInternal: {error}");
+                    1
+                }
+            }
+        }
+        Ok(cli) if matches!(cli.command.as_ref(), Some(FrontendCommand::Tool(command)) if matches!(command.command, ToolSubcommand::Lsp(_))) => {
+            let config = frontend_config_from_cli(&cli, None);
+            match editor_lsp_stdio(&config) {
+                Ok(()) => 0,
+                Err(error) => {
+                    let output = FrontendOutput::new(FrontendOutputConfig::default());
+                    match output.render_error(&error) {
+                        Ok(rendered) => {
+                            let _ = writeln!(stderr, "{rendered}");
+                        }
+                        Err(render_error) => {
+                            let _ = writeln!(stderr, "FrontendInternal: {render_error}");
+                        }
+                    }
                     1
                 }
             }

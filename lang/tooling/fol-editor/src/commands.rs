@@ -108,6 +108,18 @@ pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSum
         ));
     }
 
+    let cleaned_existing_root = if path.is_dir() {
+        std::fs::remove_dir_all(path).map_err(|error| {
+            EditorError::new(
+                EditorErrorKind::Internal,
+                format!("failed to clear existing tree output root '{}': {error}", path.display()),
+            )
+        })?;
+        true
+    } else {
+        false
+    };
+
     let queries_root = path.join("queries").join("fol");
     let corpus_root = path.join("test").join("corpus");
     std::fs::create_dir_all(&queries_root).map_err(|error| {
@@ -142,6 +154,7 @@ pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSum
         format!("tree-sitter bundle ready at {}", path.display()),
     )
     .with_detail(format!("root={}", path.display()))
+    .with_detail(format!("cleaned_existing_root={cleaned_existing_root}"))
     .with_detail(format!("query_files={}", fol_tree_sitter_query_snapshots().len()))
     .with_detail(format!("corpus_files={}", fol_tree_sitter_corpus().len()))
     .with_detail(format!("grammar_bytes={}", fol_tree_sitter_grammar().len()));
@@ -333,6 +346,31 @@ mod tests {
             .details
             .iter()
             .any(|detail| detail.contains("parser_generated=")));
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn tree_generate_bundle_clears_existing_output_roots() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_editor_tree_bundle_stale_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        let stale_file = root.join("queries/fol/stale.scm");
+        std::fs::create_dir_all(stale_file.parent().unwrap()).unwrap();
+        std::fs::write(&stale_file, "(broken)").unwrap();
+
+        let summary = editor_tree_generate_bundle(&root).unwrap();
+
+        assert!(!stale_file.exists());
+        assert!(summary
+            .details
+            .iter()
+            .any(|detail| detail == "cleaned_existing_root=true"));
 
         std::fs::remove_dir_all(root).ok();
     }

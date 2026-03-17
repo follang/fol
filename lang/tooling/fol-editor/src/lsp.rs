@@ -4,6 +4,7 @@ use crate::{
     EditorResult, EditorSession, EditorWorkspaceMapping, LspDiagnostic, LspLocation, LspPosition,
     LspRange,
 };
+use fol_diagnostics::Diagnostic;
 use fol_diagnostics::ToDiagnostic;
 use fol_package::{PackageError, PackageSession, PackageSourceKind};
 use fol_parser::ast::{AstParser, ParseError};
@@ -11,6 +12,7 @@ use fol_resolver::{Resolver, ResolverError};
 use fol_stream::{FileStream, Source, SourceType};
 use fol_typecheck::{TypecheckError, Typechecker};
 use serde::{Deserialize, Serialize};
+use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -43,21 +45,32 @@ pub struct JsonRpcResponse {
     pub id: JsonRpcId,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub result: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<JsonRpcError>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct JsonRpcError {
+    pub code: i64,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspServerInfo {
     pub name: String,
     pub version: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspTextDocumentSyncOptions {
     pub open_close: bool,
     pub change: u8,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspServerCapabilities {
     pub text_document_sync: LspTextDocumentSyncOptions,
     pub hover_provider: bool,
@@ -66,6 +79,7 @@ pub struct LspServerCapabilities {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspInitializeParams {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub root_uri: Option<String>,
@@ -74,12 +88,14 @@ pub struct LspInitializeParams {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspInitializeResult {
     pub capabilities: LspServerCapabilities,
     pub server_info: LspServerInfo,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspTextDocumentItem {
     pub uri: String,
     pub language_id: String,
@@ -88,61 +104,72 @@ pub struct LspTextDocumentItem {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspVersionedTextDocumentIdentifier {
     pub uri: String,
     pub version: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspTextDocumentContentChangeEvent {
     pub text: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspDidOpenTextDocumentParams {
     pub text_document: LspTextDocumentItem,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspDidChangeTextDocumentParams {
     pub text_document: LspVersionedTextDocumentIdentifier,
     pub content_changes: Vec<LspTextDocumentContentChangeEvent>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspDidCloseTextDocumentParams {
     pub text_document: LspVersionedTextDocumentIdentifier,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspPublishDiagnosticsParams {
     pub uri: String,
     pub diagnostics: Vec<LspDiagnostic>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspTextDocumentIdentifier {
     pub uri: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspHoverParams {
     pub text_document: LspTextDocumentIdentifier,
     pub position: LspPosition,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspDefinitionParams {
     pub text_document: LspTextDocumentIdentifier,
     pub position: LspPosition,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspDocumentSymbolParams {
     pub text_document: LspTextDocumentIdentifier,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspHover {
     pub contents: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -150,6 +177,7 @@ pub struct LspHover {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspDocumentSymbol {
     pub name: String,
     pub kind: u8,
@@ -192,6 +220,7 @@ impl EditorLspServer {
                     },
                 })
                 .expect("initialize result should serialize")),
+                error: None,
             })),
             "shutdown" => {
                 self.session.shutdown_requested = true;
@@ -199,6 +228,7 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(serde_json::Value::Null),
+                    error: None,
                 }))
             }
             "textDocument/hover" => {
@@ -211,6 +241,7 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(serde_json::to_value(result).expect("hover should serialize")),
+                    error: None,
                 }))
             }
             "textDocument/definition" => {
@@ -225,6 +256,7 @@ impl EditorLspServer {
                     result: Some(
                         serde_json::to_value(result).expect("definition result should serialize"),
                     ),
+                    error: None,
                 }))
             }
             "textDocument/documentSymbol" => {
@@ -236,6 +268,7 @@ impl EditorLspServer {
                     result: Some(
                         serde_json::to_value(result).expect("document symbols should serialize"),
                     ),
+                    error: None,
                 }))
             }
             _ => Err(EditorError::new(
@@ -370,6 +403,160 @@ impl EditorLspServer {
             .cloned()
             .unwrap_or(map_document_workspace(document.path.as_path(), &self.session.config)?))
     }
+}
+
+pub fn run_lsp_stdio(config: EditorConfig) -> EditorResult<()> {
+    let stdin = std::io::stdin();
+    let stdout = std::io::stdout();
+    run_lsp_stdio_with_io(stdin.lock(), stdout.lock(), config)
+}
+
+pub(crate) fn run_lsp_stdio_with_io<R: BufRead, W: Write>(
+    mut reader: R,
+    mut writer: W,
+    config: EditorConfig,
+) -> EditorResult<()> {
+    let mut server = EditorLspServer::new(config);
+
+    while let Some(payload) = read_jsonrpc_payload(&mut reader)? {
+        let value: serde_json::Value = serde_json::from_slice(&payload).map_err(|error| {
+            EditorError::new(
+                EditorErrorKind::InvalidInput,
+                format!("failed to decode JSON-RPC payload: {error}"),
+            )
+        })?;
+
+        if value.get("id").is_some() {
+            let request: JsonRpcRequest = serde_json::from_value(value).map_err(|error| {
+                EditorError::new(
+                    EditorErrorKind::InvalidInput,
+                    format!("failed to decode JSON-RPC request: {error}"),
+                )
+            })?;
+            let id = request.id.clone();
+            match server.handle_request(request) {
+                Ok(Some(response)) => {
+                    write_jsonrpc_message(&mut writer, &response)?;
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    let response = JsonRpcResponse {
+                        jsonrpc: "2.0".to_string(),
+                        id,
+                        result: None,
+                        error: Some(JsonRpcError {
+                            code: -32603,
+                            message: error.message,
+                        }),
+                    };
+                    write_jsonrpc_message(&mut writer, &response)?;
+                }
+            }
+        } else {
+            let notification: JsonRpcNotification =
+                serde_json::from_value(value).map_err(|error| {
+                    EditorError::new(
+                        EditorErrorKind::InvalidInput,
+                        format!("failed to decode JSON-RPC notification: {error}"),
+                    )
+                })?;
+            let should_exit = notification.method == "exit";
+            let diagnostics = server.handle_notification(notification)?;
+            for diagnostics in diagnostics {
+                write_jsonrpc_message(
+                    &mut writer,
+                    &JsonRpcNotification {
+                        jsonrpc: "2.0".to_string(),
+                        method: "textDocument/publishDiagnostics".to_string(),
+                        params: Some(
+                            serde_json::to_value(diagnostics)
+                                .expect("publish diagnostics should serialize"),
+                        ),
+                    },
+                )?;
+            }
+            if should_exit || server.session.shutdown_requested {
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn read_jsonrpc_payload(reader: &mut impl BufRead) -> EditorResult<Option<Vec<u8>>> {
+    let mut content_length = None;
+    let mut line = String::new();
+
+    loop {
+        line.clear();
+        let read = reader.read_line(&mut line).map_err(|error| {
+            EditorError::new(
+                EditorErrorKind::Internal,
+                format!("failed to read LSP header line: {error}"),
+            )
+        })?;
+        if read == 0 {
+            return Ok(None);
+        }
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            break;
+        }
+        if let Some(value) = trimmed.strip_prefix("Content-Length:") {
+            let length = value.trim().parse::<usize>().map_err(|error| {
+                EditorError::new(
+                    EditorErrorKind::InvalidInput,
+                    format!("invalid Content-Length header: {error}"),
+                )
+            })?;
+            content_length = Some(length);
+        }
+    }
+
+    let content_length = content_length.ok_or_else(|| {
+        EditorError::new(
+            EditorErrorKind::InvalidInput,
+            "missing Content-Length header in LSP message",
+        )
+    })?;
+
+    let mut payload = vec![0; content_length];
+    reader.read_exact(&mut payload).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::Internal,
+            format!("failed to read LSP payload: {error}"),
+        )
+    })?;
+    Ok(Some(payload))
+}
+
+fn write_jsonrpc_message(writer: &mut impl Write, value: &impl Serialize) -> EditorResult<()> {
+    let body = serde_json::to_vec(value).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::Internal,
+            format!("failed to encode JSON-RPC payload: {error}"),
+        )
+    })?;
+    write!(writer, "Content-Length: {}\r\n\r\n", body.len()).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::Internal,
+            format!("failed to write LSP header: {error}"),
+        )
+    })?;
+    writer.write_all(&body).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::Internal,
+            format!("failed to write LSP payload: {error}"),
+        )
+    })?;
+    writer.flush().map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::Internal,
+            format!("failed to flush LSP payload: {error}"),
+        )
+    })?;
+    Ok(())
 }
 
 fn from_params<T: serde::de::DeserializeOwned>(params: Option<serde_json::Value>) -> EditorResult<T> {
@@ -545,7 +732,11 @@ fn analyze_document_semantics(
 ) -> EditorResult<SemanticSnapshot> {
     let overlay = materialize_analysis_overlay(mapping, document)?;
     if let Some(package_root) = overlay.package_root() {
-        let parser_diags = parse_directory_diagnostics(package_root)?;
+        let parser_diags = parse_directory_diagnostics(package_root)?
+            .into_iter()
+            .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
+            .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
+            .collect::<Vec<_>>();
         if !parser_diags.is_empty() {
             return Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
@@ -555,7 +746,7 @@ fn analyze_document_semantics(
         }
 
         let mut package_session = PackageSession::new();
-        let prepared = match package_session.load_directory_package(package_root, PackageSourceKind::Local) {
+        let prepared = match package_session.load_directory_package(package_root, PackageSourceKind::Entry) {
             Ok(prepared) => prepared,
             Err(error) => {
                 return Ok(SemanticSnapshot {
@@ -574,7 +765,9 @@ fn analyze_document_semantics(
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
                     diagnostics: errors
                         .iter()
-                        .map(|error| diagnostic_to_lsp(&error.to_diagnostic()))
+                        .map(|error| error.to_diagnostic())
+                        .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
+                        .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
                         .collect(),
                     typed_workspace: None,
                 })
@@ -592,7 +785,9 @@ fn analyze_document_semantics(
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
                 diagnostics: errors
                     .iter()
-                    .map(|error| diagnostic_to_lsp(&error.to_diagnostic()))
+                    .map(|error| error.to_diagnostic())
+                    .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
+                    .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
                     .collect(),
                 typed_workspace: None,
             }),
@@ -600,13 +795,33 @@ fn analyze_document_semantics(
     } else {
         Ok(SemanticSnapshot {
             analyzed_path: Some(mapping.document_path.clone()),
-            diagnostics: parse_single_file_diagnostics(&mapping.document_path, &document.text)?,
+            diagnostics: parse_single_file_diagnostics(&mapping.document_path, &document.text)?
+                .into_iter()
+                .filter(|diagnostic| diagnostic_targets_path(diagnostic, &mapping.document_path))
+                .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
+                .collect(),
             typed_workspace: None,
         })
     }
 }
 
-fn parse_single_file_diagnostics(path: &Path, text: &str) -> EditorResult<Vec<LspDiagnostic>> {
+fn diagnostic_targets_path(diagnostic: &Diagnostic, path: &Path) -> bool {
+    let path_text = path.to_string_lossy();
+    diagnostic
+        .primary_location()
+        .and_then(|location| location.file.as_ref())
+        .map(|file| file == &path_text)
+        .or_else(|| {
+            diagnostic
+                .labels
+                .first()
+                .and_then(|label| label.location.file.as_ref())
+                .map(|file| file == &path_text)
+        })
+        .unwrap_or(false)
+}
+
+fn parse_single_file_diagnostics(path: &Path, text: &str) -> EditorResult<Vec<Diagnostic>> {
     let root = std::env::temp_dir().join(format!(
         "fol_editor_parse_{}_{}",
         std::process::id(),
@@ -636,7 +851,7 @@ fn parse_single_file_diagnostics(path: &Path, text: &str) -> EditorResult<Vec<Ls
     Ok(diagnostics)
 }
 
-fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<LspDiagnostic>> {
+fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagnostic>> {
     let root_str = root.to_str().ok_or_else(|| {
         EditorError::new(
             EditorErrorKind::InvalidDocumentPath,
@@ -666,25 +881,25 @@ fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<LspDiagnostic>> 
         Ok(_) => Ok(Vec::new()),
         Err(errors) => Ok(errors
             .into_iter()
-            .map(|error| glitch_to_lsp(error.as_ref()))
+            .map(|error| glitch_to_diagnostic(error.as_ref()))
             .collect()),
     }
 }
 
-fn glitch_to_lsp(error: &dyn fol_types::Glitch) -> LspDiagnostic {
+fn glitch_to_diagnostic(error: &dyn fol_types::Glitch) -> Diagnostic {
     if let Some(parse_error) = error.as_any().downcast_ref::<ParseError>() {
-        return diagnostic_to_lsp(&parse_error.to_diagnostic());
+        return parse_error.to_diagnostic();
     }
     if let Some(package_error) = error.as_any().downcast_ref::<PackageError>() {
-        return diagnostic_to_lsp(&package_error.to_diagnostic());
+        return package_error.to_diagnostic();
     }
     if let Some(resolver_error) = error.as_any().downcast_ref::<ResolverError>() {
-        return diagnostic_to_lsp(&resolver_error.to_diagnostic());
+        return resolver_error.to_diagnostic();
     }
     if let Some(typecheck_error) = error.as_any().downcast_ref::<TypecheckError>() {
-        return diagnostic_to_lsp(&typecheck_error.to_diagnostic());
+        return typecheck_error.to_diagnostic();
     }
-    diagnostic_to_lsp(&fol_diagnostics::Diagnostic::error("E9999", error.to_string()))
+    fol_diagnostics::Diagnostic::error("E9999", error.to_string())
 }
 
 fn syntax_at_position(
@@ -1048,6 +1263,44 @@ mod tests {
 
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].diagnostics[0].code, "K1001");
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_does_not_report_formal_package_root_errors_for_open_entry_packages() {
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../..")
+            .join("xtra/logtiny");
+        let file = root.join("src/lib.fol");
+        let uri = format!("file://{}", file.display());
+        let text = fs::read_to_string(&file).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        let diagnostics = open_document(&mut server, uri, &text);
+
+        assert_eq!(diagnostics.len(), 1);
+        assert!(diagnostics[0]
+            .diagnostics
+            .iter()
+            .all(|diagnostic| diagnostic.code != "K1001"));
+    }
+
+    #[test]
+    fn lsp_server_filters_build_file_diagnostics_out_of_source_buffers() {
+        let root = temp_root("build_diag_filter");
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        let file = src.join("main.fol");
+        fs::write(&file, "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        let uri = format!("file://{}", file.display());
+        let text = fs::read_to_string(&file).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        let diagnostics = open_document(&mut server, uri, &text);
+
+        assert_eq!(diagnostics.len(), 1);
+        assert!(diagnostics[0].diagnostics.is_empty());
 
         fs::remove_dir_all(root).ok();
     }
