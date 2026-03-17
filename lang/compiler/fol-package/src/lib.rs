@@ -81,6 +81,12 @@ pub use build_option::{
     BuildTargetTriple, ResolvedBuildOptionSet, StandardOptimizeDeclaration,
     StandardTargetDeclaration, UserOptionDeclaration,
 };
+pub use build_native::{
+    project_compatibility_native_artifact, project_compatibility_native_artifacts,
+    NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeIncludePath,
+    NativeLibraryPath, NativeLinkDirective, NativeLinkInput, NativeLinkMode, NativePlatform,
+    NativeSearchPathOrigin,
+};
 pub use build_step::{
     plan_step_order, project_graph_steps, BuildDefaultStepKind, BuildRequestedStep,
     BuildStepCacheBoundary, BuildStepCacheKey, BuildStepDefinition, BuildStepEvent,
@@ -109,3 +115,29 @@ pub use session::{
     canonical_directory_root, infer_package_root, parse_directory_package_syntax,
     resolve_directory_path, PackageSession,
 };
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeLinkDirective,
+        NativeLinkInput, NativeLinkMode,
+    };
+
+    #[test]
+    fn crate_root_reexports_native_surface_types() {
+        let mut set = NativeArtifactSet::new();
+        let artifact = NativeArtifactDefinition {
+            name: "ssl".to_string(),
+            kind: NativeArtifactKind::StaticLibrary,
+            relative_path: "native/libssl.a".to_string(),
+        };
+        set.add(artifact.clone());
+        let directive = NativeLinkDirective {
+            input: NativeLinkInput::Artifact(artifact),
+            mode: NativeLinkMode::Static,
+        };
+
+        assert_eq!(set.definitions().len(), 1);
+        assert_eq!(directive.mode, NativeLinkMode::Static);
+    }
+}

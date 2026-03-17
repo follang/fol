@@ -947,7 +947,7 @@ Each slice must land green with `make build` and `make test` before commit.
 7. `[complete]` Add compatibility projection helpers from parsed placeholder native artifacts into the new native-artifact model.
 8. `[complete]` Extend artifact definitions to retain structured native artifact attachments instead of plain strings.
 9. `[complete]` Extend prepared-package modeling to retain optional native artifact surfaces alongside compatibility native placeholders.
-10. `[pending]` Re-export the draft native-artifact surface from `fol-package`.
+10. `[complete]` Re-export the draft native-artifact surface from `fol-package`.
 
 ## Success Criteria
 
