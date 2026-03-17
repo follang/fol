@@ -337,7 +337,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 ### Phase 4: Type and intrinsic highlighting
 
 - `4.1` complete: highlight builtin types and named type references more clearly
-- `4.2` highlight typed-binding/type-annotation surfaces distinctly
+- `4.2` complete: highlight typed-binding/type-annotation surfaces distinctly
 - `4.3` highlight dotted intrinsic names like `.len`, `.echo`, comparisons, and
   boolean/query intrinsics
 - `4.4` add snapshots for container/shell/intrinsic-heavy fixtures
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `16 / 49` slices complete
-- `33%`
+- `17 / 49` slices complete
+- `35%`

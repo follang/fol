@@ -218,6 +218,8 @@ mod tests {
             "@function",
             "@method",
             "@variable",
+            "@punctuation.delimiter",
+            "@punctuation.bracket",
             "@operator",
             "@constant.builtin",
             "@string",
@@ -276,6 +278,12 @@ mod tests {
             "(use_decl name: (identifier) @namespace)",
             "(typ_decl name: (identifier) @type)",
             "(ali_decl name: (identifier) @type.definition)",
+            "(typed_binding \":\" @punctuation.delimiter)",
+            "(param \":\" @punctuation.delimiter)",
+            "(ali_decl \":\" @punctuation.delimiter)",
+            "(typ_decl \":\" @punctuation.delimiter)",
+            "(container_type \"[\" @punctuation.bracket \"]\" @punctuation.bracket)",
+            "(shell_type \"[\" @punctuation.bracket \"]\" @punctuation.bracket)",
             "(record_type) @type.builtin",
             "(entry_type) @type.builtin",
             "(typed_binding type: (identifier) @type.builtin",
@@ -629,6 +637,40 @@ mod tests {
             assert!(
                 showcase.contains(needle),
                 "showcase fixture lost named type reference capture: {needle}\n{showcase}"
+            );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn typed_binding_and_annotation_surfaces_keep_punctuation_captures() {
+        let root = build_bundle_root("type_punctuation");
+        let showcase_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/showcases/full_v1_showcase/app/main.fol"),
+        );
+        assert!(showcase_output.status.success());
+        let showcase = String::from_utf8_lossy(&showcase_output.stdout);
+        for needle in ["punctuation.delimiter", "punctuation.bracket", "type.builtin"] {
+            assert!(
+                showcase.contains(needle),
+                "showcase fixture lost type annotation capture: {needle}\n{showcase}"
+            );
+        }
+
+        let shell_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/shell_optional/main.fol"),
+        );
+        assert!(shell_output.status.success());
+        let shell = String::from_utf8_lossy(&shell_output.stdout);
+        for needle in ["punctuation.delimiter", "punctuation.bracket", "type.builtin"] {
+            assert!(
+                shell.contains(needle),
+                "shell fixture lost type annotation capture: {needle}\n{shell}"
             );
         }
 

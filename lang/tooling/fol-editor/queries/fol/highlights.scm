@@ -20,6 +20,12 @@
 (use_decl name: (identifier) @namespace)
 (typ_decl name: (identifier) @type)
 (ali_decl name: (identifier) @type.definition)
+(typed_binding ":" @punctuation.delimiter)
+(param ":" @punctuation.delimiter)
+(ali_decl ":" @punctuation.delimiter)
+(typ_decl ":" @punctuation.delimiter)
+(container_type "[" @punctuation.bracket "]" @punctuation.bracket)
+(shell_type "[" @punctuation.bracket "]" @punctuation.bracket)
 (record_type) @type.builtin
 (entry_type) @type.builtin
 (typed_binding type: (identifier) @type.builtin (#match? @type.builtin "^(int|bol|str|flt|chr|never)$"))
