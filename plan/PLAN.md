@@ -869,6 +869,22 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Add artifact-report summary helpers that preserve frontend-facing output strings and paths.
 10. `[complete]` Re-export the draft artifact-model surface from `fol-package`.
 
+## Round 6 Slice Tracker
+
+This round focuses on Phase 6 step-execution-model work in `fol-package`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the sixth implementation round around build-step execution planning.
+2. `[pending]` Introduce a dedicated `build_step` module with step-plan request/result shell types.
+3. `[pending]` Add explicit default-step kind enums for build, run, test, install, and check.
+4. `[pending]` Add custom step-definition and requested-step selector model types.
+5. `[pending]` Add topological step-order planning helpers over graph step dependencies.
+6. `[pending]` Add step cache-boundary and cache-key model types.
+7. `[pending]` Add step execution report/event model types for requested, executed, skipped, and produced outputs.
+8. `[pending]` Add graph-to-step projection helpers for default and custom graph steps.
+9. `[pending]` Add stable step-report summary helpers aligned with frontend-facing reporting.
+10. `[pending]` Re-export the draft step-execution surface from `fol-package`.
+
 ## Success Criteria
 
 This plan is complete when:
