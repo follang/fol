@@ -1,4 +1,5 @@
 use crate::{
+    build_native::project_compatibility_native_artifacts,
     PackageBuildDefinition, PackageConfig, PackageError, PackageErrorKind, PackageIdentity,
     PackageLocator, PackageSourceKind, PreparedExportMount, PreparedPackage,
 };
@@ -281,12 +282,15 @@ impl PackageSession {
         )
         .and_then(|syntax| {
             let exports = compute_prepared_exports(&build, &syntax)?;
+            let native_surfaces = (!build.native_artifacts().is_empty())
+                .then(|| project_compatibility_native_artifacts(build.native_artifacts()));
             Ok(PreparedPackage::with_controls(
                 identity.clone(),
                 metadata,
                 build,
                 exports,
                 None,
+                native_surfaces,
                 syntax,
             ))
         });

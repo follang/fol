@@ -1,6 +1,6 @@
 use crate::{
-    build_dependency::DependencyBuildSurfaceSet, PackageBuildDefinition, PackageIdentity,
-    PackageMetadata, PackageSourceKind,
+    build_dependency::DependencyBuildSurfaceSet, build_native::NativeArtifactSet,
+    PackageBuildDefinition, PackageIdentity, PackageMetadata, PackageSourceKind,
 };
 use fol_parser::ast::ParsedPackage;
 
@@ -17,6 +17,7 @@ pub struct PreparedPackage {
     pub build: Option<PackageBuildDefinition>,
     pub exports: Vec<PreparedExportMount>,
     pub dependency_surfaces: Option<DependencyBuildSurfaceSet>,
+    pub native_surfaces: Option<NativeArtifactSet>,
     pub syntax: ParsedPackage,
 }
 
@@ -28,6 +29,7 @@ impl PreparedPackage {
             build: None,
             exports: Vec::new(),
             dependency_surfaces: None,
+            native_surfaces: None,
             syntax,
         }
     }
@@ -38,6 +40,7 @@ impl PreparedPackage {
         build: PackageBuildDefinition,
         exports: Vec<PreparedExportMount>,
         dependency_surfaces: Option<DependencyBuildSurfaceSet>,
+        native_surfaces: Option<NativeArtifactSet>,
         syntax: ParsedPackage,
     ) -> Self {
         Self {
@@ -46,6 +49,7 @@ impl PreparedPackage {
             build: Some(build),
             exports,
             dependency_surfaces,
+            native_surfaces,
             syntax,
         }
     }
@@ -72,6 +76,7 @@ mod tests {
     use super::PreparedPackage;
     use crate::{
         build_dependency::DependencyBuildSurfaceSet,
+        build_native::{NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet},
         build::{PackageBuildCompatibility, PackageBuildEntryPoint, PackageBuildEntryPointKind},
         BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageDependencyDecl,
         PackageDependencySourceKind, PackageIdentity, PackageLocator, PackageMetadata,
@@ -118,12 +123,19 @@ mod tests {
         assert!(prepared.build.is_none());
         assert!(prepared.exports.is_empty());
         assert!(prepared.dependency_surfaces.is_none());
+        assert!(prepared.native_surfaces.is_none());
         assert_eq!(prepared.syntax.source_units.len(), 1);
     }
 
     #[test]
     fn prepared_package_can_carry_metadata_and_build_controls() {
         let syntax = parse_fixture_package();
+        let mut native_surfaces = NativeArtifactSet::new();
+        native_surfaces.add(NativeArtifactDefinition {
+            name: "api".to_string(),
+            kind: NativeArtifactKind::Header,
+            relative_path: "include/api.h".to_string(),
+        });
         let prepared = PreparedPackage::with_controls(
             PackageIdentity {
                 source_kind: PackageSourceKind::Package,
@@ -168,6 +180,7 @@ mod tests {
                 mounted_namespace_suffix: None,
             }],
             Some(DependencyBuildSurfaceSet::new()),
+            Some(native_surfaces),
             syntax,
         );
 
@@ -188,6 +201,10 @@ mod tests {
         );
         assert_eq!(prepared.exports.len(), 1);
         assert!(prepared.dependency_surfaces.is_some());
+        assert_eq!(
+            prepared.native_surfaces.as_ref().map(|set| set.definitions().len()),
+            Some(1)
+        );
         assert!(prepared.has_build_entry_point());
         assert_eq!(
             prepared.build_entry_point(),
