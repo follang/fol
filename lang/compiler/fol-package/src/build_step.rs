@@ -169,12 +169,38 @@ fn visit_step_order(
     Ok(())
 }
 
+pub fn project_graph_steps(graph: &BuildGraph) -> Vec<BuildStepDefinition> {
+    graph.steps()
+        .iter()
+        .map(|step| BuildStepDefinition {
+            name: step.name.clone(),
+            default_kind: match step.kind {
+                crate::build_graph::BuildStepKind::Default => Some(BuildDefaultStepKind::Build),
+                crate::build_graph::BuildStepKind::Install => Some(BuildDefaultStepKind::Install),
+                crate::build_graph::BuildStepKind::Run => Some(BuildDefaultStepKind::Run),
+                crate::build_graph::BuildStepKind::Test => Some(BuildDefaultStepKind::Test),
+                crate::build_graph::BuildStepKind::Check => Some(BuildDefaultStepKind::Check),
+                crate::build_graph::BuildStepKind::CustomCommand => None,
+            },
+            dependencies: graph
+                .step_dependencies_for(step.id)
+                .filter_map(|dependency| {
+                    graph.steps()
+                        .get(dependency.index())
+                        .map(|dependency| dependency.name.clone())
+                })
+                .collect(),
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        plan_step_order, BuildDefaultStepKind, BuildRequestedStep, BuildStepDefinition,
-        BuildStepCacheBoundary, BuildStepCacheKey, BuildStepEvent, BuildStepEventKind,
-        BuildStepExecutionRequest, BuildStepExecutionResult, BuildStepPlanError, BuildStepReport,
+        plan_step_order, project_graph_steps, BuildDefaultStepKind, BuildRequestedStep,
+        BuildStepDefinition, BuildStepCacheBoundary, BuildStepCacheKey, BuildStepEvent,
+        BuildStepEventKind, BuildStepExecutionRequest, BuildStepExecutionResult,
+        BuildStepPlanError, BuildStepReport,
     };
     use crate::build_graph::{BuildGraph, BuildStepId, BuildStepKind};
 
@@ -304,6 +330,23 @@ mod tests {
         let error = plan_step_order(&graph, build).unwrap_err();
 
         assert_eq!(error, BuildStepPlanError::DependencyCycle(build));
+    }
+
+    #[test]
+    fn graph_step_projection_keeps_default_and_custom_step_shapes() {
+        let mut graph = BuildGraph::new();
+        let build = graph.add_step(BuildStepKind::Default, "build");
+        let docs = graph.add_step(BuildStepKind::CustomCommand, "docs");
+        graph.add_step_dependency(docs, build);
+
+        let projected = project_graph_steps(&graph);
+
+        assert_eq!(projected.len(), 2);
+        assert_eq!(projected[0].name, "build");
+        assert_eq!(projected[0].default_kind, Some(BuildDefaultStepKind::Build));
+        assert_eq!(projected[1].name, "docs");
+        assert_eq!(projected[1].default_kind, None);
+        assert_eq!(projected[1].dependencies, vec!["build".to_string()]);
     }
 }
 use crate::build_graph::{BuildGraph, BuildStepId};

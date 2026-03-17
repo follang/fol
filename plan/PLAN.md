@@ -881,7 +881,7 @@ Each slice must land green with `make build` and `make test` before commit.
 5. `[complete]` Add topological step-order planning helpers over graph step dependencies.
 6. `[complete]` Add step cache-boundary and cache-key model types.
 7. `[complete]` Add step execution report/event model types for requested, executed, skipped, and produced outputs.
-8. `[pending]` Add graph-to-step projection helpers for default and custom graph steps.
+8. `[complete]` Add graph-to-step projection helpers for default and custom graph steps.
 9. `[pending]` Add stable step-report summary helpers aligned with frontend-facing reporting.
 10. `[pending]` Re-export the draft step-execution surface from `fol-package`.
 
