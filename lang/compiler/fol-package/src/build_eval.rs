@@ -18,9 +18,17 @@ use crate::build_option::{
 use fol_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
 };
-use fol_parser::ast::SyntaxOrigin;
+use fol_lexer::lexer::stage3::Elements;
+use fol_parser::ast::{AstNode, Literal, SyntaxOrigin};
+use fol_stream::FileStream;
 use fol_types::Glitch;
-use std::{collections::BTreeMap, path::Path};
+use std::{
+    collections::BTreeMap,
+    path::Path,
+    sync::atomic::{AtomicU64, Ordering},
+};
+
+static NEXT_BUILD_AST_WRAPPER_ID: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildEvaluationBoundary {
@@ -685,24 +693,18 @@ pub fn extract_build_program_from_source(
     build_path: &Path,
     source: &str,
 ) -> Result<ExtractedBuildProgram, BuildEvaluationError> {
-    let Some((param_name, body, body_line)) = extract_build_body(source) else {
+    let Some((param_name, body)) = parsed_build_entry_body(build_path, source)? else {
         return Ok(ExtractedBuildProgram::default());
     };
     let mut extracted = ExtractedBuildProgram::default();
     let mut scope = BuildExtractionScope::default();
-    for statement in split_build_statements(&body, body_line) {
-        let line = statement.text.trim();
-        if line.is_empty() || line == "return ." {
-            continue;
-        }
-        parse_build_statement(
+    for statement in &body {
+        parse_build_statement_ast(
             &mut extracted,
             &mut scope,
             build_path,
             &param_name,
-            line,
-            statement.line,
-            statement.length,
+            statement,
         )?;
     }
     Ok(extracted)
@@ -728,6 +730,229 @@ pub fn evaluate_build_source(
         evaluated,
         result,
     }))
+}
+
+fn parsed_build_entry_body(
+    build_path: &Path,
+    source: &str,
+) -> Result<Option<(String, Vec<AstNode>)>, BuildEvaluationError> {
+    let Some((param_name, body_source, _body_line)) = extract_build_body(source) else {
+        return Ok(None);
+    };
+    let package_root = build_path.parent().ok_or_else(|| {
+        evaluation_error(
+            BuildEvaluationErrorKind::InvalidInput,
+            format!("build file '{}' has no package root", build_path.display()),
+            None,
+        )
+    })?;
+    let wrapper_path = package_root.join(format!(
+        "__build_eval_wrapper_{}_{}.fol",
+        std::process::id(),
+        NEXT_BUILD_AST_WRAPPER_ID.fetch_add(1, Ordering::Relaxed)
+    ));
+    let wrapper_source = format!(
+        "fun buildevalwrapper({param_name}: Graph): Graph = {{\n{body_source}\n}}\n"
+    );
+    std::fs::write(&wrapper_path, wrapper_source).map_err(|error| {
+        evaluation_error(
+            BuildEvaluationErrorKind::InvalidInput,
+            format!(
+                "could not prepare temporary build evaluator wrapper '{}': {}",
+                wrapper_path.display(),
+                error
+            ),
+            None,
+        )
+    })?;
+    let parse_result = (|| {
+        let path_str = wrapper_path
+            .to_str()
+            .ok_or_else(|| {
+                evaluation_error(
+                    BuildEvaluationErrorKind::InvalidInput,
+                    format!(
+                        "temporary build evaluator wrapper '{}' is not valid UTF-8",
+                        wrapper_path.display()
+                    ),
+                    None,
+                )
+            })?;
+        let mut stream = FileStream::from_file(path_str).map_err(|error| {
+            evaluation_error(
+                BuildEvaluationErrorKind::InvalidInput,
+                format!(
+                    "could not open temporary build evaluator wrapper '{}': {}",
+                    wrapper_path.display(),
+                    error
+                ),
+                None,
+            )
+        })?;
+        let mut lexer = Elements::init(&mut stream);
+        let mut parser = fol_parser::ast::AstParser::new();
+        let parsed = parser.parse_package(&mut lexer).map_err(|errors| {
+            let message = errors
+                .into_iter()
+                .next()
+                .map(|error| error.to_string())
+                .unwrap_or_else(|| "unknown parse error".to_string());
+            evaluation_error(
+                BuildEvaluationErrorKind::InvalidInput,
+                format!("build evaluator wrapper parse failed: {message}"),
+                None,
+            )
+        })?;
+
+        let entry = parsed.source_units.iter().find_map(|unit| {
+            unit.items.iter().find_map(|item| match &item.node {
+                AstNode::FunDecl { name, body, .. } if name == "buildevalwrapper" => {
+                    Some((param_name.clone(), body.clone()))
+                }
+                _ => None,
+            })
+        });
+        Ok(entry)
+    })();
+    let _ = std::fs::remove_file(&wrapper_path);
+    parse_result
+}
+
+fn parse_build_statement_ast(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &mut BuildExtractionScope,
+    build_path: &Path,
+    graph_name: &str,
+    statement: &AstNode,
+) -> Result<(), BuildEvaluationError> {
+    match statement {
+        AstNode::VarDecl { name, value, .. } => {
+            let Some(value) = value.as_deref() else {
+                return Ok(());
+            };
+            if let Some(value) =
+                parse_build_expression_ast(extracted, scope, build_path, graph_name, value)?
+            {
+                scope.values.insert(name.clone(), value);
+            }
+            Ok(())
+        }
+        AstNode::Return { .. } => Ok(()),
+        _ => {
+            parse_build_expression_ast(extracted, scope, build_path, graph_name, statement)?;
+            Ok(())
+        }
+    }
+}
+
+fn parse_build_expression_ast(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &mut BuildExtractionScope,
+    build_path: &Path,
+    graph_name: &str,
+    expr: &AstNode,
+) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
+    match expr {
+        AstNode::Identifier { name, .. } if name == graph_name => Ok(None),
+        AstNode::MethodCall { object, method, args } => {
+            let AstNode::Identifier { name, .. } = object.as_ref() else {
+                return Ok(None);
+            };
+            if name != graph_name {
+                return Ok(None);
+            }
+            parse_build_graph_method_ast(extracted, scope, build_path, method, args)
+        }
+        _ => Ok(None),
+    }
+}
+
+fn parse_build_graph_method_ast(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &mut BuildExtractionScope,
+    build_path: &Path,
+    method: &str,
+    args: &[AstNode],
+) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
+    let origin = Some(SyntaxOrigin {
+        file: Some(build_path.display().to_string()),
+        line: 1,
+        column: 1,
+        length: method.len(),
+    });
+    match method {
+        "standard_target" => {
+            let name = match args {
+                [] => "target".to_string(),
+                [arg] => resolve_build_string_arg_ast(arg, scope)
+                    .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?,
+                _ => return Err(build_source_unsupported(build_path, method, 1, method.len())),
+            };
+            extracted.operations.push(BuildEvaluationOperation {
+                origin,
+                kind: BuildEvaluationOperationKind::StandardTarget(StandardTargetRequest::new(
+                    name.clone(),
+                )),
+            });
+            Ok(Some(BuildExtractionValue::OptionName(name)))
+        }
+        "standard_optimize" => {
+            let name = match args {
+                [] => "optimize".to_string(),
+                [arg] => resolve_build_string_arg_ast(arg, scope)
+                    .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?,
+                _ => return Err(build_source_unsupported(build_path, method, 1, method.len())),
+            };
+            extracted.operations.push(BuildEvaluationOperation {
+                origin,
+                kind: BuildEvaluationOperationKind::StandardOptimize(
+                    StandardOptimizeRequest::new(name.clone()),
+                ),
+            });
+            Ok(Some(BuildExtractionValue::OptionName(name)))
+        }
+        "add_exe" | "add_static_lib" | "add_shared_lib" | "add_test" => {
+            parse_named_artifact_call_ast(extracted, scope, build_path, method, args)
+        }
+        "step" => {
+            let Some(name) = args.first().and_then(|arg| resolve_build_string_arg_ast(arg, scope))
+            else {
+                return Err(build_source_unsupported(build_path, method, 1, method.len()));
+            };
+            let depends_on = args
+                .iter()
+                .skip(1)
+                .filter_map(|arg| resolve_step_reference_ast(arg, scope))
+                .collect::<Vec<_>>();
+            extracted.operations.push(BuildEvaluationOperation {
+                origin,
+                kind: BuildEvaluationOperationKind::Step(BuildEvaluationStepRequest {
+                    name: name.clone(),
+                    depends_on,
+                }),
+            });
+            Ok(Some(BuildExtractionValue::StepName(name)))
+        }
+        "add_run" => parse_run_call_ast(extracted, scope, build_path, args, origin),
+        "install" => parse_install_call_ast(extracted, scope, build_path, args, origin),
+        "dependency" => {
+            let [alias, package] = args else {
+                return Err(build_source_unsupported(build_path, method, 1, method.len()));
+            };
+            let Some(alias) = resolve_build_string_arg_ast(alias, scope) else {
+                return Err(build_source_unsupported(build_path, method, 1, method.len()));
+            };
+            let Some(package) = resolve_build_string_arg_ast(package, scope) else {
+                return Err(build_source_unsupported(build_path, method, 1, method.len()));
+            };
+            extracted.operations.push(BuildEvaluationOperation {
+                origin,
+                kind: BuildEvaluationOperationKind::Dependency(DependencyRequest { alias, package }),
+            });
+            Ok(None)
+        }
+        _ => Err(build_source_unsupported(build_path, method, 1, method.len())),
+    }
 }
 
 fn evaluated_build_program_from_extracted(
@@ -1299,6 +1524,210 @@ fn resolve_step_reference(
     }
 }
 
+fn resolve_build_string_arg_ast(
+    node: &AstNode,
+    scope: &BuildExtractionScope,
+) -> Option<String> {
+    match node {
+        AstNode::Literal(Literal::String(value)) => Some(value.clone()),
+        AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
+            Some(BuildExtractionValue::OptionName(name)) => Some(name.clone()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn resolve_artifact_reference_ast(
+    node: &AstNode,
+    scope: &BuildExtractionScope,
+) -> Option<ExtractedBuildArtifact> {
+    match node {
+        AstNode::Literal(Literal::String(value)) => Some(ExtractedBuildArtifact {
+            name: value.clone(),
+            root_module: String::new(),
+        }),
+        AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
+            Some(BuildExtractionValue::Artifact(artifact)) => Some(artifact.clone()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn resolve_step_reference_ast(
+    node: &AstNode,
+    scope: &BuildExtractionScope,
+) -> Option<String> {
+    match node {
+        AstNode::Literal(Literal::String(value)) => Some(value.clone()),
+        AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
+            Some(BuildExtractionValue::StepName(name)) => Some(name.clone()),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
+fn parse_named_artifact_call_ast(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &BuildExtractionScope,
+    build_path: &Path,
+    method: &str,
+    args: &[AstNode],
+) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
+    let origin = Some(SyntaxOrigin {
+        file: Some(build_path.display().to_string()),
+        line: 1,
+        column: 1,
+        length: method.len(),
+    });
+    let (name, root_module) = match args {
+        [AstNode::RecordInit { fields, .. }] => {
+            let name = fields
+                .iter()
+                .find(|field| field.name == "name")
+                .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+                .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+            let root_module = fields
+                .iter()
+                .find(|field| field.name == "root" || field.name == "root_module")
+                .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+                .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+            (name, root_module)
+        }
+        [name, root_module] => {
+            let Some(name) = resolve_build_string_arg_ast(name, scope) else {
+                return Err(build_source_unsupported(build_path, method, 1, method.len()));
+            };
+            let Some(root_module) = resolve_build_string_arg_ast(root_module, scope) else {
+                return Err(build_source_unsupported(build_path, method, 1, method.len()));
+            };
+            (name, root_module)
+        }
+        _ => return Err(build_source_unsupported(build_path, method, 1, method.len())),
+    };
+    let artifact = ExtractedBuildArtifact {
+        name: name.clone(),
+        root_module: root_module.clone(),
+    };
+    match method {
+        "add_exe" => {
+            extracted.executable_artifacts.push(artifact.clone());
+            extracted.operations.push(BuildEvaluationOperation {
+                origin,
+                kind: BuildEvaluationOperationKind::AddExe(ExecutableRequest { name, root_module }),
+            });
+        }
+        "add_static_lib" => extracted.operations.push(BuildEvaluationOperation {
+            origin,
+            kind: BuildEvaluationOperationKind::AddStaticLib(StaticLibraryRequest {
+                name,
+                root_module,
+            }),
+        }),
+        "add_shared_lib" => extracted.operations.push(BuildEvaluationOperation {
+            origin,
+            kind: BuildEvaluationOperationKind::AddSharedLib(SharedLibraryRequest {
+                name,
+                root_module,
+            }),
+        }),
+        "add_test" => {
+            extracted.test_artifacts.push(artifact.clone());
+            extracted.operations.push(BuildEvaluationOperation {
+                origin,
+                kind: BuildEvaluationOperationKind::AddTest(TestArtifactRequest { name, root_module }),
+            });
+        }
+        _ => return Err(build_source_unsupported(build_path, method, 1, method.len())),
+    }
+    Ok(Some(BuildExtractionValue::Artifact(artifact)))
+}
+
+fn parse_run_call_ast(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &mut BuildExtractionScope,
+    build_path: &Path,
+    args: &[AstNode],
+    origin: Option<SyntaxOrigin>,
+) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
+    let (name, artifact) = match args {
+        [artifact] => {
+            let Some(artifact) = resolve_artifact_reference_ast(artifact, scope) else {
+                return Err(build_source_unsupported(build_path, "add_run", 1, 7));
+            };
+            let name = if scope.next_run_index == 0 {
+                "run".to_string()
+            } else {
+                format!("run-{}", artifact.name)
+            };
+            scope.next_run_index += 1;
+            (name, artifact.name)
+        }
+        [name, artifact, ..] => {
+            let Some(name) = resolve_build_string_arg_ast(name, scope) else {
+                return Err(build_source_unsupported(build_path, "add_run", 1, 7));
+            };
+            let Some(artifact) = resolve_artifact_reference_ast(artifact, scope) else {
+                return Err(build_source_unsupported(build_path, "add_run", 1, 7));
+            };
+            (name, artifact.name)
+        }
+        _ => return Err(build_source_unsupported(build_path, "add_run", 1, 7)),
+    };
+    extracted.run_steps.insert(name.clone(), artifact.clone());
+    extracted.operations.push(BuildEvaluationOperation {
+        origin,
+        kind: BuildEvaluationOperationKind::AddRun(BuildEvaluationRunRequest {
+            name: name.clone(),
+            artifact,
+            depends_on: Vec::new(),
+        }),
+    });
+    Ok(Some(BuildExtractionValue::StepName(name)))
+}
+
+fn parse_install_call_ast(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &mut BuildExtractionScope,
+    build_path: &Path,
+    args: &[AstNode],
+    origin: Option<SyntaxOrigin>,
+) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
+    let (name, artifact) = match args {
+        [artifact] => {
+            let Some(artifact) = resolve_artifact_reference_ast(artifact, scope) else {
+                return Err(build_source_unsupported(build_path, "install", 1, 7));
+            };
+            let name = if scope.next_install_index == 0 {
+                "install".to_string()
+            } else {
+                format!("install-{}", artifact.name)
+            };
+            scope.next_install_index += 1;
+            (name, artifact.name)
+        }
+        [name, artifact] => {
+            let Some(name) = resolve_build_string_arg_ast(name, scope) else {
+                return Err(build_source_unsupported(build_path, "install", 1, 7));
+            };
+            let Some(artifact) = resolve_artifact_reference_ast(artifact, scope) else {
+                return Err(build_source_unsupported(build_path, "install", 1, 7));
+            };
+            (name, artifact.name)
+        }
+        _ => return Err(build_source_unsupported(build_path, "install", 1, 7)),
+    };
+    extracted.operations.push(BuildEvaluationOperation {
+        origin,
+        kind: BuildEvaluationOperationKind::InstallArtifact(
+            BuildEvaluationInstallArtifactRequest { name, artifact },
+        ),
+    });
+    Ok(None)
+}
+
 fn build_source_unsupported(
     build_path: &Path,
     statement: &str,
@@ -1370,7 +1799,31 @@ mod tests {
     use crate::build_api::{CopyFileRequest, WriteFileRequest};
     use fol_diagnostics::{DiagnosticCode, ToDiagnostic};
     use fol_parser::ast::SyntaxOrigin;
-    use std::{collections::BTreeMap, path::Path};
+    use std::{
+        collections::BTreeMap,
+        fs,
+        path::PathBuf,
+        sync::atomic::{AtomicU64, Ordering},
+    };
+
+    fn temp_build_package(source: &str) -> (PathBuf, PathBuf) {
+        static NEXT_ID: AtomicU64 = AtomicU64::new(0);
+
+        let package_root = std::env::temp_dir().join(format!(
+            "fol_build_eval_{}_{}",
+            std::process::id(),
+            NEXT_ID.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&package_root).expect("temp package root should be created");
+        fs::write(
+            package_root.join("package.yaml"),
+            "name: build-eval\nversion: 1.0.0\n",
+        )
+        .expect("package metadata should be written");
+        fs::write(package_root.join("build.fol"), source)
+            .expect("build source should be written");
+        (package_root.clone(), package_root.join("build.fol"))
+    }
 
     #[test]
     fn build_evaluation_request_defaults_to_an_empty_package_root() {
@@ -1697,7 +2150,7 @@ mod tests {
         assert_eq!(error.kind(), BuildEvaluationErrorKind::Unsupported);
         assert!(error.message().contains("network access"));
         assert_eq!(diagnostic.code, DiagnosticCode::new("K1102"));
-        assert_eq!(diagnostic.primary_labels.len(), 1);
+        assert_eq!(diagnostic.labels.len(), 1);
     }
 
     #[test]
@@ -1871,6 +2324,8 @@ mod tests {
             package_root: "/pkg".to_string(),
             inputs: BuildEvaluationInputs {
                 working_directory: "/tmp/pkg".to_string(),
+                target: None,
+                optimize: None,
                 options: BTreeMap::from([
                     ("target".to_string(), "aarch64-macos-gnu".to_string()),
                     ("optimize".to_string(), "release-fast".to_string()),
@@ -1995,23 +2450,24 @@ mod tests {
     #[test]
     fn build_source_evaluator_extracts_and_replays_restricted_build_bodies() {
         let source = concat!(
-            "def build(graph: int): int = {\n",
+            "def build(graph: Graph): Graph = {\n",
             "    graph.add_exe(\"app\", \"src/app.fol\");\n",
             "    graph.add_test(\"app_test\", \"test/app.fol\");\n",
             "    graph.add_run(\"serve\", \"app\");\n",
-            "    return .\n",
+            "    return graph\n",
             "}\n",
         );
+        let (package_root, build_path) = temp_build_package(source);
         let request = BuildEvaluationRequest {
-            package_root: "/pkg".to_string(),
+            package_root: package_root.display().to_string(),
             inputs: BuildEvaluationInputs {
-                working_directory: "/pkg".to_string(),
+                working_directory: package_root.display().to_string(),
                 ..BuildEvaluationInputs::default()
             },
             operations: Vec::new(),
         };
 
-        let evaluated = evaluate_build_source(&request, Path::new("/pkg/build.fol"), source)
+        let evaluated = evaluate_build_source(&request, &build_path, source)
             .expect("restricted build body should evaluate")
             .expect("build body should produce operations");
 
@@ -2033,7 +2489,7 @@ mod tests {
     #[test]
     fn build_source_evaluator_supports_object_style_artifacts_and_handle_calls() {
         let source = concat!(
-            "def build(graph: int): int = {\n",
+            "def build(graph: Graph): Graph = {\n",
             "    var target = graph.standard_target();\n",
             "    var optimize = graph.standard_optimize();\n",
             "    var app = graph.add_exe({\n",
@@ -2044,19 +2500,20 @@ mod tests {
             "    });\n",
             "    graph.install(app);\n",
             "    graph.add_run(app);\n",
-            "    return .\n",
+            "    return graph\n",
             "}\n",
         );
+        let (package_root, build_path) = temp_build_package(source);
         let request = BuildEvaluationRequest {
-            package_root: "/pkg".to_string(),
+            package_root: package_root.display().to_string(),
             inputs: BuildEvaluationInputs {
-                working_directory: "/pkg".to_string(),
+                working_directory: package_root.display().to_string(),
                 ..BuildEvaluationInputs::default()
             },
             operations: Vec::new(),
         };
 
-        let evaluated = evaluate_build_source(&request, Path::new("/pkg/build.fol"), source)
+        let evaluated = evaluate_build_source(&request, &build_path, source)
             .expect("object style build body should evaluate")
             .expect("build body should produce operations");
 

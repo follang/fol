@@ -472,7 +472,7 @@ Required work:
 
 Round 1 slice tracker:
 
-- [ ] Slice 1. Add a concrete Phase 6 implementation tracker for removing the
+- [x] Slice 1. Add a concrete Phase 6 implementation tracker for removing the
   textual build-body extractor path.
 - [x] Slice 2. Add semantic runtime artifact metadata for executable, test, and
   library outputs produced by evaluated build programs.
@@ -484,7 +484,7 @@ Round 1 slice tracker:
   runtime metadata surface instead of extractor-era result objects.
 - [x] Slice 6. Switch frontend build-route planning to consume semantic runtime
   metadata from `fol-package`.
-- [ ] Slice 7. Translate the supported `build.fol` subset from parsed AST build
+- [x] Slice 7. Translate the supported `build.fol` subset from parsed AST build
   entries instead of line-based source splitting.
 - [ ] Slice 8. Delete the old extractor-era structs and helper functions from
   the active build-evaluation path.
