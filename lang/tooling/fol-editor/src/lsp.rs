@@ -463,7 +463,7 @@ impl EditorLspServer {
         Ok(LspCompletionList {
             is_incomplete: false,
             items: snapshot
-                .plain_completion_items(position)
+                .plain_completion_items(document, position)
                 .into_iter()
                 .map(|item| LspCompletionItem {
                     label: item.label,
@@ -674,8 +674,23 @@ struct SemanticSnapshot {
     typed_workspace: Option<fol_typecheck::TypedWorkspace>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CompletionContext {
+    Plain,
+    TypePosition,
+    QualifiedPath { qualifier: String },
+    DotTrigger,
+}
+
 impl SemanticSnapshot {
-    fn plain_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
+    fn plain_completion_items(
+        &self,
+        document: &EditorDocument,
+        position: LspPosition,
+    ) -> Vec<EditorCompletionItem> {
+        if completion_context(document, position) != CompletionContext::Plain {
+            return Vec::new();
+        }
         let mut items = self.local_completion_items(position);
         items.extend(self.current_package_top_level_completion_items());
         items.extend(self.import_alias_completion_items(position));
@@ -1267,10 +1282,69 @@ fn dedupe_completion_items(items: Vec<EditorCompletionItem>) -> Vec<EditorComple
     filtered
 }
 
+fn completion_context(document: &EditorDocument, position: LspPosition) -> CompletionContext {
+    let Some(offset) = position_to_offset(&document.text, position) else {
+        return CompletionContext::Plain;
+    };
+    let prefix = &document.text[..offset];
+    let line_prefix = prefix
+        .rsplit_once('\n')
+        .map(|(_, tail)| tail)
+        .unwrap_or(prefix);
+    let trimmed = line_prefix.trim_end();
+
+    if trimmed.ends_with('.') {
+        return CompletionContext::DotTrigger;
+    }
+
+    if let Some((qualifier, _)) = trimmed.rsplit_once("::") {
+        let qualifier = qualifier
+            .rsplit(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == ':'))
+            .next()
+            .unwrap_or("")
+            .trim_matches(':')
+            .to_string();
+        if !qualifier.is_empty() {
+            return CompletionContext::QualifiedPath { qualifier };
+        }
+    }
+
+    if line_prefix
+        .rsplit_once(':')
+        .map(|(_, tail)| tail.trim())
+        .is_some_and(|tail| tail.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == ':'))
+    {
+        return CompletionContext::TypePosition;
+    }
+
+    CompletionContext::Plain
+}
+
+fn position_to_offset(text: &str, position: LspPosition) -> Option<usize> {
+    let mut line = 0u32;
+    let mut character = 0u32;
+    for (offset, ch) in text.char_indices() {
+        if line == position.line && character == position.character {
+            return Some(offset);
+        }
+        if ch == '\n' {
+            line += 1;
+            character = 0;
+            if line == position.line && position.character == 0 {
+                return Some(offset + ch.len_utf8());
+            }
+        } else if line == position.line {
+            character += 1;
+        }
+    }
+
+    (line == position.line && character == position.character).then_some(text.len())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
+        completion_context, CompletionContext, EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
         LspCompletionList, LspCompletionParams, LspDefinitionParams,
         LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
         LspDidOpenTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
@@ -1278,7 +1352,7 @@ mod tests {
         LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
         LspVersionedTextDocumentIdentifier,
     };
-    use crate::EditorConfig;
+    use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
     use std::fs;
     use std::path::PathBuf;
 
@@ -1394,6 +1468,28 @@ mod tests {
             })
             .unwrap();
         assert!(exit.is_empty());
+    }
+
+    #[test]
+    fn completion_context_detects_type_positions() {
+        let uri = EditorDocumentUri::from_file_path(PathBuf::from("/tmp/type_context.fol")).unwrap();
+        let document = EditorDocument::new(
+            uri,
+            1,
+            "fun[] main(total: int): int = {\n    var value: \n    return 0\n}\n".to_string(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            completion_context(
+                &document,
+                LspPosition {
+                    line: 1,
+                    character: 15,
+                }
+            ),
+            CompletionContext::TypePosition
+        );
     }
 
     #[test]
