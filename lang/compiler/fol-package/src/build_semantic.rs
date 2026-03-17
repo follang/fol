@@ -198,9 +198,59 @@ impl BuildSemanticMethodSignature {
     }
 }
 
+pub fn canonical_graph_method_signatures() -> Vec<BuildSemanticMethodSignature> {
+    vec![
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "standard_target")
+            .with_param(BuildSemanticMethodParameter::record("config").optional()),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "standard_optimize")
+            .with_param(BuildSemanticMethodParameter::record("config").optional()),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "option")
+            .with_param(BuildSemanticMethodParameter::record("config")),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_exe")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::ArtifactHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_static_lib")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::ArtifactHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_shared_lib")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::ArtifactHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_test")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::ArtifactHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "step")
+            .with_param(BuildSemanticMethodParameter::scalar("name"))
+            .with_param(BuildSemanticMethodParameter::scalar("description").optional())
+            .returning(BuildSemanticTypeFamily::StepHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_run")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "artifact",
+                BuildSemanticTypeFamily::ArtifactHandle,
+            ))
+            .returning(BuildSemanticTypeFamily::RunHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "install")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "artifact",
+                BuildSemanticTypeFamily::ArtifactHandle,
+            ))
+            .returning(BuildSemanticTypeFamily::InstallHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "install_file")
+            .with_param(BuildSemanticMethodParameter::scalar("path"))
+            .returning(BuildSemanticTypeFamily::InstallHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "install_dir")
+            .with_param(BuildSemanticMethodParameter::scalar("path"))
+            .returning(BuildSemanticTypeFamily::InstallHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "dependency")
+            .with_param(BuildSemanticMethodParameter::scalar("alias"))
+            .with_param(BuildSemanticMethodParameter::scalar("package"))
+            .returning(BuildSemanticTypeFamily::DependencyHandle),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
+        canonical_graph_method_signatures,
         BuildSemanticMethodParameter, BuildSemanticMethodSignature, BuildSemanticParameterShape,
         BuildSemanticType, BuildSemanticTypeFamily, BuildStdlibImportSurface,
         BuildStdlibModuleKind, BuildStdlibModulePath,
@@ -283,5 +333,41 @@ mod tests {
         assert_eq!(signature.params.len(), 1);
         assert_eq!(signature.returns, Some(BuildSemanticTypeFamily::ArtifactHandle));
         assert!(signature.chainable);
+    }
+
+    #[test]
+    fn canonical_graph_methods_cover_build_graph_entrypoints() {
+        let signatures = canonical_graph_method_signatures();
+        let names = signatures
+            .iter()
+            .map(|signature| signature.name.as_str())
+            .collect::<Vec<_>>();
+
+        assert!(names.contains(&"standard_target"));
+        assert!(names.contains(&"standard_optimize"));
+        assert!(names.contains(&"add_exe"));
+        assert!(names.contains(&"step"));
+        assert!(names.contains(&"dependency"));
+    }
+
+    #[test]
+    fn canonical_graph_methods_return_expected_handle_families() {
+        let signatures = canonical_graph_method_signatures();
+        let add_exe = signatures.iter().find(|signature| signature.name == "add_exe");
+        let add_run = signatures.iter().find(|signature| signature.name == "add_run");
+        let install = signatures.iter().find(|signature| signature.name == "install");
+
+        assert_eq!(
+            add_exe.and_then(|signature| signature.returns),
+            Some(BuildSemanticTypeFamily::ArtifactHandle)
+        );
+        assert_eq!(
+            add_run.and_then(|signature| signature.returns),
+            Some(BuildSemanticTypeFamily::RunHandle)
+        );
+        assert_eq!(
+            install.and_then(|signature| signature.returns),
+            Some(BuildSemanticTypeFamily::InstallHandle)
+        );
     }
 }
