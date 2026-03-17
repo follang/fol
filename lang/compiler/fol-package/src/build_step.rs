@@ -65,6 +65,21 @@ pub enum BuildStepPlanError {
     DependencyCycle(BuildStepId),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildStepCacheBoundary {
+    Step,
+    ArtifactInputs,
+    Options,
+    Dependencies,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildStepCacheKey {
+    pub step_name: String,
+    pub boundaries: Vec<BuildStepCacheBoundary>,
+    pub fingerprint: String,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildStepExecutionRequest {
     pub requested_step: String,
@@ -136,7 +151,8 @@ fn visit_step_order(
 mod tests {
     use super::{
         plan_step_order, BuildDefaultStepKind, BuildRequestedStep, BuildStepDefinition,
-        BuildStepExecutionRequest, BuildStepExecutionResult, BuildStepPlanError,
+        BuildStepCacheBoundary, BuildStepCacheKey, BuildStepExecutionRequest,
+        BuildStepExecutionResult, BuildStepPlanError,
     };
     use crate::build_graph::{BuildGraph, BuildStepId, BuildStepKind};
 
@@ -187,6 +203,24 @@ mod tests {
         let result = BuildStepExecutionResult::new("build");
 
         assert_eq!(result.requested_step, "build");
+    }
+
+    #[test]
+    fn build_step_cache_keys_keep_boundaries_and_fingerprints() {
+        let key = BuildStepCacheKey {
+            step_name: "build".to_string(),
+            boundaries: vec![
+                BuildStepCacheBoundary::Step,
+                BuildStepCacheBoundary::ArtifactInputs,
+                BuildStepCacheBoundary::Options,
+            ],
+            fingerprint: "sha256:abc123".to_string(),
+        };
+
+        assert_eq!(key.step_name, "build");
+        assert_eq!(key.boundaries.len(), 3);
+        assert_eq!(key.boundaries[2], BuildStepCacheBoundary::Options);
+        assert_eq!(key.fingerprint, "sha256:abc123");
     }
 
     #[test]

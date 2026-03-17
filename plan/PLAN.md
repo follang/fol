@@ -879,7 +879,7 @@ Each slice must land green with `make build` and `make test` before commit.
 3. `[complete]` Add explicit default-step kind enums for build, run, test, install, and check.
 4. `[complete]` Add custom step-definition and requested-step selector model types.
 5. `[complete]` Add topological step-order planning helpers over graph step dependencies.
-6. `[pending]` Add step cache-boundary and cache-key model types.
+6. `[complete]` Add step cache-boundary and cache-key model types.
 7. `[pending]` Add step execution report/event model types for requested, executed, skipped, and produced outputs.
 8. `[pending]` Add graph-to-step projection helpers for default and custom graph steps.
 9. `[pending]` Add stable step-report summary helpers aligned with frontend-facing reporting.
