@@ -837,6 +837,22 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Add a draft `dependency` request model and graph-backed placeholder surface.
 10. `[complete]` Re-export the draft build API surface from `fol-package`.
 
+## Round 4 Slice Tracker
+
+This round focuses on Phase 4 build-evaluator work in `fol-package`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the fourth implementation round around deterministic build-plan evaluation.
+2. `[pending]` Introduce a dedicated `build_eval` module with evaluation request/result shell types.
+3. `[pending]` Add explicit evaluator-boundary and allowed-operation model types.
+4. `[pending]` Add build-evaluation error types with diagnostic integration and source locations.
+5. `[pending]` Add deterministic evaluation input modeling and stable determinism-key rendering.
+6. `[pending]` Add draft build-evaluation operation types for the public build API surface.
+7. `[pending]` Evaluate option operations into a graph-backed `BuildApi`.
+8. `[pending]` Evaluate artifact, step, run, install, and dependency operations into a validated graph.
+9. `[pending]` Reject unsupported operations and graph-validation failures with explicit evaluation diagnostics.
+10. `[pending]` Re-export the draft build-evaluator surface from `fol-package`.
+
 ## Success Criteria
 
 This plan is complete when:
