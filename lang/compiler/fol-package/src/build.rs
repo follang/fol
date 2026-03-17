@@ -218,15 +218,12 @@ fn extract_package_build_definition_from_source_fallback(
             continue;
         }
 
-        if try_record_fallback_build_entry(&mut build, line) {
-            continue;
-        }
         if try_record_fallback_compatibility_def(&mut build, line)? {
             continue;
         }
     }
 
-    if build.has_compatibility_controls() || build.has_entry_point() {
+    if build.has_compatibility_controls() {
         Ok(Some(build))
     } else {
         Ok(None)
@@ -235,17 +232,6 @@ fn extract_package_build_definition_from_source_fallback(
 
 fn strip_build_line_comment(line: &str) -> &str {
     line.split_once("//").map_or(line, |(prefix, _)| prefix)
-}
-
-fn try_record_fallback_build_entry(build: &mut PackageBuildDefinition, line: &str) -> bool {
-    if !line.starts_with("def build(") || build.entry_point.is_some() {
-        return false;
-    }
-    build.entry_point = Some(PackageBuildEntryPoint {
-        kind: PackageBuildEntryPointKind::BuildFunction,
-        name: "build".to_string(),
-    });
-    true
 }
 
 fn try_record_fallback_compatibility_def(
@@ -971,7 +957,7 @@ mod tests {
     }
 
     #[test]
-    fn fallback_build_parser_recovers_hybrid_build_metadata_from_raw_source() {
+    fn fallback_build_parser_recovers_only_compatibility_metadata_from_raw_source() {
         let build = extract_package_build_definition_from_source_fallback(
             concat!(
                 "def core: pkg = \"core\";\n",
@@ -982,10 +968,20 @@ mod tests {
         .expect("fallback build extraction should not fail")
         .expect("fallback build extraction should recover hybrid metadata");
 
-        assert_eq!(build.mode(), PackageBuildMode::Hybrid);
+        assert_eq!(build.mode(), PackageBuildMode::CompatibilityOnly);
         assert_eq!(build.dependencies().len(), 1);
         assert_eq!(build.exports().len(), 1);
-        assert!(build.has_entry_point());
+        assert!(build.entry_point().is_none());
+    }
+
+    #[test]
+    fn fallback_build_parser_does_not_invent_modern_entry_points() {
+        let build = extract_package_build_definition_from_source_fallback(
+            "def build(graph: Graph): Graph = graph;\n",
+        )
+        .expect("fallback build extraction should not fail");
+
+        assert!(build.is_none());
     }
 
     #[test]
