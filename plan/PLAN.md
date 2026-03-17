@@ -330,6 +330,28 @@ Round 1 slice tracker:
   helpers.
 - [x] Slice 10. Re-export and test the Phase 3 semantic build-entry surface.
 
+Round 2 slice tracker:
+
+- [ ] Slice 1. Add a concrete Phase 3 migration tracker for deleting textual
+  build-entry fallback paths.
+- [ ] Slice 2. Add a semantic helper that classifies modern vs compatibility
+  build modes from parsed build syntax.
+- [ ] Slice 3. Stop AST extraction from recording legacy build-entry metadata.
+- [ ] Slice 4. Stop raw-source fallback from inventing `def build(...)` entry
+  points.
+- [ ] Slice 5. Replace legacy entry-point result objects with semantic build-mode
+  state in `PackageBuildDefinition`.
+- [ ] Slice 6. Remove prepared-package helper APIs that expose legacy build-entry
+  metadata.
+- [ ] Slice 7. Move package-session coverage from legacy build-entry metadata to
+  semantic build validation.
+- [ ] Slice 8. Add regression coverage proving parse-error fallback no longer
+  classifies broken modern builds as valid modern/hybrid builds.
+- [ ] Slice 9. Re-export and test the migrated Phase 3 semantic build-mode
+  surface.
+- [ ] Slice 10. Delete the last temporary legacy build-entry helpers and clean
+  up call sites.
+
 ## Phase 4: Build-Time Capability Model
 
 Goal:
