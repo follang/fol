@@ -533,7 +533,7 @@ Round 1 slice tracker:
 
 - [x] Slice 1. Add a concrete Phase 7 implementation tracker for graph-driven
   frontend command routing.
-- [ ] Slice 2. Add a shared frontend route helper that projects graph steps into
+- [x] Slice 2. Add a shared frontend route helper that projects graph steps into
   member execution plans.
 - [ ] Slice 3. Switch default compatibility/no-build planning onto graph step
   projection instead of hand-built step lists.

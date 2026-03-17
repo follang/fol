@@ -335,17 +335,33 @@ fn plan_member_execution_from_build_source(
         return Ok(None);
     };
 
-    let mut steps = fol_package::project_graph_steps(&evaluated.result.graph)
+    Ok(Some(plan_member_execution_from_graph(
+        member,
+        &evaluated.result.graph,
+        &evaluated.evaluated,
+        true,
+    )?))
+}
+
+fn plan_member_execution_from_graph(
+    member: &FrontendMemberBuildRoute,
+    graph: &fol_package::BuildGraph,
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
+    synthesize_defaults: bool,
+) -> FrontendResult<FrontendMemberExecutionPlan> {
+    let mut steps = fol_package::project_graph_steps(graph)
         .into_iter()
         .map(|step| FrontendMemberPlannedStep {
-            selection: selection_for_step(member, &evaluated.evaluated, &step.name, step.default_kind),
+            selection: selection_for_step(member, evaluated, &step.name, step.default_kind),
             name: step.name,
             execution: step.default_kind.and_then(step_execution_kind_from_default),
         })
         .collect::<Vec<_>>();
-    for step in synthesized_default_steps(member, &evaluated.evaluated) {
-        if !steps.iter().any(|existing| existing.name == step.name) {
-            steps.push(step);
+    if synthesize_defaults {
+        for step in synthesized_default_steps(member, evaluated) {
+            if !steps.iter().any(|existing| existing.name == step.name) {
+                steps.push(step);
+            }
         }
     }
     if !steps.iter().any(|step| step.name == "check") {
@@ -356,13 +372,19 @@ fn plan_member_execution_from_build_source(
         });
     }
     if steps.is_empty() {
-        return Ok(None);
+        return Err(FrontendError::new(
+            FrontendErrorKind::Internal,
+            format!(
+                "workspace member '{}' produced an empty graph-driven step plan",
+                member.package_name
+            ),
+        ));
     }
     steps.sort_by(|left, right| left.name.cmp(&right.name));
     steps.dedup_by(|left, right| {
         left.name == right.name && left.execution == right.execution && left.selection == right.selection
     });
-    Ok(Some(FrontendMemberExecutionPlan { steps }))
+    Ok(FrontendMemberExecutionPlan { steps })
 }
 
 fn selection_for_step(
@@ -677,6 +699,38 @@ mod tests {
         assert_eq!(route.requested_step, "build");
         assert_eq!(route.members.len(), 1);
         assert_eq!(route.members[0].package_name, "app");
+    }
+
+    #[test]
+    fn shared_graph_projection_helper_keeps_graph_steps_and_synthesizes_check() {
+        let mut graph = fol_package::BuildGraph::new();
+        graph.add_step(fol_package::BuildStepKind::Default, "build");
+        let member = FrontendMemberBuildRoute {
+            member_root: PathBuf::from("/tmp/demo/app"),
+            package_name: "app".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        };
+        let evaluated = fol_package::build_eval::EvaluatedBuildProgram {
+            program: fol_package::BuildRuntimeProgram::new(
+                fol_package::BuildExecutionRepresentation::RestrictedRuntimeIr,
+            ),
+            artifacts: Vec::new(),
+            step_bindings: Vec::new(),
+            result: fol_package::BuildEvaluationResult::new(
+                fol_package::BuildEvaluationBoundary::GraphConstructionSubset,
+                fol_package::canonical_graph_construction_capabilities(),
+                "/tmp/demo/app",
+                fol_package::BuildOptionDeclarationSet::new(),
+                fol_package::ResolvedBuildOptionSet::new(),
+                graph.clone(),
+            ),
+        };
+
+        let plan = super::plan_member_execution_from_graph(&member, &graph, &evaluated, false)
+            .expect("graph projection should succeed");
+
+        assert!(plan.steps.iter().any(|step| step.name == "build"));
+        assert!(plan.steps.iter().any(|step| step.name == "check"));
     }
 
     #[test]
