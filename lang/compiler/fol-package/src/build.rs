@@ -163,7 +163,9 @@ pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, Packag
             return Err(parse_error);
         }
     };
-    extract_package_build_definition(&parsed)
+    let mut build = extract_package_build_definition(&parsed)?;
+    apply_semantic_build_entry_point(&parsed, &mut build);
+    Ok(build)
 }
 
 fn build_parse_error(
@@ -412,19 +414,26 @@ pub fn extract_package_build_definition(
                                 item.node_id,
                             )?,
                         });
-                    } else {
-                        maybe_record_build_entry_point(&mut build, name, params);
                     }
                 }
-                _ => {
-                    maybe_record_build_entry_point(&mut build, name, params);
-                }
+                _ => {}
             },
             _ => {}
         }
     }
 
     Ok(build)
+}
+
+fn apply_semantic_build_entry_point(parsed: &ParsedPackage, build: &mut PackageBuildDefinition) {
+    if crate::build_entry::validate_parsed_build_entry(parsed, &BuildEntrySignatureExpectation::canonical()).is_ok()
+        && build.entry_point.is_none()
+    {
+        build.entry_point = Some(PackageBuildEntryPoint {
+            kind: PackageBuildEntryPointKind::BuildFunction,
+            name: "build".to_string(),
+        });
+    }
 }
 
 fn build_string_body(
@@ -895,6 +904,39 @@ mod tests {
         );
         assert!(!build.has_compatibility_controls());
         assert_eq!(build.mode(), PackageBuildMode::ModernOnly);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn ast_build_extraction_keeps_only_compatibility_controls() {
+        let temp_root = unique_temp_root("ast_compat_only");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(
+            &build_path,
+            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = graph;\n",
+        )
+        .expect("Should write the compatibility extraction fixture");
+        let mut stream = FileStream::from_file(
+            build_path
+                .to_str()
+                .expect("Temporary build fixture path should be valid UTF-8"),
+        )
+        .expect("Should open the compatibility extraction fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let parsed = parser
+            .parse_package(&mut lexer)
+            .expect("compatibility extraction fixture should parse");
+
+        let build = extract_package_build_definition(&parsed)
+            .expect("AST build extraction should keep only compatibility controls");
+
+        assert_eq!(build.mode(), PackageBuildMode::CompatibilityOnly);
+        assert!(build.entry_point().is_none());
+        assert_eq!(build.exports().len(), 1);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");

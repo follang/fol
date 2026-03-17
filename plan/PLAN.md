@@ -336,7 +336,7 @@ Round 2 slice tracker:
   build-entry fallback paths.
 - [x] Slice 2. Add a semantic helper that classifies modern vs compatibility
   build modes from parsed build syntax.
-- [ ] Slice 3. Stop AST extraction from recording legacy build-entry metadata.
+- [x] Slice 3. Stop AST extraction from recording legacy build-entry metadata.
 - [ ] Slice 4. Stop raw-source fallback from inventing `def build(...)` entry
   points.
 - [ ] Slice 5. Replace legacy entry-point result objects with semantic build-mode
