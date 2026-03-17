@@ -74,14 +74,13 @@ pub use build_entry::{
 };
 pub use build_eval::{
     canonical_graph_construction_capabilities, evaluate_build_plan, evaluate_build_source,
-    extract_build_program_from_source, forbidden_capability_error,
-    forbidden_capability_message, AllowedBuildTimeOperation, BuildEnvironmentSelectionPolicy,
-    BuildEvaluationBoundary, BuildEvaluationError, BuildEvaluationErrorKind,
-    BuildEvaluationInputEnvelope, BuildEvaluationInputs,
+    forbidden_capability_error, forbidden_capability_message, AllowedBuildTimeOperation,
+    BuildEnvironmentSelectionPolicy, BuildEvaluationBoundary, BuildEvaluationError,
+    BuildEvaluationErrorKind, BuildEvaluationInputEnvelope, BuildEvaluationInputs,
     BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
     BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
     BuildEvaluationRunRequest, BuildEvaluationStepRequest, BuildRuntimeCapabilityModel,
-    EvaluatedBuildSource, ExtractedBuildArtifact, ExtractedBuildProgram,
+    EvaluatedBuildSource,
     ForbiddenBuildTimeOperation,
 };
 pub use build_graph::{

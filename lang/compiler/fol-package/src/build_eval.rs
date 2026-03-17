@@ -438,13 +438,13 @@ pub struct BuildEvaluationResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ExtractedBuildArtifact {
+struct ExtractedBuildArtifact {
     pub name: String,
     pub root_module: String,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct ExtractedBuildProgram {
+struct ExtractedBuildProgram {
     pub operations: Vec<BuildEvaluationOperation>,
     pub executable_artifacts: Vec<ExtractedBuildArtifact>,
     pub test_artifacts: Vec<ExtractedBuildArtifact>,
@@ -453,7 +453,6 @@ pub struct ExtractedBuildProgram {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvaluatedBuildSource {
-    pub extracted: ExtractedBuildProgram,
     pub evaluated: EvaluatedBuildProgram,
     pub result: BuildEvaluationResult,
 }
@@ -689,7 +688,7 @@ pub fn evaluate_build_plan(
     ))
 }
 
-pub fn extract_build_program_from_source(
+fn extract_build_program_from_source(
     build_path: &Path,
     source: &str,
 ) -> Result<ExtractedBuildProgram, BuildEvaluationError> {
@@ -725,11 +724,7 @@ pub fn evaluate_build_source(
         operations: extracted.operations.clone(),
     })?;
     let evaluated = evaluated_build_program_from_extracted(&extracted, &result);
-    Ok(Some(EvaluatedBuildSource {
-        extracted,
-        evaluated,
-        result,
-    }))
+    Ok(Some(EvaluatedBuildSource { evaluated, result }))
 }
 
 fn parsed_build_entry_body(
@@ -1997,12 +1992,12 @@ mod tests {
             .expect("restricted build body should evaluate")
             .expect("build body should produce operations");
 
-        assert_eq!(evaluated.extracted.operations.len(), 3);
-        assert_eq!(evaluated.extracted.executable_artifacts.len(), 1);
-        assert_eq!(evaluated.extracted.executable_artifacts[0].root_module, "src/app.fol");
-        assert_eq!(evaluated.extracted.test_artifacts.len(), 1);
-        assert_eq!(evaluated.extracted.run_steps.get("serve"), Some(&"app".to_string()));
         assert_eq!(evaluated.evaluated.artifacts.len(), 2);
+        assert!(evaluated
+            .evaluated
+            .artifacts
+            .iter()
+            .any(|artifact| artifact.root_module == "src/app.fol"));
         assert!(evaluated
             .evaluated
             .step_bindings
@@ -2043,12 +2038,12 @@ mod tests {
             .expect("object style build body should evaluate")
             .expect("build body should produce operations");
 
-        assert_eq!(evaluated.extracted.operations.len(), 5);
-        assert_eq!(evaluated.extracted.executable_artifacts.len(), 1);
-        assert_eq!(evaluated.extracted.executable_artifacts[0].name, "demo");
-        assert_eq!(evaluated.extracted.executable_artifacts[0].root_module, "src/demo.fol");
-        assert_eq!(evaluated.extracted.run_steps.get("run"), Some(&"demo".to_string()));
         assert_eq!(evaluated.evaluated.artifacts.len(), 1);
+        assert!(evaluated
+            .evaluated
+            .artifacts
+            .iter()
+            .any(|artifact| artifact.name == "demo" && artifact.root_module == "src/demo.fol"));
         assert!(evaluated
             .evaluated
             .step_bindings
