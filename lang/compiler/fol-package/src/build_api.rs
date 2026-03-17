@@ -192,6 +192,19 @@ pub struct InstallHandle {
     pub install_id: crate::build_graph::BuildInstallId,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DependencyRequest {
+    pub alias: String,
+    pub package: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DependencyHandle {
+    pub alias: String,
+    pub package: String,
+    pub root_module_id: crate::build_graph::BuildModuleId,
+}
+
 pub fn validate_build_name(name: &str) -> Result<(), BuildApiNameError> {
     if name.is_empty() {
         return Err(BuildApiNameError::Empty);
@@ -386,20 +399,34 @@ impl<'a> BuildApi<'a> {
         );
         Ok(InstallHandle { install_id })
     }
+
+    pub fn dependency(&mut self, request: DependencyRequest) -> Result<DependencyHandle, BuildApiError> {
+        validate_build_name(&request.alias).map_err(BuildApiError::InvalidName)?;
+        let module_id = self.graph.add_module(
+            crate::build_graph::BuildModuleKind::Imported,
+            format!("{}:{}", request.alias, request.package),
+        );
+        Ok(DependencyHandle {
+            alias: request.alias,
+            package: request.package,
+            root_module_id: module_id,
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
         validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
-        ExecutableRequest, InstallArtifactRequest, InstallDirRequest, InstallFileRequest,
-        RunRequest, SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest,
-        StaticLibraryRequest, StepRequest, TestArtifactRequest, UserOptionRequest,
+        DependencyRequest, ExecutableRequest, InstallArtifactRequest, InstallDirRequest,
+        InstallFileRequest, RunRequest, SharedLibraryRequest, StandardOptimizeRequest,
+        StandardTargetRequest, StaticLibraryRequest, StepRequest, TestArtifactRequest,
+        UserOptionRequest,
     };
     use crate::build_graph::BuildGraph;
     use crate::build_graph::{
         BuildArtifactInput, BuildArtifactKind, BuildInstallKind, BuildInstallTarget,
-        BuildOptionKind, BuildStepKind,
+        BuildModuleKind, BuildOptionKind, BuildStepKind,
     };
 
     #[test]
@@ -693,5 +720,24 @@ mod tests {
             api.graph().installs()[2].target,
             Some(BuildInstallTarget::DirectoryPath("share/assets".to_string()))
         );
+    }
+
+    #[test]
+    fn build_api_dependency_creates_an_imported_module_placeholder() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let dependency = api
+            .dependency(DependencyRequest {
+                alias: "logtiny".to_string(),
+                package: "org/logtiny".to_string(),
+            })
+            .expect("valid dependency request should succeed");
+
+        assert_eq!(dependency.alias, "logtiny");
+        assert_eq!(dependency.package, "org/logtiny");
+        assert_eq!(api.graph().modules()[0].id, dependency.root_module_id);
+        assert_eq!(api.graph().modules()[0].kind, BuildModuleKind::Imported);
+        assert_eq!(api.graph().modules()[0].name, "logtiny:org/logtiny");
     }
 }
