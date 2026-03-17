@@ -383,7 +383,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 ### Phase 10: Dot completion
 
 - `10.1` complete: detect `.` completion trigger contexts
-- `10.2` map typed receiver families to supported `V1` intrinsics
+- `10.2` complete: map typed receiver families to supported `V1` intrinsics
 - `10.3` return conservative fallback intrinsic suggestions when typing context
   is incomplete but still safe
 - `10.4` add tests for `.len`, `.echo`, comparison, and boolean/query completion
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `42 / 49` slices complete
-- `86%`
+- `43 / 49` slices complete
+- `88%`

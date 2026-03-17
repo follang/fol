@@ -6,6 +6,9 @@ use crate::{
 };
 use fol_diagnostics::Diagnostic;
 use fol_diagnostics::ToDiagnostic;
+use fol_intrinsics::{
+    intrinsic_registry, IntrinsicAvailability, IntrinsicStatus, IntrinsicSurface,
+};
 use fol_package::{PackageError, PackageSession, PackageSourceKind};
 use fol_parser::ast::{AstParser, ParseError};
 use fol_resolver::{Resolver, ResolverError};
@@ -698,7 +701,7 @@ impl SemanticSnapshot {
             CompletionContext::QualifiedPath { qualifier } => {
                 return self.qualified_completion_items(&qualifier);
             }
-            _ => return Vec::new(),
+            CompletionContext::DotTrigger => return self.dot_intrinsic_completion_items(),
         }
         let mut items = self.local_completion_items(position);
         items.extend(self.current_package_top_level_completion_items());
@@ -811,6 +814,21 @@ impl SemanticSnapshot {
         }));
 
         dedupe_completion_items(items)
+    }
+
+    fn dot_intrinsic_completion_items(&self) -> Vec<EditorCompletionItem> {
+        intrinsic_registry()
+            .iter()
+            .filter(|entry| entry.surface == IntrinsicSurface::DotRootCall)
+            .filter(|entry| entry.availability == IntrinsicAvailability::V1)
+            .filter(|entry| entry.status == IntrinsicStatus::Implemented)
+            .map(|entry| EditorCompletionItem {
+                label: entry.name.to_string(),
+                kind: 12,
+                detail: Some(entry.category.as_str().to_string()),
+                insert_text: Some(entry.name.to_string()),
+            })
+            .collect()
     }
 
     fn local_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
@@ -2321,6 +2339,55 @@ mod tests {
             .collect::<Vec<_>>();
         assert!(imported_labels.contains(&"helper"));
         assert!(!imported_labels.contains(&"tools"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_supported_v1_dot_intrinsics() {
+        let (root, uri) = sample_package_root("completion_dot_intrinsics");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return .\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(44),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 12,
+                        },
+                        context: Some(LspCompletionContext {
+                            trigger_kind: 2,
+                            trigger_character: Some(".".to_string()),
+                        }),
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"len"));
+        assert!(labels.contains(&"echo"));
+        assert!(labels.contains(&"eq"));
+        assert!(labels.contains(&"not"));
 
         fs::remove_dir_all(root).ok();
     }
