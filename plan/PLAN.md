@@ -859,7 +859,7 @@ This round focuses on Phase 5 artifact-model work in `fol-package`.
 Each slice must land green with `make build` and `make test` before commit.
 
 1. `[complete]` Lock the fifth implementation round around a first-class artifact model.
-2. `[pending]` Introduce a dedicated `build_artifact` module with artifact-definition shell types.
+2. `[complete]` Introduce a dedicated `build_artifact` module with artifact-definition shell types.
 3. `[pending]` Add first-class artifact kind enums covering executable, libraries, tests, generated source, and docs bundles.
 4. `[pending]` Add artifact root/source/module configuration records and linkage/output-name fields.
 5. `[pending]` Add target/optimize/native-artifact attachment fields to artifact definitions.
