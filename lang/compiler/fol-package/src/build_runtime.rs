@@ -119,6 +119,36 @@ pub fn find_record_field<'a>(
         .map(|field| &field.value)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildRuntimeReceiverKind {
+    Graph,
+    Handle(BuildRuntimeHandleKind),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeMethodCall {
+    pub receiver: BuildRuntimeExpr,
+    pub receiver_kind: BuildRuntimeReceiverKind,
+    pub method: String,
+    pub arguments: Vec<BuildRuntimeExpr>,
+}
+
+impl BuildRuntimeMethodCall {
+    pub fn new(
+        receiver: BuildRuntimeExpr,
+        receiver_kind: BuildRuntimeReceiverKind,
+        method: impl Into<String>,
+        arguments: Vec<BuildRuntimeExpr>,
+    ) -> Self {
+        Self {
+            receiver,
+            receiver_kind,
+            method: method.into(),
+            arguments,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuildRuntimeStmt {
     Bind {
@@ -133,8 +163,9 @@ pub enum BuildRuntimeStmt {
 mod tests {
     use super::{
         BuildExecutionRepresentation, BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeHandle,
-        BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeProgram, BuildRuntimeRecordField,
-        BuildRuntimeStmt, BuildRuntimeValue, find_record_field,
+        BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram,
+        BuildRuntimeReceiverKind, BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue,
+        find_record_field,
     };
 
     #[test]
@@ -251,5 +282,35 @@ mod tests {
                 if path == "src/main.fol"
         ));
         assert!(find_record_field(&fields, "missing").is_none());
+    }
+
+    #[test]
+    fn runtime_method_calls_capture_graph_and_handle_receivers() {
+        let graph_call = BuildRuntimeMethodCall::new(
+            BuildRuntimeExpr::Local(BuildRuntimeLocalId(0)),
+            BuildRuntimeReceiverKind::Graph,
+            "add_exe",
+            vec![BuildRuntimeExpr::Record(vec![(
+                "name".to_string(),
+                BuildRuntimeExpr::Value(BuildRuntimeValue::String("demo".to_string())),
+            )])],
+        );
+        let handle_call = BuildRuntimeMethodCall::new(
+            BuildRuntimeExpr::Local(BuildRuntimeLocalId(1)),
+            BuildRuntimeReceiverKind::Handle(BuildRuntimeHandleKind::Step),
+            "depend_on",
+            vec![BuildRuntimeExpr::Local(BuildRuntimeLocalId(2))],
+        );
+
+        assert!(matches!(
+            graph_call.receiver_kind,
+            BuildRuntimeReceiverKind::Graph
+        ));
+        assert_eq!(graph_call.method, "add_exe");
+        assert!(matches!(
+            handle_call.receiver_kind,
+            BuildRuntimeReceiverKind::Handle(BuildRuntimeHandleKind::Step)
+        ));
+        assert_eq!(handle_call.arguments.len(), 1);
     }
 }

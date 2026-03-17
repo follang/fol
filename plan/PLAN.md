@@ -453,7 +453,7 @@ Round 1 slice tracker:
   expression statements, and returns.
 - [x] Slice 7. Add runtime record-field helpers for object-style build config
   values.
-- [ ] Slice 8. Add runtime method invocation modeling for graph and handle
+- [x] Slice 8. Add runtime method invocation modeling for graph and handle
   receivers.
 - [ ] Slice 9. Add runtime translation/evaluation diagnostic kinds and tests.
 - [ ] Slice 10. Re-export and test the Phase 5 runtime-IR surface.
