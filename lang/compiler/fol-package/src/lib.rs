@@ -15,6 +15,7 @@ pub mod build_api;
 pub mod build_artifact;
 pub mod build_eval;
 pub mod build_graph;
+pub mod build_option;
 pub mod build_step;
 pub mod errors;
 pub mod git;

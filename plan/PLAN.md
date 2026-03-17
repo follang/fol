@@ -891,7 +891,7 @@ This round focuses on Phase 7 standard-option work in `fol-package` and `fol-fro
 Each slice must land green with `make build` and `make test` before commit.
 
 1. `[complete]` Lock the seventh implementation round around canonical build-option modeling.
-2. `[pending]` Introduce a dedicated `build_option` module with option-declaration shell types.
+2. `[complete]` Introduce a dedicated `build_option` module with option-declaration shell types.
 3. `[pending]` Add canonical target architecture, operating-system, environment, and triple parsing/rendering types.
 4. `[pending]` Add canonical optimization-mode enums and frontend-profile mapping helpers.
 5. `[pending]` Extend user option declarations and values to cover `int` and `path` kinds.
