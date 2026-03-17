@@ -55,6 +55,54 @@ pub struct StandardOptimizeOption {
     pub default: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildOptionValue {
+    Bool(bool),
+    String(String),
+    Enum(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UserOptionRequest {
+    pub name: String,
+    pub kind: BuildOptionKind,
+    pub default: Option<BuildOptionValue>,
+}
+
+impl UserOptionRequest {
+    pub fn bool(name: impl Into<String>, default: bool) -> Self {
+        Self {
+            name: name.into(),
+            kind: BuildOptionKind::Bool,
+            default: Some(BuildOptionValue::Bool(default)),
+        }
+    }
+
+    pub fn string(name: impl Into<String>, default: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            kind: BuildOptionKind::String,
+            default: Some(BuildOptionValue::String(default.into())),
+        }
+    }
+
+    pub fn enumeration(name: impl Into<String>, default: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            kind: BuildOptionKind::Enum,
+            default: Some(BuildOptionValue::Enum(default.into())),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UserOption {
+    pub id: BuildOptionId,
+    pub name: String,
+    pub kind: BuildOptionKind,
+    pub default: Option<BuildOptionValue>,
+}
+
 #[derive(Debug)]
 pub struct BuildApi<'a> {
     graph: &'a mut BuildGraph,
@@ -93,11 +141,24 @@ impl<'a> BuildApi<'a> {
             default: request.default,
         }
     }
+
+    pub fn option(&mut self, request: UserOptionRequest) -> UserOption {
+        let option_id = self.graph.add_option(request.kind, request.name.clone());
+        UserOption {
+            id: option_id,
+            name: request.name,
+            kind: request.kind,
+            default: request.default,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{BuildApi, StandardOptimizeRequest, StandardTargetRequest};
+    use super::{
+        BuildApi, BuildOptionValue, StandardOptimizeRequest, StandardTargetRequest,
+        UserOptionRequest,
+    };
     use crate::build_graph::BuildGraph;
     use crate::build_graph::BuildOptionKind;
 
@@ -144,5 +205,38 @@ mod tests {
         assert_eq!(option.default.as_deref(), Some("debug"));
         assert_eq!(api.graph().options()[0].id, option.id);
         assert_eq!(api.graph().options()[0].kind, BuildOptionKind::Optimize);
+    }
+
+    #[test]
+    fn build_api_records_boolean_user_options_in_the_graph() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let option = api.option(UserOptionRequest::bool("strip", false));
+
+        assert_eq!(option.name, "strip");
+        assert_eq!(option.kind, BuildOptionKind::Bool);
+        assert_eq!(option.default, Some(BuildOptionValue::Bool(false)));
+        assert_eq!(api.graph().options()[0].kind, BuildOptionKind::Bool);
+    }
+
+    #[test]
+    fn build_api_records_string_and_enum_user_options_in_the_graph() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let prefix = api.option(UserOptionRequest::string("prefix", "/usr/local"));
+        let flavor = api.option(UserOptionRequest::enumeration("flavor", "release"));
+
+        assert_eq!(
+            prefix.default,
+            Some(BuildOptionValue::String("/usr/local".to_string()))
+        );
+        assert_eq!(
+            flavor.default,
+            Some(BuildOptionValue::Enum("release".to_string()))
+        );
+        assert_eq!(api.graph().options()[0].kind, BuildOptionKind::String);
+        assert_eq!(api.graph().options()[1].kind, BuildOptionKind::Enum);
     }
 }
