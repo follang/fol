@@ -218,6 +218,8 @@ mod tests {
             "@function",
             "@method",
             "@variable",
+            "@operator",
+            "@constant.builtin",
             "@string",
             "@number",
             "@comment",
@@ -274,10 +276,13 @@ mod tests {
             "(use_decl name: (identifier) @namespace)",
             "(typ_decl name: (identifier) @type)",
             "(ali_decl name: (identifier) @type.definition)",
+            "(error_type \"/\" @operator)",
             "(fun_decl declaration: (plain_fun_decl name: (identifier) @function))",
             "(fun_decl declaration: (method_decl name: (identifier) @function.method))",
             "(log_decl declaration: (plain_log_decl name: (identifier) @function.builtin))",
             "(var_decl (typed_binding name: (identifier) @variable))",
+            "(unwrap_expr \"!\" @operator)",
+            "(nil_literal) @constant.builtin",
         ] {
             assert!(query.contains(needle), "missing declaration role capture: {needle}");
         }
@@ -503,6 +508,40 @@ mod tests {
             assert!(
                 stdout.contains(needle),
                 "mixed import fixture lost source-kind capture: {needle}\n{stdout}"
+            );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn shell_surfaces_keep_nil_and_boundary_captures() {
+        let root = build_bundle_root("shell_surfaces");
+        let optional_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/shell_optional/main.fol"),
+        );
+        assert!(optional_output.status.success());
+        let optional = String::from_utf8_lossy(&optional_output.stdout);
+        for needle in ["constant.builtin", "operator"] {
+            assert!(
+                optional.contains(needle),
+                "optional shell fixture lost shell capture: {needle}\n{optional}"
+            );
+        }
+
+        let boundary_output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/shell_vs_recoverable_boundary/main.fol"),
+        );
+        assert!(boundary_output.status.success());
+        let boundary = String::from_utf8_lossy(&boundary_output.stdout);
+        for needle in ["constant.builtin", "operator"] {
+            assert!(
+                boundary.contains(needle),
+                "recoverable boundary fixture lost shell capture: {needle}\n{boundary}"
             );
         }
 
