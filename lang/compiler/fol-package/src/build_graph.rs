@@ -76,12 +76,166 @@ pub enum BuildInstallKind {
     Directory,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildStep {
+    pub id: BuildStepId,
+    pub kind: BuildStepKind,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildArtifact {
+    pub id: BuildArtifactId,
+    pub kind: BuildArtifactKind,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildModule {
+    pub id: BuildModuleId,
+    pub kind: BuildModuleKind,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildGeneratedFile {
+    pub id: BuildGeneratedFileId,
+    pub kind: BuildGeneratedFileKind,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildOption {
+    pub id: BuildOptionId,
+    pub kind: BuildOptionKind,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildInstall {
+    pub id: BuildInstallId,
+    pub kind: BuildInstallKind,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BuildGraph {
+    steps: Vec<BuildStep>,
+    artifacts: Vec<BuildArtifact>,
+    modules: Vec<BuildModule>,
+    generated_files: Vec<BuildGeneratedFile>,
+    options: Vec<BuildOption>,
+    installs: Vec<BuildInstall>,
+}
+
+impl BuildGraph {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn steps(&self) -> &[BuildStep] {
+        &self.steps
+    }
+
+    pub fn artifacts(&self) -> &[BuildArtifact] {
+        &self.artifacts
+    }
+
+    pub fn modules(&self) -> &[BuildModule] {
+        &self.modules
+    }
+
+    pub fn generated_files(&self) -> &[BuildGeneratedFile] {
+        &self.generated_files
+    }
+
+    pub fn options(&self) -> &[BuildOption] {
+        &self.options
+    }
+
+    pub fn installs(&self) -> &[BuildInstall] {
+        &self.installs
+    }
+
+    pub fn add_step(&mut self, kind: BuildStepKind, name: impl Into<String>) -> BuildStepId {
+        let id = BuildStepId::from_index(self.steps.len());
+        self.steps.push(BuildStep {
+            id,
+            kind,
+            name: name.into(),
+        });
+        id
+    }
+
+    pub fn add_artifact(
+        &mut self,
+        kind: BuildArtifactKind,
+        name: impl Into<String>,
+    ) -> BuildArtifactId {
+        let id = BuildArtifactId::from_index(self.artifacts.len());
+        self.artifacts.push(BuildArtifact {
+            id,
+            kind,
+            name: name.into(),
+        });
+        id
+    }
+
+    pub fn add_module(&mut self, kind: BuildModuleKind, name: impl Into<String>) -> BuildModuleId {
+        let id = BuildModuleId::from_index(self.modules.len());
+        self.modules.push(BuildModule {
+            id,
+            kind,
+            name: name.into(),
+        });
+        id
+    }
+
+    pub fn add_generated_file(
+        &mut self,
+        kind: BuildGeneratedFileKind,
+        name: impl Into<String>,
+    ) -> BuildGeneratedFileId {
+        let id = BuildGeneratedFileId::from_index(self.generated_files.len());
+        self.generated_files.push(BuildGeneratedFile {
+            id,
+            kind,
+            name: name.into(),
+        });
+        id
+    }
+
+    pub fn add_option(&mut self, kind: BuildOptionKind, name: impl Into<String>) -> BuildOptionId {
+        let id = BuildOptionId::from_index(self.options.len());
+        self.options.push(BuildOption {
+            id,
+            kind,
+            name: name.into(),
+        });
+        id
+    }
+
+    pub fn add_install(
+        &mut self,
+        kind: BuildInstallKind,
+        name: impl Into<String>,
+    ) -> BuildInstallId {
+        let id = BuildInstallId::from_index(self.installs.len());
+        self.installs.push(BuildInstall {
+            id,
+            kind,
+            name: name.into(),
+        });
+        id
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         BuildArtifactId, BuildArtifactKind, BuildGeneratedFileId, BuildGeneratedFileKind,
-        BuildInstallId, BuildInstallKind, BuildModuleId, BuildModuleKind, BuildOptionId,
-        BuildOptionKind, BuildStepId, BuildStepKind,
+        BuildGraph, BuildInstallId, BuildInstallKind, BuildModuleId, BuildModuleKind,
+        BuildOptionId, BuildOptionKind, BuildStepId, BuildStepKind,
     };
 
     #[test]
@@ -112,5 +266,48 @@ mod tests {
         assert_eq!(BuildGeneratedFileKind::CaptureOutput, BuildGeneratedFileKind::CaptureOutput);
         assert_eq!(BuildOptionKind::Optimize, BuildOptionKind::Optimize);
         assert_eq!(BuildInstallKind::Directory, BuildInstallKind::Directory);
+    }
+
+    #[test]
+    fn build_graph_allocators_assign_dense_ids_per_node_family() {
+        let mut graph = BuildGraph::new();
+
+        let compile_step = graph.add_step(BuildStepKind::Default, "compile");
+        let run_step = graph.add_step(BuildStepKind::Run, "run");
+        let exe = graph.add_artifact(BuildArtifactKind::Executable, "app");
+        let module = graph.add_module(BuildModuleKind::Source, "app.main");
+        let generated = graph.add_generated_file(BuildGeneratedFileKind::Write, "version.rs");
+        let option = graph.add_option(BuildOptionKind::Target, "target");
+        let install = graph.add_install(BuildInstallKind::Artifact, "install-app");
+
+        assert_eq!(compile_step, BuildStepId(0));
+        assert_eq!(run_step, BuildStepId(1));
+        assert_eq!(exe, BuildArtifactId(0));
+        assert_eq!(module, BuildModuleId(0));
+        assert_eq!(generated, BuildGeneratedFileId(0));
+        assert_eq!(option, BuildOptionId(0));
+        assert_eq!(install, BuildInstallId(0));
+    }
+
+    #[test]
+    fn build_graph_storage_tables_preserve_inserted_records() {
+        let mut graph = BuildGraph::new();
+
+        graph.add_step(BuildStepKind::Test, "test");
+        graph.add_artifact(BuildArtifactKind::StaticLibrary, "support");
+        graph.add_module(BuildModuleKind::Imported, "dep.math");
+        graph.add_generated_file(BuildGeneratedFileKind::Copy, "config.json");
+        graph.add_option(BuildOptionKind::Bool, "enable-logs");
+        graph.add_install(BuildInstallKind::Directory, "install-assets");
+
+        assert_eq!(graph.steps()[0].name, "test");
+        assert_eq!(graph.artifacts()[0].kind, BuildArtifactKind::StaticLibrary);
+        assert_eq!(graph.modules()[0].kind, BuildModuleKind::Imported);
+        assert_eq!(
+            graph.generated_files()[0].kind,
+            BuildGeneratedFileKind::Copy
+        );
+        assert_eq!(graph.options()[0].kind, BuildOptionKind::Bool);
+        assert_eq!(graph.installs()[0].kind, BuildInstallKind::Directory);
     }
 }

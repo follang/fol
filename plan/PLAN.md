@@ -813,7 +813,7 @@ Each slice must land green with `make build` and `make test` before commit.
 1. `[complete]` Lock the second implementation round around the build-graph IR.
 2. `[complete]` Introduce a dedicated `build_graph` module with stable graph ID types.
 3. `[complete]` Add core graph node-kind enums for steps, artifacts, modules, generated files, options, and installs.
-4. `[pending]` Add `BuildGraph` storage tables plus allocation helpers for each node family.
+4. `[complete]` Add `BuildGraph` storage tables plus allocation helpers for each node family.
 5. `[pending]` Add step-dependency edges and graph APIs for explicit step-to-step dependencies.
 6. `[pending]` Add artifact-input edges for module and generated-file dependencies.
 7. `[pending]` Add graph validation error types and empty-graph validation entrypoints.
