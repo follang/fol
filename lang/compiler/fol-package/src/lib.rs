@@ -34,7 +34,8 @@ pub mod session;
 
 pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use build::{
-    parse_package_build, BuildDependency, BuildExport, PackageBuildCompatibility,
+    classify_semantic_build_mode, parse_package_build, BuildDependency, BuildExport,
+    PackageBuildCompatibility,
     PackageBuildDefinition, PackageBuildMode, PackageNativeArtifact, PackageNativeArtifactKind,
 };
 pub use build_api::{
@@ -230,5 +231,44 @@ mod tests {
 
         assert_eq!(candidates.len(), 1);
         assert_eq!(validated.candidate.name, "build");
+    }
+
+    #[test]
+    fn crate_root_reexports_semantic_build_modes() {
+        let syntax = fol_parser::ast::ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![fol_parser::ast::ParsedSourceUnit {
+                path: "build.fol".to_string(),
+                package: "demo".to_string(),
+                namespace: "demo".to_string(),
+                kind: ParsedSourceUnitKind::Build,
+                items: vec![fol_parser::ast::ParsedTopLevel {
+                    node_id: fol_parser::ast::SyntaxNodeId(1),
+                    node: fol_parser::ast::AstNode::DefDecl {
+                        options: Vec::new(),
+                        name: "build".to_string(),
+                        params: vec![fol_parser::ast::Parameter {
+                            name: "graph".to_string(),
+                            param_type: fol_parser::ast::FolType::Named {
+                                syntax_id: None,
+                                name: "Graph".to_string(),
+                            },
+                            is_borrowable: false,
+                            is_mutex: false,
+                            default: None,
+                        }],
+                        def_type: fol_parser::ast::FolType::Named {
+                            syntax_id: None,
+                            name: "Graph".to_string(),
+                        },
+                        body: Vec::new(),
+                    },
+                    meta: fol_parser::ast::ParsedTopLevelMeta::default(),
+                }],
+            }],
+            syntax_index: fol_parser::ast::SyntaxIndex::default(),
+        };
+
+        assert_eq!(classify_semantic_build_mode(&syntax, false), PackageBuildMode::ModernOnly);
     }
 }

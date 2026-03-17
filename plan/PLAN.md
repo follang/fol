@@ -347,7 +347,7 @@ Round 2 slice tracker:
   semantic build validation.
 - [x] Slice 8. Add regression coverage proving parse-error fallback no longer
   classifies broken modern builds as valid modern/hybrid builds.
-- [ ] Slice 9. Re-export and test the migrated Phase 3 semantic build-mode
+- [x] Slice 9. Re-export and test the migrated Phase 3 semantic build-mode
   surface.
 - [ ] Slice 10. Delete the last temporary legacy build-entry helpers and clean
   up call sites.
