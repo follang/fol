@@ -64,8 +64,9 @@ impl Lowerer {
 
 fn compatibility_identity_for_program(typed: &fol_typecheck::TypedProgram) -> PackageIdentity {
     let canonical_root = typed
-        .source_units()
-        .first()
+        .ordinary_source_units()
+        .next()
+        .or_else(|| typed.source_units().first())
         .map(|source_unit| source_unit.path.clone())
         .unwrap_or_else(|| typed.package_name().to_string());
 

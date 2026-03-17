@@ -3,7 +3,7 @@ use crate::{
     LoweredRoutine, LoweredTypeDecl, LoweredTypeDeclKind, LoweredVariantLayout, LoweringError,
     LoweringErrorKind, LoweringResult,
 };
-use fol_parser::ast::{AstNode, TypeDefinition};
+use fol_parser::ast::{AstNode, ParsedSourceUnitKind, TypeDefinition};
 use fol_resolver::{SourceUnitId, SymbolId, SymbolKind};
 use fol_typecheck::CheckedType;
 
@@ -14,6 +14,9 @@ pub fn lower_routine_signatures(
     let mut errors = Vec::new();
 
     for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        if source_unit.kind == ParsedSourceUnitKind::Build {
+            continue;
+        }
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
             let Some(name) = routine_name(&item.node) else {
@@ -54,6 +57,9 @@ pub fn lower_alias_declarations(
     let mut errors = Vec::new();
 
     for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        if source_unit.kind == ParsedSourceUnitKind::Build {
+            continue;
+        }
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
             let AstNode::AliasDecl { name, .. } = &item.node else {
@@ -103,6 +109,9 @@ pub fn lower_record_declarations(
     let mut errors = Vec::new();
 
     for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        if source_unit.kind == ParsedSourceUnitKind::Build {
+            continue;
+        }
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
             let AstNode::TypeDecl {
@@ -154,6 +163,9 @@ pub fn lower_entry_declarations(
     let mut errors = Vec::new();
 
     for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        if source_unit.kind == ParsedSourceUnitKind::Build {
+            continue;
+        }
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
             let AstNode::TypeDecl {
@@ -206,6 +218,9 @@ pub fn lower_global_declarations(
     let mut errors = Vec::new();
 
     for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        if source_unit.kind == ParsedSourceUnitKind::Build {
+            continue;
+        }
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
             let (name, kind, mutable) = match &item.node {
@@ -253,6 +268,9 @@ pub fn lower_routine_declarations(
     let mut errors = Vec::new();
 
     for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        if source_unit.kind == ParsedSourceUnitKind::Build {
+            continue;
+        }
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
             let (name, syntax_id, params) = match &item.node {

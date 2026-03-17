@@ -45,8 +45,7 @@ impl LoweringSession {
                 .collect();
             lowered.source_units = package
                 .program
-                .source_units()
-                .iter()
+                .ordinary_source_units()
                 .map(|unit| LoweredSourceUnit {
                     source_unit_id: unit.source_unit_id,
                     path: unit.path.clone(),
@@ -149,6 +148,9 @@ fn build_workspace_source_map(
         };
 
         for source_unit in typed_package.program.source_units() {
+            if source_unit.kind == fol_parser::ast::ParsedSourceUnitKind::Build {
+                continue;
+            }
             for syntax_id in &source_unit.top_level_nodes {
                 if let Some(origin) = typed_package.program.resolved().syntax_index().origin(*syntax_id) {
                     source_map.push(LoweredSourceMapEntry {
@@ -780,5 +782,51 @@ mod tests {
                 "{expected} package should retain at least one lowered source unit"
             );
         }
+    }
+
+    #[test]
+    fn lowering_session_excludes_build_source_units_from_runtime_outputs() {
+        use std::fs;
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock should be monotonic enough for tmp path")
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!("fol_lower_build_units_{stamp}"));
+        fs::create_dir_all(root.join("src")).expect("should create temp source dir");
+        fs::write(root.join("build.fol"), "`build`\n").expect("should write build file");
+        fs::write(root.join("src/main.fol"), "fun[] main(): int = { return 1 }\n")
+            .expect("should write runtime source");
+
+        let mut stream = FileStream::from_folder(root.to_str().expect("utf8 temp path"))
+            .expect("should open folder fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("lowering fixture should parse");
+        let resolved = resolve_workspace(syntax).expect("lowering fixture should resolve");
+        let typed = Typechecker::new()
+            .check_resolved_workspace(resolved)
+            .expect("lowering fixture should typecheck");
+
+        let lowered = LoweringSession::new(typed)
+            .lower_workspace()
+            .expect("lowering fixture should lower");
+
+        assert_eq!(lowered.entry_package().source_units.len(), 1);
+        assert!(lowered.entry_package().source_units[0].path.ends_with("src/main.fol"));
+        assert!(lowered
+            .source_map()
+            .entries()
+            .iter()
+            .all(|entry| entry
+                .origin
+                .file
+                .as_deref()
+                .is_none_or(|file| !file.ends_with("build.fol"))));
+
+        fs::remove_dir_all(root).ok();
     }
 }

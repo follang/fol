@@ -155,6 +155,9 @@ impl WorkspaceDeclIndex {
         package: &LoweredPackage,
     ) {
         for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+            if source_unit.kind == fol_parser::ast::ParsedSourceUnitKind::Build {
+                continue;
+            }
             let source_unit_id = SourceUnitId(source_unit_index);
             for item in &source_unit.items {
                 let AstNode::TypeDecl {
@@ -452,6 +455,9 @@ pub(crate) fn lower_routine_bodies(
     let mut errors = Vec::new();
 
     for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        if source_unit.kind == fol_parser::ast::ParsedSourceUnitKind::Build {
+            continue;
+        }
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
             let (name, syntax_id, body) = match &item.node {

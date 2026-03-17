@@ -283,7 +283,7 @@ Round 1 slice tracker:
 - [x] Slice 6. Carry source-unit kind metadata through typed programs.
 - [x] Slice 7. Remove the ordinary typechecker hard rejection for `build.fol`
   source units.
-- [ ] Slice 8. Keep lowering/runtime entry discovery from treating build units
+- [x] Slice 8. Keep lowering/runtime entry discovery from treating build units
   as ordinary runtime source units.
 - [ ] Slice 9. Add package/resolver/typechecker coverage for build source-unit
   visibility rules in Phase 2.
