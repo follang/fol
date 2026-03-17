@@ -181,6 +181,7 @@ mod tests {
         assert!(rendered.contains("Content-Length:"));
         assert!(!rendered.contains("\"method\":\"initialize\""));
         assert!(rendered.contains("\"hover_provider\":true"));
+        assert!(rendered.contains("\"completion_provider\"") || rendered.contains("\"completionProvider\""));
     }
 
     #[test]

@@ -398,10 +398,11 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 ### Phase 12: Frontend and tool command coverage
 
-- `12.1` keep `fol tool lsp` compatible with the new completion capability
-- `12.2` extend frontend/editor tests if command summaries or help output shift
-- `12.3` ensure `fol tool parse/highlight/symbols` remain stable while query
-  work lands
+- `12.1` complete: keep `fol tool lsp` compatible with the new completion capability
+- `12.2` complete: extend frontend/editor tests if command summaries or help output
+  shift
+- `12.3` complete: ensure `fol tool parse/highlight/symbols` remain stable while
+  query work lands
 
 ### Phase 13: Real-editor hardening
 
@@ -447,5 +448,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `43 / 49` slices complete
-- `88%`
+- `49 / 49` slices complete
+- `100%`

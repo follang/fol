@@ -29,6 +29,7 @@ fn editor_lsp_command_is_publicly_dispatchable() {
 
     assert_eq!(result.command, "lsp");
     assert!(result.summary.contains("fol tool lsp"));
+    assert!(result.summary.contains("completion"));
 }
 
 #[test]

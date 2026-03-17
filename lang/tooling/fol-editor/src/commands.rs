@@ -30,9 +30,10 @@ impl EditorCommandSummary {
 pub fn editor_lsp_entrypoint() -> EditorResult<EditorCommandSummary> {
     Ok(EditorCommandSummary::new(
         "lsp",
-        "ready to serve editor requests through `fol tool lsp`",
+        "ready to serve diagnostics, hover, definition, symbols, and completion through `fol tool lsp`",
     )
-    .with_detail("transport/runtime wiring lands in the LSP foundation phase"))
+    .with_detail("transport=stdio")
+    .with_detail("features=diagnostics,hover,definition,symbols,completion"))
 }
 
 fn source_line_count(source: &str) -> usize {
@@ -273,6 +274,12 @@ mod tests {
         let summary = editor_lsp_entrypoint().unwrap();
         assert_eq!(summary.command, "lsp");
         assert!(summary.summary.contains("fol tool lsp"));
+        assert!(summary.summary.contains("completion"));
+        assert!(summary.details.iter().any(|detail| detail == "transport=stdio"));
+        assert!(summary
+            .details
+            .iter()
+            .any(|detail| detail == "features=diagnostics,hover,definition,symbols,completion"));
     }
 
     #[test]
