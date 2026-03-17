@@ -1850,6 +1850,53 @@ mod tests {
     }
 
     #[test]
+    fn lsp_server_locks_plain_completion_to_local_package_and_import_alias_symbols() {
+        let (root, uri) = sample_loc_workspace_root("completion_symbol_matrix");
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nfun[] local_helper(): int = {\n    return 4\n}\n\nfun[] main(total: int): int = {\n    var value: int = 7\n    return value\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(35),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 7,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"value"));
+        assert!(labels.contains(&"total"));
+        assert!(labels.contains(&"local_helper"));
+        assert!(labels.contains(&"shared"));
+        assert!(!labels.contains(&"helper"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn lsp_server_keeps_nested_document_symbols_stable() {
         let (root, uri) = sample_package_root("nested_symbols");
         fs::write(
