@@ -1,6 +1,6 @@
 use crate::build_graph::BuildGraph;
 use crate::{
-    DependencyRequest, ExecutableRequest, InstallArtifactRequest, InstallDirRequest,
+    BuildApi, DependencyRequest, ExecutableRequest, InstallArtifactRequest, InstallDirRequest,
     InstallFileRequest, SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest,
     StaticLibraryRequest, StepRequest, TestArtifactRequest, UserOptionRequest,
 };
@@ -240,15 +240,53 @@ impl BuildEvaluationResult {
     }
 }
 
+pub fn evaluate_build_plan(
+    request: &BuildEvaluationRequest,
+) -> Result<BuildEvaluationResult, BuildEvaluationError> {
+    let mut graph = BuildGraph::new();
+    let mut api = BuildApi::new(&mut graph);
+
+    for operation in &request.operations {
+        match &operation.kind {
+            BuildEvaluationOperationKind::StandardTarget(operation_request) => {
+                api.standard_target(operation_request.clone());
+            }
+            BuildEvaluationOperationKind::StandardOptimize(operation_request) => {
+                api.standard_optimize(operation_request.clone());
+            }
+            BuildEvaluationOperationKind::Option(operation_request) => {
+                api.option(operation_request.clone());
+            }
+            _ => {
+                return Err(BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::Unsupported,
+                    "build evaluator option-only pass does not support this operation yet",
+                ));
+            }
+        }
+    }
+
+    Ok(BuildEvaluationResult::new(
+        BuildEvaluationBoundary::GraphConstructionSubset,
+        vec![
+            AllowedBuildTimeOperation::GraphMutation,
+            AllowedBuildTimeOperation::OptionRead,
+        ],
+        request.package_root.clone(),
+        graph,
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        AllowedBuildTimeOperation, BuildEvaluationBoundary, BuildEvaluationError,
-        BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationOperation,
-        BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
+        evaluate_build_plan, AllowedBuildTimeOperation, BuildEvaluationBoundary,
+        BuildEvaluationError, BuildEvaluationErrorKind, BuildEvaluationInputs,
+        BuildEvaluationOperation, BuildEvaluationOperationKind, BuildEvaluationRequest,
+        BuildEvaluationResult,
     };
     use crate::build_graph::BuildGraph;
-    use crate::{ExecutableRequest, StandardTargetRequest};
+    use crate::{ExecutableRequest, StandardOptimizeRequest, StandardTargetRequest, UserOptionRequest};
     use fol_diagnostics::{DiagnosticCode, ToDiagnostic};
     use fol_parser::ast::SyntaxOrigin;
     use std::collections::BTreeMap;
@@ -412,5 +450,38 @@ mod tests {
             }
             other => panic!("unexpected operation kind: {other:?}"),
         }
+    }
+
+    #[test]
+    fn build_evaluator_replays_standard_and_user_option_operations() {
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs::default(),
+            operations: vec![
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::StandardTarget(
+                        StandardTargetRequest::new("target"),
+                    ),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::StandardOptimize(
+                        StandardOptimizeRequest::new("optimize"),
+                    ),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::Option(UserOptionRequest::bool(
+                        "strip", false,
+                    )),
+                },
+            ],
+        };
+
+        let result = evaluate_build_plan(&request).expect("option replay should succeed");
+
+        assert_eq!(result.graph.options().len(), 3);
+        assert_eq!(result.package_root, "/pkg");
     }
 }
