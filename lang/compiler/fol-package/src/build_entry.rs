@@ -223,13 +223,24 @@ pub fn validate_build_entry_return_type(
     Ok(entry)
 }
 
+pub fn validate_parsed_build_entry(
+    syntax: &fol_parser::ast::ParsedPackage,
+    expectation: &BuildEntrySignatureExpectation,
+) -> Result<ValidatedBuildEntry, Vec<BuildEntryValidationError>> {
+    let candidates = collect_build_entry_candidates(syntax);
+    let entry = validate_build_entry_cardinality(syntax, &candidates)?;
+    let entry = validate_build_entry_parameter_shape(entry)?;
+    let entry = validate_build_entry_parameter_type(entry, expectation)?;
+    validate_build_entry_return_type(entry, expectation)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         collect_build_entry_candidates, validate_build_entry_cardinality,
         validate_build_entry_parameter_shape, validate_build_entry_parameter_type,
-        validate_build_entry_return_type, BuildEntryCandidate, BuildEntrySignatureExpectation,
-        BuildEntryValidationError,
+        validate_build_entry_return_type, validate_parsed_build_entry, BuildEntryCandidate,
+        BuildEntrySignatureExpectation, BuildEntryValidationError,
         BuildEntryValidationErrorKind, ValidatedBuildEntry,
     };
 
@@ -431,5 +442,78 @@ mod tests {
         let errors = validate_build_entry_return_type(invalid, &expectation)
             .expect_err("non-graph return types should fail semantic build entry validation");
         assert_eq!(errors[0].kind, BuildEntryValidationErrorKind::WrongReturnType);
+    }
+
+    #[test]
+    fn parsed_build_entry_validation_reports_multiple_and_wrong_type_shapes() {
+        let expectation = BuildEntrySignatureExpectation::canonical();
+        let mut syntax = fol_parser::ast::ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![fol_parser::ast::ParsedSourceUnit {
+                path: "build.fol".to_string(),
+                package: "demo".to_string(),
+                namespace: "demo".to_string(),
+                kind: fol_parser::ast::ParsedSourceUnitKind::Build,
+                items: vec![],
+            }],
+            syntax_index: fol_parser::ast::SyntaxIndex::default(),
+        };
+
+        let missing = validate_parsed_build_entry(&syntax, &expectation)
+            .expect_err("missing entries should fail semantic validation");
+        assert_eq!(missing[0].kind, BuildEntryValidationErrorKind::MissingEntry);
+
+        syntax.source_units[0].items = vec![
+            fol_parser::ast::ParsedTopLevel {
+                node_id: fol_parser::ast::SyntaxNodeId(1),
+                node: fol_parser::ast::AstNode::DefDecl {
+                    options: Vec::new(),
+                    name: "build".to_string(),
+                    params: vec![fol_parser::ast::Parameter {
+                        name: "graph".to_string(),
+                        param_type: fol_parser::ast::FolType::Named {
+                            syntax_id: None,
+                            name: "int".to_string(),
+                        },
+                        is_borrowable: false,
+                        is_mutex: false,
+                        default: None,
+                    }],
+                    def_type: fol_parser::ast::FolType::Named {
+                        syntax_id: None,
+                        name: "int".to_string(),
+                    },
+                    body: Vec::new(),
+                },
+                meta: fol_parser::ast::ParsedTopLevelMeta::default(),
+            },
+            fol_parser::ast::ParsedTopLevel {
+                node_id: fol_parser::ast::SyntaxNodeId(2),
+                node: fol_parser::ast::AstNode::DefDecl {
+                    options: Vec::new(),
+                    name: "build".to_string(),
+                    params: vec![fol_parser::ast::Parameter {
+                        name: "graph".to_string(),
+                        param_type: fol_parser::ast::FolType::Named {
+                            syntax_id: None,
+                            name: "Graph".to_string(),
+                        },
+                        is_borrowable: false,
+                        is_mutex: false,
+                        default: None,
+                    }],
+                    def_type: fol_parser::ast::FolType::Named {
+                        syntax_id: None,
+                        name: "Graph".to_string(),
+                    },
+                    body: Vec::new(),
+                },
+                meta: fol_parser::ast::ParsedTopLevelMeta::default(),
+            },
+        ];
+
+        let multiple = validate_parsed_build_entry(&syntax, &expectation)
+            .expect_err("multiple entries should fail semantic validation");
+        assert_eq!(multiple[0].kind, BuildEntryValidationErrorKind::MultipleEntries);
     }
 }
