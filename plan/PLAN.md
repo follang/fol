@@ -843,7 +843,7 @@ This round focuses on Phase 4 build-evaluator work in `fol-package`.
 Each slice must land green with `make build` and `make test` before commit.
 
 1. `[complete]` Lock the fourth implementation round around deterministic build-plan evaluation.
-2. `[pending]` Introduce a dedicated `build_eval` module with evaluation request/result shell types.
+2. `[complete]` Introduce a dedicated `build_eval` module with evaluation request/result shell types.
 3. `[pending]` Add explicit evaluator-boundary and allowed-operation model types.
 4. `[pending]` Add build-evaluation error types with diagnostic integration and source locations.
 5. `[pending]` Add deterministic evaluation input modeling and stable determinism-key rendering.
