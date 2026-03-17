@@ -845,7 +845,7 @@ Each slice must land green with `make build` and `make test` before commit.
 1. `[complete]` Lock the fourth implementation round around deterministic build-plan evaluation.
 2. `[complete]` Introduce a dedicated `build_eval` module with evaluation request/result shell types.
 3. `[complete]` Add explicit evaluator-boundary and allowed-operation model types.
-4. `[pending]` Add build-evaluation error types with diagnostic integration and source locations.
+4. `[complete]` Add build-evaluation error types with diagnostic integration and source locations.
 5. `[pending]` Add deterministic evaluation input modeling and stable determinism-key rendering.
 6. `[pending]` Add draft build-evaluation operation types for the public build API surface.
 7. `[pending]` Evaluate option operations into a graph-backed `BuildApi`.
