@@ -283,8 +283,8 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 ### Phase 0: Freeze boundary and baseline
 
-- `0.1` replace the old editor-closeout plan with this focused highlight +
-  completion plan
+- `0.1` complete: replace the old editor-closeout plan with this focused
+  highlight + completion plan
 - `0.2` document the exact current highlight and completion gaps before changes
 - `0.3` add a small acceptance checklist for Neovim-facing verification
 
@@ -411,5 +411,5 @@ This plan is only done when all of these are true:
 
 Current milestone state:
 
-- `0 / 49` slices complete
-- `0%`
+- `1 / 49` slices complete
+- `2%`
