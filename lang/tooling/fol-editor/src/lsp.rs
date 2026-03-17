@@ -688,13 +688,34 @@ impl SemanticSnapshot {
         document: &EditorDocument,
         position: LspPosition,
     ) -> Vec<EditorCompletionItem> {
-        if completion_context(document, position) != CompletionContext::Plain {
-            return Vec::new();
+        match completion_context(document, position) {
+            CompletionContext::Plain => {}
+            CompletionContext::TypePosition => return self.builtin_type_completion_items(),
+            _ => return Vec::new(),
         }
         let mut items = self.local_completion_items(position);
         items.extend(self.current_package_top_level_completion_items());
         items.extend(self.import_alias_completion_items(position));
         dedupe_completion_items(items)
+    }
+
+    fn builtin_type_completion_items(&self) -> Vec<EditorCompletionItem> {
+        [
+            "int",
+            "flt",
+            "bol",
+            "chr",
+            "str",
+            "never",
+        ]
+        .into_iter()
+        .map(|label| EditorCompletionItem {
+            label: label.to_string(),
+            kind: 5,
+            detail: Some("type".to_string()),
+            insert_text: None,
+        })
+        .collect()
     }
 
     fn local_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
@@ -1814,6 +1835,51 @@ mod tests {
             .find(|item| item.label == "total")
             .and_then(|item| item.detail.as_deref())
             == Some("parameter"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_builtin_type_completions_in_type_positions() {
+        let (root, uri) = sample_package_root("completion_builtin_types");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    var value: \n    return 0\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(36),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 15,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"int"));
+        assert!(labels.contains(&"str"));
+        assert!(labels.contains(&"never"));
 
         fs::remove_dir_all(root).ok();
     }
