@@ -821,6 +821,22 @@ Each slice must land green with `make build` and `make test` before commit.
 9. `[complete]` Validate artifact input references and install-target shape constraints.
 10. `[complete]` Re-export the build-graph IR from `fol-package`'s public API.
 
+## Round 3 Slice Tracker
+
+This round focuses on Phase 3 standard build-library API work in `fol-package`.
+Each slice must land green with `make build` and `make test` before commit.
+
+1. `[complete]` Lock the third implementation round around the draft build API surface.
+2. `[pending]` Introduce a dedicated `build_api` module with a graph-backed `BuildApi` entry type.
+3. `[pending]` Add draft `standard_target` and `standard_optimize` request/response types.
+4. `[pending]` Add generic user-option request types and graph-backed `option` helpers.
+5. `[pending]` Add structured artifact argument records and stable build-name validation helpers.
+6. `[pending]` Add draft `add_exe` / `add_static_lib` / `add_shared_lib` / `add_test` methods.
+7. `[pending]` Add draft `step` and `add_run` API methods with graph-backed step wiring.
+8. `[pending]` Add draft `install` / `install_file` / `install_dir` API methods.
+9. `[pending]` Add a draft `dependency` request model and graph-backed placeholder surface.
+10. `[pending]` Re-export the draft build API surface from `fol-package`.
+
 ## Success Criteria
 
 This plan is complete when:
