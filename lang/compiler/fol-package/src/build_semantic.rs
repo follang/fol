@@ -273,11 +273,76 @@ pub fn canonical_handle_method_signatures() -> Vec<BuildSemanticMethodSignature>
     ]
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildSemanticRecordShapeKind {
+    ArtifactConfig,
+    OptionConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildSemanticRecordField {
+    pub name: String,
+    pub required: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildSemanticRecordShape {
+    pub name: String,
+    pub kind: BuildSemanticRecordShapeKind,
+    pub fields: Vec<BuildSemanticRecordField>,
+}
+
+impl BuildSemanticRecordShape {
+    pub fn artifact(
+        name: impl Into<String>,
+        fields: impl IntoIterator<Item = BuildSemanticRecordField>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            kind: BuildSemanticRecordShapeKind::ArtifactConfig,
+            fields: fields.into_iter().collect(),
+        }
+    }
+}
+
+impl BuildSemanticRecordField {
+    pub fn required(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            required: true,
+        }
+    }
+
+    pub fn optional(name: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            required: false,
+        }
+    }
+}
+
+pub fn canonical_artifact_config_shapes() -> Vec<BuildSemanticRecordShape> {
+    let base_fields = vec![
+        BuildSemanticRecordField::required("name"),
+        BuildSemanticRecordField::required("root"),
+        BuildSemanticRecordField::optional("target"),
+        BuildSemanticRecordField::optional("optimize"),
+    ];
+
+    vec![
+        BuildSemanticRecordShape::artifact("ExeConfig", base_fields.clone()),
+        BuildSemanticRecordShape::artifact("StaticLibConfig", base_fields.clone()),
+        BuildSemanticRecordShape::artifact("SharedLibConfig", base_fields.clone()),
+        BuildSemanticRecordShape::artifact("TestConfig", base_fields),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        canonical_graph_method_signatures, canonical_handle_method_signatures,
-        BuildSemanticMethodParameter, BuildSemanticMethodSignature, BuildSemanticParameterShape,
+        canonical_artifact_config_shapes, canonical_graph_method_signatures,
+        canonical_handle_method_signatures, BuildSemanticMethodParameter,
+        BuildSemanticMethodSignature, BuildSemanticParameterShape, BuildSemanticRecordShapeKind,
         BuildSemanticType, BuildSemanticTypeFamily, BuildStdlibImportSurface,
         BuildStdlibModuleKind, BuildStdlibModulePath,
     };
@@ -419,5 +484,29 @@ mod tests {
             signatures[2].returns,
             Some(BuildSemanticTypeFamily::InstallHandle)
         );
+    }
+
+    #[test]
+    fn canonical_artifact_config_shapes_cover_all_primary_artifact_kinds() {
+        let shapes = canonical_artifact_config_shapes();
+        let names = shapes.iter().map(|shape| shape.name.as_str()).collect::<Vec<_>>();
+
+        assert!(names.contains(&"ExeConfig"));
+        assert!(names.contains(&"StaticLibConfig"));
+        assert!(names.contains(&"SharedLibConfig"));
+        assert!(names.contains(&"TestConfig"));
+        assert!(shapes
+            .iter()
+            .all(|shape| shape.kind == BuildSemanticRecordShapeKind::ArtifactConfig));
+    }
+
+    #[test]
+    fn canonical_artifact_config_shapes_keep_required_name_and_root_fields() {
+        let shapes = canonical_artifact_config_shapes();
+
+        for shape in shapes {
+            assert!(shape.fields.iter().any(|field| field.name == "name" && field.required));
+            assert!(shape.fields.iter().any(|field| field.name == "root" && field.required));
+        }
     }
 }
