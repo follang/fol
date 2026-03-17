@@ -955,7 +955,7 @@ This round focuses on Phase 11 CLI-migration groundwork in `fol-frontend`.
 Each slice must land green with `make build` and `make test` before commit.
 
 1. `[complete]` Lock the eleventh implementation round around CLI migration and build-step routing.
-2. `[pending]` Introduce a dedicated frontend build-route module with workflow-mode shell types.
+2. `[complete]` Introduce a dedicated frontend build-route module with workflow-mode shell types.
 3. `[pending]` Add default build-step mapping for `build` / `run` / `test` / `check` commands.
 4. `[pending]` Add explicit `--step` CLI arguments for workspace code commands.
 5. `[pending]` Thread selected build-step overrides through frontend configuration.
