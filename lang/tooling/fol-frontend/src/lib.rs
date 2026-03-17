@@ -304,21 +304,37 @@ fn frontend_config_from_cli(
         Some(FrontendCommand::Code(command)) => match &command.command {
             CodeSubcommand::Build(command) => {
                 config.locked_fetch = command.locked;
+                apply_build_option_args(&mut config, &command.options);
             }
             CodeSubcommand::Run(command) => {
                 config.locked_fetch = command.locked;
+                apply_build_option_args(&mut config, &command.options);
             }
             CodeSubcommand::Test(command) => {
                 config.locked_fetch = command.locked;
+                apply_build_option_args(&mut config, &command.options);
             }
             CodeSubcommand::Check(command) => {
                 config.locked_fetch = command.locked;
+                apply_build_option_args(&mut config, &command.options);
             }
             CodeSubcommand::Emit(_) => {}
         },
         _ => {}
     }
     config
+}
+
+fn apply_build_option_args(config: &mut FrontendConfig, options: &cli::BuildOptionArgs) {
+    if let Some(target) = &options.build_target {
+        config.build_target_override = Some(target.clone());
+    }
+    if let Some(optimize) = &options.build_optimize {
+        config.build_optimize_override = Some(optimize.clone());
+    }
+    if !options.build_options.is_empty() {
+        config.build_option_overrides = options.build_options.clone();
+    }
 }
 
 fn command_output_mode(cli: &FrontendCli) -> Option<OutputMode> {
@@ -686,6 +702,30 @@ mod tests {
         assert!(rendered.contains("rust"));
         assert!(rendered.contains("lowered"));
         assert!(!rendered.contains("Run `fol <command> --help` for command-specific usage."));
+    }
+
+    #[test]
+    fn frontend_config_from_cli_keeps_build_option_overrides() {
+        let cli = FrontendCli::parse_from([
+            "fol",
+            "code",
+            "build",
+            "--target",
+            "aarch64-macos-gnu",
+            "--optimize",
+            "release-fast",
+            "--build-option",
+            "jobs=16",
+        ]);
+
+        let config = frontend_config_from_cli(&cli, None);
+
+        assert_eq!(
+            config.build_target_override.as_deref(),
+            Some("aarch64-macos-gnu")
+        );
+        assert_eq!(config.build_optimize_override.as_deref(), Some("release-fast"));
+        assert_eq!(config.build_option_overrides, vec!["jobs=16".to_string()]);
     }
 }
 fn code_has_direct_target(command: &CodeCommand) -> bool {

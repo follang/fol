@@ -898,7 +898,7 @@ Each slice must land green with `make build` and `make test` before commit.
 6. `[complete]` Add build-option override parsing and resolved-option-set lookup helpers.
 7. `[complete]` Replay option declarations and CLI/input overrides through the build evaluator result.
 8. `[complete]` Add artifact-target selection helpers that project resolved target/optimize values into artifact config.
-9. `[pending]` Add frontend CLI/config build-option override surfaces for target, optimize, and repeated named options.
+9. `[complete]` Add frontend CLI/config build-option override surfaces for target, optimize, and repeated named options.
 10. `[pending]` Re-export the draft build-option surface from `fol-package`.
 
 ## Success Criteria

@@ -110,6 +110,27 @@ pub struct DirectTargetArg {
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct BuildOptionArgs {
+    #[arg(long = "target", value_name = "TRIPLE", help = "Override the build target triple")]
+    pub build_target: Option<String>,
+
+    #[arg(
+        long = "optimize",
+        value_name = "MODE",
+        help = "Override the build optimization mode"
+    )]
+    pub build_optimize: Option<String>,
+
+    #[arg(
+        long = "build-option",
+        value_name = "NAME=VALUE",
+        help = "Override a named build option",
+        action = clap::ArgAction::Append
+    )]
+    pub build_options: Vec<String>,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 pub struct FetchCommand {
     #[command(flatten)]
     pub output: FrontendOutputArgs,
@@ -150,6 +171,9 @@ pub struct BuildCommand {
     #[command(flatten)]
     pub roots: CompileRootArgs,
 
+    #[command(flatten)]
+    pub options: BuildOptionArgs,
+
     #[arg(long, help = "Require the existing fol.lock to match the manifest")]
     pub locked: bool,
 
@@ -171,6 +195,9 @@ pub struct RunCommand {
     #[command(flatten)]
     pub roots: CompileRootArgs,
 
+    #[command(flatten)]
+    pub options: BuildOptionArgs,
+
     #[arg(long, help = "Require the existing fol.lock to match the manifest")]
     pub locked: bool,
 
@@ -188,6 +215,9 @@ pub struct TestCommand {
 
     #[command(flatten)]
     pub profile: FrontendProfileArgs,
+
+    #[command(flatten)]
+    pub options: BuildOptionArgs,
 
     #[arg(long, value_name = "PATH", help = "Override the workspace or package root")]
     pub path: Option<String>,
@@ -209,6 +239,9 @@ pub struct CheckCommand {
 
     #[command(flatten)]
     pub roots: CompileRootArgs,
+
+    #[command(flatten)]
+    pub options: BuildOptionArgs,
 
     #[arg(long, help = "Require the existing fol.lock to match the manifest")]
     pub locked: bool,
@@ -874,6 +907,47 @@ mod tests {
     }
 
     #[test]
+    fn build_commands_parse_build_option_overrides() {
+        let cli = FrontendCli::parse_from([
+            "fol",
+            "code",
+            "build",
+            "--target",
+            "aarch64-macos-gnu",
+            "--optimize",
+            "release-fast",
+            "--build-option",
+            "jobs=16",
+            "--build-option",
+            "strip=true",
+        ]);
+
+        assert_eq!(
+            cli.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Build(BuildCommand {
+                    output: default_output_args(),
+                    profile: default_profile_args(),
+                    target: DirectTargetArg::default(),
+                    roots: CompileRootArgs::default(),
+                    options: BuildOptionArgs {
+                        build_target: Some("aarch64-macos-gnu".to_string()),
+                        build_optimize: Some("release-fast".to_string()),
+                        build_options: vec![
+                            "jobs=16".to_string(),
+                            "strip=true".to_string()
+                        ],
+                    },
+                    locked: false,
+                    keep_build_dir: false,
+                }),
+            }))
+        );
+    }
+
+    #[test]
     fn help_output_points_users_to_subcommand_help() {
         let help = FrontendCli::command().render_long_help().to_string();
 
@@ -895,6 +969,7 @@ mod tests {
         assert!(!help.contains("--dump-lowered"));
         assert!(!help.contains("--emit-rust"));
         assert!(!help.contains("--keep-build-dir"));
+        assert!(!help.contains("--build-option"));
         assert!(!help.contains("Arguments:"));
         assert!(!help.contains("FILE_OR_FOLDER"));
     }
