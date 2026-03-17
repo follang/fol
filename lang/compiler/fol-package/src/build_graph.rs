@@ -124,6 +124,18 @@ pub struct BuildStepDependency {
     pub depends_on: BuildStepId,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildArtifactInput {
+    Module(BuildModuleId),
+    GeneratedFile(BuildGeneratedFileId),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BuildArtifactDependency {
+    pub artifact: BuildArtifactId,
+    pub input: BuildArtifactInput,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildGraph {
     steps: Vec<BuildStep>,
@@ -133,6 +145,7 @@ pub struct BuildGraph {
     options: Vec<BuildOption>,
     installs: Vec<BuildInstall>,
     step_dependencies: Vec<BuildStepDependency>,
+    artifact_dependencies: Vec<BuildArtifactDependency>,
 }
 
 impl BuildGraph {
@@ -166,6 +179,10 @@ impl BuildGraph {
 
     pub fn step_dependencies(&self) -> &[BuildStepDependency] {
         &self.step_dependencies
+    }
+
+    pub fn artifact_dependencies(&self) -> &[BuildArtifactDependency] {
+        &self.artifact_dependencies
     }
 
     pub fn add_step(&mut self, kind: BuildStepKind, name: impl Into<String>) -> BuildStepId {
@@ -250,14 +267,43 @@ impl BuildGraph {
             .filter(move |edge| edge.step == step)
             .map(|edge| edge.depends_on)
     }
+
+    pub fn add_artifact_module_input(&mut self, artifact: BuildArtifactId, module: BuildModuleId) {
+        self.artifact_dependencies.push(BuildArtifactDependency {
+            artifact,
+            input: BuildArtifactInput::Module(module),
+        });
+    }
+
+    pub fn add_artifact_generated_file_input(
+        &mut self,
+        artifact: BuildArtifactId,
+        generated_file: BuildGeneratedFileId,
+    ) {
+        self.artifact_dependencies.push(BuildArtifactDependency {
+            artifact,
+            input: BuildArtifactInput::GeneratedFile(generated_file),
+        });
+    }
+
+    pub fn artifact_inputs_for(
+        &self,
+        artifact: BuildArtifactId,
+    ) -> impl Iterator<Item = BuildArtifactInput> + '_ {
+        self.artifact_dependencies
+            .iter()
+            .filter(move |edge| edge.artifact == artifact)
+            .map(|edge| edge.input)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildArtifactId, BuildArtifactKind, BuildGeneratedFileId, BuildGeneratedFileKind,
-        BuildGraph, BuildInstallId, BuildInstallKind, BuildModuleId, BuildModuleKind,
-        BuildOptionId, BuildOptionKind, BuildStepDependency, BuildStepId, BuildStepKind,
+        BuildArtifactDependency, BuildArtifactId, BuildArtifactInput, BuildArtifactKind,
+        BuildGeneratedFileId, BuildGeneratedFileKind, BuildGraph, BuildInstallId,
+        BuildInstallKind, BuildModuleId, BuildModuleKind, BuildOptionId, BuildOptionKind,
+        BuildStepDependency, BuildStepId, BuildStepKind,
     };
 
     #[test]
@@ -373,5 +419,51 @@ mod tests {
 
         assert_eq!(install_dependencies, vec![compile]);
         assert_eq!(run_dependencies, vec![compile]);
+    }
+
+    #[test]
+    fn build_graph_records_module_and_generated_file_artifact_inputs() {
+        let mut graph = BuildGraph::new();
+        let artifact = graph.add_artifact(BuildArtifactKind::Executable, "app");
+        let module = graph.add_module(BuildModuleKind::Source, "app.main");
+        let generated = graph.add_generated_file(BuildGeneratedFileKind::Write, "version.txt");
+
+        graph.add_artifact_module_input(artifact, module);
+        graph.add_artifact_generated_file_input(artifact, generated);
+
+        assert_eq!(
+            graph.artifact_dependencies(),
+            &[
+                BuildArtifactDependency {
+                    artifact,
+                    input: BuildArtifactInput::Module(module),
+                },
+                BuildArtifactDependency {
+                    artifact,
+                    input: BuildArtifactInput::GeneratedFile(generated),
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn build_graph_can_query_inputs_for_one_artifact() {
+        let mut graph = BuildGraph::new();
+        let artifact = graph.add_artifact(BuildArtifactKind::StaticLibrary, "support");
+        let module = graph.add_module(BuildModuleKind::Imported, "dep.math");
+        let generated = graph.add_generated_file(BuildGeneratedFileKind::Copy, "config.json");
+
+        graph.add_artifact_module_input(artifact, module);
+        graph.add_artifact_generated_file_input(artifact, generated);
+
+        let inputs = graph.artifact_inputs_for(artifact).collect::<Vec<_>>();
+
+        assert_eq!(
+            inputs,
+            vec![
+                BuildArtifactInput::Module(module),
+                BuildArtifactInput::GeneratedFile(generated),
+            ]
+        );
     }
 }
