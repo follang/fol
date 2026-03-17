@@ -354,8 +354,8 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 
 - `6.1` complete: add `textDocument/completion` request handling to the LSP server
 - `6.2` complete: advertise a real completion provider from `initialize`
-- `6.3` define the internal completion item model in `fol-editor`
-- `6.4` add focused stdio/request tests for completion request/response framing
+- `6.3` complete: define the internal completion item model in `fol-editor`
+- `6.4` complete: add focused stdio/request tests for completion request/response framing
 
 ### Phase 7: Scope and symbol completion
 
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `25 / 49` slices complete
-- `51%`
+- `27 / 49` slices complete
+- `55%`
