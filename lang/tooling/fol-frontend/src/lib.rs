@@ -118,25 +118,6 @@ where
         .map(|arg| arg.into())
         .collect::<Vec<std::ffi::OsString>>();
 
-    if wants_root_help(&args) {
-        return match writeln!(stdout, "{}", FrontendCli::render_root_help()) {
-            Ok(()) => 0,
-            Err(error) => {
-                let _ = writeln!(stderr, "FrontendInternal: {error}");
-                1
-            }
-        };
-    }
-    if wants_version(&args) {
-        return match writeln!(stdout, "{}", env!("CARGO_PKG_VERSION")) {
-            Ok(()) => 0,
-            Err(error) => {
-                let _ = writeln!(stderr, "FrontendInternal: {error}");
-                1
-            }
-        };
-    }
-
     match FrontendCli::try_parse_from(args.clone()) {
         Err(error) if error.kind() == clap::error::ErrorKind::DisplayHelp => {
             match writeln!(stdout, "{error}") {
@@ -188,7 +169,8 @@ where
             )
         }
         Ok(cli) if cli.command.is_none() && cli.input.is_none() => {
-            match writeln!(stdout, "{}", FrontendCli::render_root_help()) {
+            let mut command = FrontendCli::command();
+            match writeln!(stdout, "{}", command.render_long_help()) {
                 Ok(()) => 0,
                 Err(error) => {
                     let _ = writeln!(stderr, "FrontendInternal: {error}");
@@ -224,14 +206,6 @@ where
             }
         },
     }
-}
-
-fn wants_root_help(args: &[std::ffi::OsString]) -> bool {
-    matches!(args.get(1), Some(arg) if arg == "-h" || arg == "--help") && args.len() == 2
-}
-
-fn wants_version(args: &[std::ffi::OsString]) -> bool {
-    args.iter().skip(1).any(|arg| arg == "-V" || arg == "--version")
 }
 
 pub fn run_command_from_args<I, T>(
