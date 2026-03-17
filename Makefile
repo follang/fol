@@ -78,31 +78,16 @@ else
 	$(error Invalid documentation type. Use 'make docs TYPE=mdbook' or 'make docs TYPE=doxygen')
 endif
 
+TYPE ?= patch
+HAS_REL := $(shell command -v git-rel 2>/dev/null)
 
 release:
-	@if [ -z "$(TYPE)" ]; then \
-		echo "Release type not specified. Use 'make release TYPE=[patch|minor|major]'"; \
+	@if [ -z "$(HAS_REL)" ]; then \
+		echo "git-rel is not installed. Please install it first."; \
 		exit 1; \
-	fi; \
-	CURRENT_VERSION=$$(grep '^version = ' Cargo.toml | sed -E 's/version = "(.*)"/\1/'); \
-	IFS='.' read -r MAJOR MINOR PATCH <<< "$$CURRENT_VERSION"; \
-	case "$(TYPE)" in \
-		major) MAJOR=$$((MAJOR+1)); MINOR=0; PATCH=0 ;; \
-		minor) MINOR=$$((MINOR+1)); PATCH=0 ;; \
-		patch) PATCH=$$((PATCH+1)); ;; \
-		*) echo "Invalid release type. Use patch, minor or major."; exit 1 ;; \
-	esac; \
-	version="$$MAJOR.$$MINOR.$$PATCH"; \
-	if [ -n "$(LATEST_TAG)" ]; then \
-		changelog=$$(git cliff $(LATEST_TAG)..HEAD --strip all); \
-		git cliff --tag $$version $(LATEST_TAG)..HEAD --prepend CHANGELOG.md; \
-	else \
-		changelog=$$(git cliff --unreleased --strip all); \
-		git cliff --tag $$version --unreleased --prepend CHANGELOG.md; \
-	fi; \
-	sed -i 's/^version = ".*"/version = "'$$version'"/' Cargo.toml; \
-	git add -A && git commit -m "chore(release): prepare for $$version"; \
-	echo "$$changelog"; \
-	git tag -a $$version -m "$$version" -m "$$changelog"; \
-	git push --follow-tags --force --set-upstream origin develop; \
-	gh release create $$version --notes "$$changelog"
+	fi
+	@if [ -z "$(TYPE)" ]; then \
+		echo "Release type not specified. Use 'make release TYPE=[patch|minor|major|m.m.p]'"; \
+		exit 1; \
+	fi
+	@git rel $(TYPE)
