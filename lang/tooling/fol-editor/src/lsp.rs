@@ -2165,7 +2165,7 @@ mod tests {
         fs::create_dir_all(root.join("app/src/api")).unwrap();
         fs::write(
             root.join("app/src/main.fol"),
-            "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return api::\n}\n",
+            "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return api::helper() + shared::\n}\n",
         )
         .unwrap();
         fs::write(
@@ -2210,6 +2210,95 @@ mod tests {
             .collect::<Vec<_>>();
         assert!(labels.contains(&"local_helper"));
         assert!(!labels.contains(&"helper"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_locks_loc_and_same_package_namespace_completion() {
+        let (root, uri) = sample_loc_workspace_root("completion_namespace_matrix");
+        fs::create_dir_all(root.join("app/src/api/tools")).unwrap();
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return api::\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("app/src/api/lib.fol"),
+            "fun[exp] helper(): int = {\n    return 7\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("app/src/api/tools/lib.fol"),
+            "fun[exp] leaf(): int = {\n    return 8\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/src/lib.fol"),
+            "fun[exp] helper(): int = {\n    return 9\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let local_completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(41),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 16,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+        let local_completion: LspCompletionList =
+            serde_json::from_value(local_completion.result.unwrap()).unwrap();
+        let local_labels = local_completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(local_labels.contains(&"helper"));
+        assert!(local_labels.contains(&"tools"));
+
+        let imported_completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(42),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 35,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+        let imported_completion: LspCompletionList =
+            serde_json::from_value(imported_completion.result.unwrap()).unwrap();
+        let imported_labels = imported_completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(imported_labels.contains(&"helper"));
+        assert!(!imported_labels.contains(&"tools"));
 
         fs::remove_dir_all(root).ok();
     }
