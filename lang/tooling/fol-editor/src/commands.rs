@@ -393,6 +393,37 @@ mod tests {
     }
 
     #[test]
+    fn tree_generate_bundle_keeps_exported_assets_exactly_in_sync() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_editor_tree_bundle_exact_assets_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        editor_tree_generate_bundle(&root).unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(root.join("grammar.js")).unwrap(),
+            fol_tree_sitter_grammar()
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("tree-sitter.json")).unwrap(),
+            crate::fol_tree_sitter_config()
+        );
+        for snapshot in fol_tree_sitter_query_snapshots() {
+            assert_eq!(
+                std::fs::read_to_string(root.join("queries/fol").join(format!("{}.scm", snapshot.name)))
+                    .unwrap(),
+                snapshot.query
+            );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn tree_generate_bundle_clears_existing_output_roots() {
         let root = std::env::temp_dir().join(format!(
             "fol_editor_tree_bundle_stale_{}_{}",
