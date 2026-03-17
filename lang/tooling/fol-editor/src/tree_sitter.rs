@@ -259,7 +259,7 @@ mod tests {
             "(return_stmt \"return\" @keyword.return)",
             "(report_stmt \"report\" @keyword.exception)",
             "(panic_stmt \"panic\" @keyword.exception)",
-            "(unreachable_stmt \"unreachable\" @keyword.exception)",
+            "(unreachable_stmt) @keyword.exception",
             "(check_expr \"check\" @keyword.exception)",
             "(break_stmt \"break\" @keyword.repeat)",
         ] {
@@ -474,6 +474,35 @@ mod tests {
             assert!(
                 stdout.contains(needle),
                 "control/effect fixture lost keyword capture: {needle}\n{stdout}"
+            );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn import_source_kinds_keep_distinct_keyword_captures() {
+        let query = fol_tree_sitter_highlights_query();
+        for needle in [
+            "(use_decl source_kind: (source_kind \"loc\" @keyword.import))",
+            "(use_decl source_kind: (source_kind \"pkg\" @keyword.import))",
+            "(use_decl source_kind: (source_kind \"std\" @keyword.import))",
+        ] {
+            assert!(query.contains(needle), "missing source-kind capture: {needle}");
+        }
+
+        let root = build_bundle_root("import_source_kinds");
+        let output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &PathBuf::from("test/apps/fixtures/mixed_loc_std_pkg/app/main.fol"),
+        );
+        assert!(output.status.success());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        for needle in ["loc", "std", "pkg", "keyword.import"] {
+            assert!(
+                stdout.contains(needle),
+                "mixed import fixture lost source-kind capture: {needle}\n{stdout}"
             );
         }
 

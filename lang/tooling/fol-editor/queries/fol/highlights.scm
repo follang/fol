@@ -9,10 +9,12 @@
 (return_stmt "return" @keyword.return)
 (report_stmt "report" @keyword.exception)
 (panic_stmt "panic" @keyword.exception)
-(unreachable_stmt "unreachable" @keyword.exception)
+(unreachable_stmt) @keyword.exception
 (check_expr "check" @keyword.exception)
 (break_stmt "break" @keyword.repeat)
-(source_kind) @keyword.import
+(use_decl source_kind: (source_kind "loc" @keyword.import))
+(use_decl source_kind: (source_kind "pkg" @keyword.import))
+(use_decl source_kind: (source_kind "std" @keyword.import))
 (decl_modifiers (modifier_list (identifier) @attribute))
 
 (use_decl name: (identifier) @namespace)

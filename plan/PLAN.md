@@ -330,7 +330,7 @@ over tiny synthetic one-liners, unless a one-liner is the clearest regression.
 ### Phase 3: Keyword and import-kind highlighting
 
 - `3.1` complete: highlight control/effect keywords consistently
-- `3.2` highlight import source-kind markers: `loc`, `pkg`, `std`
+- `3.2` complete: highlight import source-kind markers: `loc`, `pkg`, `std`
 - `3.3` highlight shell-related keywords/literals including `nil`
 - `3.4` lock real-fixture snapshots for keyword/import-heavy files
 
@@ -446,5 +446,5 @@ The acceptance pass should also verify this real editor flow:
 
 Current milestone state:
 
-- `12 / 49` slices complete
-- `24%`
+- `13 / 49` slices complete
+- `27%`
