@@ -338,12 +338,12 @@ fn plan_member_execution_from_build_source(
     let mut steps = fol_package::project_graph_steps(&evaluated.result.graph)
         .into_iter()
         .map(|step| FrontendMemberPlannedStep {
-            selection: selection_for_step(member, &evaluated.extracted, &step.name, step.default_kind),
+            selection: selection_for_step(member, &evaluated.evaluated, &step.name, step.default_kind),
             name: step.name,
             execution: step.default_kind.and_then(step_execution_kind_from_default),
         })
         .collect::<Vec<_>>();
-    for step in synthesized_default_steps(member, &evaluated.extracted) {
+    for step in synthesized_default_steps(member, &evaluated.evaluated) {
         if !steps.iter().any(|existing| existing.name == step.name) {
             steps.push(step);
         }
@@ -367,24 +367,38 @@ fn plan_member_execution_from_build_source(
 
 fn selection_for_step(
     member: &FrontendMemberBuildRoute,
-    extracted: &fol_package::ExtractedBuildProgram,
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
     step_name: &str,
     default_kind: Option<fol_package::BuildDefaultStepKind>,
 ) -> Option<crate::compile::FrontendArtifactExecutionSelection> {
-    if let Some(artifact_name) = extracted.run_steps.get(step_name) {
-        return extracted
-            .executable_artifacts
-            .iter()
-            .find(|artifact| artifact.name == *artifact_name)
-            .map(|artifact| artifact_selection(member, artifact));
+    if let Some(binding) = evaluated
+        .step_bindings
+        .iter()
+        .find(|binding| binding.step_name == step_name)
+    {
+        if let Some(artifact_name) = &binding.artifact_name {
+            return evaluated
+                .artifacts
+                .iter()
+                .find(|artifact| artifact.name == *artifact_name)
+                .map(|artifact| artifact_selection(member, artifact));
+        }
     }
     match default_kind {
         Some(fol_package::BuildDefaultStepKind::Build)
         | Some(fol_package::BuildDefaultStepKind::Run) => {
-            single_selection(member, &extracted.executable_artifacts)
+            single_selection(
+                member,
+                evaluated,
+                fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+            )
         }
         Some(fol_package::BuildDefaultStepKind::Test) => {
-            single_selection(member, &extracted.test_artifacts)
+            single_selection(
+                member,
+                evaluated,
+                fol_package::build_runtime::BuildRuntimeArtifactKind::Test,
+            )
         }
         _ => None,
     }
@@ -392,10 +406,16 @@ fn selection_for_step(
 
 fn synthesized_default_steps(
     member: &FrontendMemberBuildRoute,
-    extracted: &fol_package::ExtractedBuildProgram,
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
 ) -> Vec<FrontendMemberPlannedStep> {
     let mut steps = Vec::new();
-    if let Some(selection) = single_selection(member, &extracted.executable_artifacts) {
+    if let Some(selection) =
+        single_selection(
+            member,
+            evaluated,
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+        )
+    {
         steps.push(FrontendMemberPlannedStep {
             name: "build".to_string(),
             execution: Some(FrontendStepExecutionKind::Build),
@@ -407,7 +427,13 @@ fn synthesized_default_steps(
             selection: Some(selection),
         });
     }
-    if let Some(selection) = single_selection(member, &extracted.test_artifacts) {
+    if let Some(selection) =
+        single_selection(
+            member,
+            evaluated,
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Test,
+        )
+    {
         steps.push(FrontendMemberPlannedStep {
             name: "test".to_string(),
             execution: Some(FrontendStepExecutionKind::Test),
@@ -419,14 +445,20 @@ fn synthesized_default_steps(
 
 fn single_selection(
     member: &FrontendMemberBuildRoute,
-    artifacts: &[fol_package::ExtractedBuildArtifact],
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
+    kind: fol_package::build_runtime::BuildRuntimeArtifactKind,
 ) -> Option<crate::compile::FrontendArtifactExecutionSelection> {
-    (artifacts.len() == 1).then(|| artifact_selection(member, &artifacts[0]))
+    let artifacts = evaluated
+        .artifacts
+        .iter()
+        .filter(|artifact| artifact.kind == kind)
+        .collect::<Vec<_>>();
+    (artifacts.len() == 1).then(|| artifact_selection(member, artifacts[0]))
 }
 
 fn artifact_selection(
     member: &FrontendMemberBuildRoute,
-    artifact: &fol_package::ExtractedBuildArtifact,
+    artifact: &fol_package::build_runtime::BuildRuntimeArtifact,
 ) -> crate::compile::FrontendArtifactExecutionSelection {
     crate::compile::FrontendArtifactExecutionSelection {
         package_root: member.member_root.clone(),

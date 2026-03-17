@@ -482,7 +482,7 @@ Round 1 slice tracker:
   runtime metadata plus the evaluated graph result.
 - [x] Slice 5. Migrate package-layer build-source translation internals onto the
   runtime metadata surface instead of extractor-era result objects.
-- [ ] Slice 6. Switch frontend build-route planning to consume semantic runtime
+- [x] Slice 6. Switch frontend build-route planning to consume semantic runtime
   metadata from `fol-package`.
 - [ ] Slice 7. Translate the supported `build.fol` subset from parsed AST build
   entries instead of line-based source splitting.
