@@ -20,10 +20,11 @@ mod work;
 mod workspace;
 
 pub use cli::{
-    BuildCommand, CheckCommand, CompleteCommand, CompletionCommand, CompletionShellArg,
-    EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand, FetchCommand,
-    FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, RunCommand,
-    TestCommand, UnitCommand, UpdateCommand,
+    BuildCommand, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand, CompletionCommand,
+    CompletionShellArg, EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand,
+    FetchCommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand,
+    PackCommand, PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand,
+    UnitCommand, UpdateCommand,
 };
 pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use config::FrontendConfig;
@@ -263,24 +264,49 @@ fn frontend_config_from_cli(
         config.keep_build_dir = true;
     }
     match cli.command.as_ref() {
-        Some(FrontendCommand::Fetch(command)) => {
+        Some(FrontendCommand::Pack(command)) => match &command.command {
+            PackSubcommand::Fetch(command) => {
+                config.locked_fetch = command.locked;
+                config.offline_fetch = command.offline;
+                config.refresh_fetch = command.refresh;
+            }
+            PackSubcommand::Update(_) => {
+                config.refresh_fetch = true;
+            }
+        },
+        Some(FrontendCommand::Code(command)) => match &command.command {
+            CodeSubcommand::Build(command) => {
+                config.locked_fetch = command.locked;
+            }
+            CodeSubcommand::Run(command) => {
+                config.locked_fetch = command.locked;
+            }
+            CodeSubcommand::Test(command) => {
+                config.locked_fetch = command.locked;
+            }
+            CodeSubcommand::Check(command) => {
+                config.locked_fetch = command.locked;
+            }
+            CodeSubcommand::Emit(_) => {}
+        },
+        Some(FrontendCommand::LegacyFetch(command)) => {
             config.locked_fetch = command.locked;
             config.offline_fetch = command.offline;
             config.refresh_fetch = command.refresh;
         }
-        Some(FrontendCommand::Update(_)) => {
+        Some(FrontendCommand::LegacyUpdate(_)) => {
             config.refresh_fetch = true;
         }
-        Some(FrontendCommand::Build(command)) => {
+        Some(FrontendCommand::LegacyBuild(command)) => {
             config.locked_fetch = command.locked;
         }
-        Some(FrontendCommand::Run(command)) => {
+        Some(FrontendCommand::LegacyRun(command)) => {
             config.locked_fetch = command.locked;
         }
-        Some(FrontendCommand::Test(command)) => {
+        Some(FrontendCommand::LegacyTest(command)) => {
             config.locked_fetch = command.locked;
         }
-        Some(FrontendCommand::Check(command)) => {
+        Some(FrontendCommand::LegacyCheck(command)) => {
             config.locked_fetch = command.locked;
         }
         _ => {}
@@ -311,29 +337,65 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
             "no frontend command was provided",
         )
         .with_note("run `fol --help` to inspect the frontend workflow")),
-        Some(FrontendCommand::Init(command)) => init_root(
+        Some(FrontendCommand::Work(command)) => match &command.command {
+            cli::WorkSubcommand::Init(command) => init_root(
+                &config.working_directory,
+                command.workspace,
+                package_target_kind(command.bin, command.lib),
+            ),
+            cli::WorkSubcommand::New(command) => new_project_with_mode(
+                &config.working_directory,
+                &command.name,
+                command.workspace,
+                package_target_kind(command.bin, command.lib),
+            ),
+            _ => {
+                let discovered = discovered_root_for_command(&cli.command.as_ref().unwrap(), &config.working_directory)?;
+                let workspace = load_frontend_workspace(&discovered, config)?;
+                dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
+            }
+        },
+        Some(FrontendCommand::Pack(_)) | Some(FrontendCommand::Code(_)) => {
+            let needs_direct = match cli.command.as_ref().unwrap() {
+                FrontendCommand::Code(command) => code_has_direct_target(command),
+                _ => false,
+            };
+            if needs_direct {
+                dispatch_direct_grouped_command(cli.command.as_ref().unwrap(), config)
+            } else {
+                let discovered = discovered_root_for_command(&cli.command.as_ref().unwrap(), &config.working_directory)?;
+                let workspace = load_frontend_workspace(&discovered, config)?;
+                dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
+            }
+        }
+        Some(FrontendCommand::Tool(command)) => match &command.command {
+            ToolSubcommand::Completion(command) => {
+                completion_command(parse_completion_shell(command.shell))
+            }
+            ToolSubcommand::Clean(_) => {
+                let discovered = discovered_root_for_command(&cli.command.as_ref().unwrap(), &config.working_directory)?;
+                let workspace = load_frontend_workspace(&discovered, config)?;
+                dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
+            }
+        },
+        Some(FrontendCommand::LegacyInit(command)) => init_root(
             &config.working_directory,
             command.workspace,
             package_target_kind(command.bin, command.lib),
         ),
-        Some(FrontendCommand::New(command)) => new_project_with_mode(
+        Some(FrontendCommand::LegacyNew(command)) => new_project_with_mode(
             &config.working_directory,
             &command.name,
             command.workspace,
             package_target_kind(command.bin, command.lib),
         ),
-        Some(FrontendCommand::Update(_)) => {
-            let discovered = require_discovered_root(&config.working_directory)?;
-            let workspace = load_frontend_workspace(&discovered, config)?;
-            update_workspace_with_config(&workspace, config)
-        }
-        Some(FrontendCommand::Completion(command)) => {
+        Some(FrontendCommand::LegacyCompletion(command)) => {
             completion_command(parse_completion_shell(command.shell))
         }
         Some(FrontendCommand::Complete(command)) => {
             internal_complete_command_with_tokens(&command.tokens)
         }
-        Some(FrontendCommand::Build(command)) if command.target.input.is_some() => {
+        Some(FrontendCommand::LegacyBuild(command)) if command.target.input.is_some() => {
             run_direct_compile(
                 &DirectCompileConfig {
                     input: command.target.input.clone().unwrap_or_default(),
@@ -346,7 +408,7 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
                 &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
             )
         }
-        Some(FrontendCommand::Check(command)) if command.target.input.is_some() => {
+        Some(FrontendCommand::LegacyCheck(command)) if command.target.input.is_some() => {
             run_direct_compile(
                 &DirectCompileConfig {
                     input: command.target.input.clone().unwrap_or_default(),
@@ -357,7 +419,7 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
                 &config_for_roots(config, &command.roots),
             )
         }
-        Some(FrontendCommand::Run(command)) if command.target.input.is_some() => {
+        Some(FrontendCommand::LegacyRun(command)) if command.target.input.is_some() => {
             run_direct_compile(
                 &DirectCompileConfig {
                     input: command.target.input.clone().unwrap_or_default(),
@@ -371,7 +433,7 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
                 &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
             )
         }
-        Some(FrontendCommand::Emit(command)) if emit_has_direct_target(command) => {
+        Some(FrontendCommand::LegacyEmit(command)) if emit_has_direct_target(command) => {
             match &command.command {
                 EmitSubcommand::Rust(emit) => run_direct_compile(
                     &DirectCompileConfig {
@@ -403,6 +465,78 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
     }
 }
 
+fn dispatch_direct_grouped_command(
+    command: &FrontendCommand,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
+    match command {
+        FrontendCommand::Code(command) => match &command.command {
+            CodeSubcommand::Build(command) => run_direct_compile(
+                &DirectCompileConfig {
+                    input: command.target.input.clone().unwrap_or_default(),
+                    std_root: command.roots.std_root.clone(),
+                    package_store_root: command.roots.package_store_root.clone(),
+                    mode: DirectCompileMode::Build {
+                        keep_build_dir: command.keep_build_dir,
+                    },
+                },
+                &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
+            ),
+            CodeSubcommand::Check(command) => run_direct_compile(
+                &DirectCompileConfig {
+                    input: command.target.input.clone().unwrap_or_default(),
+                    std_root: command.roots.std_root.clone(),
+                    package_store_root: command.roots.package_store_root.clone(),
+                    mode: DirectCompileMode::Check,
+                },
+                &config_for_roots(config, &command.roots),
+            ),
+            CodeSubcommand::Run(command) => run_direct_compile(
+                &DirectCompileConfig {
+                    input: command.target.input.clone().unwrap_or_default(),
+                    std_root: command.roots.std_root.clone(),
+                    package_store_root: command.roots.package_store_root.clone(),
+                    mode: DirectCompileMode::Run {
+                        keep_build_dir: command.keep_build_dir,
+                        args: command.args.clone(),
+                    },
+                },
+                &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
+            ),
+            CodeSubcommand::Emit(command) => match &command.command {
+                EmitSubcommand::Rust(emit) => run_direct_compile(
+                    &DirectCompileConfig {
+                        input: emit.target.input.clone().unwrap_or_default(),
+                        std_root: emit.roots.std_root.clone(),
+                        package_store_root: emit.roots.package_store_root.clone(),
+                        mode: DirectCompileMode::EmitRust {
+                            keep_build_dir: emit.keep_build_dir,
+                        },
+                    },
+                    &config_for_roots_keep_build(config, &emit.roots, emit.keep_build_dir),
+                ),
+                EmitSubcommand::Lowered(emit) => run_direct_compile(
+                    &DirectCompileConfig {
+                        input: emit.target.input.clone().unwrap_or_default(),
+                        std_root: emit.roots.std_root.clone(),
+                        package_store_root: emit.roots.package_store_root.clone(),
+                        mode: DirectCompileMode::EmitLowered,
+                    },
+                    &config_for_roots(config, &emit.roots),
+                ),
+            },
+            CodeSubcommand::Test(_) => Err(FrontendError::new(
+                FrontendErrorKind::Internal,
+                "unexpected direct test dispatch",
+            )),
+        },
+        _ => Err(FrontendError::new(
+            FrontendErrorKind::Internal,
+            "unexpected grouped direct dispatch",
+        )),
+    }
+}
+
 fn dispatch_workspace_command(
     command: &FrontendCommand,
     workspace: &FrontendWorkspace,
@@ -410,18 +544,68 @@ fn dispatch_workspace_command(
 ) -> FrontendResult<FrontendCommandResult> {
     match command {
         FrontendCommand::Work(command) => Ok(match command.command {
+            cli::WorkSubcommand::Init(_) | cli::WorkSubcommand::New(_) => {
+                return Err(FrontendError::new(
+                    FrontendErrorKind::Internal,
+                    "unexpected work setup command reached workspace dispatcher",
+                ))
+            }
             cli::WorkSubcommand::Info(_) => work_info(workspace),
             cli::WorkSubcommand::List(_) => work_list(workspace),
             cli::WorkSubcommand::Deps(_) => work_deps(workspace)?,
             cli::WorkSubcommand::Status(_) => work_status(workspace, config)?,
         }),
-        FrontendCommand::Fetch(command) => {
+        FrontendCommand::Pack(command) => match &command.command {
+            PackSubcommand::Fetch(command) => {
+                fetch_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
+            }
+            PackSubcommand::Update(command) => {
+                update_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
+            }
+        },
+        FrontendCommand::Code(command) => match &command.command {
+            CodeSubcommand::Build(command) => {
+                build_workspace_for_profile_with_config(
+                    workspace,
+                    &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
+                    config.profile_override.unwrap_or(FrontendProfile::Debug),
+                )
+            }
+            CodeSubcommand::Check(command) => {
+                check_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
+            }
+            CodeSubcommand::Run(command) => {
+                run_workspace_with_args_and_config(
+                    workspace,
+                    &config_for_roots_keep_build(config, &command.roots, command.keep_build_dir),
+                    &command.args,
+                )
+            }
+            CodeSubcommand::Test(_) => test_workspace_with_config(workspace, config),
+            CodeSubcommand::Emit(command) => match &command.command {
+                EmitSubcommand::Rust(emit) => emit_rust_with_config(
+                    workspace,
+                    &config_for_roots_keep_build(config, &emit.roots, emit.keep_build_dir),
+                ),
+                EmitSubcommand::Lowered(emit) => {
+                    emit_lowered_with_config(workspace, &config_for_roots(config, &emit.roots))
+                }
+            },
+        },
+        FrontendCommand::Tool(command) => match &command.command {
+            ToolSubcommand::Clean(_) => clean_workspace_with_config(workspace, config),
+            ToolSubcommand::Completion(_) => Err(FrontendError::new(
+                FrontendErrorKind::Internal,
+                "unexpected completion command reached workspace dispatcher",
+            )),
+        },
+        FrontendCommand::LegacyFetch(command) => {
             fetch_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
         }
-        FrontendCommand::Update(command) => {
+        FrontendCommand::LegacyUpdate(command) => {
             update_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
         }
-        FrontendCommand::Build(command) => {
+        FrontendCommand::LegacyBuild(command) => {
             if let Some(input) = &command.target.input {
                 return run_direct_compile(
                     &DirectCompileConfig {
@@ -441,7 +625,7 @@ fn dispatch_workspace_command(
                 config.profile_override.unwrap_or(FrontendProfile::Debug),
             )
         }
-        FrontendCommand::Check(command) => {
+        FrontendCommand::LegacyCheck(command) => {
             if let Some(input) = &command.target.input {
                 return run_direct_compile(
                     &DirectCompileConfig {
@@ -455,7 +639,7 @@ fn dispatch_workspace_command(
             }
             check_workspace_with_config(workspace, &config_for_roots(config, &command.roots))
         }
-        FrontendCommand::Run(command) => {
+        FrontendCommand::LegacyRun(command) => {
             if let Some(input) = &command.target.input {
                 return run_direct_compile(
                     &DirectCompileConfig {
@@ -476,8 +660,8 @@ fn dispatch_workspace_command(
                 &command.args,
             )
         }
-        FrontendCommand::Test(_) => test_workspace_with_config(workspace, config),
-        FrontendCommand::Emit(command) => match command.command {
+        FrontendCommand::LegacyTest(_) => test_workspace_with_config(workspace, config),
+        FrontendCommand::LegacyEmit(command) => match command.command {
             EmitSubcommand::Rust(ref emit) => {
                 if let Some(input) = &emit.target.input {
                     return run_direct_compile(
@@ -512,11 +696,11 @@ fn dispatch_workspace_command(
                 emit_lowered_with_config(workspace, &config_for_roots(config, &emit.roots))
             }
         },
-        FrontendCommand::Clean(_) => clean_workspace_with_config(workspace, config),
-        FrontendCommand::Completion(_)
+        FrontendCommand::LegacyClean(_) => clean_workspace_with_config(workspace, config),
+        FrontendCommand::LegacyCompletion(_)
         | FrontendCommand::Complete(_)
-        | FrontendCommand::Init(_)
-        | FrontendCommand::New(_) => Err(FrontendError::new(
+        | FrontendCommand::LegacyInit(_)
+        | FrontendCommand::LegacyNew(_) => Err(FrontendError::new(
             FrontendErrorKind::Internal,
             "unexpected command reached workspace dispatcher",
         )),
@@ -557,7 +741,11 @@ fn discovered_root_for_command(
 ) -> FrontendResult<DiscoveredRoot> {
     let explicit = match command {
         FrontendCommand::Work(command) => command.path.as_deref(),
-        FrontendCommand::Test(command) => command.path.as_deref(),
+        FrontendCommand::Code(command) => match &command.command {
+            CodeSubcommand::Test(command) => command.path.as_deref(),
+            _ => None,
+        },
+        FrontendCommand::LegacyTest(command) => command.path.as_deref(),
         _ => None,
     };
     if let Some(path) = explicit {
@@ -638,5 +826,14 @@ mod tests {
         assert!(rendered.contains("rust"));
         assert!(rendered.contains("lowered"));
         assert!(!rendered.contains("Run `fol <command> --help` for command-specific usage."));
+    }
+}
+fn code_has_direct_target(command: &CodeCommand) -> bool {
+    match &command.command {
+        CodeSubcommand::Build(command) => command.target.input.is_some(),
+        CodeSubcommand::Run(command) => command.target.input.is_some(),
+        CodeSubcommand::Check(command) => command.target.input.is_some(),
+        CodeSubcommand::Emit(command) => emit_has_direct_target(command),
+        CodeSubcommand::Test(_) => false,
     }
 }

@@ -1,7 +1,7 @@
 use crate::OutputMode;
 use clap::{Args, CommandFactory, Parser, Subcommand};
 
-const AFTER_HELP: &str = "Run `fol <command> --help` for command-specific usage.";
+const AFTER_HELP: &str = "Run `fol <group> <command> --help` for command-specific usage.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub enum FrontendProfile {
@@ -18,30 +18,34 @@ pub enum CompletionShellArg {
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum FrontendCommand {
-    #[command(visible_aliases = ["i", "bootstrap"])]
-    Init(InitCommand),
-    #[command(visible_aliases = ["n", "create"])]
-    New(NewCommand),
     #[command(visible_aliases = ["w", "ws", "workspace"])]
     Work(WorkCommand),
-    #[command(visible_aliases = ["f", "sync"])]
-    Fetch(FetchCommand),
-    #[command(visible_aliases = ["u", "upgrade"])]
-    Update(UpdateCommand),
-    #[command(visible_aliases = ["b", "make"])]
-    Build(BuildCommand),
-    #[command(visible_aliases = ["r"])]
-    Run(RunCommand),
-    #[command(visible_aliases = ["t"])]
-    Test(TestCommand),
-    #[command(visible_aliases = ["c", "verify"])]
-    Check(CheckCommand),
-    #[command(visible_aliases = ["e", "gen"])]
-    Emit(EmitCommand),
-    #[command(visible_aliases = ["cl", "purge"])]
-    Clean(UnitCommand),
-    #[command(visible_aliases = ["completions", "comp"])]
-    Completion(CompletionCommand),
+    #[command(visible_aliases = ["pkg", "package"])]
+    Pack(PackCommand),
+    Code(CodeCommand),
+    Tool(ToolCommand),
+    #[command(hide = true, name = "init", visible_aliases = ["i", "bootstrap"])]
+    LegacyInit(InitCommand),
+    #[command(hide = true, name = "new", visible_aliases = ["n", "create"])]
+    LegacyNew(NewCommand),
+    #[command(hide = true, name = "fetch", visible_aliases = ["f", "sync"])]
+    LegacyFetch(FetchCommand),
+    #[command(hide = true, name = "update", visible_aliases = ["u", "upgrade"])]
+    LegacyUpdate(UpdateCommand),
+    #[command(hide = true, name = "build", visible_aliases = ["b", "make"])]
+    LegacyBuild(BuildCommand),
+    #[command(hide = true, name = "run", visible_aliases = ["r"])]
+    LegacyRun(RunCommand),
+    #[command(hide = true, name = "test", visible_aliases = ["t"])]
+    LegacyTest(TestCommand),
+    #[command(hide = true, name = "check", visible_aliases = ["c", "verify"])]
+    LegacyCheck(CheckCommand),
+    #[command(hide = true, name = "emit", visible_aliases = ["e", "gen"])]
+    LegacyEmit(EmitCommand),
+    #[command(hide = true, name = "clean", visible_aliases = ["cl", "purge"])]
+    LegacyClean(UnitCommand),
+    #[command(hide = true, name = "completion", visible_aliases = ["completions", "comp"])]
+    LegacyCompletion(CompletionCommand),
     #[command(hide = true, name = "_complete")]
     Complete(CompleteCommand),
 }
@@ -153,6 +157,24 @@ pub struct WorkCommand {
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct PackCommand {
+    #[command(subcommand)]
+    pub command: PackSubcommand,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct CodeCommand {
+    #[command(subcommand)]
+    pub command: CodeSubcommand,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct ToolCommand {
+    #[command(subcommand)]
+    pub command: ToolSubcommand,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
 pub struct CompletionCommand {
     #[arg(value_enum)]
     pub shell: CompletionShellArg,
@@ -172,10 +194,42 @@ pub struct EmitCommand {
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum WorkSubcommand {
+    Init(InitCommand),
+    New(NewCommand),
     Info(UnitCommand),
     List(UnitCommand),
     Deps(UnitCommand),
     Status(UnitCommand),
+}
+
+#[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
+pub enum PackSubcommand {
+    #[command(visible_aliases = ["f", "sync"])]
+    Fetch(FetchCommand),
+    #[command(visible_aliases = ["u", "upgrade"])]
+    Update(UpdateCommand),
+}
+
+#[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
+pub enum CodeSubcommand {
+    #[command(visible_aliases = ["b", "make"])]
+    Build(BuildCommand),
+    #[command(visible_aliases = ["r"])]
+    Run(RunCommand),
+    #[command(visible_aliases = ["t"])]
+    Test(TestCommand),
+    #[command(visible_aliases = ["c", "verify"])]
+    Check(CheckCommand),
+    #[command(visible_aliases = ["e", "gen"])]
+    Emit(EmitCommand),
+}
+
+#[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
+pub enum ToolSubcommand {
+    #[command(visible_aliases = ["cl", "purge"])]
+    Clean(UnitCommand),
+    #[command(visible_aliases = ["completions", "comp"])]
+    Completion(CompletionCommand),
 }
 
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
@@ -339,10 +393,11 @@ impl FrontendCli {
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildCommand, CheckCommand, CompleteCommand, CompletionCommand, CompletionShellArg,
-        CompileRootArgs, DirectTargetArg, EmitCommand, EmitLoweredCommand, EmitRustCommand,
-        EmitSubcommand, FetchCommand, FrontendCli, FrontendCommand, FrontendProfile,
-        InitCommand, NewCommand, RunCommand, TestCommand, UnitCommand, UpdateCommand,
+        BuildCommand, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand,
+        CompletionCommand, CompletionShellArg, CompileRootArgs, DirectTargetArg, EmitCommand,
+        EmitLoweredCommand, EmitRustCommand, EmitSubcommand, FetchCommand, FrontendCli,
+        FrontendCommand, FrontendProfile, InitCommand, NewCommand, PackCommand, PackSubcommand,
+        RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand, UpdateCommand,
         WorkCommand, WorkSubcommand,
     };
     use crate::OutputMode;
@@ -381,9 +436,14 @@ mod tests {
 
     #[test]
     fn root_command_families_parse_through_derive_tree() {
-        let cli = parse_clean(["fol", "build"]);
+        let cli = parse_clean(["fol", "code", "build"]);
 
-        assert_eq!(cli.command, Some(FrontendCommand::Build(BuildCommand::default())));
+        assert_eq!(
+            cli.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Build(BuildCommand::default()),
+            }))
+        );
     }
 
     #[test]
@@ -392,7 +452,7 @@ mod tests {
 
         assert_eq!(
             cli.command,
-            Some(FrontendCommand::Run(RunCommand {
+            Some(FrontendCommand::LegacyRun(RunCommand {
                 target: DirectTargetArg::default(),
                 roots: CompileRootArgs::default(),
                 locked: false,
@@ -404,43 +464,49 @@ mod tests {
 
     #[test]
     fn emit_subcommands_parse_through_derive_tree() {
-        let rust = parse_clean(["fol", "emit", "rust"]);
-        let lowered = parse_clean(["fol", "emit", "lowered"]);
+        let rust = parse_clean(["fol", "code", "emit", "rust"]);
+        let lowered = parse_clean(["fol", "code", "emit", "lowered"]);
 
         assert_eq!(
             rust.command,
-            Some(FrontendCommand::Emit(EmitCommand {
-                command: EmitSubcommand::Rust(EmitRustCommand::default()),
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Emit(EmitCommand {
+                    command: EmitSubcommand::Rust(EmitRustCommand::default()),
+                }),
             }))
         );
         assert_eq!(
             lowered.command,
-            Some(FrontendCommand::Emit(EmitCommand {
-                command: EmitSubcommand::Lowered(EmitLoweredCommand::default()),
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Emit(EmitCommand {
+                    command: EmitSubcommand::Lowered(EmitLoweredCommand::default()),
+                }),
             }))
         );
     }
 
     #[test]
     fn completion_command_parses_requested_shell() {
-        let cli = parse_clean(["fol", "completion", "bash"]);
+        let cli = parse_clean(["fol", "tool", "completion", "bash"]);
 
         assert_eq!(
             cli.command,
-            Some(FrontendCommand::Completion(CompletionCommand {
-                shell: CompletionShellArg::Bash,
+            Some(FrontendCommand::Tool(ToolCommand {
+                command: ToolSubcommand::Completion(CompletionCommand {
+                    shell: CompletionShellArg::Bash,
+                }),
             }))
         );
     }
 
     #[test]
     fn internal_complete_command_parses_optional_current_token() {
-        let cli = parse_clean(["fol", "_complete", "emit", "ru"]);
+        let cli = parse_clean(["fol", "_complete", "code", "emit", "ru"]);
 
         assert_eq!(
             cli.command,
             Some(FrontendCommand::Complete(CompleteCommand {
-                tokens: vec!["emit".to_string(), "ru".to_string()],
+                tokens: vec!["code".to_string(), "emit".to_string(), "ru".to_string()],
             }))
         );
     }
@@ -455,17 +521,17 @@ mod tests {
         let emit = parse_clean(["fol", "gen", "rust"]);
         let clean = parse_clean(["fol", "purge"]);
 
-        assert_eq!(build.command, Some(FrontendCommand::Build(BuildCommand::default())));
-        assert_eq!(check.command, Some(FrontendCommand::Check(CheckCommand::default())));
-        assert_eq!(fetch.command, Some(FrontendCommand::Fetch(FetchCommand::default())));
-        assert_eq!(update.command, Some(FrontendCommand::Update(UpdateCommand::default())));
+        assert_eq!(build.command, Some(FrontendCommand::LegacyBuild(BuildCommand::default())));
+        assert_eq!(check.command, Some(FrontendCommand::LegacyCheck(CheckCommand::default())));
+        assert_eq!(fetch.command, Some(FrontendCommand::LegacyFetch(FetchCommand::default())));
+        assert_eq!(update.command, Some(FrontendCommand::LegacyUpdate(UpdateCommand::default())));
         assert_eq!(
             emit.command,
-            Some(FrontendCommand::Emit(EmitCommand {
+            Some(FrontendCommand::LegacyEmit(EmitCommand {
                 command: EmitSubcommand::Rust(EmitRustCommand::default()),
             }))
         );
-        assert_eq!(clean.command, Some(FrontendCommand::Clean(UnitCommand)));
+        assert_eq!(clean.command, Some(FrontendCommand::LegacyClean(UnitCommand)));
         assert_eq!(
             work.command,
             Some(FrontendCommand::Work(WorkCommand {
@@ -477,16 +543,21 @@ mod tests {
 
     #[test]
     fn output_flag_parses_global_output_mode() {
-        let cli = parse_clean(["fol", "--output", "json", "build"]);
+        let cli = parse_clean(["fol", "--output", "json", "code", "build"]);
 
         assert_eq!(cli.output, OutputMode::Json);
-        assert_eq!(cli.command, Some(FrontendCommand::Build(BuildCommand::default())));
+        assert_eq!(
+            cli.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Build(BuildCommand::default()),
+            }))
+        );
     }
 
     #[test]
     fn profile_flags_normalize_to_frontend_profile_selection() {
-        let profile = parse_clean(["fol", "--profile", "release", "build"]);
-        let release = parse_clean(["fol", "--release", "build"]);
+        let profile = parse_clean(["fol", "--profile", "release", "code", "build"]);
+        let release = parse_clean(["fol", "--release", "code", "build"]);
 
         assert_eq!(profile.selected_profile(), FrontendProfile::Release);
         assert_eq!(release.selected_profile(), FrontendProfile::Release);
@@ -500,7 +571,7 @@ mod tests {
             std::env::set_var("FOL_PROFILE", "release");
         }
 
-        let cli = FrontendCli::parse_from(["fol", "build"]);
+        let cli = FrontendCli::parse_from(["fol", "code", "build"]);
 
         assert_eq!(cli.output, OutputMode::Plain);
         assert_eq!(cli.selected_profile(), FrontendProfile::Release);
@@ -519,7 +590,7 @@ mod tests {
             std::env::set_var("FOL_PROFILE", "release");
         }
 
-        let cli = FrontendCli::parse_from(["fol", "--output", "json", "--debug", "build"]);
+        let cli = FrontendCli::parse_from(["fol", "--output", "json", "--debug", "code", "build"]);
 
         assert_eq!(cli.output, OutputMode::Json);
         assert_eq!(cli.selected_profile(), FrontendProfile::Debug);
@@ -560,16 +631,12 @@ mod tests {
     fn help_output_mentions_visible_aliases() {
         let help = FrontendCli::command().render_long_help().to_string();
 
-        assert!(help.contains("build"));
-        assert!(help.contains("make"));
-        assert!(help.contains("check"));
-        assert!(help.contains("verify"));
-        assert!(help.contains("sync"));
-        assert!(help.contains("upgrade"));
-        assert!(help.contains("purge"));
-        assert!(help.contains("gen"));
-        assert!(help.contains("completion"));
-        assert!(help.contains("completions"));
+        assert!(help.contains("work"));
+        assert!(help.contains("workspace"));
+        assert!(help.contains("pack"));
+        assert!(help.contains("package"));
+        assert!(help.contains("code"));
+        assert!(help.contains("tool"));
     }
 
     #[test]
@@ -611,80 +678,104 @@ mod tests {
 
     #[test]
     fn workspace_flags_parse_for_init_and_new_commands() {
-        let init = parse_clean(["fol", "init", "--workspace"]);
-        let new = parse_clean(["fol", "new", "demo", "--workspace"]);
+        let init = parse_clean(["fol", "work", "init", "--workspace"]);
+        let new = parse_clean(["fol", "work", "new", "demo", "--workspace"]);
 
         assert_eq!(
             init.command,
-            Some(FrontendCommand::Init(InitCommand { workspace: true, bin: false, lib: false }))
+            Some(FrontendCommand::Work(WorkCommand {
+                path: None,
+                command: WorkSubcommand::Init(InitCommand { workspace: true, bin: false, lib: false }),
+            }))
         );
         assert_eq!(
             new.command,
-            Some(FrontendCommand::New(NewCommand {
-                name: "demo".to_string(),
-                workspace: true,
-                bin: false,
-                lib: false,
+            Some(FrontendCommand::Work(WorkCommand {
+                path: None,
+                command: WorkSubcommand::New(NewCommand {
+                    name: "demo".to_string(),
+                    workspace: true,
+                    bin: false,
+                    lib: false,
+                }),
             }))
         );
     }
 
     #[test]
     fn bin_flags_parse_for_init_and_new_commands() {
-        let init = parse_clean(["fol", "init", "--bin"]);
-        let new = parse_clean(["fol", "new", "demo", "--bin"]);
+        let init = parse_clean(["fol", "work", "init", "--bin"]);
+        let new = parse_clean(["fol", "work", "new", "demo", "--bin"]);
 
         assert_eq!(
             init.command,
-            Some(FrontendCommand::Init(InitCommand { workspace: false, bin: true, lib: false }))
+            Some(FrontendCommand::Work(WorkCommand {
+                path: None,
+                command: WorkSubcommand::Init(InitCommand { workspace: false, bin: true, lib: false }),
+            }))
         );
         assert_eq!(
             new.command,
-            Some(FrontendCommand::New(NewCommand {
-                name: "demo".to_string(),
-                workspace: false,
-                bin: true,
-                lib: false,
+            Some(FrontendCommand::Work(WorkCommand {
+                path: None,
+                command: WorkSubcommand::New(NewCommand {
+                    name: "demo".to_string(),
+                    workspace: false,
+                    bin: true,
+                    lib: false,
+                }),
             }))
         );
     }
 
     #[test]
     fn duplicate_lib_flags_parse_for_init_and_new_commands() {
-        let init = parse_clean(["fol", "init", "--lib"]);
-        let new = parse_clean(["fol", "new", "demo", "--lib"]);
+        let init = parse_clean(["fol", "work", "init", "--lib"]);
+        let new = parse_clean(["fol", "work", "new", "demo", "--lib"]);
 
         assert_eq!(
             init.command,
-            Some(FrontendCommand::Init(InitCommand { workspace: false, bin: false, lib: true }))
+            Some(FrontendCommand::Work(WorkCommand {
+                path: None,
+                command: WorkSubcommand::Init(InitCommand { workspace: false, bin: false, lib: true }),
+            }))
         );
         assert_eq!(
             new.command,
-            Some(FrontendCommand::New(NewCommand {
-                name: "demo".to_string(),
-                workspace: false,
-                bin: false,
-                lib: true,
+            Some(FrontendCommand::Work(WorkCommand {
+                path: None,
+                command: WorkSubcommand::New(NewCommand {
+                    name: "demo".to_string(),
+                    workspace: false,
+                    bin: false,
+                    lib: true,
+                }),
             }))
         );
     }
 
     #[test]
     fn lib_flags_parse_for_init_and_new_commands() {
-        let init = parse_clean(["fol", "init", "--lib"]);
-        let new = parse_clean(["fol", "new", "demo", "--lib"]);
+        let init = parse_clean(["fol", "work", "init", "--lib"]);
+        let new = parse_clean(["fol", "work", "new", "demo", "--lib"]);
 
         assert_eq!(
             init.command,
-            Some(FrontendCommand::Init(InitCommand { workspace: false, bin: false, lib: true }))
+            Some(FrontendCommand::Work(WorkCommand {
+                path: None,
+                command: WorkSubcommand::Init(InitCommand { workspace: false, bin: false, lib: true }),
+            }))
         );
         assert_eq!(
             new.command,
-            Some(FrontendCommand::New(NewCommand {
-                name: "demo".to_string(),
-                workspace: false,
-                bin: false,
-                lib: true,
+            Some(FrontendCommand::Work(WorkCommand {
+                path: None,
+                command: WorkSubcommand::New(NewCommand {
+                    name: "demo".to_string(),
+                    workspace: false,
+                    bin: false,
+                    lib: true,
+                }),
             }))
         );
     }
@@ -693,6 +784,7 @@ mod tests {
     fn build_command_owns_direct_compile_flags() {
         let cli = parse_clean([
             "fol",
+            "code",
             "build",
             "--std-root",
             "/tmp/std",
@@ -704,69 +796,81 @@ mod tests {
 
         assert_eq!(
             cli.command,
-            Some(FrontendCommand::Build(BuildCommand {
-                target: DirectTargetArg {
-                    input: Some("demo".to_string()),
-                },
-                roots: CompileRootArgs {
-                    std_root: Some("/tmp/std".to_string()),
-                    package_store_root: Some("/tmp/pkg".to_string()),
-                },
-                locked: false,
-                keep_build_dir: true,
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Build(BuildCommand {
+                    target: DirectTargetArg {
+                        input: Some("demo".to_string()),
+                    },
+                    roots: CompileRootArgs {
+                        std_root: Some("/tmp/std".to_string()),
+                        package_store_root: Some("/tmp/pkg".to_string()),
+                    },
+                    locked: false,
+                    keep_build_dir: true,
+                }),
             }))
         );
     }
 
     #[test]
     fn fetch_and_locked_workflow_flags_parse_on_commands() {
-        let fetch = parse_clean(["fol", "fetch", "--locked", "--offline", "--refresh"]);
-        let build = parse_clean(["fol", "build", "--locked"]);
-        let run = parse_clean(["fol", "run", "--locked"]);
-        let test = parse_clean(["fol", "test", "--locked"]);
-        let check = parse_clean(["fol", "check", "--locked"]);
+        let fetch = parse_clean(["fol", "pack", "fetch", "--locked", "--offline", "--refresh"]);
+        let build = parse_clean(["fol", "code", "build", "--locked"]);
+        let run = parse_clean(["fol", "code", "run", "--locked"]);
+        let test = parse_clean(["fol", "code", "test", "--locked"]);
+        let check = parse_clean(["fol", "code", "check", "--locked"]);
 
         assert_eq!(
             fetch.command,
-            Some(FrontendCommand::Fetch(FetchCommand {
-                roots: CompileRootArgs::default(),
-                locked: true,
-                offline: true,
-                refresh: true,
+            Some(FrontendCommand::Pack(PackCommand {
+                command: PackSubcommand::Fetch(FetchCommand {
+                    roots: CompileRootArgs::default(),
+                    locked: true,
+                    offline: true,
+                    refresh: true,
+                }),
             }))
         );
         assert_eq!(
             build.command,
-            Some(FrontendCommand::Build(BuildCommand {
-                target: DirectTargetArg::default(),
-                roots: CompileRootArgs::default(),
-                locked: true,
-                keep_build_dir: false,
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Build(BuildCommand {
+                    target: DirectTargetArg::default(),
+                    roots: CompileRootArgs::default(),
+                    locked: true,
+                    keep_build_dir: false,
+                }),
             }))
         );
         assert_eq!(
             run.command,
-            Some(FrontendCommand::Run(RunCommand {
-                target: DirectTargetArg::default(),
-                roots: CompileRootArgs::default(),
-                locked: true,
-                keep_build_dir: false,
-                args: Vec::new(),
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Run(RunCommand {
+                    target: DirectTargetArg::default(),
+                    roots: CompileRootArgs::default(),
+                    locked: true,
+                    keep_build_dir: false,
+                    args: Vec::new(),
+                }),
             }))
         );
         assert_eq!(
             test.command,
-            Some(FrontendCommand::Test(TestCommand {
-                path: None,
-                locked: true,
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Test(TestCommand {
+                    path: None,
+                    locked: true,
+                }),
             }))
         );
         assert_eq!(
             check.command,
-            Some(FrontendCommand::Check(CheckCommand {
-                target: DirectTargetArg::default(),
-                roots: CompileRootArgs::default(),
-                locked: true,
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Check(CheckCommand {
+                    target: DirectTargetArg::default(),
+                    roots: CompileRootArgs::default(),
+                    locked: true,
+                }),
             }))
         );
     }
@@ -775,6 +879,7 @@ mod tests {
     fn emit_subcommands_own_their_specific_flags() {
         let rust = parse_clean([
             "fol",
+            "code",
             "emit",
             "rust",
             "--keep-build-dir",
@@ -782,6 +887,7 @@ mod tests {
         ]);
         let lowered = parse_clean([
             "fol",
+            "code",
             "emit",
             "lowered",
             "--std-root",
@@ -791,27 +897,31 @@ mod tests {
 
         assert_eq!(
             rust.command,
-            Some(FrontendCommand::Emit(EmitCommand {
-                command: EmitSubcommand::Rust(EmitRustCommand {
-                    target: DirectTargetArg {
-                        input: Some("demo".to_string()),
-                    },
-                    roots: CompileRootArgs::default(),
-                    keep_build_dir: true,
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Emit(EmitCommand {
+                    command: EmitSubcommand::Rust(EmitRustCommand {
+                        target: DirectTargetArg {
+                            input: Some("demo".to_string()),
+                        },
+                        roots: CompileRootArgs::default(),
+                        keep_build_dir: true,
+                    }),
                 }),
             }))
         );
         assert_eq!(
             lowered.command,
-            Some(FrontendCommand::Emit(EmitCommand {
-                command: EmitSubcommand::Lowered(EmitLoweredCommand {
-                    target: DirectTargetArg {
-                        input: Some("demo".to_string()),
-                    },
-                    roots: CompileRootArgs {
-                        std_root: Some("/tmp/std".to_string()),
-                        package_store_root: None,
-                    },
+            Some(FrontendCommand::Code(CodeCommand {
+                command: CodeSubcommand::Emit(EmitCommand {
+                    command: EmitSubcommand::Lowered(EmitLoweredCommand {
+                        target: DirectTargetArg {
+                            input: Some("demo".to_string()),
+                        },
+                        roots: CompileRootArgs {
+                            std_root: Some("/tmp/std".to_string()),
+                            package_store_root: None,
+                        },
+                    }),
                 }),
             }))
         );
