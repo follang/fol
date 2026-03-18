@@ -2076,6 +2076,50 @@ mod tests {
     }
 
     #[test]
+    fn build_source_evaluator_applies_build_inputs_and_option_overrides_to_artifact_metadata() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var root = graph.option({ name = \"root\", kind = \"path\", default = \"src/default.fol\" });\n",
+            "    var target = graph.standard_target();\n",
+            "    var optimize = graph.standard_optimize();\n",
+            "    var app = graph.add_exe({ name = \"demo\", root = root, target = target, optimize = optimize });\n",
+            "    graph.add_run(app);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let mut inputs = BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            target: BuildTargetTriple::parse("aarch64-macos-gnu"),
+            optimize: BuildOptimizeMode::parse("release-small"),
+            ..BuildEvaluationInputs::default()
+        };
+        inputs
+            .options
+            .insert("root".to_string(), "src/cli-selected.fol".to_string());
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs,
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("build inputs should flow into artifact metadata")
+            .expect("build body should produce operations");
+
+        let artifact = evaluated
+            .evaluated
+            .artifacts
+            .iter()
+            .find(|artifact| artifact.name == "demo")
+            .expect("artifact should exist");
+
+        assert_eq!(artifact.root_module, "src/cli-selected.fol");
+        assert_eq!(artifact.target.as_deref(), Some("aarch64-macos-gnu"));
+        assert_eq!(artifact.optimize.as_deref(), Some("release-small"));
+    }
+
+    #[test]
     fn build_evaluation_error_exposes_origin_as_a_diagnostic_location() {
         let error = BuildEvaluationError::with_origin(
             BuildEvaluationErrorKind::Unsupported,
