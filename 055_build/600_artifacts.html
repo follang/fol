@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Declarations And Items - FOL Language Specification</title>
+        <title>Artifacts, Modules, Generated Files - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,30 +174,152 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="declarations-and-items"><a class="header" href="#declarations-and-items">Declarations And Items</a></h1>
-<p>This section covers the main named program elements of FOL.</p>
-<p>The declaration families include:</p>
+                        <h1 id="artifacts-modules-and-generated-files"><a class="header" href="#artifacts-modules-and-generated-files">Artifacts, Modules, and Generated Files</a></h1>
+<p>The build graph tracks three kinds of compilable or producible outputs:
+artifacts, modules, and generated files.</p>
+<h2 id="artifacts"><a class="header" href="#artifacts">Artifacts</a></h2>
+<p>Artifacts are the primary compiled outputs of a package.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Kind</th><th>Method</th><th>Output</th></tr>
+</thead>
+<tbody>
+<tr><td>Executable</td><td><code>graph.add_exe</code></td><td>Binary</td></tr>
+<tr><td>Static library</td><td><code>graph.add_static_lib</code></td><td><code>.a</code> / <code>.lib</code></td></tr>
+<tr><td>Shared library</td><td><code>graph.add_shared_lib</code></td><td><code>.so</code> / <code>.dylib</code></td></tr>
+<tr><td>Test bundle</td><td><code>graph.add_test</code></td><td>Runnable test binary</td></tr>
+</tbody>
+</table>
+</div>
+<p>All artifact constructors accept the same base config record:</p>
+<pre><code class="language-fol">var app = graph.add_exe({
+    name     = "app",      // required: output name
+    root     = "src/main.fol",  // required: entry-point source file
+    target   = target,     // optional: Target handle
+    optimize = optimize,   // optional: Optimize handle
+});
+</code></pre>
+<p><code>name</code> must be lowercase. Allowed characters: <code>a-z</code>, <code>0-9</code>, <code>-</code>, <code>_</code>, <code>.</code>.</p>
+<h3 id="artifact-name-validation"><a class="header" href="#artifact-name-validation">Artifact Name Validation</a></h3>
+<p>The build system validates artifact names at evaluation time. Invalid names
+(uppercase, spaces, special characters) produce a build error.</p>
+<h3 id="linking"><a class="header" href="#linking">Linking</a></h3>
+<p>Static and shared libraries can be linked into executables using
+<code>artifact.link(dep)</code>:</p>
+<pre><code class="language-fol">var core = graph.add_static_lib({ name = "core", root = "src/core/lib.fol" });
+var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
+app.link(core);
+</code></pre>
+<p>Linking is transitive through the graph. If <code>core</code> itself links <code>utils</code>, <code>app</code>
+will also see <code>utils</code>.</p>
+<h3 id="installation"><a class="header" href="#installation">Installation</a></h3>
+<p>Any artifact can be marked for installation:</p>
+<pre><code class="language-fol">graph.install(app);
+graph.install(core);
+</code></pre>
+<p>Files and directories can also be installed directly:</p>
+<pre><code class="language-fol">graph.install_file("config/defaults.toml");
+graph.install_dir("assets/");
+</code></pre>
+<h2 id="modules"><a class="header" href="#modules">Modules</a></h2>
+<p>Modules are named source units that can be shared across artifacts without
+being standalone binaries.</p>
+<pre><code class="language-fol">var utils = graph.add_module({ name = "utils", root = "src/utils.fol" });
+var app   = graph.add_exe({ name = "app", root = "src/main.fol" });
+app.import(utils);
+</code></pre>
+<p><code>artifact.import(module)</code> makes the module visible in the importing artifact’s
+source scope. Equivalent to Zig’s <code>artifact.root_module.addImport(name, dep)</code>.</p>
+<p>Modules from dependencies are accessed via <code>dep.module(name)</code>:</p>
+<pre><code class="language-fol">var dep    = graph.dependency("mylib", "local:../mylib");
+var logger = dep.module("logger");
+app.import(logger);
+</code></pre>
+<h2 id="generated-files"><a class="header" href="#generated-files">Generated Files</a></h2>
+<p>Generated files are outputs produced before compilation. They must be declared
+in the graph so the build system knows to produce them and what depends on them.</p>
+<h3 id="kinds"><a class="header" href="#kinds">Kinds</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Kind</th><th>Method</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Write</td><td><code>graph.write_file</code></td><td>Written with literal string contents</td></tr>
+<tr><td>Copy</td><td><code>graph.copy_file</code></td><td>Copied from a source path</td></tr>
+<tr><td>Tool output</td><td><code>graph.add_system_tool</code></td><td>Produced by an external tool</td></tr>
+<tr><td>Codegen</td><td><code>graph.add_codegen</code></td><td>Produced by the FOL codegen pipeline</td></tr>
+<tr><td>Captured run</td><td><code>run.capture_stdout()</code></td><td>Stdout of a run step</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="connecting-generated-files"><a class="header" href="#connecting-generated-files">Connecting Generated Files</a></h3>
+<p>A generated file must be connected to the graph entity that depends on it.</p>
+<p>Attach to a step (the step triggers its production):</p>
+<pre><code class="language-fol">var gen  = graph.add_system_tool({ tool = "protoc", output = "gen/types.fol" });
+var step = graph.step("proto");
+step.attach(gen);
+</code></pre>
+<p>Add to an artifact (artifact cannot compile without it):</p>
+<pre><code class="language-fol">var schema = graph.add_codegen({
+    kind   = "schema",
+    input  = "schema/api.yaml",
+    output = "gen/api.fol",
+});
+var app = graph.add_exe({ name = "app", root = "src/main.fol" });
+app.add_generated(schema);
+</code></pre>
+<p>Capture stdout and feed it as an arg to another run:</p>
+<pre><code class="language-fol">var gen_tool   = graph.add_exe({ name = "gen", root = "tools/gen.fol" });
+var gen_run    = graph.add_run(gen_tool);
+var gen_output = gen_run.capture_stdout();
+
+var app_run = graph.add_run(app);
+app_run.add_file_arg(gen_output);
+</code></pre>
+<h2 id="steps"><a class="header" href="#steps">Steps</a></h2>
+<p>Steps are named build phases. The build system has several implicit steps
+(<code>build</code>, <code>run</code>, <code>test</code>, <code>install</code>). Custom steps are declared with
+<code>graph.step</code>.</p>
+<pre><code class="language-fol">var docs = graph.step("docs", "Generate documentation");
+</code></pre>
+<p>Steps are executed in dependency order. A step depends on another step via
+<code>step.depend_on</code>:</p>
+<pre><code class="language-fol">var compile = graph.step("compile");
+var docs    = graph.step("docs");
+docs.depend_on(compile);
+</code></pre>
+<h3 id="default-step-bindings"><a class="header" href="#default-step-bindings">Default Step Bindings</a></h3>
+<p>When only one executable exists in a package, the build system automatically
+binds it to the default <code>build</code> and <code>run</code> steps. When multiple executables
+exist, explicit step bindings are required via <code>graph.add_run(artifact)</code>.</p>
+<h3 id="selecting-steps-at-the-command-line"><a class="header" href="#selecting-steps-at-the-command-line">Selecting Steps at the Command Line</a></h3>
+<pre><code class="language-text">fol code build         # run the install steps
+fol code build docs    # run the "docs" step
+fol code run           # run the default run step
+fol code run --step serve  # run the "serve" step
+fol code test          # run test steps
+</code></pre>
+<h2 id="graph-validation"><a class="header" href="#graph-validation">Graph Validation</a></h2>
+<p>After the build program executes, the graph is validated:</p>
 <ul>
-<li>bindings:
-<code>var</code>, <code>let</code>, <code>con</code>, <code>lab</code></li>
-<li>routines:
-<code>fun</code>, <code>pro</code>, <code>log</code></li>
-<li>type and construct declarations:
-<code>typ</code>, <code>ali</code></li>
-<li>contract-like declarations:
-<code>std</code></li>
+<li>No step dependency cycles</li>
+<li>All artifact inputs (modules, generated files) are resolvable</li>
+<li>Install targets point to declared artifacts</li>
 </ul>
-<p>Module-like forms such as <code>use</code>, <code>def</code>, <code>seg</code>, and <code>imp</code> are covered in the modules chapter because they primarily define source layout, namespace, and composition boundaries.</p>
+<p>Validation errors are reported as build evaluation errors before any
+compilation begins.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../400_type/400_special.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../055_build/500_control_flow.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../500_items/100_variables.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../100_lexical/_index.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -207,11 +329,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../400_type/400_special.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../055_build/500_control_flow.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../500_items/100_variables.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../100_lexical/_index.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Declarations And Items - FOL Language Specification</title>
+        <title>build.fol - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,30 +174,104 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="declarations-and-items"><a class="header" href="#declarations-and-items">Declarations And Items</a></h1>
-<p>This section covers the main named program elements of FOL.</p>
-<p>The declaration families include:</p>
+                        <h1 id="buildfol"><a class="header" href="#buildfol">build.fol</a></h1>
+<p><code>build.fol</code> is a file-bound FOL compilation unit. It is the build specification
+for a package.</p>
+<h2 id="file-bound-vs-folder-bound"><a class="header" href="#file-bound-vs-folder-bound">File-Bound vs Folder-Bound</a></h2>
+<p>Normal FOL packages are folder-bound: every <code>.fol</code> file in the package folder
+shares one namespace. <code>build.fol</code> is the one exception.</p>
+<p>Rules for <code>build.fol</code>:</p>
 <ul>
-<li>bindings:
-<code>var</code>, <code>let</code>, <code>con</code>, <code>lab</code></li>
-<li>routines:
-<code>fun</code>, <code>pro</code>, <code>log</code></li>
-<li>type and construct declarations:
-<code>typ</code>, <code>ali</code></li>
-<li>contract-like declarations:
-<code>std</code></li>
+<li>It is its own compilation unit — it does not see sibling <code>.fol</code> files</li>
+<li>It has one implicit import: the build stdlib (<code>fol/build</code>), providing <code>Graph</code>
+and all handle types</li>
+<li>It can define local helper <code>fun[]</code>, <code>pro[]</code>, and <code>typ</code> declarations</li>
+<li>Those local declarations are not exported to the package</li>
+<li>It must declare exactly one <code>pro[] build(graph: Graph): non</code> entry</li>
+<li>Additional <code>use</code> imports from the FOL stdlib are allowed</li>
 </ul>
-<p>Module-like forms such as <code>use</code>, <code>def</code>, <code>seg</code>, and <code>imp</code> are covered in the modules chapter because they primarily define source layout, namespace, and composition boundaries.</p>
+<h2 id="compilation-pipeline"><a class="header" href="#compilation-pipeline">Compilation Pipeline</a></h2>
+<p><code>build.fol</code> goes through the full FOL compiler pipeline:</p>
+<pre><code>build.fol
+    │
+    ▼  stream → lexer → parser
+    │
+    ▼  fol-resolver   (build stdlib injected as ambient scope)
+    │
+    ▼  fol-typecheck  (handle types and method signatures validated)
+    │
+    ▼  fol-lower      (lowered IR produced)
+    │
+    ▼  fol-build executor  (IR executed against BuildGraph)
+    │
+    ▼  BuildGraph
+</code></pre>
+<p>The compiler rejects <code>build.fol</code> files that reference sibling source files,
+use filesystem or network APIs, or contain more than one canonical entry.</p>
+<h2 id="canonical-entry"><a class="header" href="#canonical-entry">Canonical Entry</a></h2>
+<p>The entry must match exactly:</p>
+<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+    ...
+}
+</code></pre>
+<ul>
+<li><code>pro[]</code> — procedure with no receivers</li>
+<li>parameter name <code>graph</code>, type <code>Graph</code></li>
+<li>return type <code>non</code></li>
+</ul>
+<p>Missing entry, wrong signature, or duplicate entries are compile errors.</p>
+<h2 id="local-helpers"><a class="header" href="#local-helpers">Local Helpers</a></h2>
+<p><code>build.fol</code> can define helper functions visible only within itself:</p>
+<pre><code class="language-fol">fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
+    return graph.add_static_lib({ name = name, root = root });
+}
+
+pro[] build(graph: Graph): non = {
+    var core = make_lib(graph, "core", "src/core/lib.fol");
+    var io   = make_lib(graph, "io",   "src/io/lib.fol");
+    var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
+    app.link(core);
+    app.link(io);
+    graph.install(app);
+}
+</code></pre>
+<h2 id="packageyaml"><a class="header" href="#packageyaml">package.yaml</a></h2>
+<p>Every package needs a <code>package.yaml</code> alongside <code>build.fol</code>:</p>
+<pre><code class="language-yaml">name: my-app
+version: 1.0.0
+</code></pre>
+<p>The build system reads <code>name</code> and <code>version</code> from the manifest. Dependencies
+declared in the manifest are made available to <code>build.fol</code> via
+<code>graph.dependency(...)</code>.</p>
+<h2 id="capability-restrictions"><a class="header" href="#capability-restrictions">Capability Restrictions</a></h2>
+<p>The build executor enforces a capability model. Allowed operations:</p>
+<ul>
+<li>graph mutation (adding artifacts, steps, options)</li>
+<li>option reads (<code>graph.standard_target()</code>, <code>graph.standard_optimize()</code>, etc.)</li>
+<li>path joining and normalization (<code>graph.path_from_root(...)</code>)</li>
+<li>basic string and container operations</li>
+<li>controlled file generation (<code>graph.write_file(...)</code>, <code>graph.copy_file(...)</code>)</li>
+<li>controlled process execution (<code>graph.add_system_tool(...)</code>)</li>
+</ul>
+<p>Forbidden operations (produce a compile or runtime error):</p>
+<ul>
+<li>arbitrary filesystem reads or writes</li>
+<li>network access</li>
+<li>wall clock access</li>
+<li>ambient environment variable access</li>
+<li>uncontrolled process execution</li>
+</ul>
+<p>These restrictions ensure build graphs are deterministic and portable.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../400_type/400_special.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../055_build/_index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../500_items/100_variables.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../055_build/200_graph_api.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -207,11 +281,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../400_type/400_special.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../055_build/_index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../500_items/100_variables.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../055_build/200_graph_api.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

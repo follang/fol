@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-8d169703.js";
+            window.path_to_searchindex_js = "../searchindex-26cdcf2c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-53f6a814.js"></script>
+        <script src="../toc-e2f4f3cc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -288,16 +288,14 @@ It is a formal package root with:</p>
 <p>This keeps the language model clean:</p>
 <ul>
 <li>source files <code>use</code> other namespaces/packages</li>
-<li>package definitions are extracted from recognized top-level <code>def</code> declarations in <code>build.fol</code></li>
+<li>package build execution starts from <code>pro[] build(graph: Graph): non</code> in <code>build.fol</code></li>
 <li>package metadata lives in <code>package.yaml</code></li>
 <li>package loading happens before ordinary name resolution</li>
-<li>current frontend workflows still read compatibility dependency/export/root
-declarations from <code>build.fol</code></li>
 </ul>
 <p><code>build.fol</code> itself is still ordinary FOL syntax.
 It is not a separate mini-language.
-The package layer simply gives package/build meaning to a narrow set of
-recognized top-level definitions there.</p>
+The package layer simply gives package/build meaning to the canonical build
+routine there.</p>
 <h2 id="blocks"><a class="header" href="#blocks">Blocks</a></h2>
 <p>Block statement is used for scopes where members get destroyed when scope is finished. And there are two ways to define a block:</p>
 <ul>

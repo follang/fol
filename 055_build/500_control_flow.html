@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Declarations And Items - FOL Language Specification</title>
+        <title>Control Flow - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,30 +174,146 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="declarations-and-items"><a class="header" href="#declarations-and-items">Declarations And Items</a></h1>
-<p>This section covers the main named program elements of FOL.</p>
-<p>The declaration families include:</p>
-<ul>
-<li>bindings:
-<code>var</code>, <code>let</code>, <code>con</code>, <code>lab</code></li>
-<li>routines:
-<code>fun</code>, <code>pro</code>, <code>log</code></li>
-<li>type and construct declarations:
-<code>typ</code>, <code>ali</code></li>
-<li>contract-like declarations:
-<code>std</code></li>
-</ul>
-<p>Module-like forms such as <code>use</code>, <code>def</code>, <code>seg</code>, and <code>imp</code> are covered in the modules chapter because they primarily define source layout, namespace, and composition boundaries.</p>
+                        <h1 id="control-flow-in-buildfol"><a class="header" href="#control-flow-in-buildfol">Control Flow in build.fol</a></h1>
+<p><code>build.fol</code> is a real FOL program. It supports <code>when</code>, <code>loop</code>, and user-defined
+helper routines.</p>
+<h2 id="when"><a class="header" href="#when">when</a></h2>
+<p><code>when</code> conditionally executes build operations based on a boolean expression.</p>
+<p>The canonical form for a conditional block with no case arms uses a
+double-brace default body:</p>
+<pre><code class="language-fol">when(optimize == "release-fast") {
+    {
+        var strip_step = graph.step("strip");
+        var packed = graph.add_system_tool({
+            tool   = "strip",
+            output = "gen/app.stripped",
+        });
+        strip_step.attach(packed);
+    }
+};
+</code></pre>
+<p>With explicit <code>case</code> arms:</p>
+<pre><code class="language-fol">when(target) {
+    case("x86_64-linux-gnu") {
+        graph.step("asan", "Enable address sanitizer");
+    }
+    case("aarch64-linux-gnu") {
+        graph.step("tsan", "Enable thread sanitizer");
+    }
+    * {
+        graph.step("default-check");
+    }
+};
+</code></pre>
+<p>The inner double-brace <code>{ { ... } }</code> is required for the default arm when no
+<code>case</code> clauses are present. This is how the FOL parser distinguishes the
+default body from raw statements.</p>
+<h3 id="conditional-expressions"><a class="header" href="#conditional-expressions">Conditional Expressions</a></h3>
+<p>Any boolean or option value comparison is valid:</p>
+<pre><code class="language-fol">when(optimize == "release-fast") { { ... } };
+when(strip == true) { { ... } };
+when(target == "x86_64-linux-gnu") { { ... } };
+</code></pre>
+<p>The comparison is resolved at build evaluation time using the values passed
+via <code>-D</code> flags. If no value was provided, the declared default is used.</p>
+<h2 id="loop"><a class="header" href="#loop">loop</a></h2>
+<p><code>loop</code> iterates over a list and runs the body for each element.</p>
+<pre><code class="language-fol">loop(name in {"core", "io", "utils"}) {
+    graph.add_static_lib({ name = name, root = name });
+};
+</code></pre>
+<p>The loop variable (<code>name</code>) is bound in scope for each iteration. It can be
+used anywhere inside the body as a string value.</p>
+<p>Loop over a list with multiple fields:</p>
+<pre><code class="language-fol">loop(name in {"core", "io"}) {
+    var lib = graph.add_static_lib({ name = name, root = name });
+    graph.install(lib);
+};
+</code></pre>
+<p>The iterable is a container literal <code>{ elem1, elem2, ... }</code>. Currently only
+string lists are supported as loop iterables in <code>build.fol</code>.</p>
+<h2 id="helper-routines"><a class="header" href="#helper-routines">Helper Routines</a></h2>
+<p><code>build.fol</code> can define helper <code>fun[]</code> and <code>pro[]</code> routines. They are visible
+only within the file — they are not exported to the package.</p>
+<h3 id="helper-function"><a class="header" href="#helper-function">Helper Function</a></h3>
+<pre><code class="language-fol">fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
+    return graph.add_static_lib({ name = name, root = root });
+}
+
+pro[] build(graph: Graph): non = {
+    var core = make_lib(graph, "core", "src/core/lib.fol");
+    var io   = make_lib(graph, "io",   "src/io/lib.fol");
+    var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
+    app.link(core);
+    app.link(io);
+    graph.install(app);
+    graph.add_run(app);
+}
+</code></pre>
+<p>The helper <code>make_lib</code> receives the <code>graph</code> handle as a parameter because
+<code>graph</code> is not a global — it is a parameter of <code>build</code>.</p>
+<h3 id="helpers-calling-helpers"><a class="header" href="#helpers-calling-helpers">Helpers Calling Helpers</a></h3>
+<p>Helpers can call other helpers:</p>
+<pre><code class="language-fol">fun[] lib_root(name: str): str = {
+    return "src/" + name + "/lib.fol";
+}
+
+fun[] add_lib(graph: Graph, name: str): Artifact = {
+    return graph.add_static_lib({ name = name, root = lib_root(name) });
+}
+
+pro[] build(graph: Graph): non = {
+    var core = add_lib(graph, "core");
+    var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
+    app.link(core);
+    graph.install(app);
+}
+</code></pre>
+<h2 id="combined-example"><a class="header" href="#combined-example">Combined Example</a></h2>
+<pre><code class="language-fol">fun[] make_lib(graph: Graph, name: str): Artifact = {
+    return graph.add_static_lib({ name = name, root = name });
+}
+
+pro[] build(graph: Graph): non = {
+    var target   = graph.standard_target();
+    var optimize = graph.standard_optimize();
+    var strip    = graph.option({ name = "strip", kind = "bool", default = false });
+
+    loop(name in {"core", "io", "net"}) {
+        make_lib(graph, name);
+    };
+
+    var app = graph.add_exe({
+        name     = "app",
+        root     = "src/main.fol",
+        target   = target,
+        optimize = optimize,
+    });
+    graph.install(app);
+    graph.add_run(app);
+
+    when(strip == true) {
+        {
+            var strip_step = graph.step("strip");
+            var packed = graph.add_system_tool({
+                tool   = "strip",
+                output = "gen/app.stripped",
+            });
+            strip_step.attach(packed);
+        }
+    };
+}
+</code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../400_type/400_special.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../055_build/400_options.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../500_items/100_variables.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../055_build/600_artifacts.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -207,11 +323,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../400_type/400_special.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../055_build/400_options.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../500_items/100_variables.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../055_build/600_artifacts.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

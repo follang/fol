@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Declarations And Items - FOL Language Specification</title>
+        <title>Graph API - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,30 +174,194 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="declarations-and-items"><a class="header" href="#declarations-and-items">Declarations And Items</a></h1>
-<p>This section covers the main named program elements of FOL.</p>
-<p>The declaration families include:</p>
-<ul>
-<li>bindings:
-<code>var</code>, <code>let</code>, <code>con</code>, <code>lab</code></li>
-<li>routines:
-<code>fun</code>, <code>pro</code>, <code>log</code></li>
-<li>type and construct declarations:
-<code>typ</code>, <code>ali</code></li>
-<li>contract-like declarations:
-<code>std</code></li>
-</ul>
-<p>Module-like forms such as <code>use</code>, <code>def</code>, <code>seg</code>, and <code>imp</code> are covered in the modules chapter because they primarily define source layout, namespace, and composition boundaries.</p>
+                        <h1 id="graph-api"><a class="header" href="#graph-api">Graph API</a></h1>
+<p>The <code>Graph</code> handle is the sole parameter to <code>pro[] build</code>. All build graph
+construction goes through method calls on it.</p>
+<h2 id="artifacts"><a class="header" href="#artifacts">Artifacts</a></h2>
+<h3 id="graphadd_exe"><a class="header" href="#graphadd_exe"><code>graph.add_exe</code></a></h3>
+<p>Adds an executable artifact.</p>
+<pre><code class="language-fol">var app = graph.add_exe({
+    name     = "app",
+    root     = "src/main.fol",
+    target   = target,    // optional
+    optimize = optimize,  // optional
+});
+</code></pre>
+<p>Returns an <code>Artifact</code> handle.</p>
+<p>Required fields: <code>name</code>, <code>root</code>.
+Optional fields: <code>target</code>, <code>optimize</code>.</p>
+<p><code>root</code> is the path to the entry-point <code>.fol</code> source file relative to the
+package root.</p>
+<h3 id="graphadd_static_lib"><a class="header" href="#graphadd_static_lib"><code>graph.add_static_lib</code></a></h3>
+<p>Adds a static library artifact.</p>
+<pre><code class="language-fol">var core = graph.add_static_lib({ name = "core", root = "src/core/lib.fol" });
+</code></pre>
+<p>Returns an <code>Artifact</code> handle.</p>
+<h3 id="graphadd_shared_lib"><a class="header" href="#graphadd_shared_lib"><code>graph.add_shared_lib</code></a></h3>
+<p>Adds a shared (dynamic) library artifact.</p>
+<pre><code class="language-fol">var sdk = graph.add_shared_lib({ name = "sdk", root = "src/sdk/lib.fol" });
+</code></pre>
+<p>Returns an <code>Artifact</code> handle.</p>
+<h3 id="graphadd_test"><a class="header" href="#graphadd_test"><code>graph.add_test</code></a></h3>
+<p>Adds a test artifact.</p>
+<pre><code class="language-fol">var tests = graph.add_test({ name = "tests", root = "src/tests.fol" });
+</code></pre>
+<p>Returns an <code>Artifact</code> handle.</p>
+<h3 id="graphadd_module"><a class="header" href="#graphadd_module"><code>graph.add_module</code></a></h3>
+<p>Adds a standalone module that can be imported by other artifacts.</p>
+<pre><code class="language-fol">var utils = graph.add_module({ name = "utils", root = "src/utils.fol" });
+</code></pre>
+<p>Returns a <code>Module</code> handle.</p>
+<h2 id="installation-and-runs"><a class="header" href="#installation-and-runs">Installation and Runs</a></h2>
+<h3 id="graphinstall"><a class="header" href="#graphinstall"><code>graph.install</code></a></h3>
+<p>Marks an artifact for installation.</p>
+<pre><code class="language-fol">graph.install(app);
+</code></pre>
+<p>Returns an <code>Install</code> handle.</p>
+<h3 id="graphinstall_file"><a class="header" href="#graphinstall_file"><code>graph.install_file</code></a></h3>
+<p>Installs a file by path.</p>
+<pre><code class="language-fol">graph.install_file("config/defaults.toml");
+</code></pre>
+<p>Returns an <code>Install</code> handle.</p>
+<h3 id="graphinstall_dir"><a class="header" href="#graphinstall_dir"><code>graph.install_dir</code></a></h3>
+<p>Installs a directory by path.</p>
+<pre><code class="language-fol">graph.install_dir("assets/");
+</code></pre>
+<p>Returns an <code>Install</code> handle.</p>
+<h3 id="graphadd_run"><a class="header" href="#graphadd_run"><code>graph.add_run</code></a></h3>
+<p>Registers an artifact as a run target. Binds the default <code>run</code> step when only
+one executable exists and no explicit <code>run</code> step has been registered.</p>
+<pre><code class="language-fol">var run = graph.add_run(app);
+</code></pre>
+<p>Returns a <code>Run</code> handle. See <a href="./300_handle_api.html">Handle API</a> for <code>Run</code> methods.</p>
+<h2 id="steps"><a class="header" href="#steps">Steps</a></h2>
+<h3 id="graphstep"><a class="header" href="#graphstep"><code>graph.step</code></a></h3>
+<p>Creates a named custom step.</p>
+<pre><code class="language-fol">var docs = graph.step("docs");
+var docs = graph.step("docs", "Generate documentation");  // with description
+</code></pre>
+<p>Returns a <code>Step</code> handle. See <a href="./300_handle_api.html">Handle API</a> for <code>Step</code> methods.</p>
+<p>Named steps are selectable on the command line:</p>
+<pre><code class="language-text">fol code build docs
+fol code build --step docs
+</code></pre>
+<h2 id="options"><a class="header" href="#options">Options</a></h2>
+<h3 id="graphstandard_target"><a class="header" href="#graphstandard_target"><code>graph.standard_target</code></a></h3>
+<p>Reads the <code>-Dtarget</code> option. Returns a <code>Target</code> handle.</p>
+<pre><code class="language-fol">var target = graph.standard_target();
+</code></pre>
+<p>The value is provided at build time via <code>-Dtarget=x86_64-linux-gnu</code>. If no
+value is provided, <code>target</code> resolves to the host target.</p>
+<p>An optional config record is accepted:</p>
+<pre><code class="language-fol">var target = graph.standard_target({ default = "x86_64-linux-gnu" });
+</code></pre>
+<h3 id="graphstandard_optimize"><a class="header" href="#graphstandard_optimize"><code>graph.standard_optimize</code></a></h3>
+<p>Reads the <code>-Doptimize</code> option. Returns an <code>Optimize</code> handle.</p>
+<pre><code class="language-fol">var optimize = graph.standard_optimize();
+</code></pre>
+<p>The value is provided via <code>-Doptimize=release-fast</code>. Defaults to <code>debug</code> if
+not set.</p>
+<p>Valid values: <code>debug</code>, <code>release-safe</code>, <code>release-fast</code>, <code>release-small</code>.</p>
+<h3 id="graphoption"><a class="header" href="#graphoption"><code>graph.option</code></a></h3>
+<p>Declares a named user option readable via <code>-D</code>.</p>
+<pre><code class="language-fol">var root_opt = graph.option({
+    name    = "root",
+    kind    = "path",
+    default = "src/main.fol",
+});
+</code></pre>
+<p>Returns a <code>UserOption</code> handle.</p>
+<p>Required fields: <code>name</code>, <code>kind</code>.
+Optional field: <code>default</code>.</p>
+<p>Option kinds:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Kind</th><th>Description</th><th>CLI Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>bool</code></td><td>Boolean flag</td><td><code>-Dstrip=true</code></td></tr>
+<tr><td><code>int</code></td><td>Integer value</td><td><code>-Djobs=4</code></td></tr>
+<tr><td><code>str</code></td><td>Arbitrary string</td><td><code>-Dprefix=/usr/local</code></td></tr>
+<tr><td><code>enum</code></td><td>One of a fixed set of strings</td><td><code>-Dbackend=llvm</code></td></tr>
+<tr><td><code>path</code></td><td>File or directory path</td><td><code>-Droot=src/main.fol</code></td></tr>
+<tr><td><code>target</code></td><td>Target triple</td><td><code>-Dtarget=x86_64-linux-gnu</code></td></tr>
+<tr><td><code>optimize</code></td><td>Optimization mode</td><td><code>-Doptimize=release-fast</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="generated-files"><a class="header" href="#generated-files">Generated Files</a></h2>
+<h3 id="graphwrite_file"><a class="header" href="#graphwrite_file"><code>graph.write_file</code></a></h3>
+<p>Declares a file to be written with static contents at build time.</p>
+<pre><code class="language-fol">var header = graph.write_file({
+    name     = "version.h",
+    path     = "gen/version.h",
+    contents = "#define VERSION 1\n",
+});
+</code></pre>
+<p>Returns a <code>GeneratedFile</code> handle.</p>
+<h3 id="graphcopy_file"><a class="header" href="#graphcopy_file"><code>graph.copy_file</code></a></h3>
+<p>Declares a file to be copied from a source path.</p>
+<pre><code class="language-fol">var cfg = graph.copy_file({
+    name   = "config",
+    source = "config/template.toml",
+    dest   = "gen/config.toml",
+});
+</code></pre>
+<p>Returns a <code>GeneratedFile</code> handle.</p>
+<h3 id="graphadd_system_tool"><a class="header" href="#graphadd_system_tool"><code>graph.add_system_tool</code></a></h3>
+<p>Declares a system tool invocation that produces a file.</p>
+<pre><code class="language-fol">var packed = graph.add_system_tool({
+    tool   = "wasm-pack",
+    args   = ["build", "--target", "web"],
+    output = "gen/app.wasm",
+});
+</code></pre>
+<p>Returns a <code>GeneratedFile</code> handle.</p>
+<p>The generated file is keyed by the output path. Use this handle with
+<code>step.attach(...)</code> or <code>artifact.add_generated(...)</code>.</p>
+<h3 id="graphadd_codegen"><a class="header" href="#graphadd_codegen"><code>graph.add_codegen</code></a></h3>
+<p>Declares a FOL codegen step.</p>
+<pre><code class="language-fol">var schema = graph.add_codegen({
+    kind   = "schema",
+    input  = "schema/api.yaml",
+    output = "gen/api.fol",
+});
+</code></pre>
+<p>Returns a <code>GeneratedFile</code> handle.</p>
+<p>Codegen kinds: <code>fol-to-fol</code>, <code>schema</code>, <code>asset-preprocess</code>.</p>
+<h2 id="path-utilities"><a class="header" href="#path-utilities">Path Utilities</a></h2>
+<h3 id="graphpath_from_root"><a class="header" href="#graphpath_from_root"><code>graph.path_from_root</code></a></h3>
+<p>Returns an absolute path by joining the package root with a relative subpath.</p>
+<pre><code class="language-fol">var cfg = graph.path_from_root("config/default.toml");
+</code></pre>
+<p>Useful when passing file paths to <code>add_run</code> args.</p>
+<h3 id="graphbuild_root"><a class="header" href="#graphbuild_root"><code>graph.build_root</code></a></h3>
+<p>Returns the package root directory as an absolute path string.</p>
+<pre><code class="language-fol">var root = graph.build_root();
+</code></pre>
+<h3 id="graphinstall_prefix"><a class="header" href="#graphinstall_prefix"><code>graph.install_prefix</code></a></h3>
+<p>Returns the installation prefix. Defaults to the workspace install directory.</p>
+<pre><code class="language-fol">var prefix = graph.install_prefix();
+</code></pre>
+<h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
+<h3 id="graphdependency"><a class="header" href="#graphdependency"><code>graph.dependency</code></a></h3>
+<p>Declares a reference to another package in the workspace or as a fetched
+dependency. Returns a <code>Dependency</code> handle.</p>
+<pre><code class="language-fol">var deps = graph.dependency("mylib", "local:../mylib");
+</code></pre>
+<p>See <a href="./300_handle_api.html">Handle API</a> for querying modules, artifacts, steps,
+and generated outputs from a <code>Dependency</code> handle.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../400_type/400_special.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../055_build/100_build_file.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../500_items/100_variables.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../055_build/300_handle_api.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -207,11 +371,11 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../400_type/400_special.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../055_build/100_build_file.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../500_items/100_variables.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../055_build/300_handle_api.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

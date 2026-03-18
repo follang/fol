@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-8d169703.js";
+            window.path_to_searchindex_js = "searchindex-26cdcf2c.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-53f6a814.js"></script>
+        <script src="toc-e2f4f3cc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -879,6 +879,846 @@ fol tool lsp
 </code></pre>
 <p>If <code>fol tool lsp</code> prints nothing and waits, that is correct.</p>
 <p>It is a stdio server, not an interactive shell command.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="build-system"><a class="header" href="#build-system">Build System</a></h1>
+<p>FOL uses a Zig-style build model. The build specification is a normal FOL
+program called <code>build.fol</code>. It goes through the full compiler pipeline and
+is executed against a build graph IR instead of emitting backend code.</p>
+<p>The build system lives in <code>lang/execution/fol-build</code>. It handles:</p>
+<ul>
+<li>graph IR construction for artifacts, steps, options, modules, and generated files</li>
+<li>full control flow in build programs (when, loop, helper routines)</li>
+<li><code>-D</code> CLI option passing into the build program</li>
+<li>named step selection at the command line</li>
+</ul>
+<h2 id="entry-point"><a class="header" href="#entry-point">Entry Point</a></h2>
+<p>Every buildable package must have a <code>build.fol</code> at its root with exactly one
+canonical entry:</p>
+<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+    ...
+}
+</code></pre>
+<p>The <code>graph</code> parameter is the injection surface. All build operations go through
+method calls on <code>graph</code> and on the handles it returns.</p>
+<h2 id="minimal-example"><a class="header" href="#minimal-example">Minimal Example</a></h2>
+<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+    var app = graph.add_exe({ name = "app", root = "src/main.fol" });
+    graph.install(app);
+    graph.add_run(app);
+}
+</code></pre>
+<p>This registers an executable, marks it for installation, and binds a default
+run step.</p>
+<h2 id="what-fol-build-owns"><a class="header" href="#what-fol-build-owns">What <code>fol-build</code> Owns</a></h2>
+<ul>
+<li><code>graph.rs</code> — build graph IR (steps, artifacts, modules, options, generated files)</li>
+<li><code>api.rs</code> — Rust-level graph mutation interface</li>
+<li><code>semantic.rs</code> — method signatures and type info for the resolver and typechecker</li>
+<li><code>stdlib.rs</code> — <code>BuildStdlibScope</code>: the ambient scope injected into <code>build.fol</code></li>
+<li><code>executor.rs</code> — executes the lowered FOL IR against the build graph</li>
+<li><code>eval.rs</code> — evaluate a <code>build.fol</code> from source; entry point for <code>fol-package</code></li>
+<li><code>option.rs</code> — build option kinds, target triples, optimize modes</li>
+<li><code>runtime.rs</code> — runtime representation of artifacts, generated files, step bindings</li>
+<li><code>step.rs</code> — step planning, ordering, cache keys, execution reports</li>
+<li><code>codegen.rs</code> — system tool and codegen request types</li>
+<li><code>artifact.rs</code> — artifact pipeline definitions and output types</li>
+<li><code>dependency.rs</code> — inter-package dependency surfaces</li>
+</ul>
+<p>Use this section for:</p>
+<ul>
+<li>understanding the shape of <code>build.fol</code></li>
+<li>the full graph API reference</li>
+<li>control flow available inside <code>build.fol</code></li>
+<li>build options and <code>-D</code> flags</li>
+<li>artifact types, modules, and generated files</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="buildfol"><a class="header" href="#buildfol">build.fol</a></h1>
+<p><code>build.fol</code> is a file-bound FOL compilation unit. It is the build specification
+for a package.</p>
+<h2 id="file-bound-vs-folder-bound"><a class="header" href="#file-bound-vs-folder-bound">File-Bound vs Folder-Bound</a></h2>
+<p>Normal FOL packages are folder-bound: every <code>.fol</code> file in the package folder
+shares one namespace. <code>build.fol</code> is the one exception.</p>
+<p>Rules for <code>build.fol</code>:</p>
+<ul>
+<li>It is its own compilation unit — it does not see sibling <code>.fol</code> files</li>
+<li>It has one implicit import: the build stdlib (<code>fol/build</code>), providing <code>Graph</code>
+and all handle types</li>
+<li>It can define local helper <code>fun[]</code>, <code>pro[]</code>, and <code>typ</code> declarations</li>
+<li>Those local declarations are not exported to the package</li>
+<li>It must declare exactly one <code>pro[] build(graph: Graph): non</code> entry</li>
+<li>Additional <code>use</code> imports from the FOL stdlib are allowed</li>
+</ul>
+<h2 id="compilation-pipeline"><a class="header" href="#compilation-pipeline">Compilation Pipeline</a></h2>
+<p><code>build.fol</code> goes through the full FOL compiler pipeline:</p>
+<pre><code>build.fol
+    │
+    ▼  stream → lexer → parser
+    │
+    ▼  fol-resolver   (build stdlib injected as ambient scope)
+    │
+    ▼  fol-typecheck  (handle types and method signatures validated)
+    │
+    ▼  fol-lower      (lowered IR produced)
+    │
+    ▼  fol-build executor  (IR executed against BuildGraph)
+    │
+    ▼  BuildGraph
+</code></pre>
+<p>The compiler rejects <code>build.fol</code> files that reference sibling source files,
+use filesystem or network APIs, or contain more than one canonical entry.</p>
+<h2 id="canonical-entry"><a class="header" href="#canonical-entry">Canonical Entry</a></h2>
+<p>The entry must match exactly:</p>
+<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+    ...
+}
+</code></pre>
+<ul>
+<li><code>pro[]</code> — procedure with no receivers</li>
+<li>parameter name <code>graph</code>, type <code>Graph</code></li>
+<li>return type <code>non</code></li>
+</ul>
+<p>Missing entry, wrong signature, or duplicate entries are compile errors.</p>
+<h2 id="local-helpers"><a class="header" href="#local-helpers">Local Helpers</a></h2>
+<p><code>build.fol</code> can define helper functions visible only within itself:</p>
+<pre><code class="language-fol">fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
+    return graph.add_static_lib({ name = name, root = root });
+}
+
+pro[] build(graph: Graph): non = {
+    var core = make_lib(graph, "core", "src/core/lib.fol");
+    var io   = make_lib(graph, "io",   "src/io/lib.fol");
+    var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
+    app.link(core);
+    app.link(io);
+    graph.install(app);
+}
+</code></pre>
+<h2 id="packageyaml"><a class="header" href="#packageyaml">package.yaml</a></h2>
+<p>Every package needs a <code>package.yaml</code> alongside <code>build.fol</code>:</p>
+<pre><code class="language-yaml">name: my-app
+version: 1.0.0
+</code></pre>
+<p>The build system reads <code>name</code> and <code>version</code> from the manifest. Dependencies
+declared in the manifest are made available to <code>build.fol</code> via
+<code>graph.dependency(...)</code>.</p>
+<h2 id="capability-restrictions"><a class="header" href="#capability-restrictions">Capability Restrictions</a></h2>
+<p>The build executor enforces a capability model. Allowed operations:</p>
+<ul>
+<li>graph mutation (adding artifacts, steps, options)</li>
+<li>option reads (<code>graph.standard_target()</code>, <code>graph.standard_optimize()</code>, etc.)</li>
+<li>path joining and normalization (<code>graph.path_from_root(...)</code>)</li>
+<li>basic string and container operations</li>
+<li>controlled file generation (<code>graph.write_file(...)</code>, <code>graph.copy_file(...)</code>)</li>
+<li>controlled process execution (<code>graph.add_system_tool(...)</code>)</li>
+</ul>
+<p>Forbidden operations (produce a compile or runtime error):</p>
+<ul>
+<li>arbitrary filesystem reads or writes</li>
+<li>network access</li>
+<li>wall clock access</li>
+<li>ambient environment variable access</li>
+<li>uncontrolled process execution</li>
+</ul>
+<p>These restrictions ensure build graphs are deterministic and portable.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="graph-api"><a class="header" href="#graph-api">Graph API</a></h1>
+<p>The <code>Graph</code> handle is the sole parameter to <code>pro[] build</code>. All build graph
+construction goes through method calls on it.</p>
+<h2 id="artifacts"><a class="header" href="#artifacts">Artifacts</a></h2>
+<h3 id="graphadd_exe"><a class="header" href="#graphadd_exe"><code>graph.add_exe</code></a></h3>
+<p>Adds an executable artifact.</p>
+<pre><code class="language-fol">var app = graph.add_exe({
+    name     = "app",
+    root     = "src/main.fol",
+    target   = target,    // optional
+    optimize = optimize,  // optional
+});
+</code></pre>
+<p>Returns an <code>Artifact</code> handle.</p>
+<p>Required fields: <code>name</code>, <code>root</code>.
+Optional fields: <code>target</code>, <code>optimize</code>.</p>
+<p><code>root</code> is the path to the entry-point <code>.fol</code> source file relative to the
+package root.</p>
+<h3 id="graphadd_static_lib"><a class="header" href="#graphadd_static_lib"><code>graph.add_static_lib</code></a></h3>
+<p>Adds a static library artifact.</p>
+<pre><code class="language-fol">var core = graph.add_static_lib({ name = "core", root = "src/core/lib.fol" });
+</code></pre>
+<p>Returns an <code>Artifact</code> handle.</p>
+<h3 id="graphadd_shared_lib"><a class="header" href="#graphadd_shared_lib"><code>graph.add_shared_lib</code></a></h3>
+<p>Adds a shared (dynamic) library artifact.</p>
+<pre><code class="language-fol">var sdk = graph.add_shared_lib({ name = "sdk", root = "src/sdk/lib.fol" });
+</code></pre>
+<p>Returns an <code>Artifact</code> handle.</p>
+<h3 id="graphadd_test"><a class="header" href="#graphadd_test"><code>graph.add_test</code></a></h3>
+<p>Adds a test artifact.</p>
+<pre><code class="language-fol">var tests = graph.add_test({ name = "tests", root = "src/tests.fol" });
+</code></pre>
+<p>Returns an <code>Artifact</code> handle.</p>
+<h3 id="graphadd_module"><a class="header" href="#graphadd_module"><code>graph.add_module</code></a></h3>
+<p>Adds a standalone module that can be imported by other artifacts.</p>
+<pre><code class="language-fol">var utils = graph.add_module({ name = "utils", root = "src/utils.fol" });
+</code></pre>
+<p>Returns a <code>Module</code> handle.</p>
+<h2 id="installation-and-runs"><a class="header" href="#installation-and-runs">Installation and Runs</a></h2>
+<h3 id="graphinstall"><a class="header" href="#graphinstall"><code>graph.install</code></a></h3>
+<p>Marks an artifact for installation.</p>
+<pre><code class="language-fol">graph.install(app);
+</code></pre>
+<p>Returns an <code>Install</code> handle.</p>
+<h3 id="graphinstall_file"><a class="header" href="#graphinstall_file"><code>graph.install_file</code></a></h3>
+<p>Installs a file by path.</p>
+<pre><code class="language-fol">graph.install_file("config/defaults.toml");
+</code></pre>
+<p>Returns an <code>Install</code> handle.</p>
+<h3 id="graphinstall_dir"><a class="header" href="#graphinstall_dir"><code>graph.install_dir</code></a></h3>
+<p>Installs a directory by path.</p>
+<pre><code class="language-fol">graph.install_dir("assets/");
+</code></pre>
+<p>Returns an <code>Install</code> handle.</p>
+<h3 id="graphadd_run"><a class="header" href="#graphadd_run"><code>graph.add_run</code></a></h3>
+<p>Registers an artifact as a run target. Binds the default <code>run</code> step when only
+one executable exists and no explicit <code>run</code> step has been registered.</p>
+<pre><code class="language-fol">var run = graph.add_run(app);
+</code></pre>
+<p>Returns a <code>Run</code> handle. See <a href="#handle-api">Handle API</a> for <code>Run</code> methods.</p>
+<h2 id="steps"><a class="header" href="#steps">Steps</a></h2>
+<h3 id="graphstep"><a class="header" href="#graphstep"><code>graph.step</code></a></h3>
+<p>Creates a named custom step.</p>
+<pre><code class="language-fol">var docs = graph.step("docs");
+var docs = graph.step("docs", "Generate documentation");  // with description
+</code></pre>
+<p>Returns a <code>Step</code> handle. See <a href="#handle-api">Handle API</a> for <code>Step</code> methods.</p>
+<p>Named steps are selectable on the command line:</p>
+<pre><code class="language-text">fol code build docs
+fol code build --step docs
+</code></pre>
+<h2 id="options"><a class="header" href="#options">Options</a></h2>
+<h3 id="graphstandard_target"><a class="header" href="#graphstandard_target"><code>graph.standard_target</code></a></h3>
+<p>Reads the <code>-Dtarget</code> option. Returns a <code>Target</code> handle.</p>
+<pre><code class="language-fol">var target = graph.standard_target();
+</code></pre>
+<p>The value is provided at build time via <code>-Dtarget=x86_64-linux-gnu</code>. If no
+value is provided, <code>target</code> resolves to the host target.</p>
+<p>An optional config record is accepted:</p>
+<pre><code class="language-fol">var target = graph.standard_target({ default = "x86_64-linux-gnu" });
+</code></pre>
+<h3 id="graphstandard_optimize"><a class="header" href="#graphstandard_optimize"><code>graph.standard_optimize</code></a></h3>
+<p>Reads the <code>-Doptimize</code> option. Returns an <code>Optimize</code> handle.</p>
+<pre><code class="language-fol">var optimize = graph.standard_optimize();
+</code></pre>
+<p>The value is provided via <code>-Doptimize=release-fast</code>. Defaults to <code>debug</code> if
+not set.</p>
+<p>Valid values: <code>debug</code>, <code>release-safe</code>, <code>release-fast</code>, <code>release-small</code>.</p>
+<h3 id="graphoption"><a class="header" href="#graphoption"><code>graph.option</code></a></h3>
+<p>Declares a named user option readable via <code>-D</code>.</p>
+<pre><code class="language-fol">var root_opt = graph.option({
+    name    = "root",
+    kind    = "path",
+    default = "src/main.fol",
+});
+</code></pre>
+<p>Returns a <code>UserOption</code> handle.</p>
+<p>Required fields: <code>name</code>, <code>kind</code>.
+Optional field: <code>default</code>.</p>
+<p>Option kinds:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Kind</th><th>Description</th><th>CLI Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>bool</code></td><td>Boolean flag</td><td><code>-Dstrip=true</code></td></tr>
+<tr><td><code>int</code></td><td>Integer value</td><td><code>-Djobs=4</code></td></tr>
+<tr><td><code>str</code></td><td>Arbitrary string</td><td><code>-Dprefix=/usr/local</code></td></tr>
+<tr><td><code>enum</code></td><td>One of a fixed set of strings</td><td><code>-Dbackend=llvm</code></td></tr>
+<tr><td><code>path</code></td><td>File or directory path</td><td><code>-Droot=src/main.fol</code></td></tr>
+<tr><td><code>target</code></td><td>Target triple</td><td><code>-Dtarget=x86_64-linux-gnu</code></td></tr>
+<tr><td><code>optimize</code></td><td>Optimization mode</td><td><code>-Doptimize=release-fast</code></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="generated-files"><a class="header" href="#generated-files">Generated Files</a></h2>
+<h3 id="graphwrite_file"><a class="header" href="#graphwrite_file"><code>graph.write_file</code></a></h3>
+<p>Declares a file to be written with static contents at build time.</p>
+<pre><code class="language-fol">var header = graph.write_file({
+    name     = "version.h",
+    path     = "gen/version.h",
+    contents = "#define VERSION 1\n",
+});
+</code></pre>
+<p>Returns a <code>GeneratedFile</code> handle.</p>
+<h3 id="graphcopy_file"><a class="header" href="#graphcopy_file"><code>graph.copy_file</code></a></h3>
+<p>Declares a file to be copied from a source path.</p>
+<pre><code class="language-fol">var cfg = graph.copy_file({
+    name   = "config",
+    source = "config/template.toml",
+    dest   = "gen/config.toml",
+});
+</code></pre>
+<p>Returns a <code>GeneratedFile</code> handle.</p>
+<h3 id="graphadd_system_tool"><a class="header" href="#graphadd_system_tool"><code>graph.add_system_tool</code></a></h3>
+<p>Declares a system tool invocation that produces a file.</p>
+<pre><code class="language-fol">var packed = graph.add_system_tool({
+    tool   = "wasm-pack",
+    args   = ["build", "--target", "web"],
+    output = "gen/app.wasm",
+});
+</code></pre>
+<p>Returns a <code>GeneratedFile</code> handle.</p>
+<p>The generated file is keyed by the output path. Use this handle with
+<code>step.attach(...)</code> or <code>artifact.add_generated(...)</code>.</p>
+<h3 id="graphadd_codegen"><a class="header" href="#graphadd_codegen"><code>graph.add_codegen</code></a></h3>
+<p>Declares a FOL codegen step.</p>
+<pre><code class="language-fol">var schema = graph.add_codegen({
+    kind   = "schema",
+    input  = "schema/api.yaml",
+    output = "gen/api.fol",
+});
+</code></pre>
+<p>Returns a <code>GeneratedFile</code> handle.</p>
+<p>Codegen kinds: <code>fol-to-fol</code>, <code>schema</code>, <code>asset-preprocess</code>.</p>
+<h2 id="path-utilities"><a class="header" href="#path-utilities">Path Utilities</a></h2>
+<h3 id="graphpath_from_root"><a class="header" href="#graphpath_from_root"><code>graph.path_from_root</code></a></h3>
+<p>Returns an absolute path by joining the package root with a relative subpath.</p>
+<pre><code class="language-fol">var cfg = graph.path_from_root("config/default.toml");
+</code></pre>
+<p>Useful when passing file paths to <code>add_run</code> args.</p>
+<h3 id="graphbuild_root"><a class="header" href="#graphbuild_root"><code>graph.build_root</code></a></h3>
+<p>Returns the package root directory as an absolute path string.</p>
+<pre><code class="language-fol">var root = graph.build_root();
+</code></pre>
+<h3 id="graphinstall_prefix"><a class="header" href="#graphinstall_prefix"><code>graph.install_prefix</code></a></h3>
+<p>Returns the installation prefix. Defaults to the workspace install directory.</p>
+<pre><code class="language-fol">var prefix = graph.install_prefix();
+</code></pre>
+<h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
+<h3 id="graphdependency"><a class="header" href="#graphdependency"><code>graph.dependency</code></a></h3>
+<p>Declares a reference to another package in the workspace or as a fetched
+dependency. Returns a <code>Dependency</code> handle.</p>
+<pre><code class="language-fol">var deps = graph.dependency("mylib", "local:../mylib");
+</code></pre>
+<p>See <a href="#handle-api">Handle API</a> for querying modules, artifacts, steps,
+and generated outputs from a <code>Dependency</code> handle.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="handle-api"><a class="header" href="#handle-api">Handle API</a></h1>
+<p>Graph methods return typed handles. Each handle type exposes its own set of
+methods for configuring relationships and behavior.</p>
+<h2 id="artifact"><a class="header" href="#artifact">Artifact</a></h2>
+<p>The <code>Artifact</code> handle is returned by <code>add_exe</code>, <code>add_static_lib</code>,
+<code>add_shared_lib</code>, and <code>add_test</code>.</p>
+<h3 id="artifactlink"><a class="header" href="#artifactlink"><code>artifact.link</code></a></h3>
+<p>Links another artifact as a dependency. The linker will include it.</p>
+<pre><code class="language-fol">var core = graph.add_static_lib({ name = "core", root = "src/core/lib.fol" });
+var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
+app.link(core);
+</code></pre>
+<p>Equivalent to Zig’s <code>artifact.linkLibrary(dep)</code>.</p>
+<h3 id="artifactimport"><a class="header" href="#artifactimport"><code>artifact.import</code></a></h3>
+<p>Imports a module into this artifact’s compilation scope.</p>
+<pre><code class="language-fol">var utils = graph.add_module({ name = "utils", root = "src/utils.fol" });
+var app   = graph.add_exe({ name = "app", root = "src/main.fol" });
+app.import(utils);
+</code></pre>
+<p>Equivalent to Zig’s <code>artifact.root_module.addImport(name, module)</code>.</p>
+<h3 id="artifactadd_generated"><a class="header" href="#artifactadd_generated"><code>artifact.add_generated</code></a></h3>
+<p>Declares that this artifact depends on a generated file being produced before
+it can compile.</p>
+<pre><code class="language-fol">var schema = graph.add_codegen({
+    kind   = "schema",
+    input  = "schema/api.yaml",
+    output = "gen/api.fol",
+});
+var app = graph.add_exe({ name = "app", root = "src/main.fol" });
+app.add_generated(schema);
+</code></pre>
+<hr>
+<h2 id="run"><a class="header" href="#run">Run</a></h2>
+<p>The <code>Run</code> handle is returned by <code>graph.add_run</code>. All <code>Run</code> methods are
+chainable and return <code>Run</code>.</p>
+<h3 id="runadd_arg"><a class="header" href="#runadd_arg"><code>run.add_arg</code></a></h3>
+<p>Appends a literal string argument to the run command.</p>
+<pre><code class="language-fol">var run = graph.add_run(app);
+run.add_arg("--config").add_arg("config/default.toml");
+</code></pre>
+<h3 id="runadd_file_arg"><a class="header" href="#runadd_file_arg"><code>run.add_file_arg</code></a></h3>
+<p>Appends a generated file as a path argument.</p>
+<pre><code class="language-fol">var cfg = graph.copy_file({
+    name   = "config",
+    source = "config/defaults.toml",
+    dest   = "gen/config.toml",
+});
+var run = graph.add_run(app);
+run.add_file_arg(cfg);
+</code></pre>
+<p>Equivalent to Zig’s <code>run.addFileArg(file)</code>.</p>
+<h3 id="runadd_dir_arg"><a class="header" href="#runadd_dir_arg"><code>run.add_dir_arg</code></a></h3>
+<p>Appends a directory path as an argument.</p>
+<pre><code class="language-fol">var run = graph.add_run(app);
+run.add_dir_arg("assets/");
+</code></pre>
+<h3 id="runcapture_stdout"><a class="header" href="#runcapture_stdout"><code>run.capture_stdout</code></a></h3>
+<p>Captures the standard output of the run command as a generated file.</p>
+<pre><code class="language-fol">var run    = graph.add_run(generator_tool);
+var output = run.capture_stdout();
+app.add_generated(output);
+</code></pre>
+<p>Returns a <code>GeneratedFile</code> handle. Equivalent to Zig’s <code>run.captureStdOut()</code>.</p>
+<h3 id="runset_env"><a class="header" href="#runset_env"><code>run.set_env</code></a></h3>
+<p>Sets an environment variable for the run command.</p>
+<pre><code class="language-fol">var run = graph.add_run(app);
+run.set_env("LOG_LEVEL", "debug");
+</code></pre>
+<h3 id="rundepend_on"><a class="header" href="#rundepend_on"><code>run.depend_on</code></a></h3>
+<p>Makes this run step depend on another step completing first.</p>
+<pre><code class="language-fol">var codegen = graph.step("codegen");
+var run     = graph.add_run(app);
+run.depend_on(codegen);
+</code></pre>
+<hr>
+<h2 id="step"><a class="header" href="#step">Step</a></h2>
+<p>The <code>Step</code> handle is returned by <code>graph.step</code>. All <code>Step</code> methods are
+chainable and return <code>Step</code>.</p>
+<h3 id="stepdepend_on"><a class="header" href="#stepdepend_on"><code>step.depend_on</code></a></h3>
+<p>Makes this step depend on another step.</p>
+<pre><code class="language-fol">var compile = graph.step("compile");
+var bundle  = graph.step("bundle");
+bundle.depend_on(compile);
+</code></pre>
+<h3 id="stepattach"><a class="header" href="#stepattach"><code>step.attach</code></a></h3>
+<p>Attaches a generated file production to this step. When the step runs, the
+attached generated file is produced first.</p>
+<pre><code class="language-fol">var strip_tool = graph.add_system_tool({
+    tool   = "strip",
+    output = "gen/app.stripped",
+});
+var strip_step = graph.step("strip");
+strip_step.attach(strip_tool);
+</code></pre>
+<hr>
+<h2 id="install"><a class="header" href="#install">Install</a></h2>
+<p>The <code>Install</code> handle is returned by <code>graph.install</code>, <code>graph.install_file</code>,
+and <code>graph.install_dir</code>.</p>
+<h3 id="installdepend_on"><a class="header" href="#installdepend_on"><code>install.depend_on</code></a></h3>
+<p>Makes this install step depend on another step.</p>
+<pre><code class="language-fol">var check   = graph.step("check");
+var install = graph.install(app);
+install.depend_on(check);
+</code></pre>
+<hr>
+<h2 id="dependency"><a class="header" href="#dependency">Dependency</a></h2>
+<p>The <code>Dependency</code> handle is returned by <code>graph.dependency</code>. It exposes the
+public surface of another package.</p>
+<h3 id="dependencymodule"><a class="header" href="#dependencymodule"><code>dependency.module</code></a></h3>
+<p>Resolves a named module from the dependency.</p>
+<pre><code class="language-fol">var dep    = graph.dependency("mylib", "local:../mylib");
+var module = dep.module("core");
+app.import(module);
+</code></pre>
+<h3 id="dependencyartifact"><a class="header" href="#dependencyartifact"><code>dependency.artifact</code></a></h3>
+<p>Resolves a named artifact from the dependency.</p>
+<pre><code class="language-fol">var dep = graph.dependency("mylib", "local:../mylib");
+var lib = dep.artifact("mylib-static");
+app.link(lib);
+</code></pre>
+<h3 id="dependencystep"><a class="header" href="#dependencystep"><code>dependency.step</code></a></h3>
+<p>Resolves a named step from the dependency.</p>
+<pre><code class="language-fol">var dep  = graph.dependency("mylib", "local:../mylib");
+var step = dep.step("codegen");
+app_step.depend_on(step);
+</code></pre>
+<h3 id="dependencygenerated"><a class="header" href="#dependencygenerated"><code>dependency.generated</code></a></h3>
+<p>Resolves a named generated output from the dependency.</p>
+<pre><code class="language-fol">var dep   = graph.dependency("mylib", "local:../mylib");
+var types = dep.generated("types.fol");
+app.add_generated(types);
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="build-options"><a class="header" href="#build-options">Build Options</a></h1>
+<p>Build options are named values passed from the command line into <code>build.fol</code>.
+They follow Zig’s <code>-D</code> convention.</p>
+<h2 id="syntax"><a class="header" href="#syntax">Syntax</a></h2>
+<pre><code class="language-text">fol code build -Dname=value
+</code></pre>
+<p>Multiple options can be passed in one command:</p>
+<pre><code class="language-text">fol code build -Dtarget=x86_64-linux-gnu -Doptimize=release-fast -Dstrip=true
+</code></pre>
+<h2 id="standard-options"><a class="header" href="#standard-options">Standard Options</a></h2>
+<p>Two options are pre-defined by the build system: <code>target</code> and <code>optimize</code>.
+They are read via dedicated graph methods.</p>
+<h3 id="target"><a class="header" href="#target">Target</a></h3>
+<pre><code class="language-fol">var target = graph.standard_target();
+</code></pre>
+<p>CLI: <code>-Dtarget=arch-os-env</code></p>
+<p>Format: <code>arch-os-env</code> triple. Examples:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Triple</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>x86_64-linux-gnu</code></td><td>x86-64 Linux with glibc</td></tr>
+<tr><td><code>x86_64-linux-musl</code></td><td>x86-64 Linux with musl libc</td></tr>
+<tr><td><code>aarch64-linux-gnu</code></td><td>ARM64 Linux with glibc</td></tr>
+<tr><td><code>x86_64-macos</code></td><td>x86-64 macOS</td></tr>
+<tr><td><code>x86_64-windows-msvc</code></td><td>x86-64 Windows with MSVC</td></tr>
+</tbody>
+</table>
+</div>
+<p>Supported architectures: <code>x86_64</code>, <code>aarch64</code>.
+Supported operating systems: <code>linux</code>, <code>macos</code>, <code>windows</code>.
+Supported environments: <code>gnu</code>, <code>musl</code>, <code>msvc</code>.</p>
+<p>If not set, the host target is used.</p>
+<p>To pass the resolved value to an artifact:</p>
+<pre><code class="language-fol">var target = graph.standard_target();
+var app = graph.add_exe({
+    name   = "app",
+    root   = "src/main.fol",
+    target = target,
+});
+</code></pre>
+<h3 id="optimize"><a class="header" href="#optimize">Optimize</a></h3>
+<pre><code class="language-fol">var optimize = graph.standard_optimize();
+</code></pre>
+<p>CLI: <code>-Doptimize=mode</code></p>
+<p>Valid modes:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mode</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>debug</code></td><td>No optimization, full debug info</td></tr>
+<tr><td><code>release-safe</code></td><td>Optimized with safety checks</td></tr>
+<tr><td><code>release-fast</code></td><td>Maximum speed, no safety checks</td></tr>
+<tr><td><code>release-small</code></td><td>Minimize binary size</td></tr>
+</tbody>
+</table>
+</div>
+<p>Default: <code>debug</code>.</p>
+<p>To pass the resolved value to an artifact:</p>
+<pre><code class="language-fol">var optimize = graph.standard_optimize();
+var app = graph.add_exe({
+    name     = "app",
+    root     = "src/main.fol",
+    optimize = optimize,
+});
+</code></pre>
+<h2 id="user-options"><a class="header" href="#user-options">User Options</a></h2>
+<p><code>graph.option(...)</code> declares a named option specific to the package.</p>
+<pre><code class="language-fol">var strip = graph.option({
+    name    = "strip",
+    kind    = "bool",
+    default = false,
+});
+</code></pre>
+<p>CLI: <code>-Dstrip=true</code></p>
+<h3 id="option-kinds"><a class="header" href="#option-kinds">Option Kinds</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Kind</th><th>Example CLI</th><th>Default type</th></tr>
+</thead>
+<tbody>
+<tr><td><code>bool</code></td><td><code>-Dverbose=true</code></td><td><code>false</code></td></tr>
+<tr><td><code>int</code></td><td><code>-Djobs=8</code></td><td><code>0</code></td></tr>
+<tr><td><code>str</code></td><td><code>-Dprefix=/usr</code></td><td><code>""</code></td></tr>
+<tr><td><code>enum</code></td><td><code>-Dbackend=llvm</code></td><td>first value</td></tr>
+<tr><td><code>path</code></td><td><code>-Droot=src/main.fol</code></td><td><code>""</code></td></tr>
+<tr><td><code>target</code></td><td><code>-Dtarget=x86_64-linux-gnu</code></td><td>host target</td></tr>
+<tr><td><code>optimize</code></td><td><code>-Doptimize=release-fast</code></td><td><code>debug</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="using-option-values"><a class="header" href="#using-option-values">Using Option Values</a></h3>
+<p>Option handle values can be interpolated into strings or compared with <code>==</code>:</p>
+<pre><code class="language-fol">var root_opt = graph.option({ name = "root", kind = "path", default = "src/main.fol" });
+var app = graph.add_exe({ name = "app", root = root_opt });
+</code></pre>
+<p>Comparing in a <code>when</code> condition:</p>
+<pre><code class="language-fol">var strip = graph.option({ name = "strip", kind = "bool", default = false });
+when(strip == true) {
+    {
+        var strip_step = graph.step("strip");
+    }
+};
+</code></pre>
+<h2 id="shorthand-vs-long-form"><a class="header" href="#shorthand-vs-long-form">Shorthand vs Long Form</a></h2>
+<p>Both of these are equivalent:</p>
+<pre><code class="language-text">fol code build -Dtarget=x86_64-linux-gnu
+fol code build --build-option target=x86_64-linux-gnu
+</code></pre>
+<p><code>-D</code> is the shorthand. <code>-Dtarget=</code> and <code>-Doptimize=</code> route to the dedicated
+standard option slots. All other <code>-Dname=value</code> pairs route to user-declared
+options.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="control-flow-in-buildfol"><a class="header" href="#control-flow-in-buildfol">Control Flow in build.fol</a></h1>
+<p><code>build.fol</code> is a real FOL program. It supports <code>when</code>, <code>loop</code>, and user-defined
+helper routines.</p>
+<h2 id="when"><a class="header" href="#when">when</a></h2>
+<p><code>when</code> conditionally executes build operations based on a boolean expression.</p>
+<p>The canonical form for a conditional block with no case arms uses a
+double-brace default body:</p>
+<pre><code class="language-fol">when(optimize == "release-fast") {
+    {
+        var strip_step = graph.step("strip");
+        var packed = graph.add_system_tool({
+            tool   = "strip",
+            output = "gen/app.stripped",
+        });
+        strip_step.attach(packed);
+    }
+};
+</code></pre>
+<p>With explicit <code>case</code> arms:</p>
+<pre><code class="language-fol">when(target) {
+    case("x86_64-linux-gnu") {
+        graph.step("asan", "Enable address sanitizer");
+    }
+    case("aarch64-linux-gnu") {
+        graph.step("tsan", "Enable thread sanitizer");
+    }
+    * {
+        graph.step("default-check");
+    }
+};
+</code></pre>
+<p>The inner double-brace <code>{ { ... } }</code> is required for the default arm when no
+<code>case</code> clauses are present. This is how the FOL parser distinguishes the
+default body from raw statements.</p>
+<h3 id="conditional-expressions"><a class="header" href="#conditional-expressions">Conditional Expressions</a></h3>
+<p>Any boolean or option value comparison is valid:</p>
+<pre><code class="language-fol">when(optimize == "release-fast") { { ... } };
+when(strip == true) { { ... } };
+when(target == "x86_64-linux-gnu") { { ... } };
+</code></pre>
+<p>The comparison is resolved at build evaluation time using the values passed
+via <code>-D</code> flags. If no value was provided, the declared default is used.</p>
+<h2 id="loop"><a class="header" href="#loop">loop</a></h2>
+<p><code>loop</code> iterates over a list and runs the body for each element.</p>
+<pre><code class="language-fol">loop(name in {"core", "io", "utils"}) {
+    graph.add_static_lib({ name = name, root = name });
+};
+</code></pre>
+<p>The loop variable (<code>name</code>) is bound in scope for each iteration. It can be
+used anywhere inside the body as a string value.</p>
+<p>Loop over a list with multiple fields:</p>
+<pre><code class="language-fol">loop(name in {"core", "io"}) {
+    var lib = graph.add_static_lib({ name = name, root = name });
+    graph.install(lib);
+};
+</code></pre>
+<p>The iterable is a container literal <code>{ elem1, elem2, ... }</code>. Currently only
+string lists are supported as loop iterables in <code>build.fol</code>.</p>
+<h2 id="helper-routines"><a class="header" href="#helper-routines">Helper Routines</a></h2>
+<p><code>build.fol</code> can define helper <code>fun[]</code> and <code>pro[]</code> routines. They are visible
+only within the file — they are not exported to the package.</p>
+<h3 id="helper-function"><a class="header" href="#helper-function">Helper Function</a></h3>
+<pre><code class="language-fol">fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
+    return graph.add_static_lib({ name = name, root = root });
+}
+
+pro[] build(graph: Graph): non = {
+    var core = make_lib(graph, "core", "src/core/lib.fol");
+    var io   = make_lib(graph, "io",   "src/io/lib.fol");
+    var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
+    app.link(core);
+    app.link(io);
+    graph.install(app);
+    graph.add_run(app);
+}
+</code></pre>
+<p>The helper <code>make_lib</code> receives the <code>graph</code> handle as a parameter because
+<code>graph</code> is not a global — it is a parameter of <code>build</code>.</p>
+<h3 id="helpers-calling-helpers"><a class="header" href="#helpers-calling-helpers">Helpers Calling Helpers</a></h3>
+<p>Helpers can call other helpers:</p>
+<pre><code class="language-fol">fun[] lib_root(name: str): str = {
+    return "src/" + name + "/lib.fol";
+}
+
+fun[] add_lib(graph: Graph, name: str): Artifact = {
+    return graph.add_static_lib({ name = name, root = lib_root(name) });
+}
+
+pro[] build(graph: Graph): non = {
+    var core = add_lib(graph, "core");
+    var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
+    app.link(core);
+    graph.install(app);
+}
+</code></pre>
+<h2 id="combined-example"><a class="header" href="#combined-example">Combined Example</a></h2>
+<pre><code class="language-fol">fun[] make_lib(graph: Graph, name: str): Artifact = {
+    return graph.add_static_lib({ name = name, root = name });
+}
+
+pro[] build(graph: Graph): non = {
+    var target   = graph.standard_target();
+    var optimize = graph.standard_optimize();
+    var strip    = graph.option({ name = "strip", kind = "bool", default = false });
+
+    loop(name in {"core", "io", "net"}) {
+        make_lib(graph, name);
+    };
+
+    var app = graph.add_exe({
+        name     = "app",
+        root     = "src/main.fol",
+        target   = target,
+        optimize = optimize,
+    });
+    graph.install(app);
+    graph.add_run(app);
+
+    when(strip == true) {
+        {
+            var strip_step = graph.step("strip");
+            var packed = graph.add_system_tool({
+                tool   = "strip",
+                output = "gen/app.stripped",
+            });
+            strip_step.attach(packed);
+        }
+    };
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="artifacts-modules-and-generated-files"><a class="header" href="#artifacts-modules-and-generated-files">Artifacts, Modules, and Generated Files</a></h1>
+<p>The build graph tracks three kinds of compilable or producible outputs:
+artifacts, modules, and generated files.</p>
+<h2 id="artifacts-1"><a class="header" href="#artifacts-1">Artifacts</a></h2>
+<p>Artifacts are the primary compiled outputs of a package.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Kind</th><th>Method</th><th>Output</th></tr>
+</thead>
+<tbody>
+<tr><td>Executable</td><td><code>graph.add_exe</code></td><td>Binary</td></tr>
+<tr><td>Static library</td><td><code>graph.add_static_lib</code></td><td><code>.a</code> / <code>.lib</code></td></tr>
+<tr><td>Shared library</td><td><code>graph.add_shared_lib</code></td><td><code>.so</code> / <code>.dylib</code></td></tr>
+<tr><td>Test bundle</td><td><code>graph.add_test</code></td><td>Runnable test binary</td></tr>
+</tbody>
+</table>
+</div>
+<p>All artifact constructors accept the same base config record:</p>
+<pre><code class="language-fol">var app = graph.add_exe({
+    name     = "app",      // required: output name
+    root     = "src/main.fol",  // required: entry-point source file
+    target   = target,     // optional: Target handle
+    optimize = optimize,   // optional: Optimize handle
+});
+</code></pre>
+<p><code>name</code> must be lowercase. Allowed characters: <code>a-z</code>, <code>0-9</code>, <code>-</code>, <code>_</code>, <code>.</code>.</p>
+<h3 id="artifact-name-validation"><a class="header" href="#artifact-name-validation">Artifact Name Validation</a></h3>
+<p>The build system validates artifact names at evaluation time. Invalid names
+(uppercase, spaces, special characters) produce a build error.</p>
+<h3 id="linking"><a class="header" href="#linking">Linking</a></h3>
+<p>Static and shared libraries can be linked into executables using
+<code>artifact.link(dep)</code>:</p>
+<pre><code class="language-fol">var core = graph.add_static_lib({ name = "core", root = "src/core/lib.fol" });
+var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
+app.link(core);
+</code></pre>
+<p>Linking is transitive through the graph. If <code>core</code> itself links <code>utils</code>, <code>app</code>
+will also see <code>utils</code>.</p>
+<h3 id="installation"><a class="header" href="#installation">Installation</a></h3>
+<p>Any artifact can be marked for installation:</p>
+<pre><code class="language-fol">graph.install(app);
+graph.install(core);
+</code></pre>
+<p>Files and directories can also be installed directly:</p>
+<pre><code class="language-fol">graph.install_file("config/defaults.toml");
+graph.install_dir("assets/");
+</code></pre>
+<h2 id="modules"><a class="header" href="#modules">Modules</a></h2>
+<p>Modules are named source units that can be shared across artifacts without
+being standalone binaries.</p>
+<pre><code class="language-fol">var utils = graph.add_module({ name = "utils", root = "src/utils.fol" });
+var app   = graph.add_exe({ name = "app", root = "src/main.fol" });
+app.import(utils);
+</code></pre>
+<p><code>artifact.import(module)</code> makes the module visible in the importing artifact’s
+source scope. Equivalent to Zig’s <code>artifact.root_module.addImport(name, dep)</code>.</p>
+<p>Modules from dependencies are accessed via <code>dep.module(name)</code>:</p>
+<pre><code class="language-fol">var dep    = graph.dependency("mylib", "local:../mylib");
+var logger = dep.module("logger");
+app.import(logger);
+</code></pre>
+<h2 id="generated-files-1"><a class="header" href="#generated-files-1">Generated Files</a></h2>
+<p>Generated files are outputs produced before compilation. They must be declared
+in the graph so the build system knows to produce them and what depends on them.</p>
+<h3 id="kinds"><a class="header" href="#kinds">Kinds</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Kind</th><th>Method</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td>Write</td><td><code>graph.write_file</code></td><td>Written with literal string contents</td></tr>
+<tr><td>Copy</td><td><code>graph.copy_file</code></td><td>Copied from a source path</td></tr>
+<tr><td>Tool output</td><td><code>graph.add_system_tool</code></td><td>Produced by an external tool</td></tr>
+<tr><td>Codegen</td><td><code>graph.add_codegen</code></td><td>Produced by the FOL codegen pipeline</td></tr>
+<tr><td>Captured run</td><td><code>run.capture_stdout()</code></td><td>Stdout of a run step</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="connecting-generated-files"><a class="header" href="#connecting-generated-files">Connecting Generated Files</a></h3>
+<p>A generated file must be connected to the graph entity that depends on it.</p>
+<p>Attach to a step (the step triggers its production):</p>
+<pre><code class="language-fol">var gen  = graph.add_system_tool({ tool = "protoc", output = "gen/types.fol" });
+var step = graph.step("proto");
+step.attach(gen);
+</code></pre>
+<p>Add to an artifact (artifact cannot compile without it):</p>
+<pre><code class="language-fol">var schema = graph.add_codegen({
+    kind   = "schema",
+    input  = "schema/api.yaml",
+    output = "gen/api.fol",
+});
+var app = graph.add_exe({ name = "app", root = "src/main.fol" });
+app.add_generated(schema);
+</code></pre>
+<p>Capture stdout and feed it as an arg to another run:</p>
+<pre><code class="language-fol">var gen_tool   = graph.add_exe({ name = "gen", root = "tools/gen.fol" });
+var gen_run    = graph.add_run(gen_tool);
+var gen_output = gen_run.capture_stdout();
+
+var app_run = graph.add_run(app);
+app_run.add_file_arg(gen_output);
+</code></pre>
+<h2 id="steps-1"><a class="header" href="#steps-1">Steps</a></h2>
+<p>Steps are named build phases. The build system has several implicit steps
+(<code>build</code>, <code>run</code>, <code>test</code>, <code>install</code>). Custom steps are declared with
+<code>graph.step</code>.</p>
+<pre><code class="language-fol">var docs = graph.step("docs", "Generate documentation");
+</code></pre>
+<p>Steps are executed in dependency order. A step depends on another step via
+<code>step.depend_on</code>:</p>
+<pre><code class="language-fol">var compile = graph.step("compile");
+var docs    = graph.step("docs");
+docs.depend_on(compile);
+</code></pre>
+<h3 id="default-step-bindings"><a class="header" href="#default-step-bindings">Default Step Bindings</a></h3>
+<p>When only one executable exists in a package, the build system automatically
+binds it to the default <code>build</code> and <code>run</code> steps. When multiple executables
+exist, explicit step bindings are required via <code>graph.add_run(artifact)</code>.</p>
+<h3 id="selecting-steps-at-the-command-line"><a class="header" href="#selecting-steps-at-the-command-line">Selecting Steps at the Command Line</a></h3>
+<pre><code class="language-text">fol code build         # run the install steps
+fol code build docs    # run the "docs" step
+fol code run           # run the default run step
+fol code run --step serve  # run the "serve" step
+fol code test          # run test steps
+</code></pre>
+<h2 id="graph-validation"><a class="header" href="#graph-validation">Graph Validation</a></h2>
+<p>After the build program executes, the graph is validated:</p>
+<ul>
+<li>No step dependency cycles</li>
+<li>All artifact inputs (modules, generated files) are resolvable</li>
+<li>Install targets point to declared artifacts</li>
+</ul>
+<p>Validation errors are reported as build evaluation errors before any
+compilation begins.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="lexical-structure"><a class="header" href="#lexical-structure">Lexical Structure</a></h1>
 <p>This section defines the smallest syntactic building blocks of FOL source code.</p>
@@ -2482,7 +3322,7 @@ as part of the current <code>V1</code> compiler contract.</p>
 }
 </code></pre>
 <p>More on borrowing you can find <a href="/docs/spec/pointers#borrowing">here</a></p>
-<h2 id="options"><a class="header" href="#options">Options</a></h2>
+<h2 id="options-1"><a class="header" href="#options-1">Options</a></h2>
 <p>As with all other blocks, <code>var</code> have their options: <code>var[opt]</code>:</p>
 <p>Options can be of two types:</p>
 <ul>
@@ -3716,7 +4556,7 @@ The package layer discovers that root first, and ordinary name resolution happen
 <li><code>package.yaml</code></li>
 <li><code>build.fol</code></li>
 </ul>
-<h3 id="packageyaml"><a class="header" href="#packageyaml"><code>package.yaml</code></a></h3>
+<h3 id="packageyaml-1"><a class="header" href="#packageyaml-1"><code>package.yaml</code></a></h3>
 <p><code>package.yaml</code> is metadata only.
 It is intentionally not a normal <code>.fol</code> source file.</p>
 <p>Typical metadata belongs here:</p>
@@ -3733,41 +4573,38 @@ It is intentionally not a normal <code>.fol</code> source file.</p>
 <li>export wiring</li>
 <li>build logic</li>
 </ul>
-<h3 id="buildfol"><a class="header" href="#buildfol"><code>build.fol</code></a></h3>
+<h3 id="buildfol-1"><a class="header" href="#buildfol-1"><code>build.fol</code></a></h3>
 <p><code>build.fol</code> is the package build entry file.</p>
 <p>This file is responsible for:</p>
 <ul>
-<li>declaring package dependencies</li>
-<li>declaring which directories/namespaces are exported</li>
-<li>declaring the source root used by the current frontend workflow</li>
-<li>becoming the future home of the canonical build-graph entrypoint</li>
+<li>declaring package build logic</li>
+<li>declaring artifacts, steps, and generated outputs through the build API</li>
+<li>becoming the canonical package entrypoint for <code>fol code build/run/test/check</code></li>
 </ul>
 <p><code>build.fol</code> is still an ordinary FOL file.
 It is parsed with the same front-end as other <code>.fol</code> sources.
-The difference is that the package layer extracts package meaning from recognized top-level definitions inside it.</p>
+The difference is that the package layer evaluates one canonical build routine inside it.</p>
 <p>Today that means:</p>
 <ul>
-<li>compatibility-style top-level <code>def</code> records such as package dependencies,
-exports, and root declarations are active</li>
 <li><code>fol code build/run/test/check</code> starts from <code>build.fol</code></li>
-<li>canonical <code>def build(...)</code> entries are recognized as the future build direction,
-but graph-backed execution is not wired in yet</li>
+<li>the canonical entry is <code>pro[] build(graph: Graph): non</code></li>
+<li>old <code>def root: loc = ...</code> and <code>def build(...)</code> forms are not the build model</li>
 </ul>
 <p>So:</p>
 <ul>
 <li><code>def</code> is still a general FOL declaration form</li>
 <li><code>build.fol</code> is not a separate mini-language</li>
-<li>only specific top-level <code>def</code> records are treated as package/build definitions in the current package phase</li>
+<li><code>build.fol</code> uses an ordinary routine entrypoint, like Zig’s <code>build.zig</code></li>
 </ul>
 <p>That means:</p>
 <ul>
 <li>ordinary source <code>.fol</code> files use <code>use</code> to consume packages/namespaces</li>
-<li><code>build.fol</code> uses <code>def</code> to define package dependencies, exports, and current root declarations</li>
+<li><code>build.fol</code> uses <code>pro[] build(graph: Graph): non</code> to mutate the build graph</li>
 </ul>
-<p>So <code>use</code> and <code>def</code> serve different jobs:</p>
+<p>So <code>use</code> and the build routine serve different jobs:</p>
 <ul>
 <li><code>use</code> = consume functionality</li>
-<li><code>def</code> in <code>build.fol</code> = define package/build surface</li>
+<li><code>pro[] build(...)</code> in <code>build.fol</code> = define package/build surface</li>
 </ul>
 <h2 id="system-libraries"><a class="header" href="#system-libraries">System libraries</a></h2>
 <p>This is how including other libraries works, for example include <code>fmt</code> module from standard library:</p>
@@ -3931,16 +4768,14 @@ It is a formal package root with:</p>
 <p>This keeps the language model clean:</p>
 <ul>
 <li>source files <code>use</code> other namespaces/packages</li>
-<li>package definitions are extracted from recognized top-level <code>def</code> declarations in <code>build.fol</code></li>
+<li>package build execution starts from <code>pro[] build(graph: Graph): non</code> in <code>build.fol</code></li>
 <li>package metadata lives in <code>package.yaml</code></li>
 <li>package loading happens before ordinary name resolution</li>
-<li>current frontend workflows still read compatibility dependency/export/root
-declarations from <code>build.fol</code></li>
 </ul>
 <p><code>build.fol</code> itself is still ordinary FOL syntax.
 It is not a separate mini-language.
-The package layer simply gives package/build meaning to a narrow set of
-recognized top-level definitions there.</p>
+The package layer simply gives package/build meaning to the canonical build
+routine there.</p>
 <h2 id="blocks"><a class="header" href="#blocks">Blocks</a></h2>
 <p>Block statement is used for scopes where members get destroyed when scope is finished. And there are two ways to define a block:</p>
 <ul>
