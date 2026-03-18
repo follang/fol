@@ -473,6 +473,13 @@ struct ExtractedBuildArtifact {
     pub optimize: Option<BuildExtractionConfigValue>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ExtractedBuildDependency {
+    pub alias: String,
+    pub package: String,
+    pub evaluation_mode: Option<crate::DependencyBuildEvaluationMode>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ExtractedBuildProgram {
     pub operations: Vec<BuildEvaluationOperation>,
@@ -1180,25 +1187,17 @@ fn parse_build_graph_method_ast(
         "add_run" => parse_run_call_ast(extracted, scope, build_path, args, origin),
         "install" => parse_install_call_ast(extracted, scope, build_path, args, origin),
         "dependency" => {
-            let [alias, package] = args else {
-                return Err(build_source_unsupported(build_path, method, 1, method.len()));
-            };
-            let Some(alias) = resolve_build_string_arg_ast(alias, scope) else {
-                return Err(build_source_unsupported(build_path, method, 1, method.len()));
-            };
-            let Some(package) = resolve_build_string_arg_ast(package, scope) else {
-                return Err(build_source_unsupported(build_path, method, 1, method.len()));
-            };
+            let dependency = parse_dependency_request_ast(scope, build_path, method, args)?;
             extracted.operations.push(BuildEvaluationOperation {
                 origin,
                 kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
-                    alias,
-                    package,
-                    evaluation_mode: None,
+                    alias: dependency.alias.clone(),
+                    package: dependency.package.clone(),
+                    evaluation_mode: dependency.evaluation_mode,
                     surface: None,
                 }),
             });
-            Ok(None)
+            Ok(Some(BuildExtractionValue::DependencyHandle(dependency)))
         }
         _ => Err(build_source_unsupported(build_path, method, 1, method.len())),
     }
@@ -1346,6 +1345,7 @@ struct BuildExtractionOptionRef {
 enum BuildExtractionValue {
     OptionRef(BuildExtractionOptionRef),
     Artifact(ExtractedBuildArtifact),
+    DependencyHandle(ExtractedBuildDependency),
     StepHandle(String),
     RunHandle(String),
     InstallHandle(String),
@@ -1423,6 +1423,51 @@ fn parse_build_option_default_ast(
         }
         _ => None,
     }
+}
+
+fn parse_dependency_request_ast(
+    scope: &BuildExtractionScope,
+    build_path: &Path,
+    method: &str,
+    args: &[AstNode],
+) -> Result<ExtractedBuildDependency, BuildEvaluationError> {
+    if let [AstNode::RecordInit { fields, .. }] = args {
+        let alias = fields
+            .iter()
+            .find(|field| field.name == "alias")
+            .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+            .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+        let package = fields
+            .iter()
+            .find(|field| field.name == "package")
+            .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+            .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+        let evaluation_mode = fields
+            .iter()
+            .find(|field| field.name == "mode")
+            .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+            .and_then(|value| crate::DependencyBuildEvaluationMode::parse(value.as_str()));
+        return Ok(ExtractedBuildDependency {
+            alias,
+            package,
+            evaluation_mode,
+        });
+    }
+
+    let [alias, package] = args else {
+        return Err(build_source_unsupported(build_path, method, 1, method.len()));
+    };
+    let Some(alias) = resolve_build_string_arg_ast(alias, scope) else {
+        return Err(build_source_unsupported(build_path, method, 1, method.len()));
+    };
+    let Some(package) = resolve_build_string_arg_ast(package, scope) else {
+        return Err(build_source_unsupported(build_path, method, 1, method.len()));
+    };
+    Ok(ExtractedBuildDependency {
+        alias,
+        package,
+        evaluation_mode: None,
+    })
 }
 
 fn build_option_kind_from_extraction(kind: BuildExtractionOptionKind) -> crate::BuildOptionKind {
@@ -2083,6 +2128,39 @@ mod tests {
                 if name == "optimize" && *kind == BuildExtractionOptionKind::Optimize
         ));
         drop(package_root);
+    }
+
+    #[test]
+    fn build_source_evaluator_supports_object_style_dependency_configs() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var core = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"lazy\" });\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("dependency configs should evaluate")
+            .expect("build body should produce a graph");
+
+        assert_eq!(evaluated.result.dependency_requests.len(), 1);
+        assert_eq!(evaluated.result.dependency_requests[0].alias, "core");
+        assert_eq!(evaluated.result.dependency_requests[0].package, "org/core");
+        assert_eq!(
+            evaluated.result.dependency_requests[0].evaluation_mode,
+            Some(crate::DependencyBuildEvaluationMode::Lazy)
+        );
+        assert_eq!(evaluated.evaluated.dependencies.len(), 1);
+        assert_eq!(evaluated.evaluated.dependencies[0].alias, "core");
     }
 
     #[test]

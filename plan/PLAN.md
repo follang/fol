@@ -667,7 +667,7 @@ Round 1 slice tracker:
   surface query method signatures and runtime value kinds.
 - [x] Slice 5. Preserve declared dependency requests and queried dependency
   surfaces in evaluated build results.
-- [ ] Slice 6. Parse object-style `graph.dependency({ ... })` configs in shared
+- [x] Slice 6. Parse object-style `graph.dependency({ ... })` configs in shared
   semantic build evaluation.
 - [ ] Slice 7. Support dependency handle queries for modules and artifacts in
   real build code.
