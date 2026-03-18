@@ -747,7 +747,7 @@ Round 1 slice tracker:
 
 - [x] Slice 1. Add a concrete Phase 12 implementation tracker with completion
   rules.
-- [ ] Slice 2. Add `PackageBuildMode` helpers that expose semantic and
+- [x] Slice 2. Add `PackageBuildMode` helpers that expose semantic and
   compatibility participation directly.
 - [ ] Slice 3. Add a shared `parse_package_build_mode(...)` helper so callers do
   not re-scan raw build source to classify workflow mode.

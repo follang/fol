@@ -51,6 +51,16 @@ pub enum PackageBuildMode {
     Hybrid,
 }
 
+impl PackageBuildMode {
+    pub fn has_semantic_build_entry(self) -> bool {
+        matches!(self, Self::ModernOnly | Self::Hybrid)
+    }
+
+    pub fn has_compatibility_controls(self) -> bool {
+        matches!(self, Self::CompatibilityOnly | Self::Hybrid)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PackageBuildDefinition {
     pub compatibility: PackageBuildCompatibility,
@@ -994,6 +1004,21 @@ mod tests {
         };
 
         assert_eq!(compatibility.mode(), PackageBuildMode::CompatibilityOnly);
+    }
+
+    #[test]
+    fn package_build_mode_helpers_expose_semantic_and_compatibility_participation() {
+        assert!(!PackageBuildMode::Empty.has_semantic_build_entry());
+        assert!(!PackageBuildMode::Empty.has_compatibility_controls());
+
+        assert!(!PackageBuildMode::CompatibilityOnly.has_semantic_build_entry());
+        assert!(PackageBuildMode::CompatibilityOnly.has_compatibility_controls());
+
+        assert!(PackageBuildMode::ModernOnly.has_semantic_build_entry());
+        assert!(!PackageBuildMode::ModernOnly.has_compatibility_controls());
+
+        assert!(PackageBuildMode::Hybrid.has_semantic_build_entry());
+        assert!(PackageBuildMode::Hybrid.has_compatibility_controls());
     }
 
     #[test]
