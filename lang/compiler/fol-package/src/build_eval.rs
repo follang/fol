@@ -868,15 +868,41 @@ fn parse_build_expression_ast(
 ) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
     match expr {
         AstNode::Identifier { name, .. } if name == graph_name => Ok(None),
+        AstNode::Identifier { name, .. } => Ok(scope.values.get(name.as_str()).cloned()),
         AstNode::MethodCall { object, method, args } => {
-            let AstNode::Identifier { name, .. } = object.as_ref() else {
+            if let AstNode::Identifier { name, .. } = object.as_ref() {
+                if name == graph_name {
+                    return parse_build_graph_method_ast(extracted, scope, build_path, method, args);
+                }
+            }
+            let Some(receiver) =
+                parse_build_expression_ast(extracted, scope, build_path, graph_name, object)?
+            else {
                 return Ok(None);
             };
-            if name != graph_name {
-                return Ok(None);
-            }
-            parse_build_graph_method_ast(extracted, scope, build_path, method, args)
+            parse_build_handle_method_ast(extracted, scope, build_path, receiver, method, args)
         }
+        _ => Ok(None),
+    }
+}
+
+fn parse_build_handle_method_ast(
+    _extracted: &mut ExtractedBuildProgram,
+    _scope: &mut BuildExtractionScope,
+    build_path: &Path,
+    receiver: BuildExtractionValue,
+    method: &str,
+    _args: &[AstNode],
+) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
+    match receiver {
+        BuildExtractionValue::StepHandle(_)
+        | BuildExtractionValue::RunHandle(_)
+        | BuildExtractionValue::InstallHandle(_) => Err(build_source_unsupported(
+            build_path,
+            method,
+            1,
+            method.len(),
+        )),
         _ => Ok(None),
     }
 }
@@ -1062,6 +1088,8 @@ enum BuildExtractionValue {
     OptionName(String),
     Artifact(ExtractedBuildArtifact),
     StepHandle(String),
+    RunHandle(String),
+    InstallHandle(String),
 }
 
 fn resolve_build_string_arg_ast(
@@ -1103,6 +1131,8 @@ fn resolve_step_reference_ast(
         AstNode::Literal(Literal::String(value)) => Some(value.clone()),
         AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
             Some(BuildExtractionValue::StepHandle(name)) => Some(name.clone()),
+            Some(BuildExtractionValue::RunHandle(name)) => Some(name.clone()),
+            Some(BuildExtractionValue::InstallHandle(name)) => Some(name.clone()),
             _ => None,
         },
         _ => None,
@@ -1225,7 +1255,7 @@ fn parse_run_call_ast(
             depends_on: Vec::new(),
         }),
     });
-    Ok(Some(BuildExtractionValue::StepHandle(name)))
+    Ok(Some(BuildExtractionValue::RunHandle(name)))
 }
 
 fn parse_install_call_ast(
@@ -1269,7 +1299,7 @@ fn parse_install_call_ast(
             },
         ),
     });
-    Ok(Some(BuildExtractionValue::StepHandle(name)))
+    Ok(Some(BuildExtractionValue::InstallHandle(name)))
 }
 
 fn build_source_unsupported(
@@ -2143,6 +2173,32 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(dependency_names, vec!["run", "install"]);
+    }
+
+    #[test]
+    fn build_source_evaluator_no_longer_silently_ignores_unknown_handle_methods() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var docs = graph.step(\"docs\");\n",
+            "    docs.depend_on(docs);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let error = evaluate_build_source(&request, &build_path, source)
+            .expect_err("unsupported handle methods should fail explicitly");
+
+        assert_eq!(error.kind(), BuildEvaluationErrorKind::Unsupported);
+        assert!(error.message().contains("depend_on"));
     }
 
     #[test]
