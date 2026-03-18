@@ -755,7 +755,7 @@ Round 1 slice tracker:
   workspace members from semantic package build parsing only.
 - [x] Slice 5. Add frontend regressions for broken modern and broken hybrid
   `build.fol` workspace classification.
-- [ ] Slice 6. Rename frontend workspace build request APIs away from
+- [x] Slice 6. Rename frontend workspace build request APIs away from
   compatibility-only terminology.
 - [ ] Slice 7. Rename compatibility-only frontend routing fixtures and test
   wording to absorbed-build terminology.

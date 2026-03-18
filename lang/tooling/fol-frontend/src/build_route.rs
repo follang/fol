@@ -32,7 +32,7 @@ pub struct FrontendWorkspaceBuildRoute {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FrontendCompatibilityBuildRequest {
+pub struct FrontendWorkspaceBuildRequest {
     pub requested_step: String,
     pub profile: FrontendProfile,
     pub run_args: Vec<String>,
@@ -148,7 +148,7 @@ fn load_member_build_mode(build_path: &std::path::Path) -> FrontendResult<Fronte
 pub fn execute_workspace_build_route(
     workspace: &FrontendWorkspace,
     config: &crate::FrontendConfig,
-    request: &FrontendCompatibilityBuildRequest,
+    request: &FrontendWorkspaceBuildRequest,
 ) -> FrontendResult<crate::FrontendCommandResult> {
     let route = plan_workspace_build_route(workspace, request.requested_step.clone())?;
     let member_plans = route
@@ -701,7 +701,7 @@ fn unknown_workspace_build_step_error(
 mod tests {
     use super::{
         execute_workspace_build_route, plan_member_execution, plan_workspace_build_route,
-        FrontendBuildStep, FrontendBuildWorkflowMode, FrontendCompatibilityBuildRequest,
+        FrontendBuildStep, FrontendBuildWorkflowMode, FrontendWorkspaceBuildRequest,
         FrontendMemberBuildRoute, FrontendStepExecutionKind, FrontendWorkspaceBuildRoute,
     };
     use crate::{FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
@@ -1144,7 +1144,7 @@ mod tests {
         let result = execute_workspace_build_route(
             &workspace,
             &FrontendConfig::default(),
-            &FrontendCompatibilityBuildRequest {
+            &FrontendWorkspaceBuildRequest {
                 requested_step: "build".to_string(),
                 profile: crate::FrontendProfile::Debug,
                 run_args: Vec::new(),
@@ -1165,7 +1165,7 @@ mod tests {
         let result = execute_workspace_build_route(
             &workspace,
             &FrontendConfig::default(),
-            &FrontendCompatibilityBuildRequest {
+            &FrontendWorkspaceBuildRequest {
                 requested_step: "run".to_string(),
                 profile: crate::FrontendProfile::Debug,
                 run_args: vec!["--demo".to_string()],
@@ -1186,7 +1186,7 @@ mod tests {
         let error = execute_workspace_build_route(
             &workspace,
             &FrontendConfig::default(),
-            &FrontendCompatibilityBuildRequest {
+            &FrontendWorkspaceBuildRequest {
                 requested_step: "docs".to_string(),
                 profile: crate::FrontendProfile::Debug,
                 run_args: Vec::new(),
@@ -1639,7 +1639,7 @@ mod tests {
         let error = execute_workspace_build_route(
             &workspace,
             &FrontendConfig::default(),
-            &FrontendCompatibilityBuildRequest {
+            &FrontendWorkspaceBuildRequest {
                 requested_step: "build".to_string(),
                 profile: FrontendProfile::Debug,
                 run_args: Vec::new(),

@@ -30,7 +30,7 @@ pub use cli::{
 };
 pub use build_route::{
     execute_workspace_build_route, plan_workspace_build_route, requested_workspace_step,
-    FrontendBuildStep, FrontendBuildWorkflowMode, FrontendCompatibilityBuildRequest,
+    FrontendBuildStep, FrontendBuildWorkflowMode, FrontendWorkspaceBuildRequest,
     FrontendMemberBuildRoute, FrontendWorkspaceBuildRoute,
 };
 pub use clean::{clean_workspace, clean_workspace_with_config};
@@ -642,7 +642,7 @@ fn dispatch_workspace_code_route(
     build_route::execute_workspace_build_route(
         workspace,
         config,
-        &FrontendCompatibilityBuildRequest {
+        &FrontendWorkspaceBuildRequest {
             requested_step,
             profile: config.profile_override.unwrap_or(default_profile),
             run_args: run_args.to_vec(),
@@ -794,7 +794,7 @@ mod tests {
         let result = execute_workspace_build_route(
             &workspace,
             &FrontendConfig::default(),
-            &FrontendCompatibilityBuildRequest {
+            &FrontendWorkspaceBuildRequest {
                 requested_step,
                 profile: FrontendProfile::Debug,
                 run_args: Vec::new(),
