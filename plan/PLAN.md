@@ -699,6 +699,28 @@ Tests required:
 Exit criteria:
 - major build graph node families are usable from semantic build execution
 
+Round 1 slice tracker:
+- [x] Slice 1. Add a concrete Phase 11 implementation tracker for semantic
+  generated-file, tool, and native-input work.
+- [ ] Slice 2. Extend the semantic build stdlib surface with generated-file,
+  system-tool, and codegen graph methods.
+- [ ] Slice 3. Extend runtime models with generated-file handles and evaluated
+  generated-output metadata.
+- [ ] Slice 4. Parse object-style `graph.write_file({ ... })` configs in shared
+  semantic build evaluation.
+- [ ] Slice 5. Parse object-style `graph.copy_file({ ... })` configs in shared
+  semantic build evaluation.
+- [ ] Slice 6. Parse object-style `graph.add_system_tool({ ... })` configs in
+  shared semantic build evaluation.
+- [ ] Slice 7. Parse object-style `graph.add_codegen({ ... })` configs in
+  shared semantic build evaluation.
+- [ ] Slice 8. Preserve generated outputs in evaluated build results and bind
+  generated-file handles through semantic build code.
+- [ ] Slice 9. Add regressions proving generated files, tool outputs, and
+  codegen outputs are consumable through semantic build evaluation.
+- [ ] Slice 10. Re-export, test, and lock the full Phase 11 generated/tool
+  round.
+
 ## Phase 12: Compatibility Absorption
 
 Goal:
