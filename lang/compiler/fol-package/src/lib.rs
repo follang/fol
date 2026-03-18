@@ -100,9 +100,10 @@ pub use build_option::{
 pub use build_runtime::{
     find_record_field, BuildExecutionRepresentation, BuildRuntimeDependency,
     BuildRuntimeDependencyQuery, BuildRuntimeDependencyQueryKind, BuildRuntimeDiagnostic,
-    BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeHandle,
-    BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram,
-    BuildRuntimeReceiverKind, BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue,
+    BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeGeneratedFile,
+    BuildRuntimeGeneratedFileKind, BuildRuntimeHandle, BuildRuntimeHandleKind,
+    BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram, BuildRuntimeReceiverKind,
+    BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue,
 };
 pub use build_native::{
     project_compatibility_native_artifact, project_compatibility_native_artifacts,
@@ -443,6 +444,44 @@ mod tests {
         assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Artifact));
         assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Step));
         assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::GeneratedOutput));
+    }
+
+    #[test]
+    fn crate_root_reexports_phase_eleven_generated_surface() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
+            "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
+            "    var tool = graph.add_system_tool({ tool = \"flatc\", output = \"gen/schema.fol\" });\n",
+            "    var codegen = graph.add_codegen({ kind = \"schema\", input = \"schema/api.yaml\", output = \"gen/api.fol\" });\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("crate root generated evaluation should succeed")
+            .expect("crate root generated evaluation should produce a graph");
+        let kinds = evaluated
+            .evaluated
+            .generated_files
+            .iter()
+            .map(|file| file.kind)
+            .collect::<Vec<_>>();
+
+        assert_eq!(evaluated.evaluated.generated_files.len(), 4);
+        assert!(kinds.contains(&BuildRuntimeGeneratedFileKind::Write));
+        assert!(kinds.contains(&BuildRuntimeGeneratedFileKind::Copy));
+        assert!(kinds.contains(&BuildRuntimeGeneratedFileKind::ToolOutput));
+        assert!(kinds.contains(&BuildRuntimeGeneratedFileKind::CodegenOutput));
     }
 
     #[test]

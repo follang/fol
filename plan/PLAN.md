@@ -718,7 +718,7 @@ Round 1 slice tracker:
   generated-file handles through semantic build code.
 - [x] Slice 9. Add regressions proving generated files, tool outputs, and
   codegen outputs are consumable through semantic build evaluation.
-- [ ] Slice 10. Re-export, test, and lock the full Phase 11 generated/tool
+- [x] Slice 10. Re-export, test, and lock the full Phase 11 generated/tool
   round.
 
 ## Phase 12: Compatibility Absorption
