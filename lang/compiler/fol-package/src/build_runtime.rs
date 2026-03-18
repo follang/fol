@@ -101,6 +101,10 @@ pub enum BuildRuntimeHandleKind {
     Run,
     Install,
     Dependency,
+    DependencyModule,
+    DependencyArtifact,
+    DependencyStep,
+    DependencyGeneratedOutput,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -350,6 +354,26 @@ mod tests {
         assert_eq!(
             optimize,
             BuildRuntimeValue::Optimize("release-safe".to_string())
+        );
+    }
+
+    #[test]
+    fn runtime_handle_kinds_cover_dependency_surface_queries() {
+        assert_eq!(
+            BuildRuntimeHandleKind::DependencyModule,
+            BuildRuntimeHandleKind::DependencyModule
+        );
+        assert_eq!(
+            BuildRuntimeHandleKind::DependencyArtifact,
+            BuildRuntimeHandleKind::DependencyArtifact
+        );
+        assert_eq!(
+            BuildRuntimeHandleKind::DependencyStep,
+            BuildRuntimeHandleKind::DependencyStep
+        );
+        assert_eq!(
+            BuildRuntimeHandleKind::DependencyGeneratedOutput,
+            BuildRuntimeHandleKind::DependencyGeneratedOutput
         );
     }
 

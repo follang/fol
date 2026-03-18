@@ -663,7 +663,7 @@ Round 1 slice tracker:
   parsing utilities.
 - [x] Slice 3. Extend dependency API requests/handles with semantic surface and
   evaluation-mode metadata.
-- [ ] Slice 4. Extend the semantic build stdlib/runtime models with dependency
+- [x] Slice 4. Extend the semantic build stdlib/runtime models with dependency
   surface query method signatures and runtime value kinds.
 - [ ] Slice 5. Preserve declared dependency requests and queried dependency
   surfaces in evaluated build results.

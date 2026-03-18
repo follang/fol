@@ -52,6 +52,10 @@ pub enum BuildSemanticTypeFamily {
     RunHandle,
     InstallHandle,
     DependencyHandle,
+    DependencyModuleHandle,
+    DependencyArtifactHandle,
+    DependencyStepHandle,
+    DependencyGeneratedOutputHandle,
     GeneratedFileHandle,
 }
 
@@ -89,6 +93,31 @@ impl BuildSemanticType {
 
     pub fn dependency_handle() -> Self {
         Self::types_named("Dependency", BuildSemanticTypeFamily::DependencyHandle)
+    }
+
+    pub fn dependency_module_handle() -> Self {
+        Self::types_named(
+            "DependencyModule",
+            BuildSemanticTypeFamily::DependencyModuleHandle,
+        )
+    }
+
+    pub fn dependency_artifact_handle() -> Self {
+        Self::types_named(
+            "DependencyArtifact",
+            BuildSemanticTypeFamily::DependencyArtifactHandle,
+        )
+    }
+
+    pub fn dependency_step_handle() -> Self {
+        Self::types_named("DependencyStep", BuildSemanticTypeFamily::DependencyStepHandle)
+    }
+
+    pub fn dependency_generated_output_handle() -> Self {
+        Self::types_named(
+            "DependencyGeneratedOutput",
+            BuildSemanticTypeFamily::DependencyGeneratedOutputHandle,
+        )
     }
 
     pub fn generated_file_handle() -> Self {
@@ -270,6 +299,18 @@ pub fn canonical_handle_method_signatures() -> Vec<BuildSemanticMethodSignature>
             ))
             .returning(BuildSemanticTypeFamily::InstallHandle)
             .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "module")
+            .with_param(BuildSemanticMethodParameter::scalar("name"))
+            .returning(BuildSemanticTypeFamily::DependencyModuleHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "artifact")
+            .with_param(BuildSemanticMethodParameter::scalar("name"))
+            .returning(BuildSemanticTypeFamily::DependencyArtifactHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "step")
+            .with_param(BuildSemanticMethodParameter::scalar("name"))
+            .returning(BuildSemanticTypeFamily::DependencyStepHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "generated")
+            .with_param(BuildSemanticMethodParameter::scalar("name"))
+            .returning(BuildSemanticTypeFamily::DependencyGeneratedOutputHandle),
     ]
 }
 
@@ -490,6 +531,22 @@ mod tests {
         assert_eq!(BuildSemanticType::install_handle().name, "Install");
         assert_eq!(BuildSemanticType::dependency_handle().name, "Dependency");
         assert_eq!(
+            BuildSemanticType::dependency_module_handle().name,
+            "DependencyModule"
+        );
+        assert_eq!(
+            BuildSemanticType::dependency_artifact_handle().name,
+            "DependencyArtifact"
+        );
+        assert_eq!(
+            BuildSemanticType::dependency_step_handle().name,
+            "DependencyStep"
+        );
+        assert_eq!(
+            BuildSemanticType::dependency_generated_output_handle().name,
+            "DependencyGeneratedOutput"
+        );
+        assert_eq!(
             BuildSemanticType::generated_file_handle().name,
             "GeneratedFile"
         );
@@ -566,24 +623,62 @@ mod tests {
     #[test]
     fn canonical_handle_methods_cover_depend_on_chains() {
         let signatures = canonical_handle_method_signatures();
+        let depend_on = signatures
+            .iter()
+            .filter(|signature| signature.name == "depend_on")
+            .collect::<Vec<_>>();
 
-        assert_eq!(signatures.len(), 3);
-        assert!(signatures.iter().all(|signature| signature.name == "depend_on"));
-        assert!(signatures.iter().all(|signature| signature.chainable));
+        assert_eq!(depend_on.len(), 3);
+        assert!(depend_on.iter().all(|signature| signature.chainable));
+        assert!(signatures.iter().any(|signature| signature.name == "module"));
+        assert!(signatures.iter().any(|signature| signature.name == "artifact"));
+        assert!(signatures.iter().any(|signature| signature.name == "step"));
+        assert!(signatures.iter().any(|signature| signature.name == "generated"));
     }
 
     #[test]
     fn canonical_handle_methods_preserve_receiver_specific_returns() {
         let signatures = canonical_handle_method_signatures();
+        let step = signatures
+            .iter()
+            .find(|signature| signature.receiver == BuildSemanticTypeFamily::StepHandle)
+            .expect("step handle signature should exist");
+        let run = signatures
+            .iter()
+            .find(|signature| signature.receiver == BuildSemanticTypeFamily::RunHandle)
+            .expect("run handle signature should exist");
+        let install = signatures
+            .iter()
+            .find(|signature| signature.receiver == BuildSemanticTypeFamily::InstallHandle)
+            .expect("install handle signature should exist");
+        let dependency_module = signatures
+            .iter()
+            .find(|signature| {
+                signature.receiver == BuildSemanticTypeFamily::DependencyHandle
+                    && signature.name == "module"
+            })
+            .expect("dependency module signature should exist");
+        let dependency_generated = signatures
+            .iter()
+            .find(|signature| {
+                signature.receiver == BuildSemanticTypeFamily::DependencyHandle
+                    && signature.name == "generated"
+            })
+            .expect("dependency generated signature should exist");
 
-        assert_eq!(signatures[0].receiver, BuildSemanticTypeFamily::StepHandle);
-        assert_eq!(signatures[0].returns, Some(BuildSemanticTypeFamily::StepHandle));
-        assert_eq!(signatures[1].receiver, BuildSemanticTypeFamily::RunHandle);
-        assert_eq!(signatures[1].returns, Some(BuildSemanticTypeFamily::RunHandle));
-        assert_eq!(signatures[2].receiver, BuildSemanticTypeFamily::InstallHandle);
+        assert_eq!(step.returns, Some(BuildSemanticTypeFamily::StepHandle));
+        assert_eq!(run.returns, Some(BuildSemanticTypeFamily::RunHandle));
         assert_eq!(
-            signatures[2].returns,
+            install.returns,
             Some(BuildSemanticTypeFamily::InstallHandle)
+        );
+        assert_eq!(
+            dependency_module.returns,
+            Some(BuildSemanticTypeFamily::DependencyModuleHandle)
+        );
+        assert_eq!(
+            dependency_generated.returns,
+            Some(BuildSemanticTypeFamily::DependencyGeneratedOutputHandle)
         );
     }
 
