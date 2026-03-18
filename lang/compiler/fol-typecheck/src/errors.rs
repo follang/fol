@@ -10,6 +10,10 @@ pub enum TypecheckErrorKind {
     Unsupported,
     IncompatibleType,
     Internal,
+    ScopeResolutionFailed,
+    TypeImportFailed,
+    SymbolTableCorrupted,
+    UnsupportedSyntax,
 }
 
 impl TypecheckErrorKind {
@@ -19,6 +23,10 @@ impl TypecheckErrorKind {
             Self::Unsupported => "TypecheckUnsupported",
             Self::IncompatibleType => "TypecheckIncompatibleType",
             Self::Internal => "TypecheckInternal",
+            Self::ScopeResolutionFailed => "TypecheckScopeResolutionFailed",
+            Self::TypeImportFailed => "TypecheckTypeImportFailed",
+            Self::SymbolTableCorrupted => "TypecheckSymbolTableCorrupted",
+            Self::UnsupportedSyntax => "TypecheckUnsupportedSyntax",
         }
     }
 
@@ -28,6 +36,10 @@ impl TypecheckErrorKind {
             Self::Unsupported => DiagnosticCode::new("T1002"),
             Self::IncompatibleType => DiagnosticCode::new("T1003"),
             Self::Internal => DiagnosticCode::new("T1099"),
+            Self::ScopeResolutionFailed => DiagnosticCode::new("T1004"),
+            Self::TypeImportFailed => DiagnosticCode::new("T1005"),
+            Self::SymbolTableCorrupted => DiagnosticCode::new("T1006"),
+            Self::UnsupportedSyntax => DiagnosticCode::new("T1007"),
         }
     }
 }

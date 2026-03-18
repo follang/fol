@@ -241,7 +241,14 @@ fn type_node_with_expectation(
             }
             let routine_scope = syntax_id
                 .and_then(|syntax_id| resolved.scope_for_syntax(syntax_id))
-                .unwrap_or(context.scope_id);
+                .ok_or_else(|| {
+                    TypecheckError::new(
+                        TypecheckErrorKind::ScopeResolutionFailed,
+                        format!(
+                            "routine '{name}' has no scope mapping in the resolved program"
+                        ),
+                    )
+                })?;
             let expected_return_type = return_type
                 .as_ref()
                 .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
@@ -446,6 +453,14 @@ fn type_node_with_expectation(
             "yield typing is not part of the V1 typecheck milestone",
         )),
         _ => {
+            let debug_repr = format!("{node:?}");
+            let variant = debug_repr
+                .split_once(|c: char| !c.is_alphanumeric() && c != '_')
+                .map(|(v, _)| v)
+                .unwrap_or(&debug_repr);
+            eprintln!(
+                "[typecheck] unknown AST node '{variant}' reached catch-all — treating as None (UnsupportedSyntax)"
+            );
             for child in node.children() {
                 let _ = type_node(typed, resolved, context, child)?;
             }

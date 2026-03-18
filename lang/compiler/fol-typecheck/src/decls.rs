@@ -688,9 +688,15 @@ fn record_symbol_type(
     symbol_id: SymbolId,
     type_id: CheckedTypeId,
 ) -> Result<(), TypecheckError> {
-    let symbol = typed
-        .typed_symbol_mut(symbol_id)
-        .ok_or_else(|| internal_error("typed symbol table lost a resolved symbol", None))?;
+    let symbol = typed.typed_symbol_mut(symbol_id).ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::SymbolTableCorrupted,
+            format!(
+                "symbol table corrupted: symbol {} is missing while recording declared type {}",
+                symbol_id.0, type_id.0,
+            ),
+        )
+    })?;
     symbol.declared_type = Some(type_id);
     Ok(())
 }
@@ -700,9 +706,15 @@ fn record_symbol_receiver_type(
     symbol_id: SymbolId,
     type_id: Option<CheckedTypeId>,
 ) -> Result<(), TypecheckError> {
-    let symbol = typed
-        .typed_symbol_mut(symbol_id)
-        .ok_or_else(|| internal_error("typed symbol table lost a resolved declaration", None))?;
+    let symbol = typed.typed_symbol_mut(symbol_id).ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::SymbolTableCorrupted,
+            format!(
+                "symbol table corrupted: symbol {} is missing while recording receiver type",
+                symbol_id.0,
+            ),
+        )
+    })?;
     symbol.receiver_type = type_id;
     Ok(())
 }

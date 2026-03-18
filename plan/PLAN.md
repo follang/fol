@@ -26,8 +26,8 @@ Same policy as before. If something is replaced, the old thing is deleted.
 ## Round 3 Slices
 
 - [x] Slice 1. Lexer: off-by-one fix, missing keywords, typos
-- [ ] Slice 2. Parser: loop limits, depth guards, error recovery
-- [ ] Slice 3. Resolver: unwrap/expect removal, scope validation, path safety
+- [x] Slice 2. Parser: loop limits, depth guards, error recovery
+- [x] Slice 3. Resolver: unwrap/expect removal, scope validation, path safety
 - [ ] Slice 4. Typechecker: catch-all elimination, type table safety, error taxonomy
 - [ ] Slice 5. Lowering: panic removal, test fixes, type validation
 - [ ] Slice 6. Backend: codegen string escaping, generated code safety
