@@ -17,7 +17,7 @@ Round 1 slices:
 - [x] Slice 7. Rewrite frontend scaffolds and frontend unit tests to generate only the new build form
 - [ ] Slice 8. Rewrite resolver and integration fixtures/tests that still depend on `def root`
 - [x] Slice 9. Rewrite docs and examples so they teach only the new build model
-- [ ] Slice 10. Add semantic-only regression coverage for old syntax and invalid build entry shapes
+- [x] Slice 10. Add semantic-only regression coverage for old syntax and invalid build entry shapes
 
 Implemented already:
 

@@ -347,6 +347,128 @@ mod tests {
     }
 
     #[test]
+    fn candidate_collection_ignores_old_def_build_declarations() {
+        let syntax = fol_parser::ast::ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![fol_parser::ast::ParsedSourceUnit {
+                path: "build.fol".to_string(),
+                package: "demo".to_string(),
+                namespace: "demo".to_string(),
+                kind: fol_parser::ast::ParsedSourceUnitKind::Build,
+                items: vec![fol_parser::ast::ParsedTopLevel {
+                    node_id: fol_parser::ast::SyntaxNodeId(1),
+                    node: fol_parser::ast::AstNode::DefDecl {
+                        options: Vec::new(),
+                        name: "build".to_string(),
+                        params: vec![fol_parser::ast::Parameter {
+                            name: "graph".to_string(),
+                            param_type: fol_parser::ast::FolType::Named {
+                                syntax_id: None,
+                                name: "Graph".to_string(),
+                            },
+                            is_borrowable: false,
+                            is_mutex: false,
+                            default: None,
+                        }],
+                        def_type: fol_parser::ast::FolType::Named {
+                            syntax_id: None,
+                            name: "Graph".to_string(),
+                        },
+                        body: Vec::new(),
+                    },
+                    meta: fol_parser::ast::ParsedTopLevelMeta::default(),
+                }],
+            }],
+            syntax_index: fol_parser::ast::SyntaxIndex::default(),
+        };
+
+        let candidates = collect_build_entry_candidates(&syntax);
+
+        assert!(candidates.is_empty());
+    }
+
+    #[test]
+    fn candidate_collection_ignores_fun_build_declarations() {
+        let syntax = fol_parser::ast::ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![fol_parser::ast::ParsedSourceUnit {
+                path: "build.fol".to_string(),
+                package: "demo".to_string(),
+                namespace: "demo".to_string(),
+                kind: fol_parser::ast::ParsedSourceUnitKind::Build,
+                items: vec![fol_parser::ast::ParsedTopLevel {
+                    node_id: fol_parser::ast::SyntaxNodeId(1),
+                    node: fol_parser::ast::AstNode::FunDecl {
+                        options: Vec::new(),
+                        name: "build".to_string(),
+                        generics: Vec::new(),
+                        params: vec![fol_parser::ast::Parameter {
+                            name: "graph".to_string(),
+                            param_type: fol_parser::ast::FolType::Named {
+                                syntax_id: None,
+                                name: "Graph".to_string(),
+                            },
+                            is_borrowable: false,
+                            is_mutex: false,
+                            default: None,
+                        }],
+                        return_type: Some(fol_parser::ast::FolType::None),
+                        body: Vec::new(),
+                    },
+                    meta: fol_parser::ast::ParsedTopLevelMeta::default(),
+                }],
+            }],
+            syntax_index: fol_parser::ast::SyntaxIndex::default(),
+        };
+
+        let candidates = collect_build_entry_candidates(&syntax);
+
+        assert!(candidates.is_empty());
+    }
+
+    #[test]
+    fn parsed_build_entry_validation_treats_old_def_build_as_missing() {
+        let syntax = fol_parser::ast::ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![fol_parser::ast::ParsedSourceUnit {
+                path: "build.fol".to_string(),
+                package: "demo".to_string(),
+                namespace: "demo".to_string(),
+                kind: fol_parser::ast::ParsedSourceUnitKind::Build,
+                items: vec![fol_parser::ast::ParsedTopLevel {
+                    node_id: fol_parser::ast::SyntaxNodeId(1),
+                    node: fol_parser::ast::AstNode::DefDecl {
+                        options: Vec::new(),
+                        name: "build".to_string(),
+                        params: vec![fol_parser::ast::Parameter {
+                            name: "graph".to_string(),
+                            param_type: fol_parser::ast::FolType::Named {
+                                syntax_id: None,
+                                name: "Graph".to_string(),
+                            },
+                            is_borrowable: false,
+                            is_mutex: false,
+                            default: None,
+                        }],
+                        def_type: fol_parser::ast::FolType::Named {
+                            syntax_id: None,
+                            name: "Graph".to_string(),
+                        },
+                        body: Vec::new(),
+                    },
+                    meta: fol_parser::ast::ParsedTopLevelMeta::default(),
+                }],
+            }],
+            syntax_index: fol_parser::ast::SyntaxIndex::default(),
+        };
+
+        let errors = validate_parsed_build_entry(&syntax, &BuildEntrySignatureExpectation::canonical())
+            .expect_err("old def build declarations should not satisfy the semantic build entry contract");
+
+        assert_eq!(errors[0].kind, BuildEntryValidationErrorKind::MissingEntry);
+    }
+
+    #[test]
     fn cardinality_validation_requires_exactly_one_build_entry() {
         let syntax = fol_parser::ast::ParsedPackage {
             package: "demo".to_string(),
