@@ -269,6 +269,18 @@ pub fn canonical_graph_method_signatures() -> Vec<BuildSemanticMethodSignature> 
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "install_dir")
             .with_param(BuildSemanticMethodParameter::scalar("path"))
             .returning(BuildSemanticTypeFamily::InstallHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "write_file")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "copy_file")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_system_tool")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_codegen")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "dependency")
             .with_param(BuildSemanticMethodParameter::scalar("alias"))
             .with_param(BuildSemanticMethodParameter::scalar("package"))
@@ -596,6 +608,10 @@ mod tests {
         assert!(names.contains(&"standard_optimize"));
         assert!(names.contains(&"add_exe"));
         assert!(names.contains(&"step"));
+        assert!(names.contains(&"write_file"));
+        assert!(names.contains(&"copy_file"));
+        assert!(names.contains(&"add_system_tool"));
+        assert!(names.contains(&"add_codegen"));
         assert!(names.contains(&"dependency"));
     }
 
@@ -605,6 +621,12 @@ mod tests {
         let add_exe = signatures.iter().find(|signature| signature.name == "add_exe");
         let add_run = signatures.iter().find(|signature| signature.name == "add_run");
         let install = signatures.iter().find(|signature| signature.name == "install");
+        let write_file = signatures
+            .iter()
+            .find(|signature| signature.name == "write_file");
+        let add_codegen = signatures
+            .iter()
+            .find(|signature| signature.name == "add_codegen");
 
         assert_eq!(
             add_exe.and_then(|signature| signature.returns),
@@ -617,6 +639,14 @@ mod tests {
         assert_eq!(
             install.and_then(|signature| signature.returns),
             Some(BuildSemanticTypeFamily::InstallHandle)
+        );
+        assert_eq!(
+            write_file.and_then(|signature| signature.returns),
+            Some(BuildSemanticTypeFamily::GeneratedFileHandle)
+        );
+        assert_eq!(
+            add_codegen.and_then(|signature| signature.returns),
+            Some(BuildSemanticTypeFamily::GeneratedFileHandle)
         );
     }
 

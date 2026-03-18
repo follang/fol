@@ -702,7 +702,7 @@ Exit criteria:
 Round 1 slice tracker:
 - [x] Slice 1. Add a concrete Phase 11 implementation tracker for semantic
   generated-file, tool, and native-input work.
-- [ ] Slice 2. Extend the semantic build stdlib surface with generated-file,
+- [x] Slice 2. Extend the semantic build stdlib surface with generated-file,
   system-tool, and codegen graph methods.
 - [ ] Slice 3. Extend runtime models with generated-file handles and evaluated
   generated-output metadata.
