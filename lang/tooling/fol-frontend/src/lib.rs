@@ -710,7 +710,7 @@ mod tests {
     use super::*;
     use crate::cli::{FrontendOutputArgs, FrontendProfileArgs};
 
-    fn compatibility_dispatch_fixture(label: &str) -> FrontendWorkspace {
+    fn absorbed_build_dispatch_fixture(label: &str) -> FrontendWorkspace {
         let root = std::env::temp_dir().join(format!(
             "fol_frontend_dispatch_route_{label}_{}_{}",
             std::process::id(),
@@ -782,7 +782,7 @@ mod tests {
 
     #[test]
     fn graph_driven_build_route_surface_is_reexported_at_crate_root() {
-        let workspace = compatibility_dispatch_fixture("public_build_route_surface");
+        let workspace = absorbed_build_dispatch_fixture("public_build_route_surface");
         let requested_step =
             requested_workspace_step(&CodeSubcommand::Build(BuildCommand::default()), None);
         assert_eq!(requested_step, "build");
@@ -889,8 +889,8 @@ mod tests {
     }
 
     #[test]
-    fn workspace_dispatch_routes_compatibility_build_steps_through_named_step_selection() {
-        let workspace = compatibility_dispatch_fixture("check_step");
+    fn workspace_dispatch_routes_absorbed_build_steps_through_named_step_selection() {
+        let workspace = absorbed_build_dispatch_fixture("check_step");
         let command = FrontendCommand::Code(CodeCommand {
             output: FrontendOutputArgs::default(),
             profile: FrontendProfileArgs::default(),
@@ -910,8 +910,8 @@ mod tests {
     }
 
     #[test]
-    fn workspace_dispatch_keeps_build_artifacts_on_routed_compatibility_execution() {
-        let workspace = compatibility_dispatch_fixture("build_artifacts");
+    fn workspace_dispatch_keeps_build_artifacts_on_routed_absorbed_build_execution() {
+        let workspace = absorbed_build_dispatch_fixture("build_artifacts");
         let command = FrontendCommand::Code(CodeCommand {
             output: FrontendOutputArgs::default(),
             profile: FrontendProfileArgs::default(),
@@ -938,7 +938,7 @@ mod tests {
 
     #[test]
     fn workspace_dispatch_keeps_run_summary_and_binary_artifact_on_routed_execution() {
-        let workspace = compatibility_dispatch_fixture("run_artifacts");
+        let workspace = absorbed_build_dispatch_fixture("run_artifacts");
         let command = FrontendCommand::Code(CodeCommand {
             output: FrontendOutputArgs::default(),
             profile: FrontendProfileArgs::default(),

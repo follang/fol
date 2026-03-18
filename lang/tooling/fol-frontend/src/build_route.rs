@@ -707,7 +707,7 @@ mod tests {
     use crate::{FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
 
-    fn compatibility_workspace_fixture(label: &str) -> FrontendWorkspace {
+    fn absorbed_build_workspace_fixture(label: &str) -> FrontendWorkspace {
         let root = std::env::temp_dir().join(format!(
             "fol_frontend_build_route_{label}_{}_{}",
             std::process::id(),
@@ -832,7 +832,7 @@ mod tests {
 
     #[test]
     fn default_member_planning_uses_graph_projected_build_run_test_and_check_steps() {
-        let workspace = compatibility_workspace_fixture("compat_graph_plan");
+        let workspace = absorbed_build_workspace_fixture("compat_graph_plan");
 
         let plan = plan_member_execution(&FrontendMemberBuildRoute {
             member_root: workspace.members[0].root.clone(),
@@ -1138,8 +1138,8 @@ mod tests {
     }
 
     #[test]
-    fn compatibility_executor_maps_build_steps_back_onto_existing_workspace_commands() {
-        let workspace = compatibility_workspace_fixture("compat_exec_build");
+    fn absorbed_build_executor_maps_build_steps_back_onto_existing_workspace_commands() {
+        let workspace = absorbed_build_workspace_fixture("compat_exec_build");
 
         let result = execute_workspace_build_route(
             &workspace,
@@ -1159,8 +1159,8 @@ mod tests {
     }
 
     #[test]
-    fn compatibility_executor_routes_run_steps_with_arguments() {
-        let workspace = compatibility_workspace_fixture("compat_exec_run");
+    fn absorbed_build_executor_routes_run_steps_with_arguments() {
+        let workspace = absorbed_build_workspace_fixture("compat_exec_run");
 
         let result = execute_workspace_build_route(
             &workspace,
@@ -1180,8 +1180,8 @@ mod tests {
     }
 
     #[test]
-    fn compatibility_executor_rejects_unknown_named_steps() {
-        let workspace = compatibility_workspace_fixture("compat_exec_unknown");
+    fn absorbed_build_executor_rejects_unknown_named_steps() {
+        let workspace = absorbed_build_workspace_fixture("compat_exec_unknown");
 
         let error = execute_workspace_build_route(
             &workspace,
@@ -1192,7 +1192,7 @@ mod tests {
                 run_args: Vec::new(),
             },
         )
-        .expect_err("unknown compatibility step should fail");
+        .expect_err("unknown absorbed-build step should fail");
 
         assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
         assert!(

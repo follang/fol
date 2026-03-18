@@ -757,7 +757,7 @@ Round 1 slice tracker:
   `build.fol` workspace classification.
 - [x] Slice 6. Rename frontend workspace build request APIs away from
   compatibility-only terminology.
-- [ ] Slice 7. Rename compatibility-only frontend routing fixtures and test
+- [x] Slice 7. Rename compatibility-only frontend routing fixtures and test
   wording to absorbed-build terminology.
 - [ ] Slice 8. Update scaffolded `build.fol` templates to describe
   compatibility defs as migration-only controls under the real build entry.
