@@ -617,9 +617,9 @@ Exit criteria:
 
 Round 1 slice tracker:
 
-- [ ] Slice 1. Add a concrete Phase 9 implementation tracker for real build
+- [x] Slice 1. Add a concrete Phase 9 implementation tracker for real build
   option values.
-- [ ] Slice 2. Add typed build-option value render/parse helpers for standard
+- [x] Slice 2. Add typed build-option value render/parse helpers for standard
   and user option kinds.
 - [x] Slice 3. Extend user option declarations with kind/default metadata and
   preserve that metadata through build evaluation.
