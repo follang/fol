@@ -313,6 +313,18 @@ pub struct DependencyHandle {
     pub generated_outputs: DependencyGeneratedOutputSurfaceSet,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ModuleHandle {
+    pub module_id: crate::graph::BuildModuleId,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AddModuleRequest {
+    pub name: String,
+    pub root_module: String,
+}
+
 pub fn validate_build_name(name: &str) -> Result<(), BuildApiNameError> {
     if name.is_empty() {
         return Err(BuildApiNameError::Empty);
@@ -615,6 +627,86 @@ impl<'a> BuildApi<'a> {
             step_id,
             name: request.name,
         })
+    }
+
+    pub fn add_module(
+        &mut self,
+        request: AddModuleRequest,
+    ) -> Result<ModuleHandle, BuildApiError> {
+        validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let module_id = self
+            .graph
+            .add_module(crate::graph::BuildModuleKind::Source, request.root_module);
+        Ok(ModuleHandle {
+            module_id,
+            name: request.name,
+        })
+    }
+
+    pub fn artifact_link(
+        &mut self,
+        artifact_id: crate::graph::BuildArtifactId,
+        linked_id: crate::graph::BuildArtifactId,
+    ) {
+        self.graph.add_artifact_link(artifact_id, linked_id);
+    }
+
+    pub fn artifact_import(
+        &mut self,
+        artifact_id: crate::graph::BuildArtifactId,
+        module_id: crate::graph::BuildModuleId,
+    ) {
+        self.graph.add_artifact_module_import(artifact_id, module_id);
+    }
+
+    pub fn artifact_add_generated(
+        &mut self,
+        artifact_id: crate::graph::BuildArtifactId,
+        generated_file_id: crate::graph::BuildGeneratedFileId,
+    ) {
+        self.graph
+            .add_artifact_generated_file_input(artifact_id, generated_file_id);
+    }
+
+    pub fn run_add_arg(
+        &mut self,
+        step_id: crate::graph::BuildStepId,
+        arg: crate::graph::BuildRunArg,
+    ) {
+        self.graph.run_config_mut(step_id).args.push(arg);
+    }
+
+    pub fn run_capture_stdout(
+        &mut self,
+        step_id: crate::graph::BuildStepId,
+        output_name: impl Into<String>,
+    ) -> GeneratedFileHandle {
+        let generated_file_id = self.graph.add_generated_file(
+            crate::graph::BuildGeneratedFileKind::CaptureOutput,
+            output_name,
+        );
+        self.graph.run_config_mut(step_id).capture_stdout = Some(generated_file_id);
+        GeneratedFileHandle { generated_file_id }
+    }
+
+    pub fn run_set_env(
+        &mut self,
+        step_id: crate::graph::BuildStepId,
+        key: impl Into<String>,
+        value: impl Into<String>,
+    ) {
+        self.graph
+            .run_config_mut(step_id)
+            .env
+            .push((key.into(), value.into()));
+    }
+
+    pub fn step_attach(
+        &mut self,
+        step_id: crate::graph::BuildStepId,
+        generated_file_id: crate::graph::BuildGeneratedFileId,
+    ) {
+        self.graph.add_step_attachment(step_id, generated_file_id);
     }
 
     pub fn dependency(

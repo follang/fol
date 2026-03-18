@@ -146,6 +146,40 @@ pub enum BuildInstallTarget {
     DirectoryPath(String),
 }
 
+// --- New Slice 7 graph IR types ---
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildRunArg {
+    Literal(String),
+    GeneratedFile(BuildGeneratedFileId),
+    Path(String),
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct BuildRunConfig {
+    pub args: Vec<BuildRunArg>,
+    pub env: Vec<(String, String)>,
+    pub capture_stdout: Option<BuildGeneratedFileId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BuildArtifactLink {
+    pub artifact: BuildArtifactId,
+    pub linked: BuildArtifactId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BuildArtifactModuleImport {
+    pub artifact: BuildArtifactId,
+    pub module: BuildModuleId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BuildStepAttachment {
+    pub step: BuildStepId,
+    pub generated_file: BuildGeneratedFileId,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuildGraphValidationErrorKind {
     StepDependencyCycle,
@@ -169,6 +203,10 @@ pub struct BuildGraph {
     installs: Vec<BuildInstall>,
     step_dependencies: Vec<BuildStepDependency>,
     artifact_dependencies: Vec<BuildArtifactDependency>,
+    run_configs: std::collections::BTreeMap<BuildStepId, BuildRunConfig>,
+    artifact_links: Vec<BuildArtifactLink>,
+    artifact_module_imports: Vec<BuildArtifactModuleImport>,
+    step_attachments: Vec<BuildStepAttachment>,
 }
 
 impl BuildGraph {
@@ -338,6 +376,89 @@ impl BuildGraph {
             .iter()
             .filter(move |edge| edge.artifact == artifact)
             .map(|edge| edge.input)
+    }
+
+    pub fn run_config_for(&self, step: BuildStepId) -> Option<&BuildRunConfig> {
+        self.run_configs.get(&step)
+    }
+
+    pub fn set_run_config(&mut self, step: BuildStepId, config: BuildRunConfig) {
+        self.run_configs.insert(step, config);
+    }
+
+    pub fn run_config_mut(&mut self, step: BuildStepId) -> &mut BuildRunConfig {
+        self.run_configs.entry(step).or_default()
+    }
+
+    pub fn add_artifact_link(&mut self, artifact: BuildArtifactId, linked: BuildArtifactId) {
+        if !self
+            .artifact_links
+            .iter()
+            .any(|l| l.artifact == artifact && l.linked == linked)
+        {
+            self.artifact_links
+                .push(BuildArtifactLink { artifact, linked });
+        }
+    }
+
+    pub fn artifact_links_for(
+        &self,
+        artifact: BuildArtifactId,
+    ) -> impl Iterator<Item = BuildArtifactId> + '_ {
+        self.artifact_links
+            .iter()
+            .filter(move |l| l.artifact == artifact)
+            .map(|l| l.linked)
+    }
+
+    pub fn add_artifact_module_import(
+        &mut self,
+        artifact: BuildArtifactId,
+        module: BuildModuleId,
+    ) {
+        if !self
+            .artifact_module_imports
+            .iter()
+            .any(|i| i.artifact == artifact && i.module == module)
+        {
+            self.artifact_module_imports
+                .push(BuildArtifactModuleImport { artifact, module });
+        }
+    }
+
+    pub fn artifact_module_imports_for(
+        &self,
+        artifact: BuildArtifactId,
+    ) -> impl Iterator<Item = BuildModuleId> + '_ {
+        self.artifact_module_imports
+            .iter()
+            .filter(move |i| i.artifact == artifact)
+            .map(|i| i.module)
+    }
+
+    pub fn add_step_attachment(
+        &mut self,
+        step: BuildStepId,
+        generated_file: BuildGeneratedFileId,
+    ) {
+        if !self
+            .step_attachments
+            .iter()
+            .any(|a| a.step == step && a.generated_file == generated_file)
+        {
+            self.step_attachments
+                .push(BuildStepAttachment { step, generated_file });
+        }
+    }
+
+    pub fn step_attachments_for(
+        &self,
+        step: BuildStepId,
+    ) -> impl Iterator<Item = BuildGeneratedFileId> + '_ {
+        self.step_attachments
+            .iter()
+            .filter(move |a| a.step == step)
+            .map(|a| a.generated_file)
     }
 
     pub fn validate(&self) -> Vec<BuildGraphValidationError> {

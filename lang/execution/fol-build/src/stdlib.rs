@@ -72,6 +72,7 @@ fn canonical_build_types() -> Vec<BuildSemanticType> {
     vec![
         BuildSemanticType::graph(),
         BuildSemanticType::artifact_handle(),
+        BuildSemanticType::module_handle(),
         BuildSemanticType::step_handle(),
         BuildSemanticType::run_handle(),
         BuildSemanticType::install_handle(),

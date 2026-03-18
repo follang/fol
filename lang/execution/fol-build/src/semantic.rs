@@ -48,6 +48,7 @@ impl BuildStdlibImportSurface {
 pub enum BuildSemanticTypeFamily {
     Graph,
     ArtifactHandle,
+    ModuleHandle,
     StepHandle,
     RunHandle,
     InstallHandle,
@@ -128,6 +129,10 @@ impl BuildSemanticType {
             "GeneratedFile",
             BuildSemanticTypeFamily::GeneratedFileHandle,
         )
+    }
+
+    pub fn module_handle() -> Self {
+        Self::types_named("Module", BuildSemanticTypeFamily::ModuleHandle)
     }
 
     fn types_named(name: &str, family: BuildSemanticTypeFamily) -> Self {
@@ -291,6 +296,13 @@ pub fn canonical_graph_method_signatures() -> Vec<BuildSemanticMethodSignature> 
             .with_param(BuildSemanticMethodParameter::scalar("alias"))
             .with_param(BuildSemanticMethodParameter::scalar("package"))
             .returning(BuildSemanticTypeFamily::DependencyHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_module")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::ModuleHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "path_from_root")
+            .with_param(BuildSemanticMethodParameter::scalar("subpath")),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "build_root"),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "install_prefix"),
     ]
 }
 
@@ -329,6 +341,53 @@ pub fn canonical_handle_method_signatures() -> Vec<BuildSemanticMethodSignature>
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "generated")
             .with_param(BuildSemanticMethodParameter::scalar("name"))
             .returning(BuildSemanticTypeFamily::DependencyGeneratedOutputHandle),
+        // Artifact handle methods
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::ArtifactHandle, "link")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "dep_artifact",
+                BuildSemanticTypeFamily::ArtifactHandle,
+            )),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::ArtifactHandle, "import")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "dep_module",
+                BuildSemanticTypeFamily::ModuleHandle,
+            )),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::ArtifactHandle, "add_generated")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "gen_file",
+                BuildSemanticTypeFamily::GeneratedFileHandle,
+            )),
+        // Run handle methods
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::RunHandle, "add_arg")
+            .with_param(BuildSemanticMethodParameter::scalar("value"))
+            .returning(BuildSemanticTypeFamily::RunHandle)
+            .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::RunHandle, "add_file_arg")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "gen_file",
+                BuildSemanticTypeFamily::GeneratedFileHandle,
+            ))
+            .returning(BuildSemanticTypeFamily::RunHandle)
+            .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::RunHandle, "add_dir_arg")
+            .with_param(BuildSemanticMethodParameter::scalar("path"))
+            .returning(BuildSemanticTypeFamily::RunHandle)
+            .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::RunHandle, "capture_stdout")
+            .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::RunHandle, "set_env")
+            .with_param(BuildSemanticMethodParameter::scalar("key"))
+            .with_param(BuildSemanticMethodParameter::scalar("value"))
+            .returning(BuildSemanticTypeFamily::RunHandle)
+            .chainable(),
+        // Step handle methods
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::StepHandle, "attach")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "gen_file",
+                BuildSemanticTypeFamily::GeneratedFileHandle,
+            ))
+            .returning(BuildSemanticTypeFamily::StepHandle)
+            .chainable(),
     ]
 }
 

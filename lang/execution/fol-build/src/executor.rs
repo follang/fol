@@ -6,8 +6,8 @@ use crate::api::{
 use crate::codegen::{CodegenRequest, SystemToolRequest};
 use crate::eval::{
     BuildEvaluationError, BuildEvaluationErrorKind, BuildEvaluationInstallArtifactRequest,
-    BuildEvaluationOperation, BuildEvaluationOperationKind, BuildEvaluationRunRequest,
-    BuildEvaluationStepRequest,
+    BuildEvaluationOperation, BuildEvaluationOperationKind, BuildEvaluationRunArgKind,
+    BuildEvaluationRunRequest, BuildEvaluationStepRequest,
 };
 use crate::runtime::{
     BuildRuntimeDependencyQuery, BuildRuntimeDependencyQueryKind, BuildRuntimeGeneratedFile,
@@ -66,6 +66,9 @@ enum ExecValue {
     Str(String),
     Bool(bool),
     Artifact(ExecArtifact),
+    Module {
+        name: String,
+    },
     GeneratedFile {
         name: String,
         path: String,
@@ -887,6 +890,38 @@ impl BuildBodyExecutor {
                 Ok(Some(ExecValue::Dependency { alias }))
             }
 
+            "add_module" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let name = self
+                    .resolve_field_string(fields, "name")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let root_module = self
+                    .resolve_field_string(fields, "root")
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::AddModule(crate::api::AddModuleRequest {
+                        name: name.clone(),
+                        root_module,
+                    }),
+                });
+                Ok(Some(ExecValue::Module { name }))
+            }
+
+            "path_from_root" => {
+                let subpath = match args {
+                    [arg] => self.resolve_string(arg).unwrap_or_default(),
+                    _ => String::new(),
+                };
+                Ok(Some(ExecValue::Str(format!("$root/{subpath}"))))
+            }
+
+            "build_root" => Ok(Some(ExecValue::Str("$root".to_string()))),
+
+            "install_prefix" => Ok(Some(ExecValue::Str("$prefix".to_string()))),
+
             _ => Err(self.unsupported(method)),
         }
     }
@@ -1037,8 +1072,186 @@ impl BuildBodyExecutor {
                 Ok(Some(receiver_clone))
             }
 
+            // Artifact handle methods
+            ExecValue::Artifact(artifact) if method == "link" => {
+                let artifact_name = artifact.name.clone();
+                let [arg] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let linked_name = match arg {
+                    AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
+                        Some(ExecValue::Artifact(a)) => a.name.clone(),
+                        _ => return Err(self.unsupported(method)),
+                    },
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::ArtifactLink {
+                        artifact: artifact_name,
+                        linked: linked_name,
+                    },
+                });
+                Ok(Some(receiver))
+            }
+
+            ExecValue::Artifact(artifact) if method == "import" => {
+                let artifact_name = artifact.name.clone();
+                let [arg] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let module_name = match arg {
+                    AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
+                        Some(ExecValue::Module { name }) => name.clone(),
+                        _ => return Err(self.unsupported(method)),
+                    },
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::ArtifactImport {
+                        artifact: artifact_name,
+                        module_name,
+                    },
+                });
+                Ok(Some(receiver))
+            }
+
+            ExecValue::Artifact(artifact) if method == "add_generated" => {
+                let artifact_name = artifact.name.clone();
+                let [arg] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let generated_name = match arg {
+                    AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
+                        Some(ExecValue::GeneratedFile { name, .. }) => name.clone(),
+                        _ => return Err(self.unsupported(method)),
+                    },
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::ArtifactAddGenerated {
+                        artifact: artifact_name,
+                        generated_name,
+                    },
+                });
+                Ok(Some(receiver))
+            }
+
+            ExecValue::Artifact { .. } => Err(self.unsupported(method)),
+
+            // Run handle methods
+            ExecValue::Run { name } if matches!(method, "add_arg" | "add_dir_arg") => {
+                let run_name = name.clone();
+                let [arg] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let value = self
+                    .resolve_string(arg)
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::RunAddArg {
+                        run_name,
+                        kind: BuildEvaluationRunArgKind::Literal,
+                        value,
+                    },
+                });
+                Ok(Some(receiver))
+            }
+
+            ExecValue::Run { name } if method == "add_file_arg" => {
+                let run_name = name.clone();
+                let [arg] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let gen_name = match arg {
+                    AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
+                        Some(ExecValue::GeneratedFile { name, .. }) => name.clone(),
+                        _ => return Err(self.unsupported(method)),
+                    },
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::RunAddArg {
+                        run_name,
+                        kind: BuildEvaluationRunArgKind::GeneratedFile,
+                        value: gen_name,
+                    },
+                });
+                Ok(Some(receiver))
+            }
+
+            ExecValue::Run { name } if method == "capture_stdout" => {
+                let run_name = name.clone();
+                let output_name = format!("{run_name}-stdout");
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::RunCapture {
+                        run_name,
+                        output_name: output_name.clone(),
+                    },
+                });
+                Ok(Some(ExecValue::GeneratedFile {
+                    name: output_name.clone(),
+                    path: output_name,
+                    kind: BuildRuntimeGeneratedFileKind::ToolOutput,
+                }))
+            }
+
+            ExecValue::Run { name } if method == "set_env" => {
+                let run_name = name.clone();
+                let (key, value) = match args {
+                    [key_arg, val_arg] => {
+                        let k = self
+                            .resolve_string(key_arg)
+                            .ok_or_else(|| self.unsupported(method))?;
+                        let v = self
+                            .resolve_string(val_arg)
+                            .ok_or_else(|| self.unsupported(method))?;
+                        (k, v)
+                    }
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::RunSetEnv {
+                        run_name,
+                        key,
+                        value,
+                    },
+                });
+                Ok(Some(receiver))
+            }
+
+            ExecValue::Run { .. } => Err(self.unsupported(method)),
+
+            // Step handle method: attach
+            ExecValue::Step { name } if method == "attach" => {
+                let step_name = name.clone();
+                let [arg] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let generated_name = match arg {
+                    AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
+                        Some(ExecValue::GeneratedFile { name, .. }) => name.clone(),
+                        _ => return Err(self.unsupported(method)),
+                    },
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::StepAttach {
+                        step_name,
+                        generated_name,
+                    },
+                });
+                Ok(Some(receiver))
+            }
+
             ExecValue::Step { .. }
-            | ExecValue::Run { .. }
             | ExecValue::Install { .. }
             | ExecValue::Dependency { .. } => Err(self.unsupported(method)),
 

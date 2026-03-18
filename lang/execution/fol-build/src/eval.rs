@@ -387,6 +387,7 @@ pub enum BuildEvaluationOperationKind {
     AddStaticLib(StaticLibraryRequest),
     AddSharedLib(SharedLibraryRequest),
     AddTest(TestArtifactRequest),
+    AddModule(crate::api::AddModuleRequest),
     Step(BuildEvaluationStepRequest),
     AddRun(BuildEvaluationRunRequest),
     InstallArtifact(BuildEvaluationInstallArtifactRequest),
@@ -397,7 +398,21 @@ pub enum BuildEvaluationOperationKind {
     SystemTool(SystemToolRequest),
     Codegen(CodegenRequest),
     Dependency(DependencyRequest),
+    ArtifactLink { artifact: String, linked: String },
+    ArtifactImport { artifact: String, module_name: String },
+    ArtifactAddGenerated { artifact: String, generated_name: String },
+    RunAddArg { run_name: String, kind: BuildEvaluationRunArgKind, value: String },
+    RunCapture { run_name: String, output_name: String },
+    RunSetEnv { run_name: String, key: String, value: String },
+    StepAttach { step_name: String, generated_name: String },
     Unsupported { label: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BuildEvaluationRunArgKind {
+    Literal,
+    GeneratedFile,
+    Path,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -476,6 +491,8 @@ pub fn evaluate_build_plan(
 ) -> Result<BuildEvaluationResult, BuildEvaluationError> {
     let mut step_names = BTreeMap::new();
     let mut artifact_names = BTreeMap::new();
+    let mut module_names: BTreeMap<String, crate::graph::BuildModuleId> = BTreeMap::new();
+    let mut generated_names: BTreeMap<String, crate::graph::BuildGeneratedFileId> = BTreeMap::new();
     let mut dependency_requests = Vec::new();
     let mut option_declarations = BuildOptionDeclarationSet::new();
     let raw_option_overrides = request.inputs.options.clone();
@@ -638,30 +655,180 @@ pub fn evaluate_build_plan(
                 step_names.insert(operation_request.name.clone(), handle.step_id);
             }
             BuildEvaluationOperationKind::WriteFile(operation_request) => {
-                api.write_file(operation_request.clone())
+                let handle = api
+                    .write_file(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                generated_names.insert(operation_request.name.clone(), handle.generated_file_id);
             }
             BuildEvaluationOperationKind::CopyFile(operation_request) => {
-                api.copy_file(operation_request.clone())
+                let handle = api
+                    .copy_file(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                generated_names.insert(operation_request.name.clone(), handle.generated_file_id);
             }
             BuildEvaluationOperationKind::SystemTool(operation_request) => {
-                api.add_system_tool(operation_request.clone())
+                let handles = api
+                    .add_system_tool(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                for (output, handle) in operation_request.outputs.iter().zip(handles) {
+                    generated_names.insert(output.clone(), handle.generated_file_id);
+                }
             }
             BuildEvaluationOperationKind::Codegen(operation_request) => {
-                api.add_codegen(operation_request.clone())
+                let handle = api
+                    .add_codegen(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                generated_names.insert(operation_request.output.clone(), handle.generated_file_id);
             }
             BuildEvaluationOperationKind::Dependency(operation_request) => {
                 dependency_requests.push(operation_request.clone());
                 api.dependency(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
             }
-            _ => {
+            BuildEvaluationOperationKind::AddModule(operation_request) => {
+                let handle = api
+                    .add_module(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                module_names.insert(handle.name.clone(), handle.module_id);
+            }
+            BuildEvaluationOperationKind::ArtifactLink { artifact, linked } => {
+                let artifact_id = artifact_names
+                    .get(artifact)
+                    .map(|h: &crate::api::BuildArtifactHandle| h.artifact_id)
+                    .ok_or_else(|| {
+                        evaluation_invalid_input(
+                            format!("unknown artifact '{artifact}' in artifact.link"),
+                            operation.origin.clone(),
+                        )
+                    })?;
+                let linked_id = artifact_names
+                    .get(linked)
+                    .map(|h: &crate::api::BuildArtifactHandle| h.artifact_id)
+                    .ok_or_else(|| {
+                        evaluation_invalid_input(
+                            format!("unknown artifact '{linked}' in artifact.link"),
+                            operation.origin.clone(),
+                        )
+                    })?;
+                api.artifact_link(artifact_id, linked_id);
+            }
+            BuildEvaluationOperationKind::ArtifactImport {
+                artifact,
+                module_name,
+            } => {
+                let artifact_id = artifact_names
+                    .get(artifact)
+                    .map(|h: &crate::api::BuildArtifactHandle| h.artifact_id)
+                    .ok_or_else(|| {
+                        evaluation_invalid_input(
+                            format!("unknown artifact '{artifact}' in artifact.import"),
+                            operation.origin.clone(),
+                        )
+                    })?;
+                let module_id = module_names.get(module_name).copied().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!("unknown module '{module_name}' in artifact.import"),
+                        operation.origin.clone(),
+                    )
+                })?;
+                api.artifact_import(artifact_id, module_id);
+            }
+            BuildEvaluationOperationKind::ArtifactAddGenerated {
+                artifact,
+                generated_name,
+            } => {
+                let artifact_id = artifact_names
+                    .get(artifact)
+                    .map(|h: &crate::api::BuildArtifactHandle| h.artifact_id)
+                    .ok_or_else(|| {
+                        evaluation_invalid_input(
+                            format!("unknown artifact '{artifact}' in artifact.add_generated"),
+                            operation.origin.clone(),
+                        )
+                    })?;
+                let gen_id = generated_names.get(generated_name).copied().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!("unknown generated file '{generated_name}' in artifact.add_generated"),
+                        operation.origin.clone(),
+                    )
+                })?;
+                api.artifact_add_generated(artifact_id, gen_id);
+            }
+            BuildEvaluationOperationKind::RunAddArg {
+                run_name,
+                kind,
+                value,
+            } => {
+                let step_id = step_names.get(run_name).copied().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!("unknown run step '{run_name}' in run.add_arg"),
+                        operation.origin.clone(),
+                    )
+                })?;
+                let arg = match kind {
+                    BuildEvaluationRunArgKind::Literal => {
+                        crate::graph::BuildRunArg::Literal(value.clone())
+                    }
+                    BuildEvaluationRunArgKind::GeneratedFile => {
+                        let gen_id =
+                            generated_names.get(value).copied().ok_or_else(|| {
+                                evaluation_invalid_input(
+                                    format!("unknown generated file '{value}' in run.add_file_arg"),
+                                    operation.origin.clone(),
+                                )
+                            })?;
+                        crate::graph::BuildRunArg::GeneratedFile(gen_id)
+                    }
+                    BuildEvaluationRunArgKind::Path => {
+                        crate::graph::BuildRunArg::Path(value.clone())
+                    }
+                };
+                api.run_add_arg(step_id, arg);
+            }
+            BuildEvaluationOperationKind::RunCapture {
+                run_name,
+                output_name,
+            } => {
+                let step_id = step_names.get(run_name).copied().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!("unknown run step '{run_name}' in run.capture_stdout"),
+                        operation.origin.clone(),
+                    )
+                })?;
+                let handle = api.run_capture_stdout(step_id, output_name.clone());
+                generated_names.insert(output_name.clone(), handle.generated_file_id);
+            }
+            BuildEvaluationOperationKind::RunSetEnv { run_name, key, value } => {
+                let step_id = step_names.get(run_name).copied().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!("unknown run step '{run_name}' in run.set_env"),
+                        operation.origin.clone(),
+                    )
+                })?;
+                api.run_set_env(step_id, key.clone(), value.clone());
+            }
+            BuildEvaluationOperationKind::StepAttach {
+                step_name,
+                generated_name,
+            } => {
+                let step_id = step_names.get(step_name).copied().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!("unknown step '{step_name}' in step.attach"),
+                        operation.origin.clone(),
+                    )
+                })?;
+                let gen_id = generated_names.get(generated_name).copied().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!("unknown generated file '{generated_name}' in step.attach"),
+                        operation.origin.clone(),
+                    )
+                })?;
+                api.step_attach(step_id, gen_id);
+            }
+            BuildEvaluationOperationKind::Unsupported { label } => {
                 return Err(evaluation_error(
                     BuildEvaluationErrorKind::Unsupported,
-                    "build evaluator does not support this operation yet",
+                    format!("unsupported build operation: {label}"),
                     operation.origin.clone(),
                 ));
             }
@@ -2577,5 +2744,279 @@ mod tests {
         assert_eq!(evaluated.dependencies.len(), 1);
         assert_eq!(evaluated.step_bindings.len(), 1);
         assert_eq!(evaluated.result.package_root, "/pkg");
+    }
+
+    #[test]
+    fn build_source_evaluator_records_add_module_in_graph() {
+        let source = concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var m = graph.add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("add_module should evaluate")
+            .expect("build body should produce operations");
+
+        let modules = evaluated.result.graph.modules();
+        assert_eq!(modules.len(), 1);
+        // graph stores root_module path as module name; handle.name holds the alias
+        assert_eq!(modules[0].name, "src/utils.fol");
+    }
+
+    #[test]
+    fn build_source_evaluator_records_artifact_link_in_graph() {
+        let source = concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
+            "    var lib = graph.add_static_lib({ name = \"core\", root = \"src/core.fol\" });\n",
+            "    app.link(lib);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("artifact.link should evaluate")
+            .expect("build body should produce operations");
+
+        let artifacts = evaluated.result.graph.artifacts();
+        let app = artifacts.iter().find(|a| a.name == "app").expect("app artifact");
+        let lib = artifacts.iter().find(|a| a.name == "core").expect("core artifact");
+        let links: Vec<_> = evaluated.result.graph.artifact_links_for(app.id).collect();
+        assert_eq!(links, vec![lib.id]);
+    }
+
+    #[test]
+    fn build_source_evaluator_records_artifact_import_in_graph() {
+        let source = concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var m = graph.add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
+            "    app.import(m);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("artifact.import should evaluate")
+            .expect("build body should produce operations");
+
+        let artifacts = evaluated.result.graph.artifacts();
+        let app = artifacts.iter().find(|a| a.name == "app").expect("app artifact");
+        let modules = evaluated.result.graph.modules();
+        let utils_module = modules.iter().find(|m| m.name == "src/utils.fol").expect("utils module");
+        let imports: Vec<_> = evaluated
+            .result
+            .graph
+            .artifact_module_imports_for(app.id)
+            .collect();
+        assert_eq!(imports, vec![utils_module.id]);
+    }
+
+    #[test]
+    fn build_source_evaluator_records_run_add_arg_in_graph() {
+        let source = concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
+            "    var r = graph.add_run(app);\n",
+            "    r.add_arg(\"--release\");\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("run.add_arg should evaluate")
+            .expect("build body should produce operations");
+
+        let steps = evaluated.result.graph.steps();
+        let run_step = steps.iter().find(|s| s.name == "run").expect("run step");
+        let config = evaluated
+            .result
+            .graph
+            .run_config_for(run_step.id)
+            .expect("run config should exist");
+        assert_eq!(config.args.len(), 1);
+        assert!(matches!(&config.args[0], crate::graph::BuildRunArg::Literal(s) if s == "--release"));
+    }
+
+    #[test]
+    fn build_source_evaluator_records_run_capture_stdout_in_graph() {
+        let source = concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
+            "    var r = graph.add_run(app);\n",
+            "    var out = r.capture_stdout();\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("run.capture_stdout should evaluate")
+            .expect("build body should produce operations");
+
+        let steps = evaluated.result.graph.steps();
+        let run_step = steps.iter().find(|s| s.name == "run").expect("run step");
+        let config = evaluated
+            .result
+            .graph
+            .run_config_for(run_step.id)
+            .expect("run config should exist");
+        assert!(config.capture_stdout.is_some());
+    }
+
+    #[test]
+    fn build_source_evaluator_records_run_set_env_in_graph() {
+        let source = concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
+            "    var r = graph.add_run(app);\n",
+            "    r.set_env(\"LOG_LEVEL\", \"debug\");\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("run.set_env should evaluate")
+            .expect("build body should produce operations");
+
+        let steps = evaluated.result.graph.steps();
+        let run_step = steps.iter().find(|s| s.name == "run").expect("run step");
+        let config = evaluated
+            .result
+            .graph
+            .run_config_for(run_step.id)
+            .expect("run config should exist");
+        assert_eq!(config.env, vec![("LOG_LEVEL".to_string(), "debug".to_string())]);
+    }
+
+    #[test]
+    fn build_source_evaluator_records_step_attach_in_graph() {
+        let source = concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var header = graph.write_file({ name = \"version.h\", path = \"gen/version.h\", contents = \"// v1\" });\n",
+            "    var compile = graph.step(\"compile\");\n",
+            "    compile.attach(header);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("step.attach should evaluate")
+            .expect("build body should produce operations");
+
+        let steps = evaluated.result.graph.steps();
+        let compile = steps.iter().find(|s| s.name == "compile").expect("compile step");
+        let attachments: Vec<_> = evaluated
+            .result
+            .graph
+            .step_attachments_for(compile.id)
+            .collect();
+        assert_eq!(attachments.len(), 1);
+    }
+
+    #[test]
+    fn build_source_evaluator_records_artifact_add_generated_in_graph() {
+        let source = concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var gen = graph.write_file({ name = \"schema.fol\", path = \"gen/schema.fol\", contents = \"// gen\" });\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
+            "    app.add_generated(gen);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("artifact.add_generated should evaluate")
+            .expect("build body should produce operations");
+
+        let artifacts = evaluated.result.graph.artifacts();
+        let app = artifacts.iter().find(|a| a.name == "app").expect("app artifact");
+        let generated_files = evaluated.result.graph.generated_files();
+        // graph stores path as the generated file name
+        let schema = generated_files
+            .iter()
+            .find(|g| g.name == "gen/schema.fol")
+            .expect("schema generated file");
+        let inputs: Vec<_> = evaluated
+            .result
+            .graph
+            .artifact_inputs_for(app.id)
+            .collect();
+        assert!(inputs
+            .iter()
+            .any(|i| matches!(i, crate::graph::BuildArtifactInput::GeneratedFile(id) if *id == schema.id)));
     }
 }
