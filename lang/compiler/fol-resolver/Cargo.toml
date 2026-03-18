@@ -7,6 +7,7 @@ description = "Whole-program name resolution for FOL language"
 
 [dependencies]
 fol-types = { path = "../fol-types" }
+fol-build = { path = "../../execution/fol-build" }
 fol-package = { path = "../fol-package" }
 fol-parser = { path = "../fol-parser" }
 fol-diagnostics = { path = "../fol-diagnostics" }

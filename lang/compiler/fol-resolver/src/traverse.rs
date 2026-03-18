@@ -13,7 +13,7 @@ use crate::{
 };
 use fol_parser::ast::{
     AstNode, CallSurface, FolType, Generic, InquiryTarget, LoopCondition, ParsedDeclVisibility,
-    ParsedSourceUnitKind, ParsedTopLevel, QualifiedPath, TypeDefinition, WhenCase,
+    ParsedTopLevel, QualifiedPath, TypeDefinition, WhenCase,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -32,9 +32,6 @@ pub fn collect_routine_scopes(
         .iter()
         .enumerate()
         .flat_map(|(source_unit_id, syntax_unit)| {
-            if syntax_unit.kind == ParsedSourceUnitKind::Build {
-                return Vec::new();
-            }
             syntax_unit
                 .items
                 .iter()

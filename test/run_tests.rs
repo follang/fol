@@ -3784,7 +3784,14 @@ mod integration_tests {
             serde_json::from_value(symbols.result.expect("symbols should have a result"))
                 .expect("document symbols should deserialize");
 
-        assert!(symbols.is_empty());
+        assert!(
+            !symbols.is_empty(),
+            "build.fol document symbols should include the build routine after resolver processes build units"
+        );
+        assert!(
+            symbols.iter().any(|s| s.name == "build"),
+            "build.fol document symbols should include the 'build' entry routine"
+        );
 
         let completion = server
             .handle_request(JsonRpcRequest {

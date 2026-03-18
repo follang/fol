@@ -127,6 +127,8 @@ impl ResolverSession {
         }
 
         let mut program = ResolvedProgram::new(syntax);
+        program.init_build_stdlib_scope();
+        crate::inject::inject_build_stdlib_types(&mut program);
         let collected = collect::collect_top_level_symbols(&mut program)
             .and_then(|_| imports::resolve_import_targets(self, &mut program))
             .and_then(|_| traverse::collect_routine_scopes(self, &mut program));

@@ -13,6 +13,10 @@ pub enum ScopeKind {
     ProgramRoot { package: String },
     NamespaceRoot { namespace: String },
     SourceUnitRoot { path: String },
+    /// Virtual scope injected as the parent of every `build.fol` source-unit scope.
+    /// It holds synthetic type symbols for the build stdlib (Graph, ArtifactHandle, …)
+    /// and has no parent, providing file-bound isolation for `build.fol`.
+    BuildStdlib,
     Routine,
     TypeDeclaration,
     Block,
@@ -198,6 +202,9 @@ impl ResolvedWorkspace {
 pub struct ResolvedProgram {
     syntax: ParsedPackage,
     pub program_scope: ScopeId,
+    /// The virtual scope that is the parent of every `build.fol` source-unit scope,
+    /// providing file-bound isolation. `None` for packages that have no Build source units.
+    pub build_stdlib_scope: Option<ScopeId>,
     namespace_scopes: BTreeMap<String, ScopeId>,
     syntax_scopes: BTreeMap<SyntaxNodeId, ScopeId>,
     mounted_package_roots: BTreeMap<String, ScopeId>,
@@ -287,6 +294,7 @@ impl ResolvedProgram {
         Self {
             syntax,
             program_scope,
+            build_stdlib_scope: None,
             namespace_scopes,
             syntax_scopes: BTreeMap::new(),
             mounted_package_roots: BTreeMap::new(),
@@ -296,6 +304,44 @@ impl ResolvedProgram {
             references: IdTable::new(),
             imports: IdTable::new(),
         }
+    }
+
+    /// Creates a `BuildStdlib` scope and wires every `Build` source unit's
+    /// `SourceUnitRoot` scope to use it as parent, providing file-bound
+    /// isolation for `build.fol`. Returns the scope id if any build units exist.
+    pub fn init_build_stdlib_scope(&mut self) -> Option<ScopeId> {
+        let build_scopes: Vec<(SourceUnitId, ScopeId)> = self
+            .source_units
+            .iter_with_ids()
+            .filter(|(_, unit)| unit.kind == ParsedSourceUnitKind::Build)
+            .map(|(id, unit)| (id, unit.scope_id))
+            .collect();
+
+        if build_scopes.is_empty() {
+            return None;
+        }
+
+        let anchor_unit = build_scopes[0].0;
+        let stdlib_scope = self.scopes.push(ResolvedScope {
+            id: ScopeId(0),
+            kind: ScopeKind::BuildStdlib,
+            parent: None,
+            source_unit: Some(anchor_unit),
+            symbols: Vec::new(),
+            symbol_keys: BTreeMap::new(),
+        });
+        if let Some(scope) = self.scopes.get_mut(stdlib_scope) {
+            scope.id = stdlib_scope;
+        }
+
+        for (_, source_scope_id) in &build_scopes {
+            if let Some(scope) = self.scopes.get_mut(*source_scope_id) {
+                scope.parent = Some(stdlib_scope);
+            }
+        }
+
+        self.build_stdlib_scope = Some(stdlib_scope);
+        Some(stdlib_scope)
     }
 
     pub fn syntax(&self) -> &ParsedPackage {

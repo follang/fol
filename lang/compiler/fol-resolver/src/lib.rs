@@ -24,6 +24,7 @@ pub mod collect;
 pub mod errors;
 pub mod ids;
 pub mod imports;
+pub mod inject;
 pub mod model;
 pub mod session;
 pub mod traverse;
@@ -37,6 +38,7 @@ pub use model::{
     ResolvedReference, ResolvedScope, ResolvedSourceUnit, ResolvedSymbol, ResolvedWorkspace,
     ScopeKind, SymbolKind,
 };
+pub use inject::inject_build_stdlib_types;
 pub use session::{PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession};
 
 pub type ResolverResult<T> = Result<T, Vec<ResolverError>>;
