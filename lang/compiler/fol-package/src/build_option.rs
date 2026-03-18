@@ -158,41 +158,6 @@ impl BuildOptimizeMode {
     }
 }
 
-impl BuildOptionValue {
-    pub fn kind(&self) -> BuildOptionKind {
-        match self {
-            Self::Bool(_) => BuildOptionKind::Bool,
-            Self::Int(_) => BuildOptionKind::Int,
-            Self::String(_) => BuildOptionKind::String,
-            Self::Enum(_) => BuildOptionKind::Enum,
-            Self::Path(_) => BuildOptionKind::Path,
-        }
-    }
-
-    pub fn render(&self) -> String {
-        match self {
-            Self::Bool(value) => value.to_string(),
-            Self::Int(value) => value.to_string(),
-            Self::String(value) | Self::Enum(value) | Self::Path(value) => value.clone(),
-        }
-    }
-
-    pub fn parse_for_kind(kind: BuildOptionKind, raw: &str) -> Option<Self> {
-        match kind {
-            BuildOptionKind::Bool => match raw {
-                "true" => Some(Self::Bool(true)),
-                "false" => Some(Self::Bool(false)),
-                _ => None,
-            },
-            BuildOptionKind::Int => raw.parse().ok().map(Self::Int),
-            BuildOptionKind::String => Some(Self::String(raw.to_string())),
-            BuildOptionKind::Enum => Some(Self::Enum(raw.to_string())),
-            BuildOptionKind::Path => Some(Self::Path(raw.to_string())),
-            BuildOptionKind::Target | BuildOptionKind::Optimize => None,
-        }
-    }
-}
-
 impl BuildOptionDeclaration {
     pub fn name(&self) -> &str {
         match self {
@@ -315,8 +280,8 @@ mod tests {
         BuildTargetTriple, ResolvedBuildOptionSet, StandardOptimizeDeclaration,
         StandardTargetDeclaration, UserOptionDeclaration,
     };
-    use crate::build_api::BuildOptionValue;
-    use crate::build_graph::BuildOptionKind;
+    use fol_build::api::BuildOptionValue;
+    use fol_build::graph::BuildOptionKind;
 
     #[test]
     fn build_option_declaration_set_starts_empty() {
@@ -526,6 +491,6 @@ mod tests {
         assert_eq!(user.coerce_raw_value("fast"), None);
     }
 }
-use crate::build_api::BuildOptionValue;
-use crate::build_graph::BuildOptionKind;
+use fol_build::api::BuildOptionValue;
+use fol_build::graph::BuildOptionKind;
 use std::collections::BTreeMap;

@@ -6,6 +6,7 @@ edition = "2021"
 description = "Package discovery and acquisition for FOL language"
 
 [dependencies]
+fol-build = { path = "../../execution/fol-build" }
 fol-diagnostics = { path = "../fol-diagnostics" }
 fol-lexer = { path = "../fol-lexer" }
 fol-parser = { path = "../fol-parser" }

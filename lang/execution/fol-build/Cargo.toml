@@ -1,0 +1,10 @@
+[package]
+name = "fol-build"
+version = "0.1.4"
+authors = ["Trim Bresilla <trim.bresilla@gmail.com>"]
+edition = "2021"
+description = "Build system execution for FOL language"
+
+[dependencies]
+
+[dev-dependencies]
