@@ -639,20 +639,25 @@ pub fn evaluate_build_plan(
                         })
                     })
                     .collect::<Result<Vec<_>, _>>()?;
-                api.install(crate::InstallArtifactRequest {
+                let handle = api.install(crate::InstallArtifactRequest {
                     name: operation_request.name.clone(),
                     artifact,
                     depends_on,
                 })
                 .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                step_names.insert(operation_request.name.clone(), handle.step_id);
             }
             BuildEvaluationOperationKind::InstallFile(operation_request) => {
-                api.install_file(operation_request.clone())
+                let handle = api
+                    .install_file(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                step_names.insert(operation_request.name.clone(), handle.step_id);
             }
             BuildEvaluationOperationKind::InstallDir(operation_request) => {
-                api.install_dir(operation_request.clone())
+                let handle = api
+                    .install_dir(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                step_names.insert(operation_request.name.clone(), handle.step_id);
             }
             BuildEvaluationOperationKind::WriteFile(operation_request) => {
                 api.write_file(operation_request.clone())
@@ -940,7 +945,7 @@ fn parse_build_graph_method_ast(
                     depends_on,
                 }),
             });
-            Ok(Some(BuildExtractionValue::StepName(name)))
+            Ok(Some(BuildExtractionValue::StepHandle(name)))
         }
         "add_run" => parse_run_call_ast(extracted, scope, build_path, args, origin),
         "install" => parse_install_call_ast(extracted, scope, build_path, args, origin),
@@ -1056,7 +1061,7 @@ struct BuildExtractionScope {
 enum BuildExtractionValue {
     OptionName(String),
     Artifact(ExtractedBuildArtifact),
-    StepName(String),
+    StepHandle(String),
 }
 
 fn resolve_build_string_arg_ast(
@@ -1097,7 +1102,7 @@ fn resolve_step_reference_ast(
     match node {
         AstNode::Literal(Literal::String(value)) => Some(value.clone()),
         AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
-            Some(BuildExtractionValue::StepName(name)) => Some(name.clone()),
+            Some(BuildExtractionValue::StepHandle(name)) => Some(name.clone()),
             _ => None,
         },
         _ => None,
@@ -1220,7 +1225,7 @@ fn parse_run_call_ast(
             depends_on: Vec::new(),
         }),
     });
-    Ok(Some(BuildExtractionValue::StepName(name)))
+    Ok(Some(BuildExtractionValue::StepHandle(name)))
 }
 
 fn parse_install_call_ast(
@@ -1258,13 +1263,13 @@ fn parse_install_call_ast(
         origin,
         kind: BuildEvaluationOperationKind::InstallArtifact(
             BuildEvaluationInstallArtifactRequest {
-                name,
+                name: name.clone(),
                 artifact,
                 depends_on: Vec::new(),
             },
         ),
     });
-    Ok(None)
+    Ok(Some(BuildExtractionValue::StepHandle(name)))
 }
 
 fn build_source_unsupported(
@@ -2092,6 +2097,52 @@ mod tests {
         assert_eq!(evaluated.result.graph.artifacts().len(), 1);
         assert_eq!(evaluated.result.graph.installs().len(), 1);
         assert_eq!(evaluated.result.graph.steps().len(), 1);
+    }
+
+    #[test]
+    fn build_source_evaluator_reuses_bound_run_and_install_handles_as_step_dependencies() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var app = graph.add_exe(\"demo\", \"src/demo.fol\");\n",
+            "    var run_app = graph.add_run(app);\n",
+            "    var install_app = graph.install(app);\n",
+            "    graph.step(\"bundle\", run_app, install_app);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("bound step-like handles should evaluate")
+            .expect("build body should produce operations");
+
+        let bundle = evaluated
+            .result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "bundle")
+            .expect("bundle step should exist");
+        let dependencies = evaluated
+            .result
+            .graph
+            .step_dependencies_for(bundle.id)
+            .collect::<Vec<_>>();
+        let dependency_names = dependencies
+            .iter()
+            .filter_map(|id| evaluated.result.graph.steps().get(id.index()))
+            .map(|step| step.name.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(dependency_names, vec!["run", "install"]);
     }
 
     #[test]

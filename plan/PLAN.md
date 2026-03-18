@@ -581,7 +581,7 @@ Round 1 slice tracker:
   operations can participate in step dependency chains.
 - [x] Slice 3. Replay install dependency edges through the shared build
   evaluator instead of treating installs as dependency-isolated metadata.
-- [ ] Slice 4. Track step-like handle values during build-source extraction so
+- [x] Slice 4. Track step-like handle values during build-source extraction so
   chained calls can bind and reuse `step` / `run` / `install` results.
 - [ ] Slice 5. Parse nested method-call receivers in build-source evaluation so
   expressions like `graph.step(...).depend_on(...)` can be evaluated directly.
