@@ -424,28 +424,30 @@ fn dispatch_cli(
                 package_target_kind(command.bin, command.lib),
             ),
             _ => {
-                let discovered = discovered_root_for_command(
-                    &cli.command.as_ref().unwrap(),
-                    &config.working_directory,
-                )?;
+                let Some(cmd) = cli.command.as_ref() else {
+                    unreachable!("command is Some in this match arm")
+                };
+                let discovered =
+                    discovered_root_for_command(cmd, &config.working_directory)?;
                 let workspace = load_frontend_workspace(&discovered, config)?;
-                dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
+                dispatch_workspace_command(cmd, &workspace, config)
             }
         },
         Some(FrontendCommand::Pack(_)) | Some(FrontendCommand::Code(_)) => {
-            let needs_direct = match cli.command.as_ref().unwrap() {
+            let Some(cmd) = cli.command.as_ref() else {
+                unreachable!("command is Some in this match arm")
+            };
+            let needs_direct = match cmd {
                 FrontendCommand::Code(command) => code_has_direct_target(command),
                 _ => false,
             };
             if needs_direct {
-                dispatch_direct_grouped_command(cli.command.as_ref().unwrap(), config)
+                dispatch_direct_grouped_command(cmd, config)
             } else {
-                let discovered = discovered_root_for_command(
-                    &cli.command.as_ref().unwrap(),
-                    &config.working_directory,
-                )?;
+                let discovered =
+                    discovered_root_for_command(cmd, &config.working_directory)?;
                 let workspace = load_frontend_workspace(&discovered, config)?;
-                dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
+                dispatch_workspace_command(cmd, &workspace, config)
             }
         }
         Some(FrontendCommand::Tool(command)) => match &command.command {
@@ -462,12 +464,13 @@ fn dispatch_cli(
                 completion_command(parse_completion_shell(command.shell))
             }
             ToolSubcommand::Clean(_) => {
-                let discovered = discovered_root_for_command(
-                    &cli.command.as_ref().unwrap(),
-                    &config.working_directory,
-                )?;
+                let Some(cmd) = cli.command.as_ref() else {
+                    unreachable!("command is Some in this match arm")
+                };
+                let discovered =
+                    discovered_root_for_command(cmd, &config.working_directory)?;
                 let workspace = load_frontend_workspace(&discovered, config)?;
-                dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
+                dispatch_workspace_command(cmd, &workspace, config)
             }
         },
         Some(FrontendCommand::Complete(command)) => {

@@ -3185,7 +3185,7 @@ mod integration_tests {
         ]);
         let parser_json = parse_cli_json(&parser_output);
         assert_ne!(
-            parser_json["diagnostics"][0]["code"], "E0000",
+            parser_json["diagnostics"][0]["code"], "EUNKNOWN",
             "Parser diagnostics should use explicit structured parser codes"
         );
 
@@ -3212,7 +3212,7 @@ mod integration_tests {
         ]);
         let package_json = parse_cli_json(&package_output);
         assert_ne!(
-            package_json["diagnostics"][0]["code"], "E0000",
+            package_json["diagnostics"][0]["code"], "EUNKNOWN",
             "Package diagnostics should use explicit structured package codes"
         );
 
@@ -3244,7 +3244,7 @@ mod integration_tests {
         ]);
         let resolver_json = parse_cli_json(&resolver_output);
         assert_ne!(
-            resolver_json["diagnostics"][0]["code"], "E0000",
+            resolver_json["diagnostics"][0]["code"], "EUNKNOWN",
             "Resolver diagnostics should use explicit structured resolver codes"
         );
 

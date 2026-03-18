@@ -305,7 +305,7 @@ mod tests {
     #[test]
     fn test_glitch_fallback_no_longer_guesses_codes_from_messages() {
         let error = BasicError {
-            message: "ParserMissmatch: legacy text should not drive modern codes".to_string(),
+            message: "ParserMismatch: legacy text should not drive modern codes".to_string(),
         };
         let diagnostic = Diagnostic::from_glitch(&error, Severity::Error, None);
 

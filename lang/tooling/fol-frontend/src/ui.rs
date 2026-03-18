@@ -8,6 +8,9 @@ pub struct FrontendOutput {
 
 impl FrontendOutput {
     pub fn new(config: FrontendOutputConfig) -> Self {
+        // Process-level setting: colored crate uses global state. This is intentional
+        // since the CLI is single-threaded at the output-config level and color mode
+        // is determined once at startup.
         colored::control::set_override(matches!(config.mode, OutputMode::Human));
         Self { config }
     }

@@ -205,6 +205,10 @@ pub fn run_workspace_with_args_and_config(
         .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
 
     if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.is_empty() {
+            eprint!("{stderr}");
+        }
         return Err(FrontendError::new(
             FrontendErrorKind::CommandFailed,
             format!(
@@ -264,6 +268,10 @@ pub(crate) fn run_selected_artifact_with_args_and_config(
         .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
 
     if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.is_empty() {
+            eprint!("{stderr}");
+        }
         return Err(FrontendError::new(
             FrontendErrorKind::CommandFailed,
             format!(
