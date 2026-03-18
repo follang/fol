@@ -13,7 +13,7 @@ Round 1 slices:
 - [ ] Slice 3. Reject old `build.fol` forms by enforcing only `pro[] build(graph: Graph): non`
 - [ ] Slice 4. Load package-store dependencies from `package.yaml`, not compatibility `def pkg = ...`
 - [ ] Slice 5. Stop projecting compatibility exports/native artifacts through prepared package loading
-- [ ] Slice 6. Remove compatibility/hybrid frontend routing and fallback default build execution
+- [x] Slice 6. Remove compatibility/hybrid frontend routing and fallback default build execution
 - [x] Slice 7. Rewrite frontend scaffolds and frontend unit tests to generate only the new build form
 - [ ] Slice 8. Rewrite resolver and integration fixtures/tests that still depend on `def root`
 - [x] Slice 9. Rewrite docs and examples so they teach only the new build model

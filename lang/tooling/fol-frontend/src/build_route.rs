@@ -3,9 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FrontendBuildWorkflowMode {
-    Compatibility,
     Modern,
-    Hybrid,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,12 +64,8 @@ struct ResolvedWorkspaceStepExecution {
 impl FrontendBuildWorkflowMode {
     pub fn from_package_build_mode(mode: fol_package::PackageBuildMode) -> Option<Self> {
         match mode {
-            fol_package::PackageBuildMode::Empty
-            | fol_package::PackageBuildMode::CompatibilityOnly => {
-                Some(FrontendBuildWorkflowMode::Compatibility)
-            }
             fol_package::PackageBuildMode::ModernOnly => Some(FrontendBuildWorkflowMode::Modern),
-            fol_package::PackageBuildMode::Hybrid => Some(FrontendBuildWorkflowMode::Hybrid),
+            _ => None,
         }
     }
 }
@@ -218,136 +212,12 @@ pub fn execute_workspace_build_route(
 fn plan_member_execution(
     member: &FrontendMemberBuildRoute,
 ) -> FrontendResult<FrontendMemberExecutionPlan> {
-    if let Some(plan) = plan_member_execution_from_build_source(member)? {
-        return Ok(plan);
-    }
-
-    plan_member_default_execution(member)
-}
-
-fn plan_member_default_execution(
-    member: &FrontendMemberBuildRoute,
-) -> FrontendResult<FrontendMemberExecutionPlan> {
-    let requested_step =
-        fol_package::BuildRequestedStep::Default(fol_package::BuildDefaultStepKind::Check);
-    let mut graph = fol_package::BuildGraph::new();
-    let check = graph.add_step(
-        fol_package::BuildStepKind::Check,
-        requested_step.name().to_string(),
-    );
-    let mut artifacts = Vec::new();
-    let mut step_bindings = Vec::new();
-
-    if let Some(root_module) = default_runnable_root_module(&member.member_root)? {
-        let build = graph.add_step(fol_package::BuildStepKind::Default, "build");
-        graph.add_step_dependency(check, build);
-
-        let artifact_name = member.package_name.clone();
-        let artifact = graph.add_artifact(
-            fol_package::BuildArtifactKind::Executable,
-            artifact_name.clone(),
-        );
-        let module = graph.add_module(fol_package::BuildModuleKind::Source, root_module.clone());
-        graph.add_artifact_module_input(artifact, module);
-
-        let run = graph.add_step(fol_package::BuildStepKind::Run, "run");
-        graph.add_step_dependency(run, build);
-        let test = graph.add_step(fol_package::BuildStepKind::Test, "test");
-        graph.add_step_dependency(test, build);
-
-        for step in [build, run, test] {
-            let order = fol_package::plan_step_order(&graph, step).map_err(|error| {
-                FrontendError::new(
-                    FrontendErrorKind::Internal,
-                    format!(
-                        "failed to plan build graph for package '{}': {error:?}",
-                        member.package_name
-                    ),
-                )
-            })?;
-            if order.is_empty() {
-                return Err(FrontendError::new(
-                    FrontendErrorKind::Internal,
-                    format!(
-                        "planned build graph for package '{}' produced an empty step order",
-                        member.package_name
-                    ),
-                ));
-            }
-        }
-
-        artifacts.push(fol_package::build_runtime::BuildRuntimeArtifact::new(
-            artifact_name.clone(),
-            fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
-            root_module,
-        ));
-        step_bindings.extend([
-            fol_package::build_runtime::BuildRuntimeStepBinding::new(
-                "build",
-                fol_package::build_runtime::BuildRuntimeStepBindingKind::DefaultBuild,
-                Some(artifact_name.clone()),
-            ),
-            fol_package::build_runtime::BuildRuntimeStepBinding::new(
-                "run",
-                fol_package::build_runtime::BuildRuntimeStepBindingKind::DefaultRun,
-                Some(artifact_name.clone()),
-            ),
-            fol_package::build_runtime::BuildRuntimeStepBinding::new(
-                "test",
-                fol_package::build_runtime::BuildRuntimeStepBindingKind::DefaultTest,
-                Some(artifact_name),
-            ),
-        ]);
-    } else {
-        let order = fol_package::plan_step_order(&graph, check).map_err(|error| {
-            FrontendError::new(
-                FrontendErrorKind::Internal,
-                format!(
-                    "failed to plan build graph for package '{}': {error:?}",
-                    member.package_name
-                ),
-            )
-        })?;
-        if order.is_empty() {
-            return Err(FrontendError::new(
-                FrontendErrorKind::Internal,
-                format!(
-                    "planned build graph for package '{}' produced an empty step order",
-                    member.package_name
-                ),
-            ));
-        }
-    }
-
-    plan_member_execution_from_graph(
-        member,
-        &graph,
-        &fol_package::build_eval::EvaluatedBuildProgram {
-            program: fol_package::BuildRuntimeProgram::new(
-                fol_package::BuildExecutionRepresentation::RestrictedRuntimeIr,
-            ),
-            artifacts,
-            generated_files: Vec::new(),
-            dependencies: Vec::new(),
-            dependency_queries: Vec::new(),
-            step_bindings,
-            result: fol_package::BuildEvaluationResult::new(
-                fol_package::BuildEvaluationBoundary::GraphConstructionSubset,
-                fol_package::canonical_graph_construction_capabilities(),
-                member.member_root.display().to_string(),
-                fol_package::BuildOptionDeclarationSet::new(),
-                fol_package::ResolvedBuildOptionSet::new(),
-                Vec::new(),
-                graph.clone(),
-            ),
-        },
-        false,
-    )
+    plan_member_execution_from_build_source(member)
 }
 
 fn plan_member_execution_from_build_source(
     member: &FrontendMemberBuildRoute,
-) -> FrontendResult<Option<FrontendMemberExecutionPlan>> {
+) -> FrontendResult<FrontendMemberExecutionPlan> {
     let build_path = member.member_root.join("build.fol");
     let source = std::fs::read_to_string(&build_path).map_err(|error| {
         FrontendError::new(
@@ -372,15 +242,21 @@ fn plan_member_execution_from_build_source(
     )
     .map_err(|error| FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string()))?;
     let Some(evaluated) = evaluated else {
-        return Ok(None);
+        return Err(FrontendError::new(
+            FrontendErrorKind::InvalidInput,
+            format!(
+                "workspace member '{}' must declare a semantic `pro[] build(graph: Graph): non` entry",
+                member.package_name
+            ),
+        ));
     };
 
-    Ok(Some(plan_member_execution_from_graph(
+    plan_member_execution_from_graph(
         member,
         &evaluated.result.graph,
         &evaluated.evaluated,
         true,
-    )?))
+    )
 }
 
 fn plan_member_execution_from_graph(
@@ -670,23 +546,6 @@ fn resolve_requested_step_execution(
         })
 }
 
-fn default_runnable_root_module(member_root: &std::path::Path) -> FrontendResult<Option<String>> {
-    let main_path = member_root.join("src/main.fol");
-    if !main_path.is_file() {
-        return Ok(None);
-    }
-    let relative = main_path.strip_prefix(member_root).map_err(|error| {
-        FrontendError::new(
-            FrontendErrorKind::Internal,
-            format!(
-                "failed to compute build graph root module for '{}': {error}",
-                member_root.display()
-            ),
-        )
-    })?;
-    Ok(Some(relative.to_string_lossy().replace('\\', "/")))
-}
-
 fn unknown_workspace_build_step_error(
     requested_step: &str,
     route: &FrontendWorkspaceBuildRoute,
@@ -727,7 +586,16 @@ mod tests {
         let app = root.join("app");
         fs::create_dir_all(app.join("src")).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\";\n").unwrap();
+        fs::write(
+            app.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    graph.add_exe(\"app\", \"src/main.fol\");\n",
+                "    return graph\n",
+                "}\n",
+            ),
+        )
+        .unwrap();
         fs::write(
             app.join("src/main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -751,13 +619,13 @@ mod tests {
             FrontendBuildWorkflowMode::from_package_build_mode(
                 fol_package::PackageBuildMode::Empty
             ),
-            Some(FrontendBuildWorkflowMode::Compatibility)
+            None
         );
         assert_eq!(
             FrontendBuildWorkflowMode::from_package_build_mode(
                 fol_package::PackageBuildMode::CompatibilityOnly
             ),
-            Some(FrontendBuildWorkflowMode::Compatibility)
+            None
         );
         assert_eq!(
             FrontendBuildWorkflowMode::from_package_build_mode(
@@ -769,7 +637,7 @@ mod tests {
             FrontendBuildWorkflowMode::from_package_build_mode(
                 fol_package::PackageBuildMode::Hybrid
             ),
-            Some(FrontendBuildWorkflowMode::Hybrid)
+            None
         );
     }
 
@@ -778,12 +646,12 @@ mod tests {
         let route = FrontendMemberBuildRoute {
             member_root: PathBuf::from("/tmp/demo/app"),
             package_name: "app".to_string(),
-            mode: FrontendBuildWorkflowMode::Hybrid,
+            mode: FrontendBuildWorkflowMode::Modern,
         };
 
         assert_eq!(route.member_root, PathBuf::from("/tmp/demo/app"));
         assert_eq!(route.package_name, "app");
-        assert_eq!(route.mode, FrontendBuildWorkflowMode::Hybrid);
+        assert_eq!(route.mode, FrontendBuildWorkflowMode::Modern);
     }
 
     #[test]
@@ -793,7 +661,7 @@ mod tests {
             members: vec![FrontendMemberBuildRoute {
                 member_root: PathBuf::from("/tmp/demo/app"),
                 package_name: "app".to_string(),
-                mode: FrontendBuildWorkflowMode::Compatibility,
+                mode: FrontendBuildWorkflowMode::Modern,
             }],
         };
 
@@ -839,19 +707,18 @@ mod tests {
     }
 
     #[test]
-    fn default_member_planning_uses_graph_projected_build_run_test_and_check_steps() {
+    fn semantic_member_planning_uses_graph_projected_build_run_and_check_steps() {
         let workspace = absorbed_build_workspace_fixture("compat_graph_plan");
 
         let plan = plan_member_execution(&FrontendMemberBuildRoute {
             member_root: workspace.members[0].root.clone(),
             package_name: "app".to_string(),
-            mode: FrontendBuildWorkflowMode::Compatibility,
+            mode: FrontendBuildWorkflowMode::Modern,
         })
-        .expect("default member planning should succeed");
+        .expect("semantic member planning should succeed");
 
         assert!(plan.steps.iter().any(|step| step.name == "build"));
         assert!(plan.steps.iter().any(|step| step.name == "run"));
-        assert!(plan.steps.iter().any(|step| step.name == "test"));
         assert!(plan.steps.iter().any(|step| step.name == "check"));
 
         fs::remove_dir_all(&workspace.root.root).ok();
@@ -907,7 +774,7 @@ mod tests {
     }
 
     #[test]
-    fn workspace_route_planner_classifies_workspace_members_by_build_mode() {
+    fn workspace_route_planner_accepts_only_semantic_members() {
         let root = std::env::temp_dir().join(format!(
             "fol_frontend_build_route_plan_{}_{}",
             std::process::id(),
@@ -916,31 +783,11 @@ mod tests {
                 .expect("system time before epoch")
                 .as_nanos()
         ));
-        let compatibility = root.join("compat");
-        let hybrid = root.join("hybrid");
         let modern = root.join("modern");
-        for package in [&compatibility, &hybrid, &modern] {
-            fs::create_dir_all(package.join("src")).unwrap();
-            let name = package.file_name().unwrap().to_string_lossy();
-            fs::write(
-                package.join("package.yaml"),
-                format!("name: {name}\nversion: 0.1.0\n"),
-            )
-            .unwrap();
-            fs::write(
-                package.join("src/main.fol"),
-                "fun[] main(): int = {\n    return 0\n}\n",
-            )
-            .unwrap();
-        }
+        fs::create_dir_all(modern.join("src")).unwrap();
         fs::write(
-            compatibility.join("build.fol"),
-            "def root: loc = \"src\";\n",
-        )
-        .unwrap();
-        fs::write(
-            hybrid.join("build.fol"),
-            "def root: loc = \"src\";\npro[] build(graph: Graph): non = graph;\n",
+            modern.join("package.yaml"),
+            "name: modern\nversion: 0.1.0\n",
         )
         .unwrap();
         fs::write(
@@ -948,14 +795,15 @@ mod tests {
             "pro[] build(graph: Graph): non = graph;\n",
         )
         .unwrap();
+        fs::write(
+            modern.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
-            members: vec![
-                PackageRoot::new(compatibility.clone()),
-                PackageRoot::new(hybrid.clone()),
-                PackageRoot::new(modern.clone()),
-            ],
+            members: vec![PackageRoot::new(modern.clone())],
             std_root_override: None,
             package_store_root_override: None,
             build_root: root.join(".fol/build"),
@@ -966,21 +814,16 @@ mod tests {
         let route = plan_workspace_build_route(&workspace, "build").unwrap();
 
         assert_eq!(route.requested_step, "build");
-        assert_eq!(route.members.len(), 3);
-        assert_eq!(
-            route.members[0].mode,
-            FrontendBuildWorkflowMode::Compatibility
-        );
-        assert_eq!(route.members[1].mode, FrontendBuildWorkflowMode::Hybrid);
-        assert_eq!(route.members[2].mode, FrontendBuildWorkflowMode::Modern);
+        assert_eq!(route.members.len(), 1);
+        assert_eq!(route.members[0].mode, FrontendBuildWorkflowMode::Modern);
 
         fs::remove_dir_all(root).ok();
     }
 
     #[test]
-    fn workspace_route_planner_keeps_broken_hybrid_builds_in_compatibility_mode() {
+    fn workspace_route_planner_rejects_old_compatibility_members() {
         let root = std::env::temp_dir().join(format!(
-            "fol_frontend_build_route_broken_hybrid_{}_{}",
+            "fol_frontend_build_route_old_build_{}_{}",
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -988,14 +831,10 @@ mod tests {
                 .as_nanos()
         ));
         fs::create_dir_all(root.join("src")).unwrap();
-        fs::write(root.join("package.yaml"), "name: hybrid\nversion: 0.1.0\n").unwrap();
-        fs::write(
-            root.join("build.fol"),
-            "def root: loc = \"src\";\npro[] build(graph: Graph): non = {\n",
-        )
-        .unwrap();
+        fs::write(root.join("package.yaml"), "name: old\nversion: 0.1.0\n").unwrap();
+        fs::write(root.join("build.fol"), "def root: loc = \"src\";\n").unwrap();
 
-        let route = plan_workspace_build_route(
+        let error = plan_workspace_build_route(
             &FrontendWorkspace {
                 root: WorkspaceRoot::new(root.clone()),
                 members: vec![PackageRoot::new(root.clone())],
@@ -1007,12 +846,10 @@ mod tests {
             },
             "build",
         )
-        .expect("broken hybrid build should still classify through compatibility controls");
+        .expect_err("old compatibility-only build should be rejected");
 
-        assert_eq!(
-            route.members[0].mode,
-            FrontendBuildWorkflowMode::Compatibility
-        );
+        assert_eq!(error.kind(), crate::FrontendErrorKind::Internal);
+        assert!(error.message().contains("unmappable build mode"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -1107,62 +944,6 @@ mod tests {
             .iter()
             .find(|step| step.name == "docs")
             .expect("modern member should keep the custom docs step");
-        assert_eq!(docs.execution, Some(FrontendStepExecutionKind::Build));
-
-        fs::remove_dir_all(root).ok();
-    }
-
-    #[test]
-    fn hybrid_members_plan_custom_steps_without_falling_back_to_compatibility_only() {
-        let root = std::env::temp_dir().join(format!(
-            "fol_frontend_build_route_hybrid_custom_steps_{}_{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("system time before epoch")
-                .as_nanos()
-        ));
-        fs::create_dir_all(root.join("src")).unwrap();
-        fs::write(root.join("package.yaml"), "name: hybrid\nversion: 0.1.0\n").unwrap();
-        fs::write(
-            root.join("build.fol"),
-            concat!(
-                "def root: loc = \"src\";\n",
-                "pro[] build(graph: Graph): non = {\n",
-                "    graph.step(\"docs\");\n",
-                "    return graph\n",
-                "}\n",
-            ),
-        )
-        .unwrap();
-        fs::write(
-            root.join("src/main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
-        )
-        .unwrap();
-
-        let route = plan_workspace_build_route(
-            &FrontendWorkspace {
-                root: WorkspaceRoot::new(root.clone()),
-                members: vec![PackageRoot::new(root.clone())],
-                std_root_override: None,
-                package_store_root_override: None,
-                build_root: root.join(".fol/build"),
-                cache_root: root.join(".fol/cache"),
-                git_cache_root: root.join(".fol/cache/git"),
-            },
-            "docs",
-        )
-        .expect("hybrid workspace route should classify successfully");
-        assert_eq!(route.members[0].mode, FrontendBuildWorkflowMode::Hybrid);
-
-        let plan = plan_member_execution(&route.members[0])
-            .expect("hybrid member should plan custom graph steps");
-        let docs = plan
-            .steps
-            .iter()
-            .find(|step| step.name == "docs")
-            .expect("hybrid member should keep the custom docs step");
         assert_eq!(docs.execution, Some(FrontendStepExecutionKind::Build));
 
         fs::remove_dir_all(root).ok();
@@ -1397,7 +1178,7 @@ mod tests {
         let plan = plan_member_execution(&FrontendMemberBuildRoute {
             member_root: root.clone(),
             package_name: "demo".to_string(),
-            mode: FrontendBuildWorkflowMode::Hybrid,
+            mode: FrontendBuildWorkflowMode::Modern,
         })
         .expect("member planning should surface the custom docs step");
 
@@ -1474,7 +1255,6 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def root: loc = \"src\";\n",
                 "pro[] build(graph: Graph): non = {\n",
                 "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
                 "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
@@ -1498,7 +1278,7 @@ mod tests {
         let plan = plan_member_execution(&FrontendMemberBuildRoute {
             member_root: root.clone(),
             package_name: "demo".to_string(),
-            mode: FrontendBuildWorkflowMode::Hybrid,
+            mode: FrontendBuildWorkflowMode::Modern,
         })
         .expect("member planning should keep named run step selections");
 
@@ -1534,7 +1314,6 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def root: loc = \"src\";\n",
                 "pro[] build(graph: Graph): non = {\n",
                 "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
                 "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
@@ -1559,7 +1338,7 @@ mod tests {
         let plan = plan_member_execution(&FrontendMemberBuildRoute {
             member_root: root.clone(),
             package_name: "demo".to_string(),
-            mode: FrontendBuildWorkflowMode::Hybrid,
+            mode: FrontendBuildWorkflowMode::Modern,
         })
         .expect("member planning should keep named build step selections");
 
