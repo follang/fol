@@ -1,5 +1,6 @@
 use crate::api::{CopyFileRequest, WriteFileRequest};
 use crate::codegen::{CodegenRequest, SystemToolRequest};
+use crate::executor::{BuildBodyExecutor, ExecutionOutput};
 use crate::graph::BuildGraph;
 use crate::option::{
     BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet, BuildTargetTriple,
@@ -8,9 +9,8 @@ use crate::option::{
 };
 use crate::runtime::{
     BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
-    BuildRuntimeDependency, BuildRuntimeDependencyQuery, BuildRuntimeDependencyQueryKind,
-    BuildRuntimeGeneratedFile, BuildRuntimeGeneratedFileKind, BuildRuntimeProgram,
-    BuildRuntimeStepBinding, BuildRuntimeStepBindingKind,
+    BuildRuntimeDependency, BuildRuntimeDependencyQuery, BuildRuntimeGeneratedFile,
+    BuildRuntimeProgram, BuildRuntimeStepBinding, BuildRuntimeStepBindingKind,
 };
 use crate::api::{
     BuildApi, DependencyRequest, ExecutableRequest, InstallDirRequest, InstallFileRequest,
@@ -20,17 +20,9 @@ use crate::api::{
 use fol_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
 };
-use fol_lexer::lexer::stage3::Elements;
-use fol_parser::ast::{AstNode, CallSurface, Literal, SyntaxOrigin};
-use fol_stream::FileStream;
+use fol_parser::ast::SyntaxOrigin;
 use fol_types::Glitch;
-use std::{
-    collections::BTreeMap,
-    path::Path,
-    sync::atomic::{AtomicU64, Ordering},
-};
-
-static NEXT_BUILD_AST_WRAPPER_ID: AtomicU64 = AtomicU64::new(0);
+use std::{collections::BTreeMap, path::Path};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildEvaluationBoundary {
@@ -439,69 +431,6 @@ pub struct BuildEvaluationResult {
     pub graph: BuildGraph,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum BuildExtractionConfigValue {
-    Literal(String),
-    OptionRef(BuildExtractionOptionRef),
-}
-
-impl BuildExtractionConfigValue {
-    fn placeholder_string(&self) -> String {
-        match self {
-            Self::Literal(value) => value.clone(),
-            Self::OptionRef(option) => option.name.clone(),
-        }
-    }
-
-    fn resolve(&self, resolved: &ResolvedBuildOptionSet) -> String {
-        match self {
-            Self::Literal(value) => value.clone(),
-            Self::OptionRef(option) => resolved
-                .get(option.name.as_str())
-                .map(str::to_string)
-                .unwrap_or_else(|| option.name.clone()),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ExtractedBuildArtifact {
-    pub name: String,
-    pub root_module: BuildExtractionConfigValue,
-    pub target: Option<BuildExtractionConfigValue>,
-    pub optimize: Option<BuildExtractionConfigValue>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ExtractedBuildDependency {
-    pub alias: String,
-    pub package: String,
-    pub evaluation_mode: Option<crate::DependencyBuildEvaluationMode>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ExtractedBuildDependencyQuery {
-    pub dependency_alias: String,
-    pub query_name: String,
-    pub kind: BuildRuntimeDependencyQueryKind,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct ExtractedBuildGeneratedFile {
-    pub name: String,
-    pub relative_path: String,
-    pub kind: BuildRuntimeGeneratedFileKind,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct ExtractedBuildProgram {
-    pub operations: Vec<BuildEvaluationOperation>,
-    pub executable_artifacts: Vec<ExtractedBuildArtifact>,
-    pub test_artifacts: Vec<ExtractedBuildArtifact>,
-    pub generated_files: Vec<ExtractedBuildGeneratedFile>,
-    pub dependency_queries: Vec<BuildRuntimeDependencyQuery>,
-    pub run_steps: BTreeMap<String, String>,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EvaluatedBuildSource {
@@ -785,533 +714,32 @@ pub fn evaluate_build_plan(
     ))
 }
 
-fn extract_build_program_from_source(
-    build_path: &Path,
-    source: &str,
-) -> Result<ExtractedBuildProgram, BuildEvaluationError> {
-    let Some((param_name, body)) = parsed_build_entry_body(build_path, source)? else {
-        return Ok(ExtractedBuildProgram::default());
-    };
-    let mut extracted = ExtractedBuildProgram::default();
-    let mut scope = BuildExtractionScope::default();
-    for statement in &body {
-        parse_build_statement_ast(
-            &mut extracted,
-            &mut scope,
-            build_path,
-            &param_name,
-            statement,
-        )?;
-    }
-    Ok(extracted)
-}
-
 pub fn evaluate_build_source(
     request: &BuildEvaluationRequest,
     build_path: &Path,
-    source: &str,
+    _source: &str,
 ) -> Result<Option<EvaluatedBuildSource>, BuildEvaluationError> {
-    let extracted = extract_build_program_from_source(build_path, source)?;
-    if extracted.operations.is_empty() {
+    let Some((executor, body)) = BuildBodyExecutor::from_file(build_path)? else {
+        return Ok(None);
+    };
+    let exec_output = executor.execute(&body)?;
+    if exec_output.operations.is_empty() {
         return Ok(None);
     }
     let result = evaluate_build_plan(&BuildEvaluationRequest {
         package_root: request.package_root.clone(),
         inputs: request.inputs.clone(),
-        operations: extracted.operations.clone(),
+        operations: exec_output.operations.clone(),
     })?;
-    let evaluated = evaluated_build_program_from_extracted(&extracted, &result);
+    let evaluated = build_evaluated_program(&exec_output, &result);
     Ok(Some(EvaluatedBuildSource { evaluated, result }))
 }
 
-fn parsed_build_entry_body(
-    build_path: &Path,
-    source: &str,
-) -> Result<Option<(String, Vec<AstNode>)>, BuildEvaluationError> {
-    let Some((param_name, body_source, _body_line)) = extract_build_body(source) else {
-        return Ok(None);
-    };
-    let package_root = build_path.parent().ok_or_else(|| {
-        evaluation_error(
-            BuildEvaluationErrorKind::InvalidInput,
-            format!("build file '{}' has no package root", build_path.display()),
-            None,
-        )
-    })?;
-    let wrapper_path = package_root.join(format!(
-        "__build_eval_wrapper_{}_{}.fol",
-        std::process::id(),
-        NEXT_BUILD_AST_WRAPPER_ID.fetch_add(1, Ordering::Relaxed)
-    ));
-    let wrapper_source = format!(
-        "fun buildevalwrapper({param_name}: Graph): Graph = {{\n{body_source}\nreturn {param_name}\n}}\n"
-    );
-    std::fs::write(&wrapper_path, wrapper_source).map_err(|error| {
-        evaluation_error(
-            BuildEvaluationErrorKind::InvalidInput,
-            format!(
-                "could not prepare temporary build evaluator wrapper '{}': {}",
-                wrapper_path.display(),
-                error
-            ),
-            None,
-        )
-    })?;
-    let parse_result = (|| {
-        let path_str = wrapper_path.to_str().ok_or_else(|| {
-            evaluation_error(
-                BuildEvaluationErrorKind::InvalidInput,
-                format!(
-                    "temporary build evaluator wrapper '{}' is not valid UTF-8",
-                    wrapper_path.display()
-                ),
-                None,
-            )
-        })?;
-        let mut stream = FileStream::from_file(path_str).map_err(|error| {
-            evaluation_error(
-                BuildEvaluationErrorKind::InvalidInput,
-                format!(
-                    "could not open temporary build evaluator wrapper '{}': {}",
-                    wrapper_path.display(),
-                    error
-                ),
-                None,
-            )
-        })?;
-        let mut lexer = Elements::init(&mut stream);
-        let mut parser = fol_parser::ast::AstParser::new();
-        let parsed = parser.parse_package(&mut lexer).map_err(|errors| {
-            let message = errors
-                .into_iter()
-                .next()
-                .map(|error| error.to_string())
-                .unwrap_or_else(|| "unknown parse error".to_string());
-            evaluation_error(
-                BuildEvaluationErrorKind::InvalidInput,
-                format!("build evaluator wrapper parse failed: {message}"),
-                None,
-            )
-        })?;
-
-        let entry = parsed.source_units.iter().find_map(|unit| {
-            unit.items.iter().find_map(|item| match &item.node {
-                AstNode::FunDecl { name, body, .. } if name == "buildevalwrapper" => {
-                    Some((param_name.clone(), body.clone()))
-                }
-                _ => None,
-            })
-        });
-        Ok(entry)
-    })();
-    let _ = std::fs::remove_file(&wrapper_path);
-    parse_result
-}
-
-fn parse_build_statement_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &mut BuildExtractionScope,
-    build_path: &Path,
-    graph_name: &str,
-    statement: &AstNode,
-) -> Result<(), BuildEvaluationError> {
-    match statement {
-        AstNode::VarDecl { name, value, .. } => {
-            let Some(value) = value.as_deref() else {
-                scope.last_value = None;
-                return Ok(());
-            };
-            if let Some(value) =
-                parse_build_expression_ast(extracted, scope, build_path, graph_name, value)?
-            {
-                scope.values.insert(name.clone(), value);
-                scope.last_value = scope.values.get(name.as_str()).cloned();
-            } else {
-                scope.last_value = None;
-            }
-            Ok(())
-        }
-        AstNode::FunctionCall {
-            surface: CallSurface::DotIntrinsic,
-            name,
-            args,
-            ..
-        } => {
-            let Some(receiver) = scope.last_value.clone() else {
-                return Err(build_source_unsupported(build_path, name, 1, name.len()));
-            };
-            scope.last_value =
-                parse_build_handle_method_ast(extracted, scope, build_path, receiver, name, args)?;
-            Ok(())
-        }
-        AstNode::Return { .. } => {
-            scope.last_value = None;
-            Ok(())
-        }
-        _ => {
-            scope.last_value =
-                parse_build_expression_ast(extracted, scope, build_path, graph_name, statement)?;
-            Ok(())
-        }
-    }
-}
-
-fn parse_build_expression_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &mut BuildExtractionScope,
-    build_path: &Path,
-    graph_name: &str,
-    expr: &AstNode,
-) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
-    match expr {
-        AstNode::Identifier { name, .. } if name == graph_name => Ok(None),
-        AstNode::Identifier { name, .. } => Ok(scope.values.get(name.as_str()).cloned()),
-        AstNode::MethodCall {
-            object,
-            method,
-            args,
-        } => {
-            if let AstNode::Identifier { name, .. } = object.as_ref() {
-                if name == graph_name {
-                    return parse_build_graph_method_ast(
-                        extracted, scope, build_path, method, args,
-                    );
-                }
-            }
-            let Some(receiver) =
-                parse_build_expression_ast(extracted, scope, build_path, graph_name, object)?
-            else {
-                return Ok(None);
-            };
-            parse_build_handle_method_ast(extracted, scope, build_path, receiver, method, args)
-        }
-        _ => Ok(None),
-    }
-}
-
-fn parse_build_handle_method_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &mut BuildExtractionScope,
-    build_path: &Path,
-    receiver: BuildExtractionValue,
-    method: &str,
-    args: &[AstNode],
-) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
-    match receiver {
-        BuildExtractionValue::DependencyHandle(dependency)
-            if method == "module"
-                || method == "artifact"
-                || method == "step"
-                || method == "generated" =>
-        {
-            let query = parse_dependency_query_ast(&dependency, scope, build_path, method, args)?;
-            let value = match method {
-                "module" => BuildExtractionValue::DependencyModuleHandle(query.clone()),
-                "artifact" => BuildExtractionValue::DependencyArtifactHandle(query.clone()),
-                "step" => BuildExtractionValue::DependencyStepHandle(query.clone()),
-                "generated" => BuildExtractionValue::DependencyGeneratedOutputHandle(query.clone()),
-                _ => unreachable!("dependency query methods are filtered above"),
-            };
-            extracted
-                .dependency_queries
-                .push(BuildRuntimeDependencyQuery {
-                    dependency_alias: query.dependency_alias,
-                    query_name: query.query_name,
-                    kind: query.kind,
-                });
-            Ok(Some(value))
-        }
-        BuildExtractionValue::StepHandle(step_name) if method == "depend_on" => {
-            let depends_on = args
-                .iter()
-                .filter_map(|arg| resolve_step_reference_ast(arg, scope))
-                .collect::<Vec<_>>();
-            if depends_on.is_empty() || depends_on.len() != args.len() {
-                return Err(build_source_unsupported(
-                    build_path,
-                    method,
-                    1,
-                    method.len(),
-                ));
-            }
-            append_dependencies_to_operation(
-                extracted,
-                &BuildExtractionValue::StepHandle(step_name.clone()),
-                &depends_on,
-            )?;
-            Ok(Some(BuildExtractionValue::StepHandle(step_name)))
-        }
-        BuildExtractionValue::RunHandle(step_name) if method == "depend_on" => {
-            let depends_on = args
-                .iter()
-                .filter_map(|arg| resolve_step_reference_ast(arg, scope))
-                .collect::<Vec<_>>();
-            if depends_on.is_empty() || depends_on.len() != args.len() {
-                return Err(build_source_unsupported(
-                    build_path,
-                    method,
-                    1,
-                    method.len(),
-                ));
-            }
-            append_dependencies_to_operation(
-                extracted,
-                &BuildExtractionValue::RunHandle(step_name.clone()),
-                &depends_on,
-            )?;
-            Ok(Some(BuildExtractionValue::RunHandle(step_name)))
-        }
-        BuildExtractionValue::InstallHandle(step_name) if method == "depend_on" => {
-            let depends_on = args
-                .iter()
-                .filter_map(|arg| resolve_step_reference_ast(arg, scope))
-                .collect::<Vec<_>>();
-            if depends_on.is_empty() || depends_on.len() != args.len() {
-                return Err(build_source_unsupported(
-                    build_path,
-                    method,
-                    1,
-                    method.len(),
-                ));
-            }
-            append_dependencies_to_operation(
-                extracted,
-                &BuildExtractionValue::InstallHandle(step_name.clone()),
-                &depends_on,
-            )?;
-            Ok(Some(BuildExtractionValue::InstallHandle(step_name)))
-        }
-        BuildExtractionValue::DependencyHandle(_)
-        | BuildExtractionValue::StepHandle(_)
-        | BuildExtractionValue::RunHandle(_)
-        | BuildExtractionValue::InstallHandle(_) => Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        )),
-        _ => Ok(None),
-    }
-}
-
-fn append_dependencies_to_operation(
-    extracted: &mut ExtractedBuildProgram,
-    handle: &BuildExtractionValue,
-    depends_on: &[String],
-) -> Result<(), BuildEvaluationError> {
-    let Some(operation) = extracted.operations.iter_mut().rev().find(|operation| {
-        matches!(
-            &operation.kind,
-            BuildEvaluationOperationKind::Step(request)
-                if matches!(handle, BuildExtractionValue::StepHandle(step_name) if request.name == *step_name)
-        ) || matches!(
-            &operation.kind,
-            BuildEvaluationOperationKind::AddRun(request)
-                if matches!(handle, BuildExtractionValue::RunHandle(step_name) if request.name == *step_name)
-        ) || matches!(
-            &operation.kind,
-            BuildEvaluationOperationKind::InstallArtifact(request)
-                if matches!(handle, BuildExtractionValue::InstallHandle(step_name) if request.name == *step_name)
-        )
-    }) else {
-        let step_name = match handle {
-            BuildExtractionValue::StepHandle(step_name)
-            | BuildExtractionValue::RunHandle(step_name)
-            | BuildExtractionValue::InstallHandle(step_name) => step_name,
-            _ => unreachable!("dependency handles must be step-like"),
-        };
-        return Err(evaluation_error(
-            BuildEvaluationErrorKind::InvalidInput,
-            format!("unknown chained step '{step_name}'"),
-            None,
-        ));
-    };
-    match &mut operation.kind {
-        BuildEvaluationOperationKind::Step(request) => {
-            request.depends_on.extend(depends_on.iter().cloned());
-            Ok(())
-        }
-        BuildEvaluationOperationKind::AddRun(request) => {
-            request.depends_on.extend(depends_on.iter().cloned());
-            Ok(())
-        }
-        BuildEvaluationOperationKind::InstallArtifact(request) => {
-            request.depends_on.extend(depends_on.iter().cloned());
-            Ok(())
-        }
-        _ => unreachable!("matched step-like operation kind"),
-    }
-}
-
-fn parse_build_graph_method_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &mut BuildExtractionScope,
-    build_path: &Path,
-    method: &str,
-    args: &[AstNode],
-) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
-    let origin = Some(SyntaxOrigin {
-        file: Some(build_path.display().to_string()),
-        line: 1,
-        column: 1,
-        length: method.len(),
-    });
-    match method {
-        "standard_target" => {
-            let name = match args {
-                [] => "target".to_string(),
-                [arg] => resolve_build_string_arg_ast(arg, scope)
-                    .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?,
-                _ => {
-                    return Err(build_source_unsupported(
-                        build_path,
-                        method,
-                        1,
-                        method.len(),
-                    ))
-                }
-            };
-            extracted.operations.push(BuildEvaluationOperation {
-                origin,
-                kind: BuildEvaluationOperationKind::StandardTarget(StandardTargetRequest::new(
-                    name.clone(),
-                )),
-            });
-            Ok(Some(BuildExtractionValue::OptionRef(
-                BuildExtractionOptionRef {
-                    name,
-                    kind: BuildExtractionOptionKind::Target,
-                },
-            )))
-        }
-        "standard_optimize" => {
-            let name = match args {
-                [] => "optimize".to_string(),
-                [arg] => resolve_build_string_arg_ast(arg, scope)
-                    .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?,
-                _ => {
-                    return Err(build_source_unsupported(
-                        build_path,
-                        method,
-                        1,
-                        method.len(),
-                    ))
-                }
-            };
-            extracted.operations.push(BuildEvaluationOperation {
-                origin,
-                kind: BuildEvaluationOperationKind::StandardOptimize(StandardOptimizeRequest::new(
-                    name.clone(),
-                )),
-            });
-            Ok(Some(BuildExtractionValue::OptionRef(
-                BuildExtractionOptionRef {
-                    name,
-                    kind: BuildExtractionOptionKind::Optimize,
-                },
-            )))
-        }
-        "option" => {
-            let [AstNode::RecordInit { fields, .. }] = args else {
-                return Err(build_source_unsupported(
-                    build_path,
-                    method,
-                    1,
-                    method.len(),
-                ));
-            };
-            let name = fields
-                .iter()
-                .find(|field| field.name == "name")
-                .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-                .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-            let kind = fields
-                .iter()
-                .find(|field| field.name == "kind")
-                .and_then(|field| parse_build_option_kind_ast(&field.value, scope))
-                .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-            let default = fields
-                .iter()
-                .find(|field| field.name == "default")
-                .and_then(|field| parse_build_option_default_ast(kind, &field.value));
-            extracted.operations.push(BuildEvaluationOperation {
-                origin,
-                kind: BuildEvaluationOperationKind::Option(crate::UserOptionRequest {
-                    name: name.clone(),
-                    kind: build_option_kind_from_extraction(kind),
-                    default,
-                }),
-            });
-            Ok(Some(BuildExtractionValue::OptionRef(
-                BuildExtractionOptionRef { name, kind },
-            )))
-        }
-        "add_exe" | "add_static_lib" | "add_shared_lib" | "add_test" => {
-            parse_named_artifact_call_ast(extracted, scope, build_path, method, args)
-        }
-        "write_file" => {
-            parse_write_file_call_ast(extracted, scope, build_path, method, args, origin)
-        }
-        "copy_file" => parse_copy_file_call_ast(extracted, scope, build_path, method, args, origin),
-        "add_system_tool" => {
-            parse_system_tool_call_ast(extracted, scope, build_path, method, args, origin)
-        }
-        "add_codegen" => parse_codegen_call_ast(extracted, scope, build_path, method, args, origin),
-        "step" => {
-            let Some(name) = args
-                .first()
-                .and_then(|arg| resolve_build_string_arg_ast(arg, scope))
-            else {
-                return Err(build_source_unsupported(
-                    build_path,
-                    method,
-                    1,
-                    method.len(),
-                ));
-            };
-            let depends_on = args
-                .iter()
-                .skip(1)
-                .filter_map(|arg| resolve_step_reference_ast(arg, scope))
-                .collect::<Vec<_>>();
-            extracted.operations.push(BuildEvaluationOperation {
-                origin,
-                kind: BuildEvaluationOperationKind::Step(BuildEvaluationStepRequest {
-                    name: name.clone(),
-                    depends_on,
-                }),
-            });
-            Ok(Some(BuildExtractionValue::StepHandle(name)))
-        }
-        "add_run" => parse_run_call_ast(extracted, scope, build_path, args, origin),
-        "install" => parse_install_call_ast(extracted, scope, build_path, args, origin),
-        "dependency" => {
-            let dependency = parse_dependency_request_ast(scope, build_path, method, args)?;
-            extracted.operations.push(BuildEvaluationOperation {
-                origin,
-                kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
-                    alias: dependency.alias.clone(),
-                    package: dependency.package.clone(),
-                    evaluation_mode: dependency.evaluation_mode,
-                    surface: None,
-                }),
-            });
-            Ok(Some(BuildExtractionValue::DependencyHandle(dependency)))
-        }
-        _ => Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        )),
-    }
-}
-
-fn evaluated_build_program_from_extracted(
-    extracted: &ExtractedBuildProgram,
+fn build_evaluated_program(
+    exec_output: &ExecutionOutput,
     result: &BuildEvaluationResult,
 ) -> EvaluatedBuildProgram {
-    let mut step_bindings = extracted
+    let mut step_bindings = exec_output
         .run_steps
         .iter()
         .map(|(step_name, artifact_name)| {
@@ -1323,7 +751,7 @@ fn evaluated_build_program_from_extracted(
             BuildRuntimeStepBinding::new(step_name.clone(), kind, Some(artifact_name.clone()))
         })
         .collect::<Vec<_>>();
-    if extracted.executable_artifacts.len() == 1
+    if exec_output.executable_artifacts.len() == 1
         && !step_bindings
             .iter()
             .any(|binding| binding.step_name == "build")
@@ -1331,10 +759,10 @@ fn evaluated_build_program_from_extracted(
         step_bindings.push(BuildRuntimeStepBinding::new(
             "build",
             BuildRuntimeStepBindingKind::DefaultBuild,
-            Some(extracted.executable_artifacts[0].name.clone()),
+            Some(exec_output.executable_artifacts[0].name.clone()),
         ));
     }
-    if extracted.test_artifacts.len() == 1
+    if exec_output.test_artifacts.len() == 1
         && !step_bindings
             .iter()
             .any(|binding| binding.step_name == "test")
@@ -1342,11 +770,10 @@ fn evaluated_build_program_from_extracted(
         step_bindings.push(BuildRuntimeStepBinding::new(
             "test",
             BuildRuntimeStepBindingKind::DefaultTest,
-            Some(extracted.test_artifacts[0].name.clone()),
+            Some(exec_output.test_artifacts[0].name.clone()),
         ));
     }
-
-    let artifacts = extracted
+    let artifacts = exec_output
         .executable_artifacts
         .iter()
         .map(|artifact| {
@@ -1359,14 +786,14 @@ fn evaluated_build_program_from_extracted(
                 artifact
                     .target
                     .as_ref()
-                    .map(|value| value.resolve(&result.resolved_options)),
+                    .map(|v| v.resolve(&result.resolved_options)),
                 artifact
                     .optimize
                     .as_ref()
-                    .map(|value| value.resolve(&result.resolved_options)),
+                    .map(|v| v.resolve(&result.resolved_options)),
             )
         })
-        .chain(extracted.test_artifacts.iter().map(|artifact| {
+        .chain(exec_output.test_artifacts.iter().map(|artifact| {
             BuildRuntimeArtifact::new(
                 artifact.name.clone(),
                 BuildRuntimeArtifactKind::Test,
@@ -1376,11 +803,11 @@ fn evaluated_build_program_from_extracted(
                 artifact
                     .target
                     .as_ref()
-                    .map(|value| value.resolve(&result.resolved_options)),
+                    .map(|v| v.resolve(&result.resolved_options)),
                 artifact
                     .optimize
                     .as_ref()
-                    .map(|value| value.resolve(&result.resolved_options)),
+                    .map(|v| v.resolve(&result.resolved_options)),
             )
         }))
         .collect::<Vec<_>>();
@@ -1393,784 +820,15 @@ fn evaluated_build_program_from_extracted(
             evaluation_mode: request.evaluation_mode,
         })
         .collect::<Vec<_>>();
-    let generated_files = extracted
-        .generated_files
-        .iter()
-        .map(|generated| {
-            BuildRuntimeGeneratedFile::new(
-                generated.name.clone(),
-                generated.relative_path.clone(),
-                generated.kind,
-            )
-        })
-        .collect::<Vec<_>>();
-
     EvaluatedBuildProgram {
         program: BuildRuntimeProgram::new(BuildExecutionRepresentation::RestrictedRuntimeIr),
         artifacts,
-        generated_files,
+        generated_files: exec_output.generated_files.clone(),
         dependencies,
-        dependency_queries: extracted.dependency_queries.clone(),
+        dependency_queries: exec_output.dependency_queries.clone(),
         step_bindings,
         result: result.clone(),
     }
-}
-
-fn extract_build_body(source: &str) -> Option<(String, String, usize)> {
-    let prefix = "pro[] build(";
-    let start = source.find(prefix)?;
-    let rest = &source[start + prefix.len()..];
-    let param_end = rest.find(':')?;
-    let param_name = rest[..param_end].trim().to_string();
-    if param_name.is_empty() {
-        return None;
-    }
-    let after_equals = rest.find('=')?;
-    let body_start = start + prefix.len() + after_equals + 1;
-    let body_source = source[body_start..].trim_start();
-    let body_line = source[..body_start]
-        .chars()
-        .filter(|ch| *ch == '\n')
-        .count()
-        + 1;
-    if let Some(stripped) = body_source.strip_prefix('{') {
-        let block_end = stripped.rfind('}')?;
-        return Some((param_name, stripped[..block_end].to_string(), body_line + 1));
-    }
-    Some((
-        param_name,
-        body_source.trim_end_matches(';').to_string(),
-        body_line,
-    ))
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-struct BuildExtractionScope {
-    values: BTreeMap<String, BuildExtractionValue>,
-    last_value: Option<BuildExtractionValue>,
-    next_run_index: usize,
-    next_install_index: usize,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum BuildExtractionOptionKind {
-    Target,
-    Optimize,
-    Bool,
-    Int,
-    String,
-    Enum,
-    Path,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct BuildExtractionOptionRef {
-    name: String,
-    kind: BuildExtractionOptionKind,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum BuildExtractionValue {
-    OptionRef(BuildExtractionOptionRef),
-    Artifact(ExtractedBuildArtifact),
-    GeneratedFileHandle(ExtractedBuildGeneratedFile),
-    DependencyHandle(ExtractedBuildDependency),
-    DependencyModuleHandle(ExtractedBuildDependencyQuery),
-    DependencyArtifactHandle(ExtractedBuildDependencyQuery),
-    DependencyStepHandle(ExtractedBuildDependencyQuery),
-    DependencyGeneratedOutputHandle(ExtractedBuildDependencyQuery),
-    StepHandle(String),
-    RunHandle(String),
-    InstallHandle(String),
-}
-
-fn resolve_build_string_arg_ast(node: &AstNode, scope: &BuildExtractionScope) -> Option<String> {
-    match node {
-        AstNode::Literal(Literal::String(value)) => Some(value.clone()),
-        AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
-            Some(BuildExtractionValue::OptionRef(option)) => Some(option.name.clone()),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-fn parse_build_config_value_ast(
-    node: &AstNode,
-    scope: &BuildExtractionScope,
-    allowed_option_kinds: &[BuildExtractionOptionKind],
-) -> Option<BuildExtractionConfigValue> {
-    match node {
-        AstNode::Literal(Literal::String(value)) => {
-            Some(BuildExtractionConfigValue::Literal(value.clone()))
-        }
-        AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
-            Some(BuildExtractionValue::OptionRef(option))
-                if allowed_option_kinds.contains(&option.kind) =>
-            {
-                Some(BuildExtractionConfigValue::OptionRef(option.clone()))
-            }
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-fn parse_build_option_kind_ast(
-    node: &AstNode,
-    scope: &BuildExtractionScope,
-) -> Option<BuildExtractionOptionKind> {
-    let raw = resolve_build_string_arg_ast(node, scope)?;
-    match raw.as_str() {
-        "bool" => Some(BuildExtractionOptionKind::Bool),
-        "int" => Some(BuildExtractionOptionKind::Int),
-        "string" => Some(BuildExtractionOptionKind::String),
-        "enum" => Some(BuildExtractionOptionKind::Enum),
-        "path" => Some(BuildExtractionOptionKind::Path),
-        _ => None,
-    }
-}
-
-fn parse_build_option_default_ast(
-    kind: BuildExtractionOptionKind,
-    node: &AstNode,
-) -> Option<crate::BuildOptionValue> {
-    match (kind, node) {
-        (BuildExtractionOptionKind::Bool, AstNode::Literal(Literal::Boolean(value))) => {
-            Some(crate::BuildOptionValue::Bool(*value))
-        }
-        (BuildExtractionOptionKind::Int, AstNode::Literal(Literal::Integer(value))) => {
-            Some(crate::BuildOptionValue::Int(*value))
-        }
-        (BuildExtractionOptionKind::String, AstNode::Literal(Literal::String(value))) => {
-            Some(crate::BuildOptionValue::String(value.clone()))
-        }
-        (BuildExtractionOptionKind::Enum, AstNode::Literal(Literal::String(value))) => {
-            Some(crate::BuildOptionValue::Enum(value.clone()))
-        }
-        (BuildExtractionOptionKind::Path, AstNode::Literal(Literal::String(value))) => {
-            Some(crate::BuildOptionValue::Path(value.clone()))
-        }
-        _ => None,
-    }
-}
-
-fn parse_dependency_request_ast(
-    scope: &BuildExtractionScope,
-    build_path: &Path,
-    method: &str,
-    args: &[AstNode],
-) -> Result<ExtractedBuildDependency, BuildEvaluationError> {
-    if let [AstNode::RecordInit { fields, .. }] = args {
-        let alias = fields
-            .iter()
-            .find(|field| field.name == "alias")
-            .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-            .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-        let package = fields
-            .iter()
-            .find(|field| field.name == "package")
-            .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-            .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-        let evaluation_mode = fields
-            .iter()
-            .find(|field| field.name == "mode")
-            .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-            .and_then(|value| crate::DependencyBuildEvaluationMode::parse(value.as_str()));
-        return Ok(ExtractedBuildDependency {
-            alias,
-            package,
-            evaluation_mode,
-        });
-    }
-
-    let [alias, package] = args else {
-        return Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        ));
-    };
-    let Some(alias) = resolve_build_string_arg_ast(alias, scope) else {
-        return Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        ));
-    };
-    let Some(package) = resolve_build_string_arg_ast(package, scope) else {
-        return Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        ));
-    };
-    Ok(ExtractedBuildDependency {
-        alias,
-        package,
-        evaluation_mode: None,
-    })
-}
-
-fn parse_dependency_query_ast(
-    dependency: &ExtractedBuildDependency,
-    scope: &BuildExtractionScope,
-    build_path: &Path,
-    method: &str,
-    args: &[AstNode],
-) -> Result<ExtractedBuildDependencyQuery, BuildEvaluationError> {
-    let [name] = args else {
-        return Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        ));
-    };
-    let Some(query_name) = resolve_build_string_arg_ast(name, scope) else {
-        return Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        ));
-    };
-    let kind = match method {
-        "module" => BuildRuntimeDependencyQueryKind::Module,
-        "artifact" => BuildRuntimeDependencyQueryKind::Artifact,
-        "step" => BuildRuntimeDependencyQueryKind::Step,
-        "generated" => BuildRuntimeDependencyQueryKind::GeneratedOutput,
-        _ => {
-            return Err(build_source_unsupported(
-                build_path,
-                method,
-                1,
-                method.len(),
-            ))
-        }
-    };
-    Ok(ExtractedBuildDependencyQuery {
-        dependency_alias: dependency.alias.clone(),
-        query_name,
-        kind,
-    })
-}
-
-fn build_option_kind_from_extraction(kind: BuildExtractionOptionKind) -> crate::BuildOptionKind {
-    match kind {
-        BuildExtractionOptionKind::Target => crate::BuildOptionKind::Target,
-        BuildExtractionOptionKind::Optimize => crate::BuildOptionKind::Optimize,
-        BuildExtractionOptionKind::Bool => crate::BuildOptionKind::Bool,
-        BuildExtractionOptionKind::Int => crate::BuildOptionKind::Int,
-        BuildExtractionOptionKind::String => crate::BuildOptionKind::String,
-        BuildExtractionOptionKind::Enum => crate::BuildOptionKind::Enum,
-        BuildExtractionOptionKind::Path => crate::BuildOptionKind::Path,
-    }
-}
-
-fn resolve_artifact_reference_ast(
-    node: &AstNode,
-    scope: &BuildExtractionScope,
-) -> Option<ExtractedBuildArtifact> {
-    match node {
-        AstNode::Literal(Literal::String(value)) => Some(ExtractedBuildArtifact {
-            name: value.clone(),
-            root_module: BuildExtractionConfigValue::Literal(String::new()),
-            target: None,
-            optimize: None,
-        }),
-        AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
-            Some(BuildExtractionValue::Artifact(artifact)) => Some(artifact.clone()),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-fn resolve_step_reference_ast(node: &AstNode, scope: &BuildExtractionScope) -> Option<String> {
-    match node {
-        AstNode::Literal(Literal::String(value)) => Some(value.clone()),
-        AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
-            Some(BuildExtractionValue::StepHandle(name)) => Some(name.clone()),
-            Some(BuildExtractionValue::RunHandle(name)) => Some(name.clone()),
-            Some(BuildExtractionValue::InstallHandle(name)) => Some(name.clone()),
-            _ => None,
-        },
-        _ => None,
-    }
-}
-
-fn parse_named_artifact_call_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &BuildExtractionScope,
-    build_path: &Path,
-    method: &str,
-    args: &[AstNode],
-) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
-    let origin = Some(SyntaxOrigin {
-        file: Some(build_path.display().to_string()),
-        line: 1,
-        column: 1,
-        length: method.len(),
-    });
-    let (name, root_module, target, optimize) = match args {
-        [AstNode::RecordInit { fields, .. }] => {
-            let name = fields
-                .iter()
-                .find(|field| field.name == "name")
-                .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-                .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-            let root_module = fields
-                .iter()
-                .find(|field| field.name == "root" || field.name == "root_module")
-                .and_then(|field| {
-                    parse_build_config_value_ast(
-                        &field.value,
-                        scope,
-                        &[
-                            BuildExtractionOptionKind::Path,
-                            BuildExtractionOptionKind::String,
-                        ],
-                    )
-                })
-                .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-            let target = fields
-                .iter()
-                .find(|field| field.name == "target")
-                .and_then(|field| {
-                    parse_build_config_value_ast(
-                        &field.value,
-                        scope,
-                        &[
-                            BuildExtractionOptionKind::Target,
-                            BuildExtractionOptionKind::String,
-                        ],
-                    )
-                });
-            let optimize = fields
-                .iter()
-                .find(|field| field.name == "optimize")
-                .and_then(|field| {
-                    parse_build_config_value_ast(
-                        &field.value,
-                        scope,
-                        &[
-                            BuildExtractionOptionKind::Optimize,
-                            BuildExtractionOptionKind::String,
-                        ],
-                    )
-                });
-            (name, root_module, target, optimize)
-        }
-        [name, root_module] => {
-            let Some(name) = resolve_build_string_arg_ast(name, scope) else {
-                return Err(build_source_unsupported(
-                    build_path,
-                    method,
-                    1,
-                    method.len(),
-                ));
-            };
-            let Some(root_module) = parse_build_config_value_ast(
-                root_module,
-                scope,
-                &[
-                    BuildExtractionOptionKind::Path,
-                    BuildExtractionOptionKind::String,
-                ],
-            ) else {
-                return Err(build_source_unsupported(
-                    build_path,
-                    method,
-                    1,
-                    method.len(),
-                ));
-            };
-            (name, root_module, None, None)
-        }
-        _ => {
-            return Err(build_source_unsupported(
-                build_path,
-                method,
-                1,
-                method.len(),
-            ))
-        }
-    };
-    let artifact = ExtractedBuildArtifact {
-        name: name.clone(),
-        root_module: root_module.clone(),
-        target,
-        optimize,
-    };
-    let root_module_placeholder = root_module.placeholder_string();
-    match method {
-        "add_exe" => {
-            extracted.executable_artifacts.push(artifact.clone());
-            extracted.operations.push(BuildEvaluationOperation {
-                origin,
-                kind: BuildEvaluationOperationKind::AddExe(ExecutableRequest {
-                    name,
-                    root_module: root_module_placeholder,
-                }),
-            });
-        }
-        "add_static_lib" => extracted.operations.push(BuildEvaluationOperation {
-            origin,
-            kind: BuildEvaluationOperationKind::AddStaticLib(StaticLibraryRequest {
-                name,
-                root_module: root_module_placeholder,
-            }),
-        }),
-        "add_shared_lib" => extracted.operations.push(BuildEvaluationOperation {
-            origin,
-            kind: BuildEvaluationOperationKind::AddSharedLib(SharedLibraryRequest {
-                name,
-                root_module: root_module_placeholder,
-            }),
-        }),
-        "add_test" => {
-            extracted.test_artifacts.push(artifact.clone());
-            extracted.operations.push(BuildEvaluationOperation {
-                origin,
-                kind: BuildEvaluationOperationKind::AddTest(TestArtifactRequest {
-                    name,
-                    root_module: root_module_placeholder,
-                }),
-            });
-        }
-        _ => {
-            return Err(build_source_unsupported(
-                build_path,
-                method,
-                1,
-                method.len(),
-            ))
-        }
-    }
-    Ok(Some(BuildExtractionValue::Artifact(artifact)))
-}
-
-fn parse_run_call_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &mut BuildExtractionScope,
-    build_path: &Path,
-    args: &[AstNode],
-    origin: Option<SyntaxOrigin>,
-) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
-    let (name, artifact) = match args {
-        [artifact] => {
-            let Some(artifact) = resolve_artifact_reference_ast(artifact, scope) else {
-                return Err(build_source_unsupported(build_path, "add_run", 1, 7));
-            };
-            let name = if scope.next_run_index == 0 {
-                "run".to_string()
-            } else {
-                format!("run-{}", artifact.name)
-            };
-            scope.next_run_index += 1;
-            (name, artifact.name)
-        }
-        [name, artifact, ..] => {
-            let Some(name) = resolve_build_string_arg_ast(name, scope) else {
-                return Err(build_source_unsupported(build_path, "add_run", 1, 7));
-            };
-            let Some(artifact) = resolve_artifact_reference_ast(artifact, scope) else {
-                return Err(build_source_unsupported(build_path, "add_run", 1, 7));
-            };
-            (name, artifact.name)
-        }
-        _ => return Err(build_source_unsupported(build_path, "add_run", 1, 7)),
-    };
-    extracted.run_steps.insert(name.clone(), artifact.clone());
-    extracted.operations.push(BuildEvaluationOperation {
-        origin,
-        kind: BuildEvaluationOperationKind::AddRun(BuildEvaluationRunRequest {
-            name: name.clone(),
-            artifact,
-            depends_on: Vec::new(),
-        }),
-    });
-    Ok(Some(BuildExtractionValue::RunHandle(name)))
-}
-
-fn parse_write_file_call_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &BuildExtractionScope,
-    build_path: &Path,
-    method: &str,
-    args: &[AstNode],
-    origin: Option<SyntaxOrigin>,
-) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
-    let [AstNode::RecordInit { fields, .. }] = args else {
-        return Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        ));
-    };
-    let name = fields
-        .iter()
-        .find(|field| field.name == "name")
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-    let path = fields
-        .iter()
-        .find(|field| field.name == "path")
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-    let contents = fields
-        .iter()
-        .find(|field| field.name == "contents")
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-
-    extracted.operations.push(BuildEvaluationOperation {
-        origin,
-        kind: BuildEvaluationOperationKind::WriteFile(WriteFileRequest {
-            name: name.clone(),
-            path: path.clone(),
-            contents,
-        }),
-    });
-    let generated = ExtractedBuildGeneratedFile {
-        name,
-        relative_path: path,
-        kind: BuildRuntimeGeneratedFileKind::Write,
-    };
-    extracted.generated_files.push(generated.clone());
-    Ok(Some(BuildExtractionValue::GeneratedFileHandle(generated)))
-}
-
-fn parse_copy_file_call_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &BuildExtractionScope,
-    build_path: &Path,
-    method: &str,
-    args: &[AstNode],
-    origin: Option<SyntaxOrigin>,
-) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
-    let [AstNode::RecordInit { fields, .. }] = args else {
-        return Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        ));
-    };
-    let name = fields
-        .iter()
-        .find(|field| field.name == "name")
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-    let source_path = fields
-        .iter()
-        .find(|field| field.name == "source")
-        .or_else(|| fields.iter().find(|field| field.name == "source_path"))
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-    let destination_path = fields
-        .iter()
-        .find(|field| field.name == "path")
-        .or_else(|| fields.iter().find(|field| field.name == "destination"))
-        .or_else(|| fields.iter().find(|field| field.name == "destination_path"))
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-
-    extracted.operations.push(BuildEvaluationOperation {
-        origin,
-        kind: BuildEvaluationOperationKind::CopyFile(CopyFileRequest {
-            name: name.clone(),
-            source_path,
-            destination_path: destination_path.clone(),
-        }),
-    });
-    let generated = ExtractedBuildGeneratedFile {
-        name,
-        relative_path: destination_path,
-        kind: BuildRuntimeGeneratedFileKind::Copy,
-    };
-    extracted.generated_files.push(generated.clone());
-    Ok(Some(BuildExtractionValue::GeneratedFileHandle(generated)))
-}
-
-fn parse_system_tool_call_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &BuildExtractionScope,
-    build_path: &Path,
-    method: &str,
-    args: &[AstNode],
-    origin: Option<SyntaxOrigin>,
-) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
-    let [AstNode::RecordInit { fields, .. }] = args else {
-        return Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        ));
-    };
-    let tool = fields
-        .iter()
-        .find(|field| field.name == "tool")
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-    let output = fields
-        .iter()
-        .find(|field| field.name == "output")
-        .or_else(|| fields.iter().find(|field| field.name == "path"))
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-
-    extracted.operations.push(BuildEvaluationOperation {
-        origin,
-        kind: BuildEvaluationOperationKind::SystemTool(SystemToolRequest {
-            tool: tool.clone(),
-            args: Vec::new(),
-            outputs: vec![output.clone()],
-        }),
-    });
-    let generated = ExtractedBuildGeneratedFile {
-        name: tool,
-        relative_path: output,
-        kind: BuildRuntimeGeneratedFileKind::ToolOutput,
-    };
-    extracted.generated_files.push(generated.clone());
-    Ok(Some(BuildExtractionValue::GeneratedFileHandle(generated)))
-}
-
-fn parse_codegen_call_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &BuildExtractionScope,
-    build_path: &Path,
-    method: &str,
-    args: &[AstNode],
-    origin: Option<SyntaxOrigin>,
-) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
-    let [AstNode::RecordInit { fields, .. }] = args else {
-        return Err(build_source_unsupported(
-            build_path,
-            method,
-            1,
-            method.len(),
-        ));
-    };
-    let kind = fields
-        .iter()
-        .find(|field| field.name == "kind")
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-    let input = fields
-        .iter()
-        .find(|field| field.name == "input")
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-    let output = fields
-        .iter()
-        .find(|field| field.name == "output")
-        .or_else(|| fields.iter().find(|field| field.name == "path"))
-        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
-        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-    let codegen_kind = match kind.as_str() {
-        "fol" | "fol-to-fol" => crate::CodegenKind::FolToFol,
-        "schema" => crate::CodegenKind::Schema,
-        "asset" | "asset-preprocess" => crate::CodegenKind::AssetPreprocess,
-        _ => {
-            return Err(build_source_unsupported(
-                build_path,
-                method,
-                1,
-                method.len(),
-            ))
-        }
-    };
-
-    extracted.operations.push(BuildEvaluationOperation {
-        origin,
-        kind: BuildEvaluationOperationKind::Codegen(CodegenRequest {
-            kind: codegen_kind,
-            input,
-            output: output.clone(),
-        }),
-    });
-    let generated = ExtractedBuildGeneratedFile {
-        name: output.clone(),
-        relative_path: output,
-        kind: BuildRuntimeGeneratedFileKind::CodegenOutput,
-    };
-    extracted.generated_files.push(generated.clone());
-    Ok(Some(BuildExtractionValue::GeneratedFileHandle(generated)))
-}
-
-fn parse_install_call_ast(
-    extracted: &mut ExtractedBuildProgram,
-    scope: &mut BuildExtractionScope,
-    build_path: &Path,
-    args: &[AstNode],
-    origin: Option<SyntaxOrigin>,
-) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
-    let (name, artifact) = match args {
-        [artifact] => {
-            let Some(artifact) = resolve_artifact_reference_ast(artifact, scope) else {
-                return Err(build_source_unsupported(build_path, "install", 1, 7));
-            };
-            let name = if scope.next_install_index == 0 {
-                "install".to_string()
-            } else {
-                format!("install-{}", artifact.name)
-            };
-            scope.next_install_index += 1;
-            (name, artifact.name)
-        }
-        [name, artifact] => {
-            let Some(name) = resolve_build_string_arg_ast(name, scope) else {
-                return Err(build_source_unsupported(build_path, "install", 1, 7));
-            };
-            let Some(artifact) = resolve_artifact_reference_ast(artifact, scope) else {
-                return Err(build_source_unsupported(build_path, "install", 1, 7));
-            };
-            (name, artifact.name)
-        }
-        _ => return Err(build_source_unsupported(build_path, "install", 1, 7)),
-    };
-    extracted.operations.push(BuildEvaluationOperation {
-        origin,
-        kind: BuildEvaluationOperationKind::InstallArtifact(
-            BuildEvaluationInstallArtifactRequest {
-                name: name.clone(),
-                artifact,
-                depends_on: Vec::new(),
-            },
-        ),
-    });
-    Ok(Some(BuildExtractionValue::InstallHandle(name)))
-}
-
-fn build_source_unsupported(
-    build_path: &Path,
-    statement: &str,
-    line: usize,
-    length: usize,
-) -> BuildEvaluationError {
-    BuildEvaluationError::with_origin(
-        BuildEvaluationErrorKind::Unsupported,
-        format!(
-            "unsupported build API call in '{}': {}",
-            build_path.display(),
-            statement.trim()
-        ),
-        SyntaxOrigin {
-            file: Some(build_path.display().to_string()),
-            line,
-            column: 1,
-            length,
-        },
-    )
 }
 
 fn evaluation_invalid_input(
@@ -2202,29 +860,27 @@ fn evaluation_error(
 mod tests {
     use super::{
         canonical_graph_construction_capabilities, evaluate_build_plan, evaluate_build_source,
-        extract_build_program_from_source, forbidden_capability_error,
-        forbidden_capability_message, resolve_build_string_arg_ast, AllowedBuildTimeOperation,
+        forbidden_capability_error, forbidden_capability_message, AllowedBuildTimeOperation,
         BuildEnvironmentSelectionPolicy, BuildEvaluationBoundary, BuildEvaluationError,
         BuildEvaluationErrorKind, BuildEvaluationInputEnvelope, BuildEvaluationInputs,
         BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
-        BuildEvaluationRunRequest, BuildEvaluationStepRequest, BuildExtractionConfigValue,
-        BuildExtractionOptionKind, BuildExtractionOptionRef, BuildExtractionScope,
-        BuildExtractionValue, BuildRuntimeCapabilityModel, EvaluatedBuildProgram,
-        ForbiddenBuildTimeOperation,
+        BuildEvaluationRunRequest, BuildEvaluationStepRequest, BuildRuntimeCapabilityModel,
+        EvaluatedBuildProgram, ForbiddenBuildTimeOperation,
     };
-    use crate::api::{CopyFileRequest, WriteFileRequest};
+    use crate::api::{
+        CopyFileRequest, DependencyRequest, ExecutableRequest, InstallDirRequest,
+        StandardOptimizeRequest, StandardTargetRequest, UserOptionRequest, WriteFileRequest,
+    };
+    use crate::codegen::{CodegenKind, CodegenRequest, SystemToolRequest};
     use crate::graph::BuildGraph;
     use crate::option::{
         BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet, BuildTargetTriple,
         ResolvedBuildOptionSet,
     };
-    use crate::api::{
-        CodegenKind, CodegenRequest, DependencyRequest, ExecutableRequest, InstallDirRequest,
-        StandardOptimizeRequest, StandardTargetRequest, SystemToolRequest, UserOptionRequest,
-    };
+    use crate::runtime::{BuildRuntimeDependencyQueryKind, BuildRuntimeGeneratedFileKind};
     use fol_diagnostics::{DiagnosticCode, ToDiagnostic};
-    use fol_parser::ast::{AstNode, SyntaxOrigin};
+    use fol_parser::ast::SyntaxOrigin;
     use std::{
         collections::BTreeMap,
         fs,
@@ -2506,75 +1162,6 @@ mod tests {
         assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
         assert!(error.message().contains("jobs"));
         assert!(error.message().contains("fast"));
-    }
-
-    #[test]
-    fn build_source_option_refs_keep_symbolic_kind_and_name() {
-        let mut scope = BuildExtractionScope::default();
-        scope.values.insert(
-            "target".to_string(),
-            BuildExtractionValue::OptionRef(BuildExtractionOptionRef {
-                name: "target".to_string(),
-                kind: BuildExtractionOptionKind::Target,
-            }),
-        );
-
-        let resolved = resolve_build_string_arg_ast(
-            &AstNode::Identifier {
-                syntax_id: None,
-                name: "target".to_string(),
-            },
-            &scope,
-        );
-        let stored = scope.values.get("target");
-
-        assert_eq!(resolved, Some("target".to_string()));
-        assert!(matches!(
-            stored,
-            Some(BuildExtractionValue::OptionRef(BuildExtractionOptionRef {
-                name,
-                kind: BuildExtractionOptionKind::Target
-            })) if name == "target"
-        ));
-    }
-
-    #[test]
-    fn build_source_extraction_keeps_deferred_artifact_option_config_values() {
-        let source = concat!(
-            "pro[] build(graph: Graph): non = {\n",
-            "    var root = graph.option({ name = \"root\", kind = \"path\", default = \"src/app.fol\" });\n",
-            "    var target = graph.standard_target();\n",
-            "    var optimize = graph.standard_optimize();\n",
-            "    graph.add_exe({ name = \"app\", root = root, target = target, optimize = optimize });\n",
-            "    return graph\n",
-            "}\n",
-        );
-        let (package_root, build_path) = temp_build_package(source);
-        let extracted = extract_build_program_from_source(&build_path, source)
-            .expect("artifact extraction should succeed");
-
-        let artifact = extracted
-            .executable_artifacts
-            .iter()
-            .find(|artifact| artifact.name == "app")
-            .expect("artifact should be recorded");
-
-        assert!(matches!(
-            &artifact.root_module,
-            BuildExtractionConfigValue::OptionRef(BuildExtractionOptionRef { name, kind })
-                if name == "root" && *kind == BuildExtractionOptionKind::Path
-        ));
-        assert!(matches!(
-            artifact.target.as_ref(),
-            Some(BuildExtractionConfigValue::OptionRef(BuildExtractionOptionRef { name, kind }))
-                if name == "target" && *kind == BuildExtractionOptionKind::Target
-        ));
-        assert!(matches!(
-            artifact.optimize.as_ref(),
-            Some(BuildExtractionConfigValue::OptionRef(BuildExtractionOptionRef { name, kind }))
-                if name == "optimize" && *kind == BuildExtractionOptionKind::Optimize
-        ));
-        drop(package_root);
     }
 
     #[test]

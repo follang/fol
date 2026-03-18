@@ -23,7 +23,7 @@ Round 2 slices:
 - [x] Slice 3. Add `BuildStdlibScope` — resolver/typechecker injection surface
 - [x] Slice 4. Wire the build stdlib into the resolver (file-bound isolation)
 - [x] Slice 5. Wire the build stdlib into the typechecker
-- [ ] Slice 6. Replace AST-walking evaluator with real lowered-IR executor
+- [x] Slice 6. Replace AST-walking evaluator with real lowered-IR executor
 - [ ] Slice 7. Expand build API to Zig parity (modules, artifact.link, run args, path utils)
 - [ ] Slice 8. Full control flow in `build.fol` (when, loop, helper routines)
 - [ ] Slice 9. Frontend integration (full pipeline, -D options, named step selection)

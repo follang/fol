@@ -8,6 +8,7 @@ pub mod artifact;
 pub mod codegen;
 pub mod dependency;
 pub mod eval;
+pub mod executor;
 pub mod graph;
 pub mod native;
 pub mod option;
