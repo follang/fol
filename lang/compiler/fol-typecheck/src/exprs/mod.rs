@@ -1,0 +1,611 @@
+pub mod access;
+pub mod bindings;
+pub mod calls;
+pub mod controlflow;
+pub mod helpers;
+pub mod literals;
+pub mod operators;
+pub mod references;
+
+use crate::{
+    decls, CheckedTypeId, RecoverableCallEffect, TypecheckError, TypecheckErrorKind,
+    TypecheckResult, TypedProgram,
+};
+use fol_intrinsics::{select_intrinsic, IntrinsicSurface};
+use fol_parser::ast::{
+    AstNode, CallSurface, ParsedSourceUnitKind,
+};
+use fol_resolver::{ResolvedProgram, ScopeId, SourceUnitId};
+
+use helpers::{
+    binding_kind_for, ensure_assignable, ensure_assignable_target,
+    internal_error, origin_for,
+    unsupported_node_surface,
+};
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum ErrorCallMode {
+    Propagate,
+    Observe,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TypeContext {
+    pub(crate) source_unit_id: SourceUnitId,
+    pub(crate) scope_id: ScopeId,
+    pub(crate) routine_return_type: Option<CheckedTypeId>,
+    pub(crate) routine_error_type: Option<CheckedTypeId>,
+    pub(crate) error_call_mode: ErrorCallMode,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TypedExpr {
+    pub(crate) value_type: Option<CheckedTypeId>,
+    pub(crate) recoverable_effect: Option<RecoverableCallEffect>,
+}
+
+impl TypedExpr {
+    pub(crate) fn none() -> Self {
+        Self {
+            value_type: None,
+            recoverable_effect: None,
+        }
+    }
+
+    pub(crate) fn value(value_type: CheckedTypeId) -> Self {
+        Self {
+            value_type: Some(value_type),
+            recoverable_effect: None,
+        }
+    }
+
+    pub(crate) fn maybe_value(value_type: Option<CheckedTypeId>) -> Self {
+        Self {
+            value_type,
+            recoverable_effect: None,
+        }
+    }
+
+    pub(crate) fn with_optional_effect(mut self, effect: Option<RecoverableCallEffect>) -> Self {
+        self.recoverable_effect = effect;
+        self
+    }
+
+    pub(crate) fn is_never(self, typed: &TypedProgram) -> bool {
+        self.value_type == Some(typed.builtin_types().never)
+    }
+
+    pub(crate) fn required_value(
+        self,
+        message: impl Into<String>,
+    ) -> Result<CheckedTypeId, TypecheckError> {
+        self.value_type
+            .ok_or_else(|| TypecheckError::new(TypecheckErrorKind::InvalidInput, message))
+    }
+}
+
+pub fn type_program(typed: &mut TypedProgram) -> TypecheckResult<()> {
+    let resolved = typed.resolved().clone();
+    let syntax = resolved.syntax().clone();
+    let mut errors = Vec::new();
+
+    for (source_unit_index, source_unit) in syntax.source_units.iter().enumerate() {
+        if source_unit.kind == ParsedSourceUnitKind::Build {
+            continue;
+        }
+        let source_unit_id = SourceUnitId(source_unit_index);
+        let scope_id = match resolved
+            .source_unit(source_unit_id)
+            .map(|unit| unit.scope_id)
+        {
+            Some(scope_id) => scope_id,
+            None => {
+                return Err(vec![internal_error(
+                    "resolved source unit disappeared",
+                    None,
+                )])
+            }
+        };
+        let context = TypeContext {
+            source_unit_id,
+            scope_id,
+            routine_return_type: None,
+            routine_error_type: None,
+            error_call_mode: ErrorCallMode::Propagate,
+        };
+        for item in &source_unit.items {
+            if let Err(error) = type_node(typed, &resolved, context, &item.node) {
+                errors.push(error);
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+pub(crate) fn type_node(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    node: &AstNode,
+) -> Result<TypedExpr, TypecheckError> {
+    type_node_with_expectation(typed, resolved, context, node, None)
+}
+
+pub(crate) fn type_node_with_expectation(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    node: &AstNode,
+    expected_type: Option<CheckedTypeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    match node {
+        AstNode::Comment { .. } => Ok(TypedExpr::none()),
+        AstNode::Commented { node, .. } => {
+            type_node_with_expectation(typed, resolved, context, node, expected_type)
+        }
+        AstNode::BinaryOp { op, left, right } => {
+            operators::type_binary_op(typed, resolved, context, op, left, right)
+        }
+        AstNode::UnaryOp { op, operand } => {
+            operators::type_unary_op(typed, resolved, context, node, op, operand)
+        }
+        AstNode::VarDecl {
+            name,
+            type_hint: _,
+            value,
+            ..
+        }
+        | AstNode::LabDecl {
+            name,
+            type_hint: _,
+            value,
+            ..
+        } => bindings::type_binding_initializer(
+            typed,
+            resolved,
+            context,
+            name,
+            value.as_deref(),
+            binding_kind_for(node),
+        ),
+        AstNode::Literal(literal) => Ok(TypedExpr::value(literals::type_literal(
+            typed,
+            resolved,
+            node,
+            literal,
+            expected_type,
+        )?)),
+        AstNode::ContainerLiteral {
+            container_type,
+            elements,
+        } => literals::type_container_literal(
+            typed,
+            resolved,
+            context,
+            container_type.clone(),
+            elements,
+            expected_type,
+        ),
+        AstNode::RecordInit {
+            syntax_id: _,
+            fields,
+        } => {
+            bindings::type_record_init(typed, resolved, context, fields, expected_type)
+        }
+        AstNode::Identifier { name, syntax_id } => {
+            references::type_identifier_reference(typed, resolved, context, name, *syntax_id)
+        }
+        AstNode::QualifiedIdentifier { path } => {
+            references::type_qualified_identifier_reference(typed, resolved, context, path)
+        }
+        AstNode::AsyncStage => Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "async pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+        )),
+        AstNode::AwaitStage => Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "await pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+        )),
+        AstNode::Spawn { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "coroutine spawn expressions are part of the V3 systems milestone, not the V1 typecheck milestone",
+        )),
+        AstNode::FunDecl {
+            name,
+            syntax_id,
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        }
+        | AstNode::ProDecl {
+            name,
+            syntax_id,
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        }
+        | AstNode::LogDecl {
+            name,
+            syntax_id,
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        } => {
+            if let Some(message) = decls::unsupported_routine_param_surface_message(params) {
+                return Err(unsupported_node_surface(resolved, node, message));
+            }
+            let routine_scope = syntax_id
+                .and_then(|syntax_id| resolved.scope_for_syntax(syntax_id))
+                .ok_or_else(|| {
+                    TypecheckError::new(
+                        TypecheckErrorKind::ScopeResolutionFailed,
+                        format!(
+                            "routine '{name}' has no scope mapping in the resolved program"
+                        ),
+                    )
+                })?;
+            let expected_return_type = return_type
+                .as_ref()
+                .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
+                .transpose()?;
+            let expected_error_type = error_type
+                .as_ref()
+                .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
+                .transpose()?;
+            let routine_context = TypeContext {
+                source_unit_id: context.source_unit_id,
+                scope_id: routine_scope,
+                routine_return_type: expected_return_type,
+                routine_error_type: expected_error_type,
+                error_call_mode: ErrorCallMode::Propagate,
+            };
+            let body_type = type_body(typed, resolved, routine_context, body)?;
+            let _ = type_body(typed, resolved, routine_context, inquiries)?;
+            if let (Some(expected), Some(actual)) = (expected_return_type, body_type.value_type) {
+                ensure_assignable(
+                    typed,
+                    expected,
+                    actual,
+                    format!("routine '{name}' body"),
+                    syntax_id.and_then(|id| origin_for(resolved, id)),
+                )?;
+            }
+            if let (Some(syntax_id), Some(type_id)) =
+                (syntax_id, expected_return_type.or(body_type.value_type))
+            {
+                typed.record_node_type(*syntax_id, context.source_unit_id, type_id)?;
+            }
+            Ok(body_type)
+        }
+        AstNode::AnonymousFun {
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        }
+        | AstNode::AnonymousPro {
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        }
+        | AstNode::AnonymousLog {
+            params,
+            return_type,
+            error_type,
+            body,
+            inquiries,
+            ..
+        } => {
+            if let Some(message) = decls::unsupported_routine_param_surface_message(params) {
+                return Err(unsupported_node_surface(resolved, node, message));
+            }
+            for param in params {
+                let _ = decls::lower_type(typed, resolved, context.scope_id, &param.param_type)?;
+            }
+            let expected_return_type = return_type
+                .as_ref()
+                .map(|ty| decls::lower_type(typed, resolved, context.scope_id, ty))
+                .transpose()?;
+            let expected_error_type = error_type
+                .as_ref()
+                .map(|ty| decls::lower_type(typed, resolved, context.scope_id, ty))
+                .transpose()?;
+            let routine_context = TypeContext {
+                source_unit_id: context.source_unit_id,
+                scope_id: context.scope_id,
+                routine_return_type: expected_return_type,
+                routine_error_type: expected_error_type,
+                error_call_mode: ErrorCallMode::Propagate,
+            };
+            let body_type = type_body(typed, resolved, routine_context, body)?;
+            let _ = type_body(typed, resolved, routine_context, inquiries)?;
+            Ok(TypedExpr::maybe_value(expected_return_type.or(body_type.value_type))
+                .with_optional_effect(body_type.recoverable_effect))
+        }
+        AstNode::Block { statements } => type_body(typed, resolved, context, statements),
+        AstNode::Program { declarations } => type_body(typed, resolved, context, declarations),
+        AstNode::When {
+            expr,
+            cases,
+            default,
+        } => controlflow::type_when(typed, resolved, context, expr, cases, default.as_deref()),
+        AstNode::Loop { condition, body } => {
+            controlflow::type_loop(typed, resolved, context, condition, body)
+        }
+        AstNode::Assignment { target, value } => {
+            ensure_assignable_target(target)?;
+            let expected = type_node(typed, resolved, context, target)?.required_value(
+                "assignment target does not have a type",
+            )?;
+            let actual =
+                type_node_with_expectation(typed, resolved, context, value, Some(expected))?
+                    .required_value("assignment value does not have a type")?;
+            ensure_assignable(
+                typed,
+                expected,
+                actual,
+                "assignment".to_string(),
+                None,
+            )?;
+            Ok(TypedExpr::value(expected))
+        }
+        AstNode::FunctionCall {
+            surface: CallSurface::DotIntrinsic,
+            name,
+            args,
+            syntax_id,
+            ..
+        } => calls::type_dot_intrinsic_call(
+            typed,
+            resolved,
+            context,
+            name,
+            args,
+            *syntax_id,
+            expected_type,
+        ),
+        AstNode::FunctionCall {
+            name,
+            args,
+            syntax_id,
+            ..
+        } if name == "report" => calls::type_report_call(typed, resolved, context, args, *syntax_id),
+        AstNode::FunctionCall {
+            name,
+            args,
+            syntax_id,
+            ..
+        } => {
+            if let Ok(entry) = select_intrinsic(IntrinsicSurface::KeywordCall, name) {
+                calls::type_keyword_intrinsic_call(
+                    typed,
+                    resolved,
+                    context,
+                    entry,
+                    args,
+                    *syntax_id,
+                )
+            } else {
+                calls::type_function_call(typed, resolved, context, name, args, *syntax_id)
+            }
+        }
+        AstNode::QualifiedFunctionCall { path, args } => {
+            calls::type_qualified_function_call(typed, resolved, context, path, args)
+        }
+        AstNode::MethodCall { object, method, args } => {
+            calls::type_method_call(typed, resolved, context, node, object, method, args)
+        }
+        AstNode::FieldAccess { object, field } => {
+            access::type_field_access(typed, resolved, context, object, field, expected_type)
+        }
+        AstNode::ChannelAccess { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "channel endpoint access is part of the V3 systems milestone, not the V1 typecheck milestone",
+        )),
+        AstNode::IndexAccess { container, index } => {
+            access::type_index_access(typed, resolved, context, container, index)
+        }
+        AstNode::SliceAccess {
+            container,
+            start,
+            end,
+            ..
+        } => access::type_slice_access(
+            typed,
+            resolved,
+            context,
+            container,
+            start.as_deref(),
+            end.as_deref(),
+        ),
+        AstNode::PatternAccess { .. } => Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "pattern access is not part of the V1 typecheck milestone",
+        )),
+        AstNode::Rolling { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "rolling/comprehension expressions are not part of the V1 typecheck milestone",
+        )),
+        AstNode::Range { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "range expressions are not part of the V1 typecheck milestone",
+        )),
+        AstNode::Select { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "select/channel semantics are part of the V3 systems milestone, not the V1 typecheck milestone",
+        )),
+        AstNode::Return { value } => {
+            controlflow::type_return(typed, resolved, context, value.as_deref())
+        }
+        AstNode::Break => Ok(TypedExpr::value(typed.builtin_types().never)),
+        AstNode::Yield { .. } => Err(TypecheckError::new(
+            TypecheckErrorKind::Unsupported,
+            "yield typing is not part of the V1 typecheck milestone",
+        )),
+        _ => {
+            let debug_repr = format!("{node:?}");
+            let variant = debug_repr
+                .split_once(|c: char| !c.is_alphanumeric() && c != '_')
+                .map(|(v, _)| v)
+                .unwrap_or(&debug_repr);
+            eprintln!(
+                "[typecheck] unknown AST node '{variant}' reached catch-all — treating as None (UnsupportedSyntax)"
+            );
+            for child in node.children() {
+                let _ = type_node(typed, resolved, context, child)?;
+            }
+            Ok(TypedExpr::none())
+        }
+    }
+}
+
+pub(crate) fn type_body(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    nodes: &[AstNode],
+) -> Result<TypedExpr, TypecheckError> {
+    let mut final_expr = TypedExpr::none();
+    for node in nodes {
+        let node_expr = type_node(typed, resolved, context, node)?;
+        if node_expr.value_type.is_some() {
+            final_expr = node_expr;
+            if node_expr.is_never(typed) {
+                return Ok(final_expr);
+            }
+        }
+    }
+    Ok(final_expr)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::literals::type_literal_simple;
+    use super::helpers::{expected_nil_shell_type, unwrap_shell_result_type};
+    use crate::{BuiltinType, CheckedType, TypedProgram};
+    use fol_parser::ast::{AstParser, Literal};
+    use fol_resolver::resolve_package;
+    use fol_stream::FileStream;
+
+    fn typed_fixture_program() -> TypedProgram {
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
+        let mut stream =
+            FileStream::from_file(fixture_path).expect("Should open expression fixture");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("Expression fixture should parse");
+        let resolved = resolve_package(syntax).expect("Expression fixture should resolve");
+        TypedProgram::from_resolved(resolved)
+    }
+
+    #[test]
+    fn literal_typing_maps_v1_scalar_literals_to_builtin_types() {
+        let mut typed = typed_fixture_program();
+
+        assert_eq!(
+            typed
+                .type_table()
+                .get(type_literal_simple(&mut typed, &Literal::Integer(1), None).unwrap()),
+            Some(&crate::CheckedType::Builtin(BuiltinType::Int))
+        );
+        assert_eq!(
+            typed
+                .type_table()
+                .get(type_literal_simple(&mut typed, &Literal::String("ok".to_string()), None).unwrap()),
+            Some(&crate::CheckedType::Builtin(BuiltinType::Str))
+        );
+    }
+
+    #[test]
+    fn nil_contract_only_accepts_optional_and_error_expected_shells() {
+        let mut typed = typed_fixture_program();
+        let int_type = typed.builtin_types().int;
+        let str_type = typed.builtin_types().str_;
+        let optional_str = typed
+            .type_table_mut()
+            .intern(CheckedType::Optional { inner: str_type });
+        let bare_error = typed
+            .type_table_mut()
+            .intern(CheckedType::Error { inner: None });
+        let typed_error = typed.type_table_mut().intern(CheckedType::Error {
+            inner: Some(str_type),
+        });
+
+        assert_eq!(expected_nil_shell_type(&typed, None).unwrap(), None);
+        assert_eq!(
+            expected_nil_shell_type(&typed, Some(optional_str)).unwrap(),
+            Some(optional_str)
+        );
+        assert_eq!(
+            expected_nil_shell_type(&typed, Some(bare_error)).unwrap(),
+            Some(bare_error)
+        );
+        assert_eq!(
+            expected_nil_shell_type(&typed, Some(typed_error)).unwrap(),
+            Some(typed_error)
+        );
+        assert_eq!(
+            expected_nil_shell_type(&typed, Some(int_type)).unwrap(),
+            None
+        );
+    }
+
+    #[test]
+    fn unwrap_contract_only_accepts_optional_and_typed_error_shells() {
+        let mut typed = typed_fixture_program();
+        let str_type = typed.builtin_types().str_;
+        let bool_type = typed.builtin_types().bool_;
+        let optional_str = typed
+            .type_table_mut()
+            .intern(CheckedType::Optional { inner: str_type });
+        let bare_error = typed
+            .type_table_mut()
+            .intern(CheckedType::Error { inner: None });
+        let typed_error = typed.type_table_mut().intern(CheckedType::Error {
+            inner: Some(bool_type),
+        });
+
+        assert_eq!(
+            unwrap_shell_result_type(&typed, optional_str).unwrap(),
+            Some(str_type)
+        );
+        assert_eq!(
+            unwrap_shell_result_type(&typed, typed_error).unwrap(),
+            Some(bool_type)
+        );
+        assert_eq!(unwrap_shell_result_type(&typed, bare_error).unwrap(), None);
+        assert_eq!(
+            unwrap_shell_result_type(&typed, typed.builtin_types().int).unwrap(),
+            None
+        );
+    }
+}

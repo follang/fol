@@ -301,8 +301,12 @@ mod declaration_option_parsers;
 mod declaration_parsers;
 #[path = "parser_parts/expression_atoms_and_literal_lowering.rs"]
 mod expression_atoms_and_literal_lowering;
-#[path = "parser_parts/expression_parsers.rs"]
-mod expression_parsers;
+#[path = "parser_parts/binary_expression_parsers.rs"]
+mod binary_expression_parsers;
+#[path = "parser_parts/binding_declaration_parsers.rs"]
+mod binding_declaration_parsers;
+#[path = "parser_parts/call_expression_parsers.rs"]
+mod call_expression_parsers;
 #[path = "parser_parts/flow_body_parsers.rs"]
 mod flow_body_parsers;
 #[path = "parser_parts/grouped_binding_parsers.rs"]
@@ -321,8 +325,12 @@ mod pipe_lambda_parsers;
 mod postfix_expression_parsers;
 #[path = "parser_parts/primary_expression_parsers.rs"]
 mod primary_expression_parsers;
-#[path = "parser_parts/program_and_bindings.rs"]
-mod program_and_bindings;
+#[path = "parser_parts/match_and_anonymous_parsers.rs"]
+mod match_and_anonymous_parsers;
+#[path = "parser_parts/lookahead_and_assignment_helpers.rs"]
+mod lookahead_and_assignment_helpers;
+#[path = "parser_parts/program_parsing.rs"]
+mod program_parsing;
 #[path = "parser_parts/rolling_expression_parsers.rs"]
 mod rolling_expression_parsers;
 #[path = "parser_parts/routine_body_parsers.rs"]
@@ -331,8 +339,10 @@ mod routine_body_parsers;
 mod routine_capture_parsers;
 #[path = "parser_parts/routine_declaration_parsers.rs"]
 mod routine_declaration_parsers;
-#[path = "parser_parts/routine_headers_and_type_lowering.rs"]
-mod routine_headers_and_type_lowering;
+#[path = "parser_parts/routine_header_parsers.rs"]
+mod routine_header_parsers;
+#[path = "parser_parts/type_lowering_parsers.rs"]
+mod type_lowering_parsers;
 #[path = "parser_parts/segment_declaration_parsers.rs"]
 mod segment_declaration_parsers;
 #[path = "parser_parts/source_kind_type_parsers.rs"]

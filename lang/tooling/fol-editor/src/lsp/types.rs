@@ -1,0 +1,227 @@
+use crate::{LspDiagnostic, LspPosition, LspRange};
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(untagged)]
+pub enum JsonRpcId {
+    Number(i64),
+    String(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct JsonRpcRequest {
+    pub jsonrpc: String,
+    pub id: JsonRpcId,
+    pub method: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub params: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct JsonRpcNotification {
+    pub jsonrpc: String,
+    pub method: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub params: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct JsonRpcResponse {
+    pub jsonrpc: String,
+    pub id: JsonRpcId,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<JsonRpcError>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct JsonRpcError {
+    pub code: i64,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspServerInfo {
+    pub name: String,
+    pub version: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspTextDocumentSyncOptions {
+    pub open_close: bool,
+    pub change: u8,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspServerCapabilities {
+    pub text_document_sync: LspTextDocumentSyncOptions,
+    pub hover_provider: bool,
+    pub definition_provider: bool,
+    pub document_symbol_provider: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion_provider: Option<LspCompletionOptions>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionOptions {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub trigger_characters: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspInitializeParams {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub root_uri: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub root_path: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspInitializeResult {
+    pub capabilities: LspServerCapabilities,
+    pub server_info: LspServerInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspTextDocumentItem {
+    pub uri: String,
+    pub language_id: String,
+    pub version: i32,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspVersionedTextDocumentIdentifier {
+    pub uri: String,
+    pub version: i32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspTextDocumentContentChangeEvent {
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspDidOpenTextDocumentParams {
+    pub text_document: LspTextDocumentItem,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspDidChangeTextDocumentParams {
+    pub text_document: LspVersionedTextDocumentIdentifier,
+    pub content_changes: Vec<LspTextDocumentContentChangeEvent>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspDidCloseTextDocumentParams {
+    pub text_document: LspVersionedTextDocumentIdentifier,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspPublishDiagnosticsParams {
+    pub uri: String,
+    pub diagnostics: Vec<LspDiagnostic>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspTextDocumentIdentifier {
+    pub uri: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspHoverParams {
+    pub text_document: LspTextDocumentIdentifier,
+    pub position: LspPosition,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspDefinitionParams {
+    pub text_document: LspTextDocumentIdentifier,
+    pub position: LspPosition,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspDocumentSymbolParams {
+    pub text_document: LspTextDocumentIdentifier,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionContext {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_kind: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_character: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionParams {
+    pub text_document: LspTextDocumentIdentifier,
+    pub position: LspPosition,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<LspCompletionContext>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionList {
+    pub is_incomplete: bool,
+    pub items: Vec<LspCompletionItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionItem {
+    pub label: String,
+    pub kind: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub insert_text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct EditorCompletionItem {
+    pub label: String,
+    pub kind: u8,
+    pub detail: Option<String>,
+    pub insert_text: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspHover {
+    pub contents: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<LspRange>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspDocumentSymbol {
+    pub name: String,
+    pub kind: u8,
+    pub range: LspRange,
+    pub selection_range: LspRange,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub children: Vec<LspDocumentSymbol>,
+}

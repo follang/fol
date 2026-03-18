@@ -1,0 +1,561 @@
+use crate::api::{
+    CopyFileRequest, DependencyRequest, ExecutableRequest, InstallDirRequest, InstallFileRequest,
+    SharedLibraryRequest, StaticLibraryRequest, TestArtifactRequest, WriteFileRequest,
+};
+use crate::codegen::{CodegenRequest, SystemToolRequest};
+use crate::eval::{
+    BuildEvaluationError, BuildEvaluationErrorKind, BuildEvaluationInstallArtifactRequest,
+    BuildEvaluationOperation, BuildEvaluationOperationKind,
+    BuildEvaluationRunRequest, BuildEvaluationStepRequest,
+};
+use crate::runtime::{BuildRuntimeGeneratedFile, BuildRuntimeGeneratedFileKind};
+use fol_parser::ast::AstNode;
+
+use super::core::{BuildBodyExecutor, is_valid_identifier};
+use super::types::{ExecArtifact, ExecValue};
+use super::option_helpers::{
+    build_option_kind, option_exec_value, parse_option_default, parse_option_kind,
+};
+
+impl BuildBodyExecutor {
+    pub(super) fn eval_graph_method(
+        &mut self,
+        method: &str,
+        args: &[AstNode],
+    ) -> Result<Option<ExecValue>, BuildEvaluationError> {
+        let origin = Some(fol_parser::ast::SyntaxOrigin {
+            file: Some(self.build_path_str.clone()),
+            line: 1,
+            column: 1,
+            length: method.len(),
+        });
+
+        match method {
+            "standard_target" => {
+                let name = match args {
+                    [] => "target".to_string(),
+                    [arg] => self
+                        .resolve_string(arg)
+                        .ok_or_else(|| self.unsupported(method))?,
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::StandardTarget(
+                        crate::api::StandardTargetRequest::new(name.clone()),
+                    ),
+                });
+                Ok(Some(ExecValue::Target(name)))
+            }
+
+            "standard_optimize" => {
+                let name = match args {
+                    [] => "optimize".to_string(),
+                    [arg] => self
+                        .resolve_string(arg)
+                        .ok_or_else(|| self.unsupported(method))?,
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::StandardOptimize(
+                        crate::api::StandardOptimizeRequest::new(name.clone()),
+                    ),
+                });
+                Ok(Some(ExecValue::Optimize(name)))
+            }
+
+            "option" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let name = self
+                    .resolve_field_string(fields, "name")
+                    .ok_or_else(|| self.unsupported(method))?;
+                if !is_valid_identifier(&name) {
+                    return Err(BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        format!("invalid option name '{}': names must match [a-z][a-z0-9_-]*", name),
+                    ));
+                }
+                let kind_str = self
+                    .resolve_field_string(fields, "kind")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let kind = parse_option_kind(&kind_str).ok_or_else(|| self.unsupported(method))?;
+                let default = parse_option_default(kind, fields, |f| self.resolve_string(f));
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::Option(crate::api::UserOptionRequest {
+                        name: name.clone(),
+                        kind: build_option_kind(kind),
+                        default,
+                    }),
+                });
+                Ok(Some(option_exec_value(kind, name)))
+            }
+
+            "add_exe" | "add_static_lib" | "add_shared_lib" | "add_test" => {
+                self.eval_artifact_method(method, args, origin)
+            }
+
+            "step" => {
+                let name = args
+                    .first()
+                    .and_then(|a| self.resolve_string(a))
+                    .ok_or_else(|| self.unsupported(method))?;
+                if !is_valid_identifier(&name) {
+                    return Err(BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        format!("invalid step name '{}': names must match [a-z][a-z0-9_-]*", name),
+                    ));
+                }
+                let depends_on = args
+                    .iter()
+                    .skip(1)
+                    .filter_map(|a| self.resolve_step_ref(a))
+                    .collect::<Vec<_>>();
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::Step(BuildEvaluationStepRequest {
+                        name: name.clone(),
+                        depends_on,
+                    }),
+                });
+                Ok(Some(ExecValue::Step { name }))
+            }
+
+            "add_run" => {
+                let (step_name, artifact_name) = match args {
+                    [artifact_arg] => {
+                        let artifact = self
+                            .resolve_artifact_ref(artifact_arg)
+                            .ok_or_else(|| self.unsupported(method))?;
+                        let step_name = if self.next_run_index == 0 {
+                            "run".to_string()
+                        } else {
+                            format!("run-{}", artifact.name)
+                        };
+                        self.next_run_index += 1;
+                        (step_name, artifact.name.clone())
+                    }
+                    [name_arg, artifact_arg, ..] => {
+                        let step_name = self
+                            .resolve_string(name_arg)
+                            .ok_or_else(|| self.unsupported(method))?;
+                        let artifact = self
+                            .resolve_artifact_ref(artifact_arg)
+                            .ok_or_else(|| self.unsupported(method))?;
+                        (step_name, artifact.name.clone())
+                    }
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output
+                    .run_steps
+                    .insert(step_name.clone(), artifact_name.clone());
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::AddRun(BuildEvaluationRunRequest {
+                        name: step_name.clone(),
+                        artifact: artifact_name,
+                        depends_on: Vec::new(),
+                    }),
+                });
+                Ok(Some(ExecValue::Run { name: step_name }))
+            }
+
+            "install" => {
+                let (step_name, artifact_name) = match args {
+                    [artifact_arg] => {
+                        let artifact = self
+                            .resolve_artifact_ref(artifact_arg)
+                            .ok_or_else(|| self.unsupported(method))?;
+                        let step_name = if self.next_install_index == 0 {
+                            "install".to_string()
+                        } else {
+                            format!("install-{}", artifact.name)
+                        };
+                        self.next_install_index += 1;
+                        (step_name, artifact.name.clone())
+                    }
+                    [name_arg, artifact_arg] => {
+                        let step_name = self
+                            .resolve_string(name_arg)
+                            .ok_or_else(|| self.unsupported(method))?;
+                        let artifact = self
+                            .resolve_artifact_ref(artifact_arg)
+                            .ok_or_else(|| self.unsupported(method))?;
+                        (step_name, artifact.name.clone())
+                    }
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::InstallArtifact(
+                        BuildEvaluationInstallArtifactRequest {
+                            name: step_name.clone(),
+                            artifact: artifact_name,
+                            depends_on: Vec::new(),
+                        },
+                    ),
+                });
+                Ok(Some(ExecValue::Install { name: step_name }))
+            }
+
+            "install_file" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let name = self
+                    .resolve_field_string(fields, "name")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let path = self
+                    .resolve_field_string(fields, "path")
+                    .or_else(|| self.resolve_field_string(fields, "source"))
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::InstallFile(InstallFileRequest {
+                        name: name.clone(),
+                        path,
+                        depends_on: Vec::new(),
+                    }),
+                });
+                Ok(Some(ExecValue::Install { name }))
+            }
+
+            "install_dir" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let name = self
+                    .resolve_field_string(fields, "name")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let path = self
+                    .resolve_field_string(fields, "path")
+                    .or_else(|| self.resolve_field_string(fields, "source"))
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::InstallDir(InstallDirRequest {
+                        name: name.clone(),
+                        path,
+                        depends_on: Vec::new(),
+                    }),
+                });
+                Ok(Some(ExecValue::Install { name }))
+            }
+
+            "write_file" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let name = self
+                    .resolve_field_string(fields, "name")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let path = self
+                    .resolve_field_string(fields, "path")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let contents = self
+                    .resolve_field_string(fields, "contents")
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::WriteFile(WriteFileRequest {
+                        name: name.clone(),
+                        path: path.clone(),
+                        contents,
+                    }),
+                });
+                let gen = BuildRuntimeGeneratedFile::new(
+                    name.clone(),
+                    path.clone(),
+                    BuildRuntimeGeneratedFileKind::Write,
+                );
+                self.output.generated_files.push(gen);
+                Ok(Some(ExecValue::GeneratedFile {
+                    name,
+                    path,
+                    kind: BuildRuntimeGeneratedFileKind::Write,
+                }))
+            }
+
+            "copy_file" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let name = self
+                    .resolve_field_string(fields, "name")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let source_path = self
+                    .resolve_field_string(fields, "source")
+                    .or_else(|| self.resolve_field_string(fields, "source_path"))
+                    .ok_or_else(|| self.unsupported(method))?;
+                let destination_path = self
+                    .resolve_field_string(fields, "path")
+                    .or_else(|| self.resolve_field_string(fields, "destination"))
+                    .or_else(|| self.resolve_field_string(fields, "destination_path"))
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::CopyFile(CopyFileRequest {
+                        name: name.clone(),
+                        source_path,
+                        destination_path: destination_path.clone(),
+                    }),
+                });
+                let gen = BuildRuntimeGeneratedFile::new(
+                    name.clone(),
+                    destination_path.clone(),
+                    BuildRuntimeGeneratedFileKind::Copy,
+                );
+                self.output.generated_files.push(gen);
+                Ok(Some(ExecValue::GeneratedFile {
+                    name,
+                    path: destination_path,
+                    kind: BuildRuntimeGeneratedFileKind::Copy,
+                }))
+            }
+
+            "add_system_tool" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let tool = self
+                    .resolve_field_string(fields, "tool")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let output = self
+                    .resolve_field_string(fields, "output")
+                    .or_else(|| self.resolve_field_string(fields, "path"))
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::SystemTool(SystemToolRequest {
+                        tool: tool.clone(),
+                        args: Vec::new(),
+                        outputs: vec![output.clone()],
+                    }),
+                });
+                let gen = BuildRuntimeGeneratedFile::new(
+                    tool.clone(),
+                    output.clone(),
+                    BuildRuntimeGeneratedFileKind::ToolOutput,
+                );
+                self.output.generated_files.push(gen);
+                Ok(Some(ExecValue::GeneratedFile {
+                    name: output.clone(),
+                    path: output,
+                    kind: BuildRuntimeGeneratedFileKind::ToolOutput,
+                }))
+            }
+
+            "add_codegen" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let kind_str = self
+                    .resolve_field_string(fields, "kind")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let input = self
+                    .resolve_field_string(fields, "input")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let output = self
+                    .resolve_field_string(fields, "output")
+                    .or_else(|| self.resolve_field_string(fields, "path"))
+                    .ok_or_else(|| self.unsupported(method))?;
+                let codegen_kind = match kind_str.as_str() {
+                    "fol" | "fol-to-fol" => crate::CodegenKind::FolToFol,
+                    "schema" => crate::CodegenKind::Schema,
+                    "asset" | "asset-preprocess" => crate::CodegenKind::AssetPreprocess,
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::Codegen(CodegenRequest {
+                        kind: codegen_kind,
+                        input,
+                        output: output.clone(),
+                    }),
+                });
+                let gen = BuildRuntimeGeneratedFile::new(
+                    output.clone(),
+                    output.clone(),
+                    BuildRuntimeGeneratedFileKind::CodegenOutput,
+                );
+                self.output.generated_files.push(gen);
+                Ok(Some(ExecValue::GeneratedFile {
+                    name: output.clone(),
+                    path: output,
+                    kind: BuildRuntimeGeneratedFileKind::CodegenOutput,
+                }))
+            }
+
+            "dependency" => {
+                let (alias, package, evaluation_mode) = if let [AstNode::RecordInit {
+                    fields, ..
+                }] = args
+                {
+                    let alias = self
+                        .resolve_field_string(fields, "alias")
+                        .ok_or_else(|| self.unsupported(method))?;
+                    let package = self
+                        .resolve_field_string(fields, "package")
+                        .ok_or_else(|| self.unsupported(method))?;
+                    let mode = self
+                        .resolve_field_string(fields, "mode")
+                        .and_then(|v| crate::DependencyBuildEvaluationMode::parse(v.as_str()));
+                    (alias, package, mode)
+                } else if let [alias_arg, package_arg] = args {
+                    let alias = self
+                        .resolve_string(alias_arg)
+                        .ok_or_else(|| self.unsupported(method))?;
+                    let package = self
+                        .resolve_string(package_arg)
+                        .ok_or_else(|| self.unsupported(method))?;
+                    (alias, package, None)
+                } else {
+                    return Err(self.unsupported(method));
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
+                        alias: alias.clone(),
+                        package,
+                        evaluation_mode,
+                        surface: None,
+                    }),
+                });
+                Ok(Some(ExecValue::Dependency { alias }))
+            }
+
+            "add_module" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let name = self
+                    .resolve_field_string(fields, "name")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let root_module = self
+                    .resolve_field_string(fields, "root")
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::AddModule(crate::api::AddModuleRequest {
+                        name: name.clone(),
+                        root_module,
+                    }),
+                });
+                Ok(Some(ExecValue::Module { name }))
+            }
+
+            "path_from_root" => {
+                let subpath = match args {
+                    [arg] => self.resolve_string(arg).unwrap_or_default(),
+                    _ => String::new(),
+                };
+                Ok(Some(ExecValue::Str(format!("$root/{subpath}"))))
+            }
+
+            "build_root" => Ok(Some(ExecValue::Str("$root".to_string()))),
+
+            "install_prefix" => Ok(Some(ExecValue::Str("$prefix".to_string()))),
+
+            _ => Err(self.unsupported(method)),
+        }
+    }
+
+    pub(super) fn eval_artifact_method(
+        &mut self,
+        method: &str,
+        args: &[AstNode],
+        origin: Option<fol_parser::ast::SyntaxOrigin>,
+    ) -> Result<Option<ExecValue>, BuildEvaluationError> {
+        let (name, root_module, target, optimize) = match args {
+            [AstNode::RecordInit { fields, .. }] => {
+                let name = self
+                    .resolve_field_string(fields, "name")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let root_module = fields
+                    .iter()
+                    .find(|f| f.name == "root" || f.name == "root_module")
+                    .and_then(|f| self.parse_config_value(&f.value, &["path", "string", "target"]))
+                    .ok_or_else(|| self.unsupported(method))?;
+                let target = fields
+                    .iter()
+                    .find(|f| f.name == "target")
+                    .and_then(|f| self.parse_config_value(&f.value, &["target", "string"]));
+                let optimize = fields
+                    .iter()
+                    .find(|f| f.name == "optimize")
+                    .and_then(|f| self.parse_config_value(&f.value, &["optimize", "string"]));
+                (name, root_module, target, optimize)
+            }
+            [name_arg, root_arg] => {
+                let name = self
+                    .resolve_string(name_arg)
+                    .ok_or_else(|| self.unsupported(method))?;
+                let root_module = self
+                    .parse_config_value(root_arg, &["path", "string"])
+                    .ok_or_else(|| self.unsupported(method))?;
+                (name, root_module, None, None)
+            }
+            _ => return Err(self.unsupported(method)),
+        };
+
+        let artifact = ExecArtifact {
+            name: name.clone(),
+            root_module: root_module.clone(),
+            target: target.clone(),
+            optimize: optimize.clone(),
+        };
+        let root_placeholder = root_module.placeholder_string();
+
+        match method {
+            "add_exe" => {
+                self.output.executable_artifacts.push(artifact.clone());
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::AddExe(ExecutableRequest {
+                        name: name.clone(),
+                        root_module: root_placeholder,
+                    }),
+                });
+            }
+            "add_static_lib" => {
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::AddStaticLib(StaticLibraryRequest {
+                        name: name.clone(),
+                        root_module: root_placeholder,
+                    }),
+                });
+            }
+            "add_shared_lib" => {
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::AddSharedLib(SharedLibraryRequest {
+                        name: name.clone(),
+                        root_module: root_placeholder,
+                    }),
+                });
+            }
+            "add_test" => {
+                self.output.test_artifacts.push(artifact.clone());
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::AddTest(TestArtifactRequest {
+                        name: name.clone(),
+                        root_module: root_placeholder,
+                    }),
+                });
+            }
+            _ => {
+                return Err(BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::Internal,
+                    format!("eval_artifact_method called with unexpected method '{method}'"),
+                ));
+            }
+        }
+
+        Ok(Some(ExecValue::Artifact(artifact)))
+    }
+}

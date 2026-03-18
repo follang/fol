@@ -1,0 +1,382 @@
+use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root};
+use super::super::{
+    completion_helpers::completion_context, completion_helpers::CompletionContext,
+    EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCompletionContext,
+    LspCompletionList, LspCompletionParams, LspDefinitionParams,
+    LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
+    LspDidOpenTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
+    LspInitializeResult, LspLocation, LspPosition, LspPublishDiagnosticsParams,
+    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
+    LspVersionedTextDocumentIdentifier,
+};
+use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
+use std::fs;
+use std::path::PathBuf;
+
+
+#[test]
+fn lsp_server_handles_initialize_shutdown_and_exit() {
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    let initialize = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(1),
+            method: "initialize".to_string(),
+            params: Some(serde_json::json!({})),
+        })
+        .unwrap()
+        .unwrap();
+    let result: LspInitializeResult =
+        serde_json::from_value(initialize.result.unwrap()).unwrap();
+    assert!(result.capabilities.text_document_sync.open_close);
+    let completion_provider = result
+        .capabilities
+        .completion_provider
+        .expect("completion provider should be advertised");
+    assert_eq!(
+        completion_provider.trigger_characters,
+        vec![".".to_string()]
+    );
+
+    let shutdown = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(2),
+            method: "shutdown".to_string(),
+            params: None,
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(shutdown.id, JsonRpcId::Number(2));
+    assert!(server.session.shutdown_requested);
+
+    let exit = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "exit".to_string(),
+            params: None,
+        })
+        .unwrap();
+    assert!(exit.is_empty());
+}
+
+#[test]
+fn completion_context_detects_type_positions() {
+    let uri =
+        EditorDocumentUri::from_file_path(PathBuf::from("/tmp/type_context.fol")).unwrap();
+    let document = EditorDocument::new(
+        uri,
+        1,
+        "fun[] main(total: int): int = {\n    var value: \n    return 0\n}\n".to_string(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        completion_context(
+            &document,
+            LspPosition {
+                line: 1,
+                character: 15,
+            }
+        ),
+        CompletionContext::TypePosition
+    );
+}
+
+#[test]
+fn completion_context_detects_qualified_paths() {
+    let uri =
+        EditorDocumentUri::from_file_path(PathBuf::from("/tmp/qualified_context.fol")).unwrap();
+    let document = EditorDocument::new(
+        uri,
+        1,
+        "fun[] main(): int = {\n    return api::\n}\n".to_string(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        completion_context(
+            &document,
+            LspPosition {
+                line: 1,
+                character: 16,
+            }
+        ),
+        CompletionContext::QualifiedPath {
+            qualifier: "api".to_string(),
+        }
+    );
+}
+
+#[test]
+fn completion_context_detects_dot_triggers() {
+    let uri = EditorDocumentUri::from_file_path(PathBuf::from("/tmp/dot_context.fol")).unwrap();
+    let document = EditorDocument::new(
+        uri,
+        1,
+        "fun[] main(): int = {\n    return .\n}\n".to_string(),
+    )
+    .unwrap();
+
+    assert_eq!(
+        completion_context(
+            &document,
+            LspPosition {
+                line: 1,
+                character: 12,
+            }
+        ),
+        CompletionContext::DotTrigger
+    );
+}
+
+#[test]
+fn lsp_server_tracks_open_change_and_close_document_lifecycle() {
+    let (root, uri) = sample_package_root("lifecycle");
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    let open = open_document(
+        &mut server,
+        uri.clone(),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    );
+    assert_eq!(server.session.documents.len(), 1);
+    assert_eq!(server.session.mappings.len(), 1);
+    assert!(open[0].diagnostics.is_empty());
+
+    let changed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        text: "fun[] main(): int = {\n    return 7\n}\n".to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert_eq!(
+        server
+            .session
+            .documents
+            .get(&crate::EditorDocumentUri::parse(&uri).unwrap())
+            .unwrap()
+            .version,
+        2
+    );
+    assert!(changed[0].diagnostics.is_empty());
+
+    let closed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didClose".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidCloseTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert!(server.session.documents.is_empty());
+    assert!(server.session.mappings.is_empty());
+    assert!(closed[0].diagnostics.is_empty());
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_maps_document_roots_and_surfaces_resolver_diagnostics() {
+    let (root, uri) = sample_package_root("resolver_diag");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return missing_value\n}\n",
+    )
+    .unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(
+        &mut server,
+        uri,
+        "fun[] main(): int = {\n    return missing_value\n}\n",
+    );
+
+    assert_eq!(server.session.mappings.len(), 1);
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0].diagnostics[0].code, "R1003");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_surfaces_parser_diagnostics_from_open_documents() {
+    let (root, uri) = sample_package_root("parser_diag");
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics =
+        open_document(&mut server, uri, "fun[] main(: int = {\n    return 0\n}\n");
+
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0].diagnostics[0].code, "P1001");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_surfaces_package_loading_diagnostics_from_open_documents() {
+    let (root, uri) = sample_package_root("package_diag");
+    fs::remove_file(root.join("build.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics =
+        open_document(&mut server, uri, "fun[] main(): int = {\n    return 0\n}\n");
+
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(diagnostics[0].diagnostics[0].code, "K1001");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_does_not_report_formal_package_root_errors_for_open_entry_packages() {
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../..")
+        .join("xtra/logtiny");
+    let file = root.join("src/lib.fol");
+    let uri = format!("file://{}", file.display());
+    let text = fs::read_to_string(&file).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, &text);
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0]
+        .diagnostics
+        .iter()
+        .all(|diagnostic| diagnostic.code != "K1001"));
+}
+
+#[test]
+fn lsp_server_filters_build_file_diagnostics_out_of_source_buffers() {
+    let root = temp_root("build_diag_filter");
+    let src = root.join("src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(
+        root.join("build.fol"),
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+    )
+    .unwrap();
+    let file = src.join("main.fol");
+    fs::write(&file, "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+    let uri = format!("file://{}", file.display());
+    let text = fs::read_to_string(&file).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, &text);
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0].diagnostics.is_empty());
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_surfaces_typecheck_diagnostics_from_open_documents() {
+    let (root, uri) = sample_package_root("typecheck_diag");
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(
+        &mut server,
+        uri,
+        "fun[] main(): int = {\n    return \"nope\"\n}\n",
+    );
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0].diagnostics[0].code.starts_with('T'));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_handles_hover_definition_and_document_symbols() {
+    let (root, uri) = sample_package_root("nav");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(3),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 4,
+                        character: 11,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+    assert!(hover.unwrap().contents.contains("helper"));
+
+    let definition = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(4),
+            method: "textDocument/definition".to_string(),
+            params: Some(
+                serde_json::to_value(LspDefinitionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 4,
+                        character: 11,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let definition: Option<LspLocation> =
+        serde_json::from_value(definition.result.unwrap()).unwrap();
+    assert_eq!(definition.unwrap().range.start.line, 0);
+
+    let symbols = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(5),
+            method: "textDocument/documentSymbol".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentSymbolParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let symbols: Vec<crate::LspDocumentSymbol> =
+        serde_json::from_value(symbols.result.unwrap()).unwrap();
+    assert!(symbols.iter().any(|symbol| symbol.name == "helper"));
+    assert!(symbols.iter().any(|symbol| symbol.name == "main"));
+
+    fs::remove_dir_all(root).ok();
+}
+

@@ -1,0 +1,992 @@
+use crate::{
+    RecoverableCallEffect, RoutineType, TypecheckError, TypecheckErrorKind, TypedProgram,
+};
+use fol_intrinsics::{
+    boolean_operand_contract, comparison_operand_contract, query_operand_contract, select_intrinsic,
+    wrong_arity_message, wrong_type_family_message, BooleanOperandContract,
+    ComparisonOperandContract, IntrinsicSelectionErrorKind, IntrinsicSurface, QueryOperandContract,
+};
+use fol_parser::ast::{AstNode, QualifiedPath, SyntaxNodeId, SyntaxOrigin};
+use fol_resolver::{ReferenceId, ReferenceKind, ResolvedProgram, SymbolId, SymbolKind};
+
+use super::helpers::{
+    apparent_type_id, describe_type, ensure_assignable, internal_error, is_error_shell_type,
+    merge_recoverable_effects, node_origin, observe_context, origin_for, plain_value_expr,
+    reject_recoverable_error_shell_conversion,
+};
+use super::{TypeContext, TypedExpr};
+use super::type_node_with_expectation;
+use super::type_node;
+
+pub(crate) fn type_function_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    name: &str,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    let syntax_id = syntax_id.ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("function call '{name}' does not retain a syntax id"),
+        )
+    })?;
+    let reference_id =
+        find_reference_by_syntax(resolved, syntax_id, ReferenceKind::FunctionCall, name)?;
+    let signature = routine_signature_for_reference(
+        typed,
+        resolved,
+        reference_id,
+        origin_for(resolved, syntax_id),
+    )?;
+    let arg_effect = check_call_arguments(
+        typed,
+        resolved,
+        context,
+        &signature,
+        args,
+        name,
+        origin_for(resolved, syntax_id),
+    )?;
+    let call_effect = merge_recoverable_effects(
+        typed,
+        origin_for(resolved, syntax_id),
+        "function call",
+        [
+            arg_effect,
+            signature
+                .error_type
+                .map(|error_type| RecoverableCallEffect { error_type }),
+        ],
+    )?;
+    let return_type = signature.return_type;
+    if let Some(return_type) = return_type {
+        let typed_reference = typed
+            .typed_reference_mut(reference_id)
+            .ok_or_else(|| internal_error("typed call reference disappeared", None))?;
+        typed_reference.resolved_type = Some(return_type);
+        typed_reference.recoverable_effect = call_effect;
+        typed.record_node_type(syntax_id, context.source_unit_id, return_type)?;
+        if let Some(effect) = call_effect {
+            typed.record_node_recoverable_effect(syntax_id, context.source_unit_id, effect)?;
+            typed.record_reference_recoverable_effect(reference_id, effect)?;
+        }
+    } else if let Some(effect) = call_effect {
+        typed.record_node_recoverable_effect(syntax_id, context.source_unit_id, effect)?;
+        typed.record_reference_recoverable_effect(reference_id, effect)?;
+    }
+    Ok(TypedExpr::maybe_value(return_type).with_optional_effect(call_effect))
+}
+
+pub(crate) fn type_dot_intrinsic_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    name: &str,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+    expected_type: Option<crate::CheckedTypeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    let Some(syntax_id) = syntax_id else {
+        return Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("dot intrinsic '.{name}(...)' does not retain a syntax id"),
+        ));
+    };
+    let origin = origin_for(resolved, syntax_id);
+    let entry = select_intrinsic(IntrinsicSurface::DotRootCall, name).map_err(|error| {
+        let message = match error.kind {
+            IntrinsicSelectionErrorKind::UnknownName => {
+                fol_intrinsics::unknown_intrinsic_message(error.surface, name)
+            }
+            IntrinsicSelectionErrorKind::WrongSurface => {
+                format!("'.{name}(...)' is reserved for a different intrinsic surface")
+            }
+        };
+        match origin.clone() {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+        }
+    })?;
+
+    let typed_expr = match comparison_operand_contract(entry) {
+        Some(ComparisonOperandContract::EqualityScalar) => {
+            type_comparison_intrinsic(typed, resolved, context, entry, args, syntax_id)?
+        }
+        Some(ComparisonOperandContract::OrderedScalar) => {
+            type_comparison_intrinsic(typed, resolved, context, entry, args, syntax_id)?
+        }
+        None => match boolean_operand_contract(entry) {
+            Some(BooleanOperandContract::BoolScalar) => {
+                type_boolean_intrinsic(typed, resolved, context, entry, args, syntax_id)?
+            }
+            None => match query_operand_contract(entry) {
+                Some(QueryOperandContract::LengthQueryable) => {
+                    type_query_intrinsic(typed, resolved, context, entry, args, syntax_id)?
+                }
+                None if entry.name == "echo" => type_echo_intrinsic(
+                    typed,
+                    resolved,
+                    context,
+                    entry,
+                    args,
+                    syntax_id,
+                    expected_type,
+                )?,
+                None => {
+                    let message = if entry.availability != fol_intrinsics::IntrinsicAvailability::V1
+                    {
+                        fol_intrinsics::wrong_version_message(
+                            entry,
+                            fol_intrinsics::IntrinsicAvailability::V1,
+                        )
+                    } else {
+                        fol_intrinsics::unsupported_intrinsic_message(entry)
+                    };
+                    return Err(match origin {
+                        Some(origin) => TypecheckError::with_origin(
+                            TypecheckErrorKind::Unsupported,
+                            message,
+                            origin,
+                        ),
+                        None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
+                    });
+                }
+            },
+        },
+    };
+
+    typed.record_node_intrinsic(syntax_id, context.source_unit_id, entry.id)?;
+    Ok(typed_expr)
+}
+
+fn type_comparison_intrinsic(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: SyntaxNodeId,
+) -> Result<TypedExpr, TypecheckError> {
+    let origin = origin_for(resolved, syntax_id);
+    if args.len() != 2 {
+        return Err(match origin {
+            Some(origin) => TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+                origin,
+            ),
+            None => TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+            ),
+        });
+    }
+
+    let left_raw = type_node(typed, resolved, context, &args[0])?;
+    let left_expr = plain_value_expr(
+        typed,
+        context,
+        left_raw,
+        node_origin(resolved, &args[0]),
+        "plain use of an errorful expression",
+    )?;
+    let right_raw = type_node(typed, resolved, context, &args[1])?;
+    let right_expr = plain_value_expr(
+        typed,
+        context,
+        right_raw,
+        node_origin(resolved, &args[1]),
+        "plain use of an errorful expression",
+    )?;
+
+    let left_type = left_expr.required_value("left intrinsic operand does not have a type")?;
+    let right_type = right_expr.required_value("right intrinsic operand does not have a type")?;
+    let left_apparent = apparent_type_id(typed, left_type)?;
+    let right_apparent = apparent_type_id(typed, right_type)?;
+    let merged_effect = merge_recoverable_effects(
+        typed,
+        node_origin(resolved, &args[0]).or_else(|| node_origin(resolved, &args[1])),
+        "intrinsic comparison",
+        [left_expr.recoverable_effect, right_expr.recoverable_effect],
+    )?;
+
+    let valid = left_apparent == right_apparent
+        && match comparison_operand_contract(entry) {
+            Some(ComparisonOperandContract::EqualityScalar) => {
+                super::helpers::is_equality_type(typed, left_apparent)
+            }
+            Some(ComparisonOperandContract::OrderedScalar) => {
+                super::helpers::is_ordered_type(typed, left_apparent)
+            }
+            None => false,
+        };
+    if !valid {
+        let actual = format!(
+            "'{}' and '{}'",
+            describe_type(typed, left_type),
+            describe_type(typed, right_type)
+        );
+        let message = wrong_type_family_message(
+            entry,
+            comparison_operand_contract(entry)
+                .expect("comparison intrinsics should retain an operand contract")
+                .expected_operands(),
+            &actual,
+        );
+        return Err(match origin {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+        });
+    }
+
+    typed.record_node_type(
+        syntax_id,
+        context.source_unit_id,
+        typed.builtin_types().bool_,
+    )?;
+    Ok(TypedExpr::value(typed.builtin_types().bool_).with_optional_effect(merged_effect))
+}
+
+fn type_boolean_intrinsic(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: SyntaxNodeId,
+) -> Result<TypedExpr, TypecheckError> {
+    use crate::CheckedType;
+    let origin = origin_for(resolved, syntax_id);
+    if args.len() != 1 {
+        return Err(match origin {
+            Some(origin) => TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+                origin,
+            ),
+            None => TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+            ),
+        });
+    }
+
+    let operand_raw = type_node(typed, resolved, context, &args[0])?;
+    let operand_expr = plain_value_expr(
+        typed,
+        context,
+        operand_raw,
+        node_origin(resolved, &args[0]),
+        "plain use of an errorful intrinsic operand",
+    )?;
+    let operand_type = operand_expr.required_value("intrinsic operand does not have a type")?;
+    let operand_apparent = apparent_type_id(typed, operand_type)?;
+
+    if !matches!(
+        typed.type_table().get(operand_apparent),
+        Some(CheckedType::Builtin(crate::BuiltinType::Bool))
+    ) {
+        let actual = format!("'{}'", describe_type(typed, operand_type));
+        let message = wrong_type_family_message(
+            entry,
+            BooleanOperandContract::BoolScalar.expected_operands(),
+            &actual,
+        );
+        return Err(match origin {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+        });
+    }
+
+    typed.record_node_type(
+        syntax_id,
+        context.source_unit_id,
+        typed.builtin_types().bool_,
+    )?;
+    Ok(TypedExpr::value(typed.builtin_types().bool_)
+        .with_optional_effect(operand_expr.recoverable_effect))
+}
+
+fn type_query_intrinsic(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: SyntaxNodeId,
+) -> Result<TypedExpr, TypecheckError> {
+    use crate::CheckedType;
+    let origin = origin_for(resolved, syntax_id);
+    if args.len() != 1 {
+        return Err(match origin {
+            Some(origin) => TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+                origin,
+            ),
+            None => TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+            ),
+        });
+    }
+
+    let operand_raw = type_node(typed, resolved, context, &args[0])?;
+    let operand_expr = plain_value_expr(
+        typed,
+        context,
+        operand_raw,
+        node_origin(resolved, &args[0]),
+        "plain use of an errorful intrinsic operand",
+    )?;
+    let operand_type = operand_expr.required_value("intrinsic operand does not have a type")?;
+    let operand_apparent = apparent_type_id(typed, operand_type)?;
+
+    let valid = matches!(
+        typed.type_table().get(operand_apparent),
+        Some(CheckedType::Builtin(crate::BuiltinType::Str))
+            | Some(CheckedType::Array { .. })
+            | Some(CheckedType::Vector { .. })
+            | Some(CheckedType::Sequence { .. })
+            | Some(CheckedType::Set { .. })
+            | Some(CheckedType::Map { .. })
+    );
+    if !valid {
+        let actual = format!("'{}'", describe_type(typed, operand_type));
+        let message = wrong_type_family_message(
+            entry,
+            QueryOperandContract::LengthQueryable.expected_operands(),
+            &actual,
+        );
+        return Err(match origin {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+        });
+    }
+
+    typed.record_node_type(syntax_id, context.source_unit_id, typed.builtin_types().int)?;
+    Ok(TypedExpr::value(typed.builtin_types().int)
+        .with_optional_effect(operand_expr.recoverable_effect))
+}
+
+fn type_echo_intrinsic(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: SyntaxNodeId,
+    _expected_type: Option<crate::CheckedTypeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    let origin = origin_for(resolved, syntax_id);
+    if args.len() != 1 {
+        return Err(match origin {
+            Some(origin) => TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+                origin,
+            ),
+            None => TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                wrong_arity_message(entry, args.len()),
+            ),
+        });
+    }
+
+    let operand_raw = type_node(typed, resolved, context, &args[0])?;
+    let operand_expr = plain_value_expr(
+        typed,
+        context,
+        operand_raw,
+        node_origin(resolved, &args[0]),
+        "plain use of an errorful intrinsic operand",
+    )?;
+    let operand_type = operand_expr.required_value("intrinsic operand does not have a type")?;
+
+    typed.record_node_type(syntax_id, context.source_unit_id, operand_type)?;
+    Ok(TypedExpr::value(operand_type).with_optional_effect(operand_expr.recoverable_effect))
+}
+
+pub(crate) fn type_report_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    let origin = syntax_id.and_then(|syntax_id| origin_for(resolved, syntax_id));
+    let Some(expected) = context.routine_error_type else {
+        return Err(TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            "report requires a declared routine error type in V1",
+            origin.unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: "report".len(),
+            }),
+        ));
+    };
+
+    if args.len() != 1 {
+        return Err(TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            format!(
+                "report expects exactly 1 value in V1 but got {}",
+                args.len()
+            ),
+            origin.unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: "report".len(),
+            }),
+        ));
+    }
+
+    let report_raw =
+        type_node_with_expectation(typed, resolved, context, &args[0], Some(expected))?;
+    let actual = plain_value_expr(
+        typed,
+        context,
+        report_raw,
+        node_origin(resolved, &args[0]),
+        "report expression",
+    )?
+    .required_value("report expression does not have a type")
+    .map_err(|_| {
+        TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            "report expression does not have a type",
+            origin.clone().unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: "report".len(),
+            }),
+        )
+    })?;
+    ensure_assignable(typed, expected, actual, "report".to_string(), origin)?;
+    Ok(TypedExpr::value(typed.builtin_types().never))
+}
+
+fn type_panic_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    args: &[AstNode],
+) -> Result<TypedExpr, TypecheckError> {
+    let mut arg_effects = Vec::new();
+    for arg in args {
+        let arg_raw = type_node(typed, resolved, context, arg)?;
+        let expr = plain_value_expr(
+            typed,
+            context,
+            arg_raw,
+            node_origin(resolved, arg),
+            "panic argument",
+        )?;
+        let _ = expr.value_type;
+        arg_effects.push(expr.recoverable_effect);
+    }
+    let merged = merge_recoverable_effects(typed, None, "panic call", arg_effects)?;
+    Ok(TypedExpr::value(typed.builtin_types().never).with_optional_effect(merged))
+}
+
+pub(crate) fn type_keyword_intrinsic_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    if let Some(syntax_id) = syntax_id {
+        typed.record_node_intrinsic(syntax_id, context.source_unit_id, entry.id)?;
+    }
+
+    match entry.name {
+        "panic" => type_panic_call(typed, resolved, context, args),
+        "check" => type_check_call(typed, resolved, context, entry, args, syntax_id),
+        other => Err(TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!("unsupported keyword intrinsic dispatch '{other}(...)'"),
+        )),
+    }
+}
+
+fn type_check_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    entry: &fol_intrinsics::IntrinsicEntry,
+    args: &[AstNode],
+    syntax_id: Option<SyntaxNodeId>,
+) -> Result<TypedExpr, TypecheckError> {
+    let origin = syntax_id.and_then(|id| origin_for(resolved, id));
+    if args.len() != 1 {
+        return Err(origin.clone().map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    wrong_arity_message(entry, args.len()),
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    wrong_arity_message(entry, args.len()),
+                    origin,
+                )
+            },
+        ));
+    }
+
+    let observed = type_node(typed, resolved, observe_context(context), &args[0])?;
+    if observed.recoverable_effect.is_none() {
+        let message = if observed
+            .value_type
+            .map(|type_id| is_error_shell_type(typed, type_id))
+            .transpose()?
+            .unwrap_or(false)
+        {
+            "check(...) inspects routine call results with '/ ErrorType', not err[...] shell values in V1"
+        } else {
+            "check requires an errorful routine result in V1"
+        };
+        return Err(node_origin(resolved, &args[0]).map_or_else(
+            || TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+            |origin| TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin),
+        ));
+    }
+
+    if let Some(syntax_id) = syntax_id {
+        typed.record_node_type(
+            syntax_id,
+            context.source_unit_id,
+            typed.builtin_types().bool_,
+        )?;
+    }
+    Ok(TypedExpr::value(typed.builtin_types().bool_))
+}
+
+pub(crate) fn type_qualified_function_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    path: &QualifiedPath,
+    args: &[AstNode],
+) -> Result<TypedExpr, TypecheckError> {
+    let syntax_id = path.syntax_id().ok_or_else(|| {
+        TypecheckError::new(
+            TypecheckErrorKind::InvalidInput,
+            format!(
+                "qualified function call '{}' does not retain a syntax id",
+                path.joined()
+            ),
+        )
+    })?;
+    let reference_id = find_reference_by_syntax(
+        resolved,
+        syntax_id,
+        ReferenceKind::QualifiedFunctionCall,
+        &path.joined(),
+    )?;
+    let signature = routine_signature_for_reference(
+        typed,
+        resolved,
+        reference_id,
+        origin_for(resolved, syntax_id),
+    )?;
+    let arg_effect = check_call_arguments(
+        typed,
+        resolved,
+        context,
+        &signature,
+        args,
+        &path.joined(),
+        origin_for(resolved, syntax_id),
+    )?;
+    let call_effect = merge_recoverable_effects(
+        typed,
+        origin_for(resolved, syntax_id),
+        "qualified function call",
+        [
+            arg_effect,
+            signature
+                .error_type
+                .map(|error_type| RecoverableCallEffect { error_type }),
+        ],
+    )?;
+    if let Some(return_type) = signature.return_type {
+        let typed_reference = typed
+            .typed_reference_mut(reference_id)
+            .ok_or_else(|| internal_error("typed qualified call reference disappeared", None))?;
+        typed_reference.resolved_type = Some(return_type);
+        typed_reference.recoverable_effect = call_effect;
+        typed.record_node_type(syntax_id, context.source_unit_id, return_type)?;
+        if let Some(effect) = call_effect {
+            typed.record_node_recoverable_effect(syntax_id, context.source_unit_id, effect)?;
+            typed.record_reference_recoverable_effect(reference_id, effect)?;
+        }
+    }
+    Ok(TypedExpr::maybe_value(signature.return_type).with_optional_effect(call_effect))
+}
+
+pub(crate) fn type_method_call(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    node: &AstNode,
+    object: &AstNode,
+    method: &str,
+    args: &[AstNode],
+) -> Result<TypedExpr, TypecheckError> {
+    let receiver_raw = type_node(typed, resolved, context, object)?;
+    let receiver_expr = plain_value_expr(
+        typed,
+        context,
+        receiver_raw,
+        node_origin(resolved, object),
+        format!("method receiver for '{method}'"),
+    )?;
+    let object_type = receiver_expr.required_value(format!(
+        "method receiver for '{method}' does not have a type"
+    ))?;
+    let origin = node_origin(resolved, node);
+    let signature = routine_signature_for_method(typed, method, object_type, origin.clone())?;
+    let arg_effect = check_call_arguments(
+        typed,
+        resolved,
+        context,
+        &signature,
+        args,
+        method,
+        origin.clone(),
+    )?;
+    let merged = merge_recoverable_effects(
+        typed,
+        origin,
+        "method call",
+        [
+            receiver_expr.recoverable_effect,
+            arg_effect,
+            signature
+                .error_type
+                .map(|error_type| RecoverableCallEffect { error_type }),
+        ],
+    )?;
+    Ok(TypedExpr::maybe_value(signature.return_type).with_optional_effect(merged))
+}
+
+pub(crate) fn find_reference_by_syntax(
+    resolved: &ResolvedProgram,
+    syntax_id: SyntaxNodeId,
+    kind: ReferenceKind,
+    display_name: &str,
+) -> Result<ReferenceId, TypecheckError> {
+    resolved
+        .references
+        .iter_with_ids()
+        .find(|(_, reference)| reference.syntax_id == Some(syntax_id) && reference.kind == kind)
+        .map(|(reference_id, _)| reference_id)
+        .ok_or_else(|| {
+            TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                format!("reference '{display_name}' is missing from resolver output"),
+                origin_for(resolved, syntax_id).unwrap_or(SyntaxOrigin {
+                    file: None,
+                    line: 1,
+                    column: 1,
+                    length: display_name.len(),
+                }),
+            )
+        })
+}
+
+pub(crate) fn routine_signature_for_reference(
+    typed: &TypedProgram,
+    resolved: &ResolvedProgram,
+    reference_id: ReferenceId,
+    origin: Option<SyntaxOrigin>,
+) -> Result<RoutineType, TypecheckError> {
+    let symbol_id = resolved
+        .reference(reference_id)
+        .and_then(|reference| reference.resolved)
+        .ok_or_else(|| {
+            TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                "call reference lost its resolved routine symbol",
+                origin.clone().unwrap_or(SyntaxOrigin {
+                    file: None,
+                    line: 1,
+                    column: 1,
+                    length: 1,
+                }),
+            )
+        })?;
+    routine_signature_for_symbol(typed, resolved, symbol_id, origin)
+}
+
+fn routine_signature_for_symbol(
+    typed: &TypedProgram,
+    resolved: &ResolvedProgram,
+    symbol_id: SymbolId,
+    origin: Option<SyntaxOrigin>,
+) -> Result<RoutineType, TypecheckError> {
+    use crate::CheckedType;
+    let type_id = symbol_type(typed, resolved, symbol_id, origin.clone())?;
+    match typed.type_table().get(type_id) {
+        Some(CheckedType::Routine(signature)) => Ok(signature.clone()),
+        _ => Err(TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            format!("resolved routine symbol {} is not callable", symbol_id.0),
+            origin.unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: 1,
+            }),
+        )),
+    }
+}
+
+fn routine_signature_for_method(
+    typed: &mut TypedProgram,
+    method: &str,
+    object_type: crate::CheckedTypeId,
+    origin: Option<SyntaxOrigin>,
+) -> Result<RoutineType, TypecheckError> {
+    let mut matches = Vec::new();
+
+    let candidate_ids = typed
+        .resolved()
+        .symbols
+        .iter_with_ids()
+        .filter_map(|(symbol_id, symbol)| {
+            (symbol.kind == SymbolKind::Routine && symbol.name == method).then_some(symbol_id)
+        })
+        .collect::<Vec<_>>();
+
+    for symbol_id in candidate_ids {
+        if typed
+            .typed_symbol(symbol_id)
+            .and_then(|symbol| symbol.receiver_type)
+            .is_some_and(|receiver_type| receiver_type == object_type)
+        {
+            matches.push(routine_signature_for_symbol(
+                typed,
+                typed.resolved(),
+                symbol_id,
+                origin.clone(),
+            )?);
+        }
+    }
+
+    match matches.len() {
+        1 => Ok(matches.remove(0)),
+        0 => Err(origin.clone().map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("method '{method}' is not available for the receiver type in V1"),
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("method '{method}' is not available for the receiver type in V1"),
+                    origin,
+                )
+            },
+        )),
+        _ => Err(origin.map_or_else(
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("method '{method}' is ambiguous for the receiver type"),
+                )
+            },
+            |origin| {
+                TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("method '{method}' is ambiguous for the receiver type"),
+                    origin,
+                )
+            },
+        )),
+    }
+}
+
+pub(crate) fn check_call_arguments(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    signature: &RoutineType,
+    args: &[AstNode],
+    callee: &str,
+    origin: Option<SyntaxOrigin>,
+) -> Result<Option<RecoverableCallEffect>, TypecheckError> {
+    if signature.params.len() != args.len() {
+        return Err(TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            format!(
+                "call to '{callee}' expects {} args but got {}",
+                signature.params.len(),
+                args.len()
+            ),
+            origin.unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: callee.len(),
+            }),
+        ));
+    }
+
+    let mut arg_effects = Vec::new();
+    for (expected, arg) in signature.params.iter().zip(args) {
+        let actual_expr =
+            type_node_with_expectation(typed, resolved, context, arg, Some(*expected)).map_err(
+                |error| {
+                    origin
+                        .clone()
+                        .or_else(|| node_origin(resolved, arg))
+                        .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
+                },
+            )?;
+        reject_recoverable_error_shell_conversion(
+            typed,
+            *expected,
+            &actual_expr,
+            origin.clone().or_else(|| node_origin(resolved, arg)),
+            format!("call to '{callee}'"),
+        )?;
+        let actual_expr = plain_value_expr(
+            typed,
+            context,
+            actual_expr,
+            origin.clone().or_else(|| node_origin(resolved, arg)),
+            format!("call to '{callee}'"),
+        )?;
+        let actual =
+            actual_expr.required_value(format!("argument for '{callee}' does not have a type"))?;
+        arg_effects.push(actual_expr.recoverable_effect);
+        ensure_assignable(
+            typed,
+            *expected,
+            actual,
+            format!("call to '{callee}'"),
+            origin.clone(),
+        )?;
+    }
+
+    merge_recoverable_effects(typed, origin, "call arguments", arg_effects)
+}
+
+pub(crate) fn type_for_reference(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    reference_id: ReferenceId,
+    origin: Option<SyntaxOrigin>,
+) -> Result<TypedExpr, TypecheckError> {
+    let symbol_id = resolved
+        .reference(reference_id)
+        .and_then(|reference| reference.resolved)
+        .ok_or_else(|| {
+            TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                "resolved reference lost its target symbol",
+                origin.clone().unwrap_or(SyntaxOrigin {
+                    file: None,
+                    line: 1,
+                    column: 1,
+                    length: 1,
+                }),
+            )
+        })?;
+    let type_id = symbol_type(typed, resolved, symbol_id, origin.clone())?;
+    let symbol_effect = typed
+        .typed_symbol(symbol_id)
+        .and_then(|symbol| symbol.recoverable_effect);
+    let typed_reference = typed.typed_reference_mut(reference_id).ok_or_else(|| {
+        TypecheckError::with_origin(
+            TypecheckErrorKind::Internal,
+            "typed reference table lost a resolved reference",
+            origin.unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: 1,
+            }),
+        )
+    })?;
+    typed_reference.resolved_type = Some(type_id);
+    typed_reference.recoverable_effect = symbol_effect;
+    Ok(TypedExpr::value(type_id).with_optional_effect(symbol_effect))
+}
+
+pub(crate) fn symbol_type(
+    typed: &TypedProgram,
+    resolved: &ResolvedProgram,
+    symbol_id: SymbolId,
+    origin: Option<SyntaxOrigin>,
+) -> Result<crate::CheckedTypeId, TypecheckError> {
+    if let Some(type_id) = typed
+        .typed_symbol(symbol_id)
+        .and_then(|symbol| symbol.declared_type)
+    {
+        return Ok(type_id);
+    }
+
+    let fallback_origin = origin.unwrap_or(SyntaxOrigin {
+        file: None,
+        line: 1,
+        column: 1,
+        length: 1,
+    });
+    if let Some(symbol) = resolved.symbol(symbol_id) {
+        if symbol.mounted_from.is_some() {
+            return Err(TypecheckError::with_origin(
+                TypecheckErrorKind::Unsupported,
+                format!(
+                    "imported symbol '{}' requires workspace-aware typechecking in V1; the legacy single-package path is not sufficient",
+                    symbol.name
+                ),
+                fallback_origin,
+            ));
+        }
+        if matches!(
+            symbol.kind,
+            SymbolKind::ValueBinding | SymbolKind::LabelBinding | SymbolKind::DestructureBinding
+        ) {
+            return Err(TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                format!(
+                    "binding '{}' needs a declared type or an inferable initializer in V1",
+                    symbol.name
+                ),
+                symbol.origin.clone().unwrap_or(fallback_origin),
+            ));
+        }
+    }
+
+    Err(TypecheckError::with_origin(
+        TypecheckErrorKind::InvalidInput,
+        format!(
+            "resolved symbol {} does not have a lowered type yet",
+            symbol_id.0
+        ),
+        fallback_origin,
+    ))
+}
