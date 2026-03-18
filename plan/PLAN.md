@@ -706,7 +706,7 @@ Round 1 slice tracker:
   system-tool, and codegen graph methods.
 - [x] Slice 3. Extend runtime models with generated-file handles and evaluated
   generated-output metadata.
-- [ ] Slice 4. Parse object-style `graph.write_file({ ... })` configs in shared
+- [x] Slice 4. Parse object-style `graph.write_file({ ... })` configs in shared
   semantic build evaluation.
 - [ ] Slice 5. Parse object-style `graph.copy_file({ ... })` configs in shared
   semantic build evaluation.

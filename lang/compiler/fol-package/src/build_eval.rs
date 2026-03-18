@@ -9,7 +9,7 @@ use crate::build_codegen::{CodegenRequest, SystemToolRequest};
 use crate::build_runtime::{
     BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
     BuildRuntimeDependency, BuildRuntimeDependencyQuery, BuildRuntimeDependencyQueryKind,
-    BuildRuntimeProgram,
+    BuildRuntimeGeneratedFileKind, BuildRuntimeProgram,
     BuildRuntimeStepBinding, BuildRuntimeStepBindingKind,
 };
 use crate::build_option::{
@@ -488,11 +488,19 @@ struct ExtractedBuildDependencyQuery {
     pub kind: BuildRuntimeDependencyQueryKind,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ExtractedBuildGeneratedFile {
+    pub name: String,
+    pub relative_path: String,
+    pub kind: BuildRuntimeGeneratedFileKind,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ExtractedBuildProgram {
     pub operations: Vec<BuildEvaluationOperation>,
     pub executable_artifacts: Vec<ExtractedBuildArtifact>,
     pub test_artifacts: Vec<ExtractedBuildArtifact>,
+    pub generated_files: Vec<ExtractedBuildGeneratedFile>,
     pub dependency_queries: Vec<BuildRuntimeDependencyQuery>,
     pub run_steps: BTreeMap<String, String>,
 }
@@ -1198,6 +1206,7 @@ fn parse_build_graph_method_ast(
         "add_exe" | "add_static_lib" | "add_shared_lib" | "add_test" => {
             parse_named_artifact_call_ast(extracted, scope, build_path, method, args)
         }
+        "write_file" => parse_write_file_call_ast(extracted, scope, build_path, method, args, origin),
         "step" => {
             let Some(name) = args.first().and_then(|arg| resolve_build_string_arg_ast(arg, scope))
             else {
@@ -1378,6 +1387,7 @@ struct BuildExtractionOptionRef {
 enum BuildExtractionValue {
     OptionRef(BuildExtractionOptionRef),
     Artifact(ExtractedBuildArtifact),
+    GeneratedFileHandle(ExtractedBuildGeneratedFile),
     DependencyHandle(ExtractedBuildDependency),
     DependencyModuleHandle(ExtractedBuildDependencyQuery),
     DependencyArtifactHandle(ExtractedBuildDependencyQuery),
@@ -1734,6 +1744,50 @@ fn parse_run_call_ast(
         }),
     });
     Ok(Some(BuildExtractionValue::RunHandle(name)))
+}
+
+fn parse_write_file_call_ast(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &BuildExtractionScope,
+    build_path: &Path,
+    method: &str,
+    args: &[AstNode],
+    origin: Option<SyntaxOrigin>,
+) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
+    let [AstNode::RecordInit { fields, .. }] = args else {
+        return Err(build_source_unsupported(build_path, method, 1, method.len()));
+    };
+    let name = fields
+        .iter()
+        .find(|field| field.name == "name")
+        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+    let path = fields
+        .iter()
+        .find(|field| field.name == "path")
+        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+    let contents = fields
+        .iter()
+        .find(|field| field.name == "contents")
+        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+
+    extracted.operations.push(BuildEvaluationOperation {
+        origin,
+        kind: BuildEvaluationOperationKind::WriteFile(WriteFileRequest {
+            name: name.clone(),
+            path: path.clone(),
+            contents,
+        }),
+    });
+    let generated = ExtractedBuildGeneratedFile {
+        name,
+        relative_path: path,
+        kind: BuildRuntimeGeneratedFileKind::Write,
+    };
+    extracted.generated_files.push(generated.clone());
+    Ok(Some(BuildExtractionValue::GeneratedFileHandle(generated)))
 }
 
 fn parse_install_call_ast(
@@ -2225,6 +2279,35 @@ mod tests {
         );
         assert_eq!(evaluated.evaluated.dependencies.len(), 1);
         assert_eq!(evaluated.evaluated.dependencies[0].alias, "core");
+    }
+
+    #[test]
+    fn build_source_evaluator_supports_object_style_write_file_configs() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("write-file configs should evaluate")
+            .expect("build body should produce a graph");
+
+        assert!(matches!(
+            evaluated.result.graph.generated_files()[0].kind,
+            crate::BuildGeneratedFileKind::Write
+        ));
+        assert_eq!(evaluated.result.graph.generated_files()[0].name, "gen/version.fol");
     }
 
     #[test]
