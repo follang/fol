@@ -1211,6 +1211,7 @@ fn parse_build_graph_method_ast(
         "add_system_tool" => {
             parse_system_tool_call_ast(extracted, scope, build_path, method, args, origin)
         }
+        "add_codegen" => parse_codegen_call_ast(extracted, scope, build_path, method, args, origin),
         "step" => {
             let Some(name) = args.first().and_then(|arg| resolve_build_string_arg_ast(arg, scope))
             else {
@@ -1881,6 +1882,57 @@ fn parse_system_tool_call_ast(
     Ok(Some(BuildExtractionValue::GeneratedFileHandle(generated)))
 }
 
+fn parse_codegen_call_ast(
+    extracted: &mut ExtractedBuildProgram,
+    scope: &BuildExtractionScope,
+    build_path: &Path,
+    method: &str,
+    args: &[AstNode],
+    origin: Option<SyntaxOrigin>,
+) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
+    let [AstNode::RecordInit { fields, .. }] = args else {
+        return Err(build_source_unsupported(build_path, method, 1, method.len()));
+    };
+    let kind = fields
+        .iter()
+        .find(|field| field.name == "kind")
+        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+    let input = fields
+        .iter()
+        .find(|field| field.name == "input")
+        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+    let output = fields
+        .iter()
+        .find(|field| field.name == "output")
+        .or_else(|| fields.iter().find(|field| field.name == "path"))
+        .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+        .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+    let codegen_kind = match kind.as_str() {
+        "fol" | "fol-to-fol" => crate::CodegenKind::FolToFol,
+        "schema" => crate::CodegenKind::Schema,
+        "asset" | "asset-preprocess" => crate::CodegenKind::AssetPreprocess,
+        _ => return Err(build_source_unsupported(build_path, method, 1, method.len())),
+    };
+
+    extracted.operations.push(BuildEvaluationOperation {
+        origin,
+        kind: BuildEvaluationOperationKind::Codegen(CodegenRequest {
+            kind: codegen_kind,
+            input,
+            output: output.clone(),
+        }),
+    });
+    let generated = ExtractedBuildGeneratedFile {
+        name: output.clone(),
+        relative_path: output,
+        kind: BuildRuntimeGeneratedFileKind::CodegenOutput,
+    };
+    extracted.generated_files.push(generated.clone());
+    Ok(Some(BuildExtractionValue::GeneratedFileHandle(generated)))
+}
+
 fn parse_install_call_ast(
     extracted: &mut ExtractedBuildProgram,
     scope: &mut BuildExtractionScope,
@@ -2457,6 +2509,35 @@ mod tests {
             crate::BuildGeneratedFileKind::CaptureOutput
         ));
         assert_eq!(evaluated.result.graph.generated_files()[0].name, "gen/schema.fol");
+    }
+
+    #[test]
+    fn build_source_evaluator_supports_object_style_codegen_configs() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var schema = graph.add_codegen({ kind = \"schema\", input = \"schema/api.yaml\", output = \"gen/api.fol\" });\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("codegen configs should evaluate")
+            .expect("build body should produce a graph");
+
+        assert!(matches!(
+            evaluated.result.graph.generated_files()[0].kind,
+            crate::BuildGeneratedFileKind::Write
+        ));
+        assert_eq!(evaluated.result.graph.generated_files()[0].name, "gen/api.fol");
     }
 
     #[test]

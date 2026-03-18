@@ -712,7 +712,7 @@ Round 1 slice tracker:
   semantic build evaluation.
 - [x] Slice 6. Parse object-style `graph.add_system_tool({ ... })` configs in
   shared semantic build evaluation.
-- [ ] Slice 7. Parse object-style `graph.add_codegen({ ... })` configs in
+- [x] Slice 7. Parse object-style `graph.add_codegen({ ... })` configs in
   shared semantic build evaluation.
 - [ ] Slice 8. Preserve generated outputs in evaluated build results and bind
   generated-file handles through semantic build code.
