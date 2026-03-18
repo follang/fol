@@ -127,7 +127,14 @@ impl ResolverSession {
         }
 
         let mut program = ResolvedProgram::new(syntax);
-        program.init_build_stdlib_scope();
+        let has_build_units = program.build_source_units().next().is_some();
+        let stdlib_scope = program.init_build_stdlib_scope();
+        if has_build_units && stdlib_scope.is_none() {
+            return Err(vec![ResolverError::new(
+                ResolverErrorKind::Internal,
+                "build stdlib scope could not be initialized for a package with build units",
+            )]);
+        }
         crate::inject::inject_build_stdlib_types(&mut program);
         let collected = collect::collect_top_level_symbols(&mut program)
             .and_then(|_| imports::resolve_import_targets(self, &mut program))

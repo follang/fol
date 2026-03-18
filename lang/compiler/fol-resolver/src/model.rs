@@ -635,6 +635,11 @@ impl ResolvedProgram {
     ) -> Result<(), ResolverError> {
         for foreign_symbol_id in foreign_symbols {
             let Some(symbol) = loaded.program.symbol(*foreign_symbol_id) else {
+                eprintln!(
+                    "resolver: skipping invalid foreign symbol id {:?} from package '{}'",
+                    foreign_symbol_id,
+                    loaded.identity.display_name
+                );
                 continue;
             };
             if symbol.visibility != Some(ParsedDeclVisibility::Exported)
@@ -693,10 +698,15 @@ impl ResolvedProgram {
             inserted.id = symbol_id;
         }
 
-        let scope = self
-            .scopes
-            .get_mut(scope_id)
-            .expect("mounted symbol target scope should exist");
+        let Some(scope) = self.scopes.get_mut(scope_id) else {
+            return Err(ResolverError::new(
+                ResolverErrorKind::Internal,
+                format!(
+                    "mounted symbol target scope {:?} does not exist",
+                    scope_id
+                ),
+            ));
+        };
         scope.symbols.push(symbol_id);
         scope
             .symbol_keys

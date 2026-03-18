@@ -26,7 +26,13 @@ pub fn collect_top_level_symbols(program: &mut ResolvedProgram) -> Result<(), Ve
         .collect::<Vec<_>>();
 
     for (source_unit_id, item) in work_items {
-        let scope_id = top_level_scope_id(program, source_unit_id, &item);
+        let scope_id = match top_level_scope_id(program, source_unit_id, &item) {
+            Ok(id) => id,
+            Err(error) => {
+                errors.push(error);
+                continue;
+            }
+        };
         let origin = program.syntax_index().origin(item.node_id).cloned();
 
         if let Err(error) =
@@ -47,17 +53,29 @@ pub(crate) fn top_level_scope_id(
     program: &ResolvedProgram,
     source_unit_id: SourceUnitId,
     item: &ParsedTopLevel,
-) -> ScopeId {
+) -> Result<ScopeId, ResolverError> {
     let source_unit = program
         .source_unit(source_unit_id)
-        .expect("collected source unit should exist");
+        .ok_or_else(|| ResolverError::new(
+            ResolverErrorKind::Internal,
+            format!(
+                "source unit {:?} not found during symbol collection",
+                source_unit_id
+            ),
+        ))?;
 
     match item.meta.scope {
-        Some(ParsedDeclScope::File) => source_unit.scope_id,
+        Some(ParsedDeclScope::File) => Ok(source_unit.scope_id),
         Some(ParsedDeclScope::Namespace) => program
             .namespace_scope(&source_unit.namespace)
-            .expect("namespace-scoped top-level declaration should have a namespace scope"),
-        Some(ParsedDeclScope::Package) | None => program.program_scope,
+            .ok_or_else(|| ResolverError::new(
+                ResolverErrorKind::Internal,
+                format!(
+                    "namespace scope for '{}' not found for namespace-scoped declaration",
+                    source_unit.namespace
+                ),
+            )),
+        Some(ParsedDeclScope::Package) | None => Ok(program.program_scope),
     }
 }
 

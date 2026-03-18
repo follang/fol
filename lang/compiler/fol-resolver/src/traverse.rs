@@ -42,7 +42,13 @@ pub fn collect_routine_scopes(
         .collect::<Vec<_>>();
 
     for (source_unit_id, item) in work_items {
-        let scope_id = top_level_scope_id(program, source_unit_id, &item);
+        let scope_id = match top_level_scope_id(program, source_unit_id, &item) {
+            Ok(id) => id,
+            Err(error) => {
+                errors.push(error);
+                continue;
+            }
+        };
         if let Err(error) =
             traverse_top_level_item(session, program, source_unit_id, scope_id, &item)
         {
@@ -64,10 +70,16 @@ fn traverse_top_level_item(
     _scope_id: ScopeId,
     item: &ParsedTopLevel,
 ) -> Result<(), ResolverError> {
-    let traversal_scope = program
-        .source_unit(source_unit_id)
-        .expect("top-level traversal source unit should exist")
-        .scope_id;
+    let Some(source_unit) = program.source_unit(source_unit_id) else {
+        return Err(ResolverError::new(
+            ResolverErrorKind::Internal,
+            format!(
+                "source unit {:?} not found during top-level traversal",
+                source_unit_id
+            ),
+        ));
+    };
+    let traversal_scope = source_unit.scope_id;
     traverse_node(
         session,
         program,
