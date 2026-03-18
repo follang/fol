@@ -763,7 +763,7 @@ Round 1 slice tracker:
   compatibility defs as migration-only controls under the real build entry.
 - [x] Slice 9. Update high-level README wording to reflect graph-driven routing
   and compatibility absorption status.
-- [ ] Slice 10. Re-export, test, and lock the Phase 12 compatibility-absorption
+- [x] Slice 10. Re-export, test, and lock the Phase 12 compatibility-absorption
   cleanup round.
 
 ## Phase 13: Product Completion Criteria
