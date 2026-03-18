@@ -193,6 +193,38 @@ impl BuildOptionValue {
     }
 }
 
+impl BuildOptionDeclaration {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::StandardTarget(declaration) => declaration.name.as_str(),
+            Self::StandardOptimize(declaration) => declaration.name.as_str(),
+            Self::User(declaration) => declaration.name.as_str(),
+        }
+    }
+
+    pub fn coerce_raw_value(&self, raw: &str) -> Option<String> {
+        match self {
+            Self::StandardTarget(_) => BuildTargetTriple::parse(raw).map(|value| value.render()),
+            Self::StandardOptimize(_) => {
+                BuildOptimizeMode::parse(raw).map(|value| value.as_str().to_string())
+            }
+            Self::User(declaration) => {
+                BuildOptionValue::parse_for_kind(declaration.kind, raw).map(|value| value.render())
+            }
+        }
+    }
+
+    pub fn default_raw_value(&self) -> Option<String> {
+        match self {
+            Self::StandardTarget(declaration) => declaration.default.as_ref().map(|value| value.render()),
+            Self::StandardOptimize(declaration) => {
+                declaration.default.map(|value| value.as_str().to_string())
+            }
+            Self::User(declaration) => declaration.default.as_ref().map(BuildOptionValue::render),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildOptionDeclarationSet {
     declarations: Vec<BuildOptionDeclaration>,
@@ -209,6 +241,12 @@ impl BuildOptionDeclarationSet {
 
     pub fn add(&mut self, declaration: BuildOptionDeclaration) {
         self.declarations.push(declaration);
+    }
+
+    pub fn find(&self, name: &str) -> Option<&BuildOptionDeclaration> {
+        self.declarations
+            .iter()
+            .find(|declaration| declaration.name() == name)
     }
 }
 
@@ -447,6 +485,25 @@ mod tests {
         );
         assert_eq!(BuildOptionValue::parse_for_kind(BuildOptionKind::Bool, "yes"), None);
         assert_eq!(BuildOptionValue::parse_for_kind(BuildOptionKind::Target, "native"), None);
+    }
+
+    #[test]
+    fn build_option_declarations_coerce_raw_values_and_defaults() {
+        let target = BuildOptionDeclaration::StandardTarget(StandardTargetDeclaration {
+            name: "target".to_string(),
+            default: BuildTargetTriple::parse("x86_64-linux-gnu"),
+        });
+        let user = BuildOptionDeclaration::User(UserOptionDeclaration {
+            name: "jobs".to_string(),
+            kind: BuildOptionKind::Int,
+            default: Some(BuildOptionValue::Int(8)),
+            help: None,
+        });
+
+        assert_eq!(target.default_raw_value(), Some("x86_64-linux-gnu".to_string()));
+        assert_eq!(user.default_raw_value(), Some("8".to_string()));
+        assert_eq!(user.coerce_raw_value("16"), Some("16".to_string()));
+        assert_eq!(user.coerce_raw_value("fast"), None);
     }
 }
 use crate::build_api::BuildOptionValue;

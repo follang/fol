@@ -492,23 +492,10 @@ pub fn evaluate_build_plan(
     let mut step_names = BTreeMap::new();
     let mut artifact_names = BTreeMap::new();
     let mut option_declarations = BuildOptionDeclarationSet::new();
+    let raw_option_overrides = request.inputs.options.clone();
     let mut resolved_options = ResolvedBuildOptionSet::new();
     let mut graph = BuildGraph::new();
     let mut api = BuildApi::new(&mut graph);
-
-    for (name, value) in &request.inputs.options {
-        resolved_options.insert(name.clone(), value.clone());
-    }
-    if resolved_options.get("target").is_none() {
-        if let Some(target) = &request.inputs.target {
-            resolved_options.insert("target", target.render());
-        }
-    }
-    if resolved_options.get("optimize").is_none() {
-        if let Some(optimize) = request.inputs.optimize {
-            resolved_options.insert("optimize", optimize.as_str());
-        }
-    }
 
     for operation in &request.operations {
         match &operation.kind {
@@ -689,6 +676,33 @@ pub fn evaluate_build_plan(
                 ));
             }
         }
+    }
+
+    if let Some(target) = &request.inputs.target {
+        resolved_options.insert("target", target.render());
+    }
+    if let Some(optimize) = request.inputs.optimize {
+        resolved_options.insert("optimize", optimize.as_str());
+    }
+    for declaration in option_declarations.declarations() {
+        if resolved_options.get(declaration.name()).is_none() {
+            if let Some(default) = declaration.default_raw_value() {
+                resolved_options.insert(declaration.name(), default);
+            }
+        }
+    }
+    for (name, raw_value) in &raw_option_overrides {
+        let Some(declaration) = option_declarations.find(name) else {
+            resolved_options.insert(name.clone(), raw_value.clone());
+            continue;
+        };
+        let Some(coerced) = declaration.coerce_raw_value(raw_value) else {
+            return Err(evaluation_invalid_input(
+                format!("build option '{name}' cannot coerce value '{raw_value}'"),
+                None,
+            ));
+        };
+        resolved_options.insert(name.clone(), coerced);
     }
 
     if let Some(validation_error) = graph.validate().into_iter().next() {
@@ -1682,6 +1696,59 @@ mod tests {
 
         assert_eq!(result.option_declarations.declarations().len(), 1);
         assert_eq!(result.resolved_options.get("optimize"), Some("release-fast"));
+    }
+
+    #[test]
+    fn build_plan_seeds_declared_option_defaults_into_resolved_values() {
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs: BuildEvaluationInputs::default(),
+            operations: vec![
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::StandardTarget(
+                        StandardTargetRequest::new("target").with_default("x86_64-linux-gnu"),
+                    ),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::StandardOptimize(
+                        StandardOptimizeRequest::new("optimize").with_default("debug"),
+                    ),
+                },
+                BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::Option(UserOptionRequest::int("jobs", 8)),
+                },
+            ],
+        };
+
+        let result = evaluate_build_plan(&request).expect("declared defaults should seed");
+
+        assert_eq!(result.resolved_options.get("target"), Some("x86_64-linux-gnu"));
+        assert_eq!(result.resolved_options.get("optimize"), Some("debug"));
+        assert_eq!(result.resolved_options.get("jobs"), Some("8"));
+    }
+
+    #[test]
+    fn build_plan_rejects_raw_overrides_that_do_not_match_declared_option_kinds() {
+        let mut inputs = BuildEvaluationInputs::default();
+        inputs.options.insert("jobs".to_string(), "fast".to_string());
+        let request = BuildEvaluationRequest {
+            package_root: "/pkg".to_string(),
+            inputs,
+            operations: vec![BuildEvaluationOperation {
+                origin: None,
+                kind: BuildEvaluationOperationKind::Option(UserOptionRequest::int("jobs", 8)),
+            }],
+        };
+
+        let error = evaluate_build_plan(&request)
+            .expect_err("invalid raw overrides should fail against declared kinds");
+
+        assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
+        assert!(error.message().contains("jobs"));
+        assert!(error.message().contains("fast"));
     }
 
     #[test]

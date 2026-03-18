@@ -623,7 +623,7 @@ Round 1 slice tracker:
   and user option kinds.
 - [x] Slice 3. Extend user option declarations with kind/default metadata and
   preserve that metadata through build evaluation.
-- [ ] Slice 4. Seed resolved option values from declared defaults and validate
+- [x] Slice 4. Seed resolved option values from declared defaults and validate
   CLI override coercion against option kinds.
 - [ ] Slice 5. Replace placeholder build-source option names with typed symbolic
   option references.
