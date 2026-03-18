@@ -584,7 +584,7 @@ mod tests {
         fs::create_dir_all(json_root.join("src/fmt")).expect("should create package source dirs");
         fs::write(
             app_dir.join("main.fol"),
-            "use json: pkg = {json}\nfun[] main(): int = { return answer }\n",
+            "use json: pkg = {json}\nfun[] main(): int = { return json::src::answer }\n",
         )
         .expect("should write app entry");
         fs::write(
@@ -594,7 +594,7 @@ mod tests {
         .expect("should write package metadata");
         fs::write(
             json_root.join("build.fol"),
-            "def root: loc = \"src\";\ndef fmt: loc = \"src/fmt\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("should write package build definition");
         fs::write(json_root.join("src/lib.fol"), "var[exp] answer: int = 42\n")
@@ -776,7 +776,10 @@ mod tests {
             "name: json\nversion: 1.0.0\n",
         )
         .expect("should write package metadata");
-        fs::write(json_root.join("build.fol"), "def root: loc = \"src\";\n")
+        fs::write(
+            json_root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
             .expect("should write package build definition");
         fs::write(json_root.join("src/lib.fol"), "var[exp] answer: int = 3\n")
             .expect("should write package source");

@@ -1417,9 +1417,8 @@ fn evaluated_build_program_from_extracted(
 }
 
 fn extract_build_body(source: &str) -> Option<(String, String, usize)> {
-    let (start, prefix) = ["pro[] build(", "pro build(", "def build("]
-        .iter()
-        .find_map(|prefix| source.find(prefix).map(|start| (start, *prefix)))?;
+    let prefix = "pro[] build(";
+    let start = source.find(prefix)?;
     let rest = &source[start + prefix.len()..];
     let param_end = rest.find(':')?;
     let param_name = rest[..param_end].trim().to_string();

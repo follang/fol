@@ -2350,7 +2350,10 @@ mod integration_tests {
         let loc_root = temp_root.join("formal_pkg");
         fs::create_dir_all(&app_root).expect("Should create app fixture root");
         fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
-        fs::write(loc_root.join("build.fol"), "def root: loc = \"src\";\n")
+        fs::write(
+            loc_root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
             .expect("Should write formal package control file");
         let main_file = app_root.join("main.fol");
         fs::write(
@@ -2611,7 +2614,10 @@ mod integration_tests {
         let loc_root = temp_root.join("formal_pkg");
         fs::create_dir_all(&app_root).expect("Should create app fixture root");
         fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
-        fs::write(loc_root.join("build.fol"), "def root: loc = \"src\";\n")
+        fs::write(
+            loc_root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
             .expect("Should write formal package control file");
         fs::write(
             app_root.join("main.fol"),
@@ -3187,7 +3193,10 @@ mod integration_tests {
         let loc_root = package_root.join("formal_pkg");
         fs::create_dir_all(&app_root).expect("Should create app fixture root");
         fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
-        fs::write(loc_root.join("build.fol"), "def root: loc = \"src\";\n")
+        fs::write(
+            loc_root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
             .expect("Should write formal package control file");
         fs::write(
             app_root.join("main.fol"),

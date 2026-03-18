@@ -469,7 +469,10 @@ mod tests {
             format!("name: logtiny\nversion: {version}\n"),
         )
         .expect("package metadata should be writable");
-        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+        std::fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
             .expect("package build should be writable");
         std::fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
             .expect("package source should be writable");

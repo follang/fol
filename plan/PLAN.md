@@ -9,7 +9,7 @@ Current reset status: in progress
 Round 1 slices:
 
 - [x] Slice 1. Replace the remaining bullet-only tracking with a concrete 10-slice execution checklist
-- [ ] Slice 2. Delete compatibility parsing and fallback extraction from `fol-package::build`
+- [x] Slice 2. Delete compatibility parsing and fallback extraction from `fol-package::build`
 - [ ] Slice 3. Reject old `build.fol` forms by enforcing only `pro[] build(graph: Graph): non`
 - [x] Slice 4. Load package-store dependencies from `package.yaml`, not compatibility `def pkg = ...`
 - [x] Slice 5. Stop projecting compatibility exports/native artifacts through prepared package loading
@@ -33,7 +33,7 @@ Not done yet:
 
 - [ ] Reject `def build(...)` as invalid old syntax
 - [ ] Reject `def root: loc = ...` as invalid old syntax
-- [ ] Remove compatibility extraction from `fol-package`
+- [x] Remove compatibility extraction from `fol-package`
 - [ ] Remove compatibility/hybrid workflow branching from frontend routing
 - [x] Rehome formal package dependency/export loading off old `build.fol` defs
 - [x] Replace old pkg/import fixtures and tests that still depend on compatibility defs

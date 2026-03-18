@@ -2118,7 +2118,11 @@ mod tests {
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
         let file = src.join("main.fol");
         fs::write(&file, "fun[] main(): int = {\n    return 0\n}\n").unwrap();
         let uri = format!("file://{}", file.display());
@@ -2133,13 +2137,21 @@ mod tests {
         fs::create_dir_all(&shared_src).unwrap();
 
         fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("app/build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(
+            root.join("app/build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
         fs::write(
             root.join("shared/package.yaml"),
             "name: shared\nversion: 0.1.0\n",
         )
         .unwrap();
-        fs::write(root.join("shared/build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(
+            root.join("shared/build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
 
         fs::write(
             root.join("app/src/main.fol"),
@@ -2435,7 +2447,11 @@ mod tests {
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
         let file = src.join("main.fol");
         fs::write(&file, "fun[] main(): int = {\n    return 0\n}\n").unwrap();
         let uri = format!("file://{}", file.display());

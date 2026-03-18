@@ -734,7 +734,11 @@ mod tests {
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        std::fs::write(root.join("build.fol"), "def root: loc = \"src\";\n").unwrap();
+        std::fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
         std::fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -752,7 +756,7 @@ mod tests {
         }
     }
 
-    fn modern_dispatch_fixture(label: &str, hybrid: bool) -> FrontendWorkspace {
+    fn modern_dispatch_fixture(label: &str) -> FrontendWorkspace {
         let root = std::env::temp_dir().join(format!(
             "fol_frontend_dispatch_modern_{label}_{}_{}",
             std::process::id(),
@@ -764,12 +768,11 @@ mod tests {
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        let build_fol = if hybrid {
-            "def root: loc = \"src\";\npro[] build(graph: Graph): non = graph;\n"
-        } else {
-            "pro[] build(graph: Graph): non = graph;\n"
-        };
-        std::fs::write(root.join("build.fol"), build_fol).unwrap();
+        std::fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
         std::fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -832,7 +835,11 @@ mod tests {
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        std::fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
         std::fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -988,7 +995,7 @@ mod tests {
 
     #[test]
     fn workspace_dispatch_executes_modern_semantic_build_packages_through_workspace_route() {
-        let workspace = modern_dispatch_fixture("modern_only", false);
+        let workspace = modern_dispatch_fixture("modern_only");
         let command = FrontendCommand::Code(CodeCommand {
             output: FrontendOutputArgs::default(),
             profile: FrontendProfileArgs::default(),
@@ -1008,7 +1015,7 @@ mod tests {
 
     #[test]
     fn workspace_dispatch_executes_hybrid_semantic_build_packages_through_workspace_route() {
-        let workspace = modern_dispatch_fixture("hybrid", true);
+        let workspace = modern_dispatch_fixture("semantic");
         let command = FrontendCommand::Code(CodeCommand {
             output: FrontendOutputArgs::default(),
             profile: FrontendProfileArgs::default(),

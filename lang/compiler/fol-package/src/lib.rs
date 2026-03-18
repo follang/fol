@@ -280,9 +280,13 @@ mod tests {
                 kind: ParsedSourceUnitKind::Build,
                 items: vec![fol_parser::ast::ParsedTopLevel {
                     node_id: fol_parser::ast::SyntaxNodeId(1),
-                    node: fol_parser::ast::AstNode::DefDecl {
+                    node: fol_parser::ast::AstNode::ProDecl {
+                        syntax_id: None,
                         options: Vec::new(),
+                        generics: Vec::new(),
                         name: "build".to_string(),
+                        receiver_type: None,
+                        captures: Vec::new(),
                         params: vec![fol_parser::ast::Parameter {
                             name: "graph".to_string(),
                             param_type: fol_parser::ast::FolType::Named {
@@ -293,11 +297,10 @@ mod tests {
                             is_mutex: false,
                             default: None,
                         }],
-                        def_type: fol_parser::ast::FolType::Named {
-                            syntax_id: None,
-                            name: "Graph".to_string(),
-                        },
+                        return_type: Some(fol_parser::ast::FolType::None),
+                        error_type: None,
                         body: Vec::new(),
+                        inquiries: Vec::new(),
                     },
                     meta: fol_parser::ast::ParsedTopLevelMeta::default(),
                 }],

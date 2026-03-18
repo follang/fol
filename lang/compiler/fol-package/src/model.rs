@@ -209,7 +209,7 @@ mod tests {
                         relative_path: "include/api.h".to_string(),
                     }],
                 },
-                mode: PackageBuildMode::Hybrid,
+                mode: PackageBuildMode::ModernOnly,
             },
             vec![PreparedExportMount {
                 source_namespace: "json::src".to_string(),
@@ -244,7 +244,7 @@ mod tests {
                 .map(|set| set.definitions().len()),
             Some(1)
         );
-        assert_eq!(prepared.build_mode(), PackageBuildMode::Hybrid);
+        assert_eq!(prepared.build_mode(), PackageBuildMode::ModernOnly);
     }
 
     #[test]

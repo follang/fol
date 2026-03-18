@@ -264,7 +264,11 @@ mod tests {
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",

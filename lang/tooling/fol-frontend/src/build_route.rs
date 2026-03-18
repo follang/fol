@@ -623,21 +623,9 @@ mod tests {
         );
         assert_eq!(
             FrontendBuildWorkflowMode::from_package_build_mode(
-                fol_package::PackageBuildMode::CompatibilityOnly
-            ),
-            None
-        );
-        assert_eq!(
-            FrontendBuildWorkflowMode::from_package_build_mode(
                 fol_package::PackageBuildMode::ModernOnly
             ),
             Some(FrontendBuildWorkflowMode::Modern)
-        );
-        assert_eq!(
-            FrontendBuildWorkflowMode::from_package_build_mode(
-                fol_package::PackageBuildMode::Hybrid
-            ),
-            None
         );
     }
 
@@ -832,7 +820,11 @@ mod tests {
         ));
         fs::create_dir_all(root.join("src")).unwrap();
         fs::write(root.join("package.yaml"), "name: old\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("build.fol"), "def root: loc = \"src\";\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
 
         let error = plan_workspace_build_route(
             &FrontendWorkspace {
@@ -846,10 +838,12 @@ mod tests {
             },
             "build",
         )
-        .expect_err("old compatibility-only build should be rejected");
+        .expect_err("old build syntax should be rejected");
 
-        assert_eq!(error.kind(), crate::FrontendErrorKind::Internal);
-        assert!(error.message().contains("unmappable build mode"));
+        assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
+        assert!(error
+            .message()
+            .contains("canonical `pro[] build(graph: Graph): non` entry"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -1158,7 +1152,6 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def root: loc = \"src\";\n",
                 "pro[] build(graph: Graph): non = {\n",
                 "    graph.step(\"docs\");\n",
                 "    return graph\n",

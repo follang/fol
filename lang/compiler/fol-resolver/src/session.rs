@@ -472,7 +472,7 @@ mod tests {
         .expect("Should write the package source fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "def root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the package build fixture");
         let mut session = ResolverSession::new();
@@ -517,9 +517,8 @@ mod tests {
                 .build
                 .as_ref()
                 .expect("Installed package roots should retain parsed build definitions")
-                .exports()
-                .len(),
-            1
+                .mode(),
+            fol_package::PackageBuildMode::ModernOnly
         );
 
         fs::remove_dir_all(&temp_root)
@@ -613,7 +612,7 @@ mod tests {
         .expect("Should write the ignored package.fol fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "def root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the package build fixture");
         fs::write(
@@ -653,7 +652,7 @@ mod tests {
         .expect("Should write the ignored package.fol fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "def root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the package build fixture");
         let mut session = ResolverSession::new();
@@ -687,7 +686,7 @@ mod tests {
             .expect("Should write the malformed package metadata fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "def root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the package build fixture");
         fs::write(
@@ -727,7 +726,7 @@ mod tests {
         .expect("Should write the package metadata fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "def root: loc = \"src\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the package build fixture");
         let mut session = ResolverSession::new();
@@ -770,7 +769,7 @@ mod tests {
         .expect("Should write the transitive dependency metadata");
         fs::write(
             store_root.join("core/build.fol"),
-            "def root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the transitive dependency build fixture");
         fs::write(
@@ -780,17 +779,17 @@ mod tests {
         .expect("Should write the transitive dependency export");
         fs::write(
             store_root.join("json/package.yaml"),
-            "name: json\nversion: 1.0.0\n",
+            "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
         )
         .expect("Should write the direct dependency metadata");
         fs::write(
             store_root.join("json/build.fol"),
-            "def core: pkg = \"core\";\ndef root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the direct dependency build fixture");
         fs::write(
             store_root.join("json/lib.fol"),
-            "use core: pkg = {core};\nvar[exp] answer: int = shared;\n",
+            "use core: pkg = {core};\nvar[exp] answer: int = core::shared;\n",
         )
         .expect("Should write the direct dependency source");
         fs::write(
@@ -829,7 +828,7 @@ mod tests {
     }
 
     #[test]
-    fn session_preloads_pkg_dependencies_from_build_definitions() {
+    fn session_preloads_pkg_dependencies_from_metadata() {
         let temp_root = unique_temp_root("build_pkg_preload");
         let store_root = temp_root.join("store");
         fs::create_dir_all(store_root.join("core"))
@@ -843,7 +842,7 @@ mod tests {
         .expect("Should write the dependency metadata");
         fs::write(
             store_root.join("core/build.fol"),
-            "def root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the dependency build fixture");
         fs::write(
@@ -853,12 +852,12 @@ mod tests {
         .expect("Should write the dependency source fixture");
         fs::write(
             store_root.join("json/package.yaml"),
-            "name: json\nversion: 1.0.0\n",
+            "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
         )
         .expect("Should write the dependent package metadata");
         fs::write(
             store_root.join("json/build.fol"),
-            "def core: pkg = \"core\";\ndef root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the dependent package build fixture");
         fs::write(
@@ -884,7 +883,7 @@ mod tests {
                     spelling: "json".to_string(),
                 }],
             )
-            .expect("Session should load build-declared pkg dependencies eagerly");
+            .expect("Session should load metadata-declared pkg dependencies eagerly");
 
         assert_eq!(loaded.identity.display_name, "json");
         assert_eq!(
@@ -892,13 +891,13 @@ mod tests {
                 .prepared
                 .build
                 .as_ref()
-                .map(|build| build.dependencies().len()),
-            Some(1)
+                .map(|build| build.mode()),
+            Some(fol_package::PackageBuildMode::ModernOnly)
         );
         assert_eq!(
             session.cached_package_count(),
             2,
-            "Loading a package root should also cache any build-declared pkg dependencies",
+            "Loading a package root should also cache metadata-declared pkg dependencies",
         );
 
         fs::remove_dir_all(&temp_root)
@@ -924,7 +923,7 @@ mod tests {
         .expect("Should write the shared dependency metadata");
         fs::write(
             store_root.join("core/build.fol"),
-            "def root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the shared dependency build fixture");
         fs::write(
@@ -934,32 +933,32 @@ mod tests {
         .expect("Should write the shared dependency export");
         fs::write(
             store_root.join("json/package.yaml"),
-            "name: json\nversion: 1.0.0\n",
+            "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
         )
         .expect("Should write the first direct dependency metadata");
         fs::write(
             store_root.join("json/build.fol"),
-            "def core: pkg = \"core\";\ndef root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the first direct dependency build fixture");
         fs::write(
             store_root.join("json/lib.fol"),
-            "use core: pkg = {core};\nvar[exp] left: int = shared;\n",
+            "use core: pkg = {core};\nvar[exp] left: int = core::shared;\n",
         )
         .expect("Should write the first direct dependency source");
         fs::write(
             store_root.join("xml/package.yaml"),
-            "name: xml\nversion: 1.0.0\n",
+            "name: xml\nversion: 1.0.0\ndep.core: pkg:core\n",
         )
         .expect("Should write the second direct dependency metadata");
         fs::write(
             store_root.join("xml/build.fol"),
-            "def core: pkg = \"core\";\ndef root: loc = \"lib\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the second direct dependency build fixture");
         fs::write(
             store_root.join("xml/lib.fol"),
-            "use core: pkg = {core};\nvar[exp] right: int = shared;\n",
+            "use core: pkg = {core};\nvar[exp] right: int = core::shared;\n",
         )
         .expect("Should write the second direct dependency source");
         fs::write(
