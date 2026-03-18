@@ -917,7 +917,7 @@ impl BuildBodyExecutor {
                 );
                 self.output.generated_files.push(gen);
                 Ok(Some(ExecValue::GeneratedFile {
-                    name: tool,
+                    name: output.clone(),
                     path: output,
                     kind: BuildRuntimeGeneratedFileKind::ToolOutput,
                 }))

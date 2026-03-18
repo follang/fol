@@ -32,8 +32,9 @@ mod integration_tests {
         LspDocumentSymbolParams, LspPosition, LspTextDocumentIdentifier, LspTextDocumentItem,
     };
     use fol_package::{
-        infer_package_root, parse_directory_package_syntax, parse_package_build, PackageBuildMode,
-        PackageSourceKind,
+        evaluate_build_source, infer_package_root, parse_directory_package_syntax,
+        parse_package_build, BuildEvaluationInputs, BuildEvaluationRequest, BuildOptimizeMode,
+        PackageBuildMode, PackageSourceKind,
     };
     use serde_json::Value;
     use std::path::{Path, PathBuf};
@@ -4017,6 +4018,151 @@ mod integration_tests {
             "secondary run fixture should report a run summary: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&run.stdout),
             String::from_utf8_lossy(&run.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_conditional_step_evaluates_when_condition() {
+        let root = build_fixture_root("conditional_step");
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path)
+            .expect("conditional_step fixture should keep a build.fol");
+
+        let request_release = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                optimize: Some(BuildOptimizeMode::ReleaseFast),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let evaluated_release = evaluate_build_source(&request_release, &build_path, &source)
+            .expect("conditional_step should evaluate with release-fast")
+            .expect("release-fast evaluation should produce operations");
+        assert!(
+            evaluated_release
+                .result
+                .graph
+                .steps()
+                .iter()
+                .any(|s| s.name == "strip"),
+            "release-fast should add the strip step"
+        );
+
+        let request_debug = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let evaluated_debug = evaluate_build_source(&request_debug, &build_path, &source)
+            .expect("conditional_step should evaluate without optimize")
+            .expect("debug evaluation should produce operations");
+        assert!(
+            !evaluated_debug
+                .result
+                .graph
+                .steps()
+                .iter()
+                .any(|s| s.name == "strip"),
+            "debug build should not add the strip step"
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_helper_routine_evaluates_correctly() {
+        let root = build_fixture_root("helper_routine");
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path)
+            .expect("helper_routine fixture should keep a build.fol");
+
+        let request = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let evaluated = evaluate_build_source(&request, &build_path, &source)
+            .expect("helper_routine should evaluate")
+            .expect("helper_routine should produce operations");
+
+        let artifacts = evaluated.result.graph.artifacts();
+        assert!(
+            artifacts.iter().any(|a| a.name == "core"),
+            "helper_routine should produce a core static lib"
+        );
+        assert!(
+            artifacts.iter().any(|a| a.name == "io"),
+            "helper_routine should produce an io static lib"
+        );
+        assert!(
+            artifacts.iter().any(|a| a.name == "app"),
+            "helper_routine should produce an app executable"
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_loop_libs_produces_multiple_artifacts() {
+        let root = build_fixture_root("loop_libs");
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path)
+            .expect("loop_libs fixture should keep a build.fol");
+
+        let request = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let evaluated = evaluate_build_source(&request, &build_path, &source)
+            .expect("loop_libs should evaluate")
+            .expect("loop_libs should produce operations for each iteration");
+
+        let artifacts = evaluated.result.graph.artifacts();
+        assert!(
+            artifacts.iter().any(|a| a.name == "core"),
+            "loop should produce core artifact"
+        );
+        assert!(
+            artifacts.iter().any(|a| a.name == "io"),
+            "loop should produce io artifact"
+        );
+        assert!(
+            artifacts.iter().any(|a| a.name == "utils"),
+            "loop should produce utils artifact"
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_d_options_accepts_option_overrides() {
+        let root = build_fixture_root("d_options");
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path)
+            .expect("d_options fixture should keep a build.fol");
+
+        let request = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let evaluated = evaluate_build_source(&request, &build_path, &source)
+            .expect("d_options should evaluate")
+            .expect("d_options should produce operations");
+
+        let options = evaluated.result.graph.options();
+        assert!(
+            options.iter().any(|o| o.name == "root"),
+            "d_options should declare the root user option"
         );
     }
 
