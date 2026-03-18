@@ -564,9 +564,9 @@ impl ResolvedProgram {
         }
 
         for (foreign_scope_id, _, foreign_symbols) in exported_symbol_scopes(&loaded.program) {
-            let mounted_scope = *mounted_scopes
-                .get(&foreign_scope_id)
-                .expect("mounted export scope should exist");
+            let Some(mounted_scope) = mounted_scopes.get(&foreign_scope_id).copied() else {
+                continue;
+            };
             self.mount_visible_symbols_from_scope(
                 loaded,
                 source_unit_id,

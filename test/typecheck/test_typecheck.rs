@@ -3662,7 +3662,10 @@ fn workspace_typechecking_keeps_direct_pkg_import_declaration_facts() {
         &root,
         &[
             ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
-            ("store/json/build.fol", "def root: loc = \"src\";\n"),
+            (
+                "store/json/build.fol",
+                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            ),
             (
                 "store/json/src/lib.fol",
                 concat!(
@@ -3707,22 +3710,25 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
         &root,
         &[
             ("store/core/package.yaml", "name: core\nversion: 1.0.0\n"),
-            ("store/core/build.fol", "def root: loc = \"src\";\n"),
+            (
+                "store/core/build.fol",
+                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            ),
             ("store/core/src/lib.fol", "typ[exp] Count: int;\n"),
-            ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
+            (
+                "store/json/package.yaml",
+                "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
+            ),
             (
                 "store/json/build.fol",
-                concat!(
-                    "def core: pkg = \"core\";\n",
-                    "def root: loc = \"src\";\n",
-                ),
+                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
             ),
             (
                 "store/json/src/lib.fol",
                 concat!(
                     "use core: pkg = {core};\n",
-                    "var[exp] answer: Count = 42;\n",
-                    "fun[exp] bump(value: Count): Count = {\n",
+                    "var[exp] answer: core::src::Count = 42;\n",
+                    "fun[exp] bump(value: core::src::Count): core::src::Count = {\n",
                     "    return value + 1;\n",
                     "}\n",
                 ),
@@ -4135,11 +4141,14 @@ fn legacy_single_package_typecheck_rejects_imported_pkg_values_explicitly() {
         &root,
         &[
             ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
-            ("store/json/build.fol", "def root: loc = \"src\";\n"),
+            (
+                "store/json/build.fol",
+                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            ),
             ("store/json/src/lib.fol", "var[exp] answer: int = 42;\n"),
             (
                 "app/main.fol",
-                "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+                "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n}\n",
             ),
         ],
     );

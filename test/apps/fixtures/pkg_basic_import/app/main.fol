@@ -1,5 +1,5 @@
 use math: pkg = {math};
 
 fun[] main(): int = {
-    return pkg_answer
+    return math::src::pkg_answer
 }

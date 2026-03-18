@@ -18,13 +18,16 @@ fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
     .expect("Should write the installed package metadata fixture");
     fs::create_dir_all(store_root.join("json/src"))
         .expect("Should create the installed package export root fixture");
-    fs::write(store_root.join("json/build.fol"), "def root: loc = \"src\";\n")
+    fs::write(
+        store_root.join("json/build.fol"),
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+    )
         .expect("Should write the installed package build fixture");
     fs::write(store_root.join("json/src/lib.fol"), "var[exp] answer: int = 42;\n")
         .expect("Should write the installed package export fixture");
     fs::write(
         app_root.join("main.fol"),
-        "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+        "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n}\n",
     )
     .expect("Should write the pkg import fixture");
 
@@ -50,11 +53,14 @@ fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
     let target_scope = import
         .target_scope
         .expect("Configured pkg imports should resolve to a mounted root scope");
+    let answer_scope = resolved
+        .namespace_scope("json::src")
+        .expect("Mounted pkg roots should expose semantic source namespaces");
     let answer_symbol = resolved
-        .symbols_in_scope(target_scope)
+        .symbols_in_scope(answer_scope)
         .into_iter()
         .find(|symbol| symbol.name == "answer" && symbol.kind == SymbolKind::ValueBinding)
-        .expect("Mounted pkg roots should expose exported root symbols");
+        .expect("Mounted pkg roots should expose semantic namespace symbols");
     let routine_scope_id = resolved
         .scopes
         .iter_with_ids()
@@ -64,9 +70,10 @@ fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
         .references_in_scope(routine_scope_id)
         .into_iter()
         .find(|reference| {
-            reference.kind == ReferenceKind::Identifier && reference.name == "answer"
+            reference.kind == ReferenceKind::QualifiedIdentifier
+                && reference.name == "json::src::answer"
         })
-        .expect("Routine scope should record the plain pkg-imported identifier reference");
+        .expect("Routine scope should record the qualified pkg-imported identifier reference");
 
     assert!(
         matches!(
@@ -82,7 +89,7 @@ fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
 }
 
 #[test]
-fn test_resolver_pkg_imports_hide_non_exported_internal_roots() {
+fn test_resolver_pkg_imports_expose_semantic_internal_namespaces() {
     let temp_root = unique_temp_root("pkg_hidden_internal_root");
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
@@ -97,7 +104,10 @@ fn test_resolver_pkg_imports_hide_non_exported_internal_roots() {
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the installed package metadata fixture");
-    fs::write(store_root.join("json/build.fol"), "def root: loc = \"src/public\";\n")
+    fs::write(
+        store_root.join("json/build.fol"),
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+    )
         .expect("Should write the installed package build fixture");
     fs::write(
         store_root.join("json/src/public/value.fol"),
@@ -111,11 +121,11 @@ fn test_resolver_pkg_imports_hide_non_exported_internal_roots() {
     .expect("Should write the internal source fixture");
     fs::write(
         app_root.join("main.fol"),
-        "use json: pkg = {json};\nfun[] main(): int = {\n    return secret;\n}\n",
+        "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::internal::secret;\n}\n",
     )
     .expect("Should write the internal pkg import fixture");
 
-    let errors = try_resolve_package_from_folder_with_config(
+    let resolved = resolve_package_from_folder_with_config(
         app_root
             .to_str()
             .expect("Temporary resolver fixture path should be valid UTF-8"),
@@ -128,16 +138,20 @@ fn test_resolver_pkg_imports_hide_non_exported_internal_roots() {
                     .to_string(),
             ),
         },
-    )
-    .expect_err("Resolver should hide non-exported internal pkg roots from consumers");
-
-    assert!(
-        errors.iter().any(|error| {
-            error.kind() == ResolverErrorKind::UnresolvedName
-                && error.to_string().contains("could not resolve name 'secret'")
-        }),
-        "Pkg imports should not expose exported symbols from internal roots that build.fol does not export",
     );
+    let routine_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
+        .expect("Resolver should create a routine scope");
+    assert!(resolved
+        .references_in_scope(routine_scope_id)
+        .into_iter()
+        .any(|reference| {
+            reference.kind == ReferenceKind::QualifiedIdentifier
+                && reference.name == "json::src::internal::secret"
+                && reference.resolved.is_some()
+        }));
 
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");
@@ -194,7 +208,7 @@ fn test_resolver_resolves_qualified_pkg_names_through_declared_export_namespaces
     .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "def root: loc = \"src/root\";\ndef fmt: loc = \"src/fmt\";\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
     )
     .expect("Should write the installed package build fixture");
     fs::write(
@@ -212,7 +226,7 @@ fn test_resolver_resolves_qualified_pkg_names_through_declared_export_namespaces
         concat!(
             "use json: pkg = {json};\n",
             "fun[] main(): int = {\n",
-            "    return answer + json::fmt::formatted;\n",
+            "    return json::src::root::answer + json::src::fmt::formatted;\n",
             "}\n",
         ),
     )
@@ -237,17 +251,20 @@ fn test_resolver_resolves_qualified_pkg_names_through_declared_export_namespaces
         .into_iter()
         .find(|import| import.alias_name == "json")
         .expect("Resolver should keep the pkg import record");
-    let target_scope = import
+    let _target_scope = import
         .target_scope
         .expect("Configured pkg imports should resolve to a mounted root scope");
+    let answer_scope = resolved
+        .namespace_scope("json::src::root")
+        .expect("Mounted pkg roots should create semantic root source namespaces");
     let answer_symbol = resolved
-        .symbols_in_scope(target_scope)
+        .symbols_in_scope(answer_scope)
         .into_iter()
         .find(|symbol| symbol.name == "answer" && symbol.kind == SymbolKind::ValueBinding)
-        .expect("Mounted pkg roots should expose root-exported value symbols");
+        .expect("Mounted pkg roots should expose value symbols from semantic namespaces");
     let fmt_scope = resolved
-        .namespace_scope("json::fmt")
-        .expect("Mounted pkg roots should create declared export namespace scopes");
+        .namespace_scope("json::src::fmt")
+        .expect("Mounted pkg roots should create semantic nested source namespaces");
     let formatted_symbol = resolved
         .symbols_in_scope(fmt_scope)
         .into_iter()
@@ -262,15 +279,16 @@ fn test_resolver_resolves_qualified_pkg_names_through_declared_export_namespaces
         .references_in_scope(routine_scope_id)
         .into_iter()
         .find(|reference| {
-            reference.kind == ReferenceKind::Identifier && reference.name == "answer"
+            reference.kind == ReferenceKind::QualifiedIdentifier
+                && reference.name == "json::src::root::answer"
         })
-        .expect("Routine scope should record the plain pkg-imported identifier reference");
+        .expect("Routine scope should record the qualified semantic pkg reference");
     let formatted_reference = resolved
         .references_in_scope(routine_scope_id)
         .into_iter()
         .find(|reference| {
             reference.kind == ReferenceKind::QualifiedIdentifier
-                && reference.name == "json::fmt::formatted"
+                && reference.name == "json::src::fmt::formatted"
         })
         .expect("Routine scope should record the qualified pkg namespace reference");
 
@@ -282,7 +300,7 @@ fn test_resolver_resolves_qualified_pkg_names_through_declared_export_namespaces
 }
 
 #[test]
-fn test_resolver_pkg_qualified_names_reject_unexported_internal_namespaces() {
+fn test_resolver_pkg_qualified_names_follow_semantic_internal_namespaces() {
     let temp_root = unique_temp_root("pkg_internal_namespace_hidden");
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
@@ -297,7 +315,10 @@ fn test_resolver_pkg_qualified_names_reject_unexported_internal_namespaces() {
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the installed package metadata fixture");
-    fs::write(store_root.join("json/build.fol"), "def root: loc = \"src/root\";\n")
+    fs::write(
+        store_root.join("json/build.fol"),
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+    )
         .expect("Should write the installed package build fixture");
     fs::write(
         store_root.join("json/src/root/value.fol"),
@@ -314,13 +335,13 @@ fn test_resolver_pkg_qualified_names_reject_unexported_internal_namespaces() {
         concat!(
             "use json: pkg = {json};\n",
             "fun[] main(): int = {\n",
-            "    return json::internal::secret;\n",
+            "    return json::src::internal::secret;\n",
             "}\n",
         ),
     )
     .expect("Should write the hidden internal namespace lookup fixture");
 
-    let errors = try_resolve_package_from_folder_with_config(
+    let resolved = resolve_package_from_folder_with_config(
         app_root
             .to_str()
             .expect("Temporary resolver fixture path should be valid UTF-8"),
@@ -333,18 +354,20 @@ fn test_resolver_pkg_qualified_names_reject_unexported_internal_namespaces() {
                     .to_string(),
             ),
         },
-    )
-    .expect_err("Resolver should reject qualified lookups into unexported internal pkg namespaces");
-
-    assert!(
-        errors.iter().any(|error| {
-            error.kind() == ResolverErrorKind::UnresolvedName
-                && error
-                    .to_string()
-                    .contains("could not resolve qualified identifier 'json::internal::secret'")
-        }),
-        "Pkg-qualified lookups should not cross into internal namespaces that build.fol does not export",
     );
+    let routine_scope_id = resolved
+        .scopes
+        .iter_with_ids()
+        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
+        .expect("Resolver should create a routine scope");
+    assert!(resolved
+        .references_in_scope(routine_scope_id)
+        .into_iter()
+        .any(|reference| {
+            reference.kind == ReferenceKind::QualifiedIdentifier
+                && reference.name == "json::src::internal::secret"
+                && reference.resolved.is_some()
+        }));
 
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");
@@ -366,7 +389,10 @@ fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
         "name: core\nversion: 1.0.0\n",
     )
     .expect("Should write the transitive dependency metadata fixture");
-    fs::write(store_root.join("core/build.fol"), "def root: loc = \"src/root\";\n")
+    fs::write(
+        store_root.join("core/build.fol"),
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+    )
         .expect("Should write the transitive dependency build fixture");
     fs::write(
         store_root.join("core/src/root/value.fol"),
@@ -375,22 +401,22 @@ fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
     .expect("Should write the transitive dependency source fixture");
     fs::write(
         store_root.join("json/package.yaml"),
-        "name: json\nversion: 1.0.0\n",
+        "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
     )
     .expect("Should write the direct dependency metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "def core: pkg = \"core\";\ndef root: loc = \"src/root\";\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
     )
     .expect("Should write the direct dependency build fixture");
     fs::write(
         store_root.join("json/src/root/value.fol"),
-        "use core: pkg = {core};\nvar[exp] answer: int = shared;\n",
+        "use core: pkg = {core};\nvar[exp] answer: int = core::src::root::shared;\n",
     )
     .expect("Should write the direct dependency source fixture");
     fs::write(
         app_root.join("main.fol"),
-        "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+        "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::root::answer;\n}\n",
     )
     .expect("Should write the transitive pkg import fixture");
 
@@ -413,14 +439,17 @@ fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
         .into_iter()
         .find(|import| import.alias_name == "json")
         .expect("Resolver should keep the pkg import record");
-    let target_scope = import
+    let _target_scope = import
         .target_scope
         .expect("Configured pkg imports should resolve to a mounted root scope");
+    let answer_scope = resolved
+        .namespace_scope("json::src::root")
+        .expect("Mounted pkg roots should expose semantic source namespaces");
     let answer_symbol = resolved
-        .symbols_in_scope(target_scope)
+        .symbols_in_scope(answer_scope)
         .into_iter()
         .find(|symbol| symbol.name == "answer" && symbol.kind == SymbolKind::ValueBinding)
-        .expect("Mounted pkg roots should expose exported root symbols");
+        .expect("Mounted pkg roots should expose semantic namespace symbols");
     let routine_scope_id = resolved
         .scopes
         .iter_with_ids()
@@ -430,9 +459,10 @@ fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
         .references_in_scope(routine_scope_id)
         .into_iter()
         .find(|reference| {
-            reference.kind == ReferenceKind::Identifier && reference.name == "answer"
+            reference.kind == ReferenceKind::QualifiedIdentifier
+                && reference.name == "json::src::root::answer"
         })
-        .expect("Routine scope should record the transitive pkg-imported identifier reference");
+        .expect("Routine scope should record the transitive qualified pkg reference");
 
     assert_eq!(
         answer_reference.resolved,

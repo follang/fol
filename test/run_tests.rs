@@ -707,7 +707,7 @@ mod integration_tests {
             .expect("Should create the installed package export root fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "def root: loc = \"src\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the installed package build fixture");
         fs::write(
@@ -717,7 +717,7 @@ mod integration_tests {
         .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n}\n",
         )
         .expect("Should write the pkg import fixture");
 
@@ -853,7 +853,7 @@ mod integration_tests {
             .expect("Should create the installed package export root fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "def root: loc = \"src\";\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("Should write the installed package build fixture");
         fs::write(
@@ -863,7 +863,7 @@ mod integration_tests {
         .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n}\n",
         )
         .expect("Should write the pkg import fixture");
 
