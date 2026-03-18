@@ -621,7 +621,7 @@ Round 1 slice tracker:
   option values.
 - [ ] Slice 2. Add typed build-option value render/parse helpers for standard
   and user option kinds.
-- [ ] Slice 3. Extend user option declarations with kind/default metadata and
+- [x] Slice 3. Extend user option declarations with kind/default metadata and
   preserve that metadata through build evaluation.
 - [ ] Slice 4. Seed resolved option values from declared defaults and validate
   CLI override coercion against option kinds.

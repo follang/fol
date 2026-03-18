@@ -20,6 +20,8 @@ pub enum BuildOptionDeclaration {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UserOptionDeclaration {
     pub name: String,
+    pub kind: BuildOptionKind,
+    pub default: Option<BuildOptionValue>,
     pub help: Option<String>,
 }
 
@@ -304,6 +306,8 @@ mod tests {
         ));
         set.add(BuildOptionDeclaration::User(UserOptionDeclaration {
             name: "docs".to_string(),
+            kind: BuildOptionKind::Bool,
+            default: Some(BuildOptionValue::Bool(false)),
             help: Some("enable docs generation".to_string()),
         }));
 
@@ -320,8 +324,10 @@ mod tests {
         ));
         assert!(matches!(
             &set.declarations()[2],
-            BuildOptionDeclaration::User(UserOptionDeclaration { name, .. })
+            BuildOptionDeclaration::User(UserOptionDeclaration { name, kind, default, .. })
             if name == "docs"
+                && *kind == BuildOptionKind::Bool
+                && *default == Some(BuildOptionValue::Bool(false))
         ));
     }
 

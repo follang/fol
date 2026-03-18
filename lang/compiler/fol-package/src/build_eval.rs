@@ -539,6 +539,8 @@ pub fn evaluate_build_plan(
             BuildEvaluationOperationKind::Option(operation_request) => {
                 option_declarations.add(BuildOptionDeclaration::User(UserOptionDeclaration {
                     name: operation_request.name.clone(),
+                    kind: operation_request.kind,
+                    default: operation_request.default.clone(),
                     help: None,
                 }));
                 api.option(operation_request.clone());
