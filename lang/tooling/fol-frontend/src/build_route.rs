@@ -150,7 +150,7 @@ pub fn execute_workspace_build_route(
     let member_plans = route
         .members
         .iter()
-        .map(plan_member_execution)
+        .map(|member| plan_member_execution(member, config))
         .collect::<FrontendResult<Vec<_>>>()?;
     let requested_step = request.requested_step.as_str();
     if !member_plans
@@ -211,12 +211,14 @@ pub fn execute_workspace_build_route(
 
 fn plan_member_execution(
     member: &FrontendMemberBuildRoute,
+    config: &crate::FrontendConfig,
 ) -> FrontendResult<FrontendMemberExecutionPlan> {
-    plan_member_execution_from_build_source(member)
+    plan_member_execution_from_build_source(member, config)
 }
 
 fn plan_member_execution_from_build_source(
     member: &FrontendMemberBuildRoute,
+    config: &crate::FrontendConfig,
 ) -> FrontendResult<FrontendMemberExecutionPlan> {
     let build_path = member.member_root.join("build.fol");
     let source = std::fs::read_to_string(&build_path).map_err(|error| {
@@ -228,13 +230,25 @@ fn plan_member_execution_from_build_source(
             ),
         )
     })?;
+    let mut inputs = fol_package::BuildEvaluationInputs {
+        working_directory: member.member_root.display().to_string(),
+        ..fol_package::BuildEvaluationInputs::default()
+    };
+    if let Some(target_str) = &config.build_target_override {
+        inputs.target = fol_package::BuildTargetTriple::parse(target_str);
+    }
+    if let Some(optimize_str) = &config.build_optimize_override {
+        inputs.optimize = fol_package::BuildOptimizeMode::parse(optimize_str);
+    }
+    for override_str in &config.build_option_overrides {
+        if let Some((key, value)) = override_str.split_once('=') {
+            inputs.options.insert(key.to_string(), value.to_string());
+        }
+    }
     let evaluated = fol_package::evaluate_build_source(
         &fol_package::BuildEvaluationRequest {
             package_root: member.member_root.display().to_string(),
-            inputs: fol_package::BuildEvaluationInputs {
-                working_directory: member.member_root.display().to_string(),
-                ..fol_package::BuildEvaluationInputs::default()
-            },
+            inputs,
             operations: Vec::new(),
         },
         &build_path,

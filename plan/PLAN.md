@@ -26,7 +26,7 @@ Round 2 slices:
 - [x] Slice 6. Replace AST-walking evaluator with real lowered-IR executor
 - [x] Slice 7. Expand build API to Zig parity (modules, artifact.link, run args, path utils)
 - [x] Slice 8. Full control flow in `build.fol` (when, loop, helper routines)
-- [ ] Slice 9. Frontend integration (full pipeline, -D options, named step selection)
+- [x] Slice 9. Frontend integration (full pipeline, -D options, named step selection)
 - [ ] Slice 10. New example fixtures and regression coverage
 
 ---

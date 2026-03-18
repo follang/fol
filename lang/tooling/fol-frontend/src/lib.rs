@@ -346,8 +346,19 @@ fn apply_build_option_args(config: &mut FrontendConfig, options: &cli::BuildOpti
     if let Some(optimize) = &options.build_optimize {
         config.build_optimize_override = Some(optimize.clone());
     }
-    if !options.build_options.is_empty() {
-        config.build_option_overrides = options.build_options.clone();
+    let mut overrides = options.build_options.clone();
+    // Merge -D shorthand into overrides; -Dtarget=X and -Doptimize=X take precedence
+    for define in &options.define {
+        if let Some(value) = define.strip_prefix("target=") {
+            config.build_target_override = Some(value.to_string());
+        } else if let Some(value) = define.strip_prefix("optimize=") {
+            config.build_optimize_override = Some(value.to_string());
+        } else {
+            overrides.push(define.clone());
+        }
+    }
+    if !overrides.is_empty() {
+        config.build_option_overrides = overrides;
     }
 }
 
@@ -912,6 +923,30 @@ mod tests {
             Some("release-fast")
         );
         assert_eq!(config.build_option_overrides, vec!["jobs=16".to_string()]);
+    }
+
+    #[test]
+    fn frontend_config_from_cli_parses_define_shorthand_into_option_overrides() {
+        let cli = FrontendCli::parse_from([
+            "fol",
+            "code",
+            "build",
+            "-Dtarget=x86_64-linux-gnu",
+            "-Doptimize=release-fast",
+            "-Dstrip=true",
+        ]);
+
+        let config = frontend_config_from_cli(&cli, None);
+
+        assert_eq!(
+            config.build_target_override.as_deref(),
+            Some("x86_64-linux-gnu")
+        );
+        assert_eq!(
+            config.build_optimize_override.as_deref(),
+            Some("release-fast")
+        );
+        assert_eq!(config.build_option_overrides, vec!["strip=true".to_string()]);
     }
 
     #[test]

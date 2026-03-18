@@ -132,6 +132,14 @@ pub struct BuildOptionArgs {
         action = clap::ArgAction::Append
     )]
     pub build_options: Vec<String>,
+
+    #[arg(
+        short = 'D',
+        value_name = "NAME=VALUE",
+        help = "Override a build option (shorthand for --build-option)",
+        action = clap::ArgAction::Append
+    )]
+    pub define: Vec<String>,
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
