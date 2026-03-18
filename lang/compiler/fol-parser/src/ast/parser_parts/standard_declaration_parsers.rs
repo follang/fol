@@ -12,10 +12,15 @@ impl AstParser {
             return false;
         }
 
-        let mut significant = tokens.next_vec().into_iter().filter_map(Result::ok).filter(|token| {
-            let key = token.key();
-            !Self::key_is_soft_ignorable(&key)
-        });
+        let mut significant =
+            tokens
+                .next_vec()
+                .into_iter()
+                .filter_map(Result::ok)
+                .filter(|token| {
+                    let key = token.key();
+                    !Self::key_is_soft_ignorable(&key)
+                });
 
         let Some(mut name_token) = significant.next() else {
             return false;
@@ -200,9 +205,11 @@ impl AstParser {
                 for member in self.parse_type_decl(tokens)? {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(
-                            self.duplicate_standard_member_error(member_anchor, &token, &key)
-                        );
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -215,7 +222,11 @@ impl AstParser {
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -273,7 +284,11 @@ impl AstParser {
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -286,7 +301,11 @@ impl AstParser {
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -299,7 +318,11 @@ impl AstParser {
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -312,7 +335,11 @@ impl AstParser {
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -351,9 +378,11 @@ impl AstParser {
                 for member in self.parse_type_decl(tokens)? {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(
-                            self.duplicate_standard_member_error(member_anchor, &token, &key)
-                        );
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -365,9 +394,11 @@ impl AstParser {
                 for member in self.parse_type_decl(tokens)? {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(
-                            self.duplicate_standard_member_error(member_anchor, &token, &key)
-                        );
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -379,9 +410,11 @@ impl AstParser {
                 for member in self.parse_type_decl(tokens)? {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(
-                            self.duplicate_standard_member_error(member_anchor, &token, &key)
-                        );
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -393,9 +426,11 @@ impl AstParser {
                 for member in self.parse_type_decl(tokens)? {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(
-                            self.duplicate_standard_member_error(member_anchor, &token, &key)
-                        );
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -408,7 +443,11 @@ impl AstParser {
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -482,7 +521,11 @@ impl AstParser {
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -495,7 +538,11 @@ impl AstParser {
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -508,7 +555,11 @@ impl AstParser {
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -531,9 +582,11 @@ impl AstParser {
                 for member in self.parse_type_decl(tokens)? {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(
-                            self.duplicate_standard_member_error(member_anchor, &token, &key)
-                        );
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -546,7 +599,11 @@ impl AstParser {
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
+                        return Err(self.duplicate_standard_member_error(
+                            member_anchor,
+                            &token,
+                            &key,
+                        ));
                     }
                     body.push(member);
                 }
@@ -694,7 +751,11 @@ impl AstParser {
             AstNode::FunDecl { name, params, .. }
             | AstNode::LogDecl { name, params, .. }
             | AstNode::ProDecl { name, params, .. } => {
-                format!("routine#{}#{}", canonical_identifier_key(name), params.len())
+                format!(
+                    "routine#{}#{}",
+                    canonical_identifier_key(name),
+                    params.len()
+                )
             }
             AstNode::AliasDecl { name, .. } => format!("alias#{}", canonical_identifier_key(name)),
             AstNode::TypeDecl { name, .. } => format!("type#{}", canonical_identifier_key(name)),

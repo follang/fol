@@ -35,12 +35,14 @@ The current frontend milestone is about local workflows and the first backend.
 It already covers:
 
 - project and workspace scaffolding
+- documented `build.fol` package entry files for new projects
 - root discovery
 - package preparation through `fol-package`
 - git-backed dependency fetching and materialization
 - `fol.lock` writing, locked fetches, offline warm-cache fetches, and update flows
 - workspace dependency/status reporting
 - full `V1` build/run/test orchestration
+- routed workspace `build/run/test/check` entry through `build.fol`
 - emitted Rust and lowered IR output
 - editor-tooling entrypoints for parse, highlight, symbols, and LSP startup
 - shell completions

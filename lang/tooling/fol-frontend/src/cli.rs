@@ -110,6 +110,45 @@ pub struct DirectTargetArg {
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct BuildOptionArgs {
+    #[arg(
+        long = "target",
+        value_name = "TRIPLE",
+        help = "Override the build target triple"
+    )]
+    pub build_target: Option<String>,
+
+    #[arg(
+        long = "optimize",
+        value_name = "MODE",
+        help = "Override the build optimization mode"
+    )]
+    pub build_optimize: Option<String>,
+
+    #[arg(
+        long = "build-option",
+        value_name = "NAME=VALUE",
+        help = "Override a named build option",
+        action = clap::ArgAction::Append
+    )]
+    pub build_options: Vec<String>,
+
+    #[arg(
+        short = 'D',
+        value_name = "NAME=VALUE",
+        help = "Override a build option (shorthand for --build-option)",
+        action = clap::ArgAction::Append
+    )]
+    pub define: Vec<String>,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
+pub struct BuildStepArgs {
+    #[arg(long, value_name = "NAME", help = "Select a named build step")]
+    pub step: Option<String>,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq, Default)]
 pub struct FetchCommand {
     #[command(flatten)]
     pub output: FrontendOutputArgs,
@@ -150,6 +189,12 @@ pub struct BuildCommand {
     #[command(flatten)]
     pub roots: CompileRootArgs,
 
+    #[command(flatten)]
+    pub options: BuildOptionArgs,
+
+    #[command(flatten)]
+    pub step: BuildStepArgs,
+
     #[arg(long, help = "Require the existing fol.lock to match the manifest")]
     pub locked: bool,
 
@@ -171,13 +216,19 @@ pub struct RunCommand {
     #[command(flatten)]
     pub roots: CompileRootArgs,
 
+    #[command(flatten)]
+    pub options: BuildOptionArgs,
+
+    #[command(flatten)]
+    pub step: BuildStepArgs,
+
     #[arg(long, help = "Require the existing fol.lock to match the manifest")]
     pub locked: bool,
 
     #[arg(long, help = "Keep the generated backend crate directory")]
     pub keep_build_dir: bool,
 
-    #[arg(last = true, trailing_var_arg = true)]
+    #[arg(trailing_var_arg = true)]
     pub args: Vec<String>,
 }
 
@@ -189,7 +240,17 @@ pub struct TestCommand {
     #[command(flatten)]
     pub profile: FrontendProfileArgs,
 
-    #[arg(long, value_name = "PATH", help = "Override the workspace or package root")]
+    #[command(flatten)]
+    pub options: BuildOptionArgs,
+
+    #[command(flatten)]
+    pub step: BuildStepArgs,
+
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Override the workspace or package root"
+    )]
     pub path: Option<String>,
 
     #[arg(long, help = "Require the existing fol.lock to match the manifest")]
@@ -210,6 +271,12 @@ pub struct CheckCommand {
     #[command(flatten)]
     pub roots: CompileRootArgs,
 
+    #[command(flatten)]
+    pub options: BuildOptionArgs,
+
+    #[command(flatten)]
+    pub step: BuildStepArgs,
+
     #[arg(long, help = "Require the existing fol.lock to match the manifest")]
     pub locked: bool,
 }
@@ -219,7 +286,11 @@ pub struct WorkCommand {
     #[command(flatten)]
     pub output: FrontendOutputArgs,
 
-    #[arg(long, value_name = "PATH", help = "Override the workspace or package root")]
+    #[arg(
+        long,
+        value_name = "PATH",
+        help = "Override the workspace or package root"
+    )]
     pub path: Option<String>,
 
     #[command(subcommand)]
@@ -432,12 +503,7 @@ pub struct FrontendCli {
     #[arg(long, global = true, hide = true, action = clap::ArgAction::SetTrue)]
     pub json: bool,
 
-    #[arg(
-        long,
-        hide = true,
-        env = "FOL_PROFILE",
-        value_enum,
-    )]
+    #[arg(long, hide = true, env = "FOL_PROFILE", value_enum)]
     pub profile: Option<FrontendProfile>,
 
     #[arg(
@@ -492,8 +558,8 @@ impl FrontendCli {
 
     pub fn command() -> clap::Command {
         <Self as CommandFactory>::command()
-        .color(clap::ColorChoice::Auto)
-        .after_help(AFTER_HELP)
+            .color(clap::ColorChoice::Auto)
+            .after_help(AFTER_HELP)
     }
 
     pub fn selected_profile(&self) -> FrontendProfile {
@@ -510,14 +576,13 @@ impl FrontendCli {
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildCommand, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand,
-        CompletionCommand, CompletionShellArg, CompileRootArgs, DirectTargetArg,
-        EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand,
-        EmitSubcommand, FetchCommand, FrontendCli, FrontendCommand, FrontendOutputArgs,
-        FrontendProfile, FrontendProfileArgs, InitCommand, NewCommand, PackCommand,
-        PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand, TreeCommand,
-        TreeGenerateCommand, TreeSubcommand, UnitCommand, UpdateCommand, WorkCommand,
-        WorkSubcommand,
+        BuildCommand, BuildOptionArgs, BuildStepArgs, CheckCommand, CodeCommand, CodeSubcommand,
+        CompileRootArgs, CompleteCommand, CompletionCommand, CompletionShellArg, DirectTargetArg,
+        EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand,
+        FetchCommand, FrontendCli, FrontendCommand, FrontendOutputArgs, FrontendProfile,
+        FrontendProfileArgs, InitCommand, NewCommand, PackCommand, PackSubcommand, RunCommand,
+        TestCommand, ToolCommand, ToolSubcommand, TreeCommand, TreeGenerateCommand, TreeSubcommand,
+        UnitCommand, UpdateCommand, WorkCommand, WorkSubcommand,
     };
     use crate::OutputMode;
     use std::sync::{Mutex, MutexGuard, OnceLock};
@@ -585,6 +650,8 @@ mod tests {
                     profile: default_profile_args(),
                     target: DirectTargetArg::default(),
                     roots: CompileRootArgs::default(),
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     locked: false,
                     keep_build_dir: false,
                     args: vec!["--flag".to_string(), "value".to_string()],
@@ -716,24 +783,36 @@ mod tests {
         let emit = parse_clean(["fol", "code", "gen", "rust"]);
         let clean = parse_clean(["fol", "tool", "purge"]);
 
-        assert_eq!(build.command, Some(FrontendCommand::Code(CodeCommand {
-            output: default_output_args(),
-            profile: default_profile_args(),
-            command: CodeSubcommand::Build(BuildCommand::default()),
-        })));
-        assert_eq!(check.command, Some(FrontendCommand::Code(CodeCommand {
-            output: default_output_args(),
-            profile: default_profile_args(),
-            command: CodeSubcommand::Check(CheckCommand::default()),
-        })));
-        assert_eq!(fetch.command, Some(FrontendCommand::Pack(PackCommand {
-            output: default_output_args(),
-            command: PackSubcommand::Fetch(FetchCommand::default()),
-        })));
-        assert_eq!(update.command, Some(FrontendCommand::Pack(PackCommand {
-            output: default_output_args(),
-            command: PackSubcommand::Update(UpdateCommand::default()),
-        })));
+        assert_eq!(
+            build.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Build(BuildCommand::default()),
+            }))
+        );
+        assert_eq!(
+            check.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Check(CheckCommand::default()),
+            }))
+        );
+        assert_eq!(
+            fetch.command,
+            Some(FrontendCommand::Pack(PackCommand {
+                output: default_output_args(),
+                command: PackSubcommand::Fetch(FetchCommand::default()),
+            }))
+        );
+        assert_eq!(
+            update.command,
+            Some(FrontendCommand::Pack(PackCommand {
+                output: default_output_args(),
+                command: PackSubcommand::Update(UpdateCommand::default()),
+            }))
+        );
         assert_eq!(
             emit.command,
             Some(FrontendCommand::Code(CodeCommand {
@@ -744,10 +823,13 @@ mod tests {
                 }),
             }))
         );
-        assert_eq!(clean.command, Some(FrontendCommand::Tool(ToolCommand {
-            output: default_output_args(),
-            command: ToolSubcommand::Clean(UnitCommand),
-        })));
+        assert_eq!(
+            clean.command,
+            Some(FrontendCommand::Tool(ToolCommand {
+                output: default_output_args(),
+                command: ToolSubcommand::Clean(UnitCommand),
+            }))
+        );
         assert_eq!(
             work.command,
             Some(FrontendCommand::Work(WorkCommand {
@@ -756,23 +838,35 @@ mod tests {
                 command: WorkSubcommand::Info(UnitCommand),
             }))
         );
-        assert_eq!(pack.command, Some(FrontendCommand::Pack(PackCommand {
-            output: default_output_args(),
-            command: PackSubcommand::Fetch(FetchCommand::default()),
-        })));
-        assert_eq!(code.command, Some(FrontendCommand::Code(CodeCommand {
-            output: default_output_args(),
-            profile: default_profile_args(),
-            command: CodeSubcommand::Build(BuildCommand::default()),
-        })));
-        assert_eq!(editor.command, Some(FrontendCommand::Tool(ToolCommand {
-            output: default_output_args(),
-            command: ToolSubcommand::Lsp(UnitCommand),
-        })));
-        assert_eq!(tool.command, Some(FrontendCommand::Tool(ToolCommand {
-            output: default_output_args(),
-            command: ToolSubcommand::Clean(UnitCommand),
-        })));
+        assert_eq!(
+            pack.command,
+            Some(FrontendCommand::Pack(PackCommand {
+                output: default_output_args(),
+                command: PackSubcommand::Fetch(FetchCommand::default()),
+            }))
+        );
+        assert_eq!(
+            code.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Build(BuildCommand::default()),
+            }))
+        );
+        assert_eq!(
+            editor.command,
+            Some(FrontendCommand::Tool(ToolCommand {
+                output: default_output_args(),
+                command: ToolSubcommand::Lsp(UnitCommand),
+            }))
+        );
+        assert_eq!(
+            tool.command,
+            Some(FrontendCommand::Tool(ToolCommand {
+                output: default_output_args(),
+                command: ToolSubcommand::Clean(UnitCommand),
+            }))
+        );
     }
 
     #[test]
@@ -783,7 +877,9 @@ mod tests {
         assert_eq!(
             cli.command,
             Some(FrontendCommand::Code(CodeCommand {
-                output: FrontendOutputArgs { output: OutputMode::Json },
+                output: FrontendOutputArgs {
+                    output: OutputMode::Json
+                },
                 profile: default_profile_args(),
                 command: CodeSubcommand::Build(BuildCommand::default()),
             }))
@@ -833,7 +929,9 @@ mod tests {
         assert_eq!(
             cli.command,
             Some(FrontendCommand::Code(CodeCommand {
-                output: FrontendOutputArgs { output: OutputMode::Plain },
+                output: FrontendOutputArgs {
+                    output: OutputMode::Plain
+                },
                 profile: FrontendProfileArgs {
                     profile: Some(FrontendProfile::Release),
                     debug: false,
@@ -859,7 +957,9 @@ mod tests {
         assert_eq!(
             cli.command,
             Some(FrontendCommand::Code(CodeCommand {
-                output: FrontendOutputArgs { output: OutputMode::Json },
+                output: FrontendOutputArgs {
+                    output: OutputMode::Json
+                },
                 profile: FrontendProfileArgs {
                     profile: None,
                     debug: true,
@@ -871,6 +971,106 @@ mod tests {
 
         std::env::remove_var("FOL_OUTPUT");
         std::env::remove_var("FOL_PROFILE");
+    }
+
+    #[test]
+    fn build_commands_parse_build_option_overrides() {
+        let cli = FrontendCli::parse_from([
+            "fol",
+            "code",
+            "build",
+            "--target",
+            "aarch64-macos-gnu",
+            "--optimize",
+            "release-fast",
+            "--build-option",
+            "jobs=16",
+            "--build-option",
+            "strip=true",
+        ]);
+
+        assert_eq!(
+            cli.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Build(BuildCommand {
+                    output: default_output_args(),
+                    profile: default_profile_args(),
+                    target: DirectTargetArg::default(),
+                    roots: CompileRootArgs::default(),
+                    options: BuildOptionArgs {
+                        build_target: Some("aarch64-macos-gnu".to_string()),
+                        build_optimize: Some("release-fast".to_string()),
+                        build_options: vec!["jobs=16".to_string(), "strip=true".to_string()],
+                    },
+                    step: BuildStepArgs::default(),
+                    locked: false,
+                    keep_build_dir: false,
+                }),
+            }))
+        );
+    }
+
+    #[test]
+    fn workspace_code_commands_parse_explicit_step_selection() {
+        let build = parse_clean(["fol", "code", "build", "--step", "docs"]);
+        let run = parse_clean(["fol", "code", "run", "--step", "bench"]);
+        let test = parse_clean(["fol", "code", "test", "--step", "unit"]);
+        let check = parse_clean(["fol", "code", "check", "--step", "lint"]);
+
+        assert_eq!(
+            build.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Build(BuildCommand {
+                    step: BuildStepArgs {
+                        step: Some("docs".to_string()),
+                    },
+                    ..BuildCommand::default()
+                }),
+            }))
+        );
+        assert_eq!(
+            run.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Run(RunCommand {
+                    step: BuildStepArgs {
+                        step: Some("bench".to_string()),
+                    },
+                    ..RunCommand::default()
+                }),
+            }))
+        );
+        assert_eq!(
+            test.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Test(TestCommand {
+                    step: BuildStepArgs {
+                        step: Some("unit".to_string()),
+                    },
+                    ..TestCommand::default()
+                }),
+            }))
+        );
+        assert_eq!(
+            check.command,
+            Some(FrontendCommand::Code(CodeCommand {
+                output: default_output_args(),
+                profile: default_profile_args(),
+                command: CodeSubcommand::Check(CheckCommand {
+                    step: BuildStepArgs {
+                        step: Some("lint".to_string()),
+                    },
+                    ..CheckCommand::default()
+                }),
+            }))
+        );
     }
 
     #[test]
@@ -895,6 +1095,7 @@ mod tests {
         assert!(!help.contains("--dump-lowered"));
         assert!(!help.contains("--emit-rust"));
         assert!(!help.contains("--keep-build-dir"));
+        assert!(!help.contains("--build-option"));
         assert!(!help.contains("Arguments:"));
         assert!(!help.contains("FILE_OR_FOLDER"));
     }
@@ -964,7 +1165,11 @@ mod tests {
             Some(FrontendCommand::Work(WorkCommand {
                 output: default_output_args(),
                 path: None,
-                command: WorkSubcommand::Init(InitCommand { workspace: true, bin: false, lib: false }),
+                command: WorkSubcommand::Init(InitCommand {
+                    workspace: true,
+                    bin: false,
+                    lib: false
+                }),
             }))
         );
         assert_eq!(
@@ -992,7 +1197,11 @@ mod tests {
             Some(FrontendCommand::Work(WorkCommand {
                 output: default_output_args(),
                 path: None,
-                command: WorkSubcommand::Init(InitCommand { workspace: false, bin: true, lib: false }),
+                command: WorkSubcommand::Init(InitCommand {
+                    workspace: false,
+                    bin: true,
+                    lib: false
+                }),
             }))
         );
         assert_eq!(
@@ -1020,7 +1229,11 @@ mod tests {
             Some(FrontendCommand::Work(WorkCommand {
                 output: default_output_args(),
                 path: None,
-                command: WorkSubcommand::Init(InitCommand { workspace: false, bin: false, lib: true }),
+                command: WorkSubcommand::Init(InitCommand {
+                    workspace: false,
+                    bin: false,
+                    lib: true
+                }),
             }))
         );
         assert_eq!(
@@ -1048,7 +1261,11 @@ mod tests {
             Some(FrontendCommand::Work(WorkCommand {
                 output: default_output_args(),
                 path: None,
-                command: WorkSubcommand::Init(InitCommand { workspace: false, bin: false, lib: true }),
+                command: WorkSubcommand::Init(InitCommand {
+                    workspace: false,
+                    bin: false,
+                    lib: true
+                }),
             }))
         );
         assert_eq!(
@@ -1095,6 +1312,8 @@ mod tests {
                         std_root: Some("/tmp/std".to_string()),
                         package_store_root: Some("/tmp/pkg".to_string()),
                     },
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     locked: false,
                     keep_build_dir: true,
                 }),
@@ -1133,6 +1352,8 @@ mod tests {
                     profile: default_profile_args(),
                     target: DirectTargetArg::default(),
                     roots: CompileRootArgs::default(),
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     locked: true,
                     keep_build_dir: false,
                 }),
@@ -1148,6 +1369,8 @@ mod tests {
                     profile: default_profile_args(),
                     target: DirectTargetArg::default(),
                     roots: CompileRootArgs::default(),
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     locked: true,
                     keep_build_dir: false,
                     args: Vec::new(),
@@ -1162,6 +1385,8 @@ mod tests {
                 command: CodeSubcommand::Test(TestCommand {
                     output: default_output_args(),
                     profile: default_profile_args(),
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     path: None,
                     locked: true,
                 }),
@@ -1177,6 +1402,8 @@ mod tests {
                     profile: default_profile_args(),
                     target: DirectTargetArg::default(),
                     roots: CompileRootArgs::default(),
+                    options: BuildOptionArgs::default(),
+                    step: BuildStepArgs::default(),
                     locked: true,
                 }),
             }))
@@ -1185,14 +1412,7 @@ mod tests {
 
     #[test]
     fn emit_subcommands_own_their_specific_flags() {
-        let rust = parse_clean([
-            "fol",
-            "code",
-            "emit",
-            "rust",
-            "--keep-build-dir",
-            "demo",
-        ]);
+        let rust = parse_clean(["fol", "code", "emit", "rust", "--keep-build-dir", "demo"]);
         let lowered = parse_clean([
             "fol",
             "code",

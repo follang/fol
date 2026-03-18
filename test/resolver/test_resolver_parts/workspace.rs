@@ -108,17 +108,17 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
 
     fs::write(
         store_root.join("json/package.yaml"),
-        "name: json\nversion: 1.0.0\n",
+        "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
     )
     .expect("Should write json package metadata");
     fs::write(
         store_root.join("json/build.fol"),
-        "def dep: pkg = \"core\";\ndef root: loc = \"src\";\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
     )
     .expect("Should write json build definition");
     fs::write(
         store_root.join("json/src/lib.fol"),
-        "use core: pkg = {core};\nvar[exp] answer: int = shared;\n",
+        "use core: pkg = {core};\nvar[exp] answer: int = core::src::shared;\n",
     )
     .expect("Should write json package sources");
 
@@ -127,14 +127,17 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
         "name: core\nversion: 1.0.0\n",
     )
     .expect("Should write core package metadata");
-    fs::write(store_root.join("core/build.fol"), "def root: loc = \"src\";\n")
+    fs::write(
+        store_root.join("core/build.fol"),
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+    )
         .expect("Should write core build definition");
     fs::write(store_root.join("core/src/lib.fol"), "var[exp] shared: int = 7;\n")
         .expect("Should write core package sources");
 
     fs::write(
         app_root.join("main.fol"),
-        "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+        "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n}\n",
     )
     .expect("Should write the transitive import fixture");
 
@@ -172,8 +175,8 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
             .references
             .iter()
             .any(|reference| {
-                reference.kind == ReferenceKind::Identifier
-                    && reference.name == "answer"
+                reference.kind == ReferenceKind::QualifiedIdentifier
+                    && reference.name == "json::src::answer"
                     && reference.resolved.is_some()
             }),
         "Workspace handoff should preserve existing entry-package resolution"
@@ -185,7 +188,7 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
 
 #[test]
 fn test_resolver_legacy_program_api_matches_workspace_entry_program() {
-    let temp_root = unique_temp_root("workspace_compatibility");
+    let temp_root = unique_temp_root("workspace_legacy_program_api");
     fs::create_dir_all(temp_root.join("app"))
         .expect("Should create the importing package root fixture directory");
     fs::create_dir_all(temp_root.join("shared"))

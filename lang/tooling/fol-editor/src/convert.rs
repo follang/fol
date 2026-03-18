@@ -63,7 +63,12 @@ pub fn diagnostic_to_lsp(diagnostic: &Diagnostic) -> LspDiagnostic {
     let primary = diagnostic
         .primary_location()
         .cloned()
-        .or_else(|| diagnostic.labels.first().map(|label| label.location.clone()))
+        .or_else(|| {
+            diagnostic
+                .labels
+                .first()
+                .map(|label| label.location.clone())
+        })
         .unwrap_or(DiagnosticLocation {
             file: None,
             line: 1,
@@ -92,13 +97,20 @@ pub fn diagnostic_to_lsp(diagnostic: &Diagnostic) -> LspDiagnostic {
         .iter()
         .filter(|label| label.kind == DiagnosticLabelKind::Secondary)
         .filter_map(|label| {
-            label.location.file.as_ref().map(|file| LspDiagnosticRelatedInformation {
-                location: LspLocation {
-                    uri: format!("file://{file}"),
-                    range: location_to_range(&label.location),
-                },
-                message: label.message.clone().unwrap_or_else(|| "related".to_string()),
-            })
+            label
+                .location
+                .file
+                .as_ref()
+                .map(|file| LspDiagnosticRelatedInformation {
+                    location: LspLocation {
+                        uri: format!("file://{file}"),
+                        range: location_to_range(&label.location),
+                    },
+                    message: label
+                        .message
+                        .clone()
+                        .unwrap_or_else(|| "related".to_string()),
+                })
         })
         .collect::<Vec<_>>();
 

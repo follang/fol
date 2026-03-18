@@ -91,7 +91,10 @@ impl<T: FolEchoFormat> FolEchoFormat for FolSeq<T> {
 
 impl<T: FolEchoFormat + Ord> FolEchoFormat for FolSet<T> {
     fn fol_echo_format(&self) -> String {
-        format!("set{{{}}}", join_echo(self.as_set().iter().map(render_echo)))
+        format!(
+            "set{{{}}}",
+            join_echo(self.as_set().iter().map(render_echo))
+        )
     }
 }
 
@@ -99,11 +102,11 @@ impl<K: FolEchoFormat + Ord, V: FolEchoFormat> FolEchoFormat for FolMap<K, V> {
     fn fol_echo_format(&self) -> String {
         format!(
             "map{{{}}}",
-            join_echo(
-                self.as_map()
-                    .iter()
-                    .map(|(key, value)| format!("{}: {}", render_echo(key), render_echo(value)))
-            )
+            join_echo(self.as_map().iter().map(|(key, value)| format!(
+                "{}: {}",
+                render_echo(key),
+                render_echo(value)
+            )))
         )
     }
 }
@@ -247,10 +250,8 @@ mod tests {
 
     #[test]
     fn runtime_echo_formats_nested_v1_values_stably() {
-        let nested_seq = FolSeq::from_items(vec![
-            FolOption::some(FolStr::from("Ada")),
-            FolOption::nil(),
-        ]);
+        let nested_seq =
+            FolSeq::from_items(vec![FolOption::some(FolStr::from("Ada")), FolOption::nil()]);
         let nested_map = FolMap::from_pairs(vec![
             (
                 FolStr::from("left"),

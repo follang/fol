@@ -35,20 +35,20 @@ pub fn crate_name() -> &'static str {
 pub use config::{BackendConfig, BackendMode, BackendTarget};
 pub use control::render_terminator;
 pub use emit::{
-    build_generated_crate, emit_backend_artifact, emit_cargo_toml,
-    emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
-    emit_package_module_shells, prepare_generated_build_dir, summarize_emitted_artifact,
-    write_generated_crate,
+    build_generated_crate, emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton,
+    emit_main_rs, emit_namespace_module_shells, emit_package_module_shells,
+    prepare_generated_build_dir, summarize_emitted_artifact, write_generated_crate,
 };
 pub use error::{BackendError, BackendErrorKind};
 pub use identity::{stable_workspace_hash, BackendWorkspaceIdentity};
+pub use instructions::{render_core_instruction, render_core_instruction_in_workspace};
 pub use layout::{
     plan_generated_crate_layout, plan_namespace_layouts, plan_package_layouts,
     GeneratedCrateLayoutPlan, NamespaceLayoutPlan, PackageLayoutPlan,
 };
 pub use mangle::{
-    mangle_global_name, mangle_local_name, mangle_package_module_name,
-    mangle_routine_name, mangle_type_name, sanitize_backend_ident,
+    mangle_global_name, mangle_local_name, mangle_package_module_name, mangle_routine_name,
+    mangle_type_name, sanitize_backend_ident,
 };
 pub use model::{BackendArtifact, EmittedRustFile};
 pub use session::BackendSession;
@@ -60,7 +60,6 @@ pub use trace::{
     build_backend_trace, build_emitted_source_map, BackendEmittedSourceMap,
     BackendEmittedSourceMapEntry, BackendTrace, BackendTraceKind, BackendTraceRecord,
 };
-pub use instructions::{render_core_instruction, render_core_instruction_in_workspace};
 pub use types::{
     render_entry_definition, render_entry_trait_impl, render_record_definition,
     render_record_trait_impl, render_rust_type, render_rust_type_in_workspace,

@@ -1,0 +1,7 @@
+fun[exp] core_status(): int = {
+    return 0
+}
+
+fun[exp] entry(): int = {
+    return core_status()
+}

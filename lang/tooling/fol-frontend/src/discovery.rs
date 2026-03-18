@@ -96,7 +96,10 @@ mod tests {
 
         assert_eq!(WORKSPACE_FILE_NAME, "fol.work.yaml");
         assert_eq!(root.root, PathBuf::from("/tmp/demo"));
-        assert_eq!(root.config_file, PathBuf::from("/tmp/demo").join("fol.work.yaml"));
+        assert_eq!(
+            root.config_file,
+            PathBuf::from("/tmp/demo").join("fol.work.yaml")
+        );
     }
 
     #[test]
@@ -105,21 +108,32 @@ mod tests {
 
         assert_eq!(PACKAGE_FILE_NAME, "package.yaml");
         assert_eq!(root.root, PathBuf::from("/tmp/demo"));
-        assert_eq!(root.manifest_file, PathBuf::from("/tmp/demo").join("package.yaml"));
+        assert_eq!(
+            root.manifest_file,
+            PathBuf::from("/tmp/demo").join("package.yaml")
+        );
     }
 
     #[test]
     fn upward_discovery_prefers_workspace_then_package_roots() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_discovery_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_discovery_{}", std::process::id()));
         let package_root = root.join("pkg");
         let nested = package_root.join("src").join("nested");
         fs::create_dir_all(&nested).unwrap();
         fs::write(root.join("fol.work.yaml"), "members: []\n").unwrap();
-        fs::write(package_root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            package_root.join("package.yaml"),
+            "name: demo\nversion: 0.1.0\n",
+        )
+        .unwrap();
 
         let discovered = discover_root_upward(&nested).unwrap();
 
-        assert_eq!(discovered, DiscoveredRoot::Package(PackageRoot::new(package_root.clone())));
+        assert_eq!(
+            discovered,
+            DiscoveredRoot::Package(PackageRoot::new(package_root.clone()))
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -135,23 +149,26 @@ mod tests {
 
         let discovered = discover_root_from_explicit_path(&root).unwrap();
 
-        assert_eq!(discovered, DiscoveredRoot::Workspace(WorkspaceRoot::new(root.clone())));
+        assert_eq!(
+            discovered,
+            DiscoveredRoot::Workspace(WorkspaceRoot::new(root.clone()))
+        );
 
         fs::remove_dir_all(root).ok();
     }
 
     #[test]
     fn missing_roots_lower_into_frontend_workspace_not_found_errors() {
-        let root = std::env::temp_dir().join(format!(
-            "fol_frontend_missing_root_{}",
-            std::process::id()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_missing_root_{}", std::process::id()));
         fs::create_dir_all(&root).unwrap();
 
         let error = require_discovered_root(&root).unwrap_err();
 
         assert_eq!(error.kind(), crate::FrontendErrorKind::WorkspaceNotFound);
-        assert!(error.message().contains("could not find a FOL workspace or package root"));
+        assert!(error
+            .message()
+            .contains("could not find a FOL workspace or package root"));
         assert_eq!(error.notes().len(), 2);
         assert!(error.notes()[0].contains("fol work init --bin"));
 
@@ -168,12 +185,19 @@ mod tests {
         let main_file = nested.join("main.fol");
         fs::create_dir_all(&nested).unwrap();
         fs::write(root.join("fol.work.yaml"), "members: []\n").unwrap();
-        fs::write(root.join("pkg").join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("pkg").join("package.yaml"),
+            "name: demo\nversion: 0.1.0\n",
+        )
+        .unwrap();
         fs::write(&main_file, "fun[] main(): int = { return 0 }\n").unwrap();
 
         let discovered = discover_root_upward(&main_file).unwrap();
 
-        assert_eq!(discovered, DiscoveredRoot::Package(PackageRoot::new(root.join("pkg"))));
+        assert_eq!(
+            discovered,
+            DiscoveredRoot::Package(PackageRoot::new(root.join("pkg")))
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -193,7 +217,10 @@ mod tests {
 
         let discovered = discover_root_upward(&nested).unwrap();
 
-        assert_eq!(discovered, DiscoveredRoot::Package(PackageRoot::new(nested.clone())));
+        assert_eq!(
+            discovered,
+            DiscoveredRoot::Package(PackageRoot::new(nested.clone()))
+        );
 
         fs::remove_dir_all(root).ok();
     }

@@ -112,7 +112,10 @@ impl PackageGitSourceSession {
                 return Err(wrap_git_failure(
                     "read from offline git cache",
                     locator,
-                    format!("cached source mirror '{}' does not exist", cache_root.display()),
+                    format!(
+                        "cached source mirror '{}' does not exist",
+                        cache_root.display()
+                    ),
                 ));
             }
             if let Some(parent) = cache_root.parent() {
@@ -132,7 +135,11 @@ impl PackageGitSourceSession {
                 .clone();
             run_git(
                 None,
-                &["clone", repository.as_str(), cache_root.to_string_lossy().as_ref()],
+                &[
+                    "clone",
+                    repository.as_str(),
+                    cache_root.to_string_lossy().as_ref(),
+                ],
                 locator,
                 "clone into source cache",
             )?;
@@ -181,11 +188,7 @@ impl PackageGitSourceSession {
         locator: &PackageLocator,
         revision: &str,
     ) -> Result<PackageGitMaterialization, PackageError> {
-        self.materialize_revision_with_options(
-            locator,
-            revision,
-            PackageGitFetchOptions::default(),
-        )
+        self.materialize_revision_with_options(locator, revision, PackageGitFetchOptions::default())
     }
 
     pub fn materialize_revision_with_options(
@@ -320,7 +323,8 @@ fn run_git_capture(
             git_output_detail(&output.stderr, &output.stdout),
         ));
     }
-    String::from_utf8(output.stdout).map_err(|error| wrap_git_failure(action, locator, error.to_string()))
+    String::from_utf8(output.stdout)
+        .map_err(|error| wrap_git_failure(action, locator, error.to_string()))
 }
 
 fn git_output_detail(stderr: &[u8], stdout: &[u8]) -> String {
@@ -344,7 +348,8 @@ mod tests {
 
     #[test]
     fn git_source_session_plans_separate_cache_and_store_roots() {
-        let session = PackageGitSourceSession::new("/tmp/demo/.fol/cache/git", "/tmp/demo/.fol/pkg/git");
+        let session =
+            PackageGitSourceSession::new("/tmp/demo/.fol/cache/git", "/tmp/demo/.fol/pkg/git");
         let locator = parse_package_locator("https://github.com/bresilla/logtiny.git?tag=v1")
             .expect("git locator should parse");
 
@@ -365,16 +370,15 @@ mod tests {
 
     #[test]
     fn git_source_session_rejects_non_git_locators() {
-        let session = PackageGitSourceSession::new("/tmp/demo/.fol/cache/git", "/tmp/demo/.fol/pkg/git");
+        let session =
+            PackageGitSourceSession::new("/tmp/demo/.fol/cache/git", "/tmp/demo/.fol/pkg/git");
         let locator = parse_package_locator("org/core").expect("store locator should parse");
 
         let error = session
             .plan_materialization(&locator, "abc123")
             .expect_err("non-git locators should be rejected");
 
-        assert!(error
-            .message()
-            .contains("requires a git locator"));
+        assert!(error.message().contains("requires a git locator"));
     }
 
     #[test]
@@ -384,9 +388,9 @@ mod tests {
 
         let error = wrap_git_failure("fetch", &locator, "network timeout");
 
-        assert!(error
-            .message()
-            .contains("git dependency 'git@github.com:bresilla/logtiny.git' failed while trying to fetch"));
+        assert!(error.message().contains(
+            "git dependency 'git@github.com:bresilla/logtiny.git' failed while trying to fetch"
+        ));
         assert!(error.message().contains("network timeout"));
     }
 
@@ -396,7 +400,8 @@ mod tests {
         let remote = temp_root.join("remote");
         create_package_repo(&remote, "0.1.0");
 
-        let session = PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
+        let session =
+            PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
         let locator = PackageLocator::git(
             format!("git+file://{}", remote.display()),
             PackageGitTransport::Git,
@@ -422,7 +427,8 @@ mod tests {
         let remote = temp_root.join("remote");
         create_package_repo(&remote, "0.1.0");
 
-        let session = PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
+        let session =
+            PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
         let locator = PackageLocator::git(
             format!("git+file://{}", remote.display()),
             PackageGitTransport::Git,
@@ -463,7 +469,10 @@ mod tests {
             format!("name: logtiny\nversion: {version}\n"),
         )
         .expect("package metadata should be writable");
-        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+        std::fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
             .expect("package build should be writable");
         std::fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
             .expect("package source should be writable");

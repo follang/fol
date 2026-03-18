@@ -62,8 +62,8 @@ pub fn map_document_workspace(
     let workspace_root = config
         .root_markers
         .iter()
-        .find(|marker| marker.as_str() == "fol.work.yaml")
-        .and_then(|marker| find_upward_marker(directory, marker));
+        .filter(|marker| marker.as_str() != "package.yaml")
+        .find_map(|marker| find_upward_marker(directory, marker));
     let analysis_root = workspace_root
         .clone()
         .or_else(|| package_root.clone())
@@ -97,7 +97,10 @@ pub fn materialize_analysis_overlay(
     fs::create_dir_all(&temp_root).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!("failed to create overlay root '{}': {error}", temp_root.display()),
+            format!(
+                "failed to create overlay root '{}': {error}",
+                temp_root.display()
+            ),
         )
     })?;
 
@@ -121,7 +124,10 @@ pub fn materialize_analysis_overlay(
         fs::create_dir_all(parent).map_err(|error| {
             EditorError::new(
                 EditorErrorKind::Internal,
-                format!("failed to create overlay parent '{}': {error}", parent.display()),
+                format!(
+                    "failed to create overlay parent '{}': {error}",
+                    parent.display()
+                ),
             )
         })?;
     }
@@ -152,7 +158,8 @@ pub fn materialize_analysis_overlay(
 fn find_upward_marker(start: &Path, marker: &str) -> Option<PathBuf> {
     let mut current = Some(start);
     while let Some(path) = current {
-        if path.join(marker).is_file() {
+        let candidate = path.join(marker);
+        if candidate.is_file() || candidate.is_dir() {
             return Some(path.to_path_buf());
         }
         current = path.parent();
@@ -170,7 +177,10 @@ fn copy_directory_tree(from: &Path, to: &Path) -> EditorResult<()> {
         let entry = entry.map_err(|error| {
             EditorError::new(
                 EditorErrorKind::Internal,
-                format!("failed to enumerate analysis root '{}': {error}", from.display()),
+                format!(
+                    "failed to enumerate analysis root '{}': {error}",
+                    from.display()
+                ),
             )
         })?;
         let source = entry.path();
@@ -232,7 +242,11 @@ mod tests {
         fs::create_dir_all(&src).unwrap();
         fs::write(root.join("fol.work.yaml"), "members:\n  - app\n").unwrap();
         fs::write(package.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let mapping = map_document_workspace(&src.join("main.fol"), &EditorConfig::default())
             .expect("mapping should succeed");
@@ -250,16 +264,27 @@ mod tests {
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let path = src.join("main.fol");
         let mapping =
             map_document_workspace(&path, &EditorConfig::default()).expect("mapping should work");
         let uri = EditorDocumentUri::from_file_path(path.clone()).unwrap();
-        let document =
-            EditorDocument::new(uri, 2, "fun[] main(): int = {\n    return 7\n}\n".to_string())
-                .unwrap();
+        let document = EditorDocument::new(
+            uri,
+            2,
+            "fun[] main(): int = {\n    return 7\n}\n".to_string(),
+        )
+        .unwrap();
         let overlay = materialize_analysis_overlay(&mapping, &document).unwrap();
         let mirrored = overlay.analysis_root().join("src/main.fol");
 
@@ -268,7 +293,10 @@ mod tests {
             "fun[] main(): int = {\n    return 7\n}\n"
         );
         assert_eq!(overlay.package_root(), Some(overlay.analysis_root()));
-        assert_eq!(overlay.document_path(), overlay.analysis_root().join("src/main.fol"));
+        assert_eq!(
+            overlay.document_path(),
+            overlay.analysis_root().join("src/main.fol")
+        );
 
         fs::remove_dir_all(root).ok();
     }

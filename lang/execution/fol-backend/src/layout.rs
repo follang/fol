@@ -138,7 +138,10 @@ fn sanitize_segment(raw: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{plan_generated_crate_layout, plan_namespace_layouts, plan_package_layouts};
-    use crate::{testing::{distinct_namespaces, sample_lowered_workspace}, BackendSession};
+    use crate::{
+        testing::{distinct_namespaces, sample_lowered_workspace},
+        BackendSession,
+    };
 
     #[test]
     fn package_layout_plans_follow_package_graph_order() {

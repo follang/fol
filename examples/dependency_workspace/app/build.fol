@@ -1,0 +1,9 @@
+pro[] build(graph: Graph): non = {
+    var app = graph.add_exe({
+        name = "dependency_workspace_app",
+        root = "src/main.fol",
+    });
+
+    graph.install(app);
+    graph.add_run(app);
+}

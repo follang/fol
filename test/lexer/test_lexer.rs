@@ -1121,14 +1121,9 @@ mod lexer_tests {
 
     #[test]
     fn test_quoted_payloads_keep_physical_newlines_without_continuation_semantics() {
-        let temp_path = std::env::temp_dir().join(format!(
-            "fol_lexer_multiline_quote_{}_{}.fol",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("System time should be after unix epoch")
-                .as_nanos()
-        ));
+        let temp_root = unique_temp_root("multiline_quote");
+        std::fs::create_dir_all(&temp_root).expect("Should create multiline quoted fixture root");
+        let temp_path = temp_root.join("fixture.fol");
         std::fs::write(&temp_path, "\"line one\nline two\"")
             .expect("Should write multiline quoted lexer fixture");
 
@@ -1152,6 +1147,7 @@ mod lexer_tests {
         );
 
         std::fs::remove_file(&temp_path).ok();
+        std::fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]
@@ -2176,14 +2172,9 @@ mod lexer_error_tests {
 
     #[test]
     fn test_unrecognized_non_ascii_character_returns_lexer_error() {
-        let temp_path = std::env::temp_dir().join(format!(
-            "fol_lexer_bad_char_{}_{}.fol",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("System time should be after unix epoch")
-                .as_nanos()
-        ));
+        let temp_root = unique_temp_root("bad_char");
+        std::fs::create_dir_all(&temp_root).expect("Should create malformed lexer fixture root");
+        let temp_path = temp_root.join("fixture.fol");
         std::fs::write(&temp_path, "é").expect("Should write malformed lexer fixture");
 
         let mut file_stream = FileStream::from_file(
@@ -2206,18 +2197,15 @@ mod lexer_error_tests {
         );
 
         std::fs::remove_file(&temp_path).ok();
+        std::fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]
     fn test_unrecognized_ascii_control_character_returns_lexer_error() {
-        let temp_path = std::env::temp_dir().join(format!(
-            "fol_lexer_bad_ascii_control_{}_{}.fol",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("System time should be after unix epoch")
-                .as_nanos()
-        ));
+        let temp_root = unique_temp_root("bad_ascii_control");
+        std::fs::create_dir_all(&temp_root)
+            .expect("Should create malformed ascii-control fixture root");
+        let temp_path = temp_root.join("fixture.fol");
         std::fs::write(&temp_path, b"\x7f")
             .expect("Should write malformed ascii-control lexer fixture");
 
@@ -2241,6 +2229,7 @@ mod lexer_error_tests {
         );
 
         std::fs::remove_file(&temp_path).ok();
+        std::fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]
@@ -2265,14 +2254,10 @@ mod lexer_error_tests {
 
     #[test]
     fn test_unterminated_backtick_comment_becomes_illegal_token() {
-        let temp_path = std::env::temp_dir().join(format!(
-            "fol_lexer_unterminated_backtick_comment_{}_{}.fol",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("System time should be after unix epoch")
-                .as_nanos()
-        ));
+        let temp_root = unique_temp_root("unterminated_backtick_comment");
+        std::fs::create_dir_all(&temp_root)
+            .expect("Should create unterminated backtick comment fixture root");
+        let temp_path = temp_root.join("fixture.fol");
         std::fs::write(&temp_path, "`macroish")
             .expect("Should write unterminated backtick comment lexer fixture");
 
@@ -2288,18 +2273,15 @@ mod lexer_error_tests {
         );
 
         std::fs::remove_file(&temp_path).ok();
+        std::fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]
     fn test_unterminated_slash_block_comment_becomes_illegal_token() {
-        let temp_path = std::env::temp_dir().join(format!(
-            "fol_lexer_unterminated_block_comment_{}_{}.fol",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("System time should be after unix epoch")
-                .as_nanos()
-        ));
+        let temp_root = unique_temp_root("unterminated_block_comment");
+        std::fs::create_dir_all(&temp_root)
+            .expect("Should create unterminated block-comment fixture root");
+        let temp_path = temp_root.join("fixture.fol");
         std::fs::write(&temp_path, "/* missing close")
             .expect("Should write unterminated block-comment lexer fixture");
 
@@ -2315,6 +2297,7 @@ mod lexer_error_tests {
         );
 
         std::fs::remove_file(&temp_path).ok();
+        std::fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]

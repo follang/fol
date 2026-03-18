@@ -16,12 +16,15 @@ fn unique_temp_root(label: &str) -> std::path::PathBuf {
 }
 
 #[test]
-fn test_package_parser_accepts_pkg_definition_declarations() {
-    let temp_root = unique_temp_root("pkg_definition");
+fn test_package_parser_accepts_canonical_build_procedures() {
+    let temp_root = unique_temp_root("canonical_build_procedure");
     fs::create_dir_all(&temp_root).expect("Should create temporary parser fixture root");
     let file_path = temp_root.join("build.fol");
-    fs::write(&file_path, "def core: pkg = \"core\";\n")
-        .expect("Should write the pkg definition fixture");
+    fs::write(
+        &file_path,
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+    )
+    .expect("Should write the canonical build fixture");
 
     let parsed = parse_package_from_file(
         file_path
@@ -37,20 +40,16 @@ fn test_package_parser_accepts_pkg_definition_declarations() {
         source_unit.items.iter().any(|item| {
             matches!(
                 &item.node,
-                AstNode::DefDecl {
+                AstNode::ProDecl {
                     name,
-                    def_type: FolType::Package { name: kind },
-                    body,
+                    params,
+                    return_type: Some(FolType::None),
                     ..
-                } if name == "core"
-                    && kind.is_empty()
-                    && matches!(
-                        body.as_slice(),
-                        [AstNode::Literal(Literal::String(value))] if value == "core"
-                    )
+                } if name == "build"
+                    && matches!(params.as_slice(), [param] if param.name == "graph")
             )
         }),
-        "Package parser should accept pkg definition declarations for build surfaces",
+        "Package parser should accept canonical build procedures for build surfaces",
     );
 
     fs::remove_dir_all(&temp_root)
@@ -58,12 +57,18 @@ fn test_package_parser_accepts_pkg_definition_declarations() {
 }
 
 #[test]
-fn test_package_parser_accepts_loc_definition_declarations() {
-    let temp_root = unique_temp_root("loc_definition");
+fn test_package_parser_accepts_helper_declarations_alongside_the_build_entry() {
+    let temp_root = unique_temp_root("build_helper_declarations");
     fs::create_dir_all(&temp_root).expect("Should create temporary parser fixture root");
     let file_path = temp_root.join("build.fol");
-    fs::write(&file_path, "def root: loc = \"src/fmt\";\n")
-        .expect("Should write the loc definition fixture");
+    fs::write(
+        &file_path,
+        concat!(
+            "fun[] helper(): int = {\n    return 1\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        ),
+    )
+    .expect("Should write the helper build fixture");
 
     let parsed = parse_package_from_file(
         file_path
@@ -79,20 +84,13 @@ fn test_package_parser_accepts_loc_definition_declarations() {
         source_unit.items.iter().any(|item| {
             matches!(
                 &item.node,
-                AstNode::DefDecl {
+                AstNode::FunDecl {
                     name,
-                    def_type: FolType::Location { name: kind },
-                    body,
                     ..
-                } if name == "root"
-                    && kind.is_empty()
-                    && matches!(
-                        body.as_slice(),
-                        [AstNode::Literal(Literal::String(value))] if value == "src/fmt"
-                    )
+                } if name == "helper"
             )
         }),
-        "Package parser should accept loc definition declarations for build surfaces",
+        "Package parser should accept helper declarations in build surfaces",
     );
 
     fs::remove_dir_all(&temp_root)

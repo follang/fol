@@ -1,8 +1,8 @@
 use crate::model::SymbolKind;
-use fol_package::PackageError;
 use fol_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
 };
+use fol_package::PackageError;
 use fol_parser::ast::SyntaxOrigin;
 use fol_types::Glitch;
 
@@ -95,11 +95,7 @@ impl ResolverError {
         })
     }
 
-    pub fn with_related_origin(
-        mut self,
-        origin: SyntaxOrigin,
-        message: impl Into<String>,
-    ) -> Self {
+    pub fn with_related_origin(mut self, origin: SyntaxOrigin, message: impl Into<String>) -> Self {
         self.related_origins.push((origin, message.into()));
         self
     }
@@ -161,14 +157,16 @@ impl ToDiagnostic for ResolverError {
             );
         }
         if self.kind == ResolverErrorKind::Unsupported && self.message.contains("imports yet") {
-            diagnostic = diagnostic.with_note(
-                "supported import source kinds are loc, std, and pkg",
-            );
+            diagnostic =
+                diagnostic.with_note("supported import source kinds are loc, std, and pkg");
         }
         if self.message.contains("requires an explicit std root") {
             diagnostic = diagnostic.with_help("rerun with --std-root <DIR>");
         }
-        if self.message.contains("requires an explicit package store root") {
+        if self
+            .message
+            .contains("requires an explicit package store root")
+        {
             diagnostic = diagnostic.with_help("rerun with --package-store-root <DIR>");
         }
         if self.message.contains("pkg instead of loc") {
@@ -314,7 +312,9 @@ mod tests {
     #[test]
     fn resolver_error_translation_rewrites_package_loader_prefixes() {
         assert_eq!(
-            resolver_package_message("package loader could not inspect loc import target '/tmp/x': nope"),
+            resolver_package_message(
+                "package loader could not inspect loc import target '/tmp/x': nope"
+            ),
             "resolver could not inspect loc import target '/tmp/x': nope"
         );
         assert_eq!(
@@ -362,7 +362,8 @@ mod tests {
             .expect("clock should be stable enough for temp file names")
             .as_nanos();
         let path = std::env::temp_dir().join(format!("fol_resolver_diagnostic_{stamp}.fol"));
-        std::fs::write(&path, "return answer;\n").expect("resolver diagnostic fixture should be writable");
+        std::fs::write(&path, "return answer;\n")
+            .expect("resolver diagnostic fixture should be writable");
         let error = ResolverError::with_origin(
             ResolverErrorKind::UnresolvedName,
             "could not resolve `answer`",
@@ -430,7 +431,10 @@ mod tests {
         .to_diagnostic();
 
         assert_eq!(diagnostic.labels.len(), 2);
-        assert_eq!(diagnostic.labels[1].message.as_deref(), Some("first declaration"));
+        assert_eq!(
+            diagnostic.labels[1].message.as_deref(),
+            Some("first declaration")
+        );
         assert_eq!(
             diagnostic.labels[1].location.file.as_deref(),
             Some("pkg/00_first.fol")
@@ -445,7 +449,10 @@ mod tests {
         )
         .to_diagnostic();
 
-        assert_eq!(diagnostic.helps, vec!["rerun with --std-root <DIR>".to_string()]);
+        assert_eq!(
+            diagnostic.helps,
+            vec!["rerun with --std-root <DIR>".to_string()]
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # FOL Project Progress
 
-Last scan: 2026-03-16
+Last scan: 2026-03-17
 Scan basis: repository code, active tests, current docs, and a fresh `make build` + `make test`
 Authority rule for this file: code and active tests win over older docs, plans, and historical assumptions
 
@@ -74,7 +74,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Resolver-focused Rust tests under `test/resolver`: `100`
 - Typecheck-focused Rust tests under `test/typecheck`: `71`
 - Observed current unit test run: `46` unit tests, green
-- Observed current integration run: `1620` integration tests, green
+- Observed current integration run: `1624` integration tests, green
 
 ## 3. Current Headline Status
 
@@ -92,6 +92,9 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `fol-editor`: implemented as the first editor-tooling layer above compiler diagnostics and semantic analysis
 - `fol-diagnostics`: implemented, structured, and wired into the CLI
 - Root CLI: implemented as a thin entry shim into the frontend-owned `fol` workflow
+- build-system infrastructure: substantially implemented in `fol-package` and
+  `fol-frontend`, but not yet fully productized as the default modern
+  graph-execution path
 - Stream + lexer + parser: stable and consumed by package loading and resolver
 - Package loading and package preparation: implemented for `loc`, `std`, and installed `pkg`
 - Whole-program name resolution: implemented for the current contract
@@ -104,6 +107,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Interpreter: missing
 - Additional backends beyond the first Rust-emission backend: missing
 - Runtime semantics: implemented for the current `V1` support boundary
+- modern graph-backed `build.fol` execution as the default product path: still missing
 
 ## 4. Validation Baseline
 
@@ -111,7 +115,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `make test`: passed
 - Current observed totals:
 - `46` unit tests passed
-- `1620` integration tests passed
+- `1624` integration tests passed
 - Observed active failures: `0`
 
 ## 5. What Has Been Completed So Far
@@ -218,6 +222,27 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - The resolver builds program, namespace, source-unit, routine, block, loop-binder,
   and rolling-binder scopes.
 - Top-level declarations are collected across package, namespace, and file scopes with
+
+### 5.12 Build-System Productization Status
+
+- `build.fol` is now the documented package entry file for formal package roots.
+- `fol-package` now contains dedicated build modules for:
+- compatibility parsing
+- build graph IR
+- draft build API
+- build evaluator replay
+- artifact modeling
+- step planning
+- option modeling
+- dependency surfaces
+- generated files and codegen
+- native artifacts
+- frontend workspace code commands now route through explicit build-step planning.
+- compatibility-only workspace packages can run through that routed path.
+- modern and hybrid `build.fol` entries are still rejected with explicit
+  unsupported diagnostics rather than executed through the graph.
+- checked-in `examples/` packages currently lock the working compatibility
+  package shape, not the final graph-authored end state.
   explicit duplicate handling.
 - Plain identifiers and free calls resolve through lexical scope chains.
 - Qualified identifiers, qualified calls, qualified type names, and inquiry targets

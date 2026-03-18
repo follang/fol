@@ -267,6 +267,17 @@ impl LoweredWorkspace {
         &self.entry_candidates
     }
 
+    pub fn with_entry_candidates(&self, entry_candidates: Vec<LoweredEntryCandidate>) -> Self {
+        Self {
+            entry_identity: self.entry_identity.clone(),
+            packages: self.packages.clone(),
+            entry_candidates,
+            type_table: self.type_table.clone(),
+            source_map: self.source_map.clone(),
+            recoverable_abi: self.recoverable_abi.clone(),
+        }
+    }
+
     pub fn type_table(&self) -> &LoweredTypeTable {
         &self.type_table
     }
@@ -319,9 +330,8 @@ mod tests {
         );
 
         let mut type_table = LoweredTypeTable::new();
-        let recoverable_abi = LoweredRecoverableAbi::v1(
-            type_table.intern_builtin(LoweredBuiltinType::Bool),
-        );
+        let recoverable_abi =
+            LoweredRecoverableAbi::v1(type_table.intern_builtin(LoweredBuiltinType::Bool));
         let workspace = LoweredWorkspace::new(
             entry_identity.clone(),
             packages,

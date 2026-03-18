@@ -1,7 +1,7 @@
 use crate::{
     identity::BackendWorkspaceIdentity,
-    BackendError, BackendErrorKind, BackendResult,
     trace::{BackendEmittedSourceMap, BackendTrace},
+    BackendError, BackendErrorKind, BackendResult,
 };
 use fol_lower::{LoweredEntryCandidate, LoweredWorkspace};
 use fol_resolver::PackageIdentity;
@@ -61,15 +61,18 @@ impl BackendSession {
                 "lowered workspace does not expose a backend-buildable entry routine",
             )),
             [candidate] => {
-                let package = self.workspace.package(&candidate.package_identity).ok_or_else(|| {
-                    BackendError::new(
-                        BackendErrorKind::InvalidInput,
-                        format!(
-                            "entry candidate '{}' points at missing package '{}'",
-                            candidate.name, candidate.package_identity.display_name
-                        ),
-                    )
-                })?;
+                let package = self
+                    .workspace
+                    .package(&candidate.package_identity)
+                    .ok_or_else(|| {
+                        BackendError::new(
+                            BackendErrorKind::InvalidInput,
+                            format!(
+                                "entry candidate '{}' points at missing package '{}'",
+                                candidate.name, candidate.package_identity.display_name
+                            ),
+                        )
+                    })?;
                 if !package.routine_decls.contains_key(&candidate.routine_id) {
                     return Err(BackendError::new(
                         BackendErrorKind::InvalidInput,
@@ -123,8 +126,8 @@ impl BackendSession {
 
 #[cfg(test)]
 mod tests {
-    use crate::testing::package_identity;
     use super::BackendSession;
+    use crate::testing::package_identity;
     use crate::testing::sample_lowered_workspace;
     use fol_lower::LoweredEntryCandidate;
     use fol_resolver::PackageSourceKind;
@@ -139,14 +142,23 @@ mod tests {
         let session = BackendSession::new(workspace.clone());
 
         assert_eq!(session.workspace().package_count(), expected_packages);
-        assert_eq!(session.workspace().entry_identity().display_name, expected_entry);
+        assert_eq!(
+            session.workspace().entry_identity().display_name,
+            expected_entry
+        );
         assert_eq!(session.entry_identity().display_name, expected_entry);
         assert_eq!(session.package_graph().len(), expected_packages);
         assert_eq!(session.entry_candidates(), expected_candidates.as_slice());
-        assert!(session.workspace_identity().crate_dir_name.starts_with("fol-build-app-"));
+        assert!(session
+            .workspace_identity()
+            .crate_dir_name
+            .starts_with("fol-build-app-"));
         assert!(session.source_map().is_empty());
         assert!(session.trace().is_empty());
-        assert_eq!(session.into_workspace().package_count(), workspace.package_count());
+        assert_eq!(
+            session.into_workspace().package_count(),
+            workspace.package_count()
+        );
     }
 
     #[test]

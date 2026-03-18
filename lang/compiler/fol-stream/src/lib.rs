@@ -455,12 +455,15 @@ fn compute_namespace(
             let mut namespace_parts = vec![package_name.to_string()];
 
             for component in rel_path.components() {
-                let name = component.as_os_str().to_str().ok_or_else(|| -> Box<dyn Glitch> {
-                    Box::new(BasicError {
-                        message: "Invalid namespace component: path segment is not valid UTF-8"
-                            .to_string(),
-                    })
-                })?;
+                let name = component
+                    .as_os_str()
+                    .to_str()
+                    .ok_or_else(|| -> Box<dyn Glitch> {
+                        Box::new(BasicError {
+                            message: "Invalid namespace component: path segment is not valid UTF-8"
+                                .to_string(),
+                        })
+                    })?;
 
                 // Skip .mod directories in namespace (they were already filtered out)
                 if name.ends_with(".mod") {
@@ -520,8 +523,7 @@ mod unit_tests {
         ));
         fs::create_dir_all(temp_root.join("nested"))
             .expect("Should create temp folders for char-buffer test");
-        fs::write(temp_root.join("alpha.fol"), "alpha\n")
-            .expect("Should write alpha temp source");
+        fs::write(temp_root.join("alpha.fol"), "alpha\n").expect("Should write alpha temp source");
         fs::write(temp_root.join("nested/beta.fol"), "beta🌍\n")
             .expect("Should write beta temp source");
 

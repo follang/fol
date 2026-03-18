@@ -135,18 +135,19 @@ For `pkg`, the root is not just "a folder containing `.fol` files".
 It is a formal package root with:
 
 - `package.yaml` for metadata
-- `build.fol` for dependencies and exports
+- `build.fol` as the package build entry file
 
 This keeps the language model clean:
 
 - source files `use` other namespaces/packages
-- package definitions are extracted from recognized top-level `def` declarations in `build.fol`
+- package build execution starts from `pro[] build(graph: Graph): non` in `build.fol`
 - package metadata lives in `package.yaml`
 - package loading happens before ordinary name resolution
 
 `build.fol` itself is still ordinary FOL syntax.
 It is not a separate mini-language.
-The package layer simply gives package meaning to a narrow set of recognized top-level definitions there.
+The package layer simply gives package/build meaning to the canonical build
+routine there.
 
 ## Blocks
 

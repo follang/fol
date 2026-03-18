@@ -10,6 +10,7 @@ members = [
     "lang/compiler/fol-typecheck",
     "lang/compiler/fol-lower",
     "lang/compiler/fol-intrinsics",
+    "lang/execution/fol-build",
     "lang/execution/fol-runtime",
     "lang/execution/fol-backend",
     "lang/tooling/fol-frontend",

@@ -38,15 +38,12 @@ impl EditorDocumentStore {
         version: i32,
         text: String,
     ) -> EditorResult<()> {
-        let document = self
-            .documents
-            .get_mut(uri.as_str())
-            .ok_or_else(|| {
-                EditorError::new(
-                    EditorErrorKind::DocumentNotOpen,
-                    format!("document '{}' is not open", uri.as_str()),
-                )
-            })?;
+        let document = self.documents.get_mut(uri.as_str()).ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::DocumentNotOpen,
+                format!("document '{}' is not open", uri.as_str()),
+            )
+        })?;
         document.version = version;
         document.text = text;
         Ok(())

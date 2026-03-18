@@ -235,7 +235,10 @@ mod tests {
         assert!(!prelude::check_recoverable(&value));
         assert!(prelude::recoverable_succeeded(&value));
         assert_eq!(value.value_ref(), Some(&7));
-        assert_eq!(Result::<prelude::FolInt, prelude::FolStr>::from(value), Ok(7));
+        assert_eq!(
+            Result::<prelude::FolInt, prelude::FolStr>::from(value),
+            Ok(7)
+        );
     }
 
     #[test]
@@ -246,7 +249,10 @@ mod tests {
 
         assert!(prelude::check_recoverable(&value));
         assert!(!prelude::recoverable_succeeded(&value));
-        assert_eq!(value.error_ref().map(|error| error.as_str()), Some("bad-input"));
+        assert_eq!(
+            value.error_ref().map(|error| error.as_str()),
+            Some("bad-input")
+        );
         assert_eq!(
             Result::<prelude::FolInt, prelude::FolStr>::from(value),
             Err(prelude::FolStr::from("bad-input"))

@@ -25,11 +25,7 @@ pub fn sanitize_backend_ident(raw: &str) -> String {
     let output = output.trim_matches('_').to_string();
     if output.is_empty() {
         "_".to_string()
-    } else if output
-        .chars()
-        .next()
-        .is_some_and(|ch| ch.is_ascii_digit())
-    {
+    } else if output.chars().next().is_some_and(|ch| ch.is_ascii_digit()) {
         format!("_{output}")
     } else {
         output
@@ -44,11 +40,7 @@ pub fn mangle_package_module_name(identity: &PackageIdentity) -> String {
     )
 }
 
-pub fn mangle_type_name(
-    identity: &PackageIdentity,
-    type_id: LoweredTypeId,
-    name: &str,
-) -> String {
+pub fn mangle_type_name(identity: &PackageIdentity, type_id: LoweredTypeId, name: &str) -> String {
     format!(
         "ty__{}__t{}__{}",
         mangle_package_module_name(identity),
@@ -136,7 +128,12 @@ mod tests {
             "r__pkg__entry__my_app__r5__run"
         );
         assert_eq!(
-            mangle_local_name(&identity, LoweredRoutineId(5), LoweredLocalId(2), Some("Flag")),
+            mangle_local_name(
+                &identity,
+                LoweredRoutineId(5),
+                LoweredLocalId(2),
+                Some("Flag")
+            ),
             "l__pkg__entry__my_app__r5__l2__flag"
         );
     }
@@ -154,7 +151,12 @@ mod tests {
         assert_ne!(entry_module, local_module);
         assert_eq!(sanitize_backend_ident("99-bottles"), "_99_bottles");
         assert_eq!(
-            mangle_local_name(&entry_identity, LoweredRoutineId(0), LoweredLocalId(1), None),
+            mangle_local_name(
+                &entry_identity,
+                LoweredRoutineId(0),
+                LoweredLocalId(1),
+                None
+            ),
             "l__pkg__entry__shared__r0__l1__tmp"
         );
     }

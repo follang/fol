@@ -91,11 +91,7 @@ impl TypecheckError {
         })
     }
 
-    pub fn with_related_origin(
-        mut self,
-        origin: SyntaxOrigin,
-        message: impl Into<String>,
-    ) -> Self {
+    pub fn with_related_origin(mut self, origin: SyntaxOrigin, message: impl Into<String>) -> Self {
         self.related_origins.push((origin, message.into()));
         self
     }

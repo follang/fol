@@ -3,8 +3,8 @@ use crate::{
     TypecheckErrorKind, TypecheckResult, TypedProgram,
 };
 use fol_parser::ast::{
-    AstNode, BindingPattern, FolType, Parameter, ParsedTopLevel, SyntaxOrigin, SyntaxNodeId,
-    TypeDefinition, TypeOption, VarOption,
+    AstNode, BindingPattern, FolType, Parameter, ParsedSourceUnitKind, ParsedTopLevel,
+    SyntaxNodeId, SyntaxOrigin, TypeDefinition, TypeOption, VarOption,
 };
 use fol_resolver::{ResolvedProgram, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
@@ -15,10 +15,12 @@ pub fn lower_declaration_signatures(typed: &mut TypedProgram) -> TypecheckResult
     let mut errors = Vec::new();
 
     for (source_unit_index, source_unit) in syntax.source_units.iter().enumerate() {
+        if source_unit.kind == ParsedSourceUnitKind::Build {
+            continue;
+        }
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
-            if let Err(error) =
-                lower_top_level_declaration(typed, &resolved, source_unit_id, item)
+            if let Err(error) = lower_top_level_declaration(typed, &resolved, source_unit_id, item)
             {
                 errors.push(error);
             }
@@ -50,8 +52,12 @@ fn lower_top_level_declaration(
             name, type_hint, ..
         } => {
             if let Some(type_hint) = type_hint {
-                let symbol_id =
-                    find_symbol_id(resolved, source_unit_id, &[symbol_kind_for_node(&item.node)], name)?;
+                let symbol_id = find_symbol_id(
+                    resolved,
+                    source_unit_id,
+                    &[symbol_kind_for_node(&item.node)],
+                    name,
+                )?;
                 let symbol_scope = resolved
                     .symbol(symbol_id)
                     .map(|symbol| symbol.scope)
@@ -68,15 +74,26 @@ fn lower_top_level_declaration(
                 let symbol_scope = binding_names
                     .first()
                     .and_then(|name| {
-                        find_symbol_id(resolved, source_unit_id, &[SymbolKind::DestructureBinding], name)
-                            .ok()
+                        find_symbol_id(
+                            resolved,
+                            source_unit_id,
+                            &[SymbolKind::DestructureBinding],
+                            name,
+                        )
+                        .ok()
                     })
                     .and_then(|symbol_id| resolved.symbol(symbol_id).map(|symbol| symbol.scope))
-                    .ok_or_else(|| internal_error("resolved destructure binding symbol disappeared", None))?;
+                    .ok_or_else(|| {
+                        internal_error("resolved destructure binding symbol disappeared", None)
+                    })?;
                 let type_id = lower_type(typed, resolved, symbol_scope, type_hint)?;
                 for name in binding_names {
-                    let symbol_id =
-                        find_symbol_id(resolved, source_unit_id, &[SymbolKind::DestructureBinding], &name)?;
+                    let symbol_id = find_symbol_id(
+                        resolved,
+                        source_unit_id,
+                        &[SymbolKind::DestructureBinding],
+                        &name,
+                    )?;
                     record_symbol_type(typed, symbol_id, type_id)?;
                 }
             }
@@ -125,7 +142,13 @@ fn lower_top_level_declaration(
                 return_type.as_ref(),
                 error_type.as_ref(),
             )?;
-            lower_nested_declarations_in_nodes(typed, resolved, source_unit_id, signature_scope, body)?;
+            lower_nested_declarations_in_nodes(
+                typed,
+                resolved,
+                source_unit_id,
+                signature_scope,
+                body,
+            )?;
             lower_nested_declarations_in_nodes(
                 typed,
                 resolved,
@@ -141,7 +164,9 @@ fn lower_top_level_declaration(
                 .map(|symbol| symbol.scope)
                 .ok_or_else(|| internal_error("resolved type symbol disappeared", None))?;
             let type_id = match type_def {
-                TypeDefinition::Alias { target } => lower_type(typed, resolved, symbol_scope, target)?,
+                TypeDefinition::Alias { target } => {
+                    lower_type(typed, resolved, symbol_scope, target)?
+                }
                 TypeDefinition::Record { fields, .. } => {
                     let mut lowered = BTreeMap::new();
                     for (field_name, field_type) in fields {
@@ -150,7 +175,9 @@ fn lower_top_level_declaration(
                             lower_type(typed, resolved, symbol_scope, field_type)?,
                         );
                     }
-                    typed.type_table_mut().intern(CheckedType::Record { fields: lowered })
+                    typed
+                        .type_table_mut()
+                        .intern(CheckedType::Record { fields: lowered })
                 }
                 TypeDefinition::Entry { variants, .. } => {
                     let mut lowered = BTreeMap::new();
@@ -289,7 +316,13 @@ fn lower_nested_declarations_in_node(
                 return_type.as_ref(),
                 error_type.as_ref(),
             )?;
-            lower_nested_declarations_in_nodes(typed, resolved, source_unit_id, routine_scope, body)?;
+            lower_nested_declarations_in_nodes(
+                typed,
+                resolved,
+                source_unit_id,
+                routine_scope,
+                body,
+            )?;
             lower_nested_declarations_in_nodes(
                 typed,
                 resolved,
@@ -327,17 +360,41 @@ fn lower_nested_declarations_in_node(
             }
         }
         AstNode::Block { statements } => {
-            lower_nested_declarations_in_nodes(typed, resolved, source_unit_id, current_scope, statements)?;
+            lower_nested_declarations_in_nodes(
+                typed,
+                resolved,
+                source_unit_id,
+                current_scope,
+                statements,
+            )?;
         }
         AstNode::Inquiry { body, .. } => {
-            lower_nested_declarations_in_nodes(typed, resolved, source_unit_id, current_scope, body)?;
+            lower_nested_declarations_in_nodes(
+                typed,
+                resolved,
+                source_unit_id,
+                current_scope,
+                body,
+            )?;
         }
         AstNode::Commented { node, .. } => {
-            lower_nested_declarations_in_node(typed, resolved, source_unit_id, current_scope, node)?;
+            lower_nested_declarations_in_node(
+                typed,
+                resolved,
+                source_unit_id,
+                current_scope,
+                node,
+            )?;
         }
         _ => {
             for child in node.children() {
-                lower_nested_declarations_in_node(typed, resolved, source_unit_id, current_scope, child)?;
+                lower_nested_declarations_in_node(
+                    typed,
+                    resolved,
+                    source_unit_id,
+                    current_scope,
+                    child,
+                )?;
             }
         }
     }
@@ -374,10 +431,10 @@ fn lower_named_routine_signature(
         record_symbol_type(typed, param_symbol_id, param_type)?;
         lowered_params.push(param_type);
     }
-    let lowered_return = return_type
-        .as_ref()
-        .map(|ty| lower_type(typed, resolved, signature_scope, ty))
-        .transpose()?;
+    let lowered_return = match return_type {
+        None | Some(FolType::None) => None,
+        Some(ty) => Some(lower_type(typed, resolved, signature_scope, ty)?),
+    };
     let lowered_error = error_type
         .as_ref()
         .map(|ty| lower_type(typed, resolved, signature_scope, ty))
@@ -470,7 +527,9 @@ pub(crate) fn lower_type(
         }
         FolType::Optional { inner } => {
             let inner = lower_type(typed, resolved, scope_id, inner)?;
-            Ok(typed.type_table_mut().intern(CheckedType::Optional { inner }))
+            Ok(typed
+                .type_table_mut()
+                .intern(CheckedType::Optional { inner }))
         }
         FolType::Error { inner } => {
             let inner = inner
@@ -487,7 +546,9 @@ pub(crate) fn lower_type(
                     lower_type(typed, resolved, scope_id, field_type)?,
                 );
             }
-            Ok(typed.type_table_mut().intern(CheckedType::Record { fields: lowered }))
+            Ok(typed
+                .type_table_mut()
+                .intern(CheckedType::Record { fields: lowered }))
         }
         FolType::Entry { variants } => {
             let mut lowered = BTreeMap::new();
@@ -673,8 +734,12 @@ fn unsupported_type_error(resolved: &ResolvedProgram, typ: &FolType) -> Typechec
         FolType::Limited { .. } => "limited types are not part of the V1 typecheck milestone",
         FolType::Any => "any types are not part of the V1 typecheck milestone",
         FolType::None => "none types are not part of the V1 typecheck milestone",
-        FolType::Function { .. } => "function type literals are not part of the V1 typecheck milestone",
-        FolType::Generic { .. } => "generic type parameters are not part of the V1 typecheck milestone",
+        FolType::Function { .. } => {
+            "function type literals are not part of the V1 typecheck milestone"
+        }
+        FolType::Generic { .. } => {
+            "generic type parameters are not part of the V1 typecheck milestone"
+        }
         FolType::Package { .. }
         | FolType::Module { .. }
         | FolType::Block { .. }
@@ -761,7 +826,9 @@ fn unsupported_v1_decl_with_origin(
     }?;
 
     Some(match origin {
-        Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin),
+        Some(origin) => {
+            TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin)
+        }
         None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
     })
 }
@@ -784,7 +851,10 @@ fn unsupported_binding_surface_message(options: &[VarOption]) -> Option<&'static
         .any(|option| matches!(option, VarOption::Borrowing))
     {
         Some("borrowing binding semantics are part of the V3 systems milestone, not the V1 typecheck milestone")
-    } else if options.iter().any(|option| matches!(option, VarOption::New)) {
+    } else if options
+        .iter()
+        .any(|option| matches!(option, VarOption::New))
+    {
         Some("heap/new binding semantics are part of the V3 systems milestone, not the V1 typecheck milestone")
     } else if options
         .iter()
@@ -830,7 +900,9 @@ fn node_origin(resolved: &ResolvedProgram, node: &AstNode) -> Option<SyntaxOrigi
 
 fn invalid_input_error(message: impl Into<String>, origin: Option<SyntaxOrigin>) -> TypecheckError {
     match origin {
-        Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin),
+        Some(origin) => {
+            TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin)
+        }
         None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
     }
 }

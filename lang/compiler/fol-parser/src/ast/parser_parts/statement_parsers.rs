@@ -605,7 +605,8 @@ impl AstParser {
             self.skip_ignorable(tokens);
 
             current_var_token = tokens.curr(false)?;
-            let declared_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
+            let declared_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under))
+            {
                 "_".to_string()
             } else {
                 Self::expect_named_label(

@@ -245,7 +245,9 @@ mod tests {
         let rendered = super::render_diagnostic(&diagnostic);
 
         assert!(rendered.contains("--> /tmp/fol_diagnostics_missing_file.fol:7:3"));
-        assert!(rendered.contains("note: source unavailable: could not read /tmp/fol_diagnostics_missing_file.fol"));
+        assert!(rendered.contains(
+            "note: source unavailable: could not read /tmp/fol_diagnostics_missing_file.fol"
+        ));
     }
 
     #[test]

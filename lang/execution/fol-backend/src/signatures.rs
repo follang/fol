@@ -74,7 +74,14 @@ pub fn render_routine_shell(
         .iter_with_ids()
         .filter(|(local_id, _)| !routine.params.contains(local_id))
         .map(|(local_id, local)| {
-            render_local_declaration(workspace, package_identity, routine, local_id, local, type_table)
+            render_local_declaration(
+                workspace,
+                package_identity,
+                routine,
+                local_id,
+                local,
+                type_table,
+            )
         })
         .collect::<BackendResult<Vec<_>>>()?
         .join("\n");
@@ -98,7 +105,14 @@ pub fn render_routine_definition(
         .iter_with_ids()
         .filter(|(local_id, _)| !routine.params.contains(local_id))
         .map(|(local_id, local)| {
-            render_local_declaration(workspace, package_identity, routine, local_id, local, type_table)
+            render_local_declaration(
+                workspace,
+                package_identity,
+                routine,
+                local_id,
+                local,
+                type_table,
+            )
         })
         .collect::<BackendResult<Vec<_>>>()?
         .join("\n");
@@ -106,7 +120,14 @@ pub fn render_routine_definition(
         .blocks
         .iter_with_ids()
         .map(|(block_id, block)| {
-            render_block(workspace, package_identity, routine, block_id, block, type_table)
+            render_block(
+                workspace,
+                package_identity,
+                routine,
+                block_id,
+                block,
+                type_table,
+            )
         })
         .collect::<BackendResult<Vec<_>>>()?
         .join("\n");
@@ -185,7 +206,12 @@ fn render_param_list(
             })?;
             Ok(format!(
                 "{}: {}",
-                mangle_local_name(package_identity, routine.id, *local_id, local.name.as_deref()),
+                mangle_local_name(
+                    package_identity,
+                    routine.id,
+                    *local_id,
+                    local.name.as_deref()
+                ),
                 render_rust_type_in_workspace(Some(workspace), type_table, type_id)?
             ))
         })
@@ -206,12 +232,19 @@ fn render_local_declaration(
             render_rust_type_in_workspace(Some(workspace), type_table, type_id)?,
             render_rust_type_in_workspace(Some(workspace), type_table, error_type)?,
         ),
-        (Some(type_id), None) => render_rust_type_in_workspace(Some(workspace), type_table, type_id)?,
+        (Some(type_id), None) => {
+            render_rust_type_in_workspace(Some(workspace), type_table, type_id)?
+        }
         (None, _) => "_".to_string(),
     };
     Ok(format!(
         "    let mut {}: {} = Default::default();",
-        mangle_local_name(package_identity, routine.id, local_id, local.name.as_deref()),
+        mangle_local_name(
+            package_identity,
+            routine.id,
+            local_id,
+            local.name.as_deref()
+        ),
         rendered_type
     ))
 }
@@ -263,7 +296,10 @@ fn render_block(
         format!("{instructions}\n{rendered_terminator}")
     };
 
-    Ok(format!("            {} => {{\n{body}\n            }},", block_id.0))
+    Ok(format!(
+        "            {} => {{\n{body}\n            }},",
+        block_id.0
+    ))
 }
 
 fn render_routine_return_type(
@@ -272,7 +308,9 @@ fn render_routine_return_type(
     type_table: &LoweredTypeTable,
 ) -> BackendResult<String> {
     let success_type = match signature.return_type {
-        Some(return_type) => render_rust_type_in_workspace(Some(workspace), type_table, return_type)?,
+        Some(return_type) => {
+            render_rust_type_in_workspace(Some(workspace), type_table, return_type)?
+        }
         None => "()".to_string(),
     };
     Ok(match signature.error_type {
@@ -322,20 +360,12 @@ mod tests {
         };
         let workspace = sample_lowered_workspace();
 
-        let immutable_rendered = render_global_declaration(
-            &workspace,
-            &package_identity,
-            &immutable,
-            &table,
-        )
-        .expect("global");
-        let mutable_rendered = render_global_declaration(
-            &workspace,
-            &package_identity,
-            &mutable,
-            &table,
-        )
-        .expect("global");
+        let immutable_rendered =
+            render_global_declaration(&workspace, &package_identity, &immutable, &table)
+                .expect("global");
+        let mutable_rendered =
+            render_global_declaration(&workspace, &package_identity, &mutable, &table)
+                .expect("global");
 
         assert!(immutable_rendered.contains("pub static g__pkg__entry__app__g0__answer"));
         assert!(immutable_rendered.contains("std::sync::OnceLock<rt::FolInt>"));
@@ -444,8 +474,11 @@ mod tests {
             .expect("routine shell");
 
         assert!(rendered.contains("pub fn r__pkg__entry__app__r3__compute("));
-        assert!(rendered.contains("let mut l__pkg__entry__app__r3__l1__temp: rt::FolInt = Default::default();"));
-        assert!(!rendered.contains("l__pkg__entry__app__r3__l0__flag: rt::FolInt = Default::default();"));
+        assert!(rendered.contains(
+            "let mut l__pkg__entry__app__r3__l1__temp: rt::FolInt = Default::default();"
+        ));
+        assert!(!rendered
+            .contains("l__pkg__entry__app__r3__l0__flag: rt::FolInt = Default::default();"));
         assert!(rendered.contains("todo!()"));
         assert_eq!(temp_id, LoweredLocalId(1));
     }
@@ -498,7 +531,9 @@ mod tests {
         assert!(snapshot.contains("r__pkg__entry__app__r4__load"));
         assert!(snapshot.contains("rt::FolRecover<rt::FolInt, rt::FolStr>"));
         assert!(snapshot.contains("l__pkg__entry__app__r4__l0__flag: rt::FolBool"));
-        assert!(snapshot.contains("let mut l__pkg__entry__app__r4__l1__value: rt::FolInt = Default::default();"));
+        assert!(snapshot.contains(
+            "let mut l__pkg__entry__app__r4__l1__value: rt::FolInt = Default::default();"
+        ));
         assert_eq!(local_id, LoweredLocalId(1));
     }
 }

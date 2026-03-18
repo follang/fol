@@ -1,415 +1,504 @@
-# FOL Editor Plan: Highlighting + Completion
+# FOL Build System Plan: `lang/execution/fol-build`
 
-Last updated: 2026-03-17
+Last updated: 2026-03-18
 
-This plan replaces the closed first `fol-editor` milestone.
+## No Backwards Compatibility
 
-The next active milestone is narrower and more practical:
+This is a new project. There is no installed user base. There are no external consumers.
+When something is replaced, the old thing is deleted. No shims, no fallbacks, no parallel
+implementations, no deprecation periods, no migration warnings. If the new way is chosen,
+the old way does not exist.
 
-- make FOL highlighting feel complete and language-aware
-- implement the first useful LSP completion pass
+## Status
 
-This is not a “general editor improvements” bucket. It is a focused follow-up on
-the now-working Tree-sitter + LSP base.
+Round 1 (build reset) is complete. All legacy `def root`/`def build` paths are deleted.
+The canonical build entry is `pro[] build(graph: Graph): non` and it is enforced.
 
-## Goal
+Round 2 (fol-build execution crate) is the current work.
 
-At closeout, the editor experience should feel like a real language, not a thin
-syntax demo.
+Round 2 slices:
 
-That means:
+- [x] Slice 1. Create `lang/execution/fol-build` and move graph/api/semantic code out of `fol-package`
+- [x] Slice 2. Move runtime types and evaluator into `fol-build`
+- [x] Slice 3. Add `BuildStdlibScope` — resolver/typechecker injection surface
+- [x] Slice 4. Wire the build stdlib into the resolver (file-bound isolation)
+- [x] Slice 5. Wire the build stdlib into the typechecker
+- [x] Slice 6. Replace AST-walking evaluator with real lowered-IR executor
+- [x] Slice 7. Expand build API to Zig parity (modules, artifact.link, run args, path utils)
+- [x] Slice 8. Full control flow in `build.fol` (when, loop, helper routines)
+- [x] Slice 9. Frontend integration (full pipeline, -D options, named step selection)
+- [x] Slice 10. New example fixtures and regression coverage
 
-- the Tree-sitter highlight layer should visibly distinguish the important FOL
-  surfaces
-- `fol tool lsp` should provide real `textDocument/completion`
-- completion should be useful in ordinary coding, not just technically present
+---
 
-## Desired End State
+## Core Decision
 
-After this plan, the repo should support:
+FOL uses a Zig-style build model. `build.fol` is a normal FOL program. It goes through
+the full compiler pipeline: stream → lexer → parser → resolver → typecheck → lower.
+The only difference from a regular FOL program is at the final step — instead of emitting
+Rust code via `fol-backend`, it is executed against a `BuildGraph` via `fol-build`.
 
-```text
-fol tool lsp
-fol tool parse path/to/file.fol
-fol tool highlight path/to/file.fol
-fol tool symbols path/to/file.fol
-fol tool tree generate /tmp/fol
+The build system lives in `lang/execution/fol-build`. All build execution code belongs
+there. `fol-package` keeps only entry validation and package metadata loading.
+
+## Zig Reference
+
+Zig's build entry:
+
+```zig
+pub fn build(b: *std.Build) void {
+    const exe = b.addExecutable(.{ .name = "app", .root_source_file = .{ .path = "src/main.zig" } });
+    b.installArtifact(exe);
+}
 ```
 
-And editors should have:
-
-- richer Tree-sitter highlighting for current `V1`
-- stable query coverage for declaration modifiers and language keywords
-- first-pass LSP completion for:
-  - local bindings
-  - routine params
-  - top-level declarations in the current package
-  - imported declarations
-  - type names
-  - method/routine names where already semantically visible
-  - dot intrinsics for supported `V1` surfaces
-
-## Non-Goals
-
-This plan does not include:
-
-- rename
-- references
-- semantic tokens
-- code actions
-- snippet expansion policy
-- formatter support
-- fuzzy ranking or AI-style completion
-- full context-aware completion for every future `V2`/`V3` language surface
-
-Those belong in later editor follow-up work.
-
-## Boundary
-
-This milestone should touch:
-
-- `lang/tooling/fol-editor`
-- `lang/tooling/fol-frontend` only where command dispatch/output changes are
-  needed
-- Neovim-facing Tree-sitter bundle generation only if required for query
-  packaging
-- book/docs only after the feature work is stable
-
-It should not change:
-
-- compiler semantics unless a completion/highlight pass exposes a real bug
-- package model
-- backend behavior
-
-## Principles
-
-### 1. Highlighting should reflect FOL, not generic C-ish defaults
-
-FOL has visible language markers like:
-
-- `fun[exp]`
-- `fun[par]`
-- `fun[rec]`
-- `log[...]`
-- `typ[...]`
-- `ali[...]`
-- shells like `nil`
-- effect-ish surfaces like `report`, `check`, `panic`
-- package/import kinds like `loc`, `pkg`, `std`
-
-Those should be represented intentionally in the query layer.
-
-### 2. Completion should come from semantic truth
-
-Completion should not be built from regexes or Tree-sitter-only guesses where
-compiler truth is available.
-
-Preferred sources:
-
-- typed/resolved workspace state
-- current document overlay state
-- explicit intrinsic tables
-
-### 3. Ship useful completion before clever completion
-
-First pass should prefer:
-
-- predictable
-- stable
-- easy to test
-
-over:
-
-- fuzzy ranking
-- edit-distance matching
-- complicated insert text transformations
-
-## Highlighting Scope
-
-The highlight pass should cover the current `V1` syntax more deeply than the
-first milestone.
-
-Target improvements:
-
-- declaration heads and head modifiers:
-  - `fun`
-  - `log`
-  - `typ`
-  - `ali`
-  - `var`
-  - `use`
-- bracketed declaration modes:
-  - `[exp]`
-  - `[par]`
-  - other currently surfaced markers that exist in the real parser/grammar
-- import source kinds:
-  - `loc`
-  - `pkg`
-  - `std`
-- control/effect keywords:
-  - `when`
-  - `loop`
-  - `return`
-  - `break`
-  - `report`
-  - `check`
-  - `panic`
-  - `unreachable`
-- declaration names by role:
-  - routines
-  - logs
-  - aliases
-  - records
-  - entries
-  - variants
-  - bindings
-- typed-binding punctuation and shells:
-  - type annotations
-  - `/`
-  - `!`
-  - `nil`
-- intrinsic-like dotted names:
-  - `.len`
-  - `.echo`
-  - comparison/bool/query intrinsics already supported in `V1`
-
-The goal is not “more colors” by itself. The goal is that important syntactic
-roles are visually distinguishable.
-
-## Completion Scope
-
-The first completion pass should support these contexts:
-
-### Plain identifier completion
-
-When completing in an identifier position, offer:
-
-- local bindings
-- routine params
-- top-level values/routines/types in the current package
-- imported symbols that are visible in the current scope
-
-### Qualified completion
-
-When completing after a namespace/package qualifier, offer:
-
-- visible declarations exported by that namespace/package
-
-### Type-position completion
-
-When completing in a declared type position, offer:
-
-- builtin types
-- visible named record/entry/alias types
-- imported type declarations
-
-### Dot completion
-
-When completing after `.`, offer:
-
-- supported intrinsics for the receiver family, when type information is known
-- otherwise, a conservative fallback of current `V1` intrinsic names if the
-  receiver family cannot yet be derived safely
-
-### Trigger behavior
-
-First pass triggers should be minimal and explicit:
-
-- ordinary completion request
-- `.` trigger for intrinsic/member-like completion
-- `:` or `/` should not gain completion unless that falls out naturally and
-  stays correct
-
-## Completion Output Contract
-
-The LSP should advertise a real completion provider.
-
-First completion items should include:
-
-- `label`
-- `kind`
-- `detail`
-- simple `insertText` or plain replacement text
-
-Do not overcomplicate the first pass with:
-
-- snippets everywhere
-- documentation resolution requests
-- command-based follow-up actions
-
-Useful `kind` mapping matters:
-
-- variable/local
-- function/routine
-- method
-- module/namespace
-- type/class/struct-ish mapping for record/entry/alias surfaces
-- keyword
-
-## Testing Rules
-
-Every feature/fix commit in this milestone should include its relevant test.
-
-Required test layers:
-
-- query snapshot tests
-- `fol tool highlight` output tests
-- `fol tool symbols` stability where query changes affect symbol capture
-- LSP request/response tests for completion
-- root integration tests where frontend command behavior changes
-
-Completion tests should cover:
-
-- local bindings
-- params
-- imported names
-- type-position candidates
-- dot completion
-- no bogus suggestions from unrelated files
-
-## Fixture Policy
-
-Use real checked-in `.fol` fixtures where possible.
-
-Prefer:
-
-- `test/apps/fixtures/...`
-- `test/apps/showcases/...`
-- `xtra/logtiny`
-
-over tiny synthetic one-liners, unless a one-liner is the clearest regression.
-
-## Phases
-
-### Phase 0: Freeze boundary and baseline
-
-- `0.1` replace the old editor-closeout plan with this focused highlight +
-  completion plan
-- `0.2` document the exact current highlight and completion gaps before changes
-- `0.3` add a small acceptance checklist for Neovim-facing verification
-
-### Phase 1: Highlight query audit
-
-- `1.1` audit current `highlights.scm` against current `V1` grammar node shapes
-- `1.2` remove any remaining impossible or overly generic patterns
-- `1.3` lock query validity against the generated parser bundle path
-- `1.4` add tests that fail when highlight queries reference non-existent nodes
-
-### Phase 2: Declaration and modifier highlighting
-
-- `2.1` highlight declaration heads distinctly: `fun`, `log`, `typ`, `ali`,
-  `var`, `use`
-- `2.2` highlight declaration modifiers in bracket forms like `[exp]`, `[par]`,
-  and other real surfaced markers
-- `2.3` highlight declaration names by role: function/log/type/alias/binding
-- `2.4` add highlight snapshots for declaration-heavy real fixtures
-
-### Phase 3: Keyword and import-kind highlighting
-
-- `3.1` highlight control/effect keywords consistently
-- `3.2` highlight import source-kind markers: `loc`, `pkg`, `std`
-- `3.3` highlight shell-related keywords/literals including `nil`
-- `3.4` lock real-fixture snapshots for keyword/import-heavy files
-
-### Phase 4: Type and intrinsic highlighting
-
-- `4.1` highlight builtin types and named type references more clearly
-- `4.2` highlight typed-binding/type-annotation surfaces distinctly
-- `4.3` highlight dotted intrinsic names like `.len`, `.echo`, comparisons, and
-  boolean/query intrinsics
-- `4.4` add snapshots for container/shell/intrinsic-heavy fixtures
-
-### Phase 5: Highlight command and bundle hardening
-
-- `5.1` make `fol tool highlight` output more inspection-friendly for query work
-- `5.2` ensure `fol tool tree generate` always exports the latest query set
-- `5.3` add regression coverage so generated bundles contain the current query
-  files exactly
-- `5.4` verify the generated bundle remains Neovim-consumable
-
-### Phase 6: Completion protocol foundation
-
-- `6.1` add `textDocument/completion` request handling to the LSP server
-- `6.2` advertise a real completion provider from `initialize`
-- `6.3` define the internal completion item model in `fol-editor`
-- `6.4` add focused stdio/request tests for completion request/response framing
-
-### Phase 7: Scope and symbol completion
-
-- `7.1` return local binding completions
-- `7.2` return routine parameter completions
-- `7.3` return current-package top-level declaration completions
-- `7.4` return imported visible declaration completions
-- `7.5` filter duplicate/irrelevant candidates deterministically
-- `7.6` lock tests for local/imported symbol completion
-
-### Phase 8: Type-position completion
-
-- `8.1` detect ordinary declared-type completion contexts
-- `8.2` offer builtin type completions in type positions
-- `8.3` offer visible named type completions in type positions
-- `8.4` add tests for record/entry/alias/builtin type completion
-
-### Phase 9: Qualified and namespace completion
-
-- `9.1` detect qualified path completion contexts
-- `9.2` offer namespace/package members after qualification
-- `9.3` keep package-local and imported namespace completion separated clearly
-- `9.4` add tests for `loc` and same-package namespace completion
-
-### Phase 10: Dot completion
-
-- `10.1` detect `.` completion trigger contexts
-- `10.2` map typed receiver families to supported `V1` intrinsics
-- `10.3` return conservative fallback intrinsic suggestions when typing context
-  is incomplete but still safe
-- `10.4` add tests for `.len`, `.echo`, comparison, and boolean/query completion
-
-### Phase 11: Ranking, filtering, and response shaping
-
-- `11.1` choose stable completion item kinds/details for FOL symbols
-- `11.2` return deterministic ordering for repeated requests
-- `11.3` avoid noisy suggestions from unrelated packages/files
-- `11.4` add plain tests locking item labels/kinds/order
-
-### Phase 12: Frontend and tool command coverage
-
-- `12.1` keep `fol tool lsp` compatible with the new completion capability
-- `12.2` extend frontend/editor tests if command summaries or help output shift
-- `12.3` ensure `fol tool parse/highlight/symbols` remain stable while query
-  work lands
-
-### Phase 13: Real-editor hardening
-
-- `13.1` test the full Neovim path against the generated Tree-sitter bundle
-- `13.2` test real LSP diagnostics + completion on checked-in package fixtures
-- `13.3` fix any remaining overlay/root/filtering bugs exposed by editor use
-- `13.4` keep each discovered bug as a permanent regression test
-
-### Phase 14: Docs closeout
-
-- `14.1` update `book` docs for richer highlighting and first completion support
-- `14.2` update repo status docs if the public editor surface changed
-- `14.3` turn this file into a completion record once the milestone is finished
-
-## Acceptance Checklist
-
-This plan is only done when all of these are true:
-
-- `fol tool highlight <PATH>` visibly reports the richer highlight captures
-- generated Tree-sitter bundles contain the latest `.scm` queries
-- Neovim Tree-sitter highlighting covers declaration modifiers and intrinsic
-  surfaces better than the previous milestone
-- `fol tool lsp` advertises completion support
-- completion returns useful candidates for locals, imports, types, and dot
-  intrinsics
-- diagnostics still stay file-correct while completion is enabled
-- `make build` passes
-- `make test` passes
-
-## Progress
-
-Current milestone state:
-
-- `0 / 49` slices complete
-- `0%`
+FOL equivalent:
+
+```fol
+pro[] build(graph: Graph): non = {
+    var target   = graph.standard_target();
+    var optimize = graph.standard_optimize();
+
+    var app = graph.add_exe({
+        name     = "app",
+        root     = "src/main.fol",
+        target   = target,
+        optimize = optimize,
+    });
+
+    graph.install(app);
+}
+```
+
+FOL copies the architecture, not the syntax.
+
+## What `build.fol` Is
+
+`build.fol` is a **file-bound** FOL program. Regular FOL code is folder-bound: a folder
+is a package, all `.fol` files in that folder share one package scope. `build.fol` is the
+one exception: it is a single file that is its own complete compilation unit. It does not
+share a namespace with sibling `.fol` files in the package folder.
+
+Rules for `build.fol`:
+
+- Goes through the full FOL pipeline (lex → parse → resolve → typecheck → lower → build executor)
+- Does NOT include sibling `.fol` files in its scope
+- Has one implicit import: the build stdlib (`fol/build`), providing `Graph` and all handle types
+- CAN define helper `fun[]`/`pro[]`/`typ` declarations local to itself
+- Those helpers are NOT exported to the package — they exist only during build evaluation
+- Must declare exactly one `pro[] build(graph: Graph): non` as the entry point
+- Additional `use` imports are allowed for FOL stdlib utilities
+
+## Pipeline
+
+```
+build.fol
+   │
+   ▼ (same as any .fol file)
+fol-stream → fol-lexer → fol-parser → fol-package (entry validation only)
+                                            │
+                                            ▼ (same as regular code)
+                                      fol-resolver → fol-typecheck → fol-lower
+                                                                          │
+                                                                          ▼ (different backend)
+                                                                      fol-build (executor)
+                                                                          │
+                                                                          ▼
+                                                                      BuildGraph
+                                                                          │
+                                                                          ▼
+                                                                    fol-frontend
+                                                               (build/run/test/check)
+```
+
+## `lang/execution/fol-build` File Structure
+
+```
+lang/execution/fol-build/
+├── Cargo.toml
+└── src/
+    ├── lib.rs          re-exports: BuildSession, BuildGraph, BuildExecutionError
+    ├── session.rs      BuildSession — top-level entry point for fol-frontend
+    ├── executor.rs     BuildIrExecutor — executes lowered FOL IR against BuildApi
+    ├── dispatch.rs     method call dispatch table (method name → BuildApi call)
+    ├── context.rs      BuildExecutionContext — graph, package root, options, cli args
+    ├── graph.rs        BuildGraph, all ID types, all edge types
+    ├── api.rs          BuildApi — Rust-level graph mutation interface
+    ├── stdlib.rs       BuildStdlibScope — resolver/typechecker injection surface
+    ├── semantic.rs     BuildSemanticType, BuildSemanticMethodSignature, etc.
+    ├── runtime.rs      BuildRuntimeValue, BuildRuntimeFrame, BuildRuntimeStmt
+    ├── artifact.rs     BuildArtifactKind, artifact-level edges (link, import, add_generated)
+    ├── step.rs         BuildStepKind, step planning, step attachments
+    ├── dependency.rs   DependencyBuildHandle, DependencyBuildSurface
+    ├── codegen.rs      CodegenRequest, SystemToolRequest
+    ├── option.rs       BuildOptionKind, ResolvedBuildOptionSet, -D CLI parsing
+    ├── native.rs       native artifact types
+    └── error.rs        BuildExecutionError
+```
+
+## What Moves Out of `fol-package`
+
+| Source (`fol-package`) | Destination (`fol-build`) |
+|---|---|
+| `build_graph.rs` | `graph.rs` |
+| `build_api.rs` | `api.rs` |
+| `build_semantic.rs` | `semantic.rs` |
+| `build_runtime.rs` | `runtime.rs` |
+| `build_eval.rs` | `eval.rs` → replaced by `executor.rs` |
+| `build_step.rs` | `step.rs` |
+| `build_artifact.rs` | `artifact.rs` |
+| `build_dependency.rs` | `dependency.rs` |
+| `build_codegen.rs` | `codegen.rs` |
+| `build_option.rs` | `option.rs` |
+| `build_native.rs` | `native.rs` |
+
+`fol-package` keeps only:
+
+- `build.rs` — `parse_package_build`, `PackageBuildDefinition`, `PackageBuildMode`
+- `build_entry.rs` — `validate_parsed_build_entry`, `BuildEntrySignatureExpectation`
+- `metadata.rs`, `session.rs`, `model.rs` — package metadata (unchanged)
+
+## The Executor
+
+The current `build_eval.rs` is an AST pattern matcher. It inspects the parsed AST of
+`build.fol` and dispatches to `BuildApi` by recognizing statement shapes. It does not
+execute FOL code — it reads FOL syntax.
+
+The new executor in `executor.rs` receives **lowered FOL IR** from `fol-lower` and
+executes it. It handles:
+
+- `var` bindings — store result in a local frame
+- method calls on `Graph` handle — dispatch to `BuildApi`
+- method calls on artifact/step/run/install/dependency/generated-file handles — dispatch to handle methods
+- `when` / `else` — conditional artifact and step registration
+- `loop` — iterate to add multiple artifacts or steps
+- helper `fun[]`/`pro[]` calls — execute helper bodies in a new frame
+- method chaining — `.add_arg().add_file_arg().set_env()`
+
+Capability model stays: arbitrary filesystem writes, network access, wall clock, and
+uncontrolled process execution are forbidden during build evaluation.
+
+## The Build Stdlib Scope
+
+`stdlib.rs` produces a `BuildStdlibScope` that the resolver injects into `build.fol`
+compilation. This is what makes `Graph`, `Artifact`, `Step`, etc. visible to the resolver
+and typechecker as real types with real method signatures.
+
+### Graph methods
+
+```
+standard_target(config?)    → Target
+standard_optimize(config?)  → Optimize
+option(config)              → UserOption
+add_exe(config)             → Artifact
+add_static_lib(config)      → Artifact
+add_shared_lib(config)      → Artifact
+add_test(config)            → Artifact
+add_module(config)          → Module          ← new
+step(name, description?)    → Step
+add_run(artifact)           → Run
+install(artifact)           → Install
+install_file(path)          → Install
+install_dir(path)           → Install
+write_file(config)          → GeneratedFile
+copy_file(config)           → GeneratedFile
+add_system_tool(config)     → GeneratedFile
+add_codegen(config)         → GeneratedFile
+dependency(alias, package)  → Dependency
+path_from_root(subpath)     → str             ← new
+build_root()                → str             ← new
+install_prefix()            → str             ← new
+```
+
+### Artifact methods
+
+```
+link(dep_artifact)          → non             ← new (Zig: artifact.linkLibrary)
+import(dep_module)          → non             ← new (Zig: artifact.root_module.addImport)
+add_generated(gen_file)     → non             ← new
+```
+
+### Run methods
+
+```
+add_arg(value)              → Run             ← new, chainable (Zig: run.addArg)
+add_file_arg(gen_file)      → Run             ← new, chainable (Zig: run.addFileArg)
+add_dir_arg(path)           → Run             ← new, chainable
+capture_stdout()            → GeneratedFile   ← new (Zig: run.captureStdOut)
+set_env(key, value)         → Run             ← new, chainable (Zig: run.setEnvironmentVariable)
+depend_on(step)             → Run             existing, chainable
+```
+
+### Step methods
+
+```
+depend_on(step)             → Step            existing, chainable
+attach(gen_file)            → Step            ← new (attach generated file production to step)
+```
+
+### Install methods
+
+```
+depend_on(step)             → Install         existing, chainable
+```
+
+### Dependency methods
+
+```
+module(name)                → DependencyModule
+artifact(name)              → DependencyArtifact
+step(name)                  → DependencyStep
+generated(name)             → DependencyGeneratedOutput
+```
+
+## -D CLI Options
+
+Zig: `zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast -Denable-logs=true`
+
+FOL: `fol code build -Dtarget=x86_64-linux-gnu -Doptimize=release-fast -Denable-logs=true`
+
+`graph.standard_target()` reads `-Dtarget`. `graph.standard_optimize()` reads `-Doptimize`.
+`graph.option({ name = "enable-logs", kind = bool, default = false })` reads `-Denable-logs`.
+
+Option kinds: `bool`, `int`, `str`, `enum`, `path`, `target`, `optimize`.
+
+## Step Selection
+
+```sh
+fol code build              # runs install steps (default)
+fol code build docs         # runs the "docs" step
+fol code run                # runs the default run step
+fol code run --step serve   # runs the "serve" step
+fol code test               # runs test steps
+fol code check              # runs check steps
+```
+
+## Example: Full-Featured `build.fol`
+
+```fol
+fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
+    return graph.add_static_lib({ name = name, root = root });
+}
+
+pro[] build(graph: Graph): non = {
+    var target   = graph.standard_target();
+    var optimize = graph.standard_optimize();
+    var strip    = graph.option({ name = "strip", kind = bool, default = false });
+
+    var core = make_lib(graph, "core", "src/core/lib.fol");
+    var io   = make_lib(graph, "io",   "src/io/lib.fol");
+
+    var app = graph.add_exe({
+        name     = "app",
+        root     = "src/main.fol",
+        target   = target,
+        optimize = optimize,
+    });
+    app.link(core);
+    app.link(io);
+    graph.install(app);
+
+    var run = graph.add_run(app);
+    run.add_arg("--config").add_file_arg(graph.path_from_root("config/default.toml"));
+
+    when(target == "wasm32") {
+        var wasm_step = graph.step("wasm-pack", "Package WASM output");
+        var pack = graph.add_system_tool({
+            tool    = "wasm-pack",
+            args    = ["build", "--target", "web"],
+            outputs = ["pkg/app.wasm"],
+        });
+        wasm_step.attach(pack);
+    };
+
+    var docs_step = graph.step("docs", "Generate documentation");
+    var docs = graph.add_system_tool({
+        tool    = "doc-gen",
+        args    = ["src/", "--out", "docs/"],
+        outputs = ["docs/index.html"],
+    });
+    docs_step.attach(docs);
+}
+```
+
+## Example Fixtures to Add
+
+| Fixture | Demonstrates |
+|---|---|
+| `examples/exe_with_options/` | target + optimize + boolean option |
+| `examples/multi_lib/` | multiple libs, helper function, `artifact.link` |
+| `examples/codegen/` | `add_codegen` + `artifact.add_generated` |
+| `examples/workspace/` | multi-package, `dependency` + `artifact.import` |
+| `examples/custom_steps/` | named steps + `step.attach` |
+| `examples/run_args/` | `run.add_arg`, `run.add_file_arg`, `run.capture_stdout` |
+| `examples/conditional/` | `when` selecting platform-specific artifacts |
+
+## Slices
+
+### Slice 1 — Create `fol-build`, move graph/api/semantic
+
+Create `lang/execution/fol-build/Cargo.toml` and `src/lib.rs`.
+Move `build_graph.rs`, `build_api.rs`, `build_semantic.rs` into the new crate unchanged.
+Update `fol-package` to depend on `fol-build`.
+
+Exit criteria: `cargo build` passes, all tests pass.
+
+### Slice 2 — Move runtime types and evaluator
+
+Move `build_runtime.rs`, `build_eval.rs`, `build_step.rs`, `build_artifact.rs`,
+`build_dependency.rs`, `build_codegen.rs`, `build_option.rs`, `build_native.rs`.
+Create `error.rs`, `context.rs`, `session.rs` with stub implementations.
+
+`BuildExecutionContext`:
+```rust
+pub struct BuildExecutionContext {
+    pub graph: BuildGraph,
+    pub package_root: PathBuf,
+    pub install_prefix: Option<PathBuf>,
+    pub resolved_options: ResolvedBuildOptionSet,
+    pub cli_args: Vec<(String, String)>,
+}
+```
+
+`BuildSession`:
+```rust
+pub struct BuildSession { context: BuildExecutionContext }
+impl BuildSession {
+    pub fn new(package_root: PathBuf, cli_args: Vec<(String, String)>) -> Self
+    pub fn execute(&mut self, lowered: &LoweredBuildProgram) -> Result<BuildGraph, BuildExecutionError>
+    pub fn run_step(&self, step_name: &str) -> Result<(), BuildExecutionError>
+}
+```
+
+Exit criteria: `fol-package` contains only entry validation and metadata. `cargo build` passes.
+
+### Slice 3 — `BuildStdlibScope`
+
+Create `stdlib.rs`. Produce `BuildStdlibScope::canonical()` covering all Graph methods,
+all handle methods, all new methods listed above. Every entry has: receiver type, method
+name, parameter list (required/optional/variadic), return type.
+
+Unit tests: every method signature has correct receiver, return type, required params.
+
+Exit criteria: `BuildStdlibScope::canonical()` is complete and tested.
+
+### Slice 4 — Wire stdlib into resolver (file-bound)
+
+When the resolver encounters a file flagged as `ParsedSourceUnitKind::Build`:
+- Do not walk sibling `.fol` files
+- Inject `BuildStdlibScope::canonical()` as the ambient scope
+- `Graph` resolves to `BuildSemanticType::graph()`
+- Method calls on build handles resolve via `BuildSemanticMethodSignature` dispatch
+
+Exit criteria:
+- `build.fol` with wrong method name produces a resolver error listing available methods
+- Sibling `.fol` files are not visible to `build.fol`
+- Helper `fun[]` declarations in `build.fol` are visible to the build entry
+
+### Slice 5 — Wire stdlib into typechecker
+
+All build types are recognized. Method call argument types are validated. Record literals
+passed to build API calls are structurally validated (required fields present, unknown
+fields rejected). Return types of method calls match what the stdlib scope declares.
+
+Exit criteria:
+- `var target = graph.standard_target()` typechecks
+- `graph.add_exe({ name = "app", root = "src/main.fol", target = target })` typechecks
+- Missing required field `root` in `add_exe` → typecheck error
+- Passing `Artifact` where `Step` is expected → typecheck error
+
+### Slice 6 — Real lowered-IR executor
+
+Replace the AST-walking evaluator in `build_eval.rs` with `executor.rs`. The executor
+receives lowered FOL IR from `fol-lower` and executes it. Delete `build_eval.rs`.
+
+Supported in executor:
+- `var` bindings
+- method calls on `Graph` and all handle types
+- `when` / `else`
+- `loop`
+- helper `fun[]`/`pro[]` calls (recursive frame execution)
+- method chaining
+
+Exit criteria:
+- All current build fixtures produce the same `BuildGraph` as before
+- `build.fol` with `when` executes conditionally
+- `build.fol` with a helper `fun[]` executes the helper correctly
+- The old AST evaluator is deleted
+
+### Slice 7 — Expand build API (Zig parity)
+
+Add all new methods listed in the stdlib section. Each new method needs:
+- Graph IR representation (new edge type if needed)
+- `BuildApi` method in `api.rs`
+- Entry in `BuildStdlibScope` (resolver + typechecker sees it)
+- Dispatch case in `dispatch.rs` (executor routes to it)
+- Unit test in `fol-build`
+- At least one fixture using it
+
+New graph IR additions:
+- `BuildRunConfig` — stores args, env vars, capture target for run steps
+- `ArtifactLinkEdge` — artifact depends on another artifact
+- `ModuleImportEdge` — artifact imports a module
+- `StepAttachment` — step owns a generated file production
+
+### Slice 8 — Full control flow in `build.fol`
+
+`when`, `else`, `loop` work in `build.fol`. Helper routines defined in `build.fol` can
+be called from the build entry and from other helpers.
+
+Exit criteria:
+- Fixture `examples/conditional/` conditionally adds a wasm artifact via `when`
+- Fixture `examples/multi_lib/` uses a helper `fun[] make_lib(...)` called from `build`
+- A loop over a sequence in `build.fol` adds multiple artifacts correctly
+
+### Slice 9 — Frontend integration
+
+`fol-frontend` uses `BuildSession` from `fol-build` instead of calling `fol-package`'s
+evaluator. `build.fol` is compiled through the full pipeline before execution.
+
+CLI option parsing: `-Dname=value` pairs are passed to `BuildSession::new` as `cli_args`.
+Named step selection: `fol code build <step>` selects the named step from the graph.
+
+Exit criteria:
+- `fol code build` works end-to-end with the new pipeline
+- `fol code run` works
+- `fol code test` works
+- `fol code build -Dtarget=x86_64-linux-gnu` passes the option into `standard_target()`
+- `fol code build docs` executes the "docs" step
+
+### Slice 10 — Fixtures and regression coverage
+
+Add all fixtures listed in the fixtures table. Add integration tests in `test/app/build/`:
+- `test_conditional_artifact` — `when` selects different artifacts
+- `test_helper_routine` — helper function used from `build`
+- `test_run_args` — `add_arg`, `add_file_arg`, `capture_stdout`
+- `test_artifact_link` — `artifact.link(dep.artifact(...))`
+- `test_module_import` — `artifact.import(dep.module(...))`
+- `test_codegen_artifact` — `add_codegen` + `artifact.add_generated`
+- `test_custom_step` — named step + `step.attach`
+- `test_d_options` — `graph.option(...)` + CLI `-D` flags
+- `test_path_utils` — `path_from_root`, `build_root`
+
+Negative tests:
+- Wrong method name on `Artifact` → resolver error
+- `artifact.link` with wrong handle type → typecheck error
+- `when` condition is non-bool → typecheck error
+- `build.fol` with no canonical entry → clear error
+- `build.fol` with two canonical entries → clear error
+
+Exit criteria: all fixtures pass, all negative tests produce correct errors.
+
+## Success Definition
+
+Done when all of this is true:
+
+- `lang/execution/fol-build` contains all build execution code
+- `fol-package` contains only entry validation and package metadata
+- `build.fol` goes through the full compiler pipeline before execution
+- `when`, `loop`, and helper routines work in `build.fol`
+- All new API methods (link, import, run args, path utils) are implemented and tested
+- `-D` CLI options work end-to-end
+- Named step selection works
+- All fixtures in `examples/` demonstrate a distinct build capability
+- All integration tests pass

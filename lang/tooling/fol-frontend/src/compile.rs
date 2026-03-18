@@ -4,6 +4,13 @@ use crate::{
 };
 use std::{fs, path::Path};
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FrontendArtifactExecutionSelection {
+    pub package_root: std::path::PathBuf,
+    pub label: String,
+    pub root_module: Option<String>,
+}
+
 pub fn check_workspace_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
@@ -49,6 +56,29 @@ pub fn build_workspace_for_profile_with_config(
     config: &FrontendConfig,
     profile: FrontendProfile,
 ) -> FrontendResult<FrontendCommandResult> {
+    let selections = workspace
+        .members
+        .iter()
+        .map(|member| FrontendArtifactExecutionSelection {
+            package_root: member.root.clone(),
+            label: member
+                .root
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("package")
+                .to_string(),
+            root_module: None,
+        })
+        .collect::<Vec<_>>();
+    build_selected_artifacts_for_profile_with_config(workspace, config, profile, &selections)
+}
+
+pub(crate) fn build_selected_artifacts_for_profile_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    profile: FrontendProfile,
+    selections: &[FrontendArtifactExecutionSelection],
+) -> FrontendResult<FrontendCommandResult> {
     if config.locked_fetch {
         crate::fetch_workspace_with_config(workspace, config)?;
     }
@@ -60,8 +90,13 @@ pub fn build_workspace_for_profile_with_config(
         Some(output_root.clone()),
     ));
 
-    for member in &workspace.members {
-        let lowered = compile_member_workspace(workspace, config, &member.root)?;
+    for selection in selections {
+        let lowered = compile_member_workspace_targeted(
+            workspace,
+            config,
+            &selection.package_root,
+            selection.root_module.as_deref(),
+        )?;
         if lowered.entry_candidates().is_empty() {
             continue;
         }
@@ -82,20 +117,17 @@ pub fn build_workspace_for_profile_with_config(
                 "build command expected a compiled backend artifact",
             ));
         };
-        let label = member
-            .root
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("package")
-            .to_string();
-        result.artifacts.push(FrontendArtifactSummary::new(
-            FrontendArtifactKind::EmittedRust,
-            format!("{label}-crate"),
-            Some(std::path::PathBuf::from(crate_root)),
-        ));
+        let crate_root = std::path::PathBuf::from(crate_root);
+        if crate_root.exists() {
+            result.artifacts.push(FrontendArtifactSummary::new(
+                FrontendArtifactKind::EmittedRust,
+                format!("{}-crate", selection.label),
+                Some(crate_root),
+            ));
+        }
         result.artifacts.push(FrontendArtifactSummary::new(
             FrontendArtifactKind::Binary,
-            label,
+            selection.label.clone(),
             Some(std::path::PathBuf::from(binary_path)),
         ));
     }
@@ -161,11 +193,12 @@ pub fn run_workspace_with_args_and_config(
         ));
     }
 
-    let binary = binaries[0]
-        .path
-        .as_ref()
-        .cloned()
-        .ok_or_else(|| FrontendError::new(FrontendErrorKind::Internal, "build result is missing a binary path"))?;
+    let binary = binaries[0].path.as_ref().cloned().ok_or_else(|| {
+        FrontendError::new(
+            FrontendErrorKind::Internal,
+            "build result is missing a binary path",
+        )
+    })?;
     let output = std::process::Command::new(&binary)
         .args(args)
         .output()
@@ -182,13 +215,69 @@ pub fn run_workspace_with_args_and_config(
         ));
     }
 
-    let mut result = FrontendCommandResult::new(
-        "run",
-        format!("ran {}", binary.display()),
-    );
+    let mut result = FrontendCommandResult::new("run", format!("ran {}", binary.display()));
     result.artifacts.push(FrontendArtifactSummary::new(
         FrontendArtifactKind::Binary,
         "binary",
+        Some(binary),
+    ));
+    Ok(result)
+}
+
+pub(crate) fn run_selected_artifact_with_args_and_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    profile: FrontendProfile,
+    selection: &FrontendArtifactExecutionSelection,
+    args: &[String],
+) -> FrontendResult<FrontendCommandResult> {
+    let built = build_selected_artifacts_for_profile_with_config(
+        workspace,
+        config,
+        profile,
+        std::slice::from_ref(selection),
+    )?;
+    let binaries = built
+        .artifacts
+        .iter()
+        .filter(|artifact| artifact.kind == FrontendArtifactKind::Binary)
+        .collect::<Vec<_>>();
+    if binaries.len() != 1 {
+        return Err(FrontendError::new(
+            FrontendErrorKind::InvalidInput,
+            format!(
+                "run command requires exactly one runnable selected artifact, found {}",
+                binaries.len()
+            ),
+        ));
+    }
+
+    let binary = binaries[0].path.as_ref().cloned().ok_or_else(|| {
+        FrontendError::new(
+            FrontendErrorKind::Internal,
+            "build result is missing a binary path",
+        )
+    })?;
+    let output = std::process::Command::new(&binary)
+        .args(args)
+        .output()
+        .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
+
+    if !output.status.success() {
+        return Err(FrontendError::new(
+            FrontendErrorKind::CommandFailed,
+            format!(
+                "run command failed for '{}': status {}",
+                binary.display(),
+                output.status
+            ),
+        ));
+    }
+
+    let mut result = FrontendCommandResult::new("run", format!("ran {}", binary.display()));
+    result.artifacts.push(FrontendArtifactSummary::new(
+        FrontendArtifactKind::Binary,
+        selection.label.clone(),
         Some(binary),
     ));
     Ok(result)
@@ -206,6 +295,61 @@ pub fn test_workspace_with_config(
         crate::fetch_workspace_with_config(workspace, config)?;
     }
     test_workspace_selected_with_config(workspace, config, None)
+}
+
+pub(crate) fn test_selected_artifacts_with_config(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    profile: FrontendProfile,
+    selections: &[FrontendArtifactExecutionSelection],
+) -> FrontendResult<FrontendCommandResult> {
+    let built =
+        build_selected_artifacts_for_profile_with_config(workspace, config, profile, selections)?;
+    let binaries = built
+        .artifacts
+        .iter()
+        .filter(|artifact| artifact.kind == FrontendArtifactKind::Binary)
+        .collect::<Vec<_>>();
+    if binaries.is_empty() {
+        return Err(FrontendError::new(
+            FrontendErrorKind::InvalidInput,
+            "test command did not find any runnable selected artifacts",
+        ));
+    }
+
+    for binary in &binaries {
+        let path = binary.path.as_ref().ok_or_else(|| {
+            FrontendError::new(
+                FrontendErrorKind::Internal,
+                "build result is missing a binary path",
+            )
+        })?;
+        let status = std::process::Command::new(path).status().map_err(|error| {
+            FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string())
+        })?;
+        if !status.success() {
+            return Err(FrontendError::new(
+                FrontendErrorKind::CommandFailed,
+                format!(
+                    "test command failed for '{}': status {status}",
+                    path.display()
+                ),
+            ));
+        }
+    }
+
+    let mut result = FrontendCommandResult::new(
+        "test",
+        format!("tested {} workspace artifact(s)", binaries.len()),
+    );
+    for binary in binaries {
+        result.artifacts.push(FrontendArtifactSummary::new(
+            FrontendArtifactKind::Binary,
+            binary.label.clone(),
+            binary.path.clone(),
+        ));
+    }
+    Ok(result)
 }
 
 pub fn test_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
@@ -271,7 +415,10 @@ pub fn emit_rust_with_config(
         ));
     }
 
-    result.summary = format!("emitted {emitted} Rust crate(s) into {}", output_root.display());
+    result.summary = format!(
+        "emitted {emitted} Rust crate(s) into {}",
+        output_root.display()
+    );
     Ok(result)
 }
 
@@ -287,7 +434,10 @@ pub fn emit_lowered_with_config(
     fs::create_dir_all(&output_root).map_err(|error| {
         FrontendError::new(
             FrontendErrorKind::CommandFailed,
-            format!("failed to create lowered emit root '{}': {error}", output_root.display()),
+            format!(
+                "failed to create lowered emit root '{}': {error}",
+                output_root.display()
+            ),
         )
     })?;
 
@@ -368,6 +518,63 @@ pub fn compile_member_workspace(
         .map_err(lower_lowering_errors)
 }
 
+fn compile_member_workspace_targeted(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    package_root: &Path,
+    root_module: Option<&str>,
+) -> FrontendResult<fol_lower::LoweredWorkspace> {
+    let lowered = compile_member_workspace(workspace, config, package_root)?;
+    let Some(root_module) = root_module else {
+        return Ok(lowered);
+    };
+
+    let matching_candidates = lowered
+        .entry_candidates()
+        .iter()
+        .filter(|candidate| entry_candidate_matches_root_module(&lowered, candidate, root_module))
+        .cloned()
+        .collect::<Vec<_>>();
+    if matching_candidates.is_empty() {
+        return Err(FrontendError::new(
+            FrontendErrorKind::InvalidInput,
+            format!(
+                "workspace package '{}' does not expose a runnable entry for build root '{}'",
+                package_root.display(),
+                root_module
+            ),
+        ));
+    }
+    Ok(lowered.with_entry_candidates(matching_candidates))
+}
+
+fn entry_candidate_matches_root_module(
+    lowered: &fol_lower::LoweredWorkspace,
+    candidate: &fol_lower::LoweredEntryCandidate,
+    root_module: &str,
+) -> bool {
+    let normalized_root = root_module.replace('\\', "/");
+    let Some(package) = lowered.package(&candidate.package_identity) else {
+        return false;
+    };
+    let Some(routine) = package.routine_decls.get(&candidate.routine_id) else {
+        return false;
+    };
+    let Some(source_unit_id) = routine.source_unit_id else {
+        return false;
+    };
+    let Some(source_unit) = package
+        .source_units
+        .iter()
+        .find(|unit| unit.source_unit_id == source_unit_id)
+    else {
+        return false;
+    };
+    let normalized_source = source_unit.path.replace('\\', "/");
+    normalized_source == normalized_root
+        || normalized_source.ends_with(&format!("/{normalized_root}"))
+}
+
 fn resolver_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
@@ -430,11 +637,7 @@ fn selected_workspace_members(
             .members
             .iter()
             .find(|member| {
-                member
-                    .root
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    == Some(selected_package)
+                member.root.file_name().and_then(|name| name.to_str()) == Some(selected_package)
             })
             .cloned()
             .map(|member| vec![member])
@@ -493,6 +696,17 @@ mod tests {
     };
     use std::{fs, path::PathBuf};
 
+    fn semantic_bin_build() -> &'static str {
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "    graph.add_test({ name = \"app_test\", root = \"src/main.fol\" });\n",
+            "}\n",
+        )
+    }
+
     #[test]
     fn check_workspace_runs_the_real_pipeline_for_workspace_members() {
         let root = std::env::temp_dir().join(format!("fol_frontend_check_{}", std::process::id()));
@@ -500,8 +714,12 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -529,8 +747,12 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -545,10 +767,13 @@ mod tests {
         let result = build_workspace(&workspace).unwrap();
 
         assert_eq!(result.command, "build");
-        assert!(result.summary.contains("built 1 workspace package(s) into "));
-        assert_eq!(result.artifacts.len(), 2);
-        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::EmittedRust);
-        assert!(result.artifacts[1]
+        assert!(result
+            .summary
+            .contains("built 1 workspace package(s) into "));
+        assert_eq!(result.artifacts.len(), 3);
+        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
+        assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::EmittedRust);
+        assert!(result.artifacts[2]
             .path
             .as_ref()
             .expect("binary path")
@@ -573,13 +798,18 @@ mod tests {
 
     #[test]
     fn build_workspace_uses_profile_specific_output_roots() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_build_profile_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_build_profile_{}", std::process::id()));
         let app = root.join("app");
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -599,7 +829,10 @@ mod tests {
         .unwrap();
 
         let binary = result.artifacts[1].path.as_ref().expect("binary path");
-        assert!(binary.display().to_string().contains("/.fol/build/release/"));
+        assert!(binary
+            .display()
+            .to_string()
+            .contains("/.fol/build/release/"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -611,8 +844,12 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -640,13 +877,18 @@ mod tests {
 
     #[test]
     fn run_workspace_passes_through_binary_arguments() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_run_args_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_run_args_{}", std::process::id()));
         let app = root.join("app");
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -673,14 +915,20 @@ mod tests {
 
     #[test]
     fn build_workspace_keeps_generated_crate_dirs_when_requested() {
-        let root =
-            std::env::temp_dir().join(format!("fol_frontend_keep_build_dir_{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_keep_build_dir_{}",
+            std::process::id()
+        ));
         let app = root.join("app");
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -711,8 +959,12 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -743,8 +995,12 @@ mod tests {
             let src = package.join("src");
             fs::create_dir_all(&src).unwrap();
             fs::write(package.join("package.yaml"), "name: pkg\nversion: 0.1.0\n").unwrap();
-            fs::write(package.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-            fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+            fs::write(package.join("build.fol"), semantic_bin_build()).unwrap();
+            fs::write(
+                src.join("main.fol"),
+                "fun[] main(): int = {\n    return 0\n}\n",
+            )
+            .unwrap();
         }
 
         let workspace = FrontendWorkspace {
@@ -768,13 +1024,18 @@ mod tests {
 
     #[test]
     fn emit_rust_materializes_generated_crates_for_workspace_members() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_emit_rust_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_emit_rust_{}", std::process::id()));
         let app = root.join("app");
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -791,10 +1052,14 @@ mod tests {
         assert_eq!(result.command, "emit rust");
         assert_eq!(
             result.summary,
-            format!("emitted 1 Rust crate(s) into {}", workspace.build_root.join("emit").join("rust").display())
+            format!(
+                "emitted 1 Rust crate(s) into {}",
+                workspace.build_root.join("emit").join("rust").display()
+            )
         );
-        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::EmittedRust);
-        assert!(result.artifacts[0].path.as_ref().unwrap().is_dir());
+        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
+        assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::EmittedRust);
+        assert!(result.artifacts[1].path.as_ref().unwrap().is_dir());
 
         fs::remove_dir_all(root).ok();
     }
@@ -807,8 +1072,12 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -830,8 +1099,12 @@ mod tests {
                 workspace.build_root.join("emit").join("lowered").display()
             )
         );
-        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::LoweredSnapshot);
-        assert!(result.artifacts[0].path.as_ref().unwrap().is_file());
+        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
+        assert_eq!(
+            result.artifacts[1].kind,
+            FrontendArtifactKind::LoweredSnapshot
+        );
+        assert!(result.artifacts[1].path.as_ref().unwrap().is_file());
 
         fs::remove_dir_all(root).ok();
     }

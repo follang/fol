@@ -8,6 +8,8 @@ It owns:
 
 - Tree-sitter assets for syntax/highlighting/query work
 - the language server for compiler-backed editor services
+- build-file affordances for `build.fol` through the same parse/highlight/symbol
+  and LSP surfaces used for ordinary source files
 
 The detailed operational reference now lives in the Tooling section:
 

@@ -9,12 +9,10 @@ pub struct BackendWorkspaceIdentity {
 impl BackendWorkspaceIdentity {
     pub fn for_workspace(workspace: &LoweredWorkspace) -> Self {
         let hash = stable_workspace_hash(workspace);
-        let short_entry = truncate_component(&sanitize_component(&workspace.entry_identity().display_name));
-        let crate_dir_name = format!(
-            "fol-build-{}-{}",
-            short_entry,
-            &hash[..12]
-        );
+        let short_entry = truncate_component(&sanitize_component(
+            &workspace.entry_identity().display_name,
+        ));
+        let crate_dir_name = format!("fol-build-{}-{}", short_entry, &hash[..12]);
         Self {
             hash,
             crate_dir_name,
@@ -85,7 +83,10 @@ mod tests {
         let first = sample_lowered_workspace();
         let second = sample_lowered_workspace_named("demo");
 
-        assert_ne!(stable_workspace_hash(&first), stable_workspace_hash(&second));
+        assert_ne!(
+            stable_workspace_hash(&first),
+            stable_workspace_hash(&second)
+        );
         assert_ne!(
             BackendWorkspaceIdentity::for_workspace(&first).crate_dir_name,
             BackendWorkspaceIdentity::for_workspace(&second).crate_dir_name

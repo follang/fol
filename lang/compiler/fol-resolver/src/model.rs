@@ -3,8 +3,8 @@ use crate::session::{LoadedPackage, PackageIdentity};
 use crate::{ResolverError, ResolverErrorKind};
 use fol_package::PreparedPackage;
 use fol_parser::ast::{
-    FolType, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, SyntaxIndex, SyntaxNodeId,
-    SyntaxOrigin, UsePathSegment,
+    FolType, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage, ParsedSourceUnitKind,
+    SyntaxIndex, SyntaxNodeId, SyntaxOrigin, UsePathSegment,
 };
 use std::collections::BTreeMap;
 
@@ -13,6 +13,10 @@ pub enum ScopeKind {
     ProgramRoot { package: String },
     NamespaceRoot { namespace: String },
     SourceUnitRoot { path: String },
+    /// Virtual scope injected as the parent of every `build.fol` source-unit scope.
+    /// It holds synthetic type symbols for the build stdlib (Graph, ArtifactHandle, …)
+    /// and has no parent, providing file-bound isolation for `build.fol`.
+    BuildStdlib,
     Routine,
     TypeDeclaration,
     Block,
@@ -26,6 +30,7 @@ pub struct ResolvedSourceUnit {
     pub path: String,
     pub package: String,
     pub namespace: String,
+    pub kind: ParsedSourceUnitKind,
     pub scope_id: ScopeId,
     pub top_level_nodes: Vec<SyntaxNodeId>,
 }
@@ -197,6 +202,9 @@ impl ResolvedWorkspace {
 pub struct ResolvedProgram {
     syntax: ParsedPackage,
     pub program_scope: ScopeId,
+    /// The virtual scope that is the parent of every `build.fol` source-unit scope,
+    /// providing file-bound isolation. `None` for packages that have no Build source units.
+    pub build_stdlib_scope: Option<ScopeId>,
     namespace_scopes: BTreeMap<String, ScopeId>,
     syntax_scopes: BTreeMap<SyntaxNodeId, ScopeId>,
     mounted_package_roots: BTreeMap<String, ScopeId>,
@@ -235,6 +243,7 @@ impl ResolvedProgram {
                 path: source_unit.path.clone(),
                 package: source_unit.package.clone(),
                 namespace: source_unit.namespace.clone(),
+                kind: source_unit.kind,
                 scope_id: ScopeId(0),
                 top_level_nodes,
             });
@@ -285,6 +294,7 @@ impl ResolvedProgram {
         Self {
             syntax,
             program_scope,
+            build_stdlib_scope: None,
             namespace_scopes,
             syntax_scopes: BTreeMap::new(),
             mounted_package_roots: BTreeMap::new(),
@@ -294,6 +304,44 @@ impl ResolvedProgram {
             references: IdTable::new(),
             imports: IdTable::new(),
         }
+    }
+
+    /// Creates a `BuildStdlib` scope and wires every `Build` source unit's
+    /// `SourceUnitRoot` scope to use it as parent, providing file-bound
+    /// isolation for `build.fol`. Returns the scope id if any build units exist.
+    pub fn init_build_stdlib_scope(&mut self) -> Option<ScopeId> {
+        let build_scopes: Vec<(SourceUnitId, ScopeId)> = self
+            .source_units
+            .iter_with_ids()
+            .filter(|(_, unit)| unit.kind == ParsedSourceUnitKind::Build)
+            .map(|(id, unit)| (id, unit.scope_id))
+            .collect();
+
+        if build_scopes.is_empty() {
+            return None;
+        }
+
+        let anchor_unit = build_scopes[0].0;
+        let stdlib_scope = self.scopes.push(ResolvedScope {
+            id: ScopeId(0),
+            kind: ScopeKind::BuildStdlib,
+            parent: None,
+            source_unit: Some(anchor_unit),
+            symbols: Vec::new(),
+            symbol_keys: BTreeMap::new(),
+        });
+        if let Some(scope) = self.scopes.get_mut(stdlib_scope) {
+            scope.id = stdlib_scope;
+        }
+
+        for (_, source_scope_id) in &build_scopes {
+            if let Some(scope) = self.scopes.get_mut(*source_scope_id) {
+                scope.parent = Some(stdlib_scope);
+            }
+        }
+
+        self.build_stdlib_scope = Some(stdlib_scope);
+        Some(stdlib_scope)
     }
 
     pub fn syntax(&self) -> &ParsedPackage {
@@ -314,6 +362,18 @@ impl ResolvedProgram {
 
     pub fn source_unit(&self, id: SourceUnitId) -> Option<&ResolvedSourceUnit> {
         self.source_units.get(id)
+    }
+
+    pub fn ordinary_source_units(&self) -> impl Iterator<Item = &ResolvedSourceUnit> {
+        self.source_units
+            .iter()
+            .filter(|unit| unit.kind == ParsedSourceUnitKind::Ordinary)
+    }
+
+    pub fn build_source_units(&self) -> impl Iterator<Item = &ResolvedSourceUnit> {
+        self.source_units
+            .iter()
+            .filter(|unit| unit.kind == ParsedSourceUnitKind::Build)
     }
 
     pub fn namespace_scope(&self, namespace: &str) -> Option<ScopeId> {
@@ -431,6 +491,7 @@ impl ResolvedProgram {
             path: loaded.identity.canonical_root.clone(),
             package: root_name.clone(),
             namespace: root_name.clone(),
+            kind: ParsedSourceUnitKind::Ordinary,
             scope_id: ScopeId(0),
             top_level_nodes: Vec::new(),
         });
@@ -459,15 +520,10 @@ impl ResolvedProgram {
         if loaded.identity.source_kind == crate::PackageSourceKind::Package
             && !loaded.prepared.exports.is_empty()
         {
-                self.mount_declared_package_exports(
-                    loaded,
-                    source_unit_id,
-                    root_scope,
-                    &root_name,
-                )?;
-                self.mounted_package_roots
-                    .insert(loaded.identity.canonical_root.clone(), root_scope);
-                return Ok(root_scope);
+            self.mount_declared_package_exports(loaded, source_unit_id, root_scope, &root_name)?;
+            self.mounted_package_roots
+                .insert(loaded.identity.canonical_root.clone(), root_scope);
+            return Ok(root_scope);
         }
 
         self.mount_all_exported_package_scopes(loaded, source_unit_id, root_scope, &root_name)?;
@@ -484,7 +540,9 @@ impl ResolvedProgram {
         root_scope: ScopeId,
         root_name: &str,
     ) -> Result<(), ResolverError> {
-        for (foreign_scope_id, foreign_namespace, foreign_symbols) in exported_symbol_scopes(&loaded.program) {
+        for (foreign_scope_id, foreign_namespace, foreign_symbols) in
+            exported_symbol_scopes(&loaded.program)
+        {
             for export in &loaded.prepared.exports {
                 if foreign_namespace != export.source_namespace {
                     continue;
@@ -552,9 +610,9 @@ impl ResolvedProgram {
         }
 
         for (foreign_scope_id, _, foreign_symbols) in exported_symbol_scopes(&loaded.program) {
-            let mounted_scope = *mounted_scopes
-                .get(&foreign_scope_id)
-                .expect("mounted export scope should exist");
+            let Some(mounted_scope) = mounted_scopes.get(&foreign_scope_id).copied() else {
+                continue;
+            };
             self.mount_visible_symbols_from_scope(
                 loaded,
                 source_unit_id,
@@ -640,13 +698,68 @@ impl ResolvedProgram {
             .get_mut(scope_id)
             .expect("mounted symbol target scope should exist");
         scope.symbols.push(symbol_id);
-        scope.symbol_keys.entry(canonical_name).or_default().push(symbol_id);
+        scope
+            .symbol_keys
+            .entry(canonical_name)
+            .or_default()
+            .push(symbol_id);
 
         Ok(symbol_id)
     }
 }
 
-fn remap_loaded_namespace(namespace: &str, foreign_package_name: &str, mounted_root: &str) -> String {
+#[cfg(test)]
+mod tests {
+    use super::ResolvedProgram;
+    use fol_parser::ast::{ParsedPackage, ParsedSourceUnit, ParsedSourceUnitKind, SyntaxIndex};
+
+    #[test]
+    fn resolved_program_keeps_build_source_unit_kinds() {
+        let syntax = ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![
+                ParsedSourceUnit {
+                    path: "build.fol".to_string(),
+                    package: "demo".to_string(),
+                    namespace: "demo".to_string(),
+                    kind: ParsedSourceUnitKind::Build,
+                    items: Vec::new(),
+                },
+                ParsedSourceUnit {
+                    path: "src/main.fol".to_string(),
+                    package: "demo".to_string(),
+                    namespace: "demo::src".to_string(),
+                    kind: ParsedSourceUnitKind::Ordinary,
+                    items: Vec::new(),
+                },
+            ],
+            syntax_index: SyntaxIndex::default(),
+        };
+
+        let resolved = ResolvedProgram::new(syntax);
+
+        assert_eq!(resolved.build_source_units().count(), 1);
+        assert_eq!(resolved.ordinary_source_units().count(), 1);
+        assert_eq!(
+            resolved
+                .source_unit(crate::SourceUnitId(0))
+                .map(|unit| unit.kind),
+            Some(ParsedSourceUnitKind::Build)
+        );
+        assert_eq!(
+            resolved
+                .source_unit(crate::SourceUnitId(1))
+                .map(|unit| unit.kind),
+            Some(ParsedSourceUnitKind::Ordinary)
+        );
+    }
+}
+
+fn remap_loaded_namespace(
+    namespace: &str,
+    foreign_package_name: &str,
+    mounted_root: &str,
+) -> String {
     if namespace == foreign_package_name {
         mounted_root.to_string()
     } else if let Some(suffix) = namespace.strip_prefix(&format!("{foreign_package_name}::")) {
@@ -661,9 +774,8 @@ fn exported_symbol_scopes(program: &ResolvedProgram) -> Vec<(ScopeId, String, Ve
         .scopes
         .iter_with_ids()
         .filter_map(|(scope_id, scope)| {
-            namespace_for_export_scope(&scope.kind).map(|namespace| {
-                (scope_id, namespace, scope.symbols.clone())
-            })
+            namespace_for_export_scope(&scope.kind)
+                .map(|namespace| (scope_id, namespace, scope.symbols.clone()))
         })
         .collect::<Vec<_>>();
     scopes.sort_by_key(|(_, namespace, _)| namespace.matches("::").count());

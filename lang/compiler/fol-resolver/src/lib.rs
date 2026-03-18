@@ -24,19 +24,22 @@ pub mod collect;
 pub mod errors;
 pub mod ids;
 pub mod imports;
+pub mod inject;
 pub mod model;
 pub mod session;
 pub mod traverse;
 
 pub use errors::{ResolverError, ResolverErrorKind};
+pub use fol_package::PreparedPackage;
+pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 pub use model::{
     MountedSymbolProvenance, ReferenceKind, ResolvedImport, ResolvedPackage, ResolvedProgram,
     ResolvedReference, ResolvedScope, ResolvedSourceUnit, ResolvedSymbol, ResolvedWorkspace,
     ScopeKind, SymbolKind,
 };
+pub use inject::inject_build_stdlib_types;
 pub use session::{PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession};
-pub use fol_package::PreparedPackage;
 
 pub type ResolverResult<T> = Result<T, Vec<ResolverError>>;
 
@@ -51,7 +54,7 @@ impl Resolver {
 
     /// Resolve one parsed package into scopes, symbols, references, and imports.
     ///
-    /// This is the legacy single-program compatibility surface. New semantic
+    /// This is the legacy single-program surface. New semantic
     /// consumers should prefer the workspace APIs and then read the entry
     /// package from the returned `ResolvedWorkspace`.
     pub fn resolve_package(
@@ -63,7 +66,7 @@ impl Resolver {
 
     /// Resolve one parsed package with an explicit resolver configuration.
     ///
-    /// This is the legacy single-program compatibility surface.
+    /// This is the legacy single-program surface.
     pub fn resolve_package_with_config(
         &mut self,
         syntax: fol_parser::ast::ParsedPackage,
@@ -91,7 +94,7 @@ impl Resolver {
 
     /// Resolve one fol-package prepared package with a fresh resolver session.
     ///
-    /// This is the legacy single-program compatibility surface.
+    /// This is the legacy single-program surface.
     pub fn resolve_prepared_package(
         &mut self,
         prepared: PreparedPackage,
@@ -101,7 +104,7 @@ impl Resolver {
 
     /// Resolve one fol-package prepared package with an explicit resolver configuration.
     ///
-    /// This is the legacy single-program compatibility surface.
+    /// This is the legacy single-program surface.
     pub fn resolve_prepared_package_with_config(
         &mut self,
         prepared: PreparedPackage,
@@ -184,7 +187,10 @@ pub fn resolve_prepared_workspace_with_config(
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve_package, resolve_package_workspace, resolve_prepared_package, resolve_prepared_workspace};
+    use super::{
+        resolve_package, resolve_package_workspace, resolve_prepared_package,
+        resolve_prepared_workspace,
+    };
     use fol_package::PackageSession;
     use fol_parser::ast::{AstParser, ParsedPackage};
     use fol_stream::FileStream;
@@ -224,8 +230,9 @@ mod tests {
 
     #[test]
     fn resolver_smoke_can_lower_a_workspace_from_a_parsed_package() {
-        let workspace = resolve_package_workspace(parse_package("../../../test/parser/simple_var.fol"))
-            .expect("Resolver workspace should lower parsed packages");
+        let workspace =
+            resolve_package_workspace(parse_package("../../../test/parser/simple_var.fol"))
+                .expect("Resolver workspace should lower parsed packages");
 
         assert_eq!(workspace.package_count(), 1);
         assert_eq!(workspace.entry_program().package_name(), "parser");

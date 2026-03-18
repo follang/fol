@@ -1,0 +1,12 @@
+pro[] build(graph: Graph): non = {
+    var optimize = graph.standard_optimize();
+    var app = graph.add_exe({ name = "app", root = "src/main.fol" });
+    graph.install(app);
+    when(optimize == "release-fast") {
+        {
+            var strip_step = graph.step("strip");
+            var pack = graph.add_system_tool({ tool = "strip", output = "gen/app.stripped" });
+            strip_step.attach(pack);
+        }
+    };
+}

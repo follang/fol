@@ -26,7 +26,8 @@ fn editor_summary_to_result(summary: fol_editor::EditorCommandSummary) -> Fronte
 pub fn editor_lsp_command(config: &FrontendConfig) -> FrontendResult<FrontendCommandResult> {
     require_discovered_root(&config.working_directory).map_err(|error| {
         if error.kind() == FrontendErrorKind::WorkspaceNotFound {
-            error.with_note("start the editor inside a FOL package or workspace root")
+            error
+                .with_note("start the editor inside a FOL package or workspace root")
                 .with_note("or open a package directory before launching `fol tool lsp`")
         } else {
             error
@@ -104,9 +105,12 @@ mod tests {
         assert_eq!(lsp.command, "lsp");
         assert!(lsp.summary.contains("fol tool lsp"));
         assert_eq!(parse.command, "parse");
-        assert!(parse.summary.contains("path=test/apps/fixtures/record_flow/main.fol"));
+        assert!(parse
+            .summary
+            .contains("path=test/apps/fixtures/record_flow/main.fol"));
         assert_eq!(highlight.command, "highlight");
-        assert!(highlight.summary.contains("keyword_hits="));
+        assert!(highlight.summary.contains("capture_count="));
+        assert!(highlight.summary.contains("captures="));
         assert_eq!(symbols.command, "symbols");
         assert!(symbols.summary.contains("symbol_candidates="));
         assert_eq!(tree.command, "tree generate");

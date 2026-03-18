@@ -84,11 +84,7 @@ impl PackageError {
         })
     }
 
-    pub fn with_related_origin(
-        mut self,
-        origin: SyntaxOrigin,
-        message: impl Into<String>,
-    ) -> Self {
+    pub fn with_related_origin(mut self, origin: SyntaxOrigin, message: impl Into<String>) -> Self {
         self.related_origins.push((origin, message.into()));
         self
     }
@@ -160,7 +156,7 @@ impl ToDiagnostic for PackageError {
 #[cfg(test)]
 mod tests {
     use super::{PackageError, PackageErrorKind};
-    use fol_diagnostics::{DiagnosticCode, DiagnosticReport};
+    use fol_diagnostics::{DiagnosticCode, DiagnosticReport, ToDiagnostic};
     use fol_parser::ast::SyntaxOrigin;
     use std::time::{SystemTime, UNIX_EPOCH};
 

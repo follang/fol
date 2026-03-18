@@ -1,4 +1,4 @@
-use fol_frontend::{FrontendCli, FrontendProfile, OutputMode, run_command_from_args_in_dir};
+use fol_frontend::{run_command_from_args_in_dir, FrontendCli, FrontendProfile, OutputMode};
 
 struct EnvGuard {
     key: &'static str,

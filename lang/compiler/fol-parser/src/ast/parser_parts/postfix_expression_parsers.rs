@@ -28,29 +28,34 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::RoundO) => {
                     let _ = tokens.bump();
                     let args = self.parse_call_args(tokens)?;
-                    node = self.attach_leading_comments(match node {
-                        AstNode::Identifier { name, syntax_id } => AstNode::FunctionCall {
-                            syntax_id,
-                            surface: crate::ast::CallSurface::Plain,
-                            name,
-                            args,
+                    node = self.attach_leading_comments(
+                        match node {
+                            AstNode::Identifier { name, syntax_id } => AstNode::FunctionCall {
+                                syntax_id,
+                                surface: crate::ast::CallSurface::Plain,
+                                name,
+                                args,
+                            },
+                            AstNode::QualifiedIdentifier { path } => {
+                                AstNode::QualifiedFunctionCall { path, args }
+                            }
+                            callee => AstNode::Invoke {
+                                callee: Box::new(callee),
+                                args,
+                            },
                         },
-                        AstNode::QualifiedIdentifier { path } => {
-                            AstNode::QualifiedFunctionCall { path, args }
-                        }
-                        callee => AstNode::Invoke {
-                            callee: Box::new(callee),
-                            args,
-                        },
-                    }, leading_comments);
+                        leading_comments,
+                    );
                 }
                 KEYWORD::Symbol(SYMBOL::Dot) => {
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
 
                     let member_token = tokens.curr(false)?;
-                    let member =
-                        Self::expect_named_label(&member_token, "Expected field or method name after '.'")?;
+                    let member = Self::expect_named_label(
+                        &member_token,
+                        "Expected field or method name after '.'",
+                    )?;
                     let _ = tokens.bump();
                     self.skip_ignorable(tokens);
 

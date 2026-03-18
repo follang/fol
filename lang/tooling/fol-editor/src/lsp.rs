@@ -1,11 +1,13 @@
 use crate::{
-    diagnostic_to_lsp, map_document_workspace, materialize_analysis_overlay, EditorConfig,
-    location_to_range, EditorDocument, EditorDocumentUri, EditorError, EditorErrorKind,
-    EditorResult, EditorSession, EditorWorkspaceMapping, LspDiagnostic, LspLocation, LspPosition,
-    LspRange,
+    diagnostic_to_lsp, location_to_range, map_document_workspace, materialize_analysis_overlay,
+    EditorConfig, EditorDocument, EditorDocumentUri, EditorError, EditorErrorKind, EditorResult,
+    EditorSession, EditorWorkspaceMapping, LspDiagnostic, LspLocation, LspPosition, LspRange,
 };
 use fol_diagnostics::Diagnostic;
 use fol_diagnostics::ToDiagnostic;
+use fol_intrinsics::{
+    intrinsic_registry, IntrinsicAvailability, IntrinsicStatus, IntrinsicSurface,
+};
 use fol_package::{PackageError, PackageSession, PackageSourceKind};
 use fol_parser::ast::{AstParser, ParseError};
 use fol_resolver::{Resolver, ResolverError};
@@ -76,6 +78,15 @@ pub struct LspServerCapabilities {
     pub hover_provider: bool,
     pub definition_provider: bool,
     pub document_symbol_provider: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub completion_provider: Option<LspCompletionOptions>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionOptions {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub trigger_characters: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -170,6 +181,50 @@ pub struct LspDocumentSymbolParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct LspCompletionContext {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_kind: Option<u8>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trigger_character: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionParams {
+    pub text_document: LspTextDocumentIdentifier,
+    pub position: LspPosition,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<LspCompletionContext>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionList {
+    pub is_incomplete: bool,
+    pub items: Vec<LspCompletionItem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCompletionItem {
+    pub label: String,
+    pub kind: u8,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub insert_text: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct EditorCompletionItem {
+    pub label: String,
+    pub kind: u8,
+    pub detail: Option<String>,
+    pub insert_text: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspHover {
     pub contents: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -199,27 +254,35 @@ impl EditorLspServer {
         }
     }
 
-    pub fn handle_request(&mut self, request: JsonRpcRequest) -> EditorResult<Option<JsonRpcResponse>> {
+    pub fn handle_request(
+        &mut self,
+        request: JsonRpcRequest,
+    ) -> EditorResult<Option<JsonRpcResponse>> {
         match request.method.as_str() {
             "initialize" => Ok(Some(JsonRpcResponse {
                 jsonrpc: "2.0".to_string(),
                 id: request.id,
-                result: Some(serde_json::to_value(LspInitializeResult {
-                    capabilities: LspServerCapabilities {
-                        text_document_sync: LspTextDocumentSyncOptions {
-                            open_close: true,
-                            change: 1,
+                result: Some(
+                    serde_json::to_value(LspInitializeResult {
+                        capabilities: LspServerCapabilities {
+                            text_document_sync: LspTextDocumentSyncOptions {
+                                open_close: true,
+                                change: 1,
+                            },
+                            hover_provider: true,
+                            definition_provider: true,
+                            document_symbol_provider: true,
+                            completion_provider: Some(LspCompletionOptions {
+                                trigger_characters: vec![".".to_string()],
+                            }),
                         },
-                        hover_provider: true,
-                        definition_provider: true,
-                        document_symbol_provider: true,
-                    },
-                    server_info: LspServerInfo {
-                        name: "fol-editor".to_string(),
-                        version: env!("CARGO_PKG_VERSION").to_string(),
-                    },
-                })
-                .expect("initialize result should serialize")),
+                        server_info: LspServerInfo {
+                            name: "fol-editor".to_string(),
+                            version: env!("CARGO_PKG_VERSION").to_string(),
+                        },
+                    })
+                    .expect("initialize result should serialize"),
+                ),
                 error: None,
             })),
             "shutdown" => {
@@ -261,12 +324,28 @@ impl EditorLspServer {
             }
             "textDocument/documentSymbol" => {
                 let params: LspDocumentSymbolParams = from_params(request.params)?;
-                let result = self.document_symbols(&EditorDocumentUri::parse(&params.text_document.uri)?)?;
+                let result =
+                    self.document_symbols(&EditorDocumentUri::parse(&params.text_document.uri)?)?;
                 Ok(Some(JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(
                         serde_json::to_value(result).expect("document symbols should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "textDocument/completion" => {
+                let params: LspCompletionParams = from_params(request.params)?;
+                let result = self.completion(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                    params.position,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("completion result should serialize"),
                     ),
                     error: None,
                 }))
@@ -291,9 +370,13 @@ impl EditorLspServer {
             "textDocument/didOpen" => {
                 let params: LspDidOpenTextDocumentParams = from_params(notification.params)?;
                 let uri = EditorDocumentUri::parse(&params.text_document.uri)?;
-                let document =
-                    EditorDocument::new(uri.clone(), params.text_document.version, params.text_document.text)?;
-                let mapping = map_document_workspace(document.path.as_path(), &self.session.config)?;
+                let document = EditorDocument::new(
+                    uri.clone(),
+                    params.text_document.version,
+                    params.text_document.text,
+                )?;
+                let mapping =
+                    map_document_workspace(document.path.as_path(), &self.session.config)?;
                 self.session
                     .mappings
                     .insert(uri.as_str().to_string(), mapping);
@@ -314,9 +397,11 @@ impl EditorLspServer {
                             "didChange requires at least one content change",
                         )
                     })?;
-                self.session
-                    .documents
-                    .apply_full_change(&uri, params.text_document.version, text)?;
+                self.session.documents.apply_full_change(
+                    &uri,
+                    params.text_document.version,
+                    text,
+                )?;
                 let diagnostics = self.publish_diagnostics(&uri)?;
                 Ok(vec![diagnostics])
             }
@@ -350,7 +435,11 @@ impl EditorLspServer {
         })
     }
 
-    pub fn hover(&self, uri: &EditorDocumentUri, position: LspPosition) -> EditorResult<Option<LspHover>> {
+    pub fn hover(
+        &self,
+        uri: &EditorDocumentUri,
+        position: LspPosition,
+    ) -> EditorResult<Option<LspHover>> {
         let document = self.open_document(uri)?;
         let mapping = self.document_mapping(document, uri)?;
         let snapshot = analyze_document_semantics(document, &mapping)?;
@@ -383,6 +472,29 @@ impl EditorLspServer {
         Ok(snapshot.document_symbols_for_current_path())
     }
 
+    pub fn completion(
+        &self,
+        uri: &EditorDocumentUri,
+        position: LspPosition,
+    ) -> EditorResult<LspCompletionList> {
+        let document = self.open_document(uri)?;
+        let mapping = self.document_mapping(document, uri)?;
+        let snapshot = analyze_document_semantics(document, &mapping)?;
+        Ok(LspCompletionList {
+            is_incomplete: false,
+            items: snapshot
+                .plain_completion_items(document, position)
+                .into_iter()
+                .map(|item| LspCompletionItem {
+                    label: item.label,
+                    kind: item.kind,
+                    detail: item.detail,
+                    insert_text: item.insert_text,
+                })
+                .collect(),
+        })
+    }
+
     fn open_document(&self, uri: &EditorDocumentUri) -> EditorResult<&EditorDocument> {
         self.session.documents.get(uri).ok_or_else(|| {
             EditorError::new(
@@ -397,11 +509,15 @@ impl EditorLspServer {
         document: &EditorDocument,
         uri: &EditorDocumentUri,
     ) -> EditorResult<EditorWorkspaceMapping> {
-        Ok(self.session
+        Ok(self
+            .session
             .mappings
             .get(uri.as_str())
             .cloned()
-            .unwrap_or(map_document_workspace(document.path.as_path(), &self.session.config)?))
+            .unwrap_or(map_document_workspace(
+                document.path.as_path(),
+                &self.session.config,
+            )?))
     }
 }
 
@@ -559,7 +675,9 @@ fn write_jsonrpc_message(writer: &mut impl Write, value: &impl Serialize) -> Edi
     Ok(())
 }
 
-fn from_params<T: serde::de::DeserializeOwned>(params: Option<serde_json::Value>) -> EditorResult<T> {
+fn from_params<T: serde::de::DeserializeOwned>(
+    params: Option<serde_json::Value>,
+) -> EditorResult<T> {
     serde_json::from_value(params.unwrap_or(serde_json::Value::Null)).map_err(|error| {
         EditorError::new(
             EditorErrorKind::InvalidInput,
@@ -578,41 +696,570 @@ fn analyze_document(
 
 struct SemanticSnapshot {
     analyzed_path: Option<PathBuf>,
+    source_document_path: PathBuf,
+    source_package_root: Option<PathBuf>,
     diagnostics: Vec<LspDiagnostic>,
+    resolved_workspace: Option<fol_resolver::ResolvedWorkspace>,
     typed_workspace: Option<fol_typecheck::TypedWorkspace>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum CompletionContext {
+    Plain,
+    TypePosition,
+    QualifiedPath { qualifier: String },
+    DotTrigger,
+}
+
 impl SemanticSnapshot {
-    fn reference_at(&self, position: LspPosition) -> Option<&fol_resolver::ResolvedReference> {
-        let typed = self.typed_workspace.as_ref()?;
-        let analyzed_path = self.analyzed_path.as_ref()?;
-        let needle = typed
-            .packages()
-            .find_map(|package| {
-                let program = package.program.resolved();
-                let syntax_id = syntax_at_position(program, analyzed_path.as_path(), position)?;
+    fn plain_completion_items(
+        &self,
+        document: &EditorDocument,
+        position: LspPosition,
+    ) -> Vec<EditorCompletionItem> {
+        if self.current_program().is_none() {
+            return self.fallback_completion_items(document, position);
+        }
+        match completion_context(document, position) {
+            CompletionContext::Plain => {}
+            CompletionContext::TypePosition => {
+                let mut items = self.builtin_type_completion_items();
+                items.extend(self.visible_named_type_completion_items());
+                items.extend(self.fallback_local_named_type_items(document));
+                items.extend(self.fallback_imported_named_type_items(document));
+                return dedupe_completion_items(items);
+            }
+            CompletionContext::QualifiedPath { qualifier } => {
+                let mut items = self.qualified_completion_items(&qualifier);
+                items.extend(self.fallback_qualified_completion_items(&qualifier));
+                return dedupe_completion_items(items);
+            }
+            CompletionContext::DotTrigger => return self.dot_intrinsic_fallback_completion_items(),
+        }
+        let mut items = self.local_completion_items(position);
+        items.extend(self.current_package_top_level_completion_items(position));
+        items.extend(self.import_alias_completion_items(position));
+        items.extend(self.fallback_local_scope_items(document, position));
+        items.extend(self.fallback_current_package_top_level_items(document, position));
+        items.extend(self.fallback_import_alias_items(document));
+        dedupe_completion_items(items)
+    }
+
+    fn fallback_completion_items(
+        &self,
+        document: &EditorDocument,
+        position: LspPosition,
+    ) -> Vec<EditorCompletionItem> {
+        match completion_context(document, position) {
+            CompletionContext::DotTrigger => self.dot_intrinsic_fallback_completion_items(),
+            CompletionContext::QualifiedPath { qualifier } => {
+                self.fallback_qualified_completion_items(&qualifier)
+            }
+            CompletionContext::TypePosition => {
+                let mut items = self.builtin_type_completion_items();
+                items.extend(self.fallback_local_named_type_items(document));
+                items.extend(self.fallback_imported_named_type_items(document));
+                dedupe_completion_items(items)
+            }
+            CompletionContext::Plain => {
+                if position_to_offset(&document.text, position).is_none() {
+                    if let Some(line) = document.text.lines().nth(position.line as usize) {
+                        if line.contains("::") {
+                            let aliases = self.fallback_import_alias_items(document);
+                            if aliases.len() == 1 {
+                                let items = self.fallback_imported_package_items(&aliases[0].label);
+                                if !items.is_empty() {
+                                    return dedupe_completion_items(items);
+                                }
+                            }
+                        }
+                    }
+                }
+                let mut items = self.fallback_local_scope_items(document, position);
+                items.extend(self.fallback_current_package_top_level_items(document, position));
+                items.extend(self.fallback_import_alias_items(document));
+                dedupe_completion_items(items)
+            }
+        }
+    }
+
+    fn builtin_type_completion_items(&self) -> Vec<EditorCompletionItem> {
+        ["int", "flt", "bol", "chr", "str", "never"]
+            .into_iter()
+            .map(completion_builtin_type_item)
+            .collect()
+    }
+
+    fn visible_named_type_completion_items(&self) -> Vec<EditorCompletionItem> {
+        let Some(program) = self.current_program() else {
+            return Vec::new();
+        };
+        program
+            .all_symbols()
+            .filter(|symbol| {
+                matches!(
+                    symbol.kind,
+                    fol_resolver::SymbolKind::Type | fol_resolver::SymbolKind::Alias
+                )
+            })
+            .filter(|symbol| completion_symbol_is_root_visible(program, symbol))
+            .map(completion_item_from_symbol)
+            .collect()
+    }
+
+    fn qualified_completion_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
+        let Some(program) = self.current_program() else {
+            return Vec::new();
+        };
+        let qualifier_root = qualifier.split("::").next().unwrap_or(qualifier);
+        let imported_root = program.all_symbols().any(|symbol| {
+            symbol.kind == fol_resolver::SymbolKind::ImportAlias && symbol.name == qualifier_root
+        });
+        let mut items = Vec::new();
+
+        if let Some(scope_id) = program.namespace_scope(qualifier) {
+            items.extend(
                 program
-                    .all_references()
-                    .find(|reference| reference.syntax_id == Some(syntax_id))
-            })?;
+                    .symbols_in_scope(scope_id)
+                    .into_iter()
+                    .filter(|symbol| {
+                        symbol_visibility_matches_namespace_root(symbol, imported_root)
+                    })
+                    .map(completion_item_from_symbol),
+            );
+        }
+
+        for source_unit in program.source_units.iter() {
+            if source_unit.namespace != qualifier {
+                continue;
+            }
+            items.extend(
+                program
+                    .symbols_in_scope(source_unit.scope_id)
+                    .into_iter()
+                    .filter(|symbol| {
+                        symbol_visibility_matches_namespace_root(symbol, imported_root)
+                    })
+                    .map(completion_item_from_symbol),
+            );
+        }
+
+        let prefix = format!("{qualifier}::");
+        let mut child_namespaces = std::collections::BTreeSet::new();
+        for (_, scope) in program.scopes.iter_with_ids() {
+            let fol_resolver::ScopeKind::NamespaceRoot { namespace } = &scope.kind else {
+                continue;
+            };
+            let Some(remainder) = namespace.strip_prefix(&prefix) else {
+                continue;
+            };
+            let child = remainder.split("::").next().unwrap_or("");
+            if !child.is_empty() {
+                child_namespaces.insert(child.to_string());
+            }
+        }
+        items.extend(child_namespaces.into_iter().map(completion_namespace_item));
+
+        dedupe_completion_items(items)
+    }
+
+    fn dot_intrinsic_fallback_completion_items(&self) -> Vec<EditorCompletionItem> {
+        intrinsic_registry()
+            .iter()
+            .filter(|entry| entry.surface == IntrinsicSurface::DotRootCall)
+            .filter(|entry| entry.availability == IntrinsicAvailability::V1)
+            .filter(|entry| entry.status == IntrinsicStatus::Implemented)
+            .map(completion_intrinsic_item)
+            .collect()
+    }
+
+    fn local_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
+        let Some((program, scope_id)) = self.scope_at_position(position) else {
+            return Vec::new();
+        };
+        let mut items = Vec::new();
+        let mut cursor = Some(scope_id);
+        while let Some(current_scope_id) = cursor {
+            for symbol in program.symbols_in_scope(current_scope_id) {
+                if !matches!(
+                    symbol.kind,
+                    fol_resolver::SymbolKind::ValueBinding
+                        | fol_resolver::SymbolKind::LabelBinding
+                        | fol_resolver::SymbolKind::DestructureBinding
+                        | fol_resolver::SymbolKind::Parameter
+                        | fol_resolver::SymbolKind::GenericParameter
+                        | fol_resolver::SymbolKind::LoopBinder
+                        | fol_resolver::SymbolKind::RollingBinder
+                        | fol_resolver::SymbolKind::Capture
+                ) {
+                    continue;
+                }
+                items.push(completion_item_from_symbol(symbol));
+            }
+            cursor = program
+                .scope(current_scope_id)
+                .and_then(|scope| scope.parent);
+        }
+        items
+    }
+
+    fn current_package_top_level_completion_items(
+        &self,
+        position: LspPosition,
+    ) -> Vec<EditorCompletionItem> {
+        let Some(program) = self.current_program() else {
+            return Vec::new();
+        };
+        let Some(namespace) = self.current_namespace_for_position(position) else {
+            return Vec::new();
+        };
+        let mut items = Vec::new();
+        if let Some(scope_id) = program.namespace_scope(namespace.as_str()) {
+            items.extend(
+                program
+                    .symbols_in_scope(scope_id)
+                    .into_iter()
+                    .filter(|symbol| symbol.mounted_from.is_none())
+                    .filter(|symbol| {
+                        completion_symbol_is_plain_top_level_candidate(program, symbol)
+                    })
+                    .map(completion_item_from_symbol),
+            );
+        }
+        for source_unit in program
+            .source_units
+            .iter()
+            .filter(|unit| unit.namespace == namespace)
+        {
+            items.extend(
+                program
+                    .symbols_in_scope(source_unit.scope_id)
+                    .into_iter()
+                    .filter(|symbol| symbol.mounted_from.is_none())
+                    .filter(|symbol| {
+                        completion_symbol_is_plain_top_level_candidate(program, symbol)
+                    })
+                    .map(completion_item_from_symbol),
+            );
+        }
+        items
+    }
+
+    fn import_alias_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
+        let Some((program, scope_id)) = self.scope_at_position(position) else {
+            return Vec::new();
+        };
+        let mut items = Vec::new();
+        let mut cursor = Some(scope_id);
+        while let Some(current_scope_id) = cursor {
+            for symbol in program.symbols_in_scope(current_scope_id) {
+                if symbol.kind != fol_resolver::SymbolKind::ImportAlias {
+                    continue;
+                }
+                items.push(completion_item_from_symbol(symbol));
+            }
+            cursor = program
+                .scope(current_scope_id)
+                .and_then(|scope| scope.parent);
+        }
+        items
+    }
+
+    fn fallback_local_scope_items(
+        &self,
+        document: &EditorDocument,
+        position: LspPosition,
+    ) -> Vec<EditorCompletionItem> {
+        let offset = position_to_offset(&document.text, position).unwrap_or(document.text.len());
+        let before_cursor = &document.text[..offset];
+        let mut items = self.fallback_import_alias_items(document);
+        items.extend(self.fallback_current_package_top_level_items(document, position));
+
+        if let Some(header) = before_cursor
+            .rmatch_indices("fun")
+            .next()
+            .map(|(index, _)| &before_cursor[index..])
+        {
+            if let Some(open) = header.find('(') {
+                if let Some(close) = header[open + 1..].find(')') {
+                    for param in header[open + 1..open + 1 + close].split(',') {
+                        let name = param.split(':').next().unwrap_or("").trim();
+                        if !name.is_empty() {
+                            items.push(EditorCompletionItem {
+                                label: name.to_string(),
+                                kind: 6,
+                                detail: Some("parameter".to_string()),
+                                insert_text: None,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        for line in document.text.lines() {
+            let trimmed = line.trim();
+            if let Some(rest) = trimmed.strip_prefix("var ") {
+                let name = rest
+                    .split(|ch: char| ch == ':' || ch == '=' || ch.is_whitespace())
+                    .next()
+                    .unwrap_or("")
+                    .trim();
+                if !name.is_empty() {
+                    items.push(EditorCompletionItem {
+                        label: name.to_string(),
+                        kind: 6,
+                        detail: Some("binding".to_string()),
+                        insert_text: None,
+                    });
+                }
+            }
+        }
+
+        items
+    }
+
+    fn fallback_current_package_top_level_items(
+        &self,
+        document: &EditorDocument,
+        position: LspPosition,
+    ) -> Vec<EditorCompletionItem> {
+        let mut items = Vec::new();
+        let current_routine = current_routine_name(&document.text, position);
+        for line in document.text.lines() {
+            let trimmed = line.trim();
+            if let Some(name) = fallback_decl_name(
+                trimmed,
+                &["fun[] ", "fun[", "log[] ", "log[", "pro[] ", "pro["],
+            ) {
+                if current_routine.as_deref() == Some(name.as_str()) {
+                    continue;
+                }
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 3,
+                    detail: Some("routine".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["def[] ", "def["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 12,
+                    detail: Some("definition".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["typ[] ", "typ[", "typ "]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 22,
+                    detail: Some("type".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["ali[] ", "ali[", "ali "]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 22,
+                    detail: Some("type alias".to_string()),
+                    insert_text: None,
+                });
+            }
+        }
+        items
+    }
+
+    fn fallback_local_named_type_items(
+        &self,
+        document: &EditorDocument,
+    ) -> Vec<EditorCompletionItem> {
+        self.fallback_current_package_top_level_items(
+            document,
+            LspPosition {
+                line: u32::MAX,
+                character: u32::MAX,
+            },
+        )
+        .into_iter()
+        .filter(|item| {
+            item.detail.as_deref() == Some("type") || item.detail.as_deref() == Some("type alias")
+        })
+        .collect()
+    }
+
+    fn fallback_import_alias_items(&self, document: &EditorDocument) -> Vec<EditorCompletionItem> {
+        document
+            .text
+            .lines()
+            .filter_map(|line| {
+                let trimmed = line.trim();
+                let rest = trimmed.strip_prefix("use ")?;
+                let alias = rest.split(':').next()?.trim();
+                (!alias.is_empty()).then(|| EditorCompletionItem {
+                    label: alias.to_string(),
+                    kind: 9,
+                    detail: Some("namespace".to_string()),
+                    insert_text: None,
+                })
+            })
+            .collect()
+    }
+
+    fn fallback_imported_named_type_items(
+        &self,
+        document: &EditorDocument,
+    ) -> Vec<EditorCompletionItem> {
+        let aliases = self.fallback_import_alias_items(document);
+        let mut items = Vec::new();
+        for alias in aliases {
+            items.extend(
+                self.fallback_imported_package_items(&alias.label)
+                    .into_iter()
+                    .filter(|item| {
+                        item.detail.as_deref() == Some("type")
+                            || item.detail.as_deref() == Some("type alias")
+                    }),
+            );
+        }
+        items
+    }
+
+    fn fallback_qualified_completion_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
+        let mut items = self.fallback_local_namespace_items(qualifier);
+        items.extend(self.fallback_imported_package_items(qualifier));
+        dedupe_completion_items(items)
+    }
+
+    fn fallback_imported_package_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
+        let Some(package_root) = &self.source_package_root else {
+            return Vec::new();
+        };
+        let text = std::fs::read_to_string(&self.source_document_path).unwrap_or_default();
+        let rel_path = text.lines().find_map(|line| {
+            let trimmed = line.trim();
+            let rest = trimmed.strip_prefix("use ")?;
+            let (alias, rhs) = rest.split_once(':')?;
+            (alias.trim() == qualifier).then_some(rhs.trim().to_string())
+        });
+        let Some(rhs) = rel_path else {
+            return Vec::new();
+        };
+        let Some(start) = rhs.find('"') else {
+            return Vec::new();
+        };
+        let tail = &rhs[start + 1..];
+        let Some(end) = tail.find('"') else {
+            return Vec::new();
+        };
+        let target = package_root.join(&tail[..end]);
+        fallback_items_from_package_dir(&target)
+    }
+
+    fn fallback_local_namespace_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
+        let Some(package_root) = &self.source_package_root else {
+            return Vec::new();
+        };
+        let namespace_dir = package_root.join("src").join(qualifier.replace("::", "/"));
+        let mut items = fallback_items_from_package_dir(&namespace_dir);
+        if let Ok(entries) = std::fs::read_dir(&namespace_dir) {
+            for entry in entries.filter_map(Result::ok) {
+                let path = entry.path();
+                if entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false) {
+                    if let Some(name) = path.file_name().and_then(|name| name.to_str()) {
+                        items.push(EditorCompletionItem {
+                            label: name.to_string(),
+                            kind: 9,
+                            detail: Some("namespace".to_string()),
+                            insert_text: None,
+                        });
+                    }
+                }
+            }
+        }
+        items
+    }
+
+    fn current_program(&self) -> Option<&fol_resolver::ResolvedProgram> {
+        let resolved = self.resolved_workspace.as_ref()?;
+        let analyzed_path = self.analyzed_path.as_ref()?;
+        let path_text = analyzed_path.to_string_lossy();
+        resolved.packages().find_map(|package| {
+            let program = &package.program;
+            program
+                .source_units
+                .iter()
+                .any(|unit| unit.path == path_text)
+                .then_some(program)
+        })
+    }
+
+    fn scope_at_position(
+        &self,
+        position: LspPosition,
+    ) -> Option<(&fol_resolver::ResolvedProgram, fol_resolver::ScopeId)> {
+        let program = self.current_program()?;
+        let analyzed_path = self.analyzed_path.as_ref()?;
+        if let Some(syntax_id) = syntax_at_position(program, analyzed_path.as_path(), position) {
+            if let Some(scope_id) = program.scope_for_syntax(syntax_id) {
+                return Some((program, scope_id));
+            }
+        }
+        if let Some(scope_id) =
+            nearest_scope_before_position(program, analyzed_path.as_path(), position)
+        {
+            return Some((program, scope_id));
+        }
+        self.current_source_unit(program)
+            .map(|unit| (program, unit.scope_id))
+    }
+
+    fn current_namespace_for_position(&self, position: LspPosition) -> Option<String> {
+        let program = self.current_program()?;
+        let _ = position;
+        self.current_source_unit(program)
+            .map(|unit| unit.namespace.clone())
+    }
+
+    fn reference_at(&self, position: LspPosition) -> Option<&fol_resolver::ResolvedReference> {
+        let resolved = self.resolved_workspace.as_ref()?;
+        let analyzed_path = self.analyzed_path.as_ref()?;
+        let needle = resolved.packages().find_map(|package| {
+            let program = &package.program;
+            let syntax_id = syntax_at_position(program, analyzed_path.as_path(), position)?;
+            program
+                .all_references()
+                .find(|reference| reference.syntax_id == Some(syntax_id))
+        })?;
         Some(needle)
     }
 
     fn hover_for_reference(&self, reference: &fol_resolver::ResolvedReference) -> Option<LspHover> {
-        let typed = self.typed_workspace.as_ref()?;
-        for package in typed.packages() {
+        let resolved = self.resolved_workspace.as_ref()?;
+        for package in resolved.packages() {
             let program = &package.program;
-            let resolved = program.resolved();
             if let Some(symbol_id) = reference.resolved {
-                let symbol = resolved.symbol(symbol_id)?;
-                let typed_symbol = program.typed_symbol(symbol_id);
+                let symbol = program.symbol(symbol_id)?;
                 let origin = symbol.origin.as_ref()?;
-                let type_summary = typed_symbol
+                let type_summary = self
+                    .typed_workspace
+                    .as_ref()
+                    .and_then(|typed| typed.package(&package.identity))
+                    .and_then(|typed_package| typed_package.program.typed_symbol(symbol_id))
                     .and_then(|typed_symbol| typed_symbol.declared_type)
-                    .map(|type_id| render_checked_type(program.type_table(), type_id))
+                    .map(|type_id| {
+                        let typed_package = self
+                            .typed_workspace
+                            .as_ref()
+                            .and_then(|typed| typed.package(&package.identity))
+                            .expect("typed package should exist when declared type is available");
+                        render_checked_type(typed_package.program.type_table(), type_id)
+                    })
                     .unwrap_or_else(|| "unknown".to_string());
                 return Some(LspHover {
-                    contents: format!("{} {}: {}", render_symbol_kind(symbol.kind), symbol.name, type_summary),
+                    contents: format!(
+                        "{} {}: {}",
+                        render_symbol_kind(symbol.kind),
+                        symbol.name,
+                        type_summary
+                    ),
                     range: Some(location_to_range(&fol_diagnostics::DiagnosticLocation {
                         file: origin.file.clone(),
                         line: origin.line,
@@ -629,11 +1276,11 @@ impl SemanticSnapshot {
         &self,
         reference: &fol_resolver::ResolvedReference,
     ) -> Option<LspLocation> {
-        let typed = self.typed_workspace.as_ref()?;
-        for package in typed.packages() {
-            let resolved = package.program.resolved();
+        let resolved = self.resolved_workspace.as_ref()?;
+        for package in resolved.packages() {
+            let program = &package.program;
             if let Some(symbol_id) = reference.resolved {
-                let symbol = resolved.symbol(symbol_id)?;
+                let symbol = program.symbol(symbol_id)?;
                 let origin = symbol.origin.as_ref()?;
                 let file = origin.file.as_ref()?;
                 return Some(LspLocation {
@@ -651,8 +1298,8 @@ impl SemanticSnapshot {
     }
 
     fn document_symbols_for_current_path(&self) -> Vec<LspDocumentSymbol> {
-        let typed = match &self.typed_workspace {
-            Some(typed) => typed,
+        let resolved = match &self.resolved_workspace {
+            Some(resolved) => resolved,
             None => return Vec::new(),
         };
         let Some(analyzed_path) = &self.analyzed_path else {
@@ -660,10 +1307,12 @@ impl SemanticSnapshot {
         };
         let path_text = analyzed_path.to_string_lossy();
         let mut symbols = Vec::new();
-        for package in typed.packages() {
-            let program = package.program.resolved();
+        for package in resolved.packages() {
+            let program = &package.program;
             for symbol in program.all_symbols() {
-                let Some(origin) = &symbol.origin else { continue };
+                let Some(origin) = &symbol.origin else {
+                    continue;
+                };
                 let Some(file) = &origin.file else { continue };
                 if file != &path_text {
                     continue;
@@ -692,6 +1341,18 @@ impl SemanticSnapshot {
                 .then(left.name.cmp(&right.name))
         });
         nest_document_symbols(symbols)
+    }
+
+    fn current_source_unit<'a>(
+        &self,
+        program: &'a fol_resolver::ResolvedProgram,
+    ) -> Option<&'a fol_resolver::ResolvedSourceUnit> {
+        let analyzed_path = self.analyzed_path.as_ref()?;
+        let path_text = analyzed_path.to_string_lossy();
+        program
+            .source_units
+            .iter()
+            .find(move |unit| unit.path == path_text)
     }
 }
 
@@ -740,22 +1401,29 @@ fn analyze_document_semantics(
         if !parser_diags.is_empty() {
             return Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
+                source_document_path: mapping.document_path.clone(),
+                source_package_root: mapping.package_root.clone(),
                 diagnostics: parser_diags,
+                resolved_workspace: None,
                 typed_workspace: None,
             });
         }
 
         let mut package_session = PackageSession::new();
-        let prepared = match package_session.load_directory_package(package_root, PackageSourceKind::Entry) {
-            Ok(prepared) => prepared,
-            Err(error) => {
-                return Ok(SemanticSnapshot {
-                    analyzed_path: Some(overlay.document_path().to_path_buf()),
-                    diagnostics: vec![diagnostic_to_lsp(&error.to_diagnostic())],
-                    typed_workspace: None,
-                })
-            }
-        };
+        let prepared =
+            match package_session.load_directory_package(package_root, PackageSourceKind::Entry) {
+                Ok(prepared) => prepared,
+                Err(error) => {
+                    return Ok(SemanticSnapshot {
+                        analyzed_path: Some(overlay.document_path().to_path_buf()),
+                        source_document_path: mapping.document_path.clone(),
+                        source_package_root: mapping.package_root.clone(),
+                        diagnostics: vec![diagnostic_to_lsp(&error.to_diagnostic())],
+                        resolved_workspace: None,
+                        typed_workspace: None,
+                    })
+                }
+            };
 
         let mut resolver = Resolver::new();
         let resolved = match resolver.resolve_prepared_workspace(prepared) {
@@ -763,43 +1431,59 @@ fn analyze_document_semantics(
             Err(errors) => {
                 return Ok(SemanticSnapshot {
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
+                    source_document_path: mapping.document_path.clone(),
+                    source_package_root: mapping.package_root.clone(),
                     diagnostics: errors
                         .iter()
                         .map(|error| error.to_diagnostic())
-                        .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
+                        .filter(|diagnostic| {
+                            diagnostic_targets_path(diagnostic, overlay.document_path())
+                        })
                         .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
                         .collect(),
+                    resolved_workspace: None,
                     typed_workspace: None,
                 })
             }
         };
 
         let mut typechecker = Typechecker::new();
-        match typechecker.check_resolved_workspace(resolved) {
+        match typechecker.check_resolved_workspace(resolved.clone()) {
             Ok(typed_workspace) => Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
+                source_document_path: mapping.document_path.clone(),
+                source_package_root: mapping.package_root.clone(),
                 diagnostics: Vec::new(),
+                resolved_workspace: Some(resolved),
                 typed_workspace: Some(typed_workspace),
             }),
             Err(errors) => Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
+                source_document_path: mapping.document_path.clone(),
+                source_package_root: mapping.package_root.clone(),
                 diagnostics: errors
                     .iter()
                     .map(|error| error.to_diagnostic())
-                    .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
+                    .filter(|diagnostic| {
+                        diagnostic_targets_path(diagnostic, overlay.document_path())
+                    })
                     .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
                     .collect(),
+                resolved_workspace: Some(resolved),
                 typed_workspace: None,
             }),
         }
     } else {
         Ok(SemanticSnapshot {
             analyzed_path: Some(mapping.document_path.clone()),
+            source_document_path: mapping.document_path.clone(),
+            source_package_root: mapping.package_root.clone(),
             diagnostics: parse_single_file_diagnostics(&mapping.document_path, &document.text)?
                 .into_iter()
                 .filter(|diagnostic| diagnostic_targets_path(diagnostic, &mapping.document_path))
                 .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
                 .collect(),
+            resolved_workspace: None,
             typed_workspace: None,
         })
     }
@@ -833,7 +1517,10 @@ fn parse_single_file_diagnostics(path: &Path, text: &str) -> EditorResult<Vec<Di
     std::fs::create_dir_all(&root).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!("failed to create parser temp root '{}': {error}", root.display()),
+            format!(
+                "failed to create parser temp root '{}': {error}",
+                root.display()
+            ),
         )
     })?;
     let file = root.join(
@@ -843,7 +1530,10 @@ fn parse_single_file_diagnostics(path: &Path, text: &str) -> EditorResult<Vec<Di
     std::fs::write(&file, text).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!("failed to write parser temp file '{}': {error}", file.display()),
+            format!(
+                "failed to write parser temp file '{}': {error}",
+                file.display()
+            ),
         )
     })?;
     let diagnostics = parse_directory_diagnostics(&root)?;
@@ -862,16 +1552,23 @@ fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagnostic>> {
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("root");
-    let sources = Source::init_with_package(root_str, SourceType::Folder, display_name).map_err(|error| {
-        EditorError::new(
-            EditorErrorKind::Internal,
-            format!("failed to initialize analysis sources from '{}': {error}", root.display()),
-        )
-    })?;
+    let sources =
+        Source::init_with_package(root_str, SourceType::Folder, display_name).map_err(|error| {
+            EditorError::new(
+                EditorErrorKind::Internal,
+                format!(
+                    "failed to initialize analysis sources from '{}': {error}",
+                    root.display()
+                ),
+            )
+        })?;
     let mut stream = FileStream::from_sources(sources).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!("failed to read analysis sources from '{}': {error}", root.display()),
+            format!(
+                "failed to read analysis sources from '{}': {error}",
+                root.display()
+            ),
         )
     })?;
     let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
@@ -934,6 +1631,136 @@ fn syntax_at_position(
         }
     }
     best.map(|(syntax_id, _)| syntax_id)
+}
+
+fn nearest_scope_before_position(
+    program: &fol_resolver::ResolvedProgram,
+    path: &Path,
+    position: LspPosition,
+) -> Option<fol_resolver::ScopeId> {
+    let path_text = path.to_string_lossy();
+    let mut best: Option<((u32, u32), fol_resolver::ScopeId)> = None;
+    for index in 0..program.syntax_index().len() {
+        let syntax_id = fol_parser::ast::SyntaxNodeId(index);
+        let Some(scope_id) = program.scope_for_syntax(syntax_id) else {
+            continue;
+        };
+        let Some(origin) = program.syntax_index().origin(syntax_id) else {
+            continue;
+        };
+        let Some(file) = &origin.file else {
+            continue;
+        };
+        if file != &path_text {
+            continue;
+        }
+        let start = (
+            origin.line.saturating_sub(1) as u32,
+            origin.column.saturating_sub(1) as u32,
+        );
+        let cursor = (position.line, position.character);
+        if start > cursor {
+            continue;
+        }
+        match best {
+            Some((best_start, _)) if best_start >= start => {}
+            _ => best = Some((start, scope_id)),
+        }
+    }
+    best.map(|(_, scope_id)| scope_id)
+}
+
+fn fallback_decl_name(line: &str, prefixes: &[&str]) -> Option<String> {
+    for prefix in prefixes {
+        if let Some(rest) = line.strip_prefix(prefix) {
+            let name = rest
+                .split(|ch: char| ch == ':' || ch == '=' || ch == '(' || ch.is_whitespace())
+                .next()
+                .unwrap_or("")
+                .trim_matches(|ch: char| ch == '[' || ch == ']');
+            if !name.is_empty() {
+                return Some(name.to_string());
+            }
+        }
+    }
+    None
+}
+
+fn current_routine_name(text: &str, position: LspPosition) -> Option<String> {
+    let offset = position_to_offset(text, position).unwrap_or(text.len());
+    let before_cursor = &text[..offset];
+    let header = before_cursor
+        .rmatch_indices("fun")
+        .next()
+        .map(|(index, _)| &before_cursor[index..])?;
+    let rest = header.strip_prefix("fun").unwrap_or(header);
+    let rest =
+        rest.trim_start_matches(|ch: char| ch == '[' || ch == ']' || !ch.is_ascii_alphanumeric());
+    let open = rest.find('(')?;
+    let name = rest[..open]
+        .trim()
+        .trim_matches(|ch: char| ch == '[' || ch == ']');
+    (!name.is_empty()).then(|| name.to_string())
+}
+
+fn fallback_items_from_package_dir(root: &Path) -> Vec<EditorCompletionItem> {
+    let mut items = Vec::new();
+    collect_fallback_items_from_dir(root, &mut items);
+    items
+}
+
+fn collect_fallback_items_from_dir(root: &Path, items: &mut Vec<EditorCompletionItem>) {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return;
+    };
+    for entry in entries.filter_map(Result::ok) {
+        let path = entry.path();
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if file_type.is_dir() {
+            collect_fallback_items_from_dir(&path, items);
+            continue;
+        }
+        if !file_type.is_file() || path.extension().and_then(|ext| ext.to_str()) != Some("fol") {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        for line in text.lines() {
+            let trimmed = line.trim();
+            if let Some(name) = fallback_decl_name(trimmed, &["fun[exp] ", "fun["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 3,
+                    detail: Some("routine".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["def[exp] ", "def["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 12,
+                    detail: Some("definition".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["typ[exp] ", "typ["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 22,
+                    detail: Some("type".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["ali[exp] ", "ali["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 22,
+                    detail: Some("type alias".to_string()),
+                    insert_text: None,
+                });
+            }
+        }
+    }
 }
 
 fn render_symbol_kind(kind: fol_resolver::SymbolKind) -> &'static str {
@@ -1012,7 +1839,10 @@ fn render_checked_type(
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        Some(fol_typecheck::CheckedType::Map { key_type, value_type }) => format!(
+        Some(fol_typecheck::CheckedType::Map {
+            key_type,
+            value_type,
+        }) => format!(
             "map[{}, {}]",
             render_checked_type(table, *key_type),
             render_checked_type(table, *value_type)
@@ -1029,7 +1859,10 @@ fn render_checked_type(
                 .map(|return_type| render_checked_type(table, return_type))
                 .unwrap_or_else(|| "void".to_string());
             match routine.error_type {
-                Some(error_type) => format!("fun({params}): {returns} / {}", render_checked_type(table, error_type)),
+                Some(error_type) => format!(
+                    "fun({params}): {returns} / {}",
+                    render_checked_type(table, error_type)
+                ),
                 None => format!("fun({params}): {returns}"),
             }
         }
@@ -1038,17 +1871,233 @@ fn render_checked_type(
     }
 }
 
+fn dedupe_completion_items(items: Vec<EditorCompletionItem>) -> Vec<EditorCompletionItem> {
+    let mut seen = std::collections::BTreeSet::new();
+    let mut filtered = Vec::new();
+    for item in items {
+        if item.label.is_empty() {
+            continue;
+        }
+        if seen.insert(item.label.clone()) {
+            filtered.push(item);
+        }
+    }
+    filtered.sort_by(completion_item_cmp);
+    filtered
+}
+
+fn completion_item_cmp(
+    left: &EditorCompletionItem,
+    right: &EditorCompletionItem,
+) -> std::cmp::Ordering {
+    completion_item_priority(left)
+        .cmp(&completion_item_priority(right))
+        .then(left.label.cmp(&right.label))
+        .then(left.detail.cmp(&right.detail))
+        .then(left.insert_text.cmp(&right.insert_text))
+}
+
+fn completion_item_priority(item: &EditorCompletionItem) -> u8 {
+    match item.kind {
+        6 => 0,
+        3 | 12 => 1,
+        22 => 2,
+        9 => 3,
+        2 => 4,
+        _ => 5,
+    }
+}
+
+fn completion_builtin_type_item(label: &str) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label: label.to_string(),
+        kind: 22,
+        detail: Some("builtin type".to_string()),
+        insert_text: None,
+    }
+}
+
+fn completion_namespace_item(label: String) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label,
+        kind: 9,
+        detail: Some("namespace".to_string()),
+        insert_text: None,
+    }
+}
+
+fn completion_intrinsic_item(entry: &fol_intrinsics::IntrinsicEntry) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label: entry.name.to_string(),
+        kind: 2,
+        detail: Some(format!("intrinsic {}", entry.category.as_str())),
+        insert_text: Some(entry.name.to_string()),
+    }
+}
+
+fn completion_item_from_symbol(symbol: &fol_resolver::ResolvedSymbol) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label: symbol.name.clone(),
+        kind: completion_symbol_kind(symbol.kind),
+        detail: Some(completion_symbol_detail(symbol.kind).to_string()),
+        insert_text: None,
+    }
+}
+
+fn completion_symbol_detail(kind: fol_resolver::SymbolKind) -> &'static str {
+    match kind {
+        fol_resolver::SymbolKind::Type => "type",
+        fol_resolver::SymbolKind::Alias => "type alias",
+        fol_resolver::SymbolKind::Routine => "routine",
+        fol_resolver::SymbolKind::Definition => "definition",
+        fol_resolver::SymbolKind::ValueBinding
+        | fol_resolver::SymbolKind::LabelBinding
+        | fol_resolver::SymbolKind::DestructureBinding
+        | fol_resolver::SymbolKind::LoopBinder
+        | fol_resolver::SymbolKind::RollingBinder => "binding",
+        fol_resolver::SymbolKind::Parameter | fol_resolver::SymbolKind::GenericParameter => {
+            "parameter"
+        }
+        fol_resolver::SymbolKind::Capture => "capture",
+        fol_resolver::SymbolKind::ImportAlias => "namespace",
+        fol_resolver::SymbolKind::Segment => "namespace segment",
+        fol_resolver::SymbolKind::Implementation => "implementation",
+        fol_resolver::SymbolKind::Standard => "standard",
+    }
+}
+
+fn completion_symbol_kind(kind: fol_resolver::SymbolKind) -> u8 {
+    match kind {
+        fol_resolver::SymbolKind::Routine => 3,
+        fol_resolver::SymbolKind::Definition => 12,
+        fol_resolver::SymbolKind::Type | fol_resolver::SymbolKind::Alias => 22,
+        fol_resolver::SymbolKind::ImportAlias | fol_resolver::SymbolKind::Segment => 9,
+        fol_resolver::SymbolKind::Implementation | fol_resolver::SymbolKind::Standard => 12,
+        fol_resolver::SymbolKind::ValueBinding
+        | fol_resolver::SymbolKind::LabelBinding
+        | fol_resolver::SymbolKind::DestructureBinding
+        | fol_resolver::SymbolKind::Parameter
+        | fol_resolver::SymbolKind::Capture
+        | fol_resolver::SymbolKind::GenericParameter
+        | fol_resolver::SymbolKind::LoopBinder
+        | fol_resolver::SymbolKind::RollingBinder => 6,
+    }
+}
+
+fn completion_symbol_is_root_visible(
+    program: &fol_resolver::ResolvedProgram,
+    symbol: &fol_resolver::ResolvedSymbol,
+) -> bool {
+    matches!(
+        program.scope(symbol.scope).map(|scope| &scope.kind),
+        Some(
+            fol_resolver::ScopeKind::ProgramRoot { .. }
+                | fol_resolver::ScopeKind::NamespaceRoot { .. }
+                | fol_resolver::ScopeKind::SourceUnitRoot { .. }
+        )
+    )
+}
+
+fn completion_symbol_is_plain_top_level_candidate(
+    program: &fol_resolver::ResolvedProgram,
+    symbol: &fol_resolver::ResolvedSymbol,
+) -> bool {
+    completion_symbol_is_root_visible(program, symbol)
+        && matches!(
+            symbol.kind,
+            fol_resolver::SymbolKind::Routine
+                | fol_resolver::SymbolKind::Type
+                | fol_resolver::SymbolKind::Alias
+                | fol_resolver::SymbolKind::Definition
+                | fol_resolver::SymbolKind::ValueBinding
+        )
+}
+
+fn symbol_visibility_matches_namespace_root(
+    symbol: &fol_resolver::ResolvedSymbol,
+    imported_root: bool,
+) -> bool {
+    if imported_root {
+        symbol.mounted_from.is_some()
+    } else {
+        symbol.mounted_from.is_none()
+    }
+}
+
+fn completion_context(document: &EditorDocument, position: LspPosition) -> CompletionContext {
+    let Some(offset) = position_to_offset(&document.text, position) else {
+        return CompletionContext::Plain;
+    };
+    let prefix = &document.text[..offset];
+    let line_prefix = prefix
+        .rsplit_once('\n')
+        .map(|(_, tail)| tail)
+        .unwrap_or(prefix);
+    let trimmed = line_prefix.trim_end();
+
+    if trimmed.ends_with('.') {
+        return CompletionContext::DotTrigger;
+    }
+
+    if let Some((qualifier, _)) = trimmed.rsplit_once("::") {
+        let qualifier = qualifier
+            .rsplit(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == ':'))
+            .next()
+            .unwrap_or("")
+            .trim_matches(':')
+            .to_string();
+        if !qualifier.is_empty() {
+            return CompletionContext::QualifiedPath { qualifier };
+        }
+    }
+
+    if line_prefix
+        .rsplit_once(':')
+        .map(|(_, tail)| tail.trim())
+        .is_some_and(|tail| {
+            tail.chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == ':')
+        })
+    {
+        return CompletionContext::TypePosition;
+    }
+
+    CompletionContext::Plain
+}
+
+fn position_to_offset(text: &str, position: LspPosition) -> Option<usize> {
+    let mut line = 0u32;
+    let mut character = 0u32;
+    for (offset, ch) in text.char_indices() {
+        if line == position.line && character == position.character {
+            return Some(offset);
+        }
+        if ch == '\n' {
+            line += 1;
+            character = 0;
+            if line == position.line && position.character == 0 {
+                return Some(offset + ch.len_utf8());
+            }
+        } else if line == position.line {
+            character += 1;
+        }
+    }
+
+    (line == position.line && character == position.character).then_some(text.len())
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
+        completion_context, CompletionContext, EditorLspServer, JsonRpcId, JsonRpcNotification,
+        JsonRpcRequest, LspCompletionContext, LspCompletionList, LspCompletionParams,
         LspDefinitionParams, LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
         LspDidOpenTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
         LspInitializeResult, LspLocation, LspPosition, LspPublishDiagnosticsParams,
         LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
         LspVersionedTextDocumentIdentifier,
     };
-    use crate::EditorConfig;
+    use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
     use std::fs;
     use std::path::PathBuf;
 
@@ -1069,7 +2118,11 @@ mod tests {
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
         let file = src.join("main.fol");
         fs::write(&file, "fun[] main(): int = {\n    return 0\n}\n").unwrap();
         let uri = format!("file://{}", file.display());
@@ -1084,9 +2137,21 @@ mod tests {
         fs::create_dir_all(&shared_src).unwrap();
 
         fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("app/build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("shared/build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(
+            root.join("app/build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/package.yaml"),
+            "name: shared\nversion: 0.1.0\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
 
         fs::write(
             root.join("app/src/main.fol"),
@@ -1103,7 +2168,11 @@ mod tests {
         (root, uri)
     }
 
-    fn open_document(server: &mut EditorLspServer, uri: String, text: &str) -> Vec<LspPublishDiagnosticsParams> {
+    fn open_document(
+        server: &mut EditorLspServer,
+        uri: String,
+        text: &str,
+    ) -> Vec<LspPublishDiagnosticsParams> {
         server
             .handle_notification(JsonRpcNotification {
                 jsonrpc: "2.0".to_string(),
@@ -1136,8 +2205,17 @@ mod tests {
             })
             .unwrap()
             .unwrap();
-        let result: LspInitializeResult = serde_json::from_value(initialize.result.unwrap()).unwrap();
+        let result: LspInitializeResult =
+            serde_json::from_value(initialize.result.unwrap()).unwrap();
         assert!(result.capabilities.text_document_sync.open_close);
+        let completion_provider = result
+            .capabilities
+            .completion_provider
+            .expect("completion provider should be advertised");
+        assert_eq!(
+            completion_provider.trigger_characters,
+            vec![".".to_string()]
+        );
 
         let shutdown = server
             .handle_request(JsonRpcRequest {
@@ -1162,6 +2240,76 @@ mod tests {
     }
 
     #[test]
+    fn completion_context_detects_type_positions() {
+        let uri =
+            EditorDocumentUri::from_file_path(PathBuf::from("/tmp/type_context.fol")).unwrap();
+        let document = EditorDocument::new(
+            uri,
+            1,
+            "fun[] main(total: int): int = {\n    var value: \n    return 0\n}\n".to_string(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            completion_context(
+                &document,
+                LspPosition {
+                    line: 1,
+                    character: 15,
+                }
+            ),
+            CompletionContext::TypePosition
+        );
+    }
+
+    #[test]
+    fn completion_context_detects_qualified_paths() {
+        let uri =
+            EditorDocumentUri::from_file_path(PathBuf::from("/tmp/qualified_context.fol")).unwrap();
+        let document = EditorDocument::new(
+            uri,
+            1,
+            "fun[] main(): int = {\n    return api::\n}\n".to_string(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            completion_context(
+                &document,
+                LspPosition {
+                    line: 1,
+                    character: 16,
+                }
+            ),
+            CompletionContext::QualifiedPath {
+                qualifier: "api".to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn completion_context_detects_dot_triggers() {
+        let uri = EditorDocumentUri::from_file_path(PathBuf::from("/tmp/dot_context.fol")).unwrap();
+        let document = EditorDocument::new(
+            uri,
+            1,
+            "fun[] main(): int = {\n    return .\n}\n".to_string(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            completion_context(
+                &document,
+                LspPosition {
+                    line: 1,
+                    character: 12,
+                }
+            ),
+            CompletionContext::DotTrigger
+        );
+    }
+
+    #[test]
     fn lsp_server_tracks_open_change_and_close_document_lifecycle() {
         let (root, uri) = sample_package_root("lifecycle");
         let mut server = EditorLspServer::new(EditorConfig::default());
@@ -1179,30 +2327,44 @@ mod tests {
             .handle_notification(JsonRpcNotification {
                 jsonrpc: "2.0".to_string(),
                 method: "textDocument/didChange".to_string(),
-                params: Some(serde_json::to_value(LspDidChangeTextDocumentParams {
-                    text_document: LspVersionedTextDocumentIdentifier {
-                        uri: uri.clone(),
-                        version: 2,
-                    },
-                    content_changes: vec![LspTextDocumentContentChangeEvent {
-                        text: "fun[] main(): int = {\n    return 7\n}\n".to_string(),
-                    }],
-                }).unwrap()),
+                params: Some(
+                    serde_json::to_value(LspDidChangeTextDocumentParams {
+                        text_document: LspVersionedTextDocumentIdentifier {
+                            uri: uri.clone(),
+                            version: 2,
+                        },
+                        content_changes: vec![LspTextDocumentContentChangeEvent {
+                            text: "fun[] main(): int = {\n    return 7\n}\n".to_string(),
+                        }],
+                    })
+                    .unwrap(),
+                ),
             })
             .unwrap();
-        assert_eq!(server.session.documents.get(&crate::EditorDocumentUri::parse(&uri).unwrap()).unwrap().version, 2);
+        assert_eq!(
+            server
+                .session
+                .documents
+                .get(&crate::EditorDocumentUri::parse(&uri).unwrap())
+                .unwrap()
+                .version,
+            2
+        );
         assert!(changed[0].diagnostics.is_empty());
 
         let closed = server
             .handle_notification(JsonRpcNotification {
                 jsonrpc: "2.0".to_string(),
                 method: "textDocument/didClose".to_string(),
-                params: Some(serde_json::to_value(LspDidCloseTextDocumentParams {
-                    text_document: LspVersionedTextDocumentIdentifier {
-                        uri: uri.clone(),
-                        version: 2,
-                    },
-                }).unwrap()),
+                params: Some(
+                    serde_json::to_value(LspDidCloseTextDocumentParams {
+                        text_document: LspVersionedTextDocumentIdentifier {
+                            uri: uri.clone(),
+                            version: 2,
+                        },
+                    })
+                    .unwrap(),
+                ),
             })
             .unwrap();
         assert!(server.session.documents.is_empty());
@@ -1238,11 +2400,8 @@ mod tests {
     fn lsp_server_surfaces_parser_diagnostics_from_open_documents() {
         let (root, uri) = sample_package_root("parser_diag");
         let mut server = EditorLspServer::new(EditorConfig::default());
-        let diagnostics = open_document(
-            &mut server,
-            uri,
-            "fun[] main(: int = {\n    return 0\n}\n",
-        );
+        let diagnostics =
+            open_document(&mut server, uri, "fun[] main(: int = {\n    return 0\n}\n");
 
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].diagnostics[0].code, "P1001");
@@ -1255,11 +2414,8 @@ mod tests {
         let (root, uri) = sample_package_root("package_diag");
         fs::remove_file(root.join("build.fol")).unwrap();
         let mut server = EditorLspServer::new(EditorConfig::default());
-        let diagnostics = open_document(
-            &mut server,
-            uri,
-            "fun[] main(): int = {\n    return 0\n}\n",
-        );
+        let diagnostics =
+            open_document(&mut server, uri, "fun[] main(): int = {\n    return 0\n}\n");
 
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].diagnostics[0].code, "K1001");
@@ -1291,7 +2447,11 @@ mod tests {
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
         let file = src.join("main.fol");
         fs::write(&file, "fun[] main(): int = {\n    return 0\n}\n").unwrap();
         let uri = format!("file://{}", file.display());
@@ -1394,6 +2554,933 @@ mod tests {
             serde_json::from_value(symbols.result.unwrap()).unwrap();
         assert!(symbols.iter().any(|symbol| symbol.name == "helper"));
         assert!(symbols.iter().any(|symbol| symbol.name == "main"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_handles_completion_requests() {
+        let (root, uri) = sample_package_root("completion_request");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(30),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 2,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(!completion.is_incomplete);
+        assert!(completion.items.iter().any(|item| item.label == "value"));
+        assert!(
+            completion
+                .items
+                .iter()
+                .find(|item| item.label == "value")
+                .and_then(|item| item.detail.as_deref())
+                == Some("binding")
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_keeps_plain_completion_available_when_typecheck_fails() {
+        let (root, uri) = sample_package_root("completion_type_error_fallback");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    var value: int = helper()\n    value = \"oops\"\n    return value\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        let diagnostics = open_document(&mut server, uri.clone(), &text);
+        assert!(!diagnostics.is_empty());
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(30),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 6,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(completion.items.iter().any(|item| item.label == "value"));
+        assert!(completion.items.iter().any(|item| item.label == "helper"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_routine_parameter_completions() {
+        let (root, uri) = sample_package_root("completion_params");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(total: int): int = {\n    return total\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(31),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(completion.items.iter().any(|item| item.label == "total"));
+        assert!(
+            completion
+                .items
+                .iter()
+                .find(|item| item.label == "total")
+                .and_then(|item| item.detail.as_deref())
+                == Some("parameter")
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_builtin_type_completions_in_type_positions() {
+        let (root, uri) = sample_package_root("completion_builtin_types");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    var value: \n    return 0\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(36),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 15,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"int"));
+        assert!(labels.contains(&"str"));
+        assert!(labels.contains(&"never"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_visible_named_type_completions_in_type_positions() {
+        let (root, uri) = sample_loc_workspace_root("completion_named_types");
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nfun[] main(): shared::Status = {\n    var report: shared::Report = \n    return shared::Pending\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/src/lib.fol"),
+            "typ[exp] Status: ent = {\n    case Pending\n}\n\ntyp[exp] Report: rec = {\n    value: int\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(37),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 31,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"Status"));
+        assert!(labels.contains(&"Report"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_locks_type_completion_matrix() {
+        let (root, uri) = sample_loc_workspace_root("completion_type_matrix");
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\ntyp[] Local: rec = {\n    value: int\n}\n\nfun[] main(): int = {\n    var target: \n    return 0\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/src/lib.fol"),
+            "typ[exp] Status: ent = {\n    case Pending\n}\n\ntyp[exp] Report: rec = {\n    value: int\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(38),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 6,
+                            character: 16,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"int"));
+        assert!(labels.contains(&"str"));
+        assert!(labels.contains(&"Local"));
+        assert!(labels.contains(&"Status"));
+        assert!(labels.contains(&"Report"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_same_package_namespace_members_after_qualification() {
+        let (root, uri) = sample_package_root("completion_namespace_local");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return api::\n}\n",
+        )
+        .unwrap();
+        fs::create_dir_all(root.join("src/api")).unwrap();
+        fs::write(
+            root.join("src/api/lib.fol"),
+            "fun[exp] helper(): int = {\n    return 7\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(39),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 16,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(completion.items.iter().any(|item| item.label == "helper"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_keeps_local_and_imported_namespace_members_separate() {
+        let (root, uri) = sample_loc_workspace_root("completion_namespace_separation");
+        fs::create_dir_all(root.join("app/src/api")).unwrap();
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return api::helper() + shared::\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("app/src/api/lib.fol"),
+            "fun[exp] local_helper(): int = {\n    return 7\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/src/lib.fol"),
+            "fun[exp] helper(): int = {\n    return 9\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(40),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 16,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"local_helper"));
+        assert!(!labels.contains(&"helper"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_locks_loc_and_same_package_namespace_completion() {
+        let (root, uri) = sample_loc_workspace_root("completion_namespace_matrix");
+        fs::create_dir_all(root.join("app/src/api/tools")).unwrap();
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return api::\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("app/src/api/lib.fol"),
+            "fun[exp] helper(): int = {\n    return 7\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("app/src/api/tools/lib.fol"),
+            "fun[exp] leaf(): int = {\n    return 8\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/src/lib.fol"),
+            "fun[exp] helper(): int = {\n    return 9\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let local_completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(41),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 16,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+        let local_completion: LspCompletionList =
+            serde_json::from_value(local_completion.result.unwrap()).unwrap();
+        let local_labels = local_completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(local_labels.contains(&"helper"));
+        assert!(local_labels.contains(&"tools"));
+
+        let imported_completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(42),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 35,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+        let imported_completion: LspCompletionList =
+            serde_json::from_value(imported_completion.result.unwrap()).unwrap();
+        let imported_labels = imported_completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(imported_labels.contains(&"helper"));
+        assert!(!imported_labels.contains(&"tools"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_supported_v1_dot_intrinsics() {
+        let (root, uri) = sample_package_root("completion_dot_intrinsics");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return .\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(44),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 12,
+                        },
+                        context: Some(LspCompletionContext {
+                            trigger_kind: Some(2),
+                            trigger_character: Some(".".to_string()),
+                        }),
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"len"));
+        assert!(labels.contains(&"echo"));
+        assert!(labels.contains(&"eq"));
+        assert!(labels.contains(&"not"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_uses_conservative_dot_fallback_for_incomplete_contexts() {
+        let (root, uri) = sample_package_root("completion_dot_fallback");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return .\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(45),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"len"));
+        assert!(labels.contains(&"echo"));
+        assert!(labels.contains(&"eq"));
+        assert!(labels.contains(&"not"));
+        assert!(!labels.contains(&"panic"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_locks_dot_intrinsic_completion_matrix() {
+        let (root, uri) = sample_package_root("completion_dot_matrix");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return .\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(46),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 12,
+                        },
+                        context: Some(LspCompletionContext {
+                            trigger_kind: Some(2),
+                            trigger_character: Some(".".to_string()),
+                        }),
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"len"));
+        assert!(labels.contains(&"echo"));
+        assert!(labels.contains(&"eq"));
+        assert!(labels.contains(&"nq"));
+        assert!(labels.contains(&"lt"));
+        assert!(labels.contains(&"le"));
+        assert!(labels.contains(&"gt"));
+        assert!(labels.contains(&"ge"));
+        assert!(labels.contains(&"not"));
+        assert!(!labels.contains(&"panic"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_current_package_top_level_completions() {
+        let (root, uri) = sample_package_root("completion_top_level");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(32),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 4,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(completion.items.iter().any(|item| item.label == "helper"));
+        assert!(
+            completion
+                .items
+                .iter()
+                .find(|item| item.label == "helper")
+                .and_then(|item| item.detail.as_deref())
+                == Some("routine")
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_returns_import_alias_completions() {
+        let (root, uri) = sample_loc_workspace_root("completion_import_alias");
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(33),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 3,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        assert!(completion.items.iter().any(|item| item.label == "shared"));
+        assert!(
+            completion
+                .items
+                .iter()
+                .find(|item| item.label == "shared")
+                .and_then(|item| item.detail.as_deref())
+                == Some("namespace")
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_prefers_nearer_symbols_when_completion_names_conflict() {
+        let (root, uri) = sample_package_root("completion_shadowing");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    var helper: int = 9\n    return helper\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(34),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 5,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        let helpers = completion
+            .items
+            .iter()
+            .filter(|item| item.label == "helper")
+            .collect::<Vec<_>>();
+        assert_eq!(helpers.len(), 1);
+        assert_eq!(helpers[0].detail.as_deref(), Some("binding"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_locks_plain_completion_to_local_package_and_import_alias_symbols() {
+        let (root, uri) = sample_loc_workspace_root("completion_symbol_matrix");
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nfun[] local_helper(): int = {\n    return 4\n}\n\nfun[] main(total: int): int = {\n    var value: int = 7\n    return value\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(35),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 7,
+                            character: 12,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        let labels = completion
+            .items
+            .iter()
+            .map(|item| item.label.as_str())
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"value"));
+        assert!(labels.contains(&"total"));
+        assert!(labels.contains(&"local_helper"));
+        assert!(labels.contains(&"shared"));
+        assert!(!labels.contains(&"helper"));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_keeps_plain_completion_free_of_child_namespace_noise() {
+        let (root, uri) = sample_package_root("completion_plain_namespace_filter");
+        fs::create_dir_all(root.join("src/api")).unwrap();
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return \n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("src/api/lib.fol"),
+            "fun[exp] child_helper(): int = {\n    return 9\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(47),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 4,
+                            character: 11,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let labels = serde_json::from_value::<LspCompletionList>(completion.result.unwrap())
+            .unwrap()
+            .items
+            .into_iter()
+            .map(|item| item.label)
+            .collect::<Vec<_>>();
+        assert!(labels.contains(&"helper".to_string()));
+        assert!(!labels.contains(&"child_helper".to_string()));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn lsp_server_locks_completion_item_labels_kinds_and_order() {
+        let (root, uri) = sample_loc_workspace_root("completion_item_shape_matrix");
+        fs::write(
+            root.join("app/src/main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nali[] LocalAlias = int\n\ntyp[] LocalRec: rec = {\n    value: int\n}\n\nfun[] helper(): int = {\n    return 7\n}\n\nfun[] main(total: int): int = {\n    var value: int = 9\n    return \n}\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/src/lib.fol"),
+            "fun[exp] helper(): int = {\n    return 8\n}\n",
+        )
+        .unwrap();
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(48),
+                method: "textDocument/completion".to_string(),
+                params: Some(
+                    serde_json::to_value(LspCompletionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 11,
+                            character: 11,
+                        },
+                        context: None,
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
+        let summary = completion
+            .items
+            .iter()
+            .map(|item| {
+                format!(
+                    "{}:{}:{}",
+                    item.label,
+                    item.kind,
+                    item.detail.clone().unwrap_or_default()
+                )
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(
+            summary,
+            vec![
+                "total:6:parameter",
+                "value:6:binding",
+                "helper:3:routine",
+                "LocalAlias:22:type alias",
+                "LocalRec:22:type",
+                "shared:9:namespace",
+            ]
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -1532,9 +3619,7 @@ mod tests {
         assert_eq!(diagnostics.len(), 1);
         assert!(diagnostics[0].diagnostics[0].code.starts_with('T'));
         assert!(
-            diagnostics[0].diagnostics[0]
-                .message
-                .contains("V2")
+            diagnostics[0].diagnostics[0].message.contains("V2")
                 || diagnostics[0].diagnostics[0]
                     .related_information
                     .iter()

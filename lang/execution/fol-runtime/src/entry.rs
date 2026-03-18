@@ -105,7 +105,10 @@ mod tests {
 
         assert_eq!(failure, FolProcessOutcome::failure("broken"));
         assert_eq!(printable_outcome_message(&failure), Some("broken"));
-        assert_eq!(printable_outcome_message(&FolProcessOutcome::success()), None);
+        assert_eq!(
+            printable_outcome_message(&FolProcessOutcome::success()),
+            None
+        );
     }
 
     #[test]

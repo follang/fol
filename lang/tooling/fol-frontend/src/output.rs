@@ -22,7 +22,9 @@ pub struct FrontendOutputConfig {
 
 impl Default for FrontendOutputConfig {
     fn default() -> Self {
-        Self { mode: OutputMode::Human }
+        Self {
+            mode: OutputMode::Human,
+        }
     }
 }
 

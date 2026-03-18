@@ -4,7 +4,8 @@ use crate::{
     ImportId, ResolverError, ResolverErrorKind, ScopeId, SourceUnitId, SymbolId,
 };
 use fol_parser::ast::{
-    AstNode, BindingPattern, FolType, ParsedDeclScope, ParsedTopLevel, UsePathSegment,
+    AstNode, BindingPattern, FolType, ParsedDeclScope, ParsedTopLevel,
+    UsePathSegment,
 };
 
 pub fn collect_top_level_symbols(program: &mut ResolvedProgram) -> Result<(), Vec<ResolverError>> {
@@ -20,6 +21,7 @@ pub fn collect_top_level_symbols(program: &mut ResolvedProgram) -> Result<(), Ve
                 .iter()
                 .cloned()
                 .map(move |item| (SourceUnitId(source_unit_id), item))
+                .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
 

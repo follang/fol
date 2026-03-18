@@ -15,8 +15,7 @@ mod workspace;
 
 pub use commands::{
     editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
-    editor_tree_generate_bundle,
-    EditorCommandSummary,
+    editor_tree_generate_bundle, EditorCommandSummary,
 };
 pub use convert::{
     diagnostic_to_lsp, location_to_range, LspDiagnostic, LspDiagnosticRelatedInformation,
@@ -25,21 +24,22 @@ pub use convert::{
 pub use documents::{EditorDocument, EditorDocumentStore};
 pub use error::{EditorError, EditorErrorKind, EditorResult};
 pub use lsp::{
-    EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
-    JsonRpcError, run_lsp_stdio,
-    LspDefinitionParams, LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
-    LspDidOpenTextDocumentParams, LspDocumentSymbol, LspDocumentSymbolParams, LspHover,
-    LspHoverParams, LspInitializeParams, LspInitializeResult, LspPublishDiagnosticsParams,
-    LspServerCapabilities, LspServerInfo, LspTextDocumentContentChangeEvent,
-    LspTextDocumentIdentifier, LspTextDocumentItem, LspTextDocumentSyncOptions,
-    LspVersionedTextDocumentIdentifier,
+    run_lsp_stdio, EditorCompletionItem, EditorLspServer, JsonRpcError, JsonRpcId,
+    JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, LspCompletionContext, LspCompletionItem,
+    LspCompletionList, LspCompletionOptions, LspCompletionParams, LspDefinitionParams,
+    LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams,
+    LspDocumentSymbol, LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams,
+    LspInitializeResult, LspPublishDiagnosticsParams, LspServerCapabilities, LspServerInfo,
+    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
+    LspTextDocumentSyncOptions, LspVersionedTextDocumentIdentifier,
 };
 pub use paths::{EditorDocumentPath, EditorDocumentUri};
 pub use session::{EditorConfig, EditorSession};
 pub use tree_sitter::{
-    fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
-    fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
-    fol_tree_sitter_symbols_query, TreeSitterCorpusCase, TreeSitterQuerySnapshot,
+    fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
+    fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query,
+    fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query, TreeSitterCorpusCase,
+    TreeSitterQuerySnapshot,
 };
 pub use workspace::{
     map_document_workspace, materialize_analysis_overlay, EditorAnalysisOverlay,
@@ -64,16 +64,21 @@ pub fn crate_name() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        crate_name, editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
-        editor_symbols_file, editor_tree_generate_bundle, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
-        fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query,
-        fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query, map_document_workspace,
-        materialize_analysis_overlay, diagnostic_to_lsp, Editor, EditorConfig, EditorDocument,
-        EditorDocumentPath, EditorDocumentStore, EditorDocumentUri, EditorError, EditorErrorKind,
-        EditorLspServer, EditorResult, EditorSession, LspDiagnosticSeverity, CRATE_NAME,
+        crate_name, diagnostic_to_lsp, editor_highlight_file, editor_lsp_entrypoint,
+        editor_parse_file, editor_symbols_file, editor_tree_generate_bundle,
+        fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
+        fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
+        fol_tree_sitter_symbols_query, map_document_workspace, materialize_analysis_overlay,
+        Editor, EditorConfig, EditorDocument, EditorDocumentPath, EditorDocumentStore,
+        EditorDocumentUri, EditorError, EditorErrorKind, EditorLspServer, EditorResult,
+        EditorSession, LspDiagnosticSeverity, CRATE_NAME,
     };
     use std::io::Cursor;
     use std::path::PathBuf;
+
+    fn lsp_message(value: &str) -> String {
+        format!("Content-Length: {}\r\n\r\n{}", value.len(), value)
+    }
 
     #[test]
     fn crate_name_matches_editor_identity() {
@@ -133,7 +138,10 @@ mod tests {
         assert_eq!(editor_highlight_file(&path).unwrap().command, "highlight");
         assert_eq!(editor_symbols_file(&path).unwrap().command, "symbols");
         let root = std::env::temp_dir().join("fol_editor_public_tree_bundle_smoke");
-        assert_eq!(editor_tree_generate_bundle(&root).unwrap().command, "tree generate");
+        assert_eq!(
+            editor_tree_generate_bundle(&root).unwrap().command,
+            "tree generate"
+        );
         std::fs::remove_dir_all(root).ok();
     }
 
@@ -163,13 +171,7 @@ mod tests {
     fn lsp_stdio_loop_handles_initialize_and_exit() {
         let initialize = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}";
         let exit = "{\"jsonrpc\":\"2.0\",\"method\":\"exit\",\"params\":null}";
-        let input = format!(
-            "Content-Length: {}\r\n\r\n{}Content-Length: {}\r\n\r\n{}",
-            initialize.len(),
-            initialize,
-            exit.len(),
-            exit,
-        );
+        let input = format!("{}{}", lsp_message(initialize), lsp_message(exit));
         let mut output = Vec::new();
         crate::lsp::run_lsp_stdio_with_io(
             Cursor::new(input.into_bytes()),
@@ -181,5 +183,85 @@ mod tests {
         assert!(rendered.contains("Content-Length:"));
         assert!(!rendered.contains("\"method\":\"initialize\""));
         assert!(rendered.contains("\"hover_provider\":true"));
+        assert!(
+            rendered.contains("\"completion_provider\"")
+                || rendered.contains("\"completionProvider\"")
+        );
+    }
+
+    #[test]
+    fn lsp_stdio_loop_handles_completion_requests() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_editor_stdio_completion_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        let src = root.join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
+        let file = src.join("main.fol");
+        let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+        std::fs::write(&file, text).unwrap();
+        let uri = format!("file://{}", file.display());
+
+        let initialize = "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}";
+        let did_open = serde_json::json!({
+            "jsonrpc": "2.0",
+            "method": "textDocument/didOpen",
+            "params": {
+                "textDocument": {
+                    "uri": uri,
+                    "languageId": "fol",
+                    "version": 1,
+                    "text": text,
+                }
+            }
+        })
+        .to_string();
+        let completion = serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "textDocument/completion",
+            "params": {
+                "textDocument": {
+                    "uri": uri,
+                },
+                "position": {
+                    "line": 2,
+                    "character": 12,
+                }
+            }
+        })
+        .to_string();
+        let exit = "{\"jsonrpc\":\"2.0\",\"method\":\"exit\",\"params\":null}";
+        let input = format!(
+            "{}{}{}{}",
+            lsp_message(initialize),
+            lsp_message(&did_open),
+            lsp_message(&completion),
+            lsp_message(exit)
+        );
+
+        let mut output = Vec::new();
+        crate::lsp::run_lsp_stdio_with_io(
+            Cursor::new(input.into_bytes()),
+            &mut output,
+            EditorConfig::default(),
+        )
+        .unwrap();
+        let rendered = String::from_utf8(output).unwrap();
+        assert!(rendered.contains("\"completionProvider\""));
+        assert!(rendered.contains("\"isIncomplete\":false"));
+        assert!(rendered.contains("\"label\":\"value\""));
+
+        std::fs::remove_dir_all(root).ok();
     }
 }

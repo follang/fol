@@ -193,9 +193,7 @@ impl Element {
         // Numeric scanning currently stops at the supported literal body.
         // Identifier suffixes such as an imaginary-unit marker stay separate so the
         // front end does not silently invent a numeric family it does not support.
-        if code.curr()?.0 == '0'
-            && matches!(code.peek(0)?.0, 'x' | 'X' | 'o' | 'O' | 'b' | 'B')
-        {
+        if code.curr()?.0 == '0' && matches!(code.peek(0)?.0, 'x' | 'X' | 'o' | 'O' | 'b' | 'B') {
             self.push(code)?;
             if matches!(code.peek(0)?.0, 'x' | 'X') {
                 self.bump(code)?;

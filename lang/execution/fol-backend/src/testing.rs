@@ -1,11 +1,11 @@
 use fol_lower::{
     LoweredBuiltinType, LoweredEntryCandidate, LoweredExportMount, LoweredFieldLayout,
     LoweredGlobal, LoweredPackage, LoweredRecoverableAbi, LoweredRoutine, LoweredRoutineType,
-    LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol, LoweredSourceUnit,
-    LoweredType, LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeTable, LoweredWorkspace,
+    LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol, LoweredSourceUnit, LoweredType,
+    LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeTable, LoweredWorkspace,
 };
-use fol_parser::ast::SyntaxOrigin;
 use fol_package::{PackageConfig, PackageSession};
+use fol_parser::ast::SyntaxOrigin;
 use fol_resolver::{PackageIdentity, PackageSourceKind, SourceUnitId, SymbolId};
 use fol_typecheck::Typechecker;
 use std::collections::{BTreeMap, BTreeSet};
@@ -21,8 +21,7 @@ pub(crate) fn sample_lowered_workspace_named(entry_name: &str) -> LoweredWorkspa
         PackageSourceKind::Entry,
         &format!("/workspace/{entry_name}"),
     );
-    let shared_identity =
-        package_identity("shared", PackageSourceKind::Local, "/workspace/shared");
+    let shared_identity = package_identity("shared", PackageSourceKind::Local, "/workspace/shared");
 
     let mut type_table = LoweredTypeTable::new();
     let int_type = type_table.intern_builtin(LoweredBuiltinType::Int);
@@ -30,7 +29,10 @@ pub(crate) fn sample_lowered_workspace_named(entry_name: &str) -> LoweredWorkspa
     let str_type = type_table.intern_builtin(LoweredBuiltinType::Str);
 
     let user_record_type = type_table.intern(LoweredType::Record {
-        fields: BTreeMap::from([("name".to_string(), str_type), ("active".to_string(), bool_type)]),
+        fields: BTreeMap::from([
+            ("name".to_string(), str_type),
+            ("active".to_string(), bool_type),
+        ]),
     });
     let main_signature = type_table.intern(LoweredType::Routine(LoweredRoutineType {
         params: vec![bool_type],
@@ -43,7 +45,8 @@ pub(crate) fn sample_lowered_workspace_named(entry_name: &str) -> LoweredWorkspa
         error_type: None,
     }));
 
-    let mut entry_package = LoweredPackage::new(fol_lower::LoweredPackageId(0), entry_identity.clone());
+    let mut entry_package =
+        LoweredPackage::new(fol_lower::LoweredPackageId(0), entry_identity.clone());
     entry_package.source_units = vec![
         LoweredSourceUnit {
             source_unit_id: SourceUnitId(0),
@@ -63,7 +66,10 @@ pub(crate) fn sample_lowered_workspace_named(entry_name: &str) -> LoweredWorkspa
         mounted_namespace_suffix: None,
     }];
     entry_package.types = vec![user_record_type];
-    entry_package.routines = vec![fol_lower::LoweredRoutineId(0), fol_lower::LoweredRoutineId(1)];
+    entry_package.routines = vec![
+        fol_lower::LoweredRoutineId(0),
+        fol_lower::LoweredRoutineId(1),
+    ];
     entry_package.globals = vec![fol_lower::LoweredGlobalId(0)];
     entry_package.type_decls.insert(
         SymbolId(10),
@@ -98,11 +104,21 @@ pub(crate) fn sample_lowered_workspace_named(entry_name: &str) -> LoweredWorkspa
             mutable: false,
         },
     );
-    entry_package.routine_signatures.insert(SymbolId(30), main_signature);
-    entry_package.routine_signatures.insert(SymbolId(31), helper_signature);
+    entry_package
+        .routine_signatures
+        .insert(SymbolId(30), main_signature);
+    entry_package
+        .routine_signatures
+        .insert(SymbolId(31), helper_signature);
     entry_package.routine_decls.insert(
         fol_lower::LoweredRoutineId(0),
-        routine(fol_lower::LoweredRoutineId(0), "main", Some(SymbolId(30)), Some(SourceUnitId(0)), Some(main_signature)),
+        routine(
+            fol_lower::LoweredRoutineId(0),
+            "main",
+            Some(SymbolId(30)),
+            Some(SourceUnitId(0)),
+            Some(main_signature),
+        ),
     );
     entry_package.routine_decls.insert(
         fol_lower::LoweredRoutineId(1),
@@ -149,7 +165,9 @@ pub(crate) fn sample_lowered_workspace_named(entry_name: &str) -> LoweredWorkspa
             mutable: false,
         },
     );
-    shared_package.routine_signatures.insert(SymbolId(41), helper_signature);
+    shared_package
+        .routine_signatures
+        .insert(SymbolId(41), helper_signature);
     shared_package.routine_decls.insert(
         fol_lower::LoweredRoutineId(2),
         routine(
@@ -195,11 +213,7 @@ pub(crate) fn sample_lowered_workspace_named(entry_name: &str) -> LoweredWorkspa
     )
 }
 
-pub(crate) fn package_identity(
-    name: &str,
-    kind: PackageSourceKind,
-    root: &str,
-) -> PackageIdentity {
+pub(crate) fn package_identity(name: &str, kind: PackageSourceKind, root: &str) -> PackageIdentity {
     PackageIdentity {
         source_kind: kind,
         canonical_root: root.to_string(),
@@ -210,7 +224,12 @@ pub(crate) fn package_identity(
 pub(crate) fn distinct_namespaces(workspace: &LoweredWorkspace) -> BTreeSet<String> {
     workspace
         .packages()
-        .flat_map(|package| package.source_units.iter().map(|unit| unit.namespace.clone()))
+        .flat_map(|package| {
+            package
+                .source_units
+                .iter()
+                .map(|unit| unit.namespace.clone())
+        })
         .collect()
 }
 

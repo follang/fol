@@ -1,0 +1,216 @@
+use crate::semantic::{
+    canonical_artifact_config_shapes, canonical_chain_metadata, canonical_graph_method_signatures,
+    canonical_handle_method_signatures, canonical_option_config_shapes, BuildSemanticMethodSignature,
+    BuildSemanticRecordShape, BuildSemanticType, BuildSemanticTypeFamily,
+};
+
+/// The complete build stdlib scope injected into `build.fol` during resolution.
+///
+/// When the resolver encounters a file flagged as `ParsedSourceUnitKind::Build` it uses
+/// this scope instead of walking the sibling `.fol` files in the package folder.
+/// Every `Graph` method, every handle method, and every config record shape is listed here.
+#[derive(Debug, Clone)]
+pub struct BuildStdlibScope {
+    /// All types available in `build.fol` (Graph, Artifact, Step, Run, Install, …).
+    pub types: Vec<BuildSemanticType>,
+    /// Methods callable on the `Graph` handle (add_exe, install, step, dependency, …).
+    pub graph_methods: Vec<BuildSemanticMethodSignature>,
+    /// Methods callable on artifact/step/run/install/dependency/generated-file handles.
+    pub handle_methods: Vec<BuildSemanticMethodSignature>,
+    /// Record shapes accepted by graph methods that take a config record argument.
+    pub artifact_config_shapes: Vec<BuildSemanticRecordShape>,
+    /// Record shapes accepted by option-related graph methods.
+    pub option_config_shapes: Vec<BuildSemanticRecordShape>,
+}
+
+impl BuildStdlibScope {
+    /// The canonical scope for all `build.fol` files.
+    pub fn canonical() -> Self {
+        Self {
+            types: canonical_build_types(),
+            graph_methods: canonical_graph_method_signatures(),
+            handle_methods: canonical_handle_method_signatures(),
+            artifact_config_shapes: canonical_artifact_config_shapes(),
+            option_config_shapes: canonical_option_config_shapes(),
+        }
+    }
+
+    /// Returns the method signature for a given receiver family and method name, if it exists.
+    pub fn find_graph_method(&self, name: &str) -> Option<&BuildSemanticMethodSignature> {
+        self.graph_methods.iter().find(|m| m.name == name)
+    }
+
+    /// Returns the method signature for a given handle family and method name, if it exists.
+    pub fn find_handle_method(
+        &self,
+        family: BuildSemanticTypeFamily,
+        name: &str,
+    ) -> Option<&BuildSemanticMethodSignature> {
+        self.handle_methods
+            .iter()
+            .find(|m| m.receiver == family && m.name == name)
+    }
+
+    /// Returns all methods available on a given handle family.
+    pub fn methods_for_family(
+        &self,
+        family: BuildSemanticTypeFamily,
+    ) -> Vec<&BuildSemanticMethodSignature> {
+        self.handle_methods
+            .iter()
+            .filter(|m| m.receiver == family)
+            .collect()
+    }
+
+    /// Returns the chain metadata for depend_on calls, used to validate step dependencies.
+    pub fn chain_metadata(&self) -> Vec<crate::semantic::BuildSemanticChainMetadata> {
+        canonical_chain_metadata()
+    }
+}
+
+fn canonical_build_types() -> Vec<BuildSemanticType> {
+    vec![
+        BuildSemanticType::graph(),
+        BuildSemanticType::artifact_handle(),
+        BuildSemanticType::module_handle(),
+        BuildSemanticType::step_handle(),
+        BuildSemanticType::run_handle(),
+        BuildSemanticType::install_handle(),
+        BuildSemanticType::dependency_handle(),
+        BuildSemanticType::dependency_module_handle(),
+        BuildSemanticType::dependency_artifact_handle(),
+        BuildSemanticType::dependency_step_handle(),
+        BuildSemanticType::dependency_generated_output_handle(),
+        BuildSemanticType::generated_file_handle(),
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::BuildStdlibScope;
+    use crate::semantic::BuildSemanticTypeFamily;
+
+    #[test]
+    fn stdlib_scope_canonical_covers_all_build_types() {
+        let scope = BuildStdlibScope::canonical();
+
+        let families: Vec<BuildSemanticTypeFamily> =
+            scope.types.iter().map(|t| t.family).collect();
+
+        assert!(families.contains(&BuildSemanticTypeFamily::Graph));
+        assert!(families.contains(&BuildSemanticTypeFamily::ArtifactHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::StepHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::RunHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::InstallHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::DependencyHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::DependencyModuleHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::DependencyArtifactHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::DependencyStepHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::DependencyGeneratedOutputHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::GeneratedFileHandle));
+    }
+
+    #[test]
+    fn stdlib_scope_canonical_covers_core_graph_methods() {
+        let scope = BuildStdlibScope::canonical();
+
+        let graph_names: Vec<&str> = scope.graph_methods.iter().map(|m| m.name.as_str()).collect();
+
+        assert!(graph_names.contains(&"add_exe"));
+        assert!(graph_names.contains(&"add_static_lib"));
+        assert!(graph_names.contains(&"add_shared_lib"));
+        assert!(graph_names.contains(&"add_test"));
+        assert!(graph_names.contains(&"step"));
+        assert!(graph_names.contains(&"add_run"));
+        assert!(graph_names.contains(&"install"));
+        assert!(graph_names.contains(&"install_file"));
+        assert!(graph_names.contains(&"install_dir"));
+        assert!(graph_names.contains(&"write_file"));
+        assert!(graph_names.contains(&"copy_file"));
+        assert!(graph_names.contains(&"add_system_tool"));
+        assert!(graph_names.contains(&"add_codegen"));
+        assert!(graph_names.contains(&"dependency"));
+        assert!(graph_names.contains(&"standard_target"));
+        assert!(graph_names.contains(&"standard_optimize"));
+        assert!(graph_names.contains(&"option"));
+    }
+
+    #[test]
+    fn stdlib_scope_find_graph_method_returns_matching_signature() {
+        let scope = BuildStdlibScope::canonical();
+
+        let add_exe = scope.find_graph_method("add_exe");
+        let missing = scope.find_graph_method("no_such_method");
+
+        assert!(add_exe.is_some());
+        assert_eq!(add_exe.unwrap().name, "add_exe");
+        assert!(missing.is_none());
+    }
+
+    #[test]
+    fn stdlib_scope_find_handle_method_is_receiver_specific() {
+        let scope = BuildStdlibScope::canonical();
+
+        let step_depend = scope
+            .find_handle_method(BuildSemanticTypeFamily::StepHandle, "depend_on");
+        let run_depend = scope
+            .find_handle_method(BuildSemanticTypeFamily::RunHandle, "depend_on");
+        let wrong_family = scope
+            .find_handle_method(BuildSemanticTypeFamily::ArtifactHandle, "depend_on");
+
+        assert!(step_depend.is_some());
+        assert!(run_depend.is_some());
+        assert!(wrong_family.is_none());
+    }
+
+    #[test]
+    fn stdlib_scope_methods_for_family_returns_all_methods_for_receiver() {
+        let scope = BuildStdlibScope::canonical();
+
+        let dep_methods = scope.methods_for_family(BuildSemanticTypeFamily::DependencyHandle);
+        let dep_names: Vec<&str> = dep_methods.iter().map(|m| m.name.as_str()).collect();
+
+        assert!(dep_names.contains(&"module"));
+        assert!(dep_names.contains(&"artifact"));
+        assert!(dep_names.contains(&"step"));
+        assert!(dep_names.contains(&"generated"));
+    }
+
+    #[test]
+    fn stdlib_scope_chain_metadata_covers_depend_on_receivers() {
+        let scope = BuildStdlibScope::canonical();
+        let chains = scope.chain_metadata();
+
+        assert_eq!(chains.len(), 3);
+        assert!(chains.iter().all(|c| c.method == "depend_on"));
+    }
+
+    #[test]
+    fn stdlib_scope_artifact_config_shapes_cover_all_artifact_kinds() {
+        let scope = BuildStdlibScope::canonical();
+        let names: Vec<&str> = scope
+            .artifact_config_shapes
+            .iter()
+            .map(|s| s.name.as_str())
+            .collect();
+
+        assert!(names.contains(&"ExeConfig"));
+        assert!(names.contains(&"StaticLibConfig"));
+        assert!(names.contains(&"SharedLibConfig"));
+        assert!(names.contains(&"TestConfig"));
+    }
+
+    #[test]
+    fn stdlib_scope_option_config_shapes_cover_standard_and_user_options() {
+        let scope = BuildStdlibScope::canonical();
+        let names: Vec<&str> = scope
+            .option_config_shapes
+            .iter()
+            .map(|s| s.name.as_str())
+            .collect();
+
+        assert!(names.contains(&"StandardTargetConfig"));
+        assert!(names.contains(&"StandardOptimizeConfig"));
+        assert!(names.contains(&"UserOptionConfig"));
+    }
+}

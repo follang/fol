@@ -1,9 +1,9 @@
 //! Runtime container families used by executable FOL V1 programs.
 
-mod vector;
+mod map;
 mod sequence;
 mod set;
-mod map;
+mod vector;
 
 use crate::{
     error::{RuntimeError, RuntimeErrorKind},
@@ -12,8 +12,8 @@ use crate::{
 use std::fmt::Display;
 
 pub use map::FolMap;
-pub use set::FolSet;
 pub use sequence::FolSeq;
+pub use set::FolSet;
 pub use vector::FolVec;
 
 /// Fixed-size array strategy for FOL `arr[...]`.
@@ -59,10 +59,7 @@ pub fn index_seq<T>(values: &FolSeq<T>, index: FolInt) -> Result<&T, RuntimeErro
     Ok(&values.as_slice()[index])
 }
 
-pub fn lookup_map<'a, K: Ord, V>(
-    values: &'a FolMap<K, V>,
-    key: &K,
-) -> Result<&'a V, RuntimeError> {
+pub fn lookup_map<'a, K: Ord, V>(values: &'a FolMap<K, V>, key: &K) -> Result<&'a V, RuntimeError> {
     values
         .get(key)
         .ok_or_else(|| RuntimeError::new(RuntimeErrorKind::InvalidInput, "missing map key"))
@@ -76,7 +73,10 @@ where
 }
 
 pub fn render_array<T: Display, const N: usize>(values: &FolArray<T, N>) -> String {
-    format!("arr[{}]", join_rendered(values.iter().map(|value| value.to_string())))
+    format!(
+        "arr[{}]",
+        join_rendered(values.iter().map(|value| value.to_string()))
+    )
 }
 
 pub fn render_vec<T: Display>(values: &FolVec<T>) -> String {
@@ -157,10 +157,7 @@ mod tests {
 
     #[test]
     fn map_module_exports_runtime_map_type() {
-        let values = FolMap::new(std::collections::BTreeMap::from([
-            ("ada", 1),
-            ("lin", 2),
-        ]));
+        let values = FolMap::new(std::collections::BTreeMap::from([("ada", 1), ("lin", 2)]));
 
         assert_eq!(values.len(), 2);
     }
@@ -192,7 +189,10 @@ mod tests {
 
         let failure = index_vec(&vector, -1).expect_err("negative index should fail");
         assert_eq!(failure.kind(), RuntimeErrorKind::InvalidInput);
-        assert_eq!(failure.message(), "index out of bounds: the len is 3 but the index is -1");
+        assert_eq!(
+            failure.message(),
+            "index out of bounds: the len is 3 but the index is -1"
+        );
     }
 
     #[test]
@@ -232,7 +232,10 @@ mod tests {
 
         let failure = index_seq(&sequence, 0).expect_err("empty sequence access should fail");
         assert_eq!(failure.kind(), RuntimeErrorKind::InvalidInput);
-        assert_eq!(failure.message(), "index out of bounds: the len is 0 but the index is 0");
+        assert_eq!(
+            failure.message(),
+            "index out of bounds: the len is 0 but the index is 0"
+        );
     }
 
     #[test]
@@ -252,7 +255,11 @@ mod tests {
         assert_eq!(render_set(&left_set), render_set(&right_set));
 
         assert_eq!(
-            left_map.as_map().iter().map(|(key, value)| (*key, *value)).collect::<Vec<_>>(),
+            left_map
+                .as_map()
+                .iter()
+                .map(|(key, value)| (*key, *value))
+                .collect::<Vec<_>>(),
             vec![("ada", 1), ("lin", 4)]
         );
         assert_eq!(left_map.as_map(), right_map.as_map());

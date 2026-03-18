@@ -1,37 +1,39 @@
 //! Shared intrinsic registry foundations for the FOL compiler.
 
-mod model;
 mod catalog;
 mod diagnostics;
 mod families;
+mod model;
 mod registry;
 mod select;
 mod validate;
 
 pub const CRATE_NAME: &str = "fol-intrinsics";
 
-pub use model::{
-    IntrinsicAvailability, IntrinsicBackendRole, IntrinsicCategory, IntrinsicId,
-    IntrinsicRoadmap, IntrinsicStatus, IntrinsicSurface,
-};
 pub use catalog::{
     all_intrinsics, backend_role_for_intrinsic, implemented_intrinsics_for_backend_role,
     intrinsic_by_alias, intrinsic_by_canonical_name, intrinsic_by_id, intrinsic_registry,
     intrinsics_for_lowering_mode, intrinsics_for_roadmap, intrinsics_for_surface,
-    is_reserved_intrinsic_name_for_surface, lowering_mode_for_intrinsic, roadmap_for_intrinsic,
-    reserved_intrinsic_for_surface,
+    is_reserved_intrinsic_name_for_surface, lowering_mode_for_intrinsic,
+    reserved_intrinsic_for_surface, roadmap_for_intrinsic,
 };
 pub use diagnostics::{
     unknown_intrinsic_message, unsupported_intrinsic_message, wrong_arity_message,
     wrong_type_family_message, wrong_version_message,
 };
 pub use families::{
-    boolean_operand_contract, comparison_operand_contract, BooleanOperandContract,
-    ComparisonOperandContract, QueryOperandContract, query_operand_contract,
+    boolean_operand_contract, comparison_operand_contract, query_operand_contract,
+    BooleanOperandContract, ComparisonOperandContract, QueryOperandContract,
+};
+pub use model::{
+    IntrinsicAvailability, IntrinsicBackendRole, IntrinsicCategory, IntrinsicId, IntrinsicRoadmap,
+    IntrinsicStatus, IntrinsicSurface,
 };
 pub use registry::{IntrinsicArity, IntrinsicEntry, IntrinsicLoweringMode};
 pub use select::{select_intrinsic, IntrinsicSelectionError, IntrinsicSelectionErrorKind};
-pub use validate::{validate_intrinsic_registry, RegistryValidationError, RegistryValidationErrorKind};
+pub use validate::{
+    validate_intrinsic_registry, RegistryValidationError, RegistryValidationErrorKind,
+};
 
 pub fn crate_name() -> &'static str {
     CRATE_NAME
@@ -80,7 +82,10 @@ mod tests {
 
     #[test]
     fn canonical_registry_contains_expected_first_batch_and_deferred_entries() {
-        let names: Vec<_> = intrinsic_registry().iter().map(|entry| entry.name).collect();
+        let names: Vec<_> = intrinsic_registry()
+            .iter()
+            .map(|entry| entry.name)
+            .collect();
 
         assert!(names.contains(&"eq"));
         assert!(names.contains(&"not"));
@@ -127,7 +132,10 @@ mod tests {
             .expect_err("unknown helpers should stay unknown");
 
         assert_eq!(eq.name, "eq");
-        assert_eq!(wrong_surface.kind, IntrinsicSelectionErrorKind::WrongSurface);
+        assert_eq!(
+            wrong_surface.kind,
+            IntrinsicSelectionErrorKind::WrongSurface
+        );
         assert_eq!(wrong_surface.name, "panic");
         assert_eq!(unknown.kind, IntrinsicSelectionErrorKind::UnknownName);
     }
@@ -208,7 +216,10 @@ mod tests {
         assert_eq!(echo.status, IntrinsicStatus::Implemented);
         assert_eq!(echo.arity, IntrinsicArity::Exactly(1));
         assert_eq!(echo.lowering_mode, IntrinsicLoweringMode::RuntimeHook);
-        assert_eq!(intrinsic_by_alias("print").map(|entry| entry.name), Some("echo"));
+        assert_eq!(
+            intrinsic_by_alias("print").map(|entry| entry.name),
+            Some("echo")
+        );
         assert_eq!(
             echo.docs,
             "emit a runtime-visible debug value and forward it unchanged"
@@ -220,9 +231,21 @@ mod tests {
         let expected = [
             ("de_alloc", IntrinsicId::new(16), IntrinsicCategory::Memory),
             ("give_back", IntrinsicId::new(17), IntrinsicCategory::Memory),
-            ("address_of", IntrinsicId::new(18), IntrinsicCategory::Pointer),
-            ("pointer_value", IntrinsicId::new(19), IntrinsicCategory::Pointer),
-            ("borrow_from", IntrinsicId::new(20), IntrinsicCategory::Pointer),
+            (
+                "address_of",
+                IntrinsicId::new(18),
+                IntrinsicCategory::Pointer,
+            ),
+            (
+                "pointer_value",
+                IntrinsicId::new(19),
+                IntrinsicCategory::Pointer,
+            ),
+            (
+                "borrow_from",
+                IntrinsicId::new(20),
+                IntrinsicCategory::Pointer,
+            ),
         ];
 
         for (name, id, category) in expected {
@@ -241,10 +264,30 @@ mod tests {
     #[test]
     fn deferred_query_and_arithmetic_registry_entries_stay_stable() {
         let expected = [
-            ("low", IntrinsicId::new(21), IntrinsicCategory::Query, IntrinsicArity::Exactly(1)),
-            ("high", IntrinsicId::new(22), IntrinsicCategory::Query, IntrinsicArity::Exactly(1)),
-            ("min", IntrinsicId::new(23), IntrinsicCategory::Arithmetic, IntrinsicArity::Exactly(2)),
-            ("max", IntrinsicId::new(24), IntrinsicCategory::Arithmetic, IntrinsicArity::Exactly(2)),
+            (
+                "low",
+                IntrinsicId::new(21),
+                IntrinsicCategory::Query,
+                IntrinsicArity::Exactly(1),
+            ),
+            (
+                "high",
+                IntrinsicId::new(22),
+                IntrinsicCategory::Query,
+                IntrinsicArity::Exactly(1),
+            ),
+            (
+                "min",
+                IntrinsicId::new(23),
+                IntrinsicCategory::Arithmetic,
+                IntrinsicArity::Exactly(2),
+            ),
+            (
+                "max",
+                IntrinsicId::new(24),
+                IntrinsicCategory::Arithmetic,
+                IntrinsicArity::Exactly(2),
+            ),
             (
                 "clamp",
                 IntrinsicId::new(25),
@@ -347,15 +390,33 @@ mod tests {
         assert_eq!(panic_entry.availability, IntrinsicAvailability::V1);
         assert_eq!(panic_entry.status, IntrinsicStatus::Implemented);
         assert_eq!(panic_entry.arity, IntrinsicArity::AtLeast(0));
-        assert_eq!(panic_entry.lowering_mode, IntrinsicLoweringMode::DedicatedIr);
+        assert_eq!(
+            panic_entry.lowering_mode,
+            IntrinsicLoweringMode::DedicatedIr
+        );
     }
 
     #[test]
     fn arithmetic_bitwise_and_overflow_roadmap_entries_stay_registered() {
         let expected = [
-            ("add", IntrinsicId::new(26), IntrinsicCategory::Arithmetic, IntrinsicArity::Exactly(2)),
-            ("abs", IntrinsicId::new(30), IntrinsicCategory::Arithmetic, IntrinsicArity::Exactly(1)),
-            ("sqrt", IntrinsicId::new(36), IntrinsicCategory::Arithmetic, IntrinsicArity::Exactly(1)),
+            (
+                "add",
+                IntrinsicId::new(26),
+                IntrinsicCategory::Arithmetic,
+                IntrinsicArity::Exactly(2),
+            ),
+            (
+                "abs",
+                IntrinsicId::new(30),
+                IntrinsicCategory::Arithmetic,
+                IntrinsicArity::Exactly(1),
+            ),
+            (
+                "sqrt",
+                IntrinsicId::new(36),
+                IntrinsicCategory::Arithmetic,
+                IntrinsicArity::Exactly(1),
+            ),
             (
                 "bit_and",
                 IntrinsicId::new(37),
@@ -403,14 +464,26 @@ mod tests {
         let bit_and = intrinsic_by_canonical_name("bit_and").expect("bit_and should exist");
         let de_alloc = intrinsic_by_canonical_name("de_alloc").expect("de_alloc should exist");
 
-        assert_eq!(roadmap_for_intrinsic(len.id), Some(IntrinsicRoadmap::CurrentV1));
-        assert_eq!(roadmap_for_intrinsic(cast.id), Some(IntrinsicRoadmap::LikelyV1x));
+        assert_eq!(
+            roadmap_for_intrinsic(len.id),
+            Some(IntrinsicRoadmap::CurrentV1)
+        );
+        assert_eq!(
+            roadmap_for_intrinsic(cast.id),
+            Some(IntrinsicRoadmap::LikelyV1x)
+        );
         assert_eq!(
             roadmap_for_intrinsic(add.id),
             Some(IntrinsicRoadmap::CoreStdInstead)
         );
-        assert_eq!(roadmap_for_intrinsic(bit_and.id), Some(IntrinsicRoadmap::V2));
-        assert_eq!(roadmap_for_intrinsic(de_alloc.id), Some(IntrinsicRoadmap::V3));
+        assert_eq!(
+            roadmap_for_intrinsic(bit_and.id),
+            Some(IntrinsicRoadmap::V2)
+        );
+        assert_eq!(
+            roadmap_for_intrinsic(de_alloc.id),
+            Some(IntrinsicRoadmap::V3)
+        );
         assert!(intrinsics_for_roadmap(IntrinsicRoadmap::CurrentV1)
             .iter()
             .any(|entry| entry.name == "echo"));
@@ -470,7 +543,10 @@ mod tests {
         let panic_entry = intrinsic_by_canonical_name("panic").expect("panic should exist");
         let cast = intrinsic_by_canonical_name("cast").expect("cast should exist");
 
-        assert_eq!(backend_role_for_intrinsic(eq.id), Some(IntrinsicBackendRole::PureOp));
+        assert_eq!(
+            backend_role_for_intrinsic(eq.id),
+            Some(IntrinsicBackendRole::PureOp)
+        );
         assert_eq!(
             backend_role_for_intrinsic(len.id),
             Some(IntrinsicBackendRole::TargetHelper)
@@ -484,12 +560,16 @@ mod tests {
             Some(IntrinsicBackendRole::ControlEffect)
         );
         assert_eq!(backend_role_for_intrinsic(cast.id), None);
-        assert!(implemented_intrinsics_for_backend_role(IntrinsicBackendRole::PureOp)
-            .iter()
-            .any(|entry| entry.name == "eq"));
-        assert!(implemented_intrinsics_for_backend_role(IntrinsicBackendRole::RuntimeHook)
-            .iter()
-            .any(|entry| entry.name == "echo"));
+        assert!(
+            implemented_intrinsics_for_backend_role(IntrinsicBackendRole::PureOp)
+                .iter()
+                .any(|entry| entry.name == "eq")
+        );
+        assert!(
+            implemented_intrinsics_for_backend_role(IntrinsicBackendRole::RuntimeHook)
+                .iter()
+                .any(|entry| entry.name == "echo")
+        );
     }
 
     #[test]

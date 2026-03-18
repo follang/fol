@@ -102,33 +102,39 @@ What does **not** belong here:
 
 ### `build.fol`
 
-`build.fol` is where the package is assembled.
+`build.fol` is the package build entry file.
 
 This file is responsible for:
 
-- declaring package dependencies
-- declaring which directories/namespaces are exported
-- defining the package surface that consumers import
+- declaring package build logic
+- declaring artifacts, steps, and generated outputs through the build API
+- becoming the canonical package entrypoint for `fol code build/run/test/check`
 
 `build.fol` is still an ordinary FOL file.
 It is parsed with the same front-end as other `.fol` sources.
-The difference is that the package layer only extracts package meaning from recognized top-level definitions inside it.
+The difference is that the package layer evaluates one canonical build routine inside it.
+
+Today that means:
+
+- `fol code build/run/test/check` starts from `build.fol`
+- the canonical entry is `pro[] build(graph: Graph): non`
+- old `def root: loc = ...` and `def build(...)` forms are not the build model
 
 So:
 
 - `def` is still a general FOL declaration form
 - `build.fol` is not a separate mini-language
-- only specific top-level `def` records are treated as package dependency/export definitions in the current package phase
+- `build.fol` uses an ordinary routine entrypoint, like Zig's `build.zig`
 
 That means:
 
 - ordinary source `.fol` files use `use` to consume packages/namespaces
-- `build.fol` uses `def` to define package dependencies and exports
+- `build.fol` uses `pro[] build(graph: Graph): non` to mutate the build graph
 
-So `use` and `def` serve different jobs:
+So `use` and the build routine serve different jobs:
 
 - `use` = consume functionality
-- `def` in `build.fol` = define package graph / exported surface
+- `pro[] build(...)` in `build.fol` = define package/build surface
 
 ## System libraries
 This is how including other libraries works, for example include `fmt` module from standard library:
@@ -185,5 +191,6 @@ use space: pkg = {"space"};
 - that root must contain `package.yaml`
 - that root must contain `build.fol`
 - `package.yaml` provides metadata only
-- `build.fol` defines dependencies and exports
+- `build.fol` is the package build entry file and currently defines dependencies,
+  exports, and root declarations that package loading depends on
 - raw transport URLs do not appear in source code; package acquisition and installed-package preparation are separate from ordinary source resolution

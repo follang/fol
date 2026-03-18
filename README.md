@@ -82,9 +82,15 @@ Current import surface:
 - `loc` rejects directory targets that already define `build.fol`; formal package
   roots belong to `pkg`
 - `pkg` roots require both `package.yaml` and `build.fol`
-- `package.yaml` is metadata-only; `build.fol` defines dependency and export records
+- `package.yaml` is metadata-only; `build.fol` is the package build entry file
+- `build.fol` uses one canonical routine entry: `pro[] build(graph: Graph): non`
+- `fol code build/run/test/check` route workspace execution from the evaluated
+  build graph defined in `build.fol`
+- old `def root`, `def build(...)`, and hybrid compatibility forms are not part
+  of the supported build surface
 - stray `package.fol` files are ignored
-- consumer-visible `pkg` names come only from build-declared exported roots
+- checked-in examples under `examples/` are the current source-of-truth build
+  packages
 
 Current C ABI boundary:
 - `build.fol` may now preserve inert native-artifact placeholders such as `header`,

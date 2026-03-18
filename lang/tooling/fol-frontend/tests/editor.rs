@@ -1,4 +1,4 @@
-use fol_frontend::{run_command_from_args_in_dir};
+use fol_frontend::run_command_from_args_in_dir;
 use std::fs;
 use std::path::PathBuf;
 
@@ -24,11 +24,13 @@ fn repo_root() -> PathBuf {
 #[test]
 fn editor_lsp_command_is_publicly_dispatchable() {
     let root = repo_root();
-    let (_, result) = run_command_from_args_in_dir(["fol", "tool", "lsp"], root.join("xtra/logtiny"))
-        .expect("editor lsp should dispatch");
+    let (_, result) =
+        run_command_from_args_in_dir(["fol", "tool", "lsp"], root.join("xtra/logtiny"))
+            .expect("editor lsp should dispatch");
 
     assert_eq!(result.command, "lsp");
     assert!(result.summary.contains("fol tool lsp"));
+    assert!(result.summary.contains("completion"));
 }
 
 #[test]
@@ -46,8 +48,9 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
     assert_eq!(parse.command, "parse");
     assert!(parse.summary.contains("grammar_bytes="));
     assert_eq!(highlight.command, "highlight");
-    assert!(highlight.summary.contains("query_bytes="));
-    assert!(highlight.summary.contains("keyword_hits="));
+    assert!(highlight.summary.contains("capture_count="));
+    assert!(highlight.summary.contains("captures="));
+    assert!(highlight.summary.contains("intrinsic_names="));
     assert_eq!(symbols.command, "symbols");
     assert!(symbols.summary.contains("query_snapshots=3"));
 }
@@ -56,9 +59,11 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
 fn editor_commands_respect_requested_output_mode() {
     let root = repo_root();
     let fixture = "test/apps/fixtures/record_flow/main.fol";
-    let (output, result) =
-        run_command_from_args_in_dir(["fol", "tool", "--output", "plain", "parse", fixture], &root)
-            .expect("editor parse should support output mode");
+    let (output, result) = run_command_from_args_in_dir(
+        ["fol", "tool", "--output", "plain", "parse", fixture],
+        &root,
+    )
+    .expect("editor parse should support output mode");
     let rendered = output
         .render_command_summary(&result)
         .expect("plain output should render");
@@ -92,9 +97,11 @@ fn editor_commands_do_not_require_workspace_discovery() {
 fn editor_command_plain_output_stays_snapshot_stable_for_real_fixtures() {
     let root = repo_root();
     let fixture = "xtra/logtiny/src/log.fol";
-    let (output, result) =
-        run_command_from_args_in_dir(["fol", "tool", "--output", "plain", "symbols", fixture], &root)
-            .expect("editor symbols should support plain output");
+    let (output, result) = run_command_from_args_in_dir(
+        ["fol", "tool", "--output", "plain", "symbols", fixture],
+        &root,
+    )
+    .expect("editor symbols should support plain output");
     let rendered = output
         .render_command_summary(&result)
         .expect("plain output should render");
@@ -108,7 +115,14 @@ fn editor_command_plain_output_stays_snapshot_stable_for_real_fixtures() {
 #[test]
 fn editor_command_json_errors_keep_stable_shapes() {
     let error = run_command_from_args_in_dir(
-        ["fol", "tool", "--output", "json", "parse", "missing-editor-file.fol"],
+        [
+            "fol",
+            "tool",
+            "--output",
+            "json",
+            "parse",
+            "missing-editor-file.fol",
+        ],
         repo_root(),
     )
     .expect_err("missing file should fail");
@@ -140,8 +154,13 @@ fn editor_lsp_reports_workspace_guidance_when_no_root_is_present() {
     let parsed: serde_json::Value = serde_json::from_str(&rendered).expect("stderr should be json");
 
     assert_eq!(parsed["kind"], "FrontendWorkspaceNotFound");
-    let notes = parsed["notes"].as_array().expect("notes should be an array");
-    assert!(notes.iter().any(|note| note.as_str().unwrap_or("").contains("start the editor inside a FOL package or workspace root")));
+    let notes = parsed["notes"]
+        .as_array()
+        .expect("notes should be an array");
+    assert!(notes.iter().any(|note| note
+        .as_str()
+        .unwrap_or("")
+        .contains("start the editor inside a FOL package or workspace root")));
 
     fs::remove_dir_all(root).ok();
 }
@@ -151,13 +170,16 @@ fn tree_generate_command_writes_bundle_layout() {
     let root = temp_root("tree_generate");
     let output = root.join("bundle");
 
-    let (_, result) = run_command_from_args_in_dir([
-        "fol",
-        "tool",
-        "tree",
-        "generate",
-        output.to_string_lossy().as_ref(),
-    ], repo_root())
+    let (_, result) = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "tree",
+            "generate",
+            output.to_string_lossy().as_ref(),
+        ],
+        repo_root(),
+    )
     .expect("tree generate should dispatch");
 
     assert_eq!(result.command, "tree generate");

@@ -156,7 +156,8 @@ mod tests {
 
         assert_eq!(error.kind(), LoweringErrorKind::InvalidInput);
         assert_eq!(
-            error.diagnostic_location()
+            error
+                .diagnostic_location()
                 .expect("lowering errors should expose diagnostic locations")
                 .line,
             4
@@ -182,6 +183,9 @@ mod tests {
         .to_diagnostic();
 
         assert_eq!(diagnostic.code, "L1001");
-        assert_eq!(diagnostic.primary_label.as_ref().map(|label| label.line), Some(2));
+        assert_eq!(
+            diagnostic.primary_label.as_ref().map(|label| label.line),
+            Some(2)
+        );
     }
 }
