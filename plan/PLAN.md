@@ -573,6 +573,29 @@ Tests required:
 Exit criteria:
 - documented chained build style works as real FOL code
 
+Round 1 slice tracker:
+
+- [x] Slice 1. Add a concrete Phase 8 implementation tracker for step handles
+  and chaining.
+- [ ] Slice 2. Extend install requests and handles with step identity so install
+  operations can participate in step dependency chains.
+- [ ] Slice 3. Replay install dependency edges through the shared build
+  evaluator instead of treating installs as dependency-isolated metadata.
+- [ ] Slice 4. Track step-like handle values during build-source extraction so
+  chained calls can bind and reuse `step` / `run` / `install` results.
+- [ ] Slice 5. Parse nested method-call receivers in build-source evaluation so
+  expressions like `graph.step(...).depend_on(...)` can be evaluated directly.
+- [ ] Slice 6. Support `StepHandle.depend_on(...)` chaining in shared build
+  evaluation.
+- [ ] Slice 7. Support `RunHandle.depend_on(...)` chaining in shared build
+  evaluation.
+- [ ] Slice 8. Support `InstallHandle.depend_on(...)` chaining in shared build
+  evaluation.
+- [ ] Slice 9. Deduplicate repeated step dependencies so chained and explicit
+  dependency wiring stays stable.
+- [ ] Slice 10. Re-export, test, and lock the full Phase 8 step-handle and
+  chaining round.
+
 ## Phase 9: Options As Real Values
 
 Goal:
