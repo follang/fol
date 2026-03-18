@@ -761,7 +761,7 @@ Round 1 slice tracker:
   wording to absorbed-build terminology.
 - [x] Slice 8. Update scaffolded `build.fol` templates to describe
   compatibility defs as migration-only controls under the real build entry.
-- [ ] Slice 9. Update high-level README wording to reflect graph-driven routing
+- [x] Slice 9. Update high-level README wording to reflect graph-driven routing
   and compatibility absorption status.
 - [ ] Slice 10. Re-export, test, and lock the Phase 12 compatibility-absorption
   cleanup round.

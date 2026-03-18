@@ -83,13 +83,14 @@ Current import surface:
   roots belong to `pkg`
 - `pkg` roots require both `package.yaml` and `build.fol`
 - `package.yaml` is metadata-only; `build.fol` is the package build entry file
-- today `fol` still executes compatibility-style dependency/export/root definitions
-  from `build.fol`
-- the routed `fol code build/run/test/check` path now starts from `build.fol`
-  by default and rejects modern graph-entry packages explicitly until graph
-  execution lands
-- the long-term direction is one canonical `build.fol` entrypoint that can host
-  both compatibility package controls and a real `build(...)` graph definition
+- compatibility-style dependency/export/root definitions in `build.fol` now act
+  as a migration subset of the real build model
+- `fol code build/run/test/check` route workspace execution from `build.fol`
+  and use semantic build classification for compatibility, modern, and hybrid
+  packages
+- the active direction is one canonical `build.fol` entrypoint that can host
+  both migration-era compatibility controls and a real `build(...)` graph
+  definition
 - stray `package.fol` files are ignored
 - consumer-visible `pkg` names come only from build-declared exported roots
 
