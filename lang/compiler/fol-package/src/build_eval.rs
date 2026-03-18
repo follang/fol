@@ -9,7 +9,7 @@ use crate::build_codegen::{CodegenRequest, SystemToolRequest};
 use crate::build_runtime::{
     BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
     BuildRuntimeDependency, BuildRuntimeDependencyQuery, BuildRuntimeDependencyQueryKind,
-    BuildRuntimeGeneratedFileKind, BuildRuntimeProgram,
+    BuildRuntimeGeneratedFile, BuildRuntimeGeneratedFileKind, BuildRuntimeProgram,
     BuildRuntimeStepBinding, BuildRuntimeStepBindingKind,
 };
 use crate::build_option::{
@@ -515,6 +515,7 @@ pub struct EvaluatedBuildSource {
 pub struct EvaluatedBuildProgram {
     pub program: BuildRuntimeProgram,
     pub artifacts: Vec<BuildRuntimeArtifact>,
+    pub generated_files: Vec<BuildRuntimeGeneratedFile>,
     pub dependencies: Vec<BuildRuntimeDependency>,
     pub dependency_queries: Vec<BuildRuntimeDependencyQuery>,
     pub step_bindings: Vec<BuildRuntimeStepBinding>,
@@ -1332,10 +1333,22 @@ fn evaluated_build_program_from_extracted(
             evaluation_mode: request.evaluation_mode,
         })
         .collect::<Vec<_>>();
+    let generated_files = extracted
+        .generated_files
+        .iter()
+        .map(|generated| {
+            BuildRuntimeGeneratedFile::new(
+                generated.name.clone(),
+                generated.relative_path.clone(),
+                generated.kind,
+            )
+        })
+        .collect::<Vec<_>>();
 
     EvaluatedBuildProgram {
         program: BuildRuntimeProgram::new(BuildExecutionRepresentation::RestrictedRuntimeIr),
         artifacts,
+        generated_files,
         dependencies,
         dependency_queries: extracted.dependency_queries.clone(),
         step_bindings,
@@ -2541,6 +2554,44 @@ mod tests {
     }
 
     #[test]
+    fn build_source_evaluator_keeps_generated_outputs_in_evaluated_programs() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
+            "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("generated outputs should evaluate")
+            .expect("build body should produce a graph");
+
+        assert_eq!(evaluated.evaluated.generated_files.len(), 2);
+        assert!(evaluated
+            .evaluated
+            .generated_files
+            .iter()
+            .any(|file| file.relative_path == "gen/version.fol"
+                && file.kind == BuildRuntimeGeneratedFileKind::Write));
+        assert!(evaluated
+            .evaluated
+            .generated_files
+            .iter()
+            .any(|file| file.relative_path == "gen/logo.svg"
+                && file.kind == BuildRuntimeGeneratedFileKind::Copy));
+    }
+
+    #[test]
     fn build_source_evaluator_records_dependency_module_and_artifact_queries() {
         let source = concat!(
             "def build(graph: Graph): Graph = {\n",
@@ -3670,6 +3721,11 @@ mod tests {
                 crate::build_runtime::BuildRuntimeArtifactKind::Executable,
                 "src/app.fol",
             )],
+            generated_files: vec![crate::build_runtime::BuildRuntimeGeneratedFile::new(
+                "version",
+                "gen/version.fol",
+                crate::build_runtime::BuildRuntimeGeneratedFileKind::Write,
+            )],
             dependencies: vec![crate::build_runtime::BuildRuntimeDependency {
                 alias: "core".to_string(),
                 package: "org/core".to_string(),
@@ -3685,6 +3741,7 @@ mod tests {
         };
 
         assert_eq!(evaluated.artifacts.len(), 1);
+        assert_eq!(evaluated.generated_files.len(), 1);
         assert_eq!(evaluated.dependencies.len(), 1);
         assert_eq!(evaluated.step_bindings.len(), 1);
         assert_eq!(evaluated.result.package_root, "/pkg");

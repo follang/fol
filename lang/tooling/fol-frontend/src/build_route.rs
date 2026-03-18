@@ -351,6 +351,7 @@ fn plan_member_default_execution(
                 fol_package::BuildExecutionRepresentation::RestrictedRuntimeIr,
             ),
             artifacts,
+            generated_files: Vec::new(),
             dependencies: Vec::new(),
             dependency_queries: Vec::new(),
             step_bindings,
@@ -835,6 +836,9 @@ mod tests {
                 fol_package::BuildExecutionRepresentation::RestrictedRuntimeIr,
             ),
             artifacts: Vec::new(),
+            generated_files: Vec::new(),
+            dependencies: Vec::new(),
+            dependency_queries: Vec::new(),
             step_bindings: Vec::new(),
             result: fol_package::BuildEvaluationResult::new(
                 fol_package::BuildEvaluationBoundary::GraphConstructionSubset,
@@ -842,6 +846,7 @@ mod tests {
                 "/tmp/demo/app",
                 fol_package::BuildOptionDeclarationSet::new(),
                 fol_package::ResolvedBuildOptionSet::new(),
+                Vec::new(),
                 graph.clone(),
             ),
         };
