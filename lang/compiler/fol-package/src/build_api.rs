@@ -211,12 +211,14 @@ pub struct RunHandle {
 pub struct InstallArtifactRequest {
     pub name: String,
     pub artifact: BuildArtifactHandle,
+    pub depends_on: Vec<crate::build_graph::BuildStepId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstallFileRequest {
     pub name: String,
     pub path: String,
+    pub depends_on: Vec<crate::build_graph::BuildStepId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -237,6 +239,7 @@ pub struct CopyFileRequest {
 pub struct InstallDirRequest {
     pub name: String,
     pub path: String,
+    pub depends_on: Vec<crate::build_graph::BuildStepId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -431,6 +434,9 @@ impl<'a> BuildApi<'a> {
         let step_id = self
             .graph
             .add_step(crate::build_graph::BuildStepKind::Install, request.name.clone());
+        for dependency in &request.depends_on {
+            self.graph.add_step_dependency(step_id, *dependency);
+        }
         let install_id = self.graph.add_install_with_target(
             crate::build_graph::BuildInstallKind::Artifact,
             request.name.clone(),
@@ -450,6 +456,9 @@ impl<'a> BuildApi<'a> {
         let step_id = self
             .graph
             .add_step(crate::build_graph::BuildStepKind::Install, request.name.clone());
+        for dependency in &request.depends_on {
+            self.graph.add_step_dependency(step_id, *dependency);
+        }
         let generated = self.graph.add_generated_file(
             crate::build_graph::BuildGeneratedFileKind::Copy,
             request.path,
@@ -519,6 +528,7 @@ impl<'a> BuildApi<'a> {
         self.install_file(InstallFileRequest {
             name: projection.install_name,
             path: projection.install_path,
+            depends_on: Vec::new(),
         })
     }
 
@@ -527,6 +537,9 @@ impl<'a> BuildApi<'a> {
         let step_id = self
             .graph
             .add_step(crate::build_graph::BuildStepKind::Install, request.name.clone());
+        for dependency in &request.depends_on {
+            self.graph.add_step_dependency(step_id, *dependency);
+        }
         let install_id = self.graph.add_install_with_target(
             crate::build_graph::BuildInstallKind::Directory,
             request.name.clone(),
@@ -863,18 +876,21 @@ mod tests {
             .install(InstallArtifactRequest {
                 name: "install-app".to_string(),
                 artifact: exe.clone(),
+                depends_on: Vec::new(),
             })
             .expect("valid artifact install should succeed");
         let file_install = api
             .install_file(InstallFileRequest {
                 name: "install-config".to_string(),
                 path: "share/config.json".to_string(),
+                depends_on: Vec::new(),
             })
             .expect("valid file install should succeed");
         let dir_install = api
             .install_dir(InstallDirRequest {
                 name: "install-assets".to_string(),
                 path: "share/assets".to_string(),
+                depends_on: Vec::new(),
             })
             .expect("valid directory install should succeed");
 

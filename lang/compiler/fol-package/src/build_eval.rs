@@ -425,6 +425,7 @@ pub struct BuildEvaluationRunRequest {
 pub struct BuildEvaluationInstallArtifactRequest {
     pub name: String,
     pub artifact: String,
+    pub depends_on: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -626,9 +627,22 @@ pub fn evaluate_build_plan(
                         )
                     },
                 )?;
+                let depends_on = operation_request
+                    .depends_on
+                    .iter()
+                    .map(|name| {
+                        step_names.get(name).copied().ok_or_else(|| {
+                            evaluation_invalid_input(
+                                format!("unknown step dependency '{name}'"),
+                                operation.origin.clone(),
+                            )
+                        })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
                 api.install(crate::InstallArtifactRequest {
                     name: operation_request.name.clone(),
                     artifact,
+                    depends_on,
                 })
                 .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
             }
@@ -1243,7 +1257,11 @@ fn parse_install_call_ast(
     extracted.operations.push(BuildEvaluationOperation {
         origin,
         kind: BuildEvaluationOperationKind::InstallArtifact(
-            BuildEvaluationInstallArtifactRequest { name, artifact },
+            BuildEvaluationInstallArtifactRequest {
+                name,
+                artifact,
+                depends_on: Vec::new(),
+            },
         ),
     });
     Ok(None)
@@ -1766,6 +1784,7 @@ mod tests {
                         BuildEvaluationInstallArtifactRequest {
                             name: "install-app".to_string(),
                             artifact: "app".to_string(),
+                            depends_on: vec!["build".to_string()],
                         },
                     ),
                 },
@@ -1774,6 +1793,7 @@ mod tests {
                     kind: BuildEvaluationOperationKind::InstallDir(InstallDirRequest {
                         name: "install-assets".to_string(),
                         path: "share/assets".to_string(),
+                        depends_on: Vec::new(),
                     }),
                 },
                 BuildEvaluationOperation {
@@ -1789,9 +1809,28 @@ mod tests {
         let result = evaluate_build_plan(&request).expect("graph replay should succeed");
 
         assert_eq!(result.graph.artifacts().len(), 1);
-        assert_eq!(result.graph.steps().len(), 2);
+        assert_eq!(result.graph.steps().len(), 4);
         assert_eq!(result.graph.installs().len(), 2);
         assert_eq!(result.graph.modules().len(), 2);
+        let install_app = result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "install-app")
+            .expect("install-app step should exist");
+        let build = result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "build")
+            .expect("build step should exist");
+        assert_eq!(
+            result
+                .graph
+                .step_dependencies_for(install_app.id)
+                .collect::<Vec<_>>(),
+            vec![build.id]
+        );
     }
 
     #[test]
@@ -1829,6 +1868,7 @@ mod tests {
                 kind: BuildEvaluationOperationKind::InstallDir(InstallDirRequest {
                     name: "install-assets".to_string(),
                     path: String::new(),
+                    depends_on: Vec::new(),
                 }),
             }],
         };

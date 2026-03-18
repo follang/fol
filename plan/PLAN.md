@@ -579,7 +579,7 @@ Round 1 slice tracker:
   and chaining.
 - [x] Slice 2. Extend install requests and handles with step identity so install
   operations can participate in step dependency chains.
-- [ ] Slice 3. Replay install dependency edges through the shared build
+- [x] Slice 3. Replay install dependency edges through the shared build
   evaluator instead of treating installs as dependency-isolated metadata.
 - [ ] Slice 4. Track step-like handle values during build-source extraction so
   chained calls can bind and reuse `step` / `run` / `install` results.
