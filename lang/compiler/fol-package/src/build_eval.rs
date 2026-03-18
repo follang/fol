@@ -19,7 +19,7 @@ use fol_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
 };
 use fol_lexer::lexer::stage3::Elements;
-use fol_parser::ast::{AstNode, Literal, SyntaxOrigin};
+use fol_parser::ast::{AstNode, CallSurface, Literal, SyntaxOrigin};
 use fol_stream::FileStream;
 use fol_types::Glitch;
 use std::{
@@ -842,18 +842,39 @@ fn parse_build_statement_ast(
     match statement {
         AstNode::VarDecl { name, value, .. } => {
             let Some(value) = value.as_deref() else {
+                scope.last_value = None;
                 return Ok(());
             };
             if let Some(value) =
                 parse_build_expression_ast(extracted, scope, build_path, graph_name, value)?
             {
                 scope.values.insert(name.clone(), value);
+                scope.last_value = scope.values.get(name.as_str()).cloned();
+            } else {
+                scope.last_value = None;
             }
             Ok(())
         }
-        AstNode::Return { .. } => Ok(()),
+        AstNode::FunctionCall {
+            surface: CallSurface::DotIntrinsic,
+            name,
+            args,
+            ..
+        } => {
+            let Some(receiver) = scope.last_value.clone() else {
+                return Err(build_source_unsupported(build_path, name, 1, name.len()));
+            };
+            scope.last_value =
+                parse_build_handle_method_ast(extracted, scope, build_path, receiver, name, args)?;
+            Ok(())
+        }
+        AstNode::Return { .. } => {
+            scope.last_value = None;
+            Ok(())
+        }
         _ => {
-            parse_build_expression_ast(extracted, scope, build_path, graph_name, statement)?;
+            scope.last_value =
+                parse_build_expression_ast(extracted, scope, build_path, graph_name, statement)?;
             Ok(())
         }
     }
@@ -887,14 +908,29 @@ fn parse_build_expression_ast(
 }
 
 fn parse_build_handle_method_ast(
-    _extracted: &mut ExtractedBuildProgram,
-    _scope: &mut BuildExtractionScope,
+    extracted: &mut ExtractedBuildProgram,
+    scope: &mut BuildExtractionScope,
     build_path: &Path,
     receiver: BuildExtractionValue,
     method: &str,
-    _args: &[AstNode],
+    args: &[AstNode],
 ) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
     match receiver {
+        BuildExtractionValue::StepHandle(step_name) if method == "depend_on" => {
+            let depends_on = args
+                .iter()
+                .filter_map(|arg| resolve_step_reference_ast(arg, scope))
+                .collect::<Vec<_>>();
+            if depends_on.is_empty() || depends_on.len() != args.len() {
+                return Err(build_source_unsupported(build_path, method, 1, method.len()));
+            }
+            append_dependencies_to_operation(
+                extracted,
+                &BuildExtractionValue::StepHandle(step_name.clone()),
+                &depends_on,
+            )?;
+            Ok(Some(BuildExtractionValue::StepHandle(step_name)))
+        }
         BuildExtractionValue::StepHandle(_)
         | BuildExtractionValue::RunHandle(_)
         | BuildExtractionValue::InstallHandle(_) => Err(build_source_unsupported(
@@ -904,6 +940,39 @@ fn parse_build_handle_method_ast(
             method.len(),
         )),
         _ => Ok(None),
+    }
+}
+
+fn append_dependencies_to_operation(
+    extracted: &mut ExtractedBuildProgram,
+    handle: &BuildExtractionValue,
+    depends_on: &[String],
+) -> Result<(), BuildEvaluationError> {
+    let Some(operation) = extracted.operations.iter_mut().rev().find(|operation| {
+        matches!(
+            &operation.kind,
+            BuildEvaluationOperationKind::Step(request)
+                if matches!(handle, BuildExtractionValue::StepHandle(step_name) if request.name == *step_name)
+        )
+    }) else {
+        let step_name = match handle {
+            BuildExtractionValue::StepHandle(step_name)
+            | BuildExtractionValue::RunHandle(step_name)
+            | BuildExtractionValue::InstallHandle(step_name) => step_name,
+            _ => unreachable!("dependency handles must be step-like"),
+        };
+        return Err(evaluation_error(
+            BuildEvaluationErrorKind::InvalidInput,
+            format!("unknown chained step '{step_name}'"),
+            None,
+        ));
+    };
+    match &mut operation.kind {
+        BuildEvaluationOperationKind::Step(request) => {
+            request.depends_on.extend(depends_on.iter().cloned());
+            Ok(())
+        }
+        _ => unreachable!("matched step operation kind"),
     }
 }
 
@@ -1079,6 +1148,7 @@ fn extract_build_body(source: &str) -> Option<(String, String, usize)> {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct BuildExtractionScope {
     values: BTreeMap<String, BuildExtractionValue>,
+    last_value: Option<BuildExtractionValue>,
     next_run_index: usize,
     next_install_index: usize,
 }
@@ -2176,11 +2246,11 @@ mod tests {
     }
 
     #[test]
-    fn build_source_evaluator_no_longer_silently_ignores_unknown_handle_methods() {
+    fn build_source_evaluator_rejects_unknown_handle_methods_explicitly() {
         let source = concat!(
             "def build(graph: Graph): Graph = {\n",
             "    var docs = graph.step(\"docs\");\n",
-            "    docs.depend_on(docs);\n",
+            "    docs.finish(docs);\n",
             "    return graph\n",
             "}\n",
         );
@@ -2198,7 +2268,54 @@ mod tests {
             .expect_err("unsupported handle methods should fail explicitly");
 
         assert_eq!(error.kind(), BuildEvaluationErrorKind::Unsupported);
-        assert!(error.message().contains("depend_on"));
+        assert!(error.message().contains("finish"));
+    }
+
+    #[test]
+    fn build_source_evaluator_supports_step_handle_depend_on_chains() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var lint = graph.step(\"lint\");\n",
+            "    graph.step(\"docs\").depend_on(lint);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("step-handle chaining should evaluate")
+            .expect("build body should produce operations");
+
+        let docs = evaluated
+            .result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "docs")
+            .expect("docs step should exist");
+        let lint = evaluated
+            .result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "lint")
+            .expect("lint step should exist");
+        assert_eq!(
+            evaluated
+                .result
+                .graph
+                .step_dependencies_for(docs.id)
+                .collect::<Vec<_>>(),
+            vec![lint.id]
+        );
     }
 
     #[test]
