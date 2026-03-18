@@ -33,7 +33,7 @@ Same policy as before. If something is replaced, the old thing is deleted.
 - [x] Slice 6. Backend: codegen string escaping, generated code safety
 - [x] Slice 7. Package: lockfile version check, git hostname validation, metadata parsing
 - [x] Slice 8. Build executor: recursion limits, scope bounds, name validation, panic removal
-- [ ] Slice 9. Frontend and editor: CLI dispatch safety, binary output capture, diagnostics
+- [x] Slice 9. Frontend and editor: CLI dispatch safety, binary output capture, diagnostics
 - [ ] Slice 10. Cross-cutting: version unification, dependency cleanup, legacy removal
 
 ---

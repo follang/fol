@@ -10,4 +10,4 @@ fol-stream = { path = "../fol-stream" }
 fol-lexer = { path = "../fol-lexer" }
 fol-diagnostics = { path = "../fol-diagnostics" }
 dyn-clone = "1.0"
-colored = "1.9"
+colored = "2"

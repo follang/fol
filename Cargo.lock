@@ -171,7 +171,7 @@ dependencies = [
 
 [[package]]
 name = "fol-backend"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "fol-intrinsics",
  "fol-lower",
@@ -195,7 +195,7 @@ dependencies = [
 name = "fol-diagnostics"
 version = "0.1.4"
 dependencies = [
- "colored 1.9.4",
+ "colored 2.2.0",
  "fol-types",
  "serde",
  "serde_json",
@@ -203,7 +203,7 @@ dependencies = [
 
 [[package]]
 name = "fol-editor"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "fol-diagnostics",
  "fol-intrinsics",
@@ -220,7 +220,7 @@ dependencies = [
 
 [[package]]
 name = "fol-frontend"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "clap",
  "clap_complete",
@@ -241,13 +241,13 @@ dependencies = [
 
 [[package]]
 name = "fol-intrinsics"
-version = "0.1.0"
+version = "0.1.4"
 
 [[package]]
 name = "fol-lexer"
 version = "0.1.4"
 dependencies = [
- "colored 1.9.4",
+ "colored 2.2.0",
  "dyn-clone",
  "fol-stream",
  "fol-types",
@@ -257,7 +257,7 @@ dependencies = [
 
 [[package]]
 name = "fol-lower"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "fol-diagnostics",
  "fol-intrinsics",
@@ -286,7 +286,7 @@ dependencies = [
 name = "fol-parser"
 version = "0.1.4"
 dependencies = [
- "colored 1.9.4",
+ "colored 2.2.0",
  "dyn-clone",
  "fol-diagnostics",
  "fol-lexer",
@@ -309,19 +309,19 @@ dependencies = [
 
 [[package]]
 name = "fol-runtime"
-version = "0.1.0"
+version = "0.1.4"
 
 [[package]]
 name = "fol-stream"
 version = "0.1.4"
 dependencies = [
- "colored 1.9.4",
+ "colored 2.2.0",
  "fol-types",
 ]
 
 [[package]]
 name = "fol-typecheck"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "fol-diagnostics",
  "fol-intrinsics",
@@ -334,7 +334,7 @@ dependencies = [
 name = "fol-types"
 version = "0.1.4"
 dependencies = [
- "colored 1.9.4",
+ "colored 2.2.0",
  "dyn-clone",
  "terminal_size",
 ]
