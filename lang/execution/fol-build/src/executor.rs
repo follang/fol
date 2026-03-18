@@ -22,6 +22,18 @@ use fol_stream::FileStream;
 use std::collections::BTreeMap;
 use std::path::Path;
 
+const MAX_EVAL_DEPTH: usize = 256;
+const MAX_SCOPE_SIZE: usize = 10_000;
+
+fn is_valid_identifier(name: &str) -> bool {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(c) if c.is_ascii_lowercase() => {}
+        _ => return false,
+    }
+    chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_' || c == '-')
+}
+
 // ---- Extraction output types (public so eval.rs can build EvaluatedBuildProgram) ---
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -139,6 +151,7 @@ pub struct BuildBodyExecutor {
     last_value: Option<ExecValue>,
     /// Resolved values for standard options (target, optimize), used when evaluating `when` conditions.
     resolved_inputs: BTreeMap<String, String>,
+    recursion_depth: usize,
 }
 
 impl BuildBodyExecutor {
@@ -239,6 +252,7 @@ impl BuildBodyExecutor {
             next_install_index: 0,
             last_value: None,
             resolved_inputs: BTreeMap::new(),
+            recursion_depth: 0,
         };
 
         Ok(Some((executor, body)))
@@ -257,9 +271,18 @@ impl BuildBodyExecutor {
     }
 
     fn exec_body(&mut self, stmts: &[AstNode]) -> Result<(), BuildEvaluationError> {
+        self.recursion_depth += 1;
+        if self.recursion_depth > MAX_EVAL_DEPTH {
+            self.recursion_depth -= 1;
+            return Err(BuildEvaluationError::new(
+                BuildEvaluationErrorKind::InvalidInput,
+                format!("build script exceeded maximum recursion depth ({MAX_EVAL_DEPTH})"),
+            ));
+        }
         for stmt in stmts {
             self.exec_stmt(stmt)?;
         }
+        self.recursion_depth -= 1;
         Ok(())
     }
 
@@ -271,6 +294,18 @@ impl BuildBodyExecutor {
                     return Ok(());
                 };
                 if let Some(v) = self.eval_expr(value)? {
+                    if !is_valid_identifier(name) {
+                        return Err(BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            format!("invalid variable name '{}': names must match [a-z][a-z0-9_-]*", name),
+                        ));
+                    }
+                    if self.scope.len() >= MAX_SCOPE_SIZE {
+                        return Err(BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            format!("build script exceeded maximum scope size ({MAX_SCOPE_SIZE})"),
+                        ));
+                    }
                     self.scope.insert(name.clone(), v.clone());
                     self.last_value = Some(v);
                 } else {
@@ -368,6 +403,12 @@ impl BuildBodyExecutor {
             LoopCondition::Iteration { var, iterable, .. } => {
                 let items = self.eval_iterable(iterable)?;
                 for item in items {
+                    if self.scope.len() >= MAX_SCOPE_SIZE {
+                        return Err(BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            format!("build script exceeded maximum scope size ({MAX_SCOPE_SIZE})"),
+                        ));
+                    }
                     self.scope.insert(var.clone(), item);
                     self.exec_body(body)?;
                 }
@@ -487,6 +528,20 @@ impl BuildBodyExecutor {
     }
 
     fn eval_expr(&mut self, expr: &AstNode) -> Result<Option<ExecValue>, BuildEvaluationError> {
+        self.recursion_depth += 1;
+        if self.recursion_depth > MAX_EVAL_DEPTH {
+            self.recursion_depth -= 1;
+            return Err(BuildEvaluationError::new(
+                BuildEvaluationErrorKind::InvalidInput,
+                format!("build script exceeded maximum recursion depth ({MAX_EVAL_DEPTH})"),
+            ));
+        }
+        let result = self.eval_expr_inner(expr);
+        self.recursion_depth -= 1;
+        result
+    }
+
+    fn eval_expr_inner(&mut self, expr: &AstNode) -> Result<Option<ExecValue>, BuildEvaluationError> {
         match expr {
             AstNode::Identifier { name, .. } if name == &self.graph_param => Ok(None),
             AstNode::Identifier { name, .. } => Ok(self.scope.get(name.as_str()).cloned()),
@@ -659,6 +714,12 @@ impl BuildBodyExecutor {
                 let name = self
                     .resolve_field_string(fields, "name")
                     .ok_or_else(|| self.unsupported(method))?;
+                if !is_valid_identifier(&name) {
+                    return Err(BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        format!("invalid option name '{}': names must match [a-z][a-z0-9_-]*", name),
+                    ));
+                }
                 let kind_str = self
                     .resolve_field_string(fields, "kind")
                     .ok_or_else(|| self.unsupported(method))?;
@@ -684,6 +745,12 @@ impl BuildBodyExecutor {
                     .first()
                     .and_then(|a| self.resolve_string(a))
                     .ok_or_else(|| self.unsupported(method))?;
+                if !is_valid_identifier(&name) {
+                    return Err(BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        format!("invalid step name '{}': names must match [a-z][a-z0-9_-]*", name),
+                    ));
+                }
                 let depends_on = args
                     .iter()
                     .skip(1)
@@ -1123,7 +1190,12 @@ impl BuildBodyExecutor {
                     }),
                 });
             }
-            _ => unreachable!("eval_artifact_method called with non-artifact method"),
+            _ => {
+                return Err(BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::Internal,
+                    format!("eval_artifact_method called with unexpected method '{method}'"),
+                ));
+            }
         }
 
         Ok(Some(ExecValue::Artifact(artifact)))
@@ -1151,7 +1223,7 @@ impl BuildBodyExecutor {
                     "artifact" => BuildRuntimeDependencyQueryKind::Artifact,
                     "step" => BuildRuntimeDependencyQueryKind::Step,
                     "generated" => BuildRuntimeDependencyQueryKind::GeneratedOutput,
-                    _ => unreachable!(),
+                    _ => return Err(self.unsupported(method)),
                 };
                 self.output.dependency_queries.push(BuildRuntimeDependencyQuery {
                     dependency_alias: alias.clone(),
@@ -1163,7 +1235,7 @@ impl BuildBodyExecutor {
                     "artifact" => ExecValue::DependencyArtifact { alias, query_name },
                     "step" => ExecValue::DependencyStep { alias, query_name },
                     "generated" => ExecValue::DependencyGenerated { alias, query_name },
-                    _ => unreachable!(),
+                    _ => return Err(self.unsupported(method)),
                 };
                 Ok(Some(result))
             }
