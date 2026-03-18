@@ -439,9 +439,26 @@ pub struct BuildEvaluationResult {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+enum BuildExtractionConfigValue {
+    Literal(String),
+    OptionRef(BuildExtractionOptionRef),
+}
+
+impl BuildExtractionConfigValue {
+    fn placeholder_string(&self) -> String {
+        match self {
+            Self::Literal(value) => value.clone(),
+            Self::OptionRef(option) => option.name.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ExtractedBuildArtifact {
     pub name: String,
-    pub root_module: String,
+    pub root_module: BuildExtractionConfigValue,
+    pub target: Option<BuildExtractionConfigValue>,
+    pub optimize: Option<BuildExtractionConfigValue>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -1205,14 +1222,14 @@ fn evaluated_build_program_from_extracted(
             BuildRuntimeArtifact::new(
                 artifact.name.clone(),
                 BuildRuntimeArtifactKind::Executable,
-                artifact.root_module.clone(),
+                artifact.root_module.placeholder_string(),
             )
         })
         .chain(extracted.test_artifacts.iter().map(|artifact| {
             BuildRuntimeArtifact::new(
                 artifact.name.clone(),
                 BuildRuntimeArtifactKind::Test,
-                artifact.root_module.clone(),
+                artifact.root_module.placeholder_string(),
             )
         }))
         .collect::<Vec<_>>();
@@ -1293,6 +1310,27 @@ fn resolve_build_string_arg_ast(
     }
 }
 
+fn parse_build_config_value_ast(
+    node: &AstNode,
+    scope: &BuildExtractionScope,
+    allowed_option_kinds: &[BuildExtractionOptionKind],
+) -> Option<BuildExtractionConfigValue> {
+    match node {
+        AstNode::Literal(Literal::String(value)) => {
+            Some(BuildExtractionConfigValue::Literal(value.clone()))
+        }
+        AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
+            Some(BuildExtractionValue::OptionRef(option))
+                if allowed_option_kinds.contains(&option.kind) =>
+            {
+                Some(BuildExtractionConfigValue::OptionRef(option.clone()))
+            }
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 fn parse_build_option_kind_ast(
     node: &AstNode,
     scope: &BuildExtractionScope,
@@ -1351,7 +1389,9 @@ fn resolve_artifact_reference_ast(
     match node {
         AstNode::Literal(Literal::String(value)) => Some(ExtractedBuildArtifact {
             name: value.clone(),
-            root_module: String::new(),
+            root_module: BuildExtractionConfigValue::Literal(String::new()),
+            target: None,
+            optimize: None,
         }),
         AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
             Some(BuildExtractionValue::Artifact(artifact)) => Some(artifact.clone()),
@@ -1390,7 +1430,7 @@ fn parse_named_artifact_call_ast(
         column: 1,
         length: method.len(),
     });
-    let (name, root_module) = match args {
+    let (name, root_module, target, optimize) = match args {
         [AstNode::RecordInit { fields, .. }] => {
             let name = fields
                 .iter()
@@ -1400,52 +1440,88 @@ fn parse_named_artifact_call_ast(
             let root_module = fields
                 .iter()
                 .find(|field| field.name == "root" || field.name == "root_module")
-                .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+                .and_then(|field| {
+                    parse_build_config_value_ast(
+                        &field.value,
+                        scope,
+                        &[BuildExtractionOptionKind::Path, BuildExtractionOptionKind::String],
+                    )
+                })
                 .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
-            (name, root_module)
+            let target = fields.iter().find(|field| field.name == "target").and_then(|field| {
+                parse_build_config_value_ast(
+                    &field.value,
+                    scope,
+                    &[BuildExtractionOptionKind::Target, BuildExtractionOptionKind::String],
+                )
+            });
+            let optimize = fields
+                .iter()
+                .find(|field| field.name == "optimize")
+                .and_then(|field| {
+                    parse_build_config_value_ast(
+                        &field.value,
+                        scope,
+                        &[BuildExtractionOptionKind::Optimize, BuildExtractionOptionKind::String],
+                    )
+                });
+            (name, root_module, target, optimize)
         }
         [name, root_module] => {
             let Some(name) = resolve_build_string_arg_ast(name, scope) else {
                 return Err(build_source_unsupported(build_path, method, 1, method.len()));
             };
-            let Some(root_module) = resolve_build_string_arg_ast(root_module, scope) else {
+            let Some(root_module) = parse_build_config_value_ast(
+                root_module,
+                scope,
+                &[BuildExtractionOptionKind::Path, BuildExtractionOptionKind::String],
+            ) else {
                 return Err(build_source_unsupported(build_path, method, 1, method.len()));
             };
-            (name, root_module)
+            (name, root_module, None, None)
         }
         _ => return Err(build_source_unsupported(build_path, method, 1, method.len())),
     };
     let artifact = ExtractedBuildArtifact {
         name: name.clone(),
         root_module: root_module.clone(),
+        target,
+        optimize,
     };
+    let root_module_placeholder = root_module.placeholder_string();
     match method {
         "add_exe" => {
             extracted.executable_artifacts.push(artifact.clone());
             extracted.operations.push(BuildEvaluationOperation {
                 origin,
-                kind: BuildEvaluationOperationKind::AddExe(ExecutableRequest { name, root_module }),
+                kind: BuildEvaluationOperationKind::AddExe(ExecutableRequest {
+                    name,
+                    root_module: root_module_placeholder,
+                }),
             });
         }
         "add_static_lib" => extracted.operations.push(BuildEvaluationOperation {
             origin,
             kind: BuildEvaluationOperationKind::AddStaticLib(StaticLibraryRequest {
                 name,
-                root_module,
+                root_module: root_module_placeholder,
             }),
         }),
         "add_shared_lib" => extracted.operations.push(BuildEvaluationOperation {
             origin,
             kind: BuildEvaluationOperationKind::AddSharedLib(SharedLibraryRequest {
                 name,
-                root_module,
+                root_module: root_module_placeholder,
             }),
         }),
         "add_test" => {
             extracted.test_artifacts.push(artifact.clone());
             extracted.operations.push(BuildEvaluationOperation {
                 origin,
-                kind: BuildEvaluationOperationKind::AddTest(TestArtifactRequest { name, root_module }),
+                kind: BuildEvaluationOperationKind::AddTest(TestArtifactRequest {
+                    name,
+                    root_module: root_module_placeholder,
+                }),
             });
         }
         _ => return Err(build_source_unsupported(build_path, method, 1, method.len())),
@@ -1591,8 +1667,10 @@ fn evaluation_error(
 mod tests {
     use super::{
         canonical_graph_construction_capabilities, evaluate_build_plan, evaluate_build_source,
-        forbidden_capability_error, forbidden_capability_message, AllowedBuildTimeOperation,
-        BuildEvaluationBoundary, BuildEvaluationError, BuildEnvironmentSelectionPolicy,
+        extract_build_program_from_source, forbidden_capability_error,
+        forbidden_capability_message, AllowedBuildTimeOperation, BuildEvaluationBoundary,
+        BuildEvaluationError, BuildEnvironmentSelectionPolicy,
+        BuildExtractionConfigValue,
         BuildEvaluationErrorKind, BuildEvaluationInputEnvelope, BuildEvaluationInputs,
         BuildExtractionOptionKind, BuildExtractionOptionRef, BuildExtractionScope,
         BuildExtractionValue, BuildRuntimeCapabilityModel, EvaluatedBuildProgram,
@@ -1887,6 +1965,45 @@ mod tests {
                 kind: BuildExtractionOptionKind::Target
             })) if name == "target"
         ));
+    }
+
+    #[test]
+    fn build_source_extraction_keeps_deferred_artifact_option_config_values() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var root = graph.option({ name = \"root\", kind = \"path\", default = \"src/app.fol\" });\n",
+            "    var target = graph.standard_target();\n",
+            "    var optimize = graph.standard_optimize();\n",
+            "    graph.add_exe({ name = \"app\", root = root, target = target, optimize = optimize });\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let extracted = extract_build_program_from_source(&build_path, source)
+            .expect("artifact extraction should succeed");
+
+        let artifact = extracted
+            .executable_artifacts
+            .iter()
+            .find(|artifact| artifact.name == "app")
+            .expect("artifact should be recorded");
+
+        assert!(matches!(
+            &artifact.root_module,
+            BuildExtractionConfigValue::OptionRef(BuildExtractionOptionRef { name, kind })
+                if name == "root" && *kind == BuildExtractionOptionKind::Path
+        ));
+        assert!(matches!(
+            artifact.target.as_ref(),
+            Some(BuildExtractionConfigValue::OptionRef(BuildExtractionOptionRef { name, kind }))
+                if name == "target" && *kind == BuildExtractionOptionKind::Target
+        ));
+        assert!(matches!(
+            artifact.optimize.as_ref(),
+            Some(BuildExtractionConfigValue::OptionRef(BuildExtractionOptionRef { name, kind }))
+                if name == "optimize" && *kind == BuildExtractionOptionKind::Optimize
+        ));
+        drop(package_root);
     }
 
     #[test]

@@ -629,7 +629,7 @@ Round 1 slice tracker:
   option references.
 - [x] Slice 6. Add shared build-source parsing for `graph.option({ ... })`
   record configs.
-- [ ] Slice 7. Let artifact config fields carry deferred literal-or-option
+- [x] Slice 7. Let artifact config fields carry deferred literal-or-option
   values instead of eager placeholder strings.
 - [ ] Slice 8. Resolve deferred artifact option values into runtime artifact
   metadata for `root`, `target`, and `optimize`.
