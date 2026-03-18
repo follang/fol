@@ -669,7 +669,7 @@ Round 1 slice tracker:
   surfaces in evaluated build results.
 - [x] Slice 6. Parse object-style `graph.dependency({ ... })` configs in shared
   semantic build evaluation.
-- [ ] Slice 7. Support dependency handle queries for modules and artifacts in
+- [x] Slice 7. Support dependency handle queries for modules and artifacts in
   real build code.
 - [ ] Slice 8. Support dependency handle queries for steps and generated
   outputs in real build code.

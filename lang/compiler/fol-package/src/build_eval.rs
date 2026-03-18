@@ -8,7 +8,8 @@ use crate::build_api::{CopyFileRequest, WriteFileRequest};
 use crate::build_codegen::{CodegenRequest, SystemToolRequest};
 use crate::build_runtime::{
     BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
-    BuildRuntimeDependency, BuildRuntimeDependencyQuery, BuildRuntimeProgram,
+    BuildRuntimeDependency, BuildRuntimeDependencyQuery, BuildRuntimeDependencyQueryKind,
+    BuildRuntimeProgram,
     BuildRuntimeStepBinding, BuildRuntimeStepBindingKind,
 };
 use crate::build_option::{
@@ -480,11 +481,19 @@ struct ExtractedBuildDependency {
     pub evaluation_mode: Option<crate::DependencyBuildEvaluationMode>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ExtractedBuildDependencyQuery {
+    pub dependency_alias: String,
+    pub query_name: String,
+    pub kind: BuildRuntimeDependencyQueryKind,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct ExtractedBuildProgram {
     pub operations: Vec<BuildEvaluationOperation>,
     pub executable_artifacts: Vec<ExtractedBuildArtifact>,
     pub test_artifacts: Vec<ExtractedBuildArtifact>,
+    pub dependency_queries: Vec<BuildRuntimeDependencyQuery>,
     pub run_steps: BTreeMap<String, String>,
 }
 
@@ -975,6 +984,22 @@ fn parse_build_handle_method_ast(
     args: &[AstNode],
 ) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
     match receiver {
+        BuildExtractionValue::DependencyHandle(dependency)
+            if method == "module" || method == "artifact" =>
+        {
+            let query = parse_dependency_query_ast(&dependency, scope, build_path, method, args)?;
+            let value = if method == "module" {
+                BuildExtractionValue::DependencyModuleHandle(query.clone())
+            } else {
+                BuildExtractionValue::DependencyArtifactHandle(query.clone())
+            };
+            extracted.dependency_queries.push(BuildRuntimeDependencyQuery {
+                dependency_alias: query.dependency_alias,
+                query_name: query.query_name,
+                kind: query.kind,
+            });
+            Ok(Some(value))
+        }
         BuildExtractionValue::StepHandle(step_name) if method == "depend_on" => {
             let depends_on = args
                 .iter()
@@ -1020,7 +1045,8 @@ fn parse_build_handle_method_ast(
             )?;
             Ok(Some(BuildExtractionValue::InstallHandle(step_name)))
         }
-        BuildExtractionValue::StepHandle(_)
+        BuildExtractionValue::DependencyHandle(_)
+        | BuildExtractionValue::StepHandle(_)
         | BuildExtractionValue::RunHandle(_)
         | BuildExtractionValue::InstallHandle(_) => Err(build_source_unsupported(
             build_path,
@@ -1290,7 +1316,7 @@ fn evaluated_build_program_from_extracted(
         program: BuildRuntimeProgram::new(BuildExecutionRepresentation::RestrictedRuntimeIr),
         artifacts,
         dependencies,
-        dependency_queries: Vec::new(),
+        dependency_queries: extracted.dependency_queries.clone(),
         step_bindings,
         result: result.clone(),
     }
@@ -1346,6 +1372,10 @@ enum BuildExtractionValue {
     OptionRef(BuildExtractionOptionRef),
     Artifact(ExtractedBuildArtifact),
     DependencyHandle(ExtractedBuildDependency),
+    DependencyModuleHandle(ExtractedBuildDependencyQuery),
+    DependencyArtifactHandle(ExtractedBuildDependencyQuery),
+    DependencyStepHandle(ExtractedBuildDependencyQuery),
+    DependencyGeneratedOutputHandle(ExtractedBuildDependencyQuery),
     StepHandle(String),
     RunHandle(String),
     InstallHandle(String),
@@ -1467,6 +1497,33 @@ fn parse_dependency_request_ast(
         alias,
         package,
         evaluation_mode: None,
+    })
+}
+
+fn parse_dependency_query_ast(
+    dependency: &ExtractedBuildDependency,
+    scope: &BuildExtractionScope,
+    build_path: &Path,
+    method: &str,
+    args: &[AstNode],
+) -> Result<ExtractedBuildDependencyQuery, BuildEvaluationError> {
+    let [name] = args else {
+        return Err(build_source_unsupported(build_path, method, 1, method.len()));
+    };
+    let Some(query_name) = resolve_build_string_arg_ast(name, scope) else {
+        return Err(build_source_unsupported(build_path, method, 1, method.len()));
+    };
+    let kind = match method {
+        "module" => BuildRuntimeDependencyQueryKind::Module,
+        "artifact" => BuildRuntimeDependencyQueryKind::Artifact,
+        "step" => BuildRuntimeDependencyQueryKind::Step,
+        "generated" => BuildRuntimeDependencyQueryKind::GeneratedOutput,
+        _ => return Err(build_source_unsupported(build_path, method, 1, method.len())),
+    };
+    Ok(ExtractedBuildDependencyQuery {
+        dependency_alias: dependency.alias.clone(),
+        query_name,
+        kind,
     })
 }
 
@@ -2161,6 +2218,47 @@ mod tests {
         );
         assert_eq!(evaluated.evaluated.dependencies.len(), 1);
         assert_eq!(evaluated.evaluated.dependencies[0].alias, "core");
+    }
+
+    #[test]
+    fn build_source_evaluator_records_dependency_module_and_artifact_queries() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var core = graph.dependency({ alias = \"core\", package = \"org/core\" });\n",
+            "    var module = core.module(\"root\");\n",
+            "    var artifact = core.artifact(\"corelib\");\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("dependency queries should evaluate")
+            .expect("build body should produce a graph");
+
+        assert_eq!(evaluated.evaluated.dependency_queries.len(), 2);
+        assert!(evaluated
+            .evaluated
+            .dependency_queries
+            .iter()
+            .any(|query| query.dependency_alias == "core"
+                && query.query_name == "root"
+                && query.kind == BuildRuntimeDependencyQueryKind::Module));
+        assert!(evaluated
+            .evaluated
+            .dependency_queries
+            .iter()
+            .any(|query| query.dependency_alias == "core"
+                && query.query_name == "corelib"
+                && query.kind == BuildRuntimeDependencyQueryKind::Artifact));
     }
 
     #[test]
