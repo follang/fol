@@ -1,11 +1,17 @@
-use crate::{mangle_package_module_name, mangle_type_name, sanitize_backend_ident, BackendError, BackendErrorKind, BackendResult};
+use crate::{
+    mangle_package_module_name, mangle_type_name, sanitize_backend_ident, BackendError,
+    BackendErrorKind, BackendResult,
+};
 use fol_lower::{
     LoweredBuiltinType, LoweredType, LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeId,
     LoweredTypeTable, LoweredVariantLayout, LoweredWorkspace,
 };
 use fol_resolver::PackageIdentity;
 
-pub fn render_rust_type(type_table: &LoweredTypeTable, type_id: LoweredTypeId) -> BackendResult<String> {
+pub fn render_rust_type(
+    type_table: &LoweredTypeTable,
+    type_id: LoweredTypeId,
+) -> BackendResult<String> {
     render_rust_type_in_workspace(None, type_table, type_id)
 }
 
@@ -225,10 +231,7 @@ fn render_entry_default_variant(
         )
     })?;
     Ok(match default_variant.payload_type {
-        Some(_payload_type) => format!(
-            "Self::{}(Default::default())",
-            default_variant.name,
-        ),
+        Some(_payload_type) => format!("Self::{}(Default::default())", default_variant.name,),
         None => format!("Self::{}", default_variant.name),
     })
 }
@@ -252,7 +255,11 @@ fn render_named_runtime_type(
             if type_decl.runtime_type == type_id {
                 return Ok(format!(
                     "{}::{}",
-                    render_namespace_module_path(workspace, &package.identity, type_decl.source_unit_id)?,
+                    render_namespace_module_path(
+                        workspace,
+                        &package.identity,
+                        type_decl.source_unit_id
+                    )?,
                     mangle_type_name(&package.identity, type_decl.runtime_type, &type_decl.name)
                 ));
             }
@@ -276,7 +283,10 @@ fn render_namespace_module_path(
     let package = workspace.package(package_identity).ok_or_else(|| {
         BackendError::new(
             BackendErrorKind::InvalidInput,
-            format!("package '{}' is missing from workspace", package_identity.display_name),
+            format!(
+                "package '{}' is missing from workspace",
+                package_identity.display_name
+            ),
         )
     })?;
     let source_unit = package
@@ -317,8 +327,14 @@ fn render_namespace_module_path(
 
 fn render_entry_trait_match_arm(variant: &LoweredVariantLayout) -> String {
     match variant.payload_type {
-        Some(_) => format!("            Self::{}(..) => \"{}\",", variant.name, variant.name),
-        None => format!("            Self::{} => \"{}\",", variant.name, variant.name),
+        Some(_) => format!(
+            "            Self::{}(..) => \"{}\",",
+            variant.name, variant.name
+        ),
+        None => format!(
+            "            Self::{} => \"{}\",",
+            variant.name, variant.name
+        ),
     }
 }
 
@@ -351,8 +367,8 @@ mod tests {
     };
     use crate::testing::{package_identity, sample_lowered_workspace};
     use fol_lower::{
-        LoweredBuiltinType, LoweredFieldLayout, LoweredType, LoweredTypeDecl,
-        LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
+        LoweredBuiltinType, LoweredFieldLayout, LoweredType, LoweredTypeDecl, LoweredTypeDeclKind,
+        LoweredTypeTable, LoweredVariantLayout,
     };
     use fol_resolver::{PackageSourceKind, SourceUnitId, SymbolId};
 
@@ -365,11 +381,26 @@ mod tests {
         let char_id = table.intern_builtin(LoweredBuiltinType::Char);
         let never_id = table.intern_builtin(LoweredBuiltinType::Never);
 
-        assert_eq!(render_rust_type(&table, int_id), Ok("rt::FolInt".to_string()));
-        assert_eq!(render_rust_type(&table, float_id), Ok("rt::FolFloat".to_string()));
-        assert_eq!(render_rust_type(&table, bool_id), Ok("rt::FolBool".to_string()));
-        assert_eq!(render_rust_type(&table, char_id), Ok("rt::FolChar".to_string()));
-        assert_eq!(render_rust_type(&table, never_id), Ok("rt::FolNever".to_string()));
+        assert_eq!(
+            render_rust_type(&table, int_id),
+            Ok("rt::FolInt".to_string())
+        );
+        assert_eq!(
+            render_rust_type(&table, float_id),
+            Ok("rt::FolFloat".to_string())
+        );
+        assert_eq!(
+            render_rust_type(&table, bool_id),
+            Ok("rt::FolBool".to_string())
+        );
+        assert_eq!(
+            render_rust_type(&table, char_id),
+            Ok("rt::FolChar".to_string())
+        );
+        assert_eq!(
+            render_rust_type(&table, never_id),
+            Ok("rt::FolNever".to_string())
+        );
     }
 
     #[test]
@@ -381,8 +412,12 @@ mod tests {
             element_type: int_id,
             size: Some(3),
         });
-        let vec_id = table.intern(LoweredType::Vector { element_type: int_id });
-        let seq_id = table.intern(LoweredType::Sequence { element_type: str_id });
+        let vec_id = table.intern(LoweredType::Vector {
+            element_type: int_id,
+        });
+        let seq_id = table.intern(LoweredType::Sequence {
+            element_type: str_id,
+        });
         let set_id = table.intern(LoweredType::Set {
             member_types: vec![int_id],
         });
@@ -391,16 +426,30 @@ mod tests {
             value_type: int_id,
         });
         let option_id = table.intern(LoweredType::Optional { inner: str_id });
-        let error_id = table.intern(LoweredType::Error { inner: Some(str_id) });
+        let error_id = table.intern(LoweredType::Error {
+            inner: Some(str_id),
+        });
 
-        assert_eq!(render_rust_type(&table, str_id), Ok("rt::FolStr".to_string()));
+        assert_eq!(
+            render_rust_type(&table, str_id),
+            Ok("rt::FolStr".to_string())
+        );
         assert_eq!(
             render_rust_type(&table, array_id),
             Ok("rt::FolArray<rt::FolInt, 3>".to_string())
         );
-        assert_eq!(render_rust_type(&table, vec_id), Ok("rt::FolVec<rt::FolInt>".to_string()));
-        assert_eq!(render_rust_type(&table, seq_id), Ok("rt::FolSeq<rt::FolStr>".to_string()));
-        assert_eq!(render_rust_type(&table, set_id), Ok("rt::FolSet<rt::FolInt>".to_string()));
+        assert_eq!(
+            render_rust_type(&table, vec_id),
+            Ok("rt::FolVec<rt::FolInt>".to_string())
+        );
+        assert_eq!(
+            render_rust_type(&table, seq_id),
+            Ok("rt::FolSeq<rt::FolStr>".to_string())
+        );
+        assert_eq!(
+            render_rust_type(&table, set_id),
+            Ok("rt::FolSet<rt::FolInt>".to_string())
+        );
         assert_eq!(
             render_rust_type(&table, map_id),
             Ok("rt::FolMap<rt::FolStr, rt::FolInt>".to_string())
@@ -588,7 +637,9 @@ mod tests {
         assert!(rendered.contains("fn fol_entry_name(&self) -> &'static str"));
         assert!(rendered.contains("\"Status\""));
         assert!(rendered.contains("Self::Ok(..) => \"Ok\""));
-        assert!(rendered.contains("Self::Err(payload) => vec![rt::FolNamedValue::new(\"payload\", payload.to_string())]"));
+        assert!(rendered.contains(
+            "Self::Err(payload) => vec![rt::FolNamedValue::new(\"payload\", payload.to_string())]"
+        ));
         assert!(rendered.contains("Self::Empty => Vec::new()"));
         assert!(rendered.contains("impl rt::FolEchoFormat for ty__pkg__entry__app__t"));
         assert!(rendered.contains("rt::render_entry(self)"));

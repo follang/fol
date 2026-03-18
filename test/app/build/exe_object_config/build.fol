@@ -1,1 +1,13 @@
-def root: loc = "src"
+pro[] build(graph: Graph): non = {
+    var target = graph.standard_target();
+    var optimize = graph.standard_optimize();
+    var app = graph.add_exe({
+        name = "exe_object_config",
+        root = "src/main.fol",
+        target = target,
+        optimize = optimize,
+    });
+
+    graph.install(app);
+    graph.add_run(app);
+}

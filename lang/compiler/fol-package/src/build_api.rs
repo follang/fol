@@ -1,9 +1,9 @@
+use crate::build_codegen::{CodegenRequest, GeneratedFileInstallProjection, SystemToolRequest};
 use crate::build_dependency::{
     DependencyArtifactSurfaceSet, DependencyBuildEvaluationMode, DependencyBuildHandle,
     DependencyBuildSurface, DependencyGeneratedOutputSurfaceSet, DependencyModuleSurfaceSet,
     DependencyStepSurfaceSet,
 };
-use crate::build_codegen::{CodegenRequest, GeneratedFileInstallProjection, SystemToolRequest};
 use crate::build_graph::BuildGraph;
 use crate::build_graph::{BuildOptionId, BuildOptionKind};
 
@@ -310,7 +310,9 @@ impl<'a> BuildApi<'a> {
     }
 
     pub fn standard_target(&mut self, request: StandardTargetRequest) -> StandardTargetOption {
-        let option_id = self.graph.add_option(BuildOptionKind::Target, request.name.clone());
+        let option_id = self
+            .graph
+            .add_option(BuildOptionKind::Target, request.name.clone());
         StandardTargetOption {
             id: option_id,
             name: request.name,
@@ -322,7 +324,9 @@ impl<'a> BuildApi<'a> {
         &mut self,
         request: StandardOptimizeRequest,
     ) -> StandardOptimizeOption {
-        let option_id = self.graph.add_option(BuildOptionKind::Optimize, request.name.clone());
+        let option_id = self
+            .graph
+            .add_option(BuildOptionKind::Optimize, request.name.clone());
         StandardOptimizeOption {
             id: option_id,
             name: request.name,
@@ -404,9 +408,10 @@ impl<'a> BuildApi<'a> {
 
     pub fn step(&mut self, request: StepRequest) -> Result<StepHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
-        let step_id = self
-            .graph
-            .add_step(crate::build_graph::BuildStepKind::Default, request.name.clone());
+        let step_id = self.graph.add_step(
+            crate::build_graph::BuildStepKind::Default,
+            request.name.clone(),
+        );
         for dependency in request.depends_on {
             self.graph.add_step_dependency(step_id, dependency);
         }
@@ -435,9 +440,10 @@ impl<'a> BuildApi<'a> {
         request: InstallArtifactRequest,
     ) -> Result<InstallHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
-        let step_id = self
-            .graph
-            .add_step(crate::build_graph::BuildStepKind::Install, request.name.clone());
+        let step_id = self.graph.add_step(
+            crate::build_graph::BuildStepKind::Install,
+            request.name.clone(),
+        );
         for dependency in &request.depends_on {
             self.graph.add_step_dependency(step_id, *dependency);
         }
@@ -455,11 +461,15 @@ impl<'a> BuildApi<'a> {
         })
     }
 
-    pub fn install_file(&mut self, request: InstallFileRequest) -> Result<InstallHandle, BuildApiError> {
+    pub fn install_file(
+        &mut self,
+        request: InstallFileRequest,
+    ) -> Result<InstallHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
-        let step_id = self
-            .graph
-            .add_step(crate::build_graph::BuildStepKind::Install, request.name.clone());
+        let step_id = self.graph.add_step(
+            crate::build_graph::BuildStepKind::Install,
+            request.name.clone(),
+        );
         for dependency in &request.depends_on {
             self.graph.add_step_dependency(step_id, *dependency);
         }
@@ -470,7 +480,9 @@ impl<'a> BuildApi<'a> {
         let install_id = self.graph.add_install_with_target(
             crate::build_graph::BuildInstallKind::File,
             request.name.clone(),
-            Some(crate::build_graph::BuildInstallTarget::GeneratedFile(generated)),
+            Some(crate::build_graph::BuildInstallTarget::GeneratedFile(
+                generated,
+            )),
         );
         Ok(InstallHandle {
             install_id,
@@ -479,7 +491,10 @@ impl<'a> BuildApi<'a> {
         })
     }
 
-    pub fn write_file(&mut self, request: WriteFileRequest) -> Result<GeneratedFileHandle, BuildApiError> {
+    pub fn write_file(
+        &mut self,
+        request: WriteFileRequest,
+    ) -> Result<GeneratedFileHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
         let generated_file_id = self.graph.add_generated_file(
             crate::build_graph::BuildGeneratedFileKind::Write,
@@ -488,7 +503,10 @@ impl<'a> BuildApi<'a> {
         Ok(GeneratedFileHandle { generated_file_id })
     }
 
-    pub fn copy_file(&mut self, request: CopyFileRequest) -> Result<GeneratedFileHandle, BuildApiError> {
+    pub fn copy_file(
+        &mut self,
+        request: CopyFileRequest,
+    ) -> Result<GeneratedFileHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
         let generated_file_id = self.graph.add_generated_file(
             crate::build_graph::BuildGeneratedFileKind::Copy,
@@ -536,11 +554,15 @@ impl<'a> BuildApi<'a> {
         })
     }
 
-    pub fn install_dir(&mut self, request: InstallDirRequest) -> Result<InstallHandle, BuildApiError> {
+    pub fn install_dir(
+        &mut self,
+        request: InstallDirRequest,
+    ) -> Result<InstallHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
-        let step_id = self
-            .graph
-            .add_step(crate::build_graph::BuildStepKind::Install, request.name.clone());
+        let step_id = self.graph.add_step(
+            crate::build_graph::BuildStepKind::Install,
+            request.name.clone(),
+        );
         for dependency in &request.depends_on {
             self.graph.add_step_dependency(step_id, *dependency);
         }
@@ -558,7 +580,10 @@ impl<'a> BuildApi<'a> {
         })
     }
 
-    pub fn dependency(&mut self, request: DependencyRequest) -> Result<DependencyHandle, BuildApiError> {
+    pub fn dependency(
+        &mut self,
+        request: DependencyRequest,
+    ) -> Result<DependencyHandle, BuildApiError> {
         validate_build_name(&request.alias).map_err(BuildApiError::InvalidName)?;
         let alias = request.alias;
         let package = request.package;
@@ -573,10 +598,7 @@ impl<'a> BuildApi<'a> {
             package: package.clone(),
             root_module_id: module_id,
             evaluation_mode,
-            build: DependencyBuildHandle {
-                alias,
-                package,
-            },
+            build: DependencyBuildHandle { alias, package },
             modules: surface
                 .as_ref()
                 .map(|surface| DependencyModuleSurfaceSet {
@@ -611,9 +633,8 @@ mod tests {
         validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
         CopyFileRequest, DependencyRequest, ExecutableRequest, GeneratedFileHandle,
         InstallArtifactRequest, InstallDirRequest, InstallFileRequest, RunRequest,
-        SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest,
-        StaticLibraryRequest, StepRequest, TestArtifactRequest, UserOptionRequest,
-        WriteFileRequest,
+        SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest,
+        StepRequest, TestArtifactRequest, UserOptionRequest, WriteFileRequest,
     };
     use crate::build_codegen::{
         CodegenKind, CodegenRequest, GeneratedFileInstallProjection, SystemToolRequest,
@@ -641,7 +662,8 @@ mod tests {
         let mut graph = BuildGraph::new();
         let mut api = BuildApi::new(&mut graph);
 
-        api.graph_mut().add_step(crate::build_graph::BuildStepKind::Default, "build");
+        api.graph_mut()
+            .add_step(crate::build_graph::BuildStepKind::Default, "build");
 
         assert_eq!(api.graph().steps().len(), 1);
     }
@@ -651,7 +673,8 @@ mod tests {
         let mut graph = BuildGraph::new();
         let mut api = BuildApi::new(&mut graph);
 
-        let option = api.standard_target(StandardTargetRequest::new("target").with_default("native"));
+        let option =
+            api.standard_target(StandardTargetRequest::new("target").with_default("native"));
 
         assert_eq!(option.name, "target");
         assert_eq!(option.default.as_deref(), Some("native"));
@@ -789,13 +812,24 @@ mod tests {
             .expect("valid shared library request should succeed");
 
         assert_eq!(api.graph().artifacts()[0].id, exe.artifact_id);
-        assert_eq!(api.graph().artifacts()[0].kind, BuildArtifactKind::Executable);
-        assert_eq!(api.graph().artifacts()[1].id, static_lib.artifact_id);
-        assert_eq!(api.graph().artifacts()[1].kind, BuildArtifactKind::StaticLibrary);
-        assert_eq!(api.graph().artifacts()[2].id, shared_lib.artifact_id);
-        assert_eq!(api.graph().artifacts()[2].kind, BuildArtifactKind::SharedLibrary);
         assert_eq!(
-            api.graph().artifact_inputs_for(exe.artifact_id).collect::<Vec<_>>(),
+            api.graph().artifacts()[0].kind,
+            BuildArtifactKind::Executable
+        );
+        assert_eq!(api.graph().artifacts()[1].id, static_lib.artifact_id);
+        assert_eq!(
+            api.graph().artifacts()[1].kind,
+            BuildArtifactKind::StaticLibrary
+        );
+        assert_eq!(api.graph().artifacts()[2].id, shared_lib.artifact_id);
+        assert_eq!(
+            api.graph().artifacts()[2].kind,
+            BuildArtifactKind::SharedLibrary
+        );
+        assert_eq!(
+            api.graph()
+                .artifact_inputs_for(exe.artifact_id)
+                .collect::<Vec<_>>(),
             vec![BuildArtifactInput::Module(exe.root_module_id)]
         );
     }
@@ -813,7 +847,10 @@ mod tests {
             .expect("valid test artifact request should succeed");
 
         assert_eq!(api.graph().artifacts()[0].id, tests.artifact_id);
-        assert_eq!(api.graph().artifacts()[0].kind, BuildArtifactKind::Executable);
+        assert_eq!(
+            api.graph().artifacts()[0].kind,
+            BuildArtifactKind::Executable
+        );
     }
 
     #[test]
@@ -854,7 +891,9 @@ mod tests {
         assert_eq!(api.graph().steps()[0].kind, BuildStepKind::Default);
         assert_eq!(api.graph().steps()[1].id, check.step_id);
         assert_eq!(
-            api.graph().step_dependencies_for(check.step_id).collect::<Vec<_>>(),
+            api.graph()
+                .step_dependencies_for(check.step_id)
+                .collect::<Vec<_>>(),
             vec![base.step_id]
         );
     }
@@ -887,7 +926,9 @@ mod tests {
         assert_eq!(run.artifact_id, exe.artifact_id);
         assert_eq!(api.graph().steps()[1].kind, BuildStepKind::Run);
         assert_eq!(
-            api.graph().step_dependencies_for(run.step_id).collect::<Vec<_>>(),
+            api.graph()
+                .step_dependencies_for(run.step_id)
+                .collect::<Vec<_>>(),
             vec![build.step_id]
         );
     }
@@ -947,7 +988,9 @@ mod tests {
         assert_eq!(api.graph().installs()[2].kind, BuildInstallKind::Directory);
         assert_eq!(
             api.graph().installs()[2].target,
-            Some(BuildInstallTarget::DirectoryPath("share/assets".to_string()))
+            Some(BuildInstallTarget::DirectoryPath(
+                "share/assets".to_string()
+            ))
         );
     }
 
@@ -1021,10 +1064,24 @@ mod tests {
             })
             .expect("copy file should succeed");
 
-        assert_eq!(write, GeneratedFileHandle { generated_file_id: crate::build_graph::BuildGeneratedFileId(0) });
-        assert_eq!(copy.generated_file_id, crate::build_graph::BuildGeneratedFileId(1));
-        assert_eq!(api.graph().generated_files()[0].kind, BuildGeneratedFileKind::Write);
-        assert_eq!(api.graph().generated_files()[1].kind, BuildGeneratedFileKind::Copy);
+        assert_eq!(
+            write,
+            GeneratedFileHandle {
+                generated_file_id: crate::build_graph::BuildGeneratedFileId(0)
+            }
+        );
+        assert_eq!(
+            copy.generated_file_id,
+            crate::build_graph::BuildGeneratedFileId(1)
+        );
+        assert_eq!(
+            api.graph().generated_files()[0].kind,
+            BuildGeneratedFileKind::Write
+        );
+        assert_eq!(
+            api.graph().generated_files()[1].kind,
+            BuildGeneratedFileKind::Copy
+        );
     }
 
     #[test]
@@ -1048,8 +1105,14 @@ mod tests {
             .expect("codegen should succeed");
 
         assert_eq!(tool_outputs.len(), 1);
-        assert_eq!(api.graph().generated_files()[0].kind, BuildGeneratedFileKind::CaptureOutput);
-        assert_eq!(codegen.generated_file_id, crate::build_graph::BuildGeneratedFileId(1));
+        assert_eq!(
+            api.graph().generated_files()[0].kind,
+            BuildGeneratedFileKind::CaptureOutput
+        );
+        assert_eq!(
+            codegen.generated_file_id,
+            crate::build_graph::BuildGeneratedFileId(1)
+        );
     }
 
     #[test]

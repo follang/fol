@@ -1,8 +1,8 @@
 use crate::{
     build_dependency::DependencyBuildSurfaceSet,
     build_entry::{BuildEntrySignatureExpectation, BuildEntryValidationError, ValidatedBuildEntry},
-    build_native::NativeArtifactSet, PackageBuildDefinition, PackageBuildMode, PackageIdentity,
-    PackageMetadata, PackageSourceKind,
+    build_native::NativeArtifactSet,
+    PackageBuildDefinition, PackageBuildMode, PackageIdentity, PackageMetadata, PackageSourceKind,
 };
 use fol_parser::ast::{ParsedPackage, ParsedSourceUnit, ParsedSourceUnitKind};
 
@@ -96,10 +96,7 @@ impl PreparedPackage {
         crate::build_entry::validate_parsed_build_entry(&self.syntax, expectation)
     }
 
-    pub fn has_semantic_build_entry(
-        &self,
-        expectation: &BuildEntrySignatureExpectation,
-    ) -> bool {
+    pub fn has_semantic_build_entry(&self, expectation: &BuildEntrySignatureExpectation) -> bool {
         self.validate_semantic_build_entry(expectation).is_ok()
     }
 }
@@ -108,10 +105,10 @@ impl PreparedPackage {
 mod tests {
     use super::PreparedPackage;
     use crate::{
-        build_dependency::DependencyBuildSurfaceSet,
-        build_native::{NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet},
         build::PackageBuildCompatibility,
+        build_dependency::DependencyBuildSurfaceSet,
         build_entry::BuildEntrySignatureExpectation,
+        build_native::{NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet},
         BuildDependency, BuildExport, PackageBuildDefinition, PackageBuildMode, PackageConfig,
         PackageDependencyDecl, PackageDependencySourceKind, PackageIdentity, PackageLocator,
         PackageMetadata, PackageNativeArtifact, PackageNativeArtifactKind, PackageSourceKind,
@@ -121,7 +118,10 @@ mod tests {
     use fol_stream::FileStream;
 
     fn parse_fixture_package() -> ParsedPackage {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
         let mut stream = FileStream::from_file(fixture_path).expect("Should open package fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
@@ -220,12 +220,12 @@ mod tests {
             syntax,
         );
 
-        assert_eq!(prepared.metadata.as_ref().map(|meta| meta.name.as_str()), Some("json"));
         assert_eq!(
-            prepared
-                .build
-                .as_ref()
-                .map(|build| build.exports().len()),
+            prepared.metadata.as_ref().map(|meta| meta.name.as_str()),
+            Some("json")
+        );
+        assert_eq!(
+            prepared.build.as_ref().map(|build| build.exports().len()),
             Some(1)
         );
         assert_eq!(
@@ -238,7 +238,10 @@ mod tests {
         assert_eq!(prepared.exports.len(), 1);
         assert!(prepared.dependency_surfaces.is_some());
         assert_eq!(
-            prepared.native_surfaces.as_ref().map(|set| set.definitions().len()),
+            prepared
+                .native_surfaces
+                .as_ref()
+                .map(|set| set.definitions().len()),
             Some(1)
         );
         assert_eq!(prepared.build_mode(), PackageBuildMode::Hybrid);

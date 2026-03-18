@@ -28,8 +28,9 @@ pub mod model;
 pub mod session;
 pub mod traverse;
 
-pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use errors::{ResolverError, ResolverErrorKind};
+pub use fol_package::PreparedPackage;
+pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use ids::{IdTable, ImportId, ReferenceId, ScopeId, SourceUnitId, SymbolId};
 pub use model::{
     MountedSymbolProvenance, ReferenceKind, ResolvedImport, ResolvedPackage, ResolvedProgram,
@@ -37,7 +38,6 @@ pub use model::{
     ScopeKind, SymbolKind,
 };
 pub use session::{PackageIdentity, PackageSourceKind, ResolverConfig, ResolverSession};
-pub use fol_package::PreparedPackage;
 
 pub type ResolverResult<T> = Result<T, Vec<ResolverError>>;
 
@@ -185,7 +185,10 @@ pub fn resolve_prepared_workspace_with_config(
 
 #[cfg(test)]
 mod tests {
-    use super::{resolve_package, resolve_package_workspace, resolve_prepared_package, resolve_prepared_workspace};
+    use super::{
+        resolve_package, resolve_package_workspace, resolve_prepared_package,
+        resolve_prepared_workspace,
+    };
     use fol_package::PackageSession;
     use fol_parser::ast::{AstParser, ParsedPackage};
     use fol_stream::FileStream;
@@ -225,8 +228,9 @@ mod tests {
 
     #[test]
     fn resolver_smoke_can_lower_a_workspace_from_a_parsed_package() {
-        let workspace = resolve_package_workspace(parse_package("../../../test/parser/simple_var.fol"))
-            .expect("Resolver workspace should lower parsed packages");
+        let workspace =
+            resolve_package_workspace(parse_package("../../../test/parser/simple_var.fol"))
+                .expect("Resolver workspace should lower parsed packages");
 
         assert_eq!(workspace.package_count(), 1);
         assert_eq!(workspace.entry_program().package_name(), "parser");

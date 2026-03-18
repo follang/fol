@@ -1,6 +1,4 @@
-use fol_frontend::{
-    FrontendArtifactKind, run_command_from_args_in_dir,
-};
+use fol_frontend::{run_command_from_args_in_dir, FrontendArtifactKind};
 use std::fs;
 use std::path::PathBuf;
 
@@ -20,7 +18,8 @@ fn temp_root(label: &str) -> PathBuf {
 fn build_and_emit_commands_report_explicit_root_artifacts() {
     let root = temp_root("build_emit");
     fs::create_dir_all(root.join("src")).expect("should create source root");
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").expect("should write manifest");
+    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+        .expect("should write manifest");
     fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").expect("should write build");
     fs::write(
         root.join("src/main.fol"),
@@ -28,9 +27,10 @@ fn build_and_emit_commands_report_explicit_root_artifacts() {
     )
     .expect("should write source");
 
-    let (_, build) = run_command_from_args_in_dir(["fol", "build"], &root).expect("build should pass");
-    let (_, emit) =
-        run_command_from_args_in_dir(["fol", "emit", "rust"], &root).expect("emit rust should pass");
+    let (_, build) =
+        run_command_from_args_in_dir(["fol", "build"], &root).expect("build should pass");
+    let (_, emit) = run_command_from_args_in_dir(["fol", "emit", "rust"], &root)
+        .expect("emit rust should pass");
 
     assert!(build
         .artifacts

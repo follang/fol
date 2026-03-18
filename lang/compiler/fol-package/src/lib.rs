@@ -9,7 +9,6 @@
 //!
 //! This crate intentionally does not perform name resolution for ordinary source code.
 
-pub mod config;
 pub mod build;
 pub mod build_api;
 pub mod build_artifact;
@@ -21,8 +20,9 @@ pub mod build_graph;
 pub mod build_native;
 pub mod build_option;
 pub mod build_runtime;
-pub mod build_step;
 pub mod build_semantic;
+pub mod build_step;
+pub mod config;
 pub mod errors;
 pub mod git;
 pub mod identity;
@@ -33,11 +33,10 @@ pub mod model;
 pub mod paths;
 pub mod session;
 
-pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use build::{
-    classify_semantic_build_mode, parse_package_build, parse_package_build_mode,
-    BuildDependency, BuildExport, PackageBuildCompatibility, PackageBuildDefinition,
-    PackageBuildMode, PackageNativeArtifact, PackageNativeArtifactKind,
+    classify_semantic_build_mode, parse_package_build, parse_package_build_mode, BuildDependency,
+    BuildExport, PackageBuildCompatibility, PackageBuildDefinition, PackageBuildMode,
+    PackageNativeArtifact, PackageNativeArtifactKind,
 };
 pub use build_api::{
     validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildArtifactHandle,
@@ -48,15 +47,15 @@ pub use build_api::{
     TestArtifactRequest, UserOption, UserOptionRequest,
 };
 pub use build_artifact::{
-    project_graph_artifacts, BuildArtifactDefinition, BuildArtifactLinkage,
-    BuildArtifactModelKind, BuildArtifactModuleConfig, BuildArtifactOutput,
-    BuildArtifactPipelinePlan, BuildArtifactPipelineStage, BuildArtifactReport,
-    BuildArtifactRootSource, BuildArtifactSet, BuildArtifactTargetConfig,
+    project_graph_artifacts, BuildArtifactDefinition, BuildArtifactLinkage, BuildArtifactModelKind,
+    BuildArtifactModuleConfig, BuildArtifactOutput, BuildArtifactPipelinePlan,
+    BuildArtifactPipelineStage, BuildArtifactReport, BuildArtifactRootSource, BuildArtifactSet,
+    BuildArtifactTargetConfig,
 };
 pub use build_codegen::{
-    CodegenKind, CodegenRequest, CodegenResult, GeneratedFileAction,
-    GeneratedFileDefinition, GeneratedFileInstallProjection, GeneratedFileSet,
-    GeneratedOutputDependencySet, SystemToolRequest, SystemToolResult,
+    CodegenKind, CodegenRequest, CodegenResult, GeneratedFileAction, GeneratedFileDefinition,
+    GeneratedFileInstallProjection, GeneratedFileSet, GeneratedOutputDependencySet,
+    SystemToolRequest, SystemToolResult,
 };
 pub use build_dependency::{
     dependency_modules_from_exports, DependencyArtifactSurface, DependencyArtifactSurfaceSet,
@@ -68,28 +67,32 @@ pub use build_dependency::{
 pub use build_entry::{
     collect_build_entry_candidates, validate_build_entry_cardinality,
     validate_build_entry_parameter_shape, validate_build_entry_parameter_type,
-    validate_build_entry_return_type, validate_parsed_build_entry,
-    BuildEntryCandidate, BuildEntrySignatureExpectation, BuildEntryValidationError,
-    BuildEntryValidationErrorKind, ValidatedBuildEntry,
+    validate_build_entry_return_type, validate_parsed_build_entry, BuildEntryCandidate,
+    BuildEntrySignatureExpectation, BuildEntryValidationError, BuildEntryValidationErrorKind,
+    ValidatedBuildEntry,
 };
 pub use build_eval::{
     canonical_graph_construction_capabilities, evaluate_build_plan, evaluate_build_source,
     forbidden_capability_error, forbidden_capability_message, AllowedBuildTimeOperation,
     BuildEnvironmentSelectionPolicy, BuildEvaluationBoundary, BuildEvaluationError,
     BuildEvaluationErrorKind, BuildEvaluationInputEnvelope, BuildEvaluationInputs,
-    BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
-    BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
-    BuildEvaluationRunRequest, BuildEvaluationStepRequest, BuildRuntimeCapabilityModel,
-    EvaluatedBuildSource,
+    BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation, BuildEvaluationOperationKind,
+    BuildEvaluationRequest, BuildEvaluationResult, BuildEvaluationRunRequest,
+    BuildEvaluationStepRequest, BuildRuntimeCapabilityModel, EvaluatedBuildSource,
     ForbiddenBuildTimeOperation,
 };
 pub use build_graph::{
-    BuildArtifact, BuildArtifactDependency, BuildArtifactId, BuildArtifactInput,
-    BuildArtifactKind, BuildGeneratedFile, BuildGeneratedFileId, BuildGeneratedFileKind,
-    BuildGraph, BuildGraphValidationError, BuildGraphValidationErrorKind, BuildInstall,
-    BuildInstallId, BuildInstallKind, BuildInstallTarget, BuildModule, BuildModuleId,
-    BuildModuleKind, BuildOption, BuildOptionId, BuildOptionKind, BuildStep,
-    BuildStepDependency, BuildStepId, BuildStepKind,
+    BuildArtifact, BuildArtifactDependency, BuildArtifactId, BuildArtifactInput, BuildArtifactKind,
+    BuildGeneratedFile, BuildGeneratedFileId, BuildGeneratedFileKind, BuildGraph,
+    BuildGraphValidationError, BuildGraphValidationErrorKind, BuildInstall, BuildInstallId,
+    BuildInstallKind, BuildInstallTarget, BuildModule, BuildModuleId, BuildModuleKind, BuildOption,
+    BuildOptionId, BuildOptionKind, BuildStep, BuildStepDependency, BuildStepId, BuildStepKind,
+};
+pub use build_native::{
+    project_compatibility_native_artifact, project_compatibility_native_artifacts,
+    NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeIncludePath,
+    NativeLibraryPath, NativeLinkDirective, NativeLinkInput, NativeLinkMode, NativePlatform,
+    NativeSearchPathOrigin,
 };
 pub use build_option::{
     BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet, BuildOptionOverride,
@@ -101,15 +104,18 @@ pub use build_runtime::{
     find_record_field, BuildExecutionRepresentation, BuildRuntimeDependency,
     BuildRuntimeDependencyQuery, BuildRuntimeDependencyQueryKind, BuildRuntimeDiagnostic,
     BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeGeneratedFile,
-    BuildRuntimeGeneratedFileKind, BuildRuntimeHandle, BuildRuntimeHandleKind,
-    BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram, BuildRuntimeReceiverKind,
-    BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue,
+    BuildRuntimeGeneratedFileKind, BuildRuntimeHandle, BuildRuntimeHandleKind, BuildRuntimeLocalId,
+    BuildRuntimeMethodCall, BuildRuntimeProgram, BuildRuntimeReceiverKind, BuildRuntimeRecordField,
+    BuildRuntimeStmt, BuildRuntimeValue,
 };
-pub use build_native::{
-    project_compatibility_native_artifact, project_compatibility_native_artifacts,
-    NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeIncludePath,
-    NativeLibraryPath, NativeLinkDirective, NativeLinkInput, NativeLinkMode, NativePlatform,
-    NativeSearchPathOrigin,
+pub use build_semantic::{
+    canonical_artifact_config_shapes, canonical_chain_metadata, canonical_graph_method_signatures,
+    canonical_handle_method_signatures, canonical_option_config_shapes,
+    canonical_option_value_kinds, BuildSemanticChainKind, BuildSemanticChainMetadata,
+    BuildSemanticMethodParameter, BuildSemanticMethodSignature, BuildSemanticOptionValueKind,
+    BuildSemanticParameterShape, BuildSemanticRecordField, BuildSemanticRecordShape,
+    BuildSemanticRecordShapeKind, BuildSemanticType, BuildSemanticTypeFamily,
+    BuildStdlibImportSurface, BuildStdlibModuleKind, BuildStdlibModulePath,
 };
 pub use build_step::{
     plan_step_order, project_graph_steps, BuildDefaultStepKind, BuildRequestedStep,
@@ -117,18 +123,9 @@ pub use build_step::{
     BuildStepEventKind, BuildStepExecutionRequest, BuildStepExecutionResult, BuildStepPlanError,
     BuildStepReport,
 };
-pub use build_semantic::{
-    canonical_artifact_config_shapes, canonical_chain_metadata,
-    canonical_graph_method_signatures, canonical_handle_method_signatures,
-    canonical_option_config_shapes, canonical_option_value_kinds, BuildSemanticChainKind,
-    BuildSemanticChainMetadata, BuildSemanticMethodParameter, BuildSemanticMethodSignature,
-    BuildSemanticOptionValueKind, BuildSemanticParameterShape, BuildSemanticRecordField,
-    BuildSemanticRecordShape, BuildSemanticRecordShapeKind, BuildSemanticType,
-    BuildSemanticTypeFamily, BuildStdlibImportSurface, BuildStdlibModuleKind,
-    BuildStdlibModulePath,
-};
 pub use config::PackageConfig;
 pub use errors::{PackageError, PackageErrorKind};
+pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use git::{
     wrap_git_failure, PackageGitFetchOptions, PackageGitMaterialization, PackageGitSourceSession,
 };
@@ -155,17 +152,16 @@ mod tests {
     use super::{
         canonical_chain_metadata, canonical_graph_construction_capabilities,
         canonical_graph_method_signatures, canonical_handle_method_signatures,
-        canonical_option_value_kinds, classify_semantic_build_mode,
-        collect_build_entry_candidates, evaluate_build_source, forbidden_capability_message,
-        validate_parsed_build_entry, AllowedBuildTimeOperation, BuildEntrySignatureExpectation,
-        BuildEvaluationInputs, BuildEvaluationRequest, BuildExecutionRepresentation,
-        BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeHandle,
-        BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall,
-        BuildRuntimeReceiverKind, BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue,
-        BuildSemanticChainKind, BuildSemanticType, BuildSemanticTypeFamily,
-        ForbiddenBuildTimeOperation, NativeArtifactDefinition, NativeArtifactKind,
-        NativeArtifactSet, NativeLinkDirective, NativeLinkInput, NativeLinkMode,
-        PackageBuildMode, ParsedSourceUnitKind,
+        canonical_option_value_kinds, classify_semantic_build_mode, collect_build_entry_candidates,
+        evaluate_build_source, forbidden_capability_message, validate_parsed_build_entry,
+        AllowedBuildTimeOperation, BuildEntrySignatureExpectation, BuildEvaluationInputs,
+        BuildEvaluationRequest, BuildExecutionRepresentation, BuildRuntimeDiagnostic,
+        BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeHandle, BuildRuntimeHandleKind,
+        BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeReceiverKind,
+        BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue, BuildSemanticChainKind,
+        BuildSemanticType, BuildSemanticTypeFamily, ForbiddenBuildTimeOperation,
+        NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeLinkDirective,
+        NativeLinkInput, NativeLinkMode, PackageBuildMode, ParsedSourceUnitKind,
     };
     use std::fs;
     use std::path::PathBuf;
@@ -185,8 +181,7 @@ mod tests {
             "name: buildlib\nversion: 1.0.0\n",
         )
         .expect("package metadata should be written");
-        fs::write(package_root.join("build.fol"), source)
-            .expect("build source should be written");
+        fs::write(package_root.join("build.fol"), source).expect("build source should be written");
         (package_root.clone(), package_root.join("build.fol"))
     }
 
@@ -227,7 +222,10 @@ mod tests {
 
     #[test]
     fn crate_root_reexports_parsed_source_unit_kinds() {
-        assert_eq!(ParsedSourceUnitKind::Build, fol_parser::ast::ParsedSourceUnitKind::Build);
+        assert_eq!(
+            ParsedSourceUnitKind::Build,
+            fol_parser::ast::ParsedSourceUnitKind::Build
+        );
     }
 
     #[test]
@@ -240,7 +238,9 @@ mod tests {
             BuildRuntimeExpr::Local(BuildRuntimeLocalId(0)),
             BuildRuntimeReceiverKind::Graph,
             "add_exe",
-            vec![BuildRuntimeExpr::Value(BuildRuntimeValue::String("demo".to_string()))],
+            vec![BuildRuntimeExpr::Value(BuildRuntimeValue::String(
+                "demo".to_string(),
+            ))],
         );
         let stmt = BuildRuntimeStmt::Expr(BuildRuntimeExpr::Local(BuildRuntimeLocalId(0)));
         let field = BuildRuntimeRecordField::new(
@@ -306,8 +306,9 @@ mod tests {
         };
 
         let candidates = collect_build_entry_candidates(&syntax);
-        let validated = validate_parsed_build_entry(&syntax, &BuildEntrySignatureExpectation::canonical())
-            .expect("crate root should expose semantic build entry validation");
+        let validated =
+            validate_parsed_build_entry(&syntax, &BuildEntrySignatureExpectation::canonical())
+                .expect("crate root should expose semantic build entry validation");
 
         assert_eq!(candidates.len(), 1);
         assert_eq!(validated.candidate.name, "build");
@@ -349,7 +350,10 @@ mod tests {
             syntax_index: fol_parser::ast::SyntaxIndex::default(),
         };
 
-        assert_eq!(classify_semantic_build_mode(&syntax, false), PackageBuildMode::ModernOnly);
+        assert_eq!(
+            classify_semantic_build_mode(&syntax, false),
+            PackageBuildMode::ModernOnly
+        );
     }
 
     #[test]
@@ -371,7 +375,7 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_six_build_evaluation_surface() {
         let source = concat!(
-            "def build(graph: Graph): Graph = {\n",
+            "pro[] build(graph: Graph): non = {\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/demo.fol\",\n",
@@ -406,7 +410,7 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_ten_dependency_surface() {
         let source = concat!(
-            "def build(graph: Graph): Graph = {\n",
+            "pro[] build(graph: Graph): non = {\n",
             "    var dep = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"lazy\" });\n",
             "    var module = dep.module(\"root\");\n",
             "    var artifact = dep.artifact(\"corelib\");\n",
@@ -449,7 +453,7 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_eleven_generated_surface() {
         let source = concat!(
-            "def build(graph: Graph): Graph = {\n",
+            "pro[] build(graph: Graph): non = {\n",
             "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
             "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
             "    var tool = graph.add_system_tool({ tool = \"flatc\", output = \"gen/schema.fol\" });\n",
@@ -487,7 +491,7 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_nine_real_option_surface() {
         let source = concat!(
-            "def build(graph: Graph): Graph = {\n",
+            "pro[] build(graph: Graph): non = {\n",
             "    var root = graph.option({ name = \"root\", kind = \"path\", default = \"src/default.fol\" });\n",
             "    var target = graph.standard_target();\n",
             "    var optimize = graph.standard_optimize();\n",

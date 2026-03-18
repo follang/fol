@@ -152,8 +152,7 @@ impl AstParser {
         }
 
         let name_token = tokens.curr(false)?;
-        let name =
-            Self::expect_named_label(&name_token, "Expected rolling binding name")?;
+        let name = Self::expect_named_label(&name_token, "Expected rolling binding name")?;
         let _ = tokens.bump();
         self.skip_ignorable(tokens);
 

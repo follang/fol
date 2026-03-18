@@ -108,9 +108,11 @@ pub fn classify_semantic_build_mode(
     parsed: &ParsedPackage,
     has_compatibility_controls: bool,
 ) -> PackageBuildMode {
-    let has_semantic_entry =
-        crate::build_entry::validate_parsed_build_entry(parsed, &BuildEntrySignatureExpectation::canonical())
-            .is_ok();
+    let has_semantic_entry = crate::build_entry::validate_parsed_build_entry(
+        parsed,
+        &BuildEntrySignatureExpectation::canonical(),
+    )
+    .is_ok();
     match (has_compatibility_controls, has_semantic_entry) {
         (false, false) => PackageBuildMode::Empty,
         (true, false) => PackageBuildMode::CompatibilityOnly,
@@ -167,10 +169,7 @@ pub fn parse_package_build_mode(path: &Path) -> Result<PackageBuildMode, Package
     parse_package_build(path).map(|build| build.mode())
 }
 
-fn build_parse_error(
-    path: &Path,
-    errors: Vec<Box<dyn fol_types::Glitch>>,
-) -> PackageError {
+fn build_parse_error(path: &Path, errors: Vec<Box<dyn fol_types::Glitch>>) -> PackageError {
     let first = errors
         .into_iter()
         .next()
@@ -278,11 +277,14 @@ fn try_record_fallback_compatibility_def(
         }
         other => {
             if let Some(kind) = native_artifact_kind(other) {
-                build.compatibility.native_artifacts.push(PackageNativeArtifact {
-                    alias: alias.to_string(),
-                    kind,
-                    relative_path: string_body.to_string(),
-                });
+                build
+                    .compatibility
+                    .native_artifacts
+                    .push(PackageNativeArtifact {
+                        alias: alias.to_string(),
+                        kind,
+                        relative_path: string_body.to_string(),
+                    });
                 Ok(true)
             } else {
                 Ok(false)
@@ -374,7 +376,9 @@ pub fn extract_package_build_definition(
                         )?,
                     });
                 }
-                FolType::Named { name: type_name, .. } => {
+                FolType::Named {
+                    name: type_name, ..
+                } => {
                     if let Some(kind) = native_artifact_kind(type_name.as_str()) {
                         if !options.is_empty() {
                             return Err(build_item_error(
@@ -390,16 +394,19 @@ pub fn extract_package_build_definition(
                                 "package native artifact definitions do not accept parameters",
                             ));
                         }
-                        build.compatibility.native_artifacts.push(PackageNativeArtifact {
-                            alias: name.clone(),
-                            kind,
-                            relative_path: build_string_body(
-                                "native artifact",
-                                body,
-                                &parsed.syntax_index,
-                                item.node_id,
-                            )?,
-                        });
+                        build
+                            .compatibility
+                            .native_artifacts
+                            .push(PackageNativeArtifact {
+                                alias: name.clone(),
+                                kind,
+                                relative_path: build_string_body(
+                                    "native artifact",
+                                    body,
+                                    &parsed.syntax_index,
+                                    item.node_id,
+                                )?,
+                            });
                     }
                 }
                 _ => {}
@@ -750,7 +757,7 @@ mod tests {
                 "fun[] helper(): int = { return 1; }\n",
                 "def core: pkg = \"core\";\n",
                 "def root: loc = \"src\";\n",
-                "def build(graph: int): int = graph;\n",
+                "pro[] build(graph: int): int = graph;\n",
             ),
         )
         .expect("Should write the mixed build fixture");
@@ -848,10 +855,11 @@ mod tests {
         let temp_root = unique_temp_root("semantic_modern_build");
         fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
         let build_path = temp_root.join("build.fol");
-        fs::write(&build_path, "def build(graph: int): int = graph;\n")
+        fs::write(&build_path, "pro[] build(graph: int): int = graph;\n")
             .expect("Should write the semantic modern build fixture");
 
-        let build = parse_package_build(&build_path).expect("Semantic modern build fixture should parse");
+        let build =
+            parse_package_build(&build_path).expect("Semantic modern build fixture should parse");
 
         assert!(!build.has_compatibility_controls());
         assert_eq!(build.mode(), PackageBuildMode::ModernOnly);
@@ -867,7 +875,7 @@ mod tests {
         let build_path = temp_root.join("build.fol");
         fs::write(
             &build_path,
-            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = graph;\n",
+            "def root: loc = \"src\";\npro[] build(graph: Graph): non = graph;\n",
         )
         .expect("Should write the compatibility extraction fixture");
         let mut stream = FileStream::from_file(
@@ -900,7 +908,7 @@ mod tests {
         let build_path = temp_root.join("build.fol");
         fs::write(
             &build_path,
-            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = graph;\n",
+            "def root: loc = \"src\";\npro[] build(graph: Graph): non = graph;\n",
         )
         .expect("Should write the semantic build-mode fixture");
         let mut stream = FileStream::from_file(
@@ -915,7 +923,10 @@ mod tests {
             .parse_package(&mut lexer)
             .expect("semantic build-mode fixture should parse");
 
-        assert_eq!(classify_semantic_build_mode(&parsed, true), PackageBuildMode::Hybrid);
+        assert_eq!(
+            classify_semantic_build_mode(&parsed, true),
+            PackageBuildMode::Hybrid
+        );
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
@@ -923,13 +934,11 @@ mod tests {
 
     #[test]
     fn fallback_build_parser_recovers_only_compatibility_metadata_from_raw_source() {
-        let build = extract_package_build_definition_from_source_fallback(
-            concat!(
-                "def core: pkg = \"core\";\n",
-                "def root: loc = \"src\";\n",
-                "def build(graph: int): int = graph;\n",
-            ),
-        )
+        let build = extract_package_build_definition_from_source_fallback(concat!(
+            "def core: pkg = \"core\";\n",
+            "def root: loc = \"src\";\n",
+            "pro[] build(graph: int): int = graph;\n",
+        ))
         .expect("fallback build extraction should not fail")
         .expect("fallback build extraction should recover hybrid metadata");
 
@@ -942,7 +951,7 @@ mod tests {
     #[test]
     fn fallback_build_parser_does_not_invent_modern_entry_points() {
         let build = extract_package_build_definition_from_source_fallback(
-            "def build(graph: Graph): Graph = graph;\n",
+            "pro[] build(graph: Graph): non = graph;\n",
         )
         .expect("fallback build extraction should not fail");
 
@@ -954,7 +963,7 @@ mod tests {
         let temp_root = unique_temp_root("broken_modern_build");
         fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
         let build_path = temp_root.join("build.fol");
-        fs::write(&build_path, "def build(graph: Graph): Graph = {\n")
+        fs::write(&build_path, "pro[] build(graph: Graph): non = {\n")
             .expect("Should write the broken modern build fixture");
 
         let error = parse_package_build(&build_path)
@@ -976,7 +985,7 @@ mod tests {
         let build_path = temp_root.join("build.fol");
         fs::write(
             &build_path,
-            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = {\n",
+            "def root: loc = \"src\";\npro[] build(graph: Graph): non = {\n",
         )
         .expect("Should write the broken hybrid build fixture");
 
@@ -1035,7 +1044,7 @@ mod tests {
             concat!(
                 "def core: pkg = \"core\";\n",
                 "def root: loc = \"src\";\n",
-                "def build(graph: int): int = graph;\n",
+                "pro[] build(graph: int): int = graph;\n",
             ),
         )
         .expect("Should write the hybrid build fixture");
@@ -1060,7 +1069,7 @@ mod tests {
             &build_path,
             concat!(
                 "def root: loc = \"src\";\n",
-                "def build(graph: int): int = graph;\n",
+                "pro[] build(graph: int): int = graph;\n",
             ),
         )
         .expect("Should write the build mode parser fixture");

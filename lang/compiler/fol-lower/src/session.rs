@@ -1,11 +1,10 @@
 use crate::{
-    decls, exprs, verify,
+    decls, exprs,
     ids::{LoweredPackageId, LoweredTypeId},
     types::{LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable},
-    LoweredEntryCandidate, LoweredExportMount, LoweredPackage, LoweredRecoverableAbi,
+    verify, LoweredEntryCandidate, LoweredExportMount, LoweredPackage, LoweredRecoverableAbi,
     LoweredSourceMap, LoweredSourceMapEntry, LoweredSourceSymbol, LoweredSourceUnit,
-    LoweredSymbolOwnership, LoweredWorkspace, LoweringError,
-    LoweringErrorKind, LoweringResult,
+    LoweredSymbolOwnership, LoweredWorkspace, LoweringError, LoweringErrorKind, LoweringResult,
 };
 use fol_resolver::PackageIdentity;
 use fol_typecheck::{BuiltinType, CheckedType, CheckedTypeId};
@@ -34,7 +33,8 @@ impl LoweringSession {
         let mut next_routine_index = 0;
 
         for (index, package) in self.typed.packages().enumerate() {
-            let mut lowered = LoweredPackage::new(LoweredPackageId(index), package.identity.clone());
+            let mut lowered =
+                LoweredPackage::new(LoweredPackageId(index), package.identity.clone());
             lowered.exports = package
                 .export_mounts
                 .iter()
@@ -111,13 +111,16 @@ impl LoweringSession {
             .get(&entry_identity)
             .into_iter()
             .flat_map(|package| {
-                package.routine_decls.iter().filter_map(|(routine_id, routine)| {
-                    (routine.name == "main").then(|| LoweredEntryCandidate {
-                        package_identity: entry_identity.clone(),
-                        routine_id: *routine_id,
-                        name: routine.name.clone(),
+                package
+                    .routine_decls
+                    .iter()
+                    .filter_map(|(routine_id, routine)| {
+                        (routine.name == "main").then(|| LoweredEntryCandidate {
+                            package_identity: entry_identity.clone(),
+                            routine_id: *routine_id,
+                            name: routine.name.clone(),
+                        })
                     })
-                })
             })
             .collect::<Vec<_>>();
 
@@ -152,7 +155,12 @@ fn build_workspace_source_map(
                 continue;
             }
             for syntax_id in &source_unit.top_level_nodes {
-                if let Some(origin) = typed_package.program.resolved().syntax_index().origin(*syntax_id) {
+                if let Some(origin) = typed_package
+                    .program
+                    .resolved()
+                    .syntax_index()
+                    .origin(*syntax_id)
+                {
                     source_map.push(LoweredSourceMapEntry {
                         symbol: LoweredSourceSymbol::Package(lowered_package.id),
                         origin: origin.clone(),
@@ -230,7 +238,13 @@ fn translate_checked_type(
                         ),
                     )]
                 })?;
-            translate_checked_type(lowered_types, cache, package_identity, program, runtime_type)?
+            translate_checked_type(
+                lowered_types,
+                cache,
+                package_identity,
+                program,
+                runtime_type,
+            )?
         }
         CheckedType::Array { element_type, size } => {
             let element_type = translate_checked_type(
@@ -281,13 +295,8 @@ fn translate_checked_type(
             key_type,
             value_type,
         } => {
-            let key_type = translate_checked_type(
-                lowered_types,
-                cache,
-                package_identity,
-                program,
-                key_type,
-            )?;
+            let key_type =
+                translate_checked_type(lowered_types, cache, package_identity, program, key_type)?;
             let value_type = translate_checked_type(
                 lowered_types,
                 cache,
@@ -301,7 +310,8 @@ fn translate_checked_type(
             })
         }
         CheckedType::Optional { inner } => {
-            let inner = translate_checked_type(lowered_types, cache, package_identity, program, inner)?;
+            let inner =
+                translate_checked_type(lowered_types, cache, package_identity, program, inner)?;
             lowered_types.intern(LoweredType::Optional { inner })
         }
         CheckedType::Error { inner } => {
@@ -316,8 +326,14 @@ fn translate_checked_type(
             let fields = fields
                 .into_iter()
                 .map(|(field_name, field_type)| {
-                    translate_checked_type(lowered_types, cache, package_identity, program, field_type)
-                        .map(|lowered_field_type| (field_name, lowered_field_type))
+                    translate_checked_type(
+                        lowered_types,
+                        cache,
+                        package_identity,
+                        program,
+                        field_type,
+                    )
+                    .map(|lowered_field_type| (field_name, lowered_field_type))
                 })
                 .collect::<Result<BTreeMap<_, _>, _>>()?;
             lowered_types.intern(LoweredType::Record { fields })
@@ -414,7 +430,10 @@ mod tests {
 
     #[test]
     fn lowering_session_keeps_typed_workspace_identity_and_size() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
         let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
@@ -428,13 +447,19 @@ mod tests {
 
         let session = LoweringSession::new(typed);
 
-        assert_eq!(session.typed_workspace().entry_identity().display_name, "parser");
+        assert_eq!(
+            session.typed_workspace().entry_identity().display_name,
+            "parser"
+        );
         assert_eq!(session.typed_workspace().package_count(), 1);
     }
 
     #[test]
     fn lowering_session_translates_single_package_source_units_and_symbols() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
         let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
@@ -459,7 +484,12 @@ mod tests {
         assert_eq!(
             lowered
                 .type_table()
-                .get(*entry.checked_type_map.get(&fol_typecheck::CheckedTypeId(0)).expect("int builtin should translate"))
+                .get(
+                    *entry
+                        .checked_type_map
+                        .get(&fol_typecheck::CheckedTypeId(0))
+                        .expect("int builtin should translate")
+                )
                 .expect("lowered builtin type should exist"),
             &LoweredType::Builtin(LoweredBuiltinType::Int)
         );
@@ -484,11 +514,8 @@ mod tests {
             "use shared: loc = {\"../shared\"}\nfun[] main(): int = { return answer }",
         )
         .expect("should write app entry");
-        fs::write(
-            shared_dir.join("lib.fol"),
-            "var[exp] answer: int = 7",
-        )
-        .expect("should write shared library");
+        fs::write(shared_dir.join("lib.fol"), "var[exp] answer: int = 7")
+            .expect("should write shared library");
 
         let mut stream = FileStream::from_folder(app_dir.to_str().expect("utf8 temp path"))
             .expect("should open folder fixture");
@@ -516,8 +543,12 @@ mod tests {
             .iter()
             .filter_map(|entry| entry.origin.file.clone())
             .collect::<Vec<_>>();
-        assert!(lowered_files.iter().any(|path| path.ends_with("app/main.fol")));
-        assert!(lowered_files.iter().any(|path| path.ends_with("shared/lib.fol")));
+        assert!(lowered_files
+            .iter()
+            .any(|path| path.ends_with("app/main.fol")));
+        assert!(lowered_files
+            .iter()
+            .any(|path| path.ends_with("shared/lib.fol")));
         let app_package = lowered.entry_package();
         let imported_symbol = app_package
             .symbol_ownership
@@ -568,8 +599,11 @@ mod tests {
         .expect("should write package build definition");
         fs::write(json_root.join("src/lib.fol"), "var[exp] answer: int = 42\n")
             .expect("should write exported root source");
-        fs::write(json_root.join("src/fmt/render.fol"), "var[exp] label: str = \"fmt\"\n")
-            .expect("should write exported fmt source");
+        fs::write(
+            json_root.join("src/fmt/render.fol"),
+            "var[exp] label: str = \"fmt\"\n",
+        )
+        .expect("should write exported fmt source");
 
         let mut stream = FileStream::from_folder(app_dir.to_str().expect("utf8 temp path"))
             .expect("should open folder fixture");
@@ -796,8 +830,11 @@ mod tests {
         let root = std::env::temp_dir().join(format!("fol_lower_build_units_{stamp}"));
         fs::create_dir_all(root.join("src")).expect("should create temp source dir");
         fs::write(root.join("build.fol"), "`build`\n").expect("should write build file");
-        fs::write(root.join("src/main.fol"), "fun[] main(): int = { return 1 }\n")
-            .expect("should write runtime source");
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = { return 1 }\n",
+        )
+        .expect("should write runtime source");
 
         let mut stream = FileStream::from_folder(root.to_str().expect("utf8 temp path"))
             .expect("should open folder fixture");
@@ -816,16 +853,14 @@ mod tests {
             .expect("lowering fixture should lower");
 
         assert_eq!(lowered.entry_package().source_units.len(), 1);
-        assert!(lowered.entry_package().source_units[0].path.ends_with("src/main.fol"));
-        assert!(lowered
-            .source_map()
-            .entries()
-            .iter()
-            .all(|entry| entry
-                .origin
-                .file
-                .as_deref()
-                .is_none_or(|file| !file.ends_with("build.fol"))));
+        assert!(lowered.entry_package().source_units[0]
+            .path
+            .ends_with("src/main.fol"));
+        assert!(lowered.source_map().entries().iter().all(|entry| entry
+            .origin
+            .file
+            .as_deref()
+            .is_none_or(|file| !file.ends_with("build.fol"))));
 
         fs::remove_dir_all(root).ok();
     }

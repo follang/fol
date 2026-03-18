@@ -474,15 +474,10 @@ impl ResolvedProgram {
         if loaded.identity.source_kind == crate::PackageSourceKind::Package
             && !loaded.prepared.exports.is_empty()
         {
-                self.mount_declared_package_exports(
-                    loaded,
-                    source_unit_id,
-                    root_scope,
-                    &root_name,
-                )?;
-                self.mounted_package_roots
-                    .insert(loaded.identity.canonical_root.clone(), root_scope);
-                return Ok(root_scope);
+            self.mount_declared_package_exports(loaded, source_unit_id, root_scope, &root_name)?;
+            self.mounted_package_roots
+                .insert(loaded.identity.canonical_root.clone(), root_scope);
+            return Ok(root_scope);
         }
 
         self.mount_all_exported_package_scopes(loaded, source_unit_id, root_scope, &root_name)?;
@@ -499,7 +494,9 @@ impl ResolvedProgram {
         root_scope: ScopeId,
         root_name: &str,
     ) -> Result<(), ResolverError> {
-        for (foreign_scope_id, foreign_namespace, foreign_symbols) in exported_symbol_scopes(&loaded.program) {
+        for (foreign_scope_id, foreign_namespace, foreign_symbols) in
+            exported_symbol_scopes(&loaded.program)
+        {
             for export in &loaded.prepared.exports {
                 if foreign_namespace != export.source_namespace {
                     continue;
@@ -655,7 +652,11 @@ impl ResolvedProgram {
             .get_mut(scope_id)
             .expect("mounted symbol target scope should exist");
         scope.symbols.push(symbol_id);
-        scope.symbol_keys.entry(canonical_name).or_default().push(symbol_id);
+        scope
+            .symbol_keys
+            .entry(canonical_name)
+            .or_default()
+            .push(symbol_id);
 
         Ok(symbol_id)
     }
@@ -664,9 +665,7 @@ impl ResolvedProgram {
 #[cfg(test)]
 mod tests {
     use super::ResolvedProgram;
-    use fol_parser::ast::{
-        ParsedPackage, ParsedSourceUnit, ParsedSourceUnitKind, SyntaxIndex,
-    };
+    use fol_parser::ast::{ParsedPackage, ParsedSourceUnit, ParsedSourceUnitKind, SyntaxIndex};
 
     #[test]
     fn resolved_program_keeps_build_source_unit_kinds() {
@@ -696,17 +695,25 @@ mod tests {
         assert_eq!(resolved.build_source_units().count(), 1);
         assert_eq!(resolved.ordinary_source_units().count(), 1);
         assert_eq!(
-            resolved.source_unit(crate::SourceUnitId(0)).map(|unit| unit.kind),
+            resolved
+                .source_unit(crate::SourceUnitId(0))
+                .map(|unit| unit.kind),
             Some(ParsedSourceUnitKind::Build)
         );
         assert_eq!(
-            resolved.source_unit(crate::SourceUnitId(1)).map(|unit| unit.kind),
+            resolved
+                .source_unit(crate::SourceUnitId(1))
+                .map(|unit| unit.kind),
             Some(ParsedSourceUnitKind::Ordinary)
         );
     }
 }
 
-fn remap_loaded_namespace(namespace: &str, foreign_package_name: &str, mounted_root: &str) -> String {
+fn remap_loaded_namespace(
+    namespace: &str,
+    foreign_package_name: &str,
+    mounted_root: &str,
+) -> String {
     if namespace == foreign_package_name {
         mounted_root.to_string()
     } else if let Some(suffix) = namespace.strip_prefix(&format!("{foreign_package_name}::")) {
@@ -721,9 +728,8 @@ fn exported_symbol_scopes(program: &ResolvedProgram) -> Vec<(ScopeId, String, Ve
         .scopes
         .iter_with_ids()
         .filter_map(|(scope_id, scope)| {
-            namespace_for_export_scope(&scope.kind).map(|namespace| {
-                (scope_id, namespace, scope.symbols.clone())
-            })
+            namespace_for_export_scope(&scope.kind)
+                .map(|namespace| (scope_id, namespace, scope.symbols.clone()))
         })
         .collect::<Vec<_>>();
     scopes.sort_by_key(|(_, namespace, _)| namespace.matches("::").count());

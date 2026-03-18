@@ -9,10 +9,9 @@ pub fn render_terminator(
     terminator: &LoweredTerminator,
 ) -> BackendResult<String> {
     match terminator {
-        LoweredTerminator::Jump { target } => Ok(format!(
-            "__fol_next_block = {}; continue;",
-            target.0
-        )),
+        LoweredTerminator::Jump { target } => {
+            Ok(format!("__fol_next_block = {}; continue;", target.0))
+        }
         LoweredTerminator::Branch {
             condition,
             then_block,
@@ -234,9 +233,13 @@ mod tests {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
         let routine = LoweredRoutine::new(LoweredRoutineId(4), "main", LoweredBlockId(0));
 
-        let rendered =
-            render_terminator(&package_identity, &table, &routine, &LoweredTerminator::Unreachable)
-                .expect("unreachable");
+        let rendered = render_terminator(
+            &package_identity,
+            &table,
+            &routine,
+            &LoweredTerminator::Unreachable,
+        )
+        .expect("unreachable");
 
         assert_eq!(rendered, "unreachable!();");
     }
@@ -249,11 +252,13 @@ mod tests {
         let int_id = table.intern_builtin(LoweredBuiltinType::Int);
         let str_id = table.intern_builtin(LoweredBuiltinType::Str);
         let mut routine = LoweredRoutine::new(LoweredRoutineId(5), "main", LoweredBlockId(0));
-        routine.signature = Some(table.intern(LoweredType::Routine(fol_lower::LoweredRoutineType {
-            params: vec![bool_id],
-            return_type: Some(int_id),
-            error_type: Some(str_id),
-        })));
+        routine.signature = Some(table.intern(LoweredType::Routine(
+            fol_lower::LoweredRoutineType {
+                params: vec![bool_id],
+                return_type: Some(int_id),
+                error_type: Some(str_id),
+            },
+        )));
         let flag = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(bool_id),

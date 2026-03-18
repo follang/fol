@@ -85,7 +85,9 @@ mod tests {
 
         assert_eq!(
             git_store_path(&root, &locator, "refs/tags/v1.0.0"),
-            PathBuf::from("/tmp/demo/.fol/pkg/git/github.com/bresilla/logtiny/rev_refs_tags_v1_0_0")
+            PathBuf::from(
+                "/tmp/demo/.fol/pkg/git/github.com/bresilla/logtiny/rev_refs_tags_v1_0_0"
+            )
         );
     }
 }

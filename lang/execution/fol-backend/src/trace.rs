@@ -1,7 +1,9 @@
+use crate::{
+    plan_namespace_layouts, BackendError, BackendErrorKind, BackendResult, BackendSession,
+};
 use fol_lower::LoweredSourceSymbol;
 use fol_parser::ast::SyntaxOrigin;
 use fol_resolver::PackageIdentity;
-use crate::{plan_namespace_layouts, BackendError, BackendErrorKind, BackendResult, BackendSession};
 use fol_resolver::SourceUnitId;
 use std::collections::BTreeMap;
 
@@ -76,7 +78,9 @@ impl BackendTrace {
     }
 }
 
-pub fn build_emitted_source_map(session: &BackendSession) -> BackendResult<BackendEmittedSourceMap> {
+pub fn build_emitted_source_map(
+    session: &BackendSession,
+) -> BackendResult<BackendEmittedSourceMap> {
     let source_unit_paths = source_unit_output_paths(session)?;
     let mut map = BackendEmittedSourceMap::new();
     for entry in session.workspace().source_map().entries() {
@@ -116,7 +120,9 @@ pub fn build_backend_trace(session: &BackendSession) -> BackendResult<BackendTra
     Ok(trace)
 }
 
-fn source_unit_output_paths(session: &BackendSession) -> BackendResult<BTreeMap<SourceUnitId, String>> {
+fn source_unit_output_paths(
+    session: &BackendSession,
+) -> BackendResult<BTreeMap<SourceUnitId, String>> {
     let mut output_paths = BTreeMap::new();
     for plan in plan_namespace_layouts(session) {
         let emitted_path = format!(

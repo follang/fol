@@ -87,10 +87,7 @@ mod tests {
 
         assert_eq!(error.kind(), FrontendErrorKind::WorkspaceNotFound);
         assert_eq!(error.message(), "missing root");
-        assert_eq!(
-            error.to_string(),
-            "FrontendWorkspaceNotFound: missing root"
-        );
+        assert_eq!(error.to_string(), "FrontendWorkspaceNotFound: missing root");
         assert!(error.notes().is_empty());
     }
 

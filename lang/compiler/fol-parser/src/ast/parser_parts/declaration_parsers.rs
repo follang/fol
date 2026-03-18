@@ -646,7 +646,10 @@ impl AstParser {
         generics: &[Generic],
         type_def: &TypeDefinition,
     ) -> Vec<FolType> {
-        if !matches!(type_def, TypeDefinition::Record { .. } | TypeDefinition::Entry { .. }) {
+        if !matches!(
+            type_def,
+            TypeDefinition::Record { .. } | TypeDefinition::Entry { .. }
+        ) {
             return Vec::new();
         }
 

@@ -15,13 +15,7 @@ pub fn render_core_instruction(
     routine: &LoweredRoutine,
     instruction: &LoweredInstr,
 ) -> BackendResult<String> {
-    render_core_instruction_in_workspace(
-        None,
-        package_identity,
-        type_table,
-        routine,
-        instruction,
-    )
+    render_core_instruction_in_workspace(None, package_identity, type_table, routine, instruction)
 }
 
 pub fn render_core_instruction_in_workspace(
@@ -68,7 +62,11 @@ pub fn render_core_instruction_in_workspace(
             }
             let global_path = format!(
                 "{}::{}",
-                render_namespace_module_path(workspace, global_identity, global_decl.source_unit_id)?,
+                render_namespace_module_path(
+                    workspace,
+                    global_identity,
+                    global_decl.source_unit_id
+                )?,
                 mangle_global_name(global_identity, *global, &global_decl.name)
             );
             Ok(format!(
@@ -224,7 +222,10 @@ pub fn render_core_instruction_in_workspace(
             let Some(type_id) = operand_local.type_id else {
                 return Err(BackendError::new(
                     BackendErrorKind::InvalidInput,
-                    format!("shell operand local {:?} does not have a lowered type", operand),
+                    format!(
+                        "shell operand local {:?} does not have a lowered type",
+                        operand
+                    ),
                 ));
             };
             let expression = match type_table.get(type_id) {
@@ -234,20 +235,16 @@ pub fn render_core_instruction_in_workspace(
                 Some(LoweredType::Error { .. }) => {
                     format!("rt::unwrap_error_shell({operand_name}.clone())")
                 }
-                other => {
-                    return Err(BackendError::new(
-                        BackendErrorKind::InvalidInput,
-                        format!("shell unwrap emission expected optional/error local but found {other:?}"),
-                    ))
-                }
+                other => return Err(BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!(
+                        "shell unwrap emission expected optional/error local but found {other:?}"
+                    ),
+                )),
             };
             Ok(format!("let {result} = {expression};"))
         }
-        LoweredInstrKind::ConstructLinear {
-            kind,
-            elements,
-            ..
-        } => {
+        LoweredInstrKind::ConstructLinear { kind, elements, .. } => {
             let result = rendered_result_local(package_identity, routine, instruction)?;
             let elements = render_local_list(package_identity, routine, elements)?;
             let expression = match kind {
@@ -294,7 +291,10 @@ pub fn render_core_instruction_in_workspace(
             let Some(type_id) = container_local.type_id else {
                 return Err(BackendError::new(
                     BackendErrorKind::InvalidInput,
-                    format!("index container local {:?} does not have a lowered type", container),
+                    format!(
+                        "index container local {:?} does not have a lowered type",
+                        container
+                    ),
                 ));
             };
             let expression = match type_table.get(type_id) {
@@ -368,7 +368,10 @@ fn resolve_global_decl(
     let Some(workspace) = workspace else {
         return Err(BackendError::new(
             BackendErrorKind::Unsupported,
-            format!("workspace-aware global emission is required for global {:?}", global_id),
+            format!(
+                "workspace-aware global emission is required for global {:?}",
+                global_id
+            ),
         ));
     };
     workspace
@@ -382,7 +385,10 @@ fn resolve_global_decl(
         .ok_or_else(|| {
             BackendError::new(
                 BackendErrorKind::InvalidInput,
-                format!("lowered global {:?} is missing from the workspace", global_id),
+                format!(
+                    "lowered global {:?} is missing from the workspace",
+                    global_id
+                ),
             )
         })
 }
@@ -394,7 +400,10 @@ fn resolve_routine_decl(
     let Some(workspace) = workspace else {
         return Err(BackendError::new(
             BackendErrorKind::Unsupported,
-            format!("workspace-aware routine emission is required for routine {:?}", routine_id),
+            format!(
+                "workspace-aware routine emission is required for routine {:?}",
+                routine_id
+            ),
         ));
     };
     workspace
@@ -408,7 +417,10 @@ fn resolve_routine_decl(
         .ok_or_else(|| {
             BackendError::new(
                 BackendErrorKind::InvalidInput,
-                format!("lowered routine {:?} is missing from the workspace", routine_id),
+                format!(
+                    "lowered routine {:?} is missing from the workspace",
+                    routine_id
+                ),
             )
         })
 }
@@ -420,7 +432,10 @@ fn resolve_type_decl(
     let Some(workspace) = workspace else {
         return Err(BackendError::new(
             BackendErrorKind::Unsupported,
-            format!("workspace-aware aggregate emission is required for type {:?}", runtime_type),
+            format!(
+                "workspace-aware aggregate emission is required for type {:?}",
+                runtime_type
+            ),
         ));
     };
     workspace
@@ -459,7 +474,9 @@ fn render_global_load(
             global_name
         ))
     } else {
-        Ok(format!("{global_name}.get_or_init(Default::default).clone()"))
+        Ok(format!(
+            "{global_name}.get_or_init(Default::default).clone()"
+        ))
     }
 }
 
@@ -508,7 +525,10 @@ fn render_namespace_module_path(
     let package = workspace.package(package_identity).ok_or_else(|| {
         BackendError::new(
             BackendErrorKind::InvalidInput,
-            format!("package '{}' is missing from workspace", package_identity.display_name),
+            format!(
+                "package '{}' is missing from workspace",
+                package_identity.display_name
+            ),
         )
     })?;
     let source_unit = package
@@ -530,10 +550,9 @@ fn render_namespace_module_path(
         .filter(|segment| !segment.is_empty())
         .map(crate::sanitize_backend_ident)
         .collect::<Vec<_>>();
-    if segments
-        .first()
-        .is_some_and(|segment| segment == &crate::sanitize_backend_ident(&package_identity.display_name))
-    {
+    if segments.first().is_some_and(|segment| {
+        segment == &crate::sanitize_backend_ident(&package_identity.display_name)
+    }) {
         segments.remove(0);
     }
     let namespace_segment = match segments.as_slice() {
@@ -592,7 +611,10 @@ fn rendered_result_local(
     let Some(local_id) = instruction.result else {
         return Err(BackendError::new(
             BackendErrorKind::InvalidInput,
-            format!("instruction {:?} does not have a result local", instruction.id),
+            format!(
+                "instruction {:?} does not have a result local",
+                instruction.id
+            ),
         ));
     };
     render_local_name(package_identity, routine, local_id)
@@ -638,8 +660,8 @@ mod tests {
     use fol_lower::{
         LoweredBlockId, LoweredBuiltinType, LoweredFieldLayout, LoweredInstr, LoweredInstrId,
         LoweredInstrKind, LoweredLocal, LoweredLocalId, LoweredOperand, LoweredPackage,
-        LoweredRecoverableAbi, LoweredRoutine, LoweredRoutineId, LoweredSourceMap,
-        LoweredType, LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
+        LoweredRecoverableAbi, LoweredRoutine, LoweredRoutineId, LoweredSourceMap, LoweredType,
+        LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
         LoweredWorkspace,
     };
     use fol_resolver::{PackageSourceKind, SourceUnitId, SymbolId};
@@ -672,7 +694,9 @@ mod tests {
         let load_local = LoweredInstr {
             id: LoweredInstrId(1),
             result: Some(other_local),
-            kind: LoweredInstrKind::LoadLocal { local: result_local },
+            kind: LoweredInstrKind::LoadLocal {
+                local: result_local,
+            },
         };
         let store_local = LoweredInstr {
             id: LoweredInstrId(2),
@@ -694,8 +718,12 @@ mod tests {
                 .expect("store");
 
         assert!(const_rendered.contains("let l__pkg__entry__app__r0__l0__value = 7_i64;"));
-        assert!(load_local_rendered.contains("let l__pkg__entry__app__r0__l1__other = l__pkg__entry__app__r0__l0__value.clone();"));
-        assert!(store_local_rendered.contains("l__pkg__entry__app__r0__l0__value = l__pkg__entry__app__r0__l1__other.clone();"));
+        assert!(load_local_rendered.contains(
+            "let l__pkg__entry__app__r0__l1__other = l__pkg__entry__app__r0__l0__value.clone();"
+        ));
+        assert!(store_local_rendered.contains(
+            "l__pkg__entry__app__r0__l0__value = l__pkg__entry__app__r0__l1__other.clone();"
+        ));
 
         let _ = SourceUnitId(0);
         let _ = SymbolId(0);
@@ -732,7 +760,8 @@ mod tests {
         let rendered =
             render_core_instruction(&package_identity, &table, &routine, &call).expect("call");
 
-        assert!(rendered.contains("let l__pkg__entry__app__r3__l1__result = r__pkg__entry__app__r9__callee("));
+        assert!(rendered
+            .contains("let l__pkg__entry__app__r3__l1__result = r__pkg__entry__app__r9__callee("));
         assert!(rendered.contains("l__pkg__entry__app__r3__l0__value"));
     }
 
@@ -763,9 +792,8 @@ mod tests {
             },
         };
 
-        let rendered =
-            render_core_instruction(&package_identity, &table, &routine, &access)
-                .expect("field access");
+        let rendered = render_core_instruction(&package_identity, &table, &routine, &access)
+            .expect("field access");
 
         assert_eq!(
             rendered,
@@ -830,8 +858,7 @@ mod tests {
         let eq_rendered =
             render_core_instruction(&package_identity, &table, &routine, &eq_instr).expect("eq");
         let not_rendered =
-            render_core_instruction(&package_identity, &table, &routine, &not_instr)
-                .expect("not");
+            render_core_instruction(&package_identity, &table, &routine, &not_instr).expect("not");
 
         assert_eq!(
             eq_rendered,
@@ -935,7 +962,9 @@ mod tests {
             },
         ]
         .iter()
-        .map(|instruction| render_core_instruction(&package_identity, &table, &routine, instruction))
+        .map(|instruction| {
+            render_core_instruction(&package_identity, &table, &routine, instruction)
+        })
         .collect::<Result<Vec<_>, _>>()
         .expect("snapshot should render")
         .join("\n");
@@ -978,9 +1007,8 @@ mod tests {
             kind: LoweredInstrKind::LengthOf { operand: source },
         };
 
-        let rendered =
-            render_core_instruction(&package_identity, &table, &routine, &instruction)
-                .expect("length");
+        let rendered = render_core_instruction(&package_identity, &table, &routine, &instruction)
+            .expect("length");
 
         assert_eq!(
             rendered,
@@ -1015,9 +1043,8 @@ mod tests {
             },
         };
 
-        let rendered =
-            render_core_instruction(&package_identity, &table, &routine, &instruction)
-                .expect("echo");
+        let rendered = render_core_instruction(&package_identity, &table, &routine, &instruction)
+            .expect("echo");
 
         assert_eq!(
             rendered,
@@ -1049,9 +1076,8 @@ mod tests {
             kind: LoweredInstrKind::CheckRecoverable { operand: source },
         };
 
-        let rendered =
-            render_core_instruction(&package_identity, &table, &routine, &instruction)
-                .expect("check");
+        let rendered = render_core_instruction(&package_identity, &table, &routine, &instruction)
+            .expect("check");
 
         assert_eq!(
             rendered,
@@ -1083,9 +1109,8 @@ mod tests {
             kind: LoweredInstrKind::UnwrapRecoverable { operand: source },
         };
 
-        let rendered =
-            render_core_instruction(&package_identity, &table, &routine, &instruction)
-                .expect("unwrap");
+        let rendered = render_core_instruction(&package_identity, &table, &routine, &instruction)
+            .expect("unwrap");
 
         assert_eq!(
             rendered,
@@ -1116,9 +1141,8 @@ mod tests {
             kind: LoweredInstrKind::ExtractRecoverableError { operand: source },
         };
 
-        let rendered =
-            render_core_instruction(&package_identity, &table, &routine, &instruction)
-                .expect("extract");
+        let rendered = render_core_instruction(&package_identity, &table, &routine, &instruction)
+            .expect("extract");
 
         assert_eq!(
             rendered,
@@ -1172,8 +1196,7 @@ mod tests {
             render_core_instruction(&package_identity, &table, &routine, &some_instr)
                 .expect("some");
         let nil_rendered =
-            render_core_instruction(&package_identity, &table, &routine, &nil_instr)
-                .expect("nil");
+            render_core_instruction(&package_identity, &table, &routine, &nil_instr).expect("nil");
 
         assert_eq!(
             some_rendered,
@@ -1190,7 +1213,9 @@ mod tests {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
         let mut table = LoweredTypeTable::new();
         let int_id = table.intern_builtin(LoweredBuiltinType::Int);
-        let error_id = table.intern(fol_lower::LoweredType::Error { inner: Some(int_id) });
+        let error_id = table.intern(fol_lower::LoweredType::Error {
+            inner: Some(int_id),
+        });
         let mut routine = LoweredRoutine::new(LoweredRoutineId(13), "main", LoweredBlockId(0));
         let payload = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
@@ -1213,9 +1238,8 @@ mod tests {
             },
         };
 
-        let rendered =
-            render_core_instruction(&package_identity, &table, &routine, &instruction)
-                .expect("error shell");
+        let rendered = render_core_instruction(&package_identity, &table, &routine, &instruction)
+            .expect("error shell");
 
         assert_eq!(
             rendered,
@@ -1229,7 +1253,9 @@ mod tests {
         let mut table = LoweredTypeTable::new();
         let int_id = table.intern_builtin(LoweredBuiltinType::Int);
         let optional_id = table.intern(fol_lower::LoweredType::Optional { inner: int_id });
-        let error_id = table.intern(fol_lower::LoweredType::Error { inner: Some(int_id) });
+        let error_id = table.intern(fol_lower::LoweredType::Error {
+            inner: Some(int_id),
+        });
         let mut routine = LoweredRoutine::new(LoweredRoutineId(14), "main", LoweredBlockId(0));
         let maybe = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
@@ -1290,7 +1316,9 @@ mod tests {
         let int_id = table.intern_builtin(LoweredBuiltinType::Int);
         let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
         let optional_id = table.intern(fol_lower::LoweredType::Optional { inner: int_id });
-        let error_id = table.intern(fol_lower::LoweredType::Error { inner: Some(int_id) });
+        let error_id = table.intern(fol_lower::LoweredType::Error {
+            inner: Some(int_id),
+        });
         let mut routine = LoweredRoutine::new(LoweredRoutineId(15), "main", LoweredBlockId(0));
         let value = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
@@ -1399,7 +1427,9 @@ mod tests {
             },
         ]
         .iter()
-        .map(|instruction| render_core_instruction(&package_identity, &table, &routine, instruction))
+        .map(|instruction| {
+            render_core_instruction(&package_identity, &table, &routine, instruction)
+        })
         .collect::<Result<Vec<_>, _>>()
         .expect("runtime snapshot should render")
         .join("\n");
@@ -1457,9 +1487,8 @@ mod tests {
             },
         };
 
-        let rendered =
-            render_core_instruction(&package_identity, &table, &routine, &instruction)
-                .expect("array");
+        let rendered = render_core_instruction(&package_identity, &table, &routine, &instruction)
+            .expect("array");
 
         assert_eq!(
             rendered,
@@ -1472,8 +1501,12 @@ mod tests {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
         let mut table = LoweredTypeTable::new();
         let int_id = table.intern_builtin(LoweredBuiltinType::Int);
-        let vec_id = table.intern(fol_lower::LoweredType::Vector { element_type: int_id });
-        let seq_id = table.intern(fol_lower::LoweredType::Sequence { element_type: int_id });
+        let vec_id = table.intern(fol_lower::LoweredType::Vector {
+            element_type: int_id,
+        });
+        let seq_id = table.intern(fol_lower::LoweredType::Sequence {
+            element_type: int_id,
+        });
         let mut routine = LoweredRoutine::new(LoweredRoutineId(17), "main", LoweredBlockId(0));
         let a = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
@@ -1518,12 +1551,10 @@ mod tests {
             },
         };
 
-        let vec_rendered =
-            render_core_instruction(&package_identity, &table, &routine, &vec_instr)
-                .expect("vector");
-        let seq_rendered =
-            render_core_instruction(&package_identity, &table, &routine, &seq_instr)
-                .expect("sequence");
+        let vec_rendered = render_core_instruction(&package_identity, &table, &routine, &vec_instr)
+            .expect("vector");
+        let seq_rendered = render_core_instruction(&package_identity, &table, &routine, &seq_instr)
+            .expect("sequence");
 
         assert_eq!(
             vec_rendered,
@@ -1590,11 +1621,9 @@ mod tests {
         };
 
         let set_rendered =
-            render_core_instruction(&package_identity, &table, &routine, &set_instr)
-                .expect("set");
+            render_core_instruction(&package_identity, &table, &routine, &set_instr).expect("set");
         let map_rendered =
-            render_core_instruction(&package_identity, &table, &routine, &map_instr)
-                .expect("map");
+            render_core_instruction(&package_identity, &table, &routine, &map_instr).expect("map");
 
         assert_eq!(
             set_rendered,
@@ -1615,8 +1644,12 @@ mod tests {
             element_type: int_id,
             size: Some(2),
         });
-        let vec_id = table.intern(fol_lower::LoweredType::Vector { element_type: int_id });
-        let seq_id = table.intern(fol_lower::LoweredType::Sequence { element_type: int_id });
+        let vec_id = table.intern(fol_lower::LoweredType::Vector {
+            element_type: int_id,
+        });
+        let seq_id = table.intern(fol_lower::LoweredType::Sequence {
+            element_type: int_id,
+        });
         let map_id = table.intern(fol_lower::LoweredType::Map {
             key_type: int_id,
             value_type: int_id,
@@ -1712,7 +1745,9 @@ mod tests {
             },
         ]
         .iter()
-        .map(|instruction| render_core_instruction(&package_identity, &table, &routine, instruction))
+        .map(|instruction| {
+            render_core_instruction(&package_identity, &table, &routine, instruction)
+        })
         .collect::<Result<Vec<_>, _>>()
         .expect("index renders");
 
@@ -1747,7 +1782,8 @@ mod tests {
             variants: BTreeMap::from([("Ok".to_string(), Some(int_id))]),
         });
 
-        let mut package = LoweredPackage::new(fol_lower::LoweredPackageId(0), package_identity.clone());
+        let mut package =
+            LoweredPackage::new(fol_lower::LoweredPackageId(0), package_identity.clone());
         package.source_units.push(fol_lower::LoweredSourceUnit {
             source_unit_id: SourceUnitId(0),
             path: "app/main.fol".to_string(),
@@ -1864,8 +1900,12 @@ mod tests {
             element_type: int_id,
             size: Some(2),
         });
-        let vec_id = table.intern(fol_lower::LoweredType::Vector { element_type: int_id });
-        let seq_id = table.intern(fol_lower::LoweredType::Sequence { element_type: int_id });
+        let vec_id = table.intern(fol_lower::LoweredType::Vector {
+            element_type: int_id,
+        });
+        let seq_id = table.intern(fol_lower::LoweredType::Sequence {
+            element_type: int_id,
+        });
         let set_id = table.intern(fol_lower::LoweredType::Set {
             member_types: vec![int_id],
         });
@@ -1977,7 +2017,9 @@ mod tests {
             },
         ]
         .iter()
-        .map(|instruction| render_core_instruction(&package_identity, &table, &routine, instruction))
+        .map(|instruction| {
+            render_core_instruction(&package_identity, &table, &routine, instruction)
+        })
         .collect::<Result<Vec<_>, _>>()
         .expect("container snapshot renders")
         .join("\n");
@@ -1999,8 +2041,7 @@ mod tests {
     fn unsupported_lowered_instruction_families_fail_explicitly() {
         let mut table = LoweredTypeTable::new();
         let int_id = table.intern_builtin(LoweredBuiltinType::Int);
-        let package_identity =
-            package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
         let mut routine = LoweredRoutine::new(LoweredRoutineId(21), "main", LoweredBlockId(0));
         let local_id = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
@@ -2009,16 +2050,14 @@ mod tests {
             name: Some("value".to_string()),
         });
 
-        let unsupported = [
-            LoweredInstr {
-                id: LoweredInstrId(62),
-                result: Some(local_id),
-                kind: LoweredInstrKind::Cast {
-                    operand: local_id,
-                    target_type: int_id,
-                },
+        let unsupported = [LoweredInstr {
+            id: LoweredInstrId(62),
+            result: Some(local_id),
+            kind: LoweredInstrKind::Cast {
+                operand: local_id,
+                target_type: int_id,
             },
-        ];
+        }];
 
         for instruction in unsupported {
             let error = render_core_instruction(&package_identity, &table, &routine, &instruction)

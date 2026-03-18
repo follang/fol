@@ -162,40 +162,39 @@ impl AstParser {
                     _ => {
                         return Err(Box::new(ParseError::from_token(
                             &token,
-                            "Expected 'var', 'lab', or 'con' in type entry definition"
-                                .to_string(),
+                            "Expected 'var', 'lab', or 'con' in type entry definition".to_string(),
                         )))
                     }
                 }
             } else {
                 match token.key() {
-                KEYWORD::Keyword(BUILDIN::Var) => {
-                    let _ = tokens.bump();
-                    self.parse_binding_options(
-                        tokens,
-                        vec![VarOption::Mutable, VarOption::Normal],
-                    )?
-                }
-                KEYWORD::Keyword(BUILDIN::Lab) => {
-                    let _ = tokens.bump();
-                    self.parse_binding_options(
-                        tokens,
-                        vec![VarOption::Immutable, VarOption::Normal],
-                    )?
-                }
-                KEYWORD::Keyword(BUILDIN::Con) => {
-                    let _ = tokens.bump();
-                    self.parse_binding_options(
-                        tokens,
-                        vec![VarOption::Immutable, VarOption::Normal],
-                    )?
-                }
-                _ => {
-                    return Err(Box::new(ParseError::from_token(
-                        &token,
-                        "Expected 'var', 'lab', or 'con' in type entry definition".to_string(),
-                    )))
-                }
+                    KEYWORD::Keyword(BUILDIN::Var) => {
+                        let _ = tokens.bump();
+                        self.parse_binding_options(
+                            tokens,
+                            vec![VarOption::Mutable, VarOption::Normal],
+                        )?
+                    }
+                    KEYWORD::Keyword(BUILDIN::Lab) => {
+                        let _ = tokens.bump();
+                        self.parse_binding_options(
+                            tokens,
+                            vec![VarOption::Immutable, VarOption::Normal],
+                        )?
+                    }
+                    KEYWORD::Keyword(BUILDIN::Con) => {
+                        let _ = tokens.bump();
+                        self.parse_binding_options(
+                            tokens,
+                            vec![VarOption::Immutable, VarOption::Normal],
+                        )?
+                    }
+                    _ => {
+                        return Err(Box::new(ParseError::from_token(
+                            &token,
+                            "Expected 'var', 'lab', or 'con' in type entry definition".to_string(),
+                        )))
+                    }
                 }
             };
 
@@ -450,55 +449,57 @@ impl AstParser {
                 )));
             }
 
-            let options = if let Some((keyword, options)) = self.lookahead_binding_alternative(tokens)
-            {
-                match keyword {
-                    "var" | "con" => {
-                        let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
-                        let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
-                        options
+            let options =
+                if let Some((keyword, options)) = self.lookahead_binding_alternative(tokens) {
+                    match keyword {
+                        "var" | "con" => {
+                            let _ = tokens.bump();
+                            self.skip_ignorable(tokens);
+                            let _ = tokens.bump();
+                            self.skip_ignorable(tokens);
+                            options
+                        }
+                        _ => Vec::new(),
                     }
-                    _ => Vec::new(),
-                }
-            } else {
-                match token.key() {
-                KEYWORD::Keyword(BUILDIN::Var) => {
-                    let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
-                    self.parse_binding_options(
-                        tokens,
-                        vec![VarOption::Mutable, VarOption::Normal],
-                    )?
-                }
-                KEYWORD::Keyword(BUILDIN::Lab) => {
-                    let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
-                    self.parse_binding_options(
-                        tokens,
-                        vec![VarOption::Immutable, VarOption::Normal],
-                    )?
-                }
-                KEYWORD::Keyword(BUILDIN::Con) => {
-                    let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
-                    self.parse_binding_options(
-                        tokens,
-                        vec![VarOption::Immutable, VarOption::Normal],
-                    )?
-                }
-                _ => Vec::new(),
-                }
-            };
+                } else {
+                    match token.key() {
+                        KEYWORD::Keyword(BUILDIN::Var) => {
+                            let _ = tokens.bump();
+                            self.skip_ignorable(tokens);
+                            self.parse_binding_options(
+                                tokens,
+                                vec![VarOption::Mutable, VarOption::Normal],
+                            )?
+                        }
+                        KEYWORD::Keyword(BUILDIN::Lab) => {
+                            let _ = tokens.bump();
+                            self.skip_ignorable(tokens);
+                            self.parse_binding_options(
+                                tokens,
+                                vec![VarOption::Immutable, VarOption::Normal],
+                            )?
+                        }
+                        KEYWORD::Keyword(BUILDIN::Con) => {
+                            let _ = tokens.bump();
+                            self.skip_ignorable(tokens);
+                            self.parse_binding_options(
+                                tokens,
+                                vec![VarOption::Immutable, VarOption::Normal],
+                            )?
+                        }
+                        _ => Vec::new(),
+                    }
+                };
 
             self.skip_ignorable(tokens);
 
             let mut field_names = Vec::new();
             loop {
                 let name_token = tokens.curr(false)?;
-                let field_name =
-                    Self::expect_named_label(&name_token, "Expected field name in type record definition")?;
+                let field_name = Self::expect_named_label(
+                    &name_token,
+                    "Expected field name in type record definition",
+                )?;
                 field_names.push((field_name, name_token));
                 let _ = tokens.bump();
 

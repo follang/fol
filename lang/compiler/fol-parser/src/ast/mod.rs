@@ -157,9 +157,7 @@ impl ParsedPackage {
             if let Some(unit) = source_units.get_mut(unit_index) {
                 entry.meta = ParsedTopLevelMeta {
                     visibility: entry.node.declaration_visibility(),
-                    scope: entry
-                        .node
-                        .declaration_scope(&unit.package, &unit.namespace),
+                    scope: entry.node.declaration_scope(&unit.package, &unit.namespace),
                 };
                 unit.items.push(entry);
             }
@@ -179,8 +177,14 @@ mod tests {
 
     #[test]
     fn parsed_source_unit_kind_distinguishes_build_paths() {
-        assert_eq!(ParsedSourceUnitKind::from_path("src/main.fol"), ParsedSourceUnitKind::Ordinary);
-        assert_eq!(ParsedSourceUnitKind::from_path("build.fol"), ParsedSourceUnitKind::Build);
+        assert_eq!(
+            ParsedSourceUnitKind::from_path("src/main.fol"),
+            ParsedSourceUnitKind::Ordinary
+        );
+        assert_eq!(
+            ParsedSourceUnitKind::from_path("build.fol"),
+            ParsedSourceUnitKind::Build
+        );
         assert_eq!(
             ParsedSourceUnitKind::from_path("/tmp/pkg/build.fol"),
             ParsedSourceUnitKind::Build
@@ -303,7 +307,10 @@ pub enum AstNode {
     },
 
     /// Alias declaration: ali name: target_type
-    AliasDecl { name: String, target: FolType },
+    AliasDecl {
+        name: String,
+        target: FolType,
+    },
 
     /// Definition declaration: def name: mod[...] = { body } / def name: blk[...] = { body }
     DefDecl {
@@ -374,7 +381,10 @@ pub enum AstNode {
     },
 
     /// Qualified function call: a::b::call(args)
-    QualifiedFunctionCall { path: QualifiedPath, args: Vec<AstNode> },
+    QualifiedFunctionCall {
+        path: QualifiedPath,
+        args: Vec<AstNode>,
+    },
 
     /// Named call argument: name = value
     NamedArgument {
@@ -486,10 +496,15 @@ pub enum AstNode {
     },
 
     /// Availability access: container:[pattern] / access_expr:
-    AvailabilityAccess { target: Box<AstNode> },
+    AvailabilityAccess {
+        target: Box<AstNode>,
+    },
 
     /// Field access: object.field
-    FieldAccess { object: Box<AstNode>, field: String },
+    FieldAccess {
+        object: Box<AstNode>,
+        field: String,
+    },
 
     /// Identifier reference
     Identifier {
@@ -498,7 +513,9 @@ pub enum AstNode {
     },
 
     /// Qualified identifier reference
-    QualifiedIdentifier { path: QualifiedPath },
+    QualifiedIdentifier {
+        path: QualifiedPath,
+    },
 
     /// Literal values
     Literal(Literal),
@@ -565,16 +582,22 @@ pub enum AstNode {
     },
 
     /// Return statement: return value
-    Return { value: Option<Box<AstNode>> },
+    Return {
+        value: Option<Box<AstNode>>,
+    },
 
     /// Break statement
     Break,
 
     /// Yield statement: yield value
-    Yield { value: Box<AstNode> },
+    Yield {
+        value: Box<AstNode>,
+    },
 
     /// Block: { statements }
-    Block { statements: Vec<AstNode> },
+    Block {
+        statements: Vec<AstNode>,
+    },
 
     /// Inquiry clause attached to a routine
     Inquiry {
@@ -587,7 +610,9 @@ pub enum AstNode {
     /// The `declarations` list is intentionally source-ordered and mixed: it may
     /// contain declarations, executable root nodes, and retained standalone comment
     /// nodes accepted at file scope.
-    Program { declarations: Vec<AstNode> },
+    Program {
+        declarations: Vec<AstNode>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -605,12 +630,18 @@ impl QualifiedPath {
     }
 
     pub fn with_syntax_id(segments: Vec<String>, syntax_id: Option<SyntaxNodeId>) -> Self {
-        Self { segments, syntax_id }
+        Self {
+            segments,
+            syntax_id,
+        }
     }
 
     pub fn from_joined(path: &str) -> Self {
         Self {
-            segments: path.split("::").map(|segment| segment.to_string()).collect(),
+            segments: path
+                .split("::")
+                .map(|segment| segment.to_string())
+                .collect(),
             syntax_id: None,
         }
     }
@@ -1064,9 +1095,7 @@ impl AstNode {
         match self {
             AstNode::VarDecl { options, .. }
             | AstNode::LabDecl { options, .. }
-            | AstNode::DestructureDecl { options, .. } => {
-                Some(var_decl_visibility(options))
-            }
+            | AstNode::DestructureDecl { options, .. } => Some(var_decl_visibility(options)),
             AstNode::FunDecl { options, .. }
             | AstNode::ProDecl { options, .. }
             | AstNode::LogDecl { options, .. } => Some(fun_decl_visibility(options)),
@@ -1082,11 +1111,7 @@ impl AstNode {
         }
     }
 
-    pub fn declaration_scope(
-        &self,
-        package: &str,
-        namespace: &str,
-    ) -> Option<ParsedDeclScope> {
+    pub fn declaration_scope(&self, package: &str, namespace: &str) -> Option<ParsedDeclScope> {
         let visibility = self.declaration_visibility()?;
         if visibility == ParsedDeclVisibility::Hidden {
             Some(ParsedDeclScope::File)
@@ -1147,14 +1172,10 @@ impl AstNode {
 
             AstNode::VarDecl { type_hint, .. }
             | AstNode::LabDecl { type_hint, .. }
-            | AstNode::DestructureDecl { type_hint, .. } => {
-                type_hint.clone()
-            }
+            | AstNode::DestructureDecl { type_hint, .. } => type_hint.clone(),
             AstNode::FunDecl { return_type, .. } => return_type.clone(),
             AstNode::ProDecl { return_type, .. } => return_type.clone(),
-            AstNode::LogDecl { return_type, .. } => {
-                return_type.clone().or(Some(FolType::Bool))
-            }
+            AstNode::LogDecl { return_type, .. } => return_type.clone().or(Some(FolType::Bool)),
             AstNode::DefDecl { def_type, .. } => Some(def_type.clone()),
             AstNode::SegDecl { seg_type, .. } => Some(seg_type.clone()),
             AstNode::ImpDecl { target, .. } => Some(target.clone()),
@@ -1232,7 +1253,10 @@ impl AstNode {
                 return_type,
                 ..
             } => Some(FolType::Function {
-                params: params.iter().map(|param| param.param_type.clone()).collect(),
+                params: params
+                    .iter()
+                    .map(|param| param.param_type.clone())
+                    .collect(),
                 return_type: Box::new(return_type.clone().unwrap_or(FolType::Any)),
             }),
             AstNode::AnonymousPro {
@@ -1240,7 +1264,10 @@ impl AstNode {
                 return_type,
                 ..
             } => Some(FolType::Function {
-                params: params.iter().map(|param| param.param_type.clone()).collect(),
+                params: params
+                    .iter()
+                    .map(|param| param.param_type.clone())
+                    .collect(),
                 return_type: Box::new(return_type.clone().unwrap_or(FolType::Any)),
             }),
             AstNode::AnonymousLog {
@@ -1248,7 +1275,10 @@ impl AstNode {
                 return_type,
                 ..
             } => Some(FolType::Function {
-                params: params.iter().map(|param| param.param_type.clone()).collect(),
+                params: params
+                    .iter()
+                    .map(|param| param.param_type.clone())
+                    .collect(),
                 return_type: Box::new(return_type.clone().unwrap_or(FolType::Bool)),
             }),
             AstNode::AvailabilityAccess { .. } => Some(FolType::Bool),

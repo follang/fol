@@ -49,7 +49,10 @@ impl fmt::Display for Element {
 
 impl Element {
     fn is_soft_layout_void(key: &KEYWORD) -> bool {
-        matches!(key, KEYWORD::Void(VOID::Space) | KEYWORD::Void(VOID::EndLine))
+        matches!(
+            key,
+            KEYWORD::Void(VOID::Space) | KEYWORD::Void(VOID::EndLine)
+        )
     }
 
     pub fn init(key: KEYWORD, loc: point::Location, con: String) -> Self {
@@ -107,9 +110,7 @@ impl Element {
             self.bump(el);
         }
         // EOL or SPACE => EOF
-        else if Self::is_soft_layout_void(&el.curr()?.key())
-            && el.peek(0)?.key().is_eof()
-        {
+        else if Self::is_soft_layout_void(&el.curr()?.key()) && el.peek(0)?.key().is_eof() {
             self.append(&el.peek(0)?.into());
             self.set_key(Void(VOID::EndFile));
             self.bump(el);

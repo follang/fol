@@ -44,7 +44,11 @@ impl DiagnosticReport {
         self.add_diagnostic(producer.to_diagnostic());
     }
 
-    pub fn add_error(&mut self, error: &dyn fol_types::Glitch, location: Option<DiagnosticLocation>) {
+    pub fn add_error(
+        &mut self,
+        error: &dyn fol_types::Glitch,
+        location: Option<DiagnosticLocation>,
+    ) {
         let diagnostic = Diagnostic::from_glitch(error, Severity::Error, location);
         self.add_diagnostic(diagnostic);
     }
@@ -58,11 +62,7 @@ impl DiagnosticReport {
         self.add_diagnostic(diagnostic);
     }
 
-    pub fn add_info(
-        &mut self,
-        info: &dyn fol_types::Glitch,
-        location: Option<DiagnosticLocation>,
-    ) {
+    pub fn add_info(&mut self, info: &dyn fol_types::Glitch, location: Option<DiagnosticLocation>) {
         let diagnostic = Diagnostic::from_glitch(info, Severity::Info, location);
         self.add_diagnostic(diagnostic);
     }
@@ -481,7 +481,9 @@ mod tests {
         assert_eq!(decoded.suggestions.len(), 1);
         assert_eq!(decoded.legacy_help(), Some("first help"));
         assert_eq!(
-            decoded.primary_label().and_then(|label| label.message.as_deref()),
+            decoded
+                .primary_label()
+                .and_then(|label| label.message.as_deref()),
             Some("offending expression")
         );
     }

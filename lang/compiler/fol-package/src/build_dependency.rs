@@ -153,9 +153,9 @@ pub fn dependency_modules_from_exports(
 #[cfg(test)]
 mod tests {
     use super::{
-        dependency_modules_from_exports, DependencyArtifactSurface,
-        DependencyArtifactSurfaceSet, DependencyBuildHandle, DependencyBuildSurface,
-        DependencyBuildEvaluationMode, DependencyBuildSurfaceSet, DependencyGeneratedOutputSurface,
+        dependency_modules_from_exports, DependencyArtifactSurface, DependencyArtifactSurfaceSet,
+        DependencyBuildEvaluationMode, DependencyBuildHandle, DependencyBuildSurface,
+        DependencyBuildSurfaceSet, DependencyGeneratedOutputSurface,
         DependencyGeneratedOutputSurfaceSet, DependencyModuleSurface, DependencyModuleSurfaceSet,
         DependencySourceRootSurface, DependencyStepSurface, DependencyStepSurfaceSet,
     };
@@ -219,7 +219,10 @@ mod tests {
     fn dependency_build_evaluation_modes_cover_phase_eight_loading_strategies() {
         assert_eq!(DependencyBuildEvaluationMode::Eager.as_str(), "eager");
         assert_eq!(DependencyBuildEvaluationMode::Lazy.as_str(), "lazy");
-        assert_eq!(DependencyBuildEvaluationMode::OnDemand.as_str(), "on-demand");
+        assert_eq!(
+            DependencyBuildEvaluationMode::OnDemand.as_str(),
+            "on-demand"
+        );
         assert_eq!(
             DependencyBuildEvaluationMode::parse("eager"),
             Some(DependencyBuildEvaluationMode::Eager)
@@ -303,7 +306,10 @@ mod tests {
             generated_outputs: Vec::new(),
         });
 
-        assert_eq!(set.find("core").map(|surface| surface.alias.as_str()), Some("core"));
+        assert_eq!(
+            set.find("core").map(|surface| surface.alias.as_str()),
+            Some("core")
+        );
         assert!(set.find("json").is_none());
     }
 
@@ -334,15 +340,21 @@ mod tests {
         };
 
         assert_eq!(
-            surface.find_module("root").map(|module| module.source_namespace.as_str()),
+            surface
+                .find_module("root")
+                .map(|module| module.source_namespace.as_str()),
             Some("core::src")
         );
         assert_eq!(
-            surface.find_artifact("corelib").map(|artifact| artifact.artifact_kind.as_str()),
+            surface
+                .find_artifact("corelib")
+                .map(|artifact| artifact.artifact_kind.as_str()),
             Some("static-lib")
         );
         assert_eq!(
-            surface.find_step("check").map(|step| step.step_kind.as_str()),
+            surface
+                .find_step("check")
+                .map(|step| step.step_kind.as_str()),
             Some("check")
         );
         assert_eq!(

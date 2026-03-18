@@ -357,9 +357,12 @@ impl TypedProgram {
         reference_id: fol_resolver::ReferenceId,
         effect: RecoverableCallEffect,
     ) -> Result<(), crate::TypecheckError> {
-        let reference = self
-            .typed_reference_mut(reference_id)
-            .ok_or_else(|| crate::TypecheckError::new(crate::TypecheckErrorKind::Internal, "typed reference disappeared while recording a recoverable call effect"))?;
+        let reference = self.typed_reference_mut(reference_id).ok_or_else(|| {
+            crate::TypecheckError::new(
+                crate::TypecheckErrorKind::Internal,
+                "typed reference disappeared while recording a recoverable call effect",
+            )
+        })?;
         reference.recoverable_effect = Some(effect);
         Ok(())
     }
@@ -369,13 +372,11 @@ impl TypedProgram {
         shell_type: CheckedTypeId,
         apparent_type: CheckedTypeId,
     ) {
-        self.apparent_type_overrides.insert(shell_type, apparent_type);
+        self.apparent_type_overrides
+            .insert(shell_type, apparent_type);
     }
 
-    pub(crate) fn apparent_type_override(
-        &self,
-        type_id: CheckedTypeId,
-    ) -> Option<CheckedTypeId> {
+    pub(crate) fn apparent_type_override(&self, type_id: CheckedTypeId) -> Option<CheckedTypeId> {
         self.apparent_type_overrides.get(&type_id).copied()
     }
 }
@@ -390,8 +391,12 @@ mod tests {
 
     #[test]
     fn typed_program_shell_installs_builtin_types_for_resolved_programs() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
-        let mut stream = FileStream::from_file(fixture_path).expect("Should open typecheck fixture");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
+        let mut stream =
+            FileStream::from_file(fixture_path).expect("Should open typecheck fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
         let syntax = parser
@@ -409,7 +414,10 @@ mod tests {
         assert_eq!(typed.source_units().len(), 1);
         assert_eq!(
             typed.source_units()[0].top_level_nodes,
-            typed.resolved().source_units.get(fol_resolver::SourceUnitId(0))
+            typed
+                .resolved()
+                .source_units
+                .get(fol_resolver::SourceUnitId(0))
                 .expect("resolved source unit should exist")
                 .top_level_nodes
         );
@@ -417,8 +425,12 @@ mod tests {
 
     #[test]
     fn typed_workspace_single_package_shell_exposes_entry_program() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
-        let mut stream = FileStream::from_file(fixture_path).expect("Should open typecheck fixture");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
+        let mut stream =
+            FileStream::from_file(fixture_path).expect("Should open typecheck fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
         let syntax = parser
@@ -431,7 +443,10 @@ mod tests {
             display_name: resolved.package_name().to_string(),
         };
 
-        let workspace = TypedWorkspace::single(entry_identity.clone(), TypedProgram::from_resolved(resolved));
+        let workspace = TypedWorkspace::single(
+            entry_identity.clone(),
+            TypedProgram::from_resolved(resolved),
+        );
 
         assert_eq!(workspace.package_count(), 1);
         assert_eq!(workspace.entry_identity(), &entry_identity);
@@ -457,7 +472,9 @@ mod tests {
             FileStream::from_folder(root.to_str().expect("utf8 temp path")).expect("open temp pkg");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
-        let syntax = parser.parse_package(&mut lexer).expect("temp pkg should parse");
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("temp pkg should parse");
         let resolved = resolve_package(syntax).expect("temp pkg should resolve");
         let typed = TypedProgram::from_resolved(resolved);
 

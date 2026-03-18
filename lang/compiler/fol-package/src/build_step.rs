@@ -185,7 +185,8 @@ fn visit_step_order(
 }
 
 pub fn project_graph_steps(graph: &BuildGraph) -> Vec<BuildStepDefinition> {
-    graph.steps()
+    graph
+        .steps()
         .iter()
         .map(|step| BuildStepDefinition {
             name: step.name.clone(),
@@ -200,7 +201,8 @@ pub fn project_graph_steps(graph: &BuildGraph) -> Vec<BuildStepDefinition> {
             dependencies: graph
                 .step_dependencies_for(step.id)
                 .filter_map(|dependency| {
-                    graph.steps()
+                    graph
+                        .steps()
                         .get(dependency.index())
                         .map(|dependency| dependency.name.clone())
                 })
@@ -213,7 +215,7 @@ pub fn project_graph_steps(graph: &BuildGraph) -> Vec<BuildStepDefinition> {
 mod tests {
     use super::{
         plan_step_order, project_graph_steps, BuildDefaultStepKind, BuildRequestedStep,
-        BuildStepDefinition, BuildStepCacheBoundary, BuildStepCacheKey, BuildStepEvent,
+        BuildStepCacheBoundary, BuildStepCacheKey, BuildStepDefinition, BuildStepEvent,
         BuildStepEventKind, BuildStepExecutionRequest, BuildStepExecutionResult,
         BuildStepPlanError, BuildStepReport,
     };
@@ -234,10 +236,7 @@ mod tests {
             BuildRequestedStep::Default(BuildDefaultStepKind::Build).name(),
             "build"
         );
-        assert_eq!(
-            BuildRequestedStep::Named("docs".to_string()).name(),
-            "docs"
-        );
+        assert_eq!(BuildRequestedStep::Named("docs".to_string()).name(), "docs");
     }
 
     #[test]
@@ -333,7 +332,10 @@ mod tests {
 
         let error = plan_step_order(&graph, BuildStepId::from_index(0)).unwrap_err();
 
-        assert_eq!(error, BuildStepPlanError::UnknownStep(BuildStepId::from_index(0)));
+        assert_eq!(
+            error,
+            BuildStepPlanError::UnknownStep(BuildStepId::from_index(0))
+        );
     }
 
     #[test]

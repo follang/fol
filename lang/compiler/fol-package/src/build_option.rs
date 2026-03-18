@@ -216,7 +216,9 @@ impl BuildOptionDeclaration {
 
     pub fn default_raw_value(&self) -> Option<String> {
         match self {
-            Self::StandardTarget(declaration) => declaration.default.as_ref().map(|value| value.render()),
+            Self::StandardTarget(declaration) => {
+                declaration.default.as_ref().map(|value| value.render())
+            }
             Self::StandardOptimize(declaration) => {
                 declaration.default.map(|value| value.as_str().to_string())
             }
@@ -308,9 +310,9 @@ impl ResolvedBuildOptionSet {
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet,
-        BuildOptionOverride, BuildOptionOverrideParseError, BuildTargetArch, BuildTargetEnvironment,
-        BuildTargetOs, BuildTargetTriple, ResolvedBuildOptionSet, StandardOptimizeDeclaration,
+        BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet, BuildOptionOverride,
+        BuildOptionOverrideParseError, BuildTargetArch, BuildTargetEnvironment, BuildTargetOs,
+        BuildTargetTriple, ResolvedBuildOptionSet, StandardOptimizeDeclaration,
         StandardTargetDeclaration, UserOptionDeclaration,
     };
     use crate::build_api::BuildOptionValue;
@@ -371,8 +373,8 @@ mod tests {
 
     #[test]
     fn build_target_triple_parses_and_renders_canonical_triplets() {
-        let triple = BuildTargetTriple::parse("x86_64-linux-gnu")
-            .expect("canonical triples should parse");
+        let triple =
+            BuildTargetTriple::parse("x86_64-linux-gnu").expect("canonical triples should parse");
 
         assert_eq!(triple.arch, BuildTargetArch::X86_64);
         assert_eq!(triple.os, BuildTargetOs::Linux);
@@ -456,9 +458,18 @@ mod tests {
     fn build_option_values_render_with_stable_raw_spelling() {
         assert_eq!(BuildOptionValue::Bool(true).render(), "true");
         assert_eq!(BuildOptionValue::Int(8).render(), "8");
-        assert_eq!(BuildOptionValue::String("dist".to_string()).render(), "dist");
-        assert_eq!(BuildOptionValue::Enum("release".to_string()).render(), "release");
-        assert_eq!(BuildOptionValue::Path("src/app.fol".to_string()).render(), "src/app.fol");
+        assert_eq!(
+            BuildOptionValue::String("dist".to_string()).render(),
+            "dist"
+        );
+        assert_eq!(
+            BuildOptionValue::Enum("release".to_string()).render(),
+            "release"
+        );
+        assert_eq!(
+            BuildOptionValue::Path("src/app.fol".to_string()).render(),
+            "src/app.fol"
+        );
     }
 
     #[test]
@@ -483,8 +494,14 @@ mod tests {
             BuildOptionValue::parse_for_kind(BuildOptionKind::Path, "src/app.fol"),
             Some(BuildOptionValue::Path("src/app.fol".to_string()))
         );
-        assert_eq!(BuildOptionValue::parse_for_kind(BuildOptionKind::Bool, "yes"), None);
-        assert_eq!(BuildOptionValue::parse_for_kind(BuildOptionKind::Target, "native"), None);
+        assert_eq!(
+            BuildOptionValue::parse_for_kind(BuildOptionKind::Bool, "yes"),
+            None
+        );
+        assert_eq!(
+            BuildOptionValue::parse_for_kind(BuildOptionKind::Target, "native"),
+            None
+        );
     }
 
     #[test]
@@ -500,7 +517,10 @@ mod tests {
             help: None,
         });
 
-        assert_eq!(target.default_raw_value(), Some("x86_64-linux-gnu".to_string()));
+        assert_eq!(
+            target.default_raw_value(),
+            Some("x86_64-linux-gnu".to_string())
+        );
         assert_eq!(user.default_raw_value(), Some("8".to_string()));
         assert_eq!(user.coerce_raw_value("16"), Some("16".to_string()));
         assert_eq!(user.coerce_raw_value("fast"), None);

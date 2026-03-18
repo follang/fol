@@ -69,37 +69,31 @@ pub fn render_lowered_workspace(workspace: &LoweredWorkspace) -> String {
                 output,
                 "  export source={} mounted={}",
                 export.source_namespace,
-                export.mounted_namespace_suffix.as_deref().unwrap_or("<root>")
+                export
+                    .mounted_namespace_suffix
+                    .as_deref()
+                    .unwrap_or("<root>")
             );
         }
         for source_unit in &package.source_units {
             let _ = writeln!(
                 output,
                 "  source {} path={} namespace={}",
-                source_unit.source_unit_id.0,
-                source_unit.path,
-                source_unit.namespace
+                source_unit.source_unit_id.0, source_unit.path, source_unit.namespace
             );
         }
         for type_decl in package.type_decls.values() {
             let _ = writeln!(
                 output,
                 "  type-decl {} symbol={} runtime=t{} kind={:?}",
-                type_decl.name,
-                type_decl.symbol_id.0,
-                type_decl.runtime_type.0,
-                type_decl.kind
+                type_decl.name, type_decl.symbol_id.0, type_decl.runtime_type.0, type_decl.kind
             );
         }
         for global in package.global_decls.values() {
             let _ = writeln!(
                 output,
                 "  global g{} {} symbol={} type=t{} mutable={}",
-                global.id.0,
-                global.name,
-                global.symbol_id.0,
-                global.type_id.0,
-                global.mutable
+                global.id.0, global.name, global.symbol_id.0, global.type_id.0, global.mutable
             );
         }
         for routine in package.routine_decls.values() {
@@ -152,7 +146,11 @@ pub fn render_lowered_workspace(workspace: &LoweredWorkspace) -> String {
                         );
                     }
                 }
-                let _ = writeln!(output, "      term {}", render_terminator(block.terminator.as_ref()));
+                let _ = writeln!(
+                    output,
+                    "      term {}",
+                    render_terminator(block.terminator.as_ref())
+                );
             }
         }
     }
@@ -162,9 +160,7 @@ pub fn render_lowered_workspace(workspace: &LoweredWorkspace) -> String {
             let _ = writeln!(
                 output,
                 "  {}::{} -> r{}",
-                entry.package_identity.display_name,
-                entry.name,
-                entry.routine_id.0
+                entry.package_identity.display_name, entry.name, entry.routine_id.0
             );
         }
     }
@@ -256,7 +252,10 @@ mod tests {
 
     #[test]
     fn lowered_workspace_snapshot_is_stable_and_human_readable() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
         let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();

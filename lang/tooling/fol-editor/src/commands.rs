@@ -1,7 +1,7 @@
 use crate::{
-    fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
-    fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
-    EditorError, EditorErrorKind, EditorResult,
+    fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
+    fol_tree_sitter_highlights_query, fol_tree_sitter_query_snapshots,
+    fol_tree_sitter_symbols_query, EditorError, EditorErrorKind, EditorResult,
 };
 use std::path::Path;
 
@@ -105,12 +105,18 @@ pub fn editor_symbols_file(path: &Path) -> EditorResult<EditorCommandSummary> {
         + source.matches("ali ").count();
     Ok(EditorCommandSummary::new(
         "symbols",
-        format!("symbol query ready with {} bytes", fol_tree_sitter_symbols_query().len()),
+        format!(
+            "symbol query ready with {} bytes",
+            fol_tree_sitter_symbols_query().len()
+        ),
     )
     .with_detail(format!("path={}", path.display()))
     .with_detail(format!("lines={}", source_line_count(&source)))
     .with_detail(format!("symbol_candidates={symbol_count}"))
-    .with_detail(format!("query_snapshots={}", fol_tree_sitter_query_snapshots().len())))
+    .with_detail(format!(
+        "query_snapshots={}",
+        fol_tree_sitter_query_snapshots().len()
+    )))
 }
 
 pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSummary> {
@@ -125,7 +131,10 @@ pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSum
         std::fs::remove_dir_all(path).map_err(|error| {
             EditorError::new(
                 EditorErrorKind::Internal,
-                format!("failed to clear existing tree output root '{}': {error}", path.display()),
+                format!(
+                    "failed to clear existing tree output root '{}': {error}",
+                    path.display()
+                ),
             )
         })?;
         true
@@ -138,13 +147,19 @@ pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSum
     std::fs::create_dir_all(&queries_root).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!("failed to create query root '{}': {error}", queries_root.display()),
+            format!(
+                "failed to create query root '{}': {error}",
+                queries_root.display()
+            ),
         )
     })?;
     std::fs::create_dir_all(&corpus_root).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!("failed to create corpus root '{}': {error}", corpus_root.display()),
+            format!(
+                "failed to create corpus root '{}': {error}",
+                corpus_root.display()
+            ),
         )
     })?;
 
@@ -168,7 +183,10 @@ pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSum
     )
     .with_detail(format!("root={}", path.display()))
     .with_detail(format!("cleaned_existing_root={cleaned_existing_root}"))
-    .with_detail(format!("query_files={}", fol_tree_sitter_query_snapshots().len()))
+    .with_detail(format!(
+        "query_files={}",
+        fol_tree_sitter_query_snapshots().len()
+    ))
     .with_detail(format!("corpus_files={}", fol_tree_sitter_corpus().len()))
     .with_detail(format!("grammar_bytes={}", fol_tree_sitter_grammar().len()));
 
@@ -275,7 +293,10 @@ mod tests {
         assert_eq!(summary.command, "lsp");
         assert!(summary.summary.contains("fol tool lsp"));
         assert!(summary.summary.contains("completion"));
-        assert!(summary.details.iter().any(|detail| detail == "transport=stdio"));
+        assert!(summary
+            .details
+            .iter()
+            .any(|detail| detail == "transport=stdio"));
         assert!(summary
             .details
             .iter()
@@ -331,7 +352,10 @@ mod tests {
             vec![
                 "path=test/apps/showcases/full_v1_showcase/app/main.fol".to_string(),
                 "lines=98".to_string(),
-                format!("query_bytes={}", crate::fol_tree_sitter_highlights_query().len()),
+                format!(
+                    "query_bytes={}",
+                    crate::fol_tree_sitter_highlights_query().len()
+                ),
                 format!("capture_count={}", highlight_captures.len()),
                 format!("captures={}", highlight_captures.join(",")),
                 "import_kinds=loc,pkg,std".to_string(),
@@ -345,7 +369,10 @@ mod tests {
                 "path=xtra/logtiny/src/log.fol".to_string(),
                 "lines=52".to_string(),
                 "symbol_candidates=8".to_string(),
-                format!("query_snapshots={}", fol_tree_sitter_query_snapshots().len()),
+                format!(
+                    "query_snapshots={}",
+                    fol_tree_sitter_query_snapshots().len()
+                ),
             ]
         );
     }
@@ -368,7 +395,10 @@ mod tests {
         assert!(root.join("queries/fol/locals.scm").is_file());
         assert!(root.join("queries/fol/symbols.scm").is_file());
         assert!(root.join("test/corpus/declarations.txt").is_file());
-        assert!(summary.details.iter().any(|detail| detail.contains("query_files=3")));
+        assert!(summary
+            .details
+            .iter()
+            .any(|detail| detail.contains("query_files=3")));
         assert!(summary
             .details
             .iter()
@@ -393,7 +423,11 @@ mod tests {
             let exported = root
                 .join("queries/fol")
                 .join(format!("{}.scm", snapshot.name));
-            assert!(exported.is_file(), "missing exported query snapshot: {}", exported.display());
+            assert!(
+                exported.is_file(),
+                "missing exported query snapshot: {}",
+                exported.display()
+            );
         }
 
         std::fs::remove_dir_all(root).ok();
@@ -421,8 +455,11 @@ mod tests {
         );
         for snapshot in fol_tree_sitter_query_snapshots() {
             assert_eq!(
-                std::fs::read_to_string(root.join("queries/fol").join(format!("{}.scm", snapshot.name)))
-                    .unwrap(),
+                std::fs::read_to_string(
+                    root.join("queries/fol")
+                        .join(format!("{}.scm", snapshot.name))
+                )
+                .unwrap(),
                 snapshot.query
             );
         }
@@ -458,7 +495,10 @@ mod tests {
             .any(|detail| detail == "tree_sitter_runtime=native"));
 
         let package_json = std::fs::read_to_string(root.join("package.json")).unwrap();
-        assert!(package_json.contains("\"scope\": \"source.fol\"") || package_json.contains("\"file-types\": [\"fol\"]"));
+        assert!(
+            package_json.contains("\"scope\": \"source.fol\"")
+                || package_json.contains("\"file-types\": [\"fol\"]")
+        );
         let config = std::fs::read_to_string(root.join("tree-sitter.json")).unwrap();
         assert!(config.contains("\"highlights\": \"queries/fol/highlights.scm\""));
 

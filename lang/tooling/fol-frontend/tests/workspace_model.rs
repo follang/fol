@@ -24,8 +24,10 @@ fn workspace_config_and_model_round_trip_through_public_api() {
     let lib = root.join("lib");
     fs::create_dir_all(&app).expect("should create app member");
     fs::create_dir_all(&lib).expect("should create lib member");
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").expect("should write app manifest");
-    fs::write(lib.join("package.yaml"), "name: lib\nversion: 0.1.0\n").expect("should write lib manifest");
+    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n")
+        .expect("should write app manifest");
+    fs::write(lib.join("package.yaml"), "name: lib\nversion: 0.1.0\n")
+        .expect("should write lib manifest");
     fs::write(
         root.join("fol.work.yaml"),
         concat!(
@@ -42,11 +44,15 @@ fn workspace_config_and_model_round_trip_through_public_api() {
 
     let root_model = WorkspaceRoot::new(root.clone());
     let config = load_workspace_config(&root_model).expect("config should load");
-    let workspace = FrontendWorkspace::from_config(root_model, &config).expect("workspace should build");
+    let workspace =
+        FrontendWorkspace::from_config(root_model, &config).expect("workspace should build");
 
     assert_eq!(workspace.members.len(), 2);
     assert_eq!(workspace.std_root_override, Some(root.join("std")));
-    assert_eq!(workspace.package_store_root_override, Some(root.join(".fol/pkg")));
+    assert_eq!(
+        workspace.package_store_root_override,
+        Some(root.join(".fol/pkg"))
+    );
     assert_eq!(workspace.build_root, root.join(".artifacts/build"));
     assert_eq!(workspace.cache_root, root.join(".artifacts/cache"));
 
@@ -89,5 +95,8 @@ fn workspace_model_defaults_are_stable_without_loaded_config() {
     assert!(workspace.members.is_empty());
     assert_eq!(workspace.build_root, PathBuf::from("/tmp/demo/.fol/build"));
     assert_eq!(workspace.cache_root, PathBuf::from("/tmp/demo/.fol/cache"));
-    assert_eq!(workspace.git_cache_root, PathBuf::from("/tmp/demo/.fol/cache/git"));
+    assert_eq!(
+        workspace.git_cache_root,
+        PathBuf::from("/tmp/demo/.fol/cache/git")
+    );
 }

@@ -8,16 +8,20 @@ impl BuildEntrySignatureExpectation {
     pub fn canonical() -> Self {
         Self {
             parameter_type_names: vec!["Graph".to_string(), "build::Graph".to_string()],
-            return_type_names: vec!["Graph".to_string(), "build::Graph".to_string()],
+            return_type_names: vec!["non".to_string(), "none".to_string()],
         }
     }
 
     pub fn accepts_parameter_type(&self, name: &str) -> bool {
-        self.parameter_type_names.iter().any(|candidate| candidate == name)
+        self.parameter_type_names
+            .iter()
+            .any(|candidate| candidate == name)
     }
 
     pub fn accepts_return_type(&self, name: &str) -> bool {
-        self.return_type_names.iter().any(|candidate| candidate == name)
+        self.return_type_names
+            .iter()
+            .any(|candidate| candidate == name)
     }
 }
 
@@ -85,10 +89,10 @@ pub fn collect_build_entry_candidates(
         }
 
         for item in &source_unit.items {
-            let fol_parser::ast::AstNode::DefDecl {
+            let fol_parser::ast::AstNode::ProDecl {
                 name,
                 params,
-                def_type,
+                return_type,
                 ..
             } = &item.node
             else {
@@ -108,7 +112,7 @@ pub fn collect_build_entry_candidates(
                     .iter()
                     .map(|param| param.param_type.named_text())
                     .collect(),
-                return_type_name: def_type.named_text(),
+                return_type_name: build_entry_type_label(return_type.as_ref()),
             });
         }
     }
@@ -123,7 +127,7 @@ pub fn validate_build_entry_cardinality(
     match candidates {
         [] => Err(vec![BuildEntryValidationError::new(
             BuildEntryValidationErrorKind::MissingEntry,
-            "build.fol must declare exactly one semantic `build` entry",
+            "build.fol must declare exactly one canonical `pro[] build(graph: Graph): non` entry",
         )]),
         [candidate] => Ok(ValidatedBuildEntry {
             candidate: candidate.clone(),
@@ -156,14 +160,14 @@ pub fn validate_build_entry_parameter_shape(
     if entry.candidate.parameter_names.len() != 1 {
         return Err(vec![BuildEntryValidationError::new(
             BuildEntryValidationErrorKind::WrongParameterCount,
-            "semantic `build` entry must declare exactly one parameter",
+            "canonical build entry must declare exactly one parameter",
         )]);
     }
 
     if entry.candidate.parameter_names[0].trim().is_empty() {
         return Err(vec![BuildEntryValidationError::new(
             BuildEntryValidationErrorKind::WrongParameterCount,
-            "semantic `build` entry parameter must have a non-empty binding name",
+            "canonical build entry parameter must have a non-empty binding name",
         )]);
     }
 
@@ -182,7 +186,7 @@ pub fn validate_build_entry_parameter_type(
     else {
         return Err(vec![BuildEntryValidationError::new(
             BuildEntryValidationErrorKind::WrongParameterType,
-            "semantic `build` entry parameter must name the canonical build graph type",
+            "canonical build entry parameter must name the canonical build graph type",
         )]);
     };
 
@@ -190,7 +194,7 @@ pub fn validate_build_entry_parameter_type(
         return Err(vec![BuildEntryValidationError::new(
             BuildEntryValidationErrorKind::WrongParameterType,
             format!(
-                "semantic `build` entry parameter type '{}' is not one of the canonical build graph types",
+                "canonical build entry parameter type '{}' is not one of the canonical build graph types",
                 parameter_type_name
             ),
         )]);
@@ -206,7 +210,7 @@ pub fn validate_build_entry_return_type(
     let Some(return_type_name) = entry.candidate.return_type_name.as_deref() else {
         return Err(vec![BuildEntryValidationError::new(
             BuildEntryValidationErrorKind::WrongReturnType,
-            "semantic `build` entry must declare the canonical build graph return type",
+            "canonical build entry must declare return type 'non'",
         )]);
     };
 
@@ -214,7 +218,7 @@ pub fn validate_build_entry_return_type(
         return Err(vec![BuildEntryValidationError::new(
             BuildEntryValidationErrorKind::WrongReturnType,
             format!(
-                "semantic `build` entry return type '{}' is not one of the canonical build graph return types",
+                "canonical build entry return type '{}' is not one of the accepted non-returning procedure types",
                 return_type_name
             ),
         )]);
@@ -234,24 +238,32 @@ pub fn validate_parsed_build_entry(
     validate_build_entry_return_type(entry, expectation)
 }
 
+fn build_entry_type_label(fol_type: Option<&fol_parser::ast::FolType>) -> Option<String> {
+    match fol_type {
+        Some(fol_parser::ast::FolType::None) => Some("non".to_string()),
+        Some(fol_type) => fol_type.named_text(),
+        None => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         collect_build_entry_candidates, validate_build_entry_cardinality,
         validate_build_entry_parameter_shape, validate_build_entry_parameter_type,
         validate_build_entry_return_type, validate_parsed_build_entry, BuildEntryCandidate,
-        BuildEntrySignatureExpectation, BuildEntryValidationError,
-        BuildEntryValidationErrorKind, ValidatedBuildEntry,
+        BuildEntrySignatureExpectation, BuildEntryValidationError, BuildEntryValidationErrorKind,
+        ValidatedBuildEntry,
     };
 
     #[test]
-    fn canonical_build_entry_signature_expectation_keeps_graph_names() {
+    fn canonical_build_entry_signature_expectation_requires_graph_parameter_and_non_return() {
         let expectation = BuildEntrySignatureExpectation::canonical();
 
         assert!(expectation.accepts_parameter_type("Graph"));
         assert!(expectation.accepts_parameter_type("build::Graph"));
-        assert!(expectation.accepts_return_type("Graph"));
-        assert!(expectation.accepts_return_type("build::Graph"));
+        assert!(expectation.accepts_return_type("non"));
+        assert!(expectation.accepts_return_type("none"));
         assert!(!expectation.accepts_parameter_type("int"));
     }
 
@@ -263,7 +275,7 @@ mod tests {
             name: "build".to_string(),
             parameter_names: vec!["graph".to_string()],
             parameter_type_names: vec![Some("Graph".to_string())],
-            return_type_name: Some("Graph".to_string()),
+            return_type_name: Some("non".to_string()),
         };
         let validated = ValidatedBuildEntry {
             candidate: candidate.clone(),
@@ -290,9 +302,13 @@ mod tests {
                     kind: fol_parser::ast::ParsedSourceUnitKind::Build,
                     items: vec![fol_parser::ast::ParsedTopLevel {
                         node_id: fol_parser::ast::SyntaxNodeId(1),
-                        node: fol_parser::ast::AstNode::DefDecl {
+                        node: fol_parser::ast::AstNode::ProDecl {
+                            syntax_id: None,
                             options: Vec::new(),
+                            generics: Vec::new(),
                             name: "build".to_string(),
+                            receiver_type: None,
+                            captures: Vec::new(),
                             params: vec![fol_parser::ast::Parameter {
                                 name: "graph".to_string(),
                                 param_type: fol_parser::ast::FolType::Named {
@@ -303,11 +319,10 @@ mod tests {
                                 is_mutex: false,
                                 default: None,
                             }],
-                            def_type: fol_parser::ast::FolType::Named {
-                                syntax_id: None,
-                                name: "Graph".to_string(),
-                            },
+                            return_type: Some(fol_parser::ast::FolType::None),
+                            error_type: None,
                             body: Vec::new(),
+                            inquiries: Vec::new(),
                         },
                         meta: fol_parser::ast::ParsedTopLevelMeta::default(),
                     }],
@@ -328,7 +343,7 @@ mod tests {
         assert_eq!(candidates.len(), 1);
         assert_eq!(candidates[0].source_unit_path, "build.fol");
         assert_eq!(candidates[0].parameter_names, vec!["graph".to_string()]);
-        assert_eq!(candidates[0].return_type_name.as_deref(), Some("Graph"));
+        assert_eq!(candidates[0].return_type_name.as_deref(), Some("non"));
     }
 
     #[test]
@@ -348,7 +363,7 @@ mod tests {
             name: "build".to_string(),
             parameter_names: vec!["graph".to_string()],
             parameter_type_names: vec![Some("Graph".to_string())],
-            return_type_name: Some("Graph".to_string()),
+            return_type_name: Some("non".to_string()),
         };
         let validated = validate_build_entry_cardinality(&syntax, &[candidate.clone()])
             .expect("one semantic build entry should pass cardinality validation");
@@ -364,7 +379,7 @@ mod tests {
                 name: "build".to_string(),
                 parameter_names: vec!["graph".to_string()],
                 parameter_type_names: vec![Some("Graph".to_string())],
-                return_type_name: Some("Graph".to_string()),
+                return_type_name: Some("non".to_string()),
             },
         };
         assert!(validate_build_entry_parameter_shape(valid).is_ok());
@@ -376,12 +391,15 @@ mod tests {
                 name: "build".to_string(),
                 parameter_names: vec!["left".to_string(), "right".to_string()],
                 parameter_type_names: vec![Some("Graph".to_string()), Some("Graph".to_string())],
-                return_type_name: Some("Graph".to_string()),
+                return_type_name: Some("non".to_string()),
             },
         };
         let errors = validate_build_entry_parameter_shape(invalid)
             .expect_err("multiple parameters should fail semantic build entry validation");
-        assert_eq!(errors[0].kind, BuildEntryValidationErrorKind::WrongParameterCount);
+        assert_eq!(
+            errors[0].kind,
+            BuildEntryValidationErrorKind::WrongParameterCount
+        );
     }
 
     #[test]
@@ -394,7 +412,7 @@ mod tests {
                 name: "build".to_string(),
                 parameter_names: vec!["graph".to_string()],
                 parameter_type_names: vec![Some("build::Graph".to_string())],
-                return_type_name: Some("Graph".to_string()),
+                return_type_name: Some("non".to_string()),
             },
         };
         assert!(validate_build_entry_parameter_type(valid, &expectation).is_ok());
@@ -406,16 +424,19 @@ mod tests {
                 name: "build".to_string(),
                 parameter_names: vec!["graph".to_string()],
                 parameter_type_names: vec![Some("int".to_string())],
-                return_type_name: Some("Graph".to_string()),
+                return_type_name: Some("non".to_string()),
             },
         };
         let errors = validate_build_entry_parameter_type(invalid, &expectation)
             .expect_err("non-graph parameter types should fail semantic build entry validation");
-        assert_eq!(errors[0].kind, BuildEntryValidationErrorKind::WrongParameterType);
+        assert_eq!(
+            errors[0].kind,
+            BuildEntryValidationErrorKind::WrongParameterType
+        );
     }
 
     #[test]
-    fn return_type_validation_requires_canonical_graph_type_names() {
+    fn return_type_validation_requires_non_returning_procedure_type() {
         let expectation = BuildEntrySignatureExpectation::canonical();
         let valid = ValidatedBuildEntry {
             candidate: BuildEntryCandidate {
@@ -424,7 +445,7 @@ mod tests {
                 name: "build".to_string(),
                 parameter_names: vec!["graph".to_string()],
                 parameter_type_names: vec![Some("Graph".to_string())],
-                return_type_name: Some("build::Graph".to_string()),
+                return_type_name: Some("non".to_string()),
             },
         };
         assert!(validate_build_entry_return_type(valid, &expectation).is_ok());
@@ -440,8 +461,11 @@ mod tests {
             },
         };
         let errors = validate_build_entry_return_type(invalid, &expectation)
-            .expect_err("non-graph return types should fail semantic build entry validation");
-        assert_eq!(errors[0].kind, BuildEntryValidationErrorKind::WrongReturnType);
+            .expect_err("non-non return types should fail semantic build entry validation");
+        assert_eq!(
+            errors[0].kind,
+            BuildEntryValidationErrorKind::WrongReturnType
+        );
     }
 
     #[test]
@@ -466,9 +490,13 @@ mod tests {
         syntax.source_units[0].items = vec![
             fol_parser::ast::ParsedTopLevel {
                 node_id: fol_parser::ast::SyntaxNodeId(1),
-                node: fol_parser::ast::AstNode::DefDecl {
+                node: fol_parser::ast::AstNode::ProDecl {
+                    syntax_id: None,
                     options: Vec::new(),
+                    generics: Vec::new(),
                     name: "build".to_string(),
+                    receiver_type: None,
+                    captures: Vec::new(),
                     params: vec![fol_parser::ast::Parameter {
                         name: "graph".to_string(),
                         param_type: fol_parser::ast::FolType::Named {
@@ -479,19 +507,25 @@ mod tests {
                         is_mutex: false,
                         default: None,
                     }],
-                    def_type: fol_parser::ast::FolType::Named {
+                    return_type: Some(fol_parser::ast::FolType::Named {
                         syntax_id: None,
                         name: "int".to_string(),
-                    },
+                    }),
+                    error_type: None,
                     body: Vec::new(),
+                    inquiries: Vec::new(),
                 },
                 meta: fol_parser::ast::ParsedTopLevelMeta::default(),
             },
             fol_parser::ast::ParsedTopLevel {
                 node_id: fol_parser::ast::SyntaxNodeId(2),
-                node: fol_parser::ast::AstNode::DefDecl {
+                node: fol_parser::ast::AstNode::ProDecl {
+                    syntax_id: None,
                     options: Vec::new(),
+                    generics: Vec::new(),
                     name: "build".to_string(),
+                    receiver_type: None,
+                    captures: Vec::new(),
                     params: vec![fol_parser::ast::Parameter {
                         name: "graph".to_string(),
                         param_type: fol_parser::ast::FolType::Named {
@@ -502,11 +536,10 @@ mod tests {
                         is_mutex: false,
                         default: None,
                     }],
-                    def_type: fol_parser::ast::FolType::Named {
-                        syntax_id: None,
-                        name: "Graph".to_string(),
-                    },
+                    return_type: Some(fol_parser::ast::FolType::None),
+                    error_type: None,
                     body: Vec::new(),
+                    inquiries: Vec::new(),
                 },
                 meta: fol_parser::ast::ParsedTopLevelMeta::default(),
             },
@@ -514,6 +547,9 @@ mod tests {
 
         let multiple = validate_parsed_build_entry(&syntax, &expectation)
             .expect_err("multiple entries should fail semantic validation");
-        assert_eq!(multiple[0].kind, BuildEntryValidationErrorKind::MultipleEntries);
+        assert_eq!(
+            multiple[0].kind,
+            BuildEntryValidationErrorKind::MultipleEntries
+        );
     }
 }

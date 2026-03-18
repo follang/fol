@@ -110,7 +110,10 @@ impl BuildSemanticType {
     }
 
     pub fn dependency_step_handle() -> Self {
-        Self::types_named("DependencyStep", BuildSemanticTypeFamily::DependencyStepHandle)
+        Self::types_named(
+            "DependencyStep",
+            BuildSemanticTypeFamily::DependencyStepHandle,
+        )
     }
 
     pub fn dependency_generated_output_handle() -> Self {
@@ -121,7 +124,10 @@ impl BuildSemanticType {
     }
 
     pub fn generated_file_handle() -> Self {
-        Self::types_named("GeneratedFile", BuildSemanticTypeFamily::GeneratedFileHandle)
+        Self::types_named(
+            "GeneratedFile",
+            BuildSemanticTypeFamily::GeneratedFileHandle,
+        )
     }
 
     fn types_named(name: &str, family: BuildSemanticTypeFamily) -> Self {
@@ -494,11 +500,11 @@ mod tests {
     use super::{
         canonical_artifact_config_shapes, canonical_chain_metadata,
         canonical_graph_method_signatures, canonical_handle_method_signatures,
-        canonical_option_config_shapes, canonical_option_value_kinds,
-        BuildSemanticChainKind, BuildSemanticMethodParameter, BuildSemanticMethodSignature,
-        BuildSemanticOptionValueKind, BuildSemanticParameterShape,
-        BuildSemanticRecordShapeKind, BuildSemanticType, BuildSemanticTypeFamily,
-        BuildStdlibImportSurface, BuildStdlibModuleKind, BuildStdlibModulePath,
+        canonical_option_config_shapes, canonical_option_value_kinds, BuildSemanticChainKind,
+        BuildSemanticMethodParameter, BuildSemanticMethodSignature, BuildSemanticOptionValueKind,
+        BuildSemanticParameterShape, BuildSemanticRecordShapeKind, BuildSemanticType,
+        BuildSemanticTypeFamily, BuildStdlibImportSurface, BuildStdlibModuleKind,
+        BuildStdlibModulePath,
     };
 
     #[test]
@@ -578,21 +584,28 @@ mod tests {
         assert_eq!(record.shape, BuildSemanticParameterShape::Record);
         assert!(record.optional);
         assert_eq!(handle.shape, BuildSemanticParameterShape::Handle);
-        assert_eq!(handle.value_type, Some(BuildSemanticTypeFamily::ArtifactHandle));
+        assert_eq!(
+            handle.value_type,
+            Some(BuildSemanticTypeFamily::ArtifactHandle)
+        );
         assert!(handle.variadic);
     }
 
     #[test]
     fn semantic_method_signatures_keep_receiver_return_and_chainability() {
-        let signature = BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_exe")
-            .with_param(BuildSemanticMethodParameter::record("config"))
-            .returning(BuildSemanticTypeFamily::ArtifactHandle)
-            .chainable();
+        let signature =
+            BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_exe")
+                .with_param(BuildSemanticMethodParameter::record("config"))
+                .returning(BuildSemanticTypeFamily::ArtifactHandle)
+                .chainable();
 
         assert_eq!(signature.receiver, BuildSemanticTypeFamily::Graph);
         assert_eq!(signature.name, "add_exe");
         assert_eq!(signature.params.len(), 1);
-        assert_eq!(signature.returns, Some(BuildSemanticTypeFamily::ArtifactHandle));
+        assert_eq!(
+            signature.returns,
+            Some(BuildSemanticTypeFamily::ArtifactHandle)
+        );
         assert!(signature.chainable);
     }
 
@@ -618,9 +631,15 @@ mod tests {
     #[test]
     fn canonical_graph_methods_return_expected_handle_families() {
         let signatures = canonical_graph_method_signatures();
-        let add_exe = signatures.iter().find(|signature| signature.name == "add_exe");
-        let add_run = signatures.iter().find(|signature| signature.name == "add_run");
-        let install = signatures.iter().find(|signature| signature.name == "install");
+        let add_exe = signatures
+            .iter()
+            .find(|signature| signature.name == "add_exe");
+        let add_run = signatures
+            .iter()
+            .find(|signature| signature.name == "add_run");
+        let install = signatures
+            .iter()
+            .find(|signature| signature.name == "install");
         let write_file = signatures
             .iter()
             .find(|signature| signature.name == "write_file");
@@ -660,10 +679,16 @@ mod tests {
 
         assert_eq!(depend_on.len(), 3);
         assert!(depend_on.iter().all(|signature| signature.chainable));
-        assert!(signatures.iter().any(|signature| signature.name == "module"));
-        assert!(signatures.iter().any(|signature| signature.name == "artifact"));
+        assert!(signatures
+            .iter()
+            .any(|signature| signature.name == "module"));
+        assert!(signatures
+            .iter()
+            .any(|signature| signature.name == "artifact"));
         assert!(signatures.iter().any(|signature| signature.name == "step"));
-        assert!(signatures.iter().any(|signature| signature.name == "generated"));
+        assert!(signatures
+            .iter()
+            .any(|signature| signature.name == "generated"));
     }
 
     #[test]
@@ -715,7 +740,10 @@ mod tests {
     #[test]
     fn canonical_artifact_config_shapes_cover_all_primary_artifact_kinds() {
         let shapes = canonical_artifact_config_shapes();
-        let names = shapes.iter().map(|shape| shape.name.as_str()).collect::<Vec<_>>();
+        let names = shapes
+            .iter()
+            .map(|shape| shape.name.as_str())
+            .collect::<Vec<_>>();
 
         assert!(names.contains(&"ExeConfig"));
         assert!(names.contains(&"StaticLibConfig"));
@@ -731,15 +759,24 @@ mod tests {
         let shapes = canonical_artifact_config_shapes();
 
         for shape in shapes {
-            assert!(shape.fields.iter().any(|field| field.name == "name" && field.required));
-            assert!(shape.fields.iter().any(|field| field.name == "root" && field.required));
+            assert!(shape
+                .fields
+                .iter()
+                .any(|field| field.name == "name" && field.required));
+            assert!(shape
+                .fields
+                .iter()
+                .any(|field| field.name == "root" && field.required));
         }
     }
 
     #[test]
     fn canonical_option_config_shapes_cover_standard_and_user_option_forms() {
         let shapes = canonical_option_config_shapes();
-        let names = shapes.iter().map(|shape| shape.name.as_str()).collect::<Vec<_>>();
+        let names = shapes
+            .iter()
+            .map(|shape| shape.name.as_str())
+            .collect::<Vec<_>>();
 
         assert!(names.contains(&"StandardTargetConfig"));
         assert!(names.contains(&"StandardOptimizeConfig"));

@@ -78,7 +78,8 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
                 column: 1,
                 length: key.len(),
             };
-            if let Some(first_origin) = dependency_aliases.insert(alias.to_string(), origin.clone()) {
+            if let Some(first_origin) = dependency_aliases.insert(alias.to_string(), origin.clone())
+            {
                 return Err(PackageError::with_origin(
                     PackageErrorKind::InvalidInput,
                     format!(
@@ -125,15 +126,18 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
         }
     }
 
-    let name = fields.remove("name").map(|(value, _)| value).ok_or_else(|| {
-        PackageError::new(
-            PackageErrorKind::InvalidInput,
-            format!(
-                "package metadata '{}' is missing required field 'name'",
-                path.display()
-            ),
-        )
-    })?;
+    let name = fields
+        .remove("name")
+        .map(|(value, _)| value)
+        .ok_or_else(|| {
+            PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "package metadata '{}' is missing required field 'name'",
+                    path.display()
+                ),
+            )
+        })?;
     if !is_valid_package_name(&name) {
         return Err(PackageError::new(
             PackageErrorKind::InvalidInput,
@@ -144,15 +148,18 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
             ),
         ));
     }
-    let version = fields.remove("version").map(|(value, _)| value).ok_or_else(|| {
-        PackageError::new(
-            PackageErrorKind::InvalidInput,
-            format!(
-                "package metadata '{}' is missing required field 'version'",
-                path.display()
-            ),
-        )
-    })?;
+    let version = fields
+        .remove("version")
+        .map(|(value, _)| value)
+        .ok_or_else(|| {
+            PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "package metadata '{}' is missing required field 'version'",
+                    path.display()
+                ),
+            )
+        })?;
     if version.trim().is_empty() {
         return Err(PackageError::new(
             PackageErrorKind::InvalidInput,
@@ -166,7 +173,11 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
     Ok(PackageMetadata {
         name,
         version,
-        kind: non_empty_optional_field(path, "kind", fields.remove("kind").map(|(value, _)| value))?,
+        kind: non_empty_optional_field(
+            path,
+            "kind",
+            fields.remove("kind").map(|(value, _)| value),
+        )?,
         description: non_empty_optional_field(
             path,
             "description",
@@ -365,8 +376,7 @@ fn is_valid_package_name(package_name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_package_metadata, PackageDependencyDecl, PackageDependencySourceKind,
-        PackageMetadata,
+        parse_package_metadata, PackageDependencyDecl, PackageDependencySourceKind, PackageMetadata,
     };
     use fol_diagnostics::ToDiagnostic;
     use std::fs;
@@ -426,11 +436,8 @@ mod tests {
         let temp_root = unique_temp_root("duplicate_field");
         fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
         let metadata_path = temp_root.join("package.yaml");
-        fs::write(
-            &metadata_path,
-            "name: json\nversion: 1.0.0\nname: other\n",
-        )
-        .expect("Should write the duplicate metadata fixture");
+        fs::write(&metadata_path, "name: json\nversion: 1.0.0\nname: other\n")
+            .expect("Should write the duplicate metadata fixture");
 
         let error = parse_package_metadata(&metadata_path)
             .expect_err("Duplicate metadata fields should be rejected");
@@ -453,11 +460,8 @@ mod tests {
         let temp_root = unique_temp_root("duplicate_field_secondary_label");
         fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
         let metadata_path = temp_root.join("package.yaml");
-        fs::write(
-            &metadata_path,
-            "name: json\nversion: 1.0.0\nname: other\n",
-        )
-        .expect("Should write the duplicate metadata fixture");
+        fs::write(&metadata_path, "name: json\nversion: 1.0.0\nname: other\n")
+            .expect("Should write the duplicate metadata fixture");
 
         let diagnostic = parse_package_metadata(&metadata_path)
             .expect_err("Duplicate metadata fields should be rejected")
@@ -481,11 +485,8 @@ mod tests {
         let temp_root = unique_temp_root("unsupported_field");
         fs::create_dir_all(&temp_root).expect("Should create temporary metadata fixture root");
         let metadata_path = temp_root.join("package.yaml");
-        fs::write(
-            &metadata_path,
-            "name: json\nversion: 1.0.0\ndeps: none\n",
-        )
-        .expect("Should write the unsupported-field metadata fixture");
+        fs::write(&metadata_path, "name: json\nversion: 1.0.0\ndeps: none\n")
+            .expect("Should write the unsupported-field metadata fixture");
 
         let error = parse_package_metadata(&metadata_path)
             .expect_err("Unsupported metadata fields should be rejected");
@@ -582,14 +583,20 @@ mod tests {
             .expect("source-qualified dependency metadata should parse");
 
         assert_eq!(metadata.dependencies.len(), 3);
-        assert_eq!(metadata.dependencies[0].source_kind, PackageDependencySourceKind::Local);
+        assert_eq!(
+            metadata.dependencies[0].source_kind,
+            PackageDependencySourceKind::Local
+        );
         assert_eq!(metadata.dependencies[0].target, "../shared");
         assert_eq!(
             metadata.dependencies[1].source_kind,
             PackageDependencySourceKind::PackageStore
         );
         assert_eq!(metadata.dependencies[1].target, "core/tools");
-        assert_eq!(metadata.dependencies[2].source_kind, PackageDependencySourceKind::Git);
+        assert_eq!(
+            metadata.dependencies[2].source_kind,
+            PackageDependencySourceKind::Git
+        );
         assert_eq!(
             metadata.dependencies[2].target,
             "https://github.com/bresilla/logtiny.git"
@@ -634,18 +641,12 @@ mod tests {
     #[test]
     fn yaml_metadata_parser_reports_invalid_dependency_forms_clearly() {
         let cases = [
-            (
-                "dep.core: core/tools\n",
-                "must use 'source:target' form",
-            ),
+            ("dep.core: core/tools\n", "must use 'source:target' form"),
             (
                 "dep.core: svn:core/tools\n",
                 "uses unsupported source 'svn'",
             ),
-            (
-                "dep.core: pkg:\n",
-                "has an empty target",
-            ),
+            ("dep.core: pkg:\n", "has an empty target"),
             (
                 "dep.9core: pkg:core/tools\n",
                 "has invalid dependency alias '9core'",
@@ -692,8 +693,8 @@ mod tests {
         )
         .expect("Should write the dependency matrix fixture");
 
-        let metadata = parse_package_metadata(&metadata_path)
-            .expect("dependency matrix fixture should parse");
+        let metadata =
+            parse_package_metadata(&metadata_path).expect("dependency matrix fixture should parse");
 
         let matrix = metadata
             .dependencies
@@ -705,7 +706,11 @@ mod tests {
             matrix,
             vec![
                 ("shared", PackageDependencySourceKind::Local, "../shared"),
-                ("core", PackageDependencySourceKind::PackageStore, "org/core"),
+                (
+                    "core",
+                    PackageDependencySourceKind::PackageStore,
+                    "org/core"
+                ),
                 (
                     "logtiny",
                     PackageDependencySourceKind::Git,

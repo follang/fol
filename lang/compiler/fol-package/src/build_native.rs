@@ -263,8 +263,14 @@ mod tests {
             relative_path: "native/libcrypto.so".to_string(),
         };
 
-        assert_eq!(static_lib.canonical_file_name(NativePlatform::Linux), "libssl.a");
-        assert_eq!(static_lib.canonical_file_name(NativePlatform::Windows), "ssl.lib");
+        assert_eq!(
+            static_lib.canonical_file_name(NativePlatform::Linux),
+            "libssl.a"
+        );
+        assert_eq!(
+            static_lib.canonical_file_name(NativePlatform::Windows),
+            "ssl.lib"
+        );
         assert_eq!(
             shared_lib.canonical_file_name(NativePlatform::Linux),
             "libcrypto.so"

@@ -298,10 +298,14 @@ impl BuildGraph {
         {
             return;
         }
-        self.step_dependencies.push(BuildStepDependency { step, depends_on });
+        self.step_dependencies
+            .push(BuildStepDependency { step, depends_on });
     }
 
-    pub fn step_dependencies_for(&self, step: BuildStepId) -> impl Iterator<Item = BuildStepId> + '_ {
+    pub fn step_dependencies_for(
+        &self,
+        step: BuildStepId,
+    ) -> impl Iterator<Item = BuildStepId> + '_ {
         self.step_dependencies
             .iter()
             .filter(move |edge| edge.step == step)
@@ -422,7 +426,10 @@ impl BuildGraph {
                     if path.is_empty() {
                         errors.push(BuildGraphValidationError {
                             kind: BuildGraphValidationErrorKind::InvalidInstallTarget,
-                            message: format!("install {} directory target must not be empty", install.id),
+                            message: format!(
+                                "install {} directory target must not be empty",
+                                install.id
+                            ),
                         });
                     }
                 }
@@ -458,7 +465,10 @@ impl BuildGraph {
             return;
         }
         if visiting[index] {
-            let cycle_start = stack.iter().position(|candidate| *candidate == step).unwrap_or(0);
+            let cycle_start = stack
+                .iter()
+                .position(|candidate| *candidate == step)
+                .unwrap_or(0);
             let mut cycle = stack[cycle_start..]
                 .iter()
                 .map(|entry| entry.to_string())
@@ -517,7 +527,10 @@ mod tests {
         assert_eq!(BuildStepKind::Run, BuildStepKind::Run);
         assert_eq!(BuildArtifactKind::Executable, BuildArtifactKind::Executable);
         assert_eq!(BuildModuleKind::Generated, BuildModuleKind::Generated);
-        assert_eq!(BuildGeneratedFileKind::CaptureOutput, BuildGeneratedFileKind::CaptureOutput);
+        assert_eq!(
+            BuildGeneratedFileKind::CaptureOutput,
+            BuildGeneratedFileKind::CaptureOutput
+        );
         assert_eq!(BuildOptionKind::Optimize, BuildOptionKind::Optimize);
         assert_eq!(BuildOptionKind::Int, BuildOptionKind::Int);
         assert_eq!(BuildOptionKind::Path, BuildOptionKind::Path);
@@ -707,7 +720,10 @@ mod tests {
         let errors = graph.validate();
 
         assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].kind, BuildGraphValidationErrorKind::StepDependencyCycle);
+        assert_eq!(
+            errors[0].kind,
+            BuildGraphValidationErrorKind::StepDependencyCycle
+        );
         assert!(errors[0].message.contains("step:0 -> step:0"));
     }
 
@@ -725,7 +741,10 @@ mod tests {
         let errors = graph.validate();
 
         assert_eq!(errors.len(), 1);
-        assert_eq!(errors[0].kind, BuildGraphValidationErrorKind::StepDependencyCycle);
+        assert_eq!(
+            errors[0].kind,
+            BuildGraphValidationErrorKind::StepDependencyCycle
+        );
         assert!(errors[0].message.contains("step:0"));
         assert!(errors[0].message.contains("step:1"));
         assert!(errors[0].message.contains("step:2"));

@@ -39,26 +39,30 @@ pub fn init_package_root(
     fs::write(root.join("package.yaml"), starter_package_manifest(root))?;
     fs::write(root.join("build.fol"), starter_build_file(target))?;
 
-    Ok(FrontendCommandResult::new("init", "initialized current directory").with_artifact(
-        FrontendArtifactSummary::new(
-            FrontendArtifactKind::PackageRoot,
-            "current-directory",
-            Some(root.to_path_buf()),
+    Ok(
+        FrontendCommandResult::new("init", "initialized current directory").with_artifact(
+            FrontendArtifactSummary::new(
+                FrontendArtifactKind::PackageRoot,
+                "current-directory",
+                Some(root.to_path_buf()),
+            ),
         ),
-    ))
+    )
 }
 
 pub fn init_workspace_root(root: &Path) -> FrontendResult<FrontendCommandResult> {
     std::fs::create_dir_all(root)?;
     std::fs::write(root.join(WORKSPACE_FILE_NAME), "")?;
 
-    Ok(FrontendCommandResult::new("init", "initialized workspace root").with_artifact(
-        FrontendArtifactSummary::new(
-            FrontendArtifactKind::WorkspaceRoot,
-            "workspace-root",
-            Some(root.to_path_buf()),
+    Ok(
+        FrontendCommandResult::new("init", "initialized workspace root").with_artifact(
+            FrontendArtifactSummary::new(
+                FrontendArtifactKind::WorkspaceRoot,
+                "workspace-root",
+                Some(root.to_path_buf()),
+            ),
         ),
-    ))
+    )
 }
 
 pub fn init_root(
@@ -103,7 +107,10 @@ fn starter_package_manifest(root: &Path) -> String {
 }
 
 fn starter_package_name(root: &Path) -> String {
-    let raw = root.file_name().and_then(|name| name.to_str()).unwrap_or("app");
+    let raw = root
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("app");
     let mut name = String::with_capacity(raw.len().max(3));
 
     for (index, ch) in raw.chars().enumerate() {
@@ -132,7 +139,7 @@ fn starter_build_file(target: PackageTargetKind) -> &'static str {
             "def root: loc = \"src\"\n",
             "\n",
             "// Add a canonical graph entry here when the package needs custom build steps.\n",
-            "// def build(graph: Graph): Graph = graph;\n",
+            "// pro[] build(graph: Graph): non = graph;\n",
         ),
         PackageTargetKind::Lib => concat!(
             "// build.fol is the package build entry file.\n",
@@ -140,7 +147,7 @@ fn starter_build_file(target: PackageTargetKind) -> &'static str {
             "def root: loc = \"src\"\n",
             "\n",
             "// Library packages can expose graph-driven build steps from this file.\n",
-            "// def build(graph: Graph): Graph = graph;\n",
+            "// pro[] build(graph: Graph): non = graph;\n",
         ),
     }
 }
@@ -168,7 +175,8 @@ mod tests {
 
     #[test]
     fn init_shell_creates_package_scaffold_in_current_directory() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_init_pkg_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_init_pkg_{}", std::process::id()));
         fs::create_dir_all(&root).unwrap();
 
         init_current_dir(&root).unwrap();
@@ -179,7 +187,9 @@ mod tests {
         assert!(root.join("build.fol").is_file());
         assert_eq!(
             fs::read_to_string(root.join("package.yaml")).unwrap(),
-            "name: fol_frontend_init_pkg_".to_string() + &std::process::id().to_string() + "\nversion: 0.1.0\n"
+            "name: fol_frontend_init_pkg_".to_string()
+                + &std::process::id().to_string()
+                + "\nversion: 0.1.0\n"
         );
         assert_eq!(
             fs::read_to_string(root.join("build.fol")).unwrap(),
@@ -189,7 +199,7 @@ mod tests {
                 "def root: loc = \"src\"\n",
                 "\n",
                 "// Add a canonical graph entry here when the package needs custom build steps.\n",
-                "// def build(graph: Graph): Graph = graph;\n",
+                "// pro[] build(graph: Graph): non = graph;\n",
             )
         );
 
@@ -198,7 +208,8 @@ mod tests {
 
     #[test]
     fn bin_target_scaffolding_uses_main_entry_file() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_bin_target_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_bin_target_{}", std::process::id()));
         fs::create_dir_all(&root).unwrap();
 
         init_package_root(&root, PackageTargetKind::Bin).unwrap();
@@ -214,7 +225,8 @@ mod tests {
 
     #[test]
     fn lib_target_scaffolding_uses_library_entry_file() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_lib_target_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_lib_target_{}", std::process::id()));
         fs::create_dir_all(&root).unwrap();
 
         init_package_root(&root, PackageTargetKind::Lib).unwrap();
@@ -230,8 +242,10 @@ mod tests {
 
     #[test]
     fn bin_target_scaffolding_locks_documented_build_file_template() {
-        let root =
-            std::env::temp_dir().join(format!("fol_frontend_bin_build_template_{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_bin_build_template_{}",
+            std::process::id()
+        ));
         fs::create_dir_all(&root).unwrap();
 
         init_package_root(&root, PackageTargetKind::Bin).unwrap();
@@ -244,7 +258,7 @@ mod tests {
                 "def root: loc = \"src\"\n",
                 "\n",
                 "// Add a canonical graph entry here when the package needs custom build steps.\n",
-                "// def build(graph: Graph): Graph = graph;\n",
+                "// pro[] build(graph: Graph): non = graph;\n",
             )
         );
 
@@ -253,8 +267,10 @@ mod tests {
 
     #[test]
     fn lib_target_scaffolding_locks_documented_build_file_template() {
-        let root =
-            std::env::temp_dir().join(format!("fol_frontend_lib_build_template_{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_lib_build_template_{}",
+            std::process::id()
+        ));
         fs::create_dir_all(&root).unwrap();
 
         init_package_root(&root, PackageTargetKind::Lib).unwrap();
@@ -267,7 +283,7 @@ mod tests {
                 "def root: loc = \"src\"\n",
                 "\n",
                 "// Library packages can expose graph-driven build steps from this file.\n",
-                "// def build(graph: Graph): Graph = graph;\n",
+                "// pro[] build(graph: Graph): non = graph;\n",
             )
         );
 
@@ -276,12 +292,16 @@ mod tests {
 
     #[test]
     fn workspace_init_creates_workspace_root_file() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_init_ws_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_init_ws_{}", std::process::id()));
         fs::create_dir_all(&root).unwrap();
 
         let result = init_workspace_root(&root).unwrap();
 
-        assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::WorkspaceRoot);
+        assert_eq!(
+            result.artifacts[0].kind,
+            FrontendArtifactKind::WorkspaceRoot
+        );
         assert!(root.join("fol.work.yaml").is_file());
 
         fs::remove_dir_all(root).ok();
@@ -289,7 +309,8 @@ mod tests {
 
     #[test]
     fn new_project_creates_named_directory_and_package_scaffold() {
-        let parent = std::env::temp_dir().join(format!("fol_frontend_new_parent_{}", std::process::id()));
+        let parent =
+            std::env::temp_dir().join(format!("fol_frontend_new_parent_{}", std::process::id()));
         fs::create_dir_all(&parent).unwrap();
 
         let result = new_project(&parent, "demo").unwrap();
@@ -310,7 +331,7 @@ mod tests {
                 "def root: loc = \"src\"\n",
                 "\n",
                 "// Add a canonical graph entry here when the package needs custom build steps.\n",
-                "// def build(graph: Graph): Graph = graph;\n",
+                "// pro[] build(graph: Graph): non = graph;\n",
             )
         );
 
@@ -319,8 +340,10 @@ mod tests {
 
     #[test]
     fn workspace_mode_switches_init_and_new_into_workspace_roots() {
-        let init_root_dir = std::env::temp_dir().join(format!("fol_frontend_init_mode_{}", std::process::id()));
-        let new_parent = std::env::temp_dir().join(format!("fol_frontend_new_mode_{}", std::process::id()));
+        let init_root_dir =
+            std::env::temp_dir().join(format!("fol_frontend_init_mode_{}", std::process::id()));
+        let new_parent =
+            std::env::temp_dir().join(format!("fol_frontend_new_mode_{}", std::process::id()));
         fs::create_dir_all(&init_root_dir).unwrap();
         fs::create_dir_all(&new_parent).unwrap();
 
@@ -328,8 +351,14 @@ mod tests {
         let new_result =
             new_project_with_mode(&new_parent, "demo", true, PackageTargetKind::Bin).unwrap();
 
-        assert_eq!(init_result.artifacts[0].kind, FrontendArtifactKind::WorkspaceRoot);
-        assert_eq!(new_result.artifacts[0].kind, FrontendArtifactKind::WorkspaceRoot);
+        assert_eq!(
+            init_result.artifacts[0].kind,
+            FrontendArtifactKind::WorkspaceRoot
+        );
+        assert_eq!(
+            new_result.artifacts[0].kind,
+            FrontendArtifactKind::WorkspaceRoot
+        );
         assert!(init_root_dir.join("fol.work.yaml").is_file());
         assert!(new_parent.join("demo").join("fol.work.yaml").is_file());
 
@@ -346,8 +375,10 @@ mod tests {
 
     #[test]
     fn package_mode_switches_init_and_new_into_library_roots() {
-        let init_root_dir = std::env::temp_dir().join(format!("fol_frontend_init_lib_{}", std::process::id()));
-        let new_parent = std::env::temp_dir().join(format!("fol_frontend_new_lib_{}", std::process::id()));
+        let init_root_dir =
+            std::env::temp_dir().join(format!("fol_frontend_init_lib_{}", std::process::id()));
+        let new_parent =
+            std::env::temp_dir().join(format!("fol_frontend_new_lib_{}", std::process::id()));
         fs::create_dir_all(&init_root_dir).unwrap();
         fs::create_dir_all(&new_parent).unwrap();
 

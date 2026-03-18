@@ -248,7 +248,10 @@ impl AstParser {
             if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO))
                 || AstParser::token_can_be_logical_name(&key)
                 || key.is_textual_literal())
-                && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
+                && self.lookahead_is_general_invoke(
+                    tokens,
+                    matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)),
+                )
                 && self.can_start_assignment(tokens)
             {
                 body.push(self.parse_invoke_stmt(tokens)?);
@@ -350,8 +353,8 @@ impl AstParser {
                     target,
                     body: vec![expr.clone()],
                 })
-            .collect());
-    }
+                .collect());
+        }
 
         if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(

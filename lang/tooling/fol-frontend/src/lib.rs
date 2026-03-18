@@ -4,11 +4,11 @@
 //! above `fol-package` and the compiler pipeline.
 
 mod build_route;
-mod config;
-mod cli;
 mod clean;
+mod cli;
 mod compile;
 mod completion;
+mod config;
 mod direct;
 mod discovery;
 mod editor;
@@ -21,48 +21,48 @@ mod ui;
 mod work;
 mod workspace;
 
+pub use build_route::{
+    execute_workspace_build_route, plan_workspace_build_route, requested_workspace_step,
+    FrontendBuildStep, FrontendBuildWorkflowMode, FrontendMemberBuildRoute,
+    FrontendWorkspaceBuildRequest, FrontendWorkspaceBuildRoute,
+};
+pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use cli::{
     BuildCommand, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand, CompletionCommand,
     CompletionShellArg, EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand,
-    EmitSubcommand, FetchCommand, FrontendCli,
-    FrontendCommand, FrontendProfile, InitCommand, NewCommand, PackCommand, PackSubcommand,
-    RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand, UpdateCommand,
+    EmitSubcommand, FetchCommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand,
+    NewCommand, PackCommand, PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand,
+    UnitCommand, UpdateCommand,
 };
-pub use build_route::{
-    execute_workspace_build_route, plan_workspace_build_route, requested_workspace_step,
-    FrontendBuildStep, FrontendBuildWorkflowMode, FrontendWorkspaceBuildRequest,
-    FrontendMemberBuildRoute, FrontendWorkspaceBuildRoute,
-};
-pub use clean::{clean_workspace, clean_workspace_with_config};
-pub use config::FrontendConfig;
 pub use compile::{
     build_workspace, build_workspace_for_profile_with_config, build_workspace_with_config,
-    check_workspace, check_workspace_with_config, compile_member_workspace, emit_rust,
-    emit_lowered, emit_lowered_with_config, emit_rust_with_config, profile_build_root,
-    run_workspace, run_workspace_with_args_and_config, run_workspace_with_config, test_workspace,
-    test_package, test_package_with_config, test_workspace_with_config,
+    check_workspace, check_workspace_with_config, compile_member_workspace, emit_lowered,
+    emit_lowered_with_config, emit_rust, emit_rust_with_config, profile_build_root, run_workspace,
+    run_workspace_with_args_and_config, run_workspace_with_config, test_package,
+    test_package_with_config, test_workspace, test_workspace_with_config,
 };
 pub use completion::{
     completion_command, generate_bash_completion_script, generate_completion_script,
     generate_fish_completion_script, generate_zsh_completion_script, internal_complete_command,
     internal_complete_command_with_tokens, internal_complete_matches, CompletionShell,
 };
+pub use config::FrontendConfig;
 pub use direct::{
     run_direct_compile, run_direct_compile_with_io, DirectCompileConfig, DirectCompileMode,
 };
+pub use discovery::{
+    discover_root_from_explicit_path, discover_root_upward, require_discovered_root,
+    DiscoveredRoot, PackageRoot, WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME,
+};
 pub use editor::{
-    editor_highlight_command, editor_lsp_command, editor_lsp_stdio, editor_parse_command, editor_symbols_command,
-    editor_tree_generate_command,
+    editor_highlight_command, editor_lsp_command, editor_lsp_stdio, editor_parse_command,
+    editor_symbols_command, editor_tree_generate_command,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
     fetch_workspace, fetch_workspace_with_config, prepare_workspace_packages,
     select_package_store_root, update_workspace, update_workspace_with_config,
     FrontendPackagePreparation, FrontendPreparedPackage,
-};
-pub use discovery::{
-    discover_root_from_explicit_path, discover_root_upward, require_discovered_root,
-    DiscoveredRoot, PackageRoot, WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME,
 };
 pub use output::{FrontendOutputConfig, OutputMode};
 pub use result::{FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult};
@@ -92,7 +92,10 @@ impl Frontend {
             "{}",
             output
                 .render_command_summary(&result)
-                .map_err(|error| FrontendError::new(FrontendErrorKind::Internal, error.to_string()))?
+                .map_err(|error| FrontendError::new(
+                    FrontendErrorKind::Internal,
+                    error.to_string()
+                ))?
         );
         Ok(())
     }
@@ -190,7 +193,8 @@ where
                 }
             }
         }
-        Ok(cli) if matches!(cli.command.as_ref(), Some(FrontendCommand::Tool(command)) if matches!(command.command, ToolSubcommand::Lsp(_))) => {
+        Ok(cli) if matches!(cli.command.as_ref(), Some(FrontendCommand::Tool(command)) if matches!(command.command, ToolSubcommand::Lsp(_))) =>
+        {
             let config = frontend_config_from_cli(&cli, None);
             match editor_lsp_stdio(&config) {
                 Ok(()) => 0,
@@ -370,7 +374,10 @@ fn command_profile(cli: &FrontendCli) -> Option<FrontendProfile> {
     }
 }
 
-fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<FrontendCommandResult> {
+fn dispatch_cli(
+    cli: &FrontendCli,
+    config: &FrontendConfig,
+) -> FrontendResult<FrontendCommandResult> {
     if let Some(input) = &cli.input {
         return run_direct_compile(
             &DirectCompileConfig {
@@ -406,7 +413,10 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
                 package_target_kind(command.bin, command.lib),
             ),
             _ => {
-                let discovered = discovered_root_for_command(&cli.command.as_ref().unwrap(), &config.working_directory)?;
+                let discovered = discovered_root_for_command(
+                    &cli.command.as_ref().unwrap(),
+                    &config.working_directory,
+                )?;
                 let workspace = load_frontend_workspace(&discovered, config)?;
                 dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
             }
@@ -419,7 +429,10 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
             if needs_direct {
                 dispatch_direct_grouped_command(cli.command.as_ref().unwrap(), config)
             } else {
-                let discovered = discovered_root_for_command(&cli.command.as_ref().unwrap(), &config.working_directory)?;
+                let discovered = discovered_root_for_command(
+                    &cli.command.as_ref().unwrap(),
+                    &config.working_directory,
+                )?;
                 let workspace = load_frontend_workspace(&discovered, config)?;
                 dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
             }
@@ -427,9 +440,7 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
         Some(FrontendCommand::Tool(command)) => match &command.command {
             ToolSubcommand::Lsp(_) => editor_lsp_command(config),
             ToolSubcommand::Parse(command) => editor_parse_command(&command.path, config),
-            ToolSubcommand::Highlight(command) => {
-                editor_highlight_command(&command.path, config)
-            }
+            ToolSubcommand::Highlight(command) => editor_highlight_command(&command.path, config),
             ToolSubcommand::Symbols(command) => editor_symbols_command(&command.path, config),
             ToolSubcommand::Tree(command) => match &command.command {
                 cli::TreeSubcommand::Generate(command) => {
@@ -440,7 +451,10 @@ fn dispatch_cli(cli: &FrontendCli, config: &FrontendConfig) -> FrontendResult<Fr
                 completion_command(parse_completion_shell(command.shell))
             }
             ToolSubcommand::Clean(_) => {
-                let discovered = discovered_root_for_command(&cli.command.as_ref().unwrap(), &config.working_directory)?;
+                let discovered = discovered_root_for_command(
+                    &cli.command.as_ref().unwrap(),
+                    &config.working_directory,
+                )?;
                 let workspace = load_frontend_workspace(&discovered, config)?;
                 dispatch_workspace_command(cli.command.as_ref().unwrap(), &workspace, config)
             }
@@ -582,15 +596,13 @@ fn dispatch_workspace_command(
                     &run.args,
                 )
             }
-            CodeSubcommand::Test(_) => {
-                dispatch_workspace_code_route(
-                    workspace,
-                    config,
-                    &code.command,
-                    FrontendProfile::Debug,
-                    &[],
-                )
-            }
+            CodeSubcommand::Test(_) => dispatch_workspace_code_route(
+                workspace,
+                config,
+                &code.command,
+                FrontendProfile::Debug,
+                &[],
+            ),
             CodeSubcommand::Emit(command) => match &command.command {
                 EmitSubcommand::Rust(emit) => emit_rust_with_config(
                     workspace,
@@ -723,7 +735,11 @@ mod tests {
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(root.join("build.fol"), "def root: loc = \"src\";\n").unwrap();
-        std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        std::fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -749,12 +765,16 @@ mod tests {
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         let build_fol = if hybrid {
-            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = graph;\n"
+            "def root: loc = \"src\";\npro[] build(graph: Graph): non = graph;\n"
         } else {
-            "def build(graph: Graph): Graph = graph;\n"
+            "pro[] build(graph: Graph): non = graph;\n"
         };
         std::fs::write(root.join("build.fol"), build_fol).unwrap();
-        std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        std::fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -766,7 +786,6 @@ mod tests {
             git_cache_root: root.join(".fol/cache/git"),
         }
     }
-
 
     #[test]
     fn crate_name_matches_frontend_identity() {
@@ -808,12 +827,17 @@ mod tests {
 
     #[test]
     fn run_command_from_args_dispatches_buildable_frontend_commands() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_dispatch_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_dispatch_{}", std::process::id()));
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
-        std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        std::fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let (_, result) = run_command_from_args_in_dir(["fol", "code", "check"], &root).unwrap();
 
@@ -843,7 +867,8 @@ mod tests {
         let mut stdout = Vec::new();
         let mut stderr = Vec::new();
 
-        let code = run_from_args_with_io(["fol", "code", "emit", "--help"], &mut stdout, &mut stderr);
+        let code =
+            run_from_args_with_io(["fol", "code", "emit", "--help"], &mut stdout, &mut stderr);
         let rendered = String::from_utf8(stdout).expect("help output should be utf8");
 
         assert_eq!(code, 0);
@@ -875,7 +900,10 @@ mod tests {
             config.build_target_override.as_deref(),
             Some("aarch64-macos-gnu")
         );
-        assert_eq!(config.build_optimize_override.as_deref(), Some("release-fast"));
+        assert_eq!(
+            config.build_optimize_override.as_deref(),
+            Some("release-fast")
+        );
         assert_eq!(config.build_option_overrides, vec!["jobs=16".to_string()]);
     }
 
@@ -922,7 +950,9 @@ mod tests {
             dispatch_workspace_command(&command, &workspace, &FrontendConfig::default()).unwrap();
 
         assert_eq!(result.command, "build");
-        assert!(result.summary.contains("built 1 workspace package(s) into "));
+        assert!(result
+            .summary
+            .contains("built 1 workspace package(s) into "));
         assert_eq!(result.artifacts.len(), 3);
         assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
         assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::EmittedRust);
@@ -969,7 +999,9 @@ mod tests {
             .expect("modern semantic build packages should execute");
 
         assert_eq!(result.command, "build");
-        assert!(result.summary.contains("built 1 workspace package(s) into "));
+        assert!(result
+            .summary
+            .contains("built 1 workspace package(s) into "));
 
         std::fs::remove_dir_all(&workspace.root.root).ok();
     }
@@ -991,7 +1023,6 @@ mod tests {
 
         std::fs::remove_dir_all(&workspace.root.root).ok();
     }
-
 }
 fn code_has_direct_target(command: &CodeCommand) -> bool {
     match &command.command {

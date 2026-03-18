@@ -48,18 +48,10 @@ impl BuildArtifactTargetConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BuildArtifactOutput {
-    EmittedRustCrate {
-        crate_root: String,
-    },
-    Binary {
-        binary_path: String,
-    },
-    GeneratedSourceBundle {
-        root: String,
-    },
-    DocsBundle {
-        root: String,
-    },
+    EmittedRustCrate { crate_root: String },
+    Binary { binary_path: String },
+    GeneratedSourceBundle { root: String },
+    DocsBundle { root: String },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -119,7 +111,8 @@ pub struct BuildArtifactNativeAttachmentSet {
 }
 
 pub fn project_graph_artifacts(graph: &BuildGraph) -> Vec<BuildArtifactDefinition> {
-    graph.artifacts()
+    graph
+        .artifacts()
         .iter()
         .map(|artifact| BuildArtifactDefinition {
             name: artifact.name.clone(),
@@ -133,9 +126,10 @@ pub fn project_graph_artifacts(graph: &BuildGraph) -> Vec<BuildArtifactDefinitio
                 path: graph
                     .artifact_inputs_for(artifact.id)
                     .find_map(|input| match input {
-                        crate::build_graph::BuildArtifactInput::Module(module_id) => {
-                            graph.modules().get(module_id.index()).map(|module| module.name.clone())
-                        }
+                        crate::build_graph::BuildArtifactInput::Module(module_id) => graph
+                            .modules()
+                            .get(module_id.index())
+                            .map(|module| module.name.clone()),
                         crate::build_graph::BuildArtifactInput::GeneratedFile(_) => None,
                     })
                     .unwrap_or_default(),
@@ -144,9 +138,10 @@ pub fn project_graph_artifacts(graph: &BuildGraph) -> Vec<BuildArtifactDefinitio
                 roots: graph
                     .artifact_inputs_for(artifact.id)
                     .filter_map(|input| match input {
-                        crate::build_graph::BuildArtifactInput::Module(module_id) => {
-                            graph.modules().get(module_id.index()).map(|module| module.name.clone())
-                        }
+                        crate::build_graph::BuildArtifactInput::Module(module_id) => graph
+                            .modules()
+                            .get(module_id.index())
+                            .map(|module| module.name.clone()),
                         crate::build_graph::BuildArtifactInput::GeneratedFile(_) => None,
                     })
                     .collect(),
@@ -204,16 +199,15 @@ mod tests {
     use super::{
         project_graph_artifacts, BuildArtifactDefinition, BuildArtifactLinkage,
         BuildArtifactModelKind, BuildArtifactModuleConfig, BuildArtifactNativeAttachmentSet,
-        BuildArtifactOutput, BuildArtifactReport,
-        BuildArtifactPipelinePlan, BuildArtifactPipelineStage, BuildArtifactRootSource,
-        BuildArtifactSet, BuildArtifactTargetConfig,
+        BuildArtifactOutput, BuildArtifactPipelinePlan, BuildArtifactPipelineStage,
+        BuildArtifactReport, BuildArtifactRootSource, BuildArtifactSet, BuildArtifactTargetConfig,
     };
-    use crate::build_option::ResolvedBuildOptionSet;
     use crate::build_graph::{BuildArtifactKind, BuildGraph, BuildModuleKind};
     use crate::build_native::{
         NativeArtifactDefinition, NativeArtifactKind, NativeIncludePath, NativeLibraryPath,
         NativeLinkDirective, NativeLinkInput, NativeLinkMode, NativeSearchPathOrigin,
     };
+    use crate::build_option::ResolvedBuildOptionSet;
 
     #[test]
     fn build_artifact_set_starts_empty() {
@@ -252,8 +246,14 @@ mod tests {
             BuildArtifactModelKind::GeneratedSourceBundle,
             BuildArtifactModelKind::GeneratedSourceBundle
         );
-        assert_eq!(BuildArtifactModelKind::DocsBundle, BuildArtifactModelKind::DocsBundle);
-        assert_eq!(BuildArtifactModelKind::TestBundle, BuildArtifactModelKind::TestBundle);
+        assert_eq!(
+            BuildArtifactModelKind::DocsBundle,
+            BuildArtifactModelKind::DocsBundle
+        );
+        assert_eq!(
+            BuildArtifactModelKind::TestBundle,
+            BuildArtifactModelKind::TestBundle
+        );
     }
 
     #[test]
@@ -303,7 +303,10 @@ mod tests {
         assert_eq!(definition.modules.roots.len(), 2);
         assert_eq!(definition.output_name, "fol_plugin");
         assert_eq!(definition.linkage, BuildArtifactLinkage::Shared);
-        assert_eq!(definition.target.target.as_deref(), Some("x86_64-linux-gnu"));
+        assert_eq!(
+            definition.target.target.as_deref(),
+            Some("x86_64-linux-gnu")
+        );
         assert_eq!(definition.target.optimize.as_deref(), Some("release"));
         assert_eq!(definition.native_attachments.include_paths.len(), 1);
         assert_eq!(definition.native_attachments.library_paths.len(), 1);

@@ -1,4 +1,6 @@
-use fol_frontend::{FrontendOutput, FrontendOutputConfig, OutputMode, run_command_from_args_in_dir};
+use fol_frontend::{
+    run_command_from_args_in_dir, FrontendOutput, FrontendOutputConfig, OutputMode,
+};
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
@@ -49,8 +51,8 @@ fn frontend_workspace_discovery_failures_render_consistently_across_output_modes
 
 #[test]
 fn frontend_parse_failures_keep_structured_help_notes() {
-    let error = run_command_from_args_in_dir(["fol", "emit", "wat"], std::env::temp_dir())
-        .unwrap_err();
+    let error =
+        run_command_from_args_in_dir(["fol", "emit", "wat"], std::env::temp_dir()).unwrap_err();
     let json = FrontendOutput::new(FrontendOutputConfig {
         mode: OutputMode::Json,
         ..FrontendOutputConfig::default()
@@ -103,7 +105,9 @@ fn locked_fetch_mismatch_failures_render_consistently_across_output_modes() {
 
     assert!(human.contains("fol.lock"));
     assert!(human.contains("package.yaml"));
-    assert!(human.contains("use `fol fetch --locked` only when package.yaml and fol.lock are intentionally in sync"));
+    assert!(human.contains(
+        "use `fol fetch --locked` only when package.yaml and fol.lock are intentionally in sync"
+    ));
     assert!(plain.contains("note: run `fol fetch` or `fol update` to refresh fol.lock"));
     assert!(json.contains("\"kind\": \"FrontendInvalidInput\""));
     assert!(json.contains("\"notes\": ["));
@@ -122,8 +126,11 @@ fn create_app_with_git_dep(app: &std::path::Path, remote: &std::path::Path) {
     )
     .expect("should write app manifest");
     fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
-    fs::write(app.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
-        .expect("should write app source");
+    fs::write(
+        app.join("src/main.fol"),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    )
+    .expect("should write app source");
 }
 
 fn create_git_package_repo(root: &std::path::Path, name: &str, version: &str) {

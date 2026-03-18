@@ -101,7 +101,9 @@ impl GeneratedOutputDependencySet {
     }
 
     pub fn get(&self, name: &str) -> Option<&GeneratedFileDefinition> {
-        self.outputs.iter().find(|definition| definition.name == name)
+        self.outputs
+            .iter()
+            .find(|definition| definition.name == name)
     }
 
     pub fn outputs(&self) -> &[GeneratedFileDefinition] {
@@ -112,9 +114,9 @@ impl GeneratedOutputDependencySet {
 #[cfg(test)]
 mod tests {
     use super::{
-        CodegenKind, CodegenRequest, CodegenResult, GeneratedFileAction,
-        GeneratedFileDefinition, GeneratedFileInstallProjection, GeneratedFileSet,
-        GeneratedOutputDependencySet, SystemToolRequest, SystemToolResult,
+        CodegenKind, CodegenRequest, CodegenResult, GeneratedFileAction, GeneratedFileDefinition,
+        GeneratedFileInstallProjection, GeneratedFileSet, GeneratedOutputDependencySet,
+        SystemToolRequest, SystemToolResult,
     };
 
     #[test]
@@ -159,16 +161,16 @@ mod tests {
 
         assert!(matches!(write, GeneratedFileAction::Write { .. }));
         assert!(matches!(copy, GeneratedFileAction::Copy { .. }));
-        assert!(matches!(capture, GeneratedFileAction::CaptureToolOutput { .. }));
+        assert!(matches!(
+            capture,
+            GeneratedFileAction::CaptureToolOutput { .. }
+        ));
     }
 
     #[test]
     fn generated_file_install_projection_keeps_install_helper_metadata() {
-        let projection = GeneratedFileInstallProjection::new(
-            "config",
-            "install-config",
-            "share/config.json",
-        );
+        let projection =
+            GeneratedFileInstallProjection::new("config", "install-config", "share/config.json");
 
         assert_eq!(projection.generated_file_name, "config");
         assert_eq!(projection.install_name, "install-config");
@@ -230,7 +232,9 @@ mod tests {
 
         assert_eq!(outputs.outputs().len(), 1);
         assert_eq!(
-            outputs.get("bindings").map(|definition| definition.relative_path.as_str()),
+            outputs
+                .get("bindings")
+                .map(|definition| definition.relative_path.as_str()),
             Some("gen/bindings.fol")
         );
         assert!(outputs.get("missing").is_none());

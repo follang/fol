@@ -1,8 +1,7 @@
 use crate::{
-    diagnostic_to_lsp, map_document_workspace, materialize_analysis_overlay, EditorConfig,
-    location_to_range, EditorDocument, EditorDocumentUri, EditorError, EditorErrorKind,
-    EditorResult, EditorSession, EditorWorkspaceMapping, LspDiagnostic, LspLocation, LspPosition,
-    LspRange,
+    diagnostic_to_lsp, location_to_range, map_document_workspace, materialize_analysis_overlay,
+    EditorConfig, EditorDocument, EditorDocumentUri, EditorError, EditorErrorKind, EditorResult,
+    EditorSession, EditorWorkspaceMapping, LspDiagnostic, LspLocation, LspPosition, LspRange,
 };
 use fol_diagnostics::Diagnostic;
 use fol_diagnostics::ToDiagnostic;
@@ -255,30 +254,35 @@ impl EditorLspServer {
         }
     }
 
-    pub fn handle_request(&mut self, request: JsonRpcRequest) -> EditorResult<Option<JsonRpcResponse>> {
+    pub fn handle_request(
+        &mut self,
+        request: JsonRpcRequest,
+    ) -> EditorResult<Option<JsonRpcResponse>> {
         match request.method.as_str() {
             "initialize" => Ok(Some(JsonRpcResponse {
                 jsonrpc: "2.0".to_string(),
                 id: request.id,
-                result: Some(serde_json::to_value(LspInitializeResult {
-                    capabilities: LspServerCapabilities {
-                        text_document_sync: LspTextDocumentSyncOptions {
-                            open_close: true,
-                            change: 1,
+                result: Some(
+                    serde_json::to_value(LspInitializeResult {
+                        capabilities: LspServerCapabilities {
+                            text_document_sync: LspTextDocumentSyncOptions {
+                                open_close: true,
+                                change: 1,
+                            },
+                            hover_provider: true,
+                            definition_provider: true,
+                            document_symbol_provider: true,
+                            completion_provider: Some(LspCompletionOptions {
+                                trigger_characters: vec![".".to_string()],
+                            }),
                         },
-                        hover_provider: true,
-                        definition_provider: true,
-                        document_symbol_provider: true,
-                        completion_provider: Some(LspCompletionOptions {
-                            trigger_characters: vec![".".to_string()],
-                        }),
-                    },
-                    server_info: LspServerInfo {
-                        name: "fol-editor".to_string(),
-                        version: env!("CARGO_PKG_VERSION").to_string(),
-                    },
-                })
-                .expect("initialize result should serialize")),
+                        server_info: LspServerInfo {
+                            name: "fol-editor".to_string(),
+                            version: env!("CARGO_PKG_VERSION").to_string(),
+                        },
+                    })
+                    .expect("initialize result should serialize"),
+                ),
                 error: None,
             })),
             "shutdown" => {
@@ -320,7 +324,8 @@ impl EditorLspServer {
             }
             "textDocument/documentSymbol" => {
                 let params: LspDocumentSymbolParams = from_params(request.params)?;
-                let result = self.document_symbols(&EditorDocumentUri::parse(&params.text_document.uri)?)?;
+                let result =
+                    self.document_symbols(&EditorDocumentUri::parse(&params.text_document.uri)?)?;
                 Ok(Some(JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
@@ -365,9 +370,13 @@ impl EditorLspServer {
             "textDocument/didOpen" => {
                 let params: LspDidOpenTextDocumentParams = from_params(notification.params)?;
                 let uri = EditorDocumentUri::parse(&params.text_document.uri)?;
-                let document =
-                    EditorDocument::new(uri.clone(), params.text_document.version, params.text_document.text)?;
-                let mapping = map_document_workspace(document.path.as_path(), &self.session.config)?;
+                let document = EditorDocument::new(
+                    uri.clone(),
+                    params.text_document.version,
+                    params.text_document.text,
+                )?;
+                let mapping =
+                    map_document_workspace(document.path.as_path(), &self.session.config)?;
                 self.session
                     .mappings
                     .insert(uri.as_str().to_string(), mapping);
@@ -388,9 +397,11 @@ impl EditorLspServer {
                             "didChange requires at least one content change",
                         )
                     })?;
-                self.session
-                    .documents
-                    .apply_full_change(&uri, params.text_document.version, text)?;
+                self.session.documents.apply_full_change(
+                    &uri,
+                    params.text_document.version,
+                    text,
+                )?;
                 let diagnostics = self.publish_diagnostics(&uri)?;
                 Ok(vec![diagnostics])
             }
@@ -424,7 +435,11 @@ impl EditorLspServer {
         })
     }
 
-    pub fn hover(&self, uri: &EditorDocumentUri, position: LspPosition) -> EditorResult<Option<LspHover>> {
+    pub fn hover(
+        &self,
+        uri: &EditorDocumentUri,
+        position: LspPosition,
+    ) -> EditorResult<Option<LspHover>> {
         let document = self.open_document(uri)?;
         let mapping = self.document_mapping(document, uri)?;
         let snapshot = analyze_document_semantics(document, &mapping)?;
@@ -494,11 +509,15 @@ impl EditorLspServer {
         document: &EditorDocument,
         uri: &EditorDocumentUri,
     ) -> EditorResult<EditorWorkspaceMapping> {
-        Ok(self.session
+        Ok(self
+            .session
             .mappings
             .get(uri.as_str())
             .cloned()
-            .unwrap_or(map_document_workspace(document.path.as_path(), &self.session.config)?))
+            .unwrap_or(map_document_workspace(
+                document.path.as_path(),
+                &self.session.config,
+            )?))
     }
 }
 
@@ -656,7 +675,9 @@ fn write_jsonrpc_message(writer: &mut impl Write, value: &impl Serialize) -> Edi
     Ok(())
 }
 
-fn from_params<T: serde::de::DeserializeOwned>(params: Option<serde_json::Value>) -> EditorResult<T> {
+fn from_params<T: serde::de::DeserializeOwned>(
+    params: Option<serde_json::Value>,
+) -> EditorResult<T> {
     serde_json::from_value(params.unwrap_or(serde_json::Value::Null)).map_err(|error| {
         EditorError::new(
             EditorErrorKind::InvalidInput,
@@ -763,17 +784,10 @@ impl SemanticSnapshot {
     }
 
     fn builtin_type_completion_items(&self) -> Vec<EditorCompletionItem> {
-        [
-            "int",
-            "flt",
-            "bol",
-            "chr",
-            "str",
-            "never",
-        ]
-        .into_iter()
-        .map(completion_builtin_type_item)
-        .collect()
+        ["int", "flt", "bol", "chr", "str", "never"]
+            .into_iter()
+            .map(completion_builtin_type_item)
+            .collect()
     }
 
     fn visible_named_type_completion_items(&self) -> Vec<EditorCompletionItem> {
@@ -798,9 +812,9 @@ impl SemanticSnapshot {
             return Vec::new();
         };
         let qualifier_root = qualifier.split("::").next().unwrap_or(qualifier);
-        let imported_root = program
-            .all_symbols()
-            .any(|symbol| symbol.kind == fol_resolver::SymbolKind::ImportAlias && symbol.name == qualifier_root);
+        let imported_root = program.all_symbols().any(|symbol| {
+            symbol.kind == fol_resolver::SymbolKind::ImportAlias && symbol.name == qualifier_root
+        });
         let mut items = Vec::new();
 
         if let Some(scope_id) = program.namespace_scope(qualifier) {
@@ -808,7 +822,9 @@ impl SemanticSnapshot {
                 program
                     .symbols_in_scope(scope_id)
                     .into_iter()
-                    .filter(|symbol| symbol_visibility_matches_namespace_root(symbol, imported_root))
+                    .filter(|symbol| {
+                        symbol_visibility_matches_namespace_root(symbol, imported_root)
+                    })
                     .map(completion_item_from_symbol),
             );
         }
@@ -821,7 +837,9 @@ impl SemanticSnapshot {
                 program
                     .symbols_in_scope(source_unit.scope_id)
                     .into_iter()
-                    .filter(|symbol| symbol_visibility_matches_namespace_root(symbol, imported_root))
+                    .filter(|symbol| {
+                        symbol_visibility_matches_namespace_root(symbol, imported_root)
+                    })
                     .map(completion_item_from_symbol),
             );
         }
@@ -878,7 +896,9 @@ impl SemanticSnapshot {
                 }
                 items.push(completion_item_from_symbol(symbol));
             }
-            cursor = program.scope(current_scope_id).and_then(|scope| scope.parent);
+            cursor = program
+                .scope(current_scope_id)
+                .and_then(|scope| scope.parent);
         }
         items
     }
@@ -900,17 +920,25 @@ impl SemanticSnapshot {
                     .symbols_in_scope(scope_id)
                     .into_iter()
                     .filter(|symbol| symbol.mounted_from.is_none())
-                    .filter(|symbol| completion_symbol_is_plain_top_level_candidate(program, symbol))
+                    .filter(|symbol| {
+                        completion_symbol_is_plain_top_level_candidate(program, symbol)
+                    })
                     .map(completion_item_from_symbol),
             );
         }
-        for source_unit in program.source_units.iter().filter(|unit| unit.namespace == namespace) {
+        for source_unit in program
+            .source_units
+            .iter()
+            .filter(|unit| unit.namespace == namespace)
+        {
             items.extend(
                 program
                     .symbols_in_scope(source_unit.scope_id)
                     .into_iter()
                     .filter(|symbol| symbol.mounted_from.is_none())
-                    .filter(|symbol| completion_symbol_is_plain_top_level_candidate(program, symbol))
+                    .filter(|symbol| {
+                        completion_symbol_is_plain_top_level_candidate(program, symbol)
+                    })
                     .map(completion_item_from_symbol),
             );
         }
@@ -930,7 +958,9 @@ impl SemanticSnapshot {
                 }
                 items.push(completion_item_from_symbol(symbol));
             }
-            cursor = program.scope(current_scope_id).and_then(|scope| scope.parent);
+            cursor = program
+                .scope(current_scope_id)
+                .and_then(|scope| scope.parent);
         }
         items
     }
@@ -945,7 +975,11 @@ impl SemanticSnapshot {
         let mut items = self.fallback_import_alias_items(document);
         items.extend(self.fallback_current_package_top_level_items(document, position));
 
-        if let Some(header) = before_cursor.rmatch_indices("fun").next().map(|(index, _)| &before_cursor[index..]) {
+        if let Some(header) = before_cursor
+            .rmatch_indices("fun")
+            .next()
+            .map(|(index, _)| &before_cursor[index..])
+        {
             if let Some(open) = header.find('(') {
                 if let Some(close) = header[open + 1..].find(')') {
                     for param in header[open + 1..open + 1 + close].split(',') {
@@ -994,7 +1028,10 @@ impl SemanticSnapshot {
         let current_routine = current_routine_name(&document.text, position);
         for line in document.text.lines() {
             let trimmed = line.trim();
-            if let Some(name) = fallback_decl_name(trimmed, &["fun[] ", "fun[", "log[] ", "log[", "pro[] ", "pro["]) {
+            if let Some(name) = fallback_decl_name(
+                trimmed,
+                &["fun[] ", "fun[", "log[] ", "log[", "pro[] ", "pro["],
+            ) {
                 if current_routine.as_deref() == Some(name.as_str()) {
                     continue;
                 }
@@ -1030,11 +1067,22 @@ impl SemanticSnapshot {
         items
     }
 
-    fn fallback_local_named_type_items(&self, document: &EditorDocument) -> Vec<EditorCompletionItem> {
-        self.fallback_current_package_top_level_items(document, LspPosition { line: u32::MAX, character: u32::MAX })
-            .into_iter()
-            .filter(|item| item.detail.as_deref() == Some("type") || item.detail.as_deref() == Some("type alias"))
-            .collect()
+    fn fallback_local_named_type_items(
+        &self,
+        document: &EditorDocument,
+    ) -> Vec<EditorCompletionItem> {
+        self.fallback_current_package_top_level_items(
+            document,
+            LspPosition {
+                line: u32::MAX,
+                character: u32::MAX,
+            },
+        )
+        .into_iter()
+        .filter(|item| {
+            item.detail.as_deref() == Some("type") || item.detail.as_deref() == Some("type alias")
+        })
+        .collect()
     }
 
     fn fallback_import_alias_items(&self, document: &EditorDocument) -> Vec<EditorCompletionItem> {
@@ -1055,14 +1103,20 @@ impl SemanticSnapshot {
             .collect()
     }
 
-    fn fallback_imported_named_type_items(&self, document: &EditorDocument) -> Vec<EditorCompletionItem> {
+    fn fallback_imported_named_type_items(
+        &self,
+        document: &EditorDocument,
+    ) -> Vec<EditorCompletionItem> {
         let aliases = self.fallback_import_alias_items(document);
         let mut items = Vec::new();
         for alias in aliases {
             items.extend(
                 self.fallback_imported_package_items(&alias.label)
                     .into_iter()
-                    .filter(|item| item.detail.as_deref() == Some("type") || item.detail.as_deref() == Some("type alias")),
+                    .filter(|item| {
+                        item.detail.as_deref() == Some("type")
+                            || item.detail.as_deref() == Some("type alias")
+                    }),
             );
         }
         items
@@ -1148,30 +1202,32 @@ impl SemanticSnapshot {
                 return Some((program, scope_id));
             }
         }
-        if let Some(scope_id) = nearest_scope_before_position(program, analyzed_path.as_path(), position) {
+        if let Some(scope_id) =
+            nearest_scope_before_position(program, analyzed_path.as_path(), position)
+        {
             return Some((program, scope_id));
         }
-        self.current_source_unit(program).map(|unit| (program, unit.scope_id))
+        self.current_source_unit(program)
+            .map(|unit| (program, unit.scope_id))
     }
 
     fn current_namespace_for_position(&self, position: LspPosition) -> Option<String> {
         let program = self.current_program()?;
         let _ = position;
-        self.current_source_unit(program).map(|unit| unit.namespace.clone())
+        self.current_source_unit(program)
+            .map(|unit| unit.namespace.clone())
     }
 
     fn reference_at(&self, position: LspPosition) -> Option<&fol_resolver::ResolvedReference> {
         let resolved = self.resolved_workspace.as_ref()?;
         let analyzed_path = self.analyzed_path.as_ref()?;
-        let needle = resolved
-            .packages()
-            .find_map(|package| {
-                let program = &package.program;
-                let syntax_id = syntax_at_position(program, analyzed_path.as_path(), position)?;
-                program
-                    .all_references()
-                    .find(|reference| reference.syntax_id == Some(syntax_id))
-            })?;
+        let needle = resolved.packages().find_map(|package| {
+            let program = &package.program;
+            let syntax_id = syntax_at_position(program, analyzed_path.as_path(), position)?;
+            program
+                .all_references()
+                .find(|reference| reference.syntax_id == Some(syntax_id))
+        })?;
         Some(needle)
     }
 
@@ -1198,7 +1254,12 @@ impl SemanticSnapshot {
                     })
                     .unwrap_or_else(|| "unknown".to_string());
                 return Some(LspHover {
-                    contents: format!("{} {}: {}", render_symbol_kind(symbol.kind), symbol.name, type_summary),
+                    contents: format!(
+                        "{} {}: {}",
+                        render_symbol_kind(symbol.kind),
+                        symbol.name,
+                        type_summary
+                    ),
                     range: Some(location_to_range(&fol_diagnostics::DiagnosticLocation {
                         file: origin.file.clone(),
                         line: origin.line,
@@ -1249,7 +1310,9 @@ impl SemanticSnapshot {
         for package in resolved.packages() {
             let program = &package.program;
             for symbol in program.all_symbols() {
-                let Some(origin) = &symbol.origin else { continue };
+                let Some(origin) = &symbol.origin else {
+                    continue;
+                };
                 let Some(file) = &origin.file else { continue };
                 if file != &path_text {
                     continue;
@@ -1286,7 +1349,10 @@ impl SemanticSnapshot {
     ) -> Option<&'a fol_resolver::ResolvedSourceUnit> {
         let analyzed_path = self.analyzed_path.as_ref()?;
         let path_text = analyzed_path.to_string_lossy();
-        program.source_units.iter().find(move |unit| unit.path == path_text)
+        program
+            .source_units
+            .iter()
+            .find(move |unit| unit.path == path_text)
     }
 }
 
@@ -1344,19 +1410,20 @@ fn analyze_document_semantics(
         }
 
         let mut package_session = PackageSession::new();
-        let prepared = match package_session.load_directory_package(package_root, PackageSourceKind::Entry) {
-            Ok(prepared) => prepared,
-            Err(error) => {
-                return Ok(SemanticSnapshot {
-                    analyzed_path: Some(overlay.document_path().to_path_buf()),
-                    source_document_path: mapping.document_path.clone(),
-                    source_package_root: mapping.package_root.clone(),
-                    diagnostics: vec![diagnostic_to_lsp(&error.to_diagnostic())],
-                    resolved_workspace: None,
-                    typed_workspace: None,
-                })
-            }
-        };
+        let prepared =
+            match package_session.load_directory_package(package_root, PackageSourceKind::Entry) {
+                Ok(prepared) => prepared,
+                Err(error) => {
+                    return Ok(SemanticSnapshot {
+                        analyzed_path: Some(overlay.document_path().to_path_buf()),
+                        source_document_path: mapping.document_path.clone(),
+                        source_package_root: mapping.package_root.clone(),
+                        diagnostics: vec![diagnostic_to_lsp(&error.to_diagnostic())],
+                        resolved_workspace: None,
+                        typed_workspace: None,
+                    })
+                }
+            };
 
         let mut resolver = Resolver::new();
         let resolved = match resolver.resolve_prepared_workspace(prepared) {
@@ -1369,7 +1436,9 @@ fn analyze_document_semantics(
                     diagnostics: errors
                         .iter()
                         .map(|error| error.to_diagnostic())
-                        .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
+                        .filter(|diagnostic| {
+                            diagnostic_targets_path(diagnostic, overlay.document_path())
+                        })
                         .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
                         .collect(),
                     resolved_workspace: None,
@@ -1395,7 +1464,9 @@ fn analyze_document_semantics(
                 diagnostics: errors
                     .iter()
                     .map(|error| error.to_diagnostic())
-                    .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
+                    .filter(|diagnostic| {
+                        diagnostic_targets_path(diagnostic, overlay.document_path())
+                    })
                     .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
                     .collect(),
                 resolved_workspace: Some(resolved),
@@ -1446,7 +1517,10 @@ fn parse_single_file_diagnostics(path: &Path, text: &str) -> EditorResult<Vec<Di
     std::fs::create_dir_all(&root).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!("failed to create parser temp root '{}': {error}", root.display()),
+            format!(
+                "failed to create parser temp root '{}': {error}",
+                root.display()
+            ),
         )
     })?;
     let file = root.join(
@@ -1456,7 +1530,10 @@ fn parse_single_file_diagnostics(path: &Path, text: &str) -> EditorResult<Vec<Di
     std::fs::write(&file, text).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!("failed to write parser temp file '{}': {error}", file.display()),
+            format!(
+                "failed to write parser temp file '{}': {error}",
+                file.display()
+            ),
         )
     })?;
     let diagnostics = parse_directory_diagnostics(&root)?;
@@ -1475,16 +1552,23 @@ fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagnostic>> {
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("root");
-    let sources = Source::init_with_package(root_str, SourceType::Folder, display_name).map_err(|error| {
-        EditorError::new(
-            EditorErrorKind::Internal,
-            format!("failed to initialize analysis sources from '{}': {error}", root.display()),
-        )
-    })?;
+    let sources =
+        Source::init_with_package(root_str, SourceType::Folder, display_name).map_err(|error| {
+            EditorError::new(
+                EditorErrorKind::Internal,
+                format!(
+                    "failed to initialize analysis sources from '{}': {error}",
+                    root.display()
+                ),
+            )
+        })?;
     let mut stream = FileStream::from_sources(sources).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!("failed to read analysis sources from '{}': {error}", root.display()),
+            format!(
+                "failed to read analysis sources from '{}': {error}",
+                root.display()
+            ),
         )
     })?;
     let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
@@ -1610,7 +1694,8 @@ fn current_routine_name(text: &str, position: LspPosition) -> Option<String> {
         .next()
         .map(|(index, _)| &before_cursor[index..])?;
     let rest = header.strip_prefix("fun").unwrap_or(header);
-    let rest = rest.trim_start_matches(|ch: char| ch == '[' || ch == ']' || !ch.is_ascii_alphanumeric());
+    let rest =
+        rest.trim_start_matches(|ch: char| ch == '[' || ch == ']' || !ch.is_ascii_alphanumeric());
     let open = rest.find('(')?;
     let name = rest[..open]
         .trim()
@@ -1754,7 +1839,10 @@ fn render_checked_type(
                 .collect::<Vec<_>>()
                 .join(", ")
         ),
-        Some(fol_typecheck::CheckedType::Map { key_type, value_type }) => format!(
+        Some(fol_typecheck::CheckedType::Map {
+            key_type,
+            value_type,
+        }) => format!(
             "map[{}, {}]",
             render_checked_type(table, *key_type),
             render_checked_type(table, *value_type)
@@ -1771,7 +1859,10 @@ fn render_checked_type(
                 .map(|return_type| render_checked_type(table, return_type))
                 .unwrap_or_else(|| "void".to_string());
             match routine.error_type {
-                Some(error_type) => format!("fun({params}): {returns} / {}", render_checked_type(table, error_type)),
+                Some(error_type) => format!(
+                    "fun({params}): {returns} / {}",
+                    render_checked_type(table, error_type)
+                ),
                 None => format!("fun({params}): {returns}"),
             }
         }
@@ -1795,7 +1886,10 @@ fn dedupe_completion_items(items: Vec<EditorCompletionItem>) -> Vec<EditorComple
     filtered
 }
 
-fn completion_item_cmp(left: &EditorCompletionItem, right: &EditorCompletionItem) -> std::cmp::Ordering {
+fn completion_item_cmp(
+    left: &EditorCompletionItem,
+    right: &EditorCompletionItem,
+) -> std::cmp::Ordering {
     completion_item_priority(left)
         .cmp(&completion_item_priority(right))
         .then(left.label.cmp(&right.label))
@@ -1861,7 +1955,9 @@ fn completion_symbol_detail(kind: fol_resolver::SymbolKind) -> &'static str {
         | fol_resolver::SymbolKind::DestructureBinding
         | fol_resolver::SymbolKind::LoopBinder
         | fol_resolver::SymbolKind::RollingBinder => "binding",
-        fol_resolver::SymbolKind::Parameter | fol_resolver::SymbolKind::GenericParameter => "parameter",
+        fol_resolver::SymbolKind::Parameter | fol_resolver::SymbolKind::GenericParameter => {
+            "parameter"
+        }
         fol_resolver::SymbolKind::Capture => "capture",
         fol_resolver::SymbolKind::ImportAlias => "namespace",
         fol_resolver::SymbolKind::Segment => "namespace segment",
@@ -1958,7 +2054,10 @@ fn completion_context(document: &EditorDocument, position: LspPosition) -> Compl
     if line_prefix
         .rsplit_once(':')
         .map(|(_, tail)| tail.trim())
-        .is_some_and(|tail| tail.chars().all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == ':'))
+        .is_some_and(|tail| {
+            tail.chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == ':')
+        })
     {
         return CompletionContext::TypePosition;
     }
@@ -1990,9 +2089,9 @@ fn position_to_offset(text: &str, position: LspPosition) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::{
-        completion_context, CompletionContext, EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
-        LspCompletionContext, LspCompletionList, LspCompletionParams, LspDefinitionParams,
-        LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
+        completion_context, CompletionContext, EditorLspServer, JsonRpcId, JsonRpcNotification,
+        JsonRpcRequest, LspCompletionContext, LspCompletionList, LspCompletionParams,
+        LspDefinitionParams, LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
         LspDidOpenTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
         LspInitializeResult, LspLocation, LspPosition, LspPublishDiagnosticsParams,
         LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
@@ -2035,7 +2134,11 @@ mod tests {
 
         fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(root.join("app/build.fol"), "def root: loc = \"src\"\n").unwrap();
-        fs::write(root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("shared/package.yaml"),
+            "name: shared\nversion: 0.1.0\n",
+        )
+        .unwrap();
         fs::write(root.join("shared/build.fol"), "def root: loc = \"src\"\n").unwrap();
 
         fs::write(
@@ -2053,7 +2156,11 @@ mod tests {
         (root, uri)
     }
 
-    fn open_document(server: &mut EditorLspServer, uri: String, text: &str) -> Vec<LspPublishDiagnosticsParams> {
+    fn open_document(
+        server: &mut EditorLspServer,
+        uri: String,
+        text: &str,
+    ) -> Vec<LspPublishDiagnosticsParams> {
         server
             .handle_notification(JsonRpcNotification {
                 jsonrpc: "2.0".to_string(),
@@ -2086,13 +2193,17 @@ mod tests {
             })
             .unwrap()
             .unwrap();
-        let result: LspInitializeResult = serde_json::from_value(initialize.result.unwrap()).unwrap();
+        let result: LspInitializeResult =
+            serde_json::from_value(initialize.result.unwrap()).unwrap();
         assert!(result.capabilities.text_document_sync.open_close);
         let completion_provider = result
             .capabilities
             .completion_provider
             .expect("completion provider should be advertised");
-        assert_eq!(completion_provider.trigger_characters, vec![".".to_string()]);
+        assert_eq!(
+            completion_provider.trigger_characters,
+            vec![".".to_string()]
+        );
 
         let shutdown = server
             .handle_request(JsonRpcRequest {
@@ -2118,7 +2229,8 @@ mod tests {
 
     #[test]
     fn completion_context_detects_type_positions() {
-        let uri = EditorDocumentUri::from_file_path(PathBuf::from("/tmp/type_context.fol")).unwrap();
+        let uri =
+            EditorDocumentUri::from_file_path(PathBuf::from("/tmp/type_context.fol")).unwrap();
         let document = EditorDocument::new(
             uri,
             1,
@@ -2140,7 +2252,8 @@ mod tests {
 
     #[test]
     fn completion_context_detects_qualified_paths() {
-        let uri = EditorDocumentUri::from_file_path(PathBuf::from("/tmp/qualified_context.fol")).unwrap();
+        let uri =
+            EditorDocumentUri::from_file_path(PathBuf::from("/tmp/qualified_context.fol")).unwrap();
         let document = EditorDocument::new(
             uri,
             1,
@@ -2202,30 +2315,44 @@ mod tests {
             .handle_notification(JsonRpcNotification {
                 jsonrpc: "2.0".to_string(),
                 method: "textDocument/didChange".to_string(),
-                params: Some(serde_json::to_value(LspDidChangeTextDocumentParams {
-                    text_document: LspVersionedTextDocumentIdentifier {
-                        uri: uri.clone(),
-                        version: 2,
-                    },
-                    content_changes: vec![LspTextDocumentContentChangeEvent {
-                        text: "fun[] main(): int = {\n    return 7\n}\n".to_string(),
-                    }],
-                }).unwrap()),
+                params: Some(
+                    serde_json::to_value(LspDidChangeTextDocumentParams {
+                        text_document: LspVersionedTextDocumentIdentifier {
+                            uri: uri.clone(),
+                            version: 2,
+                        },
+                        content_changes: vec![LspTextDocumentContentChangeEvent {
+                            text: "fun[] main(): int = {\n    return 7\n}\n".to_string(),
+                        }],
+                    })
+                    .unwrap(),
+                ),
             })
             .unwrap();
-        assert_eq!(server.session.documents.get(&crate::EditorDocumentUri::parse(&uri).unwrap()).unwrap().version, 2);
+        assert_eq!(
+            server
+                .session
+                .documents
+                .get(&crate::EditorDocumentUri::parse(&uri).unwrap())
+                .unwrap()
+                .version,
+            2
+        );
         assert!(changed[0].diagnostics.is_empty());
 
         let closed = server
             .handle_notification(JsonRpcNotification {
                 jsonrpc: "2.0".to_string(),
                 method: "textDocument/didClose".to_string(),
-                params: Some(serde_json::to_value(LspDidCloseTextDocumentParams {
-                    text_document: LspVersionedTextDocumentIdentifier {
-                        uri: uri.clone(),
-                        version: 2,
-                    },
-                }).unwrap()),
+                params: Some(
+                    serde_json::to_value(LspDidCloseTextDocumentParams {
+                        text_document: LspVersionedTextDocumentIdentifier {
+                            uri: uri.clone(),
+                            version: 2,
+                        },
+                    })
+                    .unwrap(),
+                ),
             })
             .unwrap();
         assert!(server.session.documents.is_empty());
@@ -2261,11 +2388,8 @@ mod tests {
     fn lsp_server_surfaces_parser_diagnostics_from_open_documents() {
         let (root, uri) = sample_package_root("parser_diag");
         let mut server = EditorLspServer::new(EditorConfig::default());
-        let diagnostics = open_document(
-            &mut server,
-            uri,
-            "fun[] main(: int = {\n    return 0\n}\n",
-        );
+        let diagnostics =
+            open_document(&mut server, uri, "fun[] main(: int = {\n    return 0\n}\n");
 
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].diagnostics[0].code, "P1001");
@@ -2278,11 +2402,8 @@ mod tests {
         let (root, uri) = sample_package_root("package_diag");
         fs::remove_file(root.join("build.fol")).unwrap();
         let mut server = EditorLspServer::new(EditorConfig::default());
-        let diagnostics = open_document(
-            &mut server,
-            uri,
-            "fun[] main(): int = {\n    return 0\n}\n",
-        );
+        let diagnostics =
+            open_document(&mut server, uri, "fun[] main(): int = {\n    return 0\n}\n");
 
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].diagnostics[0].code, "K1001");
@@ -2453,15 +2574,18 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         assert!(!completion.is_incomplete);
         assert!(completion.items.iter().any(|item| item.label == "value"));
-        assert!(completion
-            .items
-            .iter()
-            .find(|item| item.label == "value")
-            .and_then(|item| item.detail.as_deref())
-            == Some("binding"));
+        assert!(
+            completion
+                .items
+                .iter()
+                .find(|item| item.label == "value")
+                .and_then(|item| item.detail.as_deref())
+                == Some("binding")
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -2499,7 +2623,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         assert!(completion.items.iter().any(|item| item.label == "value"));
         assert!(completion.items.iter().any(|item| item.label == "helper"));
 
@@ -2538,14 +2663,17 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         assert!(completion.items.iter().any(|item| item.label == "total"));
-        assert!(completion
-            .items
-            .iter()
-            .find(|item| item.label == "total")
-            .and_then(|item| item.detail.as_deref())
-            == Some("parameter"));
+        assert!(
+            completion
+                .items
+                .iter()
+                .find(|item| item.label == "total")
+                .and_then(|item| item.detail.as_deref())
+                == Some("parameter")
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -2582,7 +2710,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         let labels = completion
             .items
             .iter()
@@ -2632,7 +2761,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         let labels = completion
             .items
             .iter()
@@ -2681,7 +2811,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         let labels = completion
             .items
             .iter()
@@ -2734,7 +2865,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         assert!(completion.items.iter().any(|item| item.label == "helper"));
 
         fs::remove_dir_all(root).ok();
@@ -2783,7 +2915,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         let labels = completion
             .items
             .iter()
@@ -2919,7 +3052,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         let labels = completion
             .items
             .iter()
@@ -2965,7 +3099,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         let labels = completion
             .items
             .iter()
@@ -3015,7 +3150,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         let labels = completion
             .items
             .iter()
@@ -3067,14 +3203,17 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         assert!(completion.items.iter().any(|item| item.label == "helper"));
-        assert!(completion
-            .items
-            .iter()
-            .find(|item| item.label == "helper")
-            .and_then(|item| item.detail.as_deref())
-            == Some("routine"));
+        assert!(
+            completion
+                .items
+                .iter()
+                .find(|item| item.label == "helper")
+                .and_then(|item| item.detail.as_deref())
+                == Some("routine")
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -3106,14 +3245,17 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         assert!(completion.items.iter().any(|item| item.label == "shared"));
-        assert!(completion
-            .items
-            .iter()
-            .find(|item| item.label == "shared")
-            .and_then(|item| item.detail.as_deref())
-            == Some("namespace"));
+        assert!(
+            completion
+                .items
+                .iter()
+                .find(|item| item.label == "shared")
+                .and_then(|item| item.detail.as_deref())
+                == Some("namespace")
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -3150,7 +3292,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         let helpers = completion
             .items
             .iter()
@@ -3194,7 +3337,8 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         let labels = completion
             .items
             .iter()
@@ -3296,11 +3440,19 @@ mod tests {
             .unwrap()
             .unwrap();
 
-        let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
+        let completion: LspCompletionList =
+            serde_json::from_value(completion.result.unwrap()).unwrap();
         let summary = completion
             .items
             .iter()
-            .map(|item| format!("{}:{}:{}", item.label, item.kind, item.detail.clone().unwrap_or_default()))
+            .map(|item| {
+                format!(
+                    "{}:{}:{}",
+                    item.label,
+                    item.kind,
+                    item.detail.clone().unwrap_or_default()
+                )
+            })
             .collect::<Vec<_>>();
         assert_eq!(
             summary,
@@ -3451,9 +3603,7 @@ mod tests {
         assert_eq!(diagnostics.len(), 1);
         assert!(diagnostics[0].diagnostics[0].code.starts_with('T'));
         assert!(
-            diagnostics[0].diagnostics[0]
-                .message
-                .contains("V2")
+            diagnostics[0].diagnostics[0].message.contains("V2")
                 || diagnostics[0].diagnostics[0]
                     .related_information
                     .iter()

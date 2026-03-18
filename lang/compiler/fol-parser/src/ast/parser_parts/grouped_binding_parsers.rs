@@ -71,7 +71,12 @@ impl AstParser {
                         }) as Box<dyn Glitch>),
                     })
                     .collect::<Result<Vec<_>, _>>()?;
-                nodes.extend(self.build_binding_nodes(options.clone(), names, type_hint, values)?);
+                nodes.extend(self.build_binding_nodes(
+                    options.clone(),
+                    names,
+                    type_hint,
+                    values,
+                )?);
             }
 
             self.skip_ignorable(tokens);

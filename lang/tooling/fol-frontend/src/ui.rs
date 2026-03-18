@@ -237,7 +237,10 @@ mod tests {
         assert_eq!(
             output.render_plain_status(
                 "status",
-                &[("kind", "binary".to_string()), ("path", "target/bin/demo".to_string())]
+                &[
+                    ("kind", "binary".to_string()),
+                    ("path", "target/bin/demo".to_string())
+                ]
             ),
             "status: kind=binary path=target/bin/demo"
         );
@@ -255,8 +258,8 @@ mod tests {
                 Some(PathBuf::from("target/bin/demo")),
             ),
         );
-        let error = FrontendError::new(FrontendErrorKind::CommandFailed, "boom")
-            .with_note("note one");
+        let error =
+            FrontendError::new(FrontendErrorKind::CommandFailed, "boom").with_note("note one");
 
         let rendered_result = output.render_json_result(&result).unwrap();
         let rendered_error = output.render_json_error(&error).unwrap();

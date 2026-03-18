@@ -1,8 +1,8 @@
 use fol_frontend::{
-    build_workspace, check_workspace, emit_lowered, emit_rust, run_command_from_args_in_dir,
-    run_workspace, test_workspace, check_workspace_with_config, build_workspace_with_config,
-    run_workspace_with_config, test_workspace_with_config, FrontendArtifactKind, FrontendConfig,
-    FrontendWorkspace, PackageRoot, WorkspaceRoot,
+    build_workspace, build_workspace_with_config, check_workspace, check_workspace_with_config,
+    emit_lowered, emit_rust, run_command_from_args_in_dir, run_workspace,
+    run_workspace_with_config, test_workspace, test_workspace_with_config, FrontendArtifactKind,
+    FrontendConfig, FrontendWorkspace, PackageRoot, WorkspaceRoot,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -26,10 +26,12 @@ fn sample_workspace(root: &PathBuf) -> FrontendWorkspace {
     fs::create_dir_all(&src).expect("should create source tree");
     fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n")
         .expect("should write manifest");
-    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n")
-        .expect("should write build file");
-    fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
-        .expect("should write main");
+    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write build file");
+    fs::write(
+        src.join("main.fol"),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    )
+    .expect("should write main");
 
     FrontendWorkspace {
         root: WorkspaceRoot::new(root.clone()),
@@ -97,10 +99,12 @@ fn create_app_with_git_dep(app: &Path, remote: &Path) {
         ),
     )
     .expect("should write app manifest");
-    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n")
-        .expect("should write app build");
-    fs::write(app.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
-        .expect("should write app source");
+    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
+    fs::write(
+        app.join("src/main.fol"),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    )
+    .expect("should write app source");
 }
 
 fn create_git_package_repo(root: &Path, name: &str, version: &str) {
@@ -172,12 +176,18 @@ fn test_command_traverses_all_runnable_workspace_members_through_public_api() {
     let tools_root = root.join("tools");
     let tools_src = tools_root.join("src");
     fs::create_dir_all(&tools_src).expect("should create tools source tree");
-    fs::write(tools_root.join("package.yaml"), "name: tools\nversion: 0.1.0\n")
-        .expect("should write tools manifest");
+    fs::write(
+        tools_root.join("package.yaml"),
+        "name: tools\nversion: 0.1.0\n",
+    )
+    .expect("should write tools manifest");
     fs::write(tools_root.join("build.fol"), "def root: loc = \"src\"\n")
         .expect("should write tools build");
-    fs::write(tools_src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
-        .expect("should write tools main");
+    fs::write(
+        tools_src.join("main.fol"),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    )
+    .expect("should write tools main");
 
     let workspace = FrontendWorkspace {
         members: vec![app.members[0].clone(), PackageRoot::new(tools_root)],
@@ -208,7 +218,11 @@ fn emit_rust_command_reports_generated_crate_paths_through_public_api() {
     assert_eq!(result.artifacts.len(), 2);
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
     assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::EmittedRust);
-    assert!(result.artifacts[1].path.as_ref().expect("crate path should exist").is_dir());
+    assert!(result.artifacts[1]
+        .path
+        .as_ref()
+        .expect("crate path should exist")
+        .is_dir());
 
     fs::remove_dir_all(root).ok();
 }
@@ -223,7 +237,10 @@ fn emit_lowered_command_reports_snapshot_paths_through_public_api() {
     assert_eq!(result.command, "emit lowered");
     assert_eq!(result.artifacts.len(), 2);
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
-    assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::LoweredSnapshot);
+    assert_eq!(
+        result.artifacts[1].kind,
+        FrontendArtifactKind::LoweredSnapshot
+    );
     assert!(result.artifacts[1]
         .path
         .as_ref()
@@ -240,7 +257,12 @@ fn direct_file_or_folder_compilation_is_code_subcommand_owned() {
     let entry_file = workspace.members[0].root.join("src/main.fol");
 
     let (_, built) = run_command_from_args_in_dir(
-        ["fol", "code", "build", entry_file.to_string_lossy().as_ref()],
+        [
+            "fol",
+            "code",
+            "build",
+            entry_file.to_string_lossy().as_ref(),
+        ],
         &root,
     )
     .expect("direct package compile should succeed");

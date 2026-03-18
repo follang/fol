@@ -1,4 +1,7 @@
-use crate::{FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendConfig, FrontendResult, FrontendWorkspace};
+use crate::{
+    FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendConfig,
+    FrontendResult, FrontendWorkspace,
+};
 use std::fs;
 
 pub fn clean_workspace_with_config(
@@ -16,7 +19,8 @@ pub fn clean_workspace_with_config(
         .package_store_root_override
         .clone()
         .or_else(|| workspace.package_store_root_override.clone());
-    let package_store_removed = clean_workspace_local_root(workspace, package_store_root.as_deref())?;
+    let package_store_removed =
+        clean_workspace_local_root(workspace, package_store_root.as_deref())?;
 
     let mut result = FrontendCommandResult::new(
         "clean",
@@ -28,7 +32,10 @@ pub fn clean_workspace_with_config(
                 if git_cache_removed {
                     format!(", and git source cache {}", git_cache_root.display())
                 } else {
-                    format!(", skipped external git source cache {}", git_cache_root.display())
+                    format!(
+                        ", skipped external git source cache {}",
+                        git_cache_root.display()
+                    )
                 }
             } else {
                 String::new()
@@ -86,7 +93,8 @@ mod tests {
 
     #[test]
     fn clean_workspace_exposes_a_stable_command_shell() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_clean_build_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_clean_build_{}", std::process::id()));
         let build_root = root.join(".fol/build");
         let cache_root = root.join(".fol/cache");
         fs::create_dir_all(&build_root).unwrap();
@@ -108,9 +116,13 @@ mod tests {
 
     #[test]
     fn clean_workspace_only_removes_workspace_local_package_stores() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_clean_pkg_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_clean_pkg_{}", std::process::id()));
         let local_store = root.join(".fol/pkg");
-        let external_store = std::env::temp_dir().join(format!("fol_frontend_clean_external_pkg_{}", std::process::id()));
+        let external_store = std::env::temp_dir().join(format!(
+            "fol_frontend_clean_external_pkg_{}",
+            std::process::id()
+        ));
         fs::create_dir_all(&local_store).unwrap();
         fs::create_dir_all(&external_store).unwrap();
 
@@ -141,7 +153,8 @@ mod tests {
 
     #[test]
     fn clean_workspace_removes_workspace_local_git_cache_overrides() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_clean_git_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_clean_git_{}", std::process::id()));
         let git_cache = root.join(".fol/custom-git-cache");
         fs::create_dir_all(&git_cache).unwrap();
 
@@ -160,9 +173,14 @@ mod tests {
 
     #[test]
     fn clean_workspace_skips_external_git_cache_overrides() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_clean_git_external_{}", std::process::id()));
-        let external_git_cache =
-            std::env::temp_dir().join(format!("fol_frontend_clean_git_shared_{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_clean_git_external_{}",
+            std::process::id()
+        ));
+        let external_git_cache = std::env::temp_dir().join(format!(
+            "fol_frontend_clean_git_shared_{}",
+            std::process::id()
+        ));
         fs::create_dir_all(&external_git_cache).unwrap();
 
         let workspace = FrontendWorkspace::new(WorkspaceRoot::new(root.clone()));

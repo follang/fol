@@ -12,9 +12,9 @@ pub mod model;
 pub mod session;
 pub mod types;
 
-pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use builtins::BuiltinTypeIds;
 pub use errors::{TypecheckError, TypecheckErrorKind};
+pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use model::{
     RecoverableCallEffect, TypedExportMount, TypedNode, TypedPackage, TypedProgram, TypedReference,
     TypedSourceUnit, TypedSymbol, TypedWorkspace,
@@ -75,7 +75,8 @@ mod tests {
 
         assert_eq!(error.kind(), TypecheckErrorKind::Unsupported);
         assert_eq!(
-            error.diagnostic_location()
+            error
+                .diagnostic_location()
                 .expect("Typecheck error should expose its syntax origin")
                 .line,
             3
@@ -84,8 +85,12 @@ mod tests {
 
     #[test]
     fn typechecker_can_wrap_a_resolved_program_in_a_typed_shell() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
-        let mut stream = FileStream::from_file(fixture_path).expect("Should open typecheck fixture");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
+        let mut stream =
+            FileStream::from_file(fixture_path).expect("Should open typecheck fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = fol_parser::ast::AstParser::new();
         let syntax = parser
@@ -104,6 +109,9 @@ mod tests {
 
     #[test]
     fn typechecker_reexports_parsed_source_unit_kinds() {
-        assert_eq!(ParsedSourceUnitKind::Build, fol_parser::ast::ParsedSourceUnitKind::Build);
+        assert_eq!(
+            ParsedSourceUnitKind::Build,
+            fol_parser::ast::ParsedSourceUnitKind::Build
+        );
     }
 }

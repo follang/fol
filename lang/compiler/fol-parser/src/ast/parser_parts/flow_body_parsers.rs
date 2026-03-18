@@ -184,21 +184,22 @@ impl AstParser {
             return Ok(vec![node]);
         }
 
-        let node = if (AstParser::token_can_be_logical_name(&key)
-            || key.is_textual_literal())
+        let node = if (AstParser::token_can_be_logical_name(&key) || key.is_textual_literal())
             && self.lookahead_is_assignment(tokens)
         {
             self.parse_assignment_stmt(tokens)?
-        } else if (AstParser::token_can_be_logical_name(&key)
-            || key.is_textual_literal())
+        } else if (AstParser::token_can_be_logical_name(&key) || key.is_textual_literal())
             && (self.lookahead_is_call(tokens) || self.lookahead_is_method_call(tokens))
             && self.can_start_assignment(tokens)
         {
             self.parse_call_stmt(tokens)?
-        } else if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot))
-            || AstParser::token_can_be_logical_name(&key)
+        } else if (matches!(
+            key,
+            KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot)
+        ) || AstParser::token_can_be_logical_name(&key)
             || key.is_textual_literal())
-            && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
+            && self
+                .lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
             && self.can_start_assignment(tokens)
         {
             self.parse_invoke_stmt(tokens)?

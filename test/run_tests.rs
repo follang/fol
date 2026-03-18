@@ -28,9 +28,8 @@ mod apps {
 mod integration_tests {
     use fol_editor::{
         EditorConfig, EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
-        LspCompletionList, LspCompletionParams, LspDidOpenTextDocumentParams,
-        LspDocumentSymbol, LspDocumentSymbolParams, LspPosition, LspTextDocumentIdentifier,
-        LspTextDocumentItem,
+        LspCompletionList, LspCompletionParams, LspDidOpenTextDocumentParams, LspDocumentSymbol,
+        LspDocumentSymbolParams, LspPosition, LspTextDocumentIdentifier, LspTextDocumentItem,
     };
     use fol_package::{
         infer_package_root, parse_directory_package_syntax, parse_package_build, PackageBuildMode,
@@ -252,11 +251,7 @@ mod integration_tests {
         let fixture = root.join("main.fol");
         std::fs::write(
             &fixture,
-            concat!(
-                "fun[] main(): int = {\n",
-                "    return 7\n",
-                "}\n",
-            ),
+            concat!("fun[] main(): int = {\n", "    return 7\n", "}\n",),
         )
         .expect("Should write backend scalar fixture");
         fixture
@@ -306,8 +301,11 @@ mod integration_tests {
         .expect("Should write app manifest");
         std::fs::write(app_root.join("build.fol"), "def root: loc = \"src\"\n")
             .expect("Should write app build");
-        std::fs::write(app_root.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
-            .expect("Should write app source");
+        std::fs::write(
+            app_root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .expect("Should write app source");
     }
 
     fn read_lock_revision(lockfile: &Path) -> String {
@@ -522,8 +520,11 @@ mod integration_tests {
         let temp_root = unique_temp_root("pipeline_cross_file_import");
         fs::create_dir_all(temp_root.join("net/http"))
             .expect("Should create a temporary integration fixture directory");
-        fs::write(temp_root.join("net/http/route.fol"), "var handler: int = 1;\n")
-            .expect("Should write the imported namespace fixture");
+        fs::write(
+            temp_root.join("net/http/route.fol"),
+            "var handler: int = 1;\n",
+        )
+        .expect("Should write the imported namespace fixture");
         fs::write(
             temp_root.join("main.fol"),
             "use http: loc = {net::http};\nfun[] main(): int = {\n    return http;\n}\n",
@@ -625,8 +626,11 @@ mod integration_tests {
             .expect("Should create the standard-library fixture directory");
         fs::create_dir_all(&app_root)
             .expect("Should create the importing package root fixture directory");
-        fs::write(std_root.join("fmt/value.fol"), "var[exp] answer: int = 42;\n")
-            .expect("Should write the standard-library export fixture");
+        fs::write(
+            std_root.join("fmt/value.fol"),
+            "var[exp] answer: int = 42;\n",
+        )
+        .expect("Should write the standard-library export fixture");
         fs::write(
             app_root.join("main.fol"),
             "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
@@ -676,10 +680,16 @@ mod integration_tests {
         .expect("Should write the installed package metadata fixture");
         fs::create_dir_all(store_root.join("json/src"))
             .expect("Should create the installed package export root fixture");
-        fs::write(store_root.join("json/build.fol"), "def root: loc = \"src\";\n")
-            .expect("Should write the installed package build fixture");
-        fs::write(store_root.join("json/src/lib.fol"), "var[exp] answer: int = 42;\n")
-            .expect("Should write the installed package export fixture");
+        fs::write(
+            store_root.join("json/build.fol"),
+            "def root: loc = \"src\";\n",
+        )
+        .expect("Should write the installed package build fixture");
+        fs::write(
+            store_root.join("json/src/lib.fol"),
+            "var[exp] answer: int = 42;\n",
+        )
+        .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),
             "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
@@ -761,8 +771,11 @@ mod integration_tests {
             .expect("Should create the standard-library fixture directory");
         fs::create_dir_all(&app_root)
             .expect("Should create the importing package root fixture directory");
-        fs::write(std_root.join("fmt/value.fol"), "var[exp] answer: int = 42;\n")
-            .expect("Should write the standard-library export fixture");
+        fs::write(
+            std_root.join("fmt/value.fol"),
+            "var[exp] answer: int = 42;\n",
+        )
+        .expect("Should write the standard-library export fixture");
         fs::write(
             app_root.join("main.fol"),
             "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
@@ -813,10 +826,16 @@ mod integration_tests {
         .expect("Should write the installed package metadata fixture");
         fs::create_dir_all(store_root.join("json/src"))
             .expect("Should create the installed package export root fixture");
-        fs::write(store_root.join("json/build.fol"), "def root: loc = \"src\";\n")
-            .expect("Should write the installed package build fixture");
-        fs::write(store_root.join("json/src/lib.fol"), "var[exp] answer: int = 42;\n")
-            .expect("Should write the installed package export fixture");
+        fs::write(
+            store_root.join("json/build.fol"),
+            "def root: loc = \"src\";\n",
+        )
+        .expect("Should write the installed package build fixture");
+        fs::write(
+            store_root.join("json/src/lib.fol"),
+            "var[exp] answer: int = 42;\n",
+        )
+        .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),
             "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
@@ -896,7 +915,8 @@ mod integration_tests {
         use std::fs;
 
         let temp_root = unique_temp_root("cli_json_intrinsic_comparison_failures");
-        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic comparison failure fixture");
+        fs::create_dir_all(&temp_root)
+            .expect("Should create temp intrinsic comparison failure fixture");
         let fixture = temp_root.join("main.fol");
         fs::write(
             &fixture,
@@ -910,9 +930,9 @@ mod integration_tests {
 
         let output = run_fol(&[
             "--json",
-            fixture
-                .to_str()
-                .expect("Temporary intrinsic comparison failure fixture path should be valid UTF-8"),
+            fixture.to_str().expect(
+                "Temporary intrinsic comparison failure fixture path should be valid UTF-8",
+            ),
         ]);
 
         assert!(
@@ -991,15 +1011,12 @@ mod integration_tests {
         use std::fs;
 
         let temp_root = unique_temp_root("cli_json_intrinsic_boolean_failures");
-        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic boolean failure fixture");
+        fs::create_dir_all(&temp_root)
+            .expect("Should create temp intrinsic boolean failure fixture");
         let fixture = temp_root.join("main.fol");
         fs::write(
             &fixture,
-            concat!(
-                "fun[] main(): bol = {\n",
-                "    return .not(1)\n",
-                "}\n",
-            ),
+            concat!("fun[] main(): bol = {\n", "    return .not(1)\n", "}\n",),
         )
         .expect("Should write intrinsic boolean failure fixture");
 
@@ -1087,7 +1104,8 @@ mod integration_tests {
         use std::fs;
 
         let temp_root = unique_temp_root("cli_json_intrinsic_length_failures");
-        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic length failure fixture");
+        fs::create_dir_all(&temp_root)
+            .expect("Should create temp intrinsic length failure fixture");
         let fixture = temp_root.join("main.fol");
         fs::write(
             &fixture,
@@ -1192,11 +1210,7 @@ mod integration_tests {
         let fixture = temp_root.join("main.fol");
         fs::write(
             &fixture,
-            concat!(
-                "fun[] main(): int = {\n",
-                "    return .echo()\n",
-                "}\n",
-            ),
+            concat!("fun[] main(): int = {\n", "    return .echo()\n", "}\n",),
         )
         .expect("Should write intrinsic echo failure fixture");
 
@@ -1219,7 +1233,9 @@ mod integration_tests {
         let echo_error = diagnostics.iter().find(|diagnostic| {
             diagnostic["message"]
                 .as_str()
-                .map(|message| message.contains(".echo(...) expects exactly 1 argument(s) but got 0"))
+                .map(|message| {
+                    message.contains(".echo(...) expects exactly 1 argument(s) but got 0")
+                })
                 .unwrap_or(false)
         });
 
@@ -1242,8 +1258,7 @@ mod integration_tests {
         use std::fs;
 
         let temp_root = unique_temp_root("cli_json_intrinsic_v3_boundaries");
-        fs::create_dir_all(&temp_root)
-            .expect("Should create temp intrinsic V3 boundary fixture");
+        fs::create_dir_all(&temp_root).expect("Should create temp intrinsic V3 boundary fixture");
         let fixture = temp_root.join("main.fol");
         fs::write(
             &fixture,
@@ -1301,8 +1316,7 @@ mod integration_tests {
         use std::fs;
 
         let temp_root = unique_temp_root("cli_json_cast_intrinsic_failures");
-        fs::create_dir_all(&temp_root)
-            .expect("Should create temp cast intrinsic failure fixture");
+        fs::create_dir_all(&temp_root).expect("Should create temp cast intrinsic failure fixture");
         let fixture = temp_root.join("main.fol");
         fs::write(
             &fixture,
@@ -1524,7 +1538,8 @@ mod integration_tests {
         use std::fs;
 
         let temp_root = unique_temp_root("cli_lowering_parameter_scope");
-        fs::create_dir_all(&temp_root).expect("Should create temp parameter regression fixture dir");
+        fs::create_dir_all(&temp_root)
+            .expect("Should create temp parameter regression fixture dir");
         let fixture = write_parameter_scope_lowering_fixture(&temp_root);
 
         let output = run_fol(&[fixture
@@ -1550,7 +1565,8 @@ mod integration_tests {
         use std::fs;
 
         let temp_root = unique_temp_root("cli_lowering_container_regression");
-        fs::create_dir_all(&temp_root).expect("Should create temp container regression fixture dir");
+        fs::create_dir_all(&temp_root)
+            .expect("Should create temp container regression fixture dir");
         let fixture = write_container_lowering_fixture(&temp_root);
 
         let output = run_fol(&[fixture
@@ -1576,7 +1592,8 @@ mod integration_tests {
         use std::fs;
 
         let temp_root = unique_temp_root("cli_lowering_early_return_when");
-        fs::create_dir_all(&temp_root).expect("Should create temp early-return regression fixture dir");
+        fs::create_dir_all(&temp_root)
+            .expect("Should create temp early-return regression fixture dir");
         let fixture = write_early_return_when_fixture(&temp_root);
 
         let output = run_fol(&[fixture
@@ -1625,11 +1642,16 @@ mod integration_tests {
 
         let output = run_fol(&[
             "--dump-lowered",
-            fixture.to_str().expect("error propagation fixture path should be utf-8"),
+            fixture
+                .to_str()
+                .expect("error propagation fixture path should be utf-8"),
         ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
 
-        assert!(output.status.success(), "error propagation fixture should compile, got:\n{stdout}");
+        assert!(
+            output.status.success(),
+            "error propagation fixture should compile, got:\n{stdout}"
+        );
         assert!(stdout.contains("CheckRecoverable"));
         assert!(stdout.contains("UnwrapRecoverable"));
         assert!(stdout.contains("ExtractRecoverableError"));
@@ -1664,11 +1686,16 @@ mod integration_tests {
 
         let output = run_fol(&[
             "--dump-lowered",
-            fixture.to_str().expect("error check fixture path should be utf-8"),
+            fixture
+                .to_str()
+                .expect("error check fixture path should be utf-8"),
         ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
 
-        assert!(output.status.success(), "error check fixture should compile, got:\n{stdout}");
+        assert!(
+            output.status.success(),
+            "error check fixture should compile, got:\n{stdout}"
+        );
         assert!(stdout.contains("CheckRecoverable"));
         assert!(!stdout.contains("ExtractRecoverableError"));
 
@@ -1706,7 +1733,10 @@ mod integration_tests {
         ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
 
-        assert!(output.status.success(), "pipe-or default fixture should compile, got:\n{stdout}");
+        assert!(
+            output.status.success(),
+            "pipe-or default fixture should compile, got:\n{stdout}"
+        );
         assert!(stdout.contains("CheckRecoverable"));
         assert!(stdout.contains("UnwrapRecoverable"));
         assert!(stdout.contains("Const(Int(5))"));
@@ -1745,7 +1775,10 @@ mod integration_tests {
         ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
 
-        assert!(output.status.success(), "pipe-or report fixture should compile, got:\n{stdout}");
+        assert!(
+            output.status.success(),
+            "pipe-or report fixture should compile, got:\n{stdout}"
+        );
         assert!(stdout.contains("CheckRecoverable"));
         assert!(stdout.contains("Report"));
 
@@ -1783,7 +1816,10 @@ mod integration_tests {
         ]);
         let stdout = String::from_utf8_lossy(&output.stdout);
 
-        assert!(output.status.success(), "pipe-or panic fixture should compile, got:\n{stdout}");
+        assert!(
+            output.status.success(),
+            "pipe-or panic fixture should compile, got:\n{stdout}"
+        );
         assert!(stdout.contains("CheckRecoverable"));
         assert!(stdout.contains("Panic"));
 
@@ -1915,7 +1951,6 @@ mod integration_tests {
 
         fs::remove_dir_all(&temp_root).ok();
     }
-
 
     #[test]
     fn test_cli_folder_parse_errors_keep_json_locations_with_package_parser() {
@@ -2099,8 +2134,11 @@ mod integration_tests {
         let temp_root = unique_temp_root("cli_resolver_plain_unresolved_location");
         fs::create_dir_all(&temp_root).expect("Should create temp CLI resolver fixture");
         let main_file = temp_root.join("main.fol");
-        fs::write(&main_file, "fun[] main(): int = {\n    return missing;\n}\n")
-            .expect("Should write unresolved plain-name fixture");
+        fs::write(
+            &main_file,
+            "fun[] main(): int = {\n    return missing;\n}\n",
+        )
+        .expect("Should write unresolved plain-name fixture");
 
         let output = run_fol(&[
             "--json",
@@ -2155,10 +2193,16 @@ mod integration_tests {
             .expect("Should create first imported namespace fixture");
         fs::create_dir_all(temp_root.join("beta"))
             .expect("Should create second imported namespace fixture");
-        fs::write(temp_root.join("alpha/values.fol"), "var[exp] answer: int = 1;\n")
-            .expect("Should write first imported exported value fixture");
-        fs::write(temp_root.join("beta/values.fol"), "var[exp] answer: int = 2;\n")
-            .expect("Should write second imported exported value fixture");
+        fs::write(
+            temp_root.join("alpha/values.fol"),
+            "var[exp] answer: int = 1;\n",
+        )
+        .expect("Should write first imported exported value fixture");
+        fs::write(
+            temp_root.join("beta/values.fol"),
+            "var[exp] answer: int = 2;\n",
+        )
+        .expect("Should write second imported exported value fixture");
         let main_file = temp_root.join("main.fol");
         fs::write(
             &main_file,
@@ -2229,12 +2273,18 @@ mod integration_tests {
         let json = parse_cli_json(&output);
         let diagnostic = &json["diagnostics"][0];
 
-        assert!(!output.status.success(), "Parser fixture should fail in JSON mode");
+        assert!(
+            !output.status.success(),
+            "Parser fixture should fail in JSON mode"
+        );
         assert_eq!(json["error_count"], 1);
         assert_eq!(json["warning_count"], 0);
         assert_eq!(diagnostic["severity"], "Error");
         assert!(diagnostic["code"].as_str().is_some());
-        assert_eq!(diagnostic["message"], "Executable calls are not allowed at file root");
+        assert_eq!(
+            diagnostic["message"],
+            "Executable calls are not allowed at file root"
+        );
         assert_eq!(
             diagnostic["location"]["file"],
             bad_file
@@ -2244,11 +2294,22 @@ mod integration_tests {
         assert_eq!(diagnostic["location"]["line"], 1);
         assert_eq!(diagnostic["location"]["column"], 1);
         assert_eq!(diagnostic["location"]["length"], 3);
-        assert_eq!(diagnostic["labels"].as_array().map(|items| items.len()), Some(1));
-        assert_eq!(diagnostic["notes"].as_array().map(|items| items.len()), Some(0));
-        assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(0));
         assert_eq!(
-            diagnostic["suggestions"].as_array().map(|items| items.len()),
+            diagnostic["labels"].as_array().map(|items| items.len()),
+            Some(1)
+        );
+        assert_eq!(
+            diagnostic["notes"].as_array().map(|items| items.len()),
+            Some(0)
+        );
+        assert_eq!(
+            diagnostic["helps"].as_array().map(|items| items.len()),
+            Some(0)
+        );
+        assert_eq!(
+            diagnostic["suggestions"]
+                .as_array()
+                .map(|items| items.len()),
             Some(0)
         );
 
@@ -2282,7 +2343,10 @@ mod integration_tests {
         let json = parse_cli_json(&output);
         let diagnostic = &json["diagnostics"][0];
 
-        assert!(!output.status.success(), "Package fixture should fail in JSON mode");
+        assert!(
+            !output.status.success(),
+            "Package fixture should fail in JSON mode"
+        );
         assert_eq!(json["error_count"], 1);
         assert_eq!(diagnostic["severity"], "Error");
         assert!(diagnostic["code"].as_str().is_some());
@@ -2294,9 +2358,18 @@ mod integration_tests {
         );
         assert_eq!(diagnostic["location"]["line"], 1);
         assert_eq!(diagnostic["location"]["column"], 1);
-        assert_eq!(diagnostic["labels"].as_array().map(|items| items.len()), Some(1));
-        assert_eq!(diagnostic["notes"].as_array().map(|items| items.len()), Some(0));
-        assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(1));
+        assert_eq!(
+            diagnostic["labels"].as_array().map(|items| items.len()),
+            Some(1)
+        );
+        assert_eq!(
+            diagnostic["notes"].as_array().map(|items| items.len()),
+            Some(0)
+        );
+        assert_eq!(
+            diagnostic["helps"].as_array().map(|items| items.len()),
+            Some(1)
+        );
         assert_eq!(
             diagnostic["helps"][0],
             "replace the import source kind with pkg for formal packages"
@@ -2319,10 +2392,16 @@ mod integration_tests {
             .expect("Should create first imported namespace fixture");
         fs::create_dir_all(temp_root.join("beta"))
             .expect("Should create second imported namespace fixture");
-        fs::write(temp_root.join("alpha/values.fol"), "var[exp] answer: int = 1;\n")
-            .expect("Should write first imported exported value fixture");
-        fs::write(temp_root.join("beta/values.fol"), "var[exp] answer: int = 2;\n")
-            .expect("Should write second imported exported value fixture");
+        fs::write(
+            temp_root.join("alpha/values.fol"),
+            "var[exp] answer: int = 1;\n",
+        )
+        .expect("Should write first imported exported value fixture");
+        fs::write(
+            temp_root.join("beta/values.fol"),
+            "var[exp] answer: int = 2;\n",
+        )
+        .expect("Should write second imported exported value fixture");
         let main_file = temp_root.join("main.fol");
         fs::write(
             &main_file,
@@ -2339,7 +2418,10 @@ mod integration_tests {
         let json = parse_cli_json(&output);
         let diagnostic = &json["diagnostics"][0];
 
-        assert!(!output.status.success(), "Resolver fixture should fail in JSON mode");
+        assert!(
+            !output.status.success(),
+            "Resolver fixture should fail in JSON mode"
+        );
         assert_eq!(json["error_count"], 1);
         assert_eq!(diagnostic["severity"], "Error");
         assert!(diagnostic["code"].as_str().is_some());
@@ -2352,7 +2434,10 @@ mod integration_tests {
         assert_eq!(diagnostic["location"]["line"], 4);
         assert_eq!(diagnostic["location"]["column"], 12);
         assert_eq!(diagnostic["location"]["length"], 6);
-        assert_eq!(diagnostic["labels"].as_array().map(|items| items.len()), Some(3));
+        assert_eq!(
+            diagnostic["labels"].as_array().map(|items| items.len()),
+            Some(3)
+        );
         assert_eq!(diagnostic["labels"][1]["kind"], "Secondary");
         assert_eq!(diagnostic["labels"][2]["kind"], "Secondary");
         assert_eq!(
@@ -2363,8 +2448,14 @@ mod integration_tests {
             diagnostic["labels"][2]["message"],
             "candidate value binding declaration"
         );
-        assert_eq!(diagnostic["notes"].as_array().map(|items| items.len()), Some(0));
-        assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(0));
+        assert_eq!(
+            diagnostic["notes"].as_array().map(|items| items.len()),
+            Some(0)
+        );
+        assert_eq!(
+            diagnostic["helps"].as_array().map(|items| items.len()),
+            Some(0)
+        );
         let message = diagnostic["message"]
             .as_str()
             .expect("Resolver diagnostic message should stay a string");
@@ -2396,8 +2487,14 @@ mod integration_tests {
         let json = parse_cli_json(&output);
         let diagnostic = &json["diagnostics"][0];
 
-        assert!(!output.status.success(), "Missing std-root fixture should fail");
-        assert_eq!(diagnostic["helps"].as_array().map(|items| items.len()), Some(1));
+        assert!(
+            !output.status.success(),
+            "Missing std-root fixture should fail"
+        );
+        assert_eq!(
+            diagnostic["helps"].as_array().map(|items| items.len()),
+            Some(1)
+        );
         assert_eq!(diagnostic["helps"][0], "rerun with --std-root <DIR>");
 
         fs::remove_dir_all(&temp_root).ok();
@@ -2421,8 +2518,14 @@ mod integration_tests {
         let json = parse_cli_json(&output);
         let diagnostic = &json["diagnostics"][0];
 
-        assert!(!output.status.success(), "Unsupported import fixture should fail");
-        assert_eq!(diagnostic["notes"].as_array().map(|items| items.len()), Some(1));
+        assert!(
+            !output.status.success(),
+            "Unsupported import fixture should fail"
+        );
+        assert_eq!(
+            diagnostic["notes"].as_array().map(|items| items.len()),
+            Some(1)
+        );
         assert_eq!(
             diagnostic["notes"][0],
             "supported import source kinds are loc, std, and pkg"
@@ -2440,24 +2543,31 @@ mod integration_tests {
             .expect("Should create first imported namespace fixture");
         fs::create_dir_all(temp_root.join("beta"))
             .expect("Should create second imported namespace fixture");
-        fs::write(temp_root.join("alpha/values.fol"), "var[exp] answer: int = 1;\n")
-            .expect("Should write first imported exported value fixture");
-        fs::write(temp_root.join("beta/values.fol"), "var[exp] answer: int = 2;\n")
-            .expect("Should write second imported exported value fixture");
+        fs::write(
+            temp_root.join("alpha/values.fol"),
+            "var[exp] answer: int = 1;\n",
+        )
+        .expect("Should write first imported exported value fixture");
+        fs::write(
+            temp_root.join("beta/values.fol"),
+            "var[exp] answer: int = 2;\n",
+        )
+        .expect("Should write second imported exported value fixture");
         fs::write(
             temp_root.join("main.fol"),
             "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
         )
         .expect("Should write ambiguous imported plain-name fixture");
 
-        let output = run_fol(&[
-            temp_root
-                .to_str()
-                .expect("Resolver fixture path should be valid UTF-8"),
-        ]);
+        let output = run_fol(&[temp_root
+            .to_str()
+            .expect("Resolver fixture path should be valid UTF-8")]);
         let stdout = String::from_utf8_lossy(&output.stdout);
 
-        assert!(!output.status.success(), "Ambiguous resolver fixture should fail");
+        assert!(
+            !output.status.success(),
+            "Ambiguous resolver fixture should fail"
+        );
         assert!(stdout.contains("error: ResolverAmbiguousReference"));
         assert!(stdout.contains("note:"));
         assert!(stdout.contains("candidate value binding declaration"));
@@ -2484,17 +2594,20 @@ mod integration_tests {
         )
         .expect("Should write loc misuse fixture");
 
-        let output = run_fol(&[
-            app_root
-                .to_str()
-                .expect("Package fixture path should be valid UTF-8"),
-        ]);
+        let output = run_fol(&[app_root
+            .to_str()
+            .expect("Package fixture path should be valid UTF-8")]);
         let stdout = String::from_utf8_lossy(&output.stdout);
 
-        assert!(!output.status.success(), "Formal package loc misuse should fail");
+        assert!(
+            !output.status.success(),
+            "Formal package loc misuse should fail"
+        );
         assert!(stdout.contains("error: ResolverInvalidInput"));
         assert!(stdout.contains("pkg instead of loc"));
-        assert!(stdout.contains("help: replace the import source kind with pkg for formal packages"));
+        assert!(
+            stdout.contains("help: replace the import source kind with pkg for formal packages")
+        );
 
         fs::remove_dir_all(&temp_root).ok();
     }
@@ -2901,7 +3014,10 @@ mod integration_tests {
         let report = parse_cli_json(&output);
         let first = report["diagnostics"][0].clone();
 
-        assert!(!output.status.success(), "CLI should fail on imported binding mismatches");
+        assert!(
+            !output.status.success(),
+            "CLI should fail on imported binding mismatches"
+        );
         assert_eq!(first["code"], "T1003");
         assert_eq!(first["location"]["line"], 2);
         assert_eq!(first["location"]["column"], 18);
@@ -2943,7 +3059,10 @@ mod integration_tests {
         let report = parse_cli_json(&output);
         let first = report["diagnostics"][0].clone();
 
-        assert!(!output.status.success(), "CLI should fail on unsupported nil shell contexts");
+        assert!(
+            !output.status.success(),
+            "CLI should fail on unsupported nil shell contexts"
+        );
         assert_eq!(first["code"], "T1001");
         assert_eq!(first["location"]["line"], 2);
         assert_eq!(first["location"]["column"], 1);
@@ -2956,7 +3075,9 @@ mod integration_tests {
         );
         assert!(
             first["message"].as_str().is_some_and(|message| {
-                message.contains("nil literals require an expected opt[...] or err[...] shell type in V1")
+                message.contains(
+                    "nil literals require an expected opt[...] or err[...] shell type in V1",
+                )
             }),
             "CLI JSON diagnostics should preserve the nil shell message"
         );
@@ -3032,8 +3153,7 @@ mod integration_tests {
         ]);
         let parser_json = parse_cli_json(&parser_output);
         assert_ne!(
-            parser_json["diagnostics"][0]["code"],
-            "E0000",
+            parser_json["diagnostics"][0]["code"], "E0000",
             "Parser diagnostics should use explicit structured parser codes"
         );
 
@@ -3057,8 +3177,7 @@ mod integration_tests {
         ]);
         let package_json = parse_cli_json(&package_output);
         assert_ne!(
-            package_json["diagnostics"][0]["code"],
-            "E0000",
+            package_json["diagnostics"][0]["code"], "E0000",
             "Package diagnostics should use explicit structured package codes"
         );
 
@@ -3067,10 +3186,16 @@ mod integration_tests {
             .expect("Should create first imported namespace fixture");
         fs::create_dir_all(resolver_root.join("beta"))
             .expect("Should create second imported namespace fixture");
-        fs::write(resolver_root.join("alpha/values.fol"), "var[exp] answer: int = 1;\n")
-            .expect("Should write first imported exported value fixture");
-        fs::write(resolver_root.join("beta/values.fol"), "var[exp] answer: int = 2;\n")
-            .expect("Should write second imported exported value fixture");
+        fs::write(
+            resolver_root.join("alpha/values.fol"),
+            "var[exp] answer: int = 1;\n",
+        )
+        .expect("Should write first imported exported value fixture");
+        fs::write(
+            resolver_root.join("beta/values.fol"),
+            "var[exp] answer: int = 2;\n",
+        )
+        .expect("Should write second imported exported value fixture");
         fs::write(
             resolver_root.join("main.fol"),
             "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
@@ -3084,8 +3209,7 @@ mod integration_tests {
         ]);
         let resolver_json = parse_cli_json(&resolver_output);
         assert_ne!(
-            resolver_json["diagnostics"][0]["code"],
-            "E0000",
+            resolver_json["diagnostics"][0]["code"], "E0000",
             "Resolver diagnostics should use explicit structured resolver codes"
         );
 
@@ -3269,11 +3393,9 @@ mod integration_tests {
         fs::create_dir_all(&temp_root).expect("Should create backend build fixture dir");
         let fixture = write_backend_scalar_fixture(&temp_root);
 
-        let output = run_fol(&[
-            fixture
-                .to_str()
-                .expect("Backend build fixture path should be valid utf-8"),
-        ]);
+        let output = run_fol(&[fixture
+            .to_str()
+            .expect("Backend build fixture path should be valid utf-8")]);
 
         assert!(
             output.status.success(),
@@ -3420,8 +3542,11 @@ mod integration_tests {
         create_git_package_repo(&remote_root, "logtiny", "0.1.0");
         create_app_with_git_dependency(&app_root, &remote_root);
         create_app_with_git_dependency(&tool_root, &remote_root);
-        fs::write(temp_root.join("fol.work.yaml"), "members:\n  - app\n  - tool\n")
-            .expect("Should write workspace config");
+        fs::write(
+            temp_root.join("fol.work.yaml"),
+            "members:\n  - app\n  - tool\n",
+        )
+        .expect("Should write workspace config");
 
         let output = run_fol_in_dir(&temp_root, &["pack", "fetch"]);
 
@@ -3434,7 +3559,10 @@ mod integration_tests {
 
         let lockfile = temp_root.join("fol.lock");
         let lock_text = fs::read_to_string(&lockfile).expect("Should read generated lockfile");
-        assert!(lockfile.is_file(), "workspace fetch should write a workspace fol.lock file");
+        assert!(
+            lockfile.is_file(),
+            "workspace fetch should write a workspace fol.lock file"
+        );
         assert!(lock_text.contains("alias: logtiny"));
         assert!(
             String::from_utf8_lossy(&output.stdout).contains("prepared 2 workspace package"),
@@ -3478,7 +3606,10 @@ mod integration_tests {
             String::from_utf8_lossy(&locked.stderr)
         );
         let pinned_after = read_lock_revision(&lockfile);
-        assert_eq!(pinned_before, pinned_after, "locked fetch should keep the pinned revision");
+        assert_eq!(
+            pinned_before, pinned_after,
+            "locked fetch should keep the pinned revision"
+        );
 
         fs::remove_dir_all(&temp_root).ok();
     }
@@ -3511,7 +3642,13 @@ mod integration_tests {
 
     #[test]
     fn test_editor_file_commands_cover_build_fol_entry_files() {
-        let parse = run_fol(&["tool", "--output", "json", "parse", "xtra/logtiny/build.fol"]);
+        let parse = run_fol(&[
+            "tool",
+            "--output",
+            "json",
+            "parse",
+            "xtra/logtiny/build.fol",
+        ]);
         assert!(
             parse.status.success(),
             "build.fol parse should succeed: stdout=\n{}\nstderr=\n{}",
@@ -3525,8 +3662,13 @@ mod integration_tests {
             .expect("parse summary should be a string")
             .contains("xtra/logtiny/build.fol"));
 
-        let highlight =
-            run_fol(&["tool", "--output", "json", "highlight", "xtra/logtiny/build.fol"]);
+        let highlight = run_fol(&[
+            "tool",
+            "--output",
+            "json",
+            "highlight",
+            "xtra/logtiny/build.fol",
+        ]);
         assert!(
             highlight.status.success(),
             "build.fol highlight should succeed: stdout=\n{}\nstderr=\n{}",
@@ -3544,7 +3686,13 @@ mod integration_tests {
             .expect("highlight summary should be a string")
             .contains("xtra/logtiny/build.fol"));
 
-        let symbols = run_fol(&["tool", "--output", "json", "symbols", "xtra/logtiny/build.fol"]);
+        let symbols = run_fol(&[
+            "tool",
+            "--output",
+            "json",
+            "symbols",
+            "xtra/logtiny/build.fol",
+        ]);
         assert!(
             symbols.status.success(),
             "build.fol symbols should succeed: stdout=\n{}\nstderr=\n{}",
@@ -3651,10 +3799,11 @@ mod integration_tests {
                 .file_name()
                 .and_then(|name| name.to_str())
                 .expect("example package name should be utf-8");
-            let syntax = parse_directory_package_syntax(&root, display_name, PackageSourceKind::Package)
-                .expect("formal example package syntax should parse");
-            let discovered = infer_package_root(&syntax)
-                .expect("formal example package should be discoverable");
+            let syntax =
+                parse_directory_package_syntax(&root, display_name, PackageSourceKind::Package)
+                    .expect("formal example package syntax should parse");
+            let discovered =
+                infer_package_root(&syntax).expect("formal example package should be discoverable");
             assert_eq!(
                 discovered,
                 root.canonicalize()
@@ -3689,8 +3838,9 @@ mod integration_tests {
                 .file_name()
                 .and_then(|name| name.to_str())
                 .expect("example package name should be utf-8");
-            let syntax = parse_directory_package_syntax(&root, display_name, PackageSourceKind::Package)
-                .expect("formal example package syntax should parse");
+            let syntax =
+                parse_directory_package_syntax(&root, display_name, PackageSourceKind::Package)
+                    .expect("formal example package syntax should parse");
 
             assert_eq!(
                 syntax
@@ -3708,6 +3858,13 @@ mod integration_tests {
     #[test]
     fn test_build_fixture_local_root_package_builds_and_runs() {
         let root = build_fixture_root("exe_object_config");
+        let build_source = std::fs::read_to_string(root.join("build.fol"))
+            .expect("build fixture should keep a checked-in build file");
+        assert!(
+            build_source.starts_with("pro[] build(graph: Graph): non"),
+            "fixture should exercise the new build entry: {}",
+            build_source
+        );
 
         let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
         assert!(
@@ -3739,49 +3896,35 @@ mod integration_tests {
     }
 
     #[test]
-    fn test_build_fixture_pkg_dependency_package_builds_with_explicit_store_root() {
+    fn test_build_fixture_named_bundle_step_builds_from_new_semantic_entry() {
         let root = build_fixture_root("hybrid_bundle_step");
         let app_root = root.join("app");
-        let pkg_root = root.join("pkg");
-
-        let build = run_fol_in_dir(
-            &app_root,
-            &[
-                "code",
-                "build",
-                "--package-store-root",
-                pkg_root
-                    .to_str()
-                    .expect("package-store fixture path should be valid utf-8"),
-            ],
+        let build_source = std::fs::read_to_string(app_root.join("build.fol"))
+            .expect("bundle fixture should keep a checked-in build file");
+        assert!(
+            build_source.starts_with("pro[] build(graph: Graph): non"),
+            "bundle fixture should exercise the new build entry: {}",
+            build_source
         );
+
+        let build = run_fol_in_dir(&app_root, &["code", "build"]);
         assert!(
             build.status.success(),
-            "pkg dependency fixture should build with an explicit package-store root: stdout=\n{}\nstderr=\n{}",
+            "bundle fixture should build through the new semantic build route: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&build.stdout),
             String::from_utf8_lossy(&build.stderr)
         );
         assert!(
             String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
-            "pkg dependency fixture should keep the routed build summary: stdout=\n{}\nstderr=\n{}",
+            "bundle fixture should keep the routed build summary: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&build.stdout),
             String::from_utf8_lossy(&build.stderr)
         );
 
-        let check = run_fol_in_dir(
-            &app_root,
-            &[
-                "code",
-                "check",
-                "--package-store-root",
-                pkg_root
-                    .to_str()
-                    .expect("package-store fixture path should be valid utf-8"),
-            ],
-        );
+        let check = run_fol_in_dir(&app_root, &["code", "build", "--step", "bundle"]);
         assert!(
             check.status.success(),
-            "pkg dependency fixture should check with an explicit package-store root: stdout=\n{}\nstderr=\n{}",
+            "bundle fixture should execute the named bundle step: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&check.stdout),
             String::from_utf8_lossy(&check.stderr)
         );
@@ -3790,6 +3933,13 @@ mod integration_tests {
     #[test]
     fn test_build_fixture_nested_local_library_executes_default_run_route() {
         let root = build_fixture_root("run_step_chain");
+        let build_source = std::fs::read_to_string(root.join("build.fol"))
+            .expect("run-step fixture should keep a checked-in build file");
+        assert!(
+            build_source.starts_with("pro[] build(graph: Graph): non"),
+            "run-step fixture should exercise the new build entry: {}",
+            build_source
+        );
 
         let run = run_fol_in_dir(&root, &["code", "run"]);
         assert!(
@@ -3807,31 +3957,27 @@ mod integration_tests {
     }
 
     #[test]
-    fn test_build_fixture_pkg_dependency_package_runs_with_explicit_store_root() {
+    fn test_build_fixture_second_local_package_runs_with_new_semantic_entry() {
         let root = build_fixture_root("pkg_dependency_run");
         let app_root = root.join("app");
-        let pkg_root = root.join("pkg");
-
-        let run = run_fol_in_dir(
-            &app_root,
-            &[
-                "code",
-                "run",
-                "--package-store-root",
-                pkg_root
-                    .to_str()
-                    .expect("package-store fixture path should be valid utf-8"),
-            ],
+        let build_source = std::fs::read_to_string(app_root.join("build.fol"))
+            .expect("secondary run fixture should keep a checked-in build file");
+        assert!(
+            build_source.starts_with("pro[] build(graph: Graph): non"),
+            "secondary run fixture should exercise the new build entry: {}",
+            build_source
         );
+
+        let run = run_fol_in_dir(&app_root, &["code", "run"]);
         assert!(
             run.status.success(),
-            "pkg run fixture should run with an explicit package-store root: stdout=\n{}\nstderr=\n{}",
+            "secondary run fixture should run with the new semantic entry: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&run.stdout),
             String::from_utf8_lossy(&run.stderr)
         );
         assert!(
             String::from_utf8_lossy(&run.stdout).contains("ran "),
-            "pkg run fixture should report a run summary: stdout=\n{}\nstderr=\n{}",
+            "secondary run fixture should report a run summary: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&run.stdout),
             String::from_utf8_lossy(&run.stderr)
         );
@@ -3842,10 +3988,7 @@ mod integration_tests {
     fn test_frontend_fetches_public_logtiny_from_github() {
         let temp_root = unique_temp_root("frontend_fetch_public_logtiny");
         let app_root = temp_root.join("app");
-        create_app_with_git_dependency_from_url(
-            &app_root,
-            "https://github.com/bresilla/logtiny",
-        );
+        create_app_with_git_dependency_from_url(&app_root, "https://github.com/bresilla/logtiny");
 
         let output = run_fol_in_dir(&app_root, &["pack", "fetch"]);
 
@@ -3855,7 +3998,10 @@ mod integration_tests {
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
-        assert!(app_root.join("fol.lock").is_file(), "public fetch should write fol.lock");
+        assert!(
+            app_root.join("fol.lock").is_file(),
+            "public fetch should write fol.lock"
+        );
         assert!(
             String::from_utf8_lossy(&output.stdout).contains("prepared 1 workspace package"),
             "public fetch should keep the fetch summary"
@@ -3880,7 +4026,10 @@ mod integration_tests {
         .expect("Should write app manifest");
         std::fs::write(app_root.join("build.fol"), "def root: loc = \"src\"\n")
             .expect("Should write app build");
-        std::fs::write(app_root.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n")
-            .expect("Should write app source");
+        std::fs::write(
+            app_root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .expect("Should write app source");
     }
 }

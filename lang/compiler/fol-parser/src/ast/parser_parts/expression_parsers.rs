@@ -27,7 +27,10 @@ impl AstParser {
             }
 
             if !saw_name {
-                if Self::token_can_be_logical_name(&key) || key.is_textual_literal() || key.is_illegal() {
+                if Self::token_can_be_logical_name(&key)
+                    || key.is_textual_literal()
+                    || key.is_illegal()
+                {
                     saw_name = true;
                     continue;
                 }
@@ -69,10 +72,7 @@ impl AstParser {
         })
     }
 
-    fn lookahead_is_named_call_arg(
-        &self,
-        tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> bool {
+    fn lookahead_is_named_call_arg(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
         let current = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return false,
@@ -126,8 +126,7 @@ impl AstParser {
 
         if self.lookahead_is_named_call_arg(tokens) {
             let name_token = tokens.curr(false)?;
-            let name =
-                Self::expect_named_label(&name_token, "Expected argument name before '='")?;
+            let name = Self::expect_named_label(&name_token, "Expected argument name before '='")?;
             let _ = tokens.bump();
             self.skip_layout(tokens);
 
@@ -207,8 +206,7 @@ impl AstParser {
             if !is_named && seen_named_arg {
                 return Err(Box::new(ParseError::from_token(
                     &token,
-                    "Positional call arguments are not allowed after named arguments"
-                        .to_string(),
+                    "Positional call arguments are not allowed after named arguments".to_string(),
                 )));
             }
             seen_named_arg |= is_named;
@@ -1207,8 +1205,9 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let lhs = self.parse_primary_expression(tokens)?;
-        let leading_comments =
-            self.collect_comments_before(tokens, |key| matches!(key, KEYWORD::Symbol(SYMBOL::Carret)))?;
+        let leading_comments = self.collect_comments_before(tokens, |key| {
+            matches!(key, KEYWORD::Symbol(SYMBOL::Carret))
+        })?;
 
         let op_token = match tokens.curr(false) {
             Ok(token) => token,
@@ -1230,5 +1229,4 @@ impl AstParser {
             leading_comments,
         ))
     }
-
 }

@@ -1,5 +1,3 @@
-use shared: pkg = {shared};
-
 fun[] main(): int = {
-    return shared::entry()
+    return 0
 }

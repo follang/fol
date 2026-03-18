@@ -1,6 +1,4 @@
-use crate::{
-    FrontendError, FrontendErrorKind, FrontendProfile, FrontendResult, FrontendWorkspace,
-};
+use crate::{FrontendError, FrontendErrorKind, FrontendProfile, FrontendResult, FrontendWorkspace};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,9 +101,11 @@ pub fn requested_workspace_step(
     command: &crate::CodeSubcommand,
     override_step: Option<&str>,
 ) -> String {
-    override_step
-        .map(str::to_string)
-        .unwrap_or_else(|| FrontendBuildStep::default_for_code_subcommand(command).as_str().to_string())
+    override_step.map(str::to_string).unwrap_or_else(|| {
+        FrontendBuildStep::default_for_code_subcommand(command)
+            .as_str()
+            .to_string()
+    })
 }
 
 pub fn plan_workspace_build_route(
@@ -132,7 +132,9 @@ pub fn plan_workspace_build_route(
     })
 }
 
-fn load_member_build_mode(build_path: &std::path::Path) -> FrontendResult<FrontendBuildWorkflowMode> {
+fn load_member_build_mode(
+    build_path: &std::path::Path,
+) -> FrontendResult<FrontendBuildWorkflowMode> {
     let mode = fol_package::parse_package_build_mode(build_path)?;
     FrontendBuildWorkflowMode::from_package_build_mode(mode).ok_or_else(|| {
         FrontendError::new(
@@ -226,7 +228,8 @@ fn plan_member_execution(
 fn plan_member_default_execution(
     member: &FrontendMemberBuildRoute,
 ) -> FrontendResult<FrontendMemberExecutionPlan> {
-    let requested_step = fol_package::BuildRequestedStep::Default(fol_package::BuildDefaultStepKind::Check);
+    let requested_step =
+        fol_package::BuildRequestedStep::Default(fol_package::BuildDefaultStepKind::Check);
     let mut graph = fol_package::BuildGraph::new();
     let check = graph.add_step(
         fol_package::BuildStepKind::Check,
@@ -240,10 +243,11 @@ fn plan_member_default_execution(
         graph.add_step_dependency(check, build);
 
         let artifact_name = member.package_name.clone();
-        let artifact =
-            graph.add_artifact(fol_package::BuildArtifactKind::Executable, artifact_name.clone());
-        let module =
-            graph.add_module(fol_package::BuildModuleKind::Source, root_module.clone());
+        let artifact = graph.add_artifact(
+            fol_package::BuildArtifactKind::Executable,
+            artifact_name.clone(),
+        );
+        let module = graph.add_module(fol_package::BuildModuleKind::Source, root_module.clone());
         graph.add_artifact_module_input(artifact, module);
 
         let run = graph.add_step(fol_package::BuildStepKind::Run, "run");
@@ -348,7 +352,10 @@ fn plan_member_execution_from_build_source(
     let source = std::fs::read_to_string(&build_path).map_err(|error| {
         FrontendError::new(
             FrontendErrorKind::CommandFailed,
-            format!("failed to read build file '{}': {error}", build_path.display()),
+            format!(
+                "failed to read build file '{}': {error}",
+                build_path.display()
+            ),
         )
     })?;
     let evaluated = fol_package::evaluate_build_source(
@@ -417,7 +424,9 @@ fn plan_member_execution_from_graph(
     }
     steps.sort_by(|left, right| left.name.cmp(&right.name));
     steps.dedup_by(|left, right| {
-        left.name == right.name && left.execution == right.execution && left.selection == right.selection
+        left.name == right.name
+            && left.execution == right.execution
+            && left.selection == right.selection
     });
     Ok(FrontendMemberExecutionPlan { steps })
 }
@@ -450,20 +459,16 @@ fn selection_for_step(
     }
     match default_kind {
         Some(fol_package::BuildDefaultStepKind::Build)
-        | Some(fol_package::BuildDefaultStepKind::Run) => {
-            single_selection(
-                member,
-                evaluated,
-                fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
-            )
-        }
-        Some(fol_package::BuildDefaultStepKind::Test) => {
-            single_selection(
-                member,
-                evaluated,
-                fol_package::build_runtime::BuildRuntimeArtifactKind::Test,
-            )
-        }
+        | Some(fol_package::BuildDefaultStepKind::Run) => single_selection(
+            member,
+            evaluated,
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+        ),
+        Some(fol_package::BuildDefaultStepKind::Test) => single_selection(
+            member,
+            evaluated,
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Test,
+        ),
         _ => None,
     }
 }
@@ -653,7 +658,10 @@ fn resolve_requested_step_execution(
     }
 
     resolved
-        .map(|execution| ResolvedWorkspaceStepExecution { execution, selections })
+        .map(|execution| ResolvedWorkspaceStepExecution {
+            execution,
+            selections,
+        })
         .ok_or_else(|| {
             FrontendError::new(
                 FrontendErrorKind::InvalidInput,
@@ -701,8 +709,8 @@ fn unknown_workspace_build_step_error(
 mod tests {
     use super::{
         execute_workspace_build_route, plan_member_execution, plan_workspace_build_route,
-        FrontendBuildStep, FrontendBuildWorkflowMode, FrontendWorkspaceBuildRequest,
-        FrontendMemberBuildRoute, FrontendStepExecutionKind, FrontendWorkspaceBuildRoute,
+        FrontendBuildStep, FrontendBuildWorkflowMode, FrontendMemberBuildRoute,
+        FrontendStepExecutionKind, FrontendWorkspaceBuildRequest, FrontendWorkspaceBuildRoute,
     };
     use crate::{FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
     use std::{fs, path::PathBuf};
@@ -892,7 +900,10 @@ mod tests {
 
         assert_eq!(super::requested_workspace_step(&build, None), "build");
         assert_eq!(super::requested_workspace_step(&run, None), "run");
-        assert_eq!(super::requested_workspace_step(&build, Some("docs")), "docs");
+        assert_eq!(
+            super::requested_workspace_step(&build, Some("docs")),
+            "docs"
+        );
     }
 
     #[test]
@@ -922,15 +933,19 @@ mod tests {
             )
             .unwrap();
         }
-        fs::write(compatibility.join("build.fol"), "def root: loc = \"src\";\n").unwrap();
+        fs::write(
+            compatibility.join("build.fol"),
+            "def root: loc = \"src\";\n",
+        )
+        .unwrap();
         fs::write(
             hybrid.join("build.fol"),
-            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = graph;\n",
+            "def root: loc = \"src\";\npro[] build(graph: Graph): non = graph;\n",
         )
         .unwrap();
         fs::write(
             modern.join("build.fol"),
-            "def build(graph: Graph): Graph = graph;\n",
+            "pro[] build(graph: Graph): non = graph;\n",
         )
         .unwrap();
 
@@ -952,7 +967,10 @@ mod tests {
 
         assert_eq!(route.requested_step, "build");
         assert_eq!(route.members.len(), 3);
-        assert_eq!(route.members[0].mode, FrontendBuildWorkflowMode::Compatibility);
+        assert_eq!(
+            route.members[0].mode,
+            FrontendBuildWorkflowMode::Compatibility
+        );
         assert_eq!(route.members[1].mode, FrontendBuildWorkflowMode::Hybrid);
         assert_eq!(route.members[2].mode, FrontendBuildWorkflowMode::Modern);
 
@@ -973,7 +991,7 @@ mod tests {
         fs::write(root.join("package.yaml"), "name: hybrid\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
-            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = {\n",
+            "def root: loc = \"src\";\npro[] build(graph: Graph): non = {\n",
         )
         .unwrap();
 
@@ -991,7 +1009,10 @@ mod tests {
         )
         .expect("broken hybrid build should still classify through compatibility controls");
 
-        assert_eq!(route.members[0].mode, FrontendBuildWorkflowMode::Compatibility);
+        assert_eq!(
+            route.members[0].mode,
+            FrontendBuildWorkflowMode::Compatibility
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -1008,7 +1029,11 @@ mod tests {
         ));
         fs::create_dir_all(root.join("src")).unwrap();
         fs::write(root.join("package.yaml"), "name: modern\nversion: 0.1.0\n").unwrap();
-        fs::write(root.join("build.fol"), "def build(graph: Graph): Graph = {\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n",
+        )
+        .unwrap();
 
         let error = plan_workspace_build_route(
             &FrontendWorkspace {
@@ -1025,11 +1050,9 @@ mod tests {
         .expect_err("broken modern-only build should stay a parse failure");
 
         assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
-        assert!(
-            error
-                .message()
-                .contains("package loader could not parse package build file")
-        );
+        assert!(error
+            .message()
+            .contains("package loader could not parse package build file"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -1049,14 +1072,18 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.step(\"docs\");\n",
                 "    return graph\n",
                 "}\n",
             ),
         )
         .unwrap();
-        fs::write(root.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let route = plan_workspace_build_route(
             &FrontendWorkspace {
@@ -1101,14 +1128,18 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "def root: loc = \"src\";\n",
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.step(\"docs\");\n",
                 "    return graph\n",
                 "}\n",
             ),
         )
         .unwrap();
-        fs::write(root.join("src/main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+        fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
 
         let route = plan_workspace_build_route(
             &FrontendWorkspace {
@@ -1153,7 +1184,9 @@ mod tests {
         .unwrap();
 
         assert_eq!(result.command, "build");
-        assert!(result.summary.contains("built 1 workspace package(s) into "));
+        assert!(result
+            .summary
+            .contains("built 1 workspace package(s) into "));
 
         fs::remove_dir_all(&workspace.root.root).ok();
     }
@@ -1195,11 +1228,9 @@ mod tests {
         .expect_err("unknown absorbed-build step should fail");
 
         assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
-        assert!(
-            error
-                .message()
-                .contains("workspace build execution does not define step 'docs'")
-        );
+        assert!(error
+            .message()
+            .contains("workspace build execution does not define step 'docs'"));
 
         fs::remove_dir_all(&workspace.root.root).ok();
     }
@@ -1219,7 +1250,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.step(\"docs\");\n",
                 "    graph.step(\"lint\");\n",
                 "    return graph\n",
@@ -1256,7 +1287,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.add_exe(\"app\", \"src/main.fol\");\n",
                 "    graph.step(\"gen\");\n",
                 "    graph.step(\"docs\", \"gen\");\n",
@@ -1301,7 +1332,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.step(\"docs\");\n",
                 "    return graph\n",
                 "}\n",
@@ -1347,7 +1378,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "def root: loc = \"src\";\n",
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.step(\"docs\");\n",
                 "    return graph\n",
                 "}\n",
@@ -1391,7 +1422,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.add_exe(\"app\", \"src/main.fol\");\n",
                 "    graph.add_run(\"serve\", \"app\");\n",
                 "    return graph\n",
@@ -1418,7 +1449,10 @@ mod tests {
             .expect("custom run step should be present");
         assert_eq!(serve.execution, Some(FrontendStepExecutionKind::Run));
         assert_eq!(
-            serve.selection.as_ref().map(|selection| selection.label.as_str()),
+            serve
+                .selection
+                .as_ref()
+                .map(|selection| selection.label.as_str()),
             Some("app")
         );
 
@@ -1441,7 +1475,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "def root: loc = \"src\";\n",
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
                 "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
                 "    graph.add_run(\"serve\", \"serve_app\");\n",
@@ -1475,7 +1509,10 @@ mod tests {
             .expect("admin run step should be present");
         assert_eq!(admin.execution, Some(FrontendStepExecutionKind::Run));
         assert_eq!(
-            admin.selection.as_ref().map(|selection| selection.label.as_str()),
+            admin
+                .selection
+                .as_ref()
+                .map(|selection| selection.label.as_str()),
             Some("admin_app")
         );
 
@@ -1498,7 +1535,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "def root: loc = \"src\";\n",
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
                 "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
                 "    graph.step(\"serve_app\");\n",
@@ -1533,7 +1570,10 @@ mod tests {
             .expect("admin build step should be present");
         assert_eq!(admin.execution, Some(FrontendStepExecutionKind::Build));
         assert_eq!(
-            admin.selection.as_ref().map(|selection| selection.label.as_str()),
+            admin
+                .selection
+                .as_ref()
+                .map(|selection| selection.label.as_str()),
             Some("admin_app")
         );
 
@@ -1555,7 +1595,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
                 "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
                 "    return graph\n",
@@ -1608,7 +1648,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
                 "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
                 "    return graph\n",
@@ -1648,11 +1688,7 @@ mod tests {
         .expect_err("ambiguous default build step should fail");
 
         assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
-        assert!(
-            error
-                .message()
-                .contains("requires an explicit named step")
-        );
+        assert!(error.message().contains("requires an explicit named step"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -1672,7 +1708,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    graph.add_exe(\"app\", \"src/app.fol\");\n",
                 "    graph.add_run(\"serve\", \"app\");\n",
                 "    return graph\n",
@@ -1700,7 +1736,10 @@ mod tests {
             .expect("default build step should be present");
         assert_eq!(build.execution, Some(FrontendStepExecutionKind::Build));
         assert_eq!(
-            build.selection.as_ref().and_then(|selection| selection.root_module.as_deref()),
+            build
+                .selection
+                .as_ref()
+                .and_then(|selection| selection.root_module.as_deref()),
             Some("src/app.fol")
         );
 
@@ -1711,7 +1750,10 @@ mod tests {
             .expect("custom serve step should be present");
         assert_eq!(serve.execution, Some(FrontendStepExecutionKind::Run));
         assert_eq!(
-            serve.selection.as_ref().and_then(|selection| selection.root_module.as_deref()),
+            serve
+                .selection
+                .as_ref()
+                .and_then(|selection| selection.root_module.as_deref()),
             Some("src/app.fol")
         );
 
@@ -1733,7 +1775,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: Graph): Graph = {\n",
+                "pro[] build(graph: Graph): non = {\n",
                 "    var target = graph.standard_target();\n",
                 "    var optimize = graph.standard_optimize();\n",
                 "    var app = graph.add_exe({\n",
@@ -1769,7 +1811,10 @@ mod tests {
             .expect("default build step should be present");
         assert_eq!(build.execution, Some(FrontendStepExecutionKind::Build));
         assert_eq!(
-            build.selection.as_ref().and_then(|selection| selection.root_module.as_deref()),
+            build
+                .selection
+                .as_ref()
+                .and_then(|selection| selection.root_module.as_deref()),
             Some("src/app.fol")
         );
 
@@ -1780,7 +1825,9 @@ mod tests {
             .expect("default run step should be present");
         assert_eq!(run.execution, Some(FrontendStepExecutionKind::Run));
         assert_eq!(
-            run.selection.as_ref().and_then(|selection| selection.root_module.as_deref()),
+            run.selection
+                .as_ref()
+                .and_then(|selection| selection.root_module.as_deref()),
             Some("src/app.fol")
         );
 
@@ -1801,7 +1848,7 @@ mod tests {
         fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
-            "def build(graph: Graph): Graph = graph;\n",
+            "pro[] build(graph: Graph): non = graph;\n",
         )
         .unwrap();
         fs::write(
@@ -1837,7 +1884,7 @@ mod tests {
         fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
-            "def build(graph: Graph): Graph = graph;\n",
+            "pro[] build(graph: Graph): non = graph;\n",
         )
         .unwrap();
         fs::write(root.join("src/lib.fol"), "var[exp] answer: int = 42;\n").unwrap();

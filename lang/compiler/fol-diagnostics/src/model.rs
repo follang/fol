@@ -200,11 +200,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn with_suggestion_if(
-        mut self,
-        condition: bool,
-        suggestion: DiagnosticSuggestion,
-    ) -> Self {
+    pub fn with_suggestion_if(mut self, condition: bool, suggestion: DiagnosticSuggestion) -> Self {
         if condition {
             self = self.with_suggestion(suggestion);
         }

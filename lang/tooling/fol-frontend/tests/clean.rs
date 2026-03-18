@@ -83,7 +83,9 @@ fn clean_command_handles_git_cache_boundaries_through_public_api() {
         },
     )
     .expect("clean should succeed");
-    assert!(external.summary.contains("skipped external git source cache"));
+    assert!(external
+        .summary
+        .contains("skipped external git source cache"));
     assert!(external_git_cache.exists());
 
     fs::remove_dir_all(root).ok();

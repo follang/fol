@@ -70,8 +70,7 @@ impl AstParser {
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
                 let name_token = tokens.curr(false)?;
-                let grouped_name =
-                    Self::expect_named_label(&name_token, missing_group_name_error)?;
+                let grouped_name = Self::expect_named_label(&name_token, missing_group_name_error)?;
                 names.push(grouped_name);
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens);
@@ -356,8 +355,7 @@ impl AstParser {
                 return Ok(generics);
             }
 
-            let name =
-                Self::expect_named_label(&token, "Expected generic parameter name")?;
+            let name = Self::expect_named_label(&token, "Expected generic parameter name")?;
             if !seen_names.insert(canonical_identifier_key(&name)) {
                 return Err(Box::new(ParseError::from_token(
                     &token,
@@ -906,10 +904,8 @@ impl AstParser {
                 "Expected type reference".to_string(),
             )) as Box<dyn Glitch>
         })?;
-        let mut path = QualifiedPath::with_syntax_id(
-            vec![first_name],
-            self.record_syntax_origin(&token),
-        );
+        let mut path =
+            QualifiedPath::with_syntax_id(vec![first_name], self.record_syntax_origin(&token));
         let mut name = path.joined();
         let _ = tokens.bump();
 

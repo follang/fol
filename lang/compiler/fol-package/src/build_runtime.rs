@@ -321,9 +321,9 @@ mod tests {
         BuildRuntimeDependencyQueryKind, BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind,
         BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeGeneratedFile,
         BuildRuntimeGeneratedFileKind, BuildRuntimeHandle, BuildRuntimeHandleKind,
-        BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram,
-        BuildRuntimeReceiverKind, BuildRuntimeRecordField, BuildRuntimeStepBinding,
-        BuildRuntimeStepBindingKind, BuildRuntimeStmt, BuildRuntimeValue,
+        BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram, BuildRuntimeReceiverKind,
+        BuildRuntimeRecordField, BuildRuntimeStepBinding, BuildRuntimeStepBindingKind,
+        BuildRuntimeStmt, BuildRuntimeValue,
     };
     use crate::build_dependency::DependencyBuildEvaluationMode;
 
@@ -339,16 +339,10 @@ mod tests {
 
     #[test]
     fn runtime_artifacts_cover_executable_test_and_library_outputs() {
-        let exe = BuildRuntimeArtifact::new(
-            "app",
-            BuildRuntimeArtifactKind::Executable,
-            "src/app.fol",
-        );
-        let test = BuildRuntimeArtifact::new(
-            "app_test",
-            BuildRuntimeArtifactKind::Test,
-            "test/app.fol",
-        );
+        let exe =
+            BuildRuntimeArtifact::new("app", BuildRuntimeArtifactKind::Executable, "src/app.fol");
+        let test =
+            BuildRuntimeArtifact::new("app_test", BuildRuntimeArtifactKind::Test, "test/app.fol");
 
         assert_eq!(exe.kind, BuildRuntimeArtifactKind::Executable);
         assert_eq!(exe.root_module, "src/app.fol");
@@ -379,12 +373,9 @@ mod tests {
 
     #[test]
     fn runtime_artifacts_can_carry_target_and_optimize_metadata() {
-        let artifact = BuildRuntimeArtifact::new(
-            "app",
-            BuildRuntimeArtifactKind::Executable,
-            "src/app.fol",
-        )
-        .with_target_config(Some("x86_64-linux-gnu"), Some("release-fast"));
+        let artifact =
+            BuildRuntimeArtifact::new("app", BuildRuntimeArtifactKind::Executable, "src/app.fol")
+                .with_target_config(Some("x86_64-linux-gnu"), Some("release-fast"));
 
         assert_eq!(artifact.target.as_deref(), Some("x86_64-linux-gnu"));
         assert_eq!(artifact.optimize.as_deref(), Some("release-fast"));
@@ -429,7 +420,10 @@ mod tests {
                 ..
             })
         ));
-        assert_eq!(target, BuildRuntimeValue::Target("x86_64-linux-gnu".to_string()));
+        assert_eq!(
+            target,
+            BuildRuntimeValue::Target("x86_64-linux-gnu".to_string())
+        );
         assert_eq!(
             optimize,
             BuildRuntimeValue::Optimize("release-safe".to_string())
@@ -509,7 +503,10 @@ mod tests {
                 "name".to_string(),
                 BuildRuntimeExpr::Value(BuildRuntimeValue::String("demo".to_string())),
             ),
-            ("artifact".to_string(), BuildRuntimeExpr::Local(BuildRuntimeLocalId(3))),
+            (
+                "artifact".to_string(),
+                BuildRuntimeExpr::Local(BuildRuntimeLocalId(3)),
+            ),
         ]);
 
         assert!(matches!(

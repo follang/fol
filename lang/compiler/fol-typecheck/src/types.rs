@@ -125,8 +125,14 @@ mod tests {
         assert_eq!(first, second);
         assert_ne!(first, third);
         assert_eq!(table.len(), 2);
-        assert_eq!(table.get(first), Some(&CheckedType::Builtin(BuiltinType::Int)));
-        assert_eq!(table.get(third), Some(&CheckedType::Builtin(BuiltinType::Str)));
+        assert_eq!(
+            table.get(first),
+            Some(&CheckedType::Builtin(BuiltinType::Int))
+        );
+        assert_eq!(
+            table.get(third),
+            Some(&CheckedType::Builtin(BuiltinType::Str))
+        );
     }
 
     #[test]

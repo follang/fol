@@ -80,7 +80,11 @@ impl AstParser {
         let (name, access) = match values.first() {
             Some((true, label)) => (
                 Some(label.clone()),
-                values.iter().skip(1).map(|(_, value)| value.clone()).collect(),
+                values
+                    .iter()
+                    .skip(1)
+                    .map(|(_, value)| value.clone())
+                    .collect(),
             ),
             _ => (None, values.into_iter().map(|(_, value)| value).collect()),
         };

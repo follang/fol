@@ -221,7 +221,13 @@ mod tests {
 
         assert_eq!(routine.entry_block, LoweredBlockId(0));
         assert_eq!(local_id, LoweredLocalId(0));
-        assert_eq!(routine.locals.get(local_id).and_then(|local| local.name.as_deref()), Some("tmp"));
+        assert_eq!(
+            routine
+                .locals
+                .get(local_id)
+                .and_then(|local| local.name.as_deref()),
+            Some("tmp")
+        );
     }
 
     #[test]

@@ -3,10 +3,9 @@ use crate::{
     TypecheckErrorKind, TypecheckResult, TypedProgram,
 };
 use fol_intrinsics::{
-    boolean_operand_contract, comparison_operand_contract, select_intrinsic, wrong_arity_message,
-    wrong_type_family_message, query_operand_contract, BooleanOperandContract,
-    ComparisonOperandContract, IntrinsicSelectionErrorKind, IntrinsicSurface,
-    QueryOperandContract,
+    boolean_operand_contract, comparison_operand_contract, query_operand_contract,
+    select_intrinsic, wrong_arity_message, wrong_type_family_message, BooleanOperandContract,
+    ComparisonOperandContract, IntrinsicSelectionErrorKind, IntrinsicSurface, QueryOperandContract,
 };
 use fol_parser::ast::{
     AstNode, BinaryOperator, CallSurface, ContainerType, Literal, LoopCondition,
@@ -85,7 +84,10 @@ pub fn type_program(typed: &mut TypedProgram) -> TypecheckResult<()> {
             continue;
         }
         let source_unit_id = SourceUnitId(source_unit_index);
-        let scope_id = match resolved.source_unit(source_unit_id).map(|unit| unit.scope_id) {
+        let scope_id = match resolved
+            .source_unit(source_unit_id)
+            .map(|unit| unit.scope_id)
+        {
             Some(scope_id) => scope_id,
             None => {
                 return Err(vec![internal_error(
@@ -623,8 +625,10 @@ fn type_binary_op(
         node_origin(resolved, right),
         "plain use of an errorful expression",
     )?;
-    let left_type = left_expr.required_value("binary operator left operand does not have a type")?;
-    let right_type = right_expr.required_value("binary operator right operand does not have a type")?;
+    let left_type =
+        left_expr.required_value("binary operator left operand does not have a type")?;
+    let right_type =
+        right_expr.required_value("binary operator right operand does not have a type")?;
     let left_apparent = apparent_type_id(typed, left_type)?;
     let right_apparent = apparent_type_id(typed, right_type)?;
     let merged_effect = merge_recoverable_effects(
@@ -635,15 +639,33 @@ fn type_binary_op(
     )?;
 
     match op {
-        BinaryOperator::Add => match (
-            typed.type_table().get(left_apparent),
-            typed.type_table().get(right_apparent),
-        ) {
-            (Some(CheckedType::Builtin(crate::BuiltinType::Int)), Some(CheckedType::Builtin(crate::BuiltinType::Int))) => Ok(TypedExpr::value(typed.builtin_types().int).with_optional_effect(merged_effect)),
-            (Some(CheckedType::Builtin(crate::BuiltinType::Float)), Some(CheckedType::Builtin(crate::BuiltinType::Float))) => Ok(TypedExpr::value(typed.builtin_types().float).with_optional_effect(merged_effect)),
-            (Some(CheckedType::Builtin(crate::BuiltinType::Str)), Some(CheckedType::Builtin(crate::BuiltinType::Str))) => Ok(TypedExpr::value(typed.builtin_types().str_).with_optional_effect(merged_effect)),
-            _ => Err(invalid_binary_operator_error(typed, op, left_type, right_type)),
-        },
+        BinaryOperator::Add => {
+            match (
+                typed.type_table().get(left_apparent),
+                typed.type_table().get(right_apparent),
+            ) {
+                (
+                    Some(CheckedType::Builtin(crate::BuiltinType::Int)),
+                    Some(CheckedType::Builtin(crate::BuiltinType::Int)),
+                ) => {
+                    Ok(TypedExpr::value(typed.builtin_types().int)
+                        .with_optional_effect(merged_effect))
+                }
+                (
+                    Some(CheckedType::Builtin(crate::BuiltinType::Float)),
+                    Some(CheckedType::Builtin(crate::BuiltinType::Float)),
+                ) => Ok(TypedExpr::value(typed.builtin_types().float)
+                    .with_optional_effect(merged_effect)),
+                (
+                    Some(CheckedType::Builtin(crate::BuiltinType::Str)),
+                    Some(CheckedType::Builtin(crate::BuiltinType::Str)),
+                ) => Ok(TypedExpr::value(typed.builtin_types().str_)
+                    .with_optional_effect(merged_effect)),
+                _ => Err(invalid_binary_operator_error(
+                    typed, op, left_type, right_type,
+                )),
+            }
+        }
         BinaryOperator::Sub
         | BinaryOperator::Mul
         | BinaryOperator::Div
@@ -652,31 +674,53 @@ fn type_binary_op(
             typed.type_table().get(left_apparent),
             typed.type_table().get(right_apparent),
         ) {
-            (Some(CheckedType::Builtin(crate::BuiltinType::Int)), Some(CheckedType::Builtin(crate::BuiltinType::Int))) => Ok(TypedExpr::value(typed.builtin_types().int).with_optional_effect(merged_effect)),
-            (Some(CheckedType::Builtin(crate::BuiltinType::Float)), Some(CheckedType::Builtin(crate::BuiltinType::Float))) => Ok(TypedExpr::value(typed.builtin_types().float).with_optional_effect(merged_effect)),
-            _ => Err(invalid_binary_operator_error(typed, op, left_type, right_type)),
+            (
+                Some(CheckedType::Builtin(crate::BuiltinType::Int)),
+                Some(CheckedType::Builtin(crate::BuiltinType::Int)),
+            ) => {
+                Ok(TypedExpr::value(typed.builtin_types().int).with_optional_effect(merged_effect))
+            }
+            (
+                Some(CheckedType::Builtin(crate::BuiltinType::Float)),
+                Some(CheckedType::Builtin(crate::BuiltinType::Float)),
+            ) => {
+                Ok(TypedExpr::value(typed.builtin_types().float)
+                    .with_optional_effect(merged_effect))
+            }
+            _ => Err(invalid_binary_operator_error(
+                typed, op, left_type, right_type,
+            )),
         },
         BinaryOperator::Eq | BinaryOperator::Ne => {
             if left_apparent == right_apparent && is_equality_type(typed, left_apparent) {
-                Ok(TypedExpr::value(typed.builtin_types().bool_).with_optional_effect(merged_effect))
+                Ok(TypedExpr::value(typed.builtin_types().bool_)
+                    .with_optional_effect(merged_effect))
             } else {
-                Err(invalid_binary_operator_error(typed, op, left_type, right_type))
+                Err(invalid_binary_operator_error(
+                    typed, op, left_type, right_type,
+                ))
             }
         }
         BinaryOperator::Lt | BinaryOperator::Le | BinaryOperator::Gt | BinaryOperator::Ge => {
             if left_apparent == right_apparent && is_ordered_type(typed, left_apparent) {
-                Ok(TypedExpr::value(typed.builtin_types().bool_).with_optional_effect(merged_effect))
+                Ok(TypedExpr::value(typed.builtin_types().bool_)
+                    .with_optional_effect(merged_effect))
             } else {
-                Err(invalid_binary_operator_error(typed, op, left_type, right_type))
+                Err(invalid_binary_operator_error(
+                    typed, op, left_type, right_type,
+                ))
             }
         }
         BinaryOperator::And | BinaryOperator::Or | BinaryOperator::Xor => {
             if left_apparent == typed.builtin_types().bool_
                 && right_apparent == typed.builtin_types().bool_
             {
-                Ok(TypedExpr::value(typed.builtin_types().bool_).with_optional_effect(merged_effect))
+                Ok(TypedExpr::value(typed.builtin_types().bool_)
+                    .with_optional_effect(merged_effect))
             } else {
-                Err(invalid_binary_operator_error(typed, op, left_type, right_type))
+                Err(invalid_binary_operator_error(
+                    typed, op, left_type, right_type,
+                ))
             }
         }
         _ => Ok(TypedExpr::none()),
@@ -784,7 +828,8 @@ fn type_unary_op(
                 "postfix '!' unwrap applies to opt[...] and err[...] shell values, not to routine call results with '/ ErrorType' in V1",
             ));
         }
-        let operand_type = operand_expr.required_value("unary operator operand does not have a type")?;
+        let operand_type =
+            operand_expr.required_value("unary operator operand does not have a type")?;
         return if let Some(inner) = unwrap_shell_result_type(typed, operand_type)? {
             Ok(TypedExpr::value(inner))
         } else {
@@ -805,7 +850,8 @@ fn type_unary_op(
         node_origin(resolved, operand),
         "plain use of an errorful expression",
     )?;
-    let operand_type = operand_expr.required_value("unary operator operand does not have a type")?;
+    let operand_type =
+        operand_expr.required_value("unary operator operand does not have a type")?;
     let apparent = apparent_type_id(typed, operand_type)?;
 
     match op {
@@ -891,12 +937,10 @@ fn type_binding_initializer(
     ) else {
         let initializer_expr = value
             .map(|value| {
-                type_node_with_expectation(typed, resolved, context, value, None).map_err(
-                    |error| {
-                        node_origin(resolved, value)
-                            .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
-                    },
-                )
+                type_node_with_expectation(typed, resolved, context, value, None).map_err(|error| {
+                    node_origin(resolved, value)
+                        .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
+                })
             })
             .transpose()?;
         return Ok(initializer_expr.unwrap_or_else(TypedExpr::none));
@@ -933,7 +977,8 @@ fn type_binding_initializer(
                 value.and_then(|node| node_origin(resolved, node)),
                 format!("initializer for '{name}'"),
             )?;
-            let actual = actual_expr.required_value(format!("initializer for '{name}' does not have a type"))?;
+            let actual = actual_expr
+                .required_value(format!("initializer for '{name}' does not have a type"))?;
             ensure_assignable(
                 typed,
                 expected,
@@ -944,10 +989,11 @@ fn type_binding_initializer(
             Ok(TypedExpr::value(expected))
         }
         (None, Some(inferred_expr)) => {
-            let inferred = inferred_expr.required_value(format!("initializer for '{name}' does not have a type"))?;
-            let symbol = typed
-                .typed_symbol_mut(symbol_id)
-                .ok_or_else(|| internal_error("typed symbol table lost an inferred binding", None))?;
+            let inferred = inferred_expr
+                .required_value(format!("initializer for '{name}' does not have a type"))?;
+            let symbol = typed.typed_symbol_mut(symbol_id).ok_or_else(|| {
+                internal_error("typed symbol table lost an inferred binding", None)
+            })?;
             symbol.declared_type = Some(inferred);
             symbol.recoverable_effect = inferred_expr.recoverable_effect;
             Ok(inferred_expr)
@@ -1031,7 +1077,12 @@ fn type_when(
         .chain(std::iter::once(default_expr.recoverable_effect))
         .chain(std::iter::once(selector_expr.recoverable_effect))
         .collect::<Vec<_>>();
-    let merged = merge_recoverable_effects(typed, node_origin(resolved, expr), "when expression", branch_effects)?;
+    let merged = merge_recoverable_effects(
+        typed,
+        node_origin(resolved, expr),
+        "when expression",
+        branch_effects,
+    )?;
     Ok(TypedExpr::value(expected).with_optional_effect(merged))
 }
 
@@ -1122,8 +1173,14 @@ fn type_loop(
             )?
             .required_value("loop iterable does not have a type")?;
             let item_type = iterable_element_type(typed, iterable_type)?;
-            let binder_scope =
-                loop_binder_scope(resolved, context.source_unit_id, context.scope_id, var, condition, body)?;
+            let binder_scope = loop_binder_scope(
+                resolved,
+                context.source_unit_id,
+                context.scope_id,
+                var,
+                condition,
+                body,
+            )?;
             if let Some(type_hint) = type_hint {
                 let hinted = decls::lower_type(typed, resolved, binder_scope, type_hint)?;
                 ensure_assignable(
@@ -1201,7 +1258,12 @@ fn type_function_call(
     })?;
     let reference_id =
         find_reference_by_syntax(resolved, syntax_id, ReferenceKind::FunctionCall, name)?;
-    let signature = routine_signature_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
+    let signature = routine_signature_for_reference(
+        typed,
+        resolved,
+        reference_id,
+        origin_for(resolved, syntax_id),
+    )?;
     let arg_effect = check_call_arguments(
         typed,
         resolved,
@@ -1217,7 +1279,9 @@ fn type_function_call(
         "function call",
         [
             arg_effect,
-            signature.error_type.map(|error_type| RecoverableCallEffect { error_type }),
+            signature
+                .error_type
+                .map(|error_type| RecoverableCallEffect { error_type }),
         ],
     )?;
     let return_type = signature.return_type;
@@ -1260,12 +1324,14 @@ fn type_dot_intrinsic_call(
             IntrinsicSelectionErrorKind::UnknownName => {
                 fol_intrinsics::unknown_intrinsic_message(error.surface, name)
             }
-            IntrinsicSelectionErrorKind::WrongSurface => format!(
-                "'.{name}(...)' is reserved for a different intrinsic surface"
-            ),
+            IntrinsicSelectionErrorKind::WrongSurface => {
+                format!("'.{name}(...)' is reserved for a different intrinsic surface")
+            }
         };
         match origin.clone() {
-            Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin),
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin)
+            }
             None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
         }
     })?;
@@ -1311,10 +1377,10 @@ fn type_dot_intrinsic_call(
                             origin,
                         ),
                         None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
-                    })
+                    });
                 }
             },
-        }
+        },
     };
 
     typed.record_node_intrinsic(syntax_id, context.source_unit_id, entry.id)?;
@@ -1361,10 +1427,8 @@ fn type_comparison_intrinsic(
         "plain use of an errorful expression",
     )?;
 
-    let left_type =
-        left_expr.required_value("left intrinsic operand does not have a type")?;
-    let right_type =
-        right_expr.required_value("right intrinsic operand does not have a type")?;
+    let left_type = left_expr.required_value("left intrinsic operand does not have a type")?;
+    let right_type = right_expr.required_value("right intrinsic operand does not have a type")?;
     let left_apparent = apparent_type_id(typed, left_type)?;
     let right_apparent = apparent_type_id(typed, right_type)?;
     let merged_effect = merge_recoverable_effects(
@@ -1379,9 +1443,7 @@ fn type_comparison_intrinsic(
             Some(ComparisonOperandContract::EqualityScalar) => {
                 is_equality_type(typed, left_apparent)
             }
-            Some(ComparisonOperandContract::OrderedScalar) => {
-                is_ordered_type(typed, left_apparent)
-            }
+            Some(ComparisonOperandContract::OrderedScalar) => is_ordered_type(typed, left_apparent),
             None => false,
         };
     if !valid {
@@ -1405,7 +1467,11 @@ fn type_comparison_intrinsic(
         });
     }
 
-    typed.record_node_type(syntax_id, context.source_unit_id, typed.builtin_types().bool_)?;
+    typed.record_node_type(
+        syntax_id,
+        context.source_unit_id,
+        typed.builtin_types().bool_,
+    )?;
     Ok(TypedExpr::value(typed.builtin_types().bool_).with_optional_effect(merged_effect))
 }
 
@@ -1461,7 +1527,11 @@ fn type_boolean_intrinsic(
         });
     }
 
-    typed.record_node_type(syntax_id, context.source_unit_id, typed.builtin_types().bool_)?;
+    typed.record_node_type(
+        syntax_id,
+        context.source_unit_id,
+        typed.builtin_types().bool_,
+    )?;
     Ok(TypedExpr::value(typed.builtin_types().bool_)
         .with_optional_effect(operand_expr.recoverable_effect))
 }
@@ -1591,7 +1661,10 @@ fn type_report_call(
     if args.len() != 1 {
         return Err(TypecheckError::with_origin(
             TypecheckErrorKind::InvalidInput,
-            format!("report expects exactly 1 value in V1 but got {}", args.len()),
+            format!(
+                "report expects exactly 1 value in V1 but got {}",
+                args.len()
+            ),
             origin.unwrap_or(SyntaxOrigin {
                 file: None,
                 line: 1,
@@ -1601,7 +1674,8 @@ fn type_report_call(
         ));
     }
 
-    let report_raw = type_node_with_expectation(typed, resolved, context, &args[0], Some(expected))?;
+    let report_raw =
+        type_node_with_expectation(typed, resolved, context, &args[0], Some(expected))?;
     let actual = plain_value_expr(
         typed,
         context,
@@ -1609,8 +1683,8 @@ fn type_report_call(
         node_origin(resolved, &args[0]),
         "report expression",
     )?
-        .required_value("report expression does not have a type")
-        .map_err(|_| {
+    .required_value("report expression does not have a type")
+    .map_err(|_| {
         TypecheckError::with_origin(
             TypecheckErrorKind::InvalidInput,
             "report expression does not have a type",
@@ -1726,13 +1800,13 @@ fn type_record_init(
                 },
             ));
         }
-        let actual_expr = type_node_with_expectation(typed, resolved, context, &field.value, Some(field_type))
-            .map_err(|error| {
-                field_origin
-                    .clone()
-                    .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
-            })?
-            ;
+        let actual_expr =
+            type_node_with_expectation(typed, resolved, context, &field.value, Some(field_type))
+                .map_err(|error| {
+                    field_origin
+                        .clone()
+                        .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
+                })?;
         reject_recoverable_error_shell_conversion(
             typed,
             field_type,
@@ -1749,7 +1823,10 @@ fn type_record_init(
         )?;
         field_effects.push(actual_expr.recoverable_effect);
         let actual = actual_expr
-            .required_value(format!("record initializer field '{}' does not have a type", field.name))
+            .required_value(format!(
+                "record initializer field '{}' does not have a type",
+                field.name
+            ))
             .map_err(|_| {
                 field_origin.clone().map_or_else(
                     || {
@@ -1876,10 +1953,12 @@ fn type_check_call(
     let origin = syntax_id.and_then(|id| origin_for(resolved, id));
     if args.len() != 1 {
         return Err(origin.clone().map_or_else(
-            || TypecheckError::new(
-                TypecheckErrorKind::InvalidInput,
-                wrong_arity_message(entry, args.len()),
-            ),
+            || {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    wrong_arity_message(entry, args.len()),
+                )
+            },
             |origin| {
                 TypecheckError::with_origin(
                     TypecheckErrorKind::InvalidInput,
@@ -1909,7 +1988,11 @@ fn type_check_call(
     }
 
     if let Some(syntax_id) = syntax_id {
-        typed.record_node_type(syntax_id, context.source_unit_id, typed.builtin_types().bool_)?;
+        typed.record_node_type(
+            syntax_id,
+            context.source_unit_id,
+            typed.builtin_types().bool_,
+        )?;
     }
     Ok(TypedExpr::value(typed.builtin_types().bool_))
 }
@@ -1924,7 +2007,10 @@ fn type_qualified_function_call(
     let syntax_id = path.syntax_id().ok_or_else(|| {
         TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
-            format!("qualified function call '{}' does not retain a syntax id", path.joined()),
+            format!(
+                "qualified function call '{}' does not retain a syntax id",
+                path.joined()
+            ),
         )
     })?;
     let reference_id = find_reference_by_syntax(
@@ -1933,7 +2019,12 @@ fn type_qualified_function_call(
         ReferenceKind::QualifiedFunctionCall,
         &path.joined(),
     )?;
-    let signature = routine_signature_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
+    let signature = routine_signature_for_reference(
+        typed,
+        resolved,
+        reference_id,
+        origin_for(resolved, syntax_id),
+    )?;
     let arg_effect = check_call_arguments(
         typed,
         resolved,
@@ -1949,7 +2040,9 @@ fn type_qualified_function_call(
         "qualified function call",
         [
             arg_effect,
-            signature.error_type.map(|error_type| RecoverableCallEffect { error_type }),
+            signature
+                .error_type
+                .map(|error_type| RecoverableCallEffect { error_type }),
         ],
     )?;
     if let Some(return_type) = signature.return_type {
@@ -1984,10 +2077,20 @@ fn type_method_call(
         node_origin(resolved, object),
         format!("method receiver for '{method}'"),
     )?;
-    let object_type = receiver_expr.required_value(format!("method receiver for '{method}' does not have a type"))?;
+    let object_type = receiver_expr.required_value(format!(
+        "method receiver for '{method}' does not have a type"
+    ))?;
     let origin = node_origin(resolved, node);
     let signature = routine_signature_for_method(typed, method, object_type, origin.clone())?;
-    let arg_effect = check_call_arguments(typed, resolved, context, &signature, args, method, origin.clone())?;
+    let arg_effect = check_call_arguments(
+        typed,
+        resolved,
+        context,
+        &signature,
+        args,
+        method,
+        origin.clone(),
+    )?;
     let merged = merge_recoverable_effects(
         typed,
         origin,
@@ -1995,7 +2098,9 @@ fn type_method_call(
         [
             receiver_expr.recoverable_effect,
             arg_effect,
-            signature.error_type.map(|error_type| RecoverableCallEffect { error_type }),
+            signature
+                .error_type
+                .map(|error_type| RecoverableCallEffect { error_type }),
         ],
     )?;
     Ok(TypedExpr::maybe_value(signature.return_type).with_optional_effect(merged))
@@ -2104,30 +2209,44 @@ fn type_field_access(
         node_origin(resolved, object),
         format!("field access '.{field}' receiver"),
     )?;
-    let object_type = object_expr.required_value(format!("field access '.{field}' does not have a typed receiver"))?;
+    let object_type = object_expr.required_value(format!(
+        "field access '.{field}' does not have a typed receiver"
+    ))?;
     let resolved_type = apparent_type_id(typed, object_type)?;
     match typed.type_table().get(resolved_type) {
-        Some(CheckedType::Record { fields }) => {
-            fields.get(field).copied().map(|type_id| TypedExpr::value(type_id).with_optional_effect(object_expr.recoverable_effect)).ok_or_else(|| {
+        Some(CheckedType::Record { fields }) => fields
+            .get(field)
+            .copied()
+            .map(|type_id| {
+                TypedExpr::value(type_id).with_optional_effect(object_expr.recoverable_effect)
+            })
+            .ok_or_else(|| {
                 TypecheckError::new(
                     TypecheckErrorKind::InvalidInput,
                     format!("record receiver does not expose a field named '{field}'"),
                 )
-            })
-        }
+            }),
         Some(CheckedType::Entry { variants }) => {
             if let Some(expected_type) = expected_type {
                 let expected_apparent = apparent_type_id(typed, expected_type)?;
                 if expected_apparent == resolved_type && variants.contains_key(field) {
-                    return Ok(TypedExpr::value(expected_type).with_optional_effect(object_expr.recoverable_effect));
+                    return Ok(TypedExpr::value(expected_type)
+                        .with_optional_effect(object_expr.recoverable_effect));
                 }
             }
-            variants.get(field).copied().flatten().map(|type_id| TypedExpr::value(type_id).with_optional_effect(object_expr.recoverable_effect)).ok_or_else(|| {
-                TypecheckError::new(
-                    TypecheckErrorKind::InvalidInput,
-                    format!("entry receiver does not expose a variant named '{field}'"),
-                )
-            })
+            variants
+                .get(field)
+                .copied()
+                .flatten()
+                .map(|type_id| {
+                    TypedExpr::value(type_id).with_optional_effect(object_expr.recoverable_effect)
+                })
+                .ok_or_else(|| {
+                    TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("entry receiver does not expose a variant named '{field}'"),
+                    )
+                })
         }
         _ => Err(TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
@@ -2162,14 +2281,19 @@ fn type_index_access(
         node_origin(resolved, index),
         "index expression",
     )?;
-    let container_type = container_expr.required_value("index access does not have a typed container")?;
-    let index_type = index_expr.required_value("index access does not have a typed index expression")?;
+    let container_type =
+        container_expr.required_value("index access does not have a typed container")?;
+    let index_type =
+        index_expr.required_value("index access does not have a typed index expression")?;
     let resolved_type = apparent_type_id(typed, container_type)?;
     let merged_effect = merge_recoverable_effects(
         typed,
         node_origin(resolved, container).or_else(|| node_origin(resolved, index)),
         "index access",
-        [container_expr.recoverable_effect, index_expr.recoverable_effect],
+        [
+            container_expr.recoverable_effect,
+            index_expr.recoverable_effect,
+        ],
     )?;
     match typed.type_table().get(resolved_type) {
         Some(CheckedType::Array { element_type, .. })
@@ -2188,13 +2312,7 @@ fn type_index_access(
             key_type,
             value_type,
         }) => {
-            ensure_assignable(
-                typed,
-                *key_type,
-                index_type,
-                "map key".to_string(),
-                None,
-            )?;
+            ensure_assignable(typed, *key_type, index_type, "map key".to_string(), None)?;
             Ok(TypedExpr::value(*value_type).with_optional_effect(merged_effect))
         }
         Some(CheckedType::Set { member_types }) => {
@@ -2205,8 +2323,10 @@ fn type_index_access(
                 "set index".to_string(),
                 None,
             )?;
-            Ok(TypedExpr::maybe_value(type_set_index_access(typed, member_types, index)?)
-                .with_optional_effect(merged_effect))
+            Ok(
+                TypedExpr::maybe_value(type_set_index_access(typed, member_types, index)?)
+                    .with_optional_effect(merged_effect),
+            )
         }
         _ => Err(TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
@@ -2234,7 +2354,8 @@ fn type_slice_access(
         node_origin(resolved, container),
         "slice receiver",
     )?;
-    let container_type = container_expr.required_value("slice access does not have a typed container")?;
+    let container_type =
+        container_expr.required_value("slice access does not have a typed container")?;
     let mut bound_effects = vec![container_expr.recoverable_effect];
     for bound in [start, end].into_iter().flatten() {
         let bound_raw = type_node(typed, resolved, context, bound)?;
@@ -2265,10 +2386,13 @@ fn type_slice_access(
     match typed.type_table().get(resolved_type) {
         Some(CheckedType::Array { element_type, .. }) => {
             let element_type = *element_type;
-            Ok(TypedExpr::value(typed.type_table_mut().intern(CheckedType::Array {
-                element_type,
-                size: None,
-            })).with_optional_effect(merged_effect))
+            Ok(
+                TypedExpr::value(typed.type_table_mut().intern(CheckedType::Array {
+                    element_type,
+                    size: None,
+                }))
+                .with_optional_effect(merged_effect),
+            )
         }
         Some(CheckedType::Vector { element_type }) => {
             let element_type = *element_type;
@@ -2276,7 +2400,8 @@ fn type_slice_access(
                 typed
                     .type_table_mut()
                     .intern(CheckedType::Vector { element_type }),
-            ).with_optional_effect(merged_effect))
+            )
+            .with_optional_effect(merged_effect))
         }
         Some(CheckedType::Sequence { element_type }) => {
             let element_type = *element_type;
@@ -2284,7 +2409,8 @@ fn type_slice_access(
                 typed
                     .type_table_mut()
                     .intern(CheckedType::Sequence { element_type }),
-            ).with_optional_effect(merged_effect))
+            )
+            .with_optional_effect(merged_effect))
         }
         _ => Err(TypecheckError::new(
             TypecheckErrorKind::InvalidInput,
@@ -2311,7 +2437,12 @@ fn type_identifier_reference(
     })?;
     let reference_id =
         find_reference_by_syntax(resolved, syntax_id, ReferenceKind::Identifier, name)?;
-    let typed_expr = type_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
+    let typed_expr = type_for_reference(
+        typed,
+        resolved,
+        reference_id,
+        origin_for(resolved, syntax_id),
+    )?;
     if let Some(type_id) = typed_expr.value_type {
         typed.record_node_type(syntax_id, context.source_unit_id, type_id)?;
     }
@@ -2342,7 +2473,12 @@ fn type_qualified_identifier_reference(
         ReferenceKind::QualifiedIdentifier,
         &path.joined(),
     )?;
-    let typed_expr = type_for_reference(typed, resolved, reference_id, origin_for(resolved, syntax_id))?;
+    let typed_expr = type_for_reference(
+        typed,
+        resolved,
+        reference_id,
+        origin_for(resolved, syntax_id),
+    )?;
     if let Some(type_id) = typed_expr.value_type {
         typed.record_node_type(syntax_id, context.source_unit_id, type_id)?;
     }
@@ -2518,13 +2654,15 @@ fn check_call_arguments(
 
     let mut arg_effects = Vec::new();
     for (expected, arg) in signature.params.iter().zip(args) {
-        let actual_expr = type_node_with_expectation(typed, resolved, context, arg, Some(*expected))
-            .map_err(|error| {
-                origin
-                    .clone()
-                    .or_else(|| node_origin(resolved, arg))
-                    .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
-            })?;
+        let actual_expr =
+            type_node_with_expectation(typed, resolved, context, arg, Some(*expected)).map_err(
+                |error| {
+                    origin
+                        .clone()
+                        .or_else(|| node_origin(resolved, arg))
+                        .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
+                },
+            )?;
         reject_recoverable_error_shell_conversion(
             typed,
             *expected,
@@ -2539,7 +2677,8 @@ fn check_call_arguments(
             origin.clone().or_else(|| node_origin(resolved, arg)),
             format!("call to '{callee}'"),
         )?;
-        let actual = actual_expr.required_value(format!("argument for '{callee}' does not have a type"))?;
+        let actual =
+            actual_expr.required_value(format!("argument for '{callee}' does not have a type"))?;
         arg_effects.push(actual_expr.recoverable_effect);
         ensure_assignable(
             typed,
@@ -2642,7 +2781,10 @@ fn symbol_type(
 
     Err(TypecheckError::with_origin(
         TypecheckErrorKind::InvalidInput,
-        format!("resolved symbol {} does not have a lowered type yet", symbol_id.0),
+        format!(
+            "resolved symbol {} does not have a lowered type yet",
+            symbol_id.0
+        ),
         fallback_origin,
     ))
 }
@@ -2670,7 +2812,9 @@ fn apparent_type_id(
                         "declared type expansion encountered a cycle",
                     ));
                 }
-                let Some(next) = typed.typed_symbol(*symbol).and_then(|symbol| symbol.declared_type)
+                let Some(next) = typed
+                    .typed_symbol(*symbol)
+                    .and_then(|symbol| symbol.declared_type)
                 else {
                     return Ok(current);
                 };
@@ -2725,7 +2869,9 @@ fn reject_recoverable_error_shell_conversion(
         surface.into()
     );
     Err(match origin {
-        Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin),
+        Some(origin) => {
+            TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin)
+        }
         None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
     })
 }
@@ -2793,23 +2939,21 @@ fn loop_binder_scope(
     let mut matched_scopes = BTreeSet::new();
     while let Some(scope_id) = queue.pop_front() {
         for (child_scope_id, child_scope) in resolved.scopes.iter_with_ids() {
-            if child_scope.parent != Some(scope_id) || child_scope.source_unit != Some(source_unit_id) {
+            if child_scope.parent != Some(scope_id)
+                || child_scope.source_unit != Some(source_unit_id)
+            {
                 continue;
             }
             queue.push_back(child_scope_id);
             if child_scope.kind != fol_resolver::ScopeKind::LoopBinder {
                 continue;
             }
-            if resolved
-                .symbols
-                .iter()
-                .any(|symbol| {
-                    symbol.source_unit == source_unit_id
-                        && symbol.scope == child_scope_id
-                        && symbol.kind == SymbolKind::LoopBinder
-                        && symbol.name == binder_name
-                })
-            {
+            if resolved.symbols.iter().any(|symbol| {
+                symbol.source_unit == source_unit_id
+                    && symbol.scope == child_scope_id
+                    && symbol.kind == SymbolKind::LoopBinder
+                    && symbol.name == binder_name
+            }) {
                 matched_scopes.insert(child_scope_id);
             }
         }
@@ -2928,13 +3072,8 @@ fn type_linear_container_literal(
     }
 
     for element in element_nodes {
-        let actual_raw = type_node_with_expectation(
-            typed,
-            resolved,
-            context,
-            element,
-            inferred_element,
-        )?;
+        let actual_raw =
+            type_node_with_expectation(typed, resolved, context, element, inferred_element)?;
         let actual = plain_value_expr(
             typed,
             context,
@@ -2997,11 +3136,9 @@ fn type_set_literal(
                 "empty container literals require an expected container type in V1",
             ));
         };
-        return Ok(Some(
-            typed
-                .type_table_mut()
-                .intern(CheckedType::Set { member_types: member_types.clone() }),
-        ));
+        return Ok(Some(typed.type_table_mut().intern(CheckedType::Set {
+            member_types: member_types.clone(),
+        })));
     }
 
     let expected_members = match expected_container {
@@ -3022,7 +3159,9 @@ fn type_set_literal(
     }
 
     for (index, element) in element_nodes.iter().enumerate() {
-        let expected = expected_members.and_then(|members| members.get(index)).copied();
+        let expected = expected_members
+            .and_then(|members| members.get(index))
+            .copied();
         let actual_raw = type_node_with_expectation(typed, resolved, context, element, expected)?;
         let actual = plain_value_expr(
             typed,
@@ -3087,14 +3226,10 @@ fn type_map_literal(
                 "empty container literals require an expected container type in V1",
             ));
         };
-        return Ok(Some(
-            typed
-                .type_table_mut()
-                .intern(CheckedType::Map {
-                    key_type: *key_type,
-                    value_type: *value_type,
-                }),
-        ));
+        return Ok(Some(typed.type_table_mut().intern(CheckedType::Map {
+            key_type: *key_type,
+            value_type: *value_type,
+        })));
     }
 
     for pair in element_nodes {
@@ -3132,13 +3267,7 @@ fn type_map_literal(
             )
         })?;
         if let Some(expected_key) = inferred_key_type {
-            ensure_assignable(
-                typed,
-                expected_key,
-                actual_key,
-                "map key".to_string(),
-                None,
-            )?;
+            ensure_assignable(typed, expected_key, actual_key, "map key".to_string(), None)?;
         } else {
             inferred_key_type = Some(actual_key);
         }
@@ -3155,24 +3284,20 @@ fn type_map_literal(
         }
     }
 
-    Ok(Some(
-        typed
-            .type_table_mut()
-            .intern(CheckedType::Map {
-                key_type: inferred_key_type.ok_or_else(|| {
-                    TypecheckError::new(
-                        TypecheckErrorKind::InvalidInput,
-                        "map literal could not infer a key type",
-                    )
-                })?,
-                value_type: inferred_value_type.ok_or_else(|| {
-                    TypecheckError::new(
-                        TypecheckErrorKind::InvalidInput,
-                        "map literal could not infer a value type",
-                    )
-                })?,
-            }),
-    ))
+    Ok(Some(typed.type_table_mut().intern(CheckedType::Map {
+        key_type: inferred_key_type.ok_or_else(|| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "map literal could not infer a key type",
+            )
+        })?,
+        value_type: inferred_value_type.ok_or_else(|| {
+            TypecheckError::new(
+                TypecheckErrorKind::InvalidInput,
+                "map literal could not infer a value type",
+            )
+        })?,
+    })))
 }
 
 fn intern_linear_container_shape(
@@ -3192,9 +3317,9 @@ fn intern_linear_container_shape(
         ContainerType::Sequence => typed
             .type_table_mut()
             .intern(CheckedType::Sequence { element_type }),
-        ContainerType::Set | ContainerType::Map => unreachable!(
-            "set/map shapes must be interned through dedicated container helpers"
-        ),
+        ContainerType::Set | ContainerType::Map => {
+            unreachable!("set/map shapes must be interned through dedicated container helpers")
+        }
     }
 }
 
@@ -3342,7 +3467,8 @@ fn find_symbol_in_scope_chain(
 ) -> Option<SymbolId> {
     let mut current_scope = Some(scope_id);
     while let Some(scope_id) = current_scope {
-        if let Some(symbol_id) = find_symbol_in_scope(resolved, source_unit_id, scope_id, name, kind)
+        if let Some(symbol_id) =
+            find_symbol_in_scope(resolved, source_unit_id, scope_id, name, kind)
         {
             return Some(symbol_id);
         }
@@ -3360,13 +3486,9 @@ fn record_symbol_type(
     kind: SymbolKind,
     type_id: CheckedTypeId,
 ) -> Result<(), TypecheckError> {
-    let Some(symbol_id) = find_symbol_in_scope_chain(
-        resolved,
-        source_unit_id,
-        scope_id,
-        name,
-        kind,
-    ) else {
+    let Some(symbol_id) =
+        find_symbol_in_scope_chain(resolved, source_unit_id, scope_id, name, kind)
+    else {
         return Err(internal_error(
             format!("typed symbol facts lost local symbol '{name}'"),
             None,
@@ -3564,8 +3686,12 @@ mod tests {
     use fol_stream::FileStream;
 
     fn typed_fixture_program() -> TypedProgram {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
-        let mut stream = FileStream::from_file(fixture_path).expect("Should open expression fixture");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
+        let mut stream =
+            FileStream::from_file(fixture_path).expect("Should open expression fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
         let syntax = parser
@@ -3580,7 +3706,9 @@ mod tests {
         let mut typed = typed_fixture_program();
 
         assert_eq!(
-            typed.type_table().get(type_literal(&mut typed, &Literal::Integer(1), None).unwrap()),
+            typed
+                .type_table()
+                .get(type_literal(&mut typed, &Literal::Integer(1), None).unwrap()),
             Some(&crate::CheckedType::Builtin(BuiltinType::Int))
         );
         assert_eq!(
@@ -3602,9 +3730,9 @@ mod tests {
         let bare_error = typed
             .type_table_mut()
             .intern(CheckedType::Error { inner: None });
-        let typed_error = typed
-            .type_table_mut()
-            .intern(CheckedType::Error { inner: Some(str_type) });
+        let typed_error = typed.type_table_mut().intern(CheckedType::Error {
+            inner: Some(str_type),
+        });
 
         assert_eq!(expected_nil_shell_type(&typed, None).unwrap(), None);
         assert_eq!(
@@ -3619,7 +3747,10 @@ mod tests {
             expected_nil_shell_type(&typed, Some(typed_error)).unwrap(),
             Some(typed_error)
         );
-        assert_eq!(expected_nil_shell_type(&typed, Some(int_type)).unwrap(), None);
+        assert_eq!(
+            expected_nil_shell_type(&typed, Some(int_type)).unwrap(),
+            None
+        );
     }
 
     #[test]
@@ -3633,9 +3764,9 @@ mod tests {
         let bare_error = typed
             .type_table_mut()
             .intern(CheckedType::Error { inner: None });
-        let typed_error = typed
-            .type_table_mut()
-            .intern(CheckedType::Error { inner: Some(bool_type) });
+        let typed_error = typed.type_table_mut().intern(CheckedType::Error {
+            inner: Some(bool_type),
+        });
 
         assert_eq!(
             unwrap_shell_result_type(&typed, optional_str).unwrap(),

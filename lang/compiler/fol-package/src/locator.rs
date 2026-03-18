@@ -64,7 +64,9 @@ impl PackageLocator {
     }
 
     pub fn normalized_git_identity(&self) -> Option<String> {
-        self.git.as_ref().map(PackageGitLocator::normalized_identity)
+        self.git
+            .as_ref()
+            .map(PackageGitLocator::normalized_identity)
     }
 }
 
@@ -221,7 +223,11 @@ fn split_repository_and_selector(raw: &str) -> Result<(String, PackageGitSelecto
         ));
     }
     let mut selector = PackageGitSelector::default();
-    for part in query.split('&').map(str::trim).filter(|part| !part.is_empty()) {
+    for part in query
+        .split('&')
+        .map(str::trim)
+        .filter(|part| !part.is_empty())
+    {
         let Some((key, value)) = part.split_once('=') else {
             return Err(PackageError::new(
                 PackageErrorKind::InvalidInput,
@@ -341,8 +347,9 @@ mod tests {
 
     #[test]
     fn package_locator_parses_installed_store_paths() {
-        let locator = parse_package_locator("org/tools")
-            .expect("Slash-separated package dependency paths should parse as installed-store locators");
+        let locator = parse_package_locator("org/tools").expect(
+            "Slash-separated package dependency paths should parse as installed-store locators",
+        );
 
         assert_eq!(
             locator,
@@ -369,14 +376,13 @@ mod tests {
 
     #[test]
     fn package_locator_reports_remote_git_forms_as_explicit_placeholders() {
-        let error = parse_package_locator("git@github.com:follang/json.git")
-            .expect_err("Remote git-like locators should fail with an explicit placeholder diagnostic");
+        let error = parse_package_locator("git@github.com:follang/json.git").expect_err(
+            "Remote git-like locators should fail with an explicit placeholder diagnostic",
+        );
 
         assert_eq!(error.kind(), crate::PackageErrorKind::Unsupported);
         assert!(
-            error
-                .to_string()
-                .contains("future git or remote locator"),
+            error.to_string().contains("future git or remote locator"),
             "Remote locators should fail with an explicit future-support diagnostic",
         );
     }
@@ -511,10 +517,9 @@ mod tests {
 
     #[test]
     fn package_locator_parses_revision_selectors() {
-        let locator = parse_package_locator(
-            "https://github.com/follang/json.git?rev=0123456789abcdef",
-        )
-        .expect("revision selectors should parse");
+        let locator =
+            parse_package_locator("https://github.com/follang/json.git?rev=0123456789abcdef")
+                .expect("revision selectors should parse");
 
         assert_eq!(
             locator
@@ -550,10 +555,9 @@ mod tests {
 
     #[test]
     fn package_locator_rejects_conflicting_git_selectors() {
-        let error = parse_package_locator(
-            "https://github.com/follang/json.git?branch=main&tag=v0.1.0",
-        )
-        .expect_err("git locators should reject conflicting selectors");
+        let error =
+            parse_package_locator("https://github.com/follang/json.git?branch=main&tag=v0.1.0")
+                .expect_err("git locators should reject conflicting selectors");
 
         assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
         assert!(
@@ -566,10 +570,9 @@ mod tests {
 
     #[test]
     fn package_locator_rejects_duplicate_git_selectors() {
-        let error = parse_package_locator(
-            "https://github.com/follang/json.git?branch=main&branch=stable",
-        )
-        .expect_err("git locators should reject duplicate selectors");
+        let error =
+            parse_package_locator("https://github.com/follang/json.git?branch=main&branch=stable")
+                .expect_err("git locators should reject duplicate selectors");
 
         assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
         assert!(
@@ -581,12 +584,7 @@ mod tests {
     #[test]
     fn package_locator_acceptance_matrix_stays_stable() {
         let cases = [
-            (
-                "core/tools",
-                PackageLocatorKind::InstalledStore,
-                None,
-                None,
-            ),
+            ("core/tools", PackageLocatorKind::InstalledStore, None, None),
             (
                 "https://github.com/follang/json.git",
                 PackageLocatorKind::Git,
@@ -612,8 +610,16 @@ mod tests {
                 parse_package_locator(raw).unwrap_or_else(|error| panic!("{raw}: {error}"));
 
             assert_eq!(locator.kind, kind, "{raw}");
-            assert_eq!(locator.git.as_ref().map(|git| git.transport), transport, "{raw}");
-            assert_eq!(locator.normalized_git_identity().as_deref(), identity, "{raw}");
+            assert_eq!(
+                locator.git.as_ref().map(|git| git.transport),
+                transport,
+                "{raw}"
+            );
+            assert_eq!(
+                locator.normalized_git_identity().as_deref(),
+                identity,
+                "{raw}"
+            );
         }
     }
 }

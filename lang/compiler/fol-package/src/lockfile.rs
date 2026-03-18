@@ -83,7 +83,10 @@ pub fn parse_package_lockfile(raw: &str) -> Result<PackageLockfile, PackageError
             version = Some(rest.trim().parse::<u32>().map_err(|_| {
                 PackageError::new(
                     PackageErrorKind::InvalidInput,
-                    format!("package lockfile version '{}' is not a valid integer", rest.trim()),
+                    format!(
+                        "package lockfile version '{}' is not a valid integer",
+                        rest.trim()
+                    ),
                 )
             })?);
             continue;
@@ -119,7 +122,10 @@ pub fn parse_package_lockfile(raw: &str) -> Result<PackageLockfile, PackageError
         }
         return Err(PackageError::new(
             PackageErrorKind::InvalidInput,
-            format!("package lockfile contains an unrecognized line '{}'", trimmed),
+            format!(
+                "package lockfile contains an unrecognized line '{}'",
+                trimmed
+            ),
         ));
     }
 

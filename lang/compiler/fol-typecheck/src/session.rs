@@ -1,6 +1,6 @@
 use crate::{
-    decls, exprs, CheckedType, CheckedTypeId, TypecheckError, TypecheckErrorKind,
-    TypecheckResult, TypedExportMount, TypedPackage, TypedProgram, TypedWorkspace,
+    decls, exprs, CheckedType, CheckedTypeId, TypecheckError, TypecheckErrorKind, TypecheckResult,
+    TypedExportMount, TypedPackage, TypedProgram, TypedWorkspace,
 };
 use fol_resolver::{MountedSymbolProvenance, PackageIdentity, SymbolId};
 use std::collections::{BTreeMap, BTreeSet};
@@ -236,17 +236,15 @@ impl TypecheckSession {
                     ),
                 )
             })?;
-        let foreign_declared_type = foreign_type
-            .declared_type
-            .ok_or_else(|| {
-                TypecheckError::new(
-                    TypecheckErrorKind::Internal,
-                    format!(
-                        "mounted imported symbol {} does not retain foreign typed facts",
-                        provenance.foreign_symbol.0
-                    ),
-                )
-            })?;
+        let foreign_declared_type = foreign_type.declared_type.ok_or_else(|| {
+            TypecheckError::new(
+                TypecheckErrorKind::Internal,
+                format!(
+                    "mounted imported symbol {} does not retain foreign typed facts",
+                    provenance.foreign_symbol.0
+                ),
+            )
+        })?;
         let translated = self.import_type_id(
             typed,
             &foreign_package.identity,
@@ -304,7 +302,9 @@ impl TypecheckSession {
             })?;
 
         let translated = match source_type {
-            CheckedType::Builtin(builtin) => target_program.type_table_mut().intern_builtin(builtin),
+            CheckedType::Builtin(builtin) => {
+                target_program.type_table_mut().intern_builtin(builtin)
+            }
             CheckedType::Declared { symbol, name, kind } => {
                 if let Some(translated_symbol) = translated_symbol_id(
                     source_identity,
@@ -312,20 +312,20 @@ impl TypecheckSession {
                     symbol,
                     mounted_symbol_map,
                 ) {
-                    target_program.type_table_mut().intern(CheckedType::Declared {
-                        symbol: translated_symbol,
-                        name,
-                        kind,
-                    })
+                    target_program
+                        .type_table_mut()
+                        .intern(CheckedType::Declared {
+                            symbol: translated_symbol,
+                            name,
+                            kind,
+                        })
                 } else if let Some(expanded_type) = source_program
                     .typed_symbol(symbol)
                     .and_then(|typed_symbol| typed_symbol.declared_type)
                 {
-                    let shell_type = target_program.type_table_mut().intern(CheckedType::Declared {
-                        symbol,
-                        name,
-                        kind,
-                    });
+                    let shell_type = target_program
+                        .type_table_mut()
+                        .intern(CheckedType::Declared { symbol, name, kind });
                     let apparent_type = self.import_type_id(
                         target_program,
                         source_identity,
@@ -337,11 +337,9 @@ impl TypecheckSession {
                     target_program.record_apparent_type_override(shell_type, apparent_type);
                     shell_type
                 } else {
-                    target_program.type_table_mut().intern(CheckedType::Declared {
-                        symbol,
-                        name,
-                        kind,
-                    })
+                    target_program
+                        .type_table_mut()
+                        .intern(CheckedType::Declared { symbol, name, kind })
                 }
             }
             CheckedType::Array { element_type, size } => {
@@ -452,7 +450,9 @@ impl TypecheckSession {
                         )
                     })
                     .transpose()?;
-                target_program.type_table_mut().intern(CheckedType::Error { inner })
+                target_program
+                    .type_table_mut()
+                    .intern(CheckedType::Error { inner })
             }
             CheckedType::Record { fields } => {
                 let mut translated_fields = BTreeMap::new();
@@ -469,9 +469,9 @@ impl TypecheckSession {
                         )?,
                     );
                 }
-                target_program
-                    .type_table_mut()
-                    .intern(CheckedType::Record { fields: translated_fields })
+                target_program.type_table_mut().intern(CheckedType::Record {
+                    fields: translated_fields,
+                })
             }
             CheckedType::Entry { variants } => {
                 let mut translated_variants = BTreeMap::new();
@@ -492,11 +492,9 @@ impl TypecheckSession {
                             .transpose()?,
                     );
                 }
-                target_program
-                    .type_table_mut()
-                    .intern(CheckedType::Entry {
-                        variants: translated_variants,
-                    })
+                target_program.type_table_mut().intern(CheckedType::Entry {
+                    variants: translated_variants,
+                })
             }
             CheckedType::Routine(signature) => {
                 let params = signature
