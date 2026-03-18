@@ -96,6 +96,10 @@ mod integration_tests {
         ]
     }
 
+    fn build_fixture_root(name: &str) -> PathBuf {
+        repo_root().join("test/app/build").join(name)
+    }
+
     fn parse_cli_json(output: &std::process::Output) -> Value {
         let stdout = String::from_utf8_lossy(&output.stdout);
         let json_start = stdout
@@ -3699,6 +3703,107 @@ mod integration_tests {
                 root.display()
             );
         }
+    }
+
+    #[test]
+    fn test_build_fixture_local_root_package_builds_and_runs() {
+        let root = build_fixture_root("exe_object_config");
+
+        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        assert!(
+            build.status.success(),
+            "local-root build fixture should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
+            "local-root build fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+
+        let run = run_fol_in_dir(&root, &["code", "run"]);
+        assert!(
+            run.status.success(),
+            "local-root build fixture should run: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&run.stdout).contains("ran "),
+            "local-root build fixture should report a run summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_pkg_dependency_package_builds_with_explicit_store_root() {
+        let root = build_fixture_root("hybrid_bundle_step");
+        let app_root = root.join("app");
+        let pkg_root = root.join("pkg");
+
+        let build = run_fol_in_dir(
+            &app_root,
+            &[
+                "code",
+                "build",
+                "--package-store-root",
+                pkg_root
+                    .to_str()
+                    .expect("package-store fixture path should be valid utf-8"),
+            ],
+        );
+        assert!(
+            build.status.success(),
+            "pkg dependency fixture should build with an explicit package-store root: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
+            "pkg dependency fixture should keep the routed build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+
+        let check = run_fol_in_dir(
+            &app_root,
+            &[
+                "code",
+                "check",
+                "--package-store-root",
+                pkg_root
+                    .to_str()
+                    .expect("package-store fixture path should be valid utf-8"),
+            ],
+        );
+        assert!(
+            check.status.success(),
+            "pkg dependency fixture should check with an explicit package-store root: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&check.stdout),
+            String::from_utf8_lossy(&check.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_nested_local_library_executes_default_run_route() {
+        let root = build_fixture_root("run_step_chain");
+
+        let run = run_fol_in_dir(&root, &["code", "run"]);
+        assert!(
+            run.status.success(),
+            "nested local-library fixture should run successfully: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&run.stdout).contains("ran "),
+            "nested local-library fixture should report a run summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
     }
 
     #[test]

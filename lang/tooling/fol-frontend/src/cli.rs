@@ -216,7 +216,7 @@ pub struct RunCommand {
     #[arg(long, help = "Keep the generated backend crate directory")]
     pub keep_build_dir: bool,
 
-    #[arg(last = true, trailing_var_arg = true)]
+    #[arg(trailing_var_arg = true)]
     pub args: Vec<String>,
 }
 
