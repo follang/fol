@@ -3755,13 +3755,7 @@ fn index_access_type(
         Some(crate::LoweredType::Map { value_type, .. }) => Some(*value_type),
         Some(crate::LoweredType::Set { member_types }) => {
             let index_value = literal_index_value(index)?;
-            member_types.get(index_value).copied().or_else(|| {
-                let first = member_types.first().copied()?;
-                member_types
-                    .iter()
-                    .all(|member| *member == first)
-                    .then_some(first)
-            })
+            member_types.get(index_value).copied()
         }
         _ => None,
     }

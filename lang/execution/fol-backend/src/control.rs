@@ -111,7 +111,7 @@ mod tests {
     #[test]
     fn terminator_rendering_emits_jump_shells() {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
-        let _table = LoweredTypeTable::new();
+        let table = LoweredTypeTable::new();
         let routine = LoweredRoutine::new(LoweredRoutineId(0), "main", LoweredBlockId(0));
 
         let rendered = render_terminator(
@@ -231,6 +231,7 @@ mod tests {
     #[test]
     fn terminator_rendering_emits_unreachable_shells() {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let table = LoweredTypeTable::new();
         let routine = LoweredRoutine::new(LoweredRoutineId(4), "main", LoweredBlockId(0));
 
         let rendered = render_terminator(

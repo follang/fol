@@ -28,7 +28,7 @@ Same policy as before. If something is replaced, the old thing is deleted.
 - [x] Slice 1. Lexer: off-by-one fix, missing keywords, typos
 - [x] Slice 2. Parser: loop limits, depth guards, error recovery
 - [x] Slice 3. Resolver: unwrap/expect removal, scope validation, path safety
-- [ ] Slice 4. Typechecker: catch-all elimination, type table safety, error taxonomy
+- [x] Slice 4. Typechecker: catch-all elimination, type table safety, error taxonomy
 - [ ] Slice 5. Lowering: panic removal, test fixes, type validation
 - [ ] Slice 6. Backend: codegen string escaping, generated code safety
 - [ ] Slice 7. Package: lockfile version check, git hostname validation, metadata parsing
