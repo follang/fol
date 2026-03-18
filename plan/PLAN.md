@@ -615,6 +615,28 @@ Tests required:
 Exit criteria:
 - options participate in real semantic evaluation
 
+Round 1 slice tracker:
+
+- [ ] Slice 1. Add a concrete Phase 9 implementation tracker for real build
+  option values.
+- [ ] Slice 2. Add typed build-option value render/parse helpers for standard
+  and user option kinds.
+- [ ] Slice 3. Extend user option declarations with kind/default metadata and
+  preserve that metadata through build evaluation.
+- [ ] Slice 4. Seed resolved option values from declared defaults and validate
+  CLI override coercion against option kinds.
+- [ ] Slice 5. Replace placeholder build-source option names with typed symbolic
+  option references.
+- [ ] Slice 6. Add shared build-source parsing for `graph.option({ ... })`
+  record configs.
+- [ ] Slice 7. Let artifact config fields carry deferred literal-or-option
+  values instead of eager placeholder strings.
+- [ ] Slice 8. Resolve deferred artifact option values into runtime artifact
+  metadata for `root`, `target`, and `optimize`.
+- [ ] Slice 9. Add regression coverage proving CLI/build-input option values
+  reach evaluated artifact metadata through local variables and object configs.
+- [ ] Slice 10. Re-export, test, and lock the full Phase 9 real-option round.
+
 ## Phase 10: Dependency Build Surfaces
 
 Goal:
