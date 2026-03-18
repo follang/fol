@@ -1,0 +1,14 @@
+pro[] build(graph: Graph): non = {
+    var target = graph.standard_target();
+    var optimize = graph.standard_optimize();
+    var app = graph.add_exe({
+        name = "bundle_app",
+        root = "src/main.fol",
+        target = target,
+        optimize = optimize,
+    });
+    var run_app = graph.add_run(app);
+    var install_app = graph.install(app);
+
+    graph.step("bundle", run_app, install_app);
+}

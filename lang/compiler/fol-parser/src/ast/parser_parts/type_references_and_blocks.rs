@@ -222,7 +222,8 @@ impl AstParser {
                 continue;
             }
 
-            if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) && self.lookahead_is_dot_builtin_call(tokens)
+            if matches!(key, KEYWORD::Symbol(SYMBOL::Dot))
+                && self.lookahead_is_dot_builtin_call(tokens)
             {
                 body.push(self.parse_dot_builtin_call_expr(tokens)?);
                 self.consume_optional_semicolon(tokens);
@@ -376,10 +377,15 @@ impl AstParser {
                 continue;
             }
 
-            if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot))
-                || AstParser::token_can_be_logical_name(&key)
+            if (matches!(
+                key,
+                KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot)
+            ) || AstParser::token_can_be_logical_name(&key)
                 || key.is_textual_literal())
-                && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
+                && self.lookahead_is_general_invoke(
+                    tokens,
+                    matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)),
+                )
                 && self.can_start_assignment(tokens)
             {
                 body.push(self.parse_invoke_stmt(tokens)?);

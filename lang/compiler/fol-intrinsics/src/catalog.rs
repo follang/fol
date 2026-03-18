@@ -1,7 +1,6 @@
 use crate::{
-    IntrinsicArity, IntrinsicAvailability, IntrinsicBackendRole, IntrinsicCategory,
-    IntrinsicEntry, IntrinsicId, IntrinsicLoweringMode, IntrinsicRoadmap, IntrinsicStatus,
-    IntrinsicSurface,
+    IntrinsicArity, IntrinsicAvailability, IntrinsicBackendRole, IntrinsicCategory, IntrinsicEntry,
+    IntrinsicId, IntrinsicLoweringMode, IntrinsicRoadmap, IntrinsicStatus, IntrinsicSurface,
 };
 
 const INTRINSICS: &[IntrinsicEntry] = &[

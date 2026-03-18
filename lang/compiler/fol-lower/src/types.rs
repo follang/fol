@@ -135,10 +135,7 @@ mod tests {
         assert_eq!(
             table.get(record_first),
             Some(&LoweredType::Record {
-                fields: BTreeMap::from([
-                    ("x".to_string(), int_id),
-                    ("y".to_string(), int_id),
-                ]),
+                fields: BTreeMap::from([("x".to_string(), int_id), ("y".to_string(), int_id),]),
             })
         );
     }

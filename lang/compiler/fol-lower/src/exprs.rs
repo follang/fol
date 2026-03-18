@@ -135,7 +135,10 @@ impl WorkspaceDeclIndex {
             .flatten()
     }
 
-    pub(crate) fn routine_param_types(&self, routine_id: LoweredRoutineId) -> Option<&[LoweredTypeId]> {
+    pub(crate) fn routine_param_types(
+        &self,
+        routine_id: LoweredRoutineId,
+    ) -> Option<&[LoweredTypeId]> {
         self.routine_params.get(&routine_id).map(Vec::as_slice)
     }
 
@@ -154,16 +157,25 @@ impl WorkspaceDeclIndex {
         typed_package: &fol_typecheck::TypedPackage,
         package: &LoweredPackage,
     ) {
-        for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+        for (source_unit_index, source_unit) in typed_package
+            .program
+            .resolved()
+            .syntax()
+            .source_units
+            .iter()
+            .enumerate()
+        {
+            if source_unit.kind == fol_parser::ast::ParsedSourceUnitKind::Build {
+                continue;
+            }
             let source_unit_id = SourceUnitId(source_unit_index);
             for item in &source_unit.items {
                 let AstNode::TypeDecl {
                     name,
-                    type_def: fol_parser::ast::TypeDefinition::Entry {
-                        variant_meta, ..
-                    },
+                    type_def: fol_parser::ast::TypeDefinition::Entry { variant_meta, .. },
                     ..
-                } = &item.node else {
+                } = &item.node
+                else {
                     continue;
                 };
                 let Some(symbol_id) = crate::decls::find_local_symbol_id(
@@ -344,7 +356,10 @@ impl<'a> RoutineCursor<'a> {
         let Some(block) = self.routine.blocks.get_mut(self.block_id) else {
             return Err(LoweringError::with_kind(
                 LoweringErrorKind::InvalidInput,
-                format!("lowered routine '{}' lost block {}", self.routine.name, self.block_id.0),
+                format!(
+                    "lowered routine '{}' lost block {}",
+                    self.routine.name, self.block_id.0
+                ),
             ));
         };
         block.instructions.push(instr_id);
@@ -404,9 +419,13 @@ impl<'a> RoutineCursor<'a> {
             });
         }
 
-        let (owning_identity, owning_symbol_id) =
-            canonical_symbol_key(current_identity, resolved_symbol.mounted_from.as_ref(), resolved_symbol.id);
-        let Some(global_id) = decl_index.global_id_for_symbol(&owning_identity, owning_symbol_id) else {
+        let (owning_identity, owning_symbol_id) = canonical_symbol_key(
+            current_identity,
+            resolved_symbol.mounted_from.as_ref(),
+            resolved_symbol.id,
+        );
+        let Some(global_id) = decl_index.global_id_for_symbol(&owning_identity, owning_symbol_id)
+        else {
             return Err(LoweringError::with_kind(
                 LoweringErrorKind::InvalidInput,
                 format!(
@@ -419,7 +438,10 @@ impl<'a> RoutineCursor<'a> {
             decl_index.global_recoverable_error_type(&owning_identity, global_id);
         let result_local =
             self.allocate_local_with_effect(result_type, recoverable_error_type, None);
-        self.push_instr(Some(result_local), LoweredInstrKind::LoadGlobal { global: global_id })?;
+        self.push_instr(
+            Some(result_local),
+            LoweredInstrKind::LoadGlobal { global: global_id },
+        )?;
         Ok(LoweredValue {
             local_id: result_local,
             type_id: result_type,
@@ -451,7 +473,17 @@ pub(crate) fn lower_routine_bodies(
 ) -> Result<(), Vec<LoweringError>> {
     let mut errors = Vec::new();
 
-    for (source_unit_index, source_unit) in typed_package.program.resolved().syntax().source_units.iter().enumerate() {
+    for (source_unit_index, source_unit) in typed_package
+        .program
+        .resolved()
+        .syntax()
+        .source_units
+        .iter()
+        .enumerate()
+    {
+        if source_unit.kind == fol_parser::ast::ParsedSourceUnitKind::Build {
+            continue;
+        }
         let source_unit_id = SourceUnitId(source_unit_index);
         for item in &source_unit.items {
             let (name, syntax_id, body) = match &item.node {
@@ -517,12 +549,13 @@ pub(crate) fn lower_routine_bodies(
                 ));
                 continue;
             };
-            let Some(routine_id) = lowered_package
-                .routine_decls
-                .iter()
-                .find_map(|(routine_id, routine)| {
-                    (routine.symbol_id == Some(symbol_id)).then_some(*routine_id)
-                })
+            let Some(routine_id) =
+                lowered_package
+                    .routine_decls
+                    .iter()
+                    .find_map(|(routine_id, routine)| {
+                        (routine.symbol_id == Some(symbol_id)).then_some(*routine_id)
+                    })
             else {
                 errors.push(LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,
@@ -715,14 +748,22 @@ fn lower_body_node(
                 _ => {
                     return Err(LoweringError::with_kind(
                         LoweringErrorKind::InvalidInput,
-                        format!("report expects exactly 1 value in lowered V1 bodies, got {}", args.len()),
+                        format!(
+                            "report expects exactly 1 value in lowered V1 bodies, got {}",
+                            args.len()
+                        ),
                     ))
                 }
             };
             cursor.terminate_current_block(crate::LoweredTerminator::Report { value: lowered })?;
             Ok(None)
         }
-        AstNode::FunctionCall { syntax_id, name, args, .. } => {
+        AstNode::FunctionCall {
+            syntax_id,
+            name,
+            args,
+            ..
+        } => {
             if let Ok(entry) = select_intrinsic(IntrinsicSurface::KeywordCall, name) {
                 lower_keyword_intrinsic_statement(
                     typed_package,
@@ -794,7 +835,8 @@ fn lower_body_node(
                     "break lowering requires an active loop exit block",
                 ));
             };
-            cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: exit_block })?;
+            cursor
+                .terminate_current_block(crate::LoweredTerminator::Jump { target: exit_block })?;
             Ok(None)
         }
         AstNode::Yield { .. } => Err(LoweringError::with_kind(
@@ -928,7 +970,10 @@ fn lower_record_initializer(
             "record initializer lowering requires an expected record type in V1",
         ));
     };
-    let Some(crate::LoweredType::Record { fields: expected_fields }) = type_table.get(type_id) else {
+    let Some(crate::LoweredType::Record {
+        fields: expected_fields,
+    }) = type_table.get(type_id)
+    else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
             "record initializer does not map to a lowered record runtime type",
@@ -1128,19 +1173,20 @@ fn lower_entry_variant_access(
     field: &str,
     expected_type: Option<LoweredTypeId>,
 ) -> Result<Option<LoweredValue>, LoweringError> {
-    let Some((owning_identity, owning_symbol_id, variant)) =
-        resolve_entry_variant_target(
-            typed_package,
-            type_table,
-            current_identity,
-            object,
-            field,
-            checked_type_map,
-        )?
+    let Some((owning_identity, owning_symbol_id, variant)) = resolve_entry_variant_target(
+        typed_package,
+        type_table,
+        current_identity,
+        object,
+        field,
+        checked_type_map,
+    )?
     else {
         return Ok(None);
     };
-    let Some(entry_variant) = decl_index.entry_variant(&owning_identity, owning_symbol_id, &variant) else {
+    let Some(entry_variant) =
+        decl_index.entry_variant(&owning_identity, owning_symbol_id, &variant)
+    else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
             format!("entry variant '{variant}' does not retain lowered variant metadata"),
@@ -1234,7 +1280,8 @@ fn lower_container_literal(
     expected_type: Option<LoweredTypeId>,
     elements: &[AstNode],
 ) -> Result<LoweredValue, LoweringError> {
-    let container_kind = expected_container_kind(type_table, expected_type).unwrap_or(container_type);
+    let container_kind =
+        expected_container_kind(type_table, expected_type).unwrap_or(container_type);
     match container_kind {
         ContainerType::Array | ContainerType::Vector | ContainerType::Sequence => {
             lower_linear_container_literal(
@@ -1485,7 +1532,8 @@ fn lower_map_literal(
         entries.push((lowered_key.local_id, lowered_value.local_id));
     }
 
-    let Some(type_id) = resolve_map_type(type_table, expected_type, expected_key, expected_value) else {
+    let Some(type_id) = resolve_map_type(type_table, expected_type, expected_key, expected_value)
+    else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
             "map literal could not determine a lowered key/value type",
@@ -1523,12 +1571,15 @@ fn when_always_terminates(
         return false;
     };
     !cases.is_empty()
-        && cases.iter().all(|case| body_always_terminates(when_case_body(case)))
+        && cases
+            .iter()
+            .all(|case| body_always_terminates(when_case_body(case)))
         && body_always_terminates(default)
 }
 
 fn body_always_terminates(nodes: &[AstNode]) -> bool {
-    nodes.iter()
+    nodes
+        .iter()
         .rev()
         .find(|node| !matches!(node, AstNode::Comment { .. }))
         .is_some_and(node_always_terminates)
@@ -1614,7 +1665,9 @@ fn lower_when_statement(
         )?;
         if !cursor.current_block_terminated()? {
             let after_block = ensure_after_block(cursor, &mut after_block);
-            cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: after_block })?;
+            cursor.terminate_current_block(crate::LoweredTerminator::Jump {
+                target: after_block,
+            })?;
             has_fallthrough = true;
         }
 
@@ -1740,7 +1793,9 @@ fn lower_default_when_body(
     )?;
     if !cursor.current_block_terminated()? {
         let after_block = ensure_after_block(cursor, after_block);
-        cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: after_block })?;
+        cursor.terminate_current_block(crate::LoweredTerminator::Jump {
+            target: after_block,
+        })?;
         return Ok(true);
     }
     Ok(false)
@@ -1954,7 +2009,9 @@ fn lower_when_branch_value(
                 },
             )?;
             if !cursor.current_block_terminated()? {
-                cursor.terminate_current_block(crate::LoweredTerminator::Jump { target: join_block })?;
+                cursor.terminate_current_block(crate::LoweredTerminator::Jump {
+                    target: join_block,
+                })?;
             }
             Ok(())
         }
@@ -2116,7 +2173,10 @@ fn lower_check_call(
     let [operand] = args else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
-            format!("check expects exactly 1 value in lowered V1, got {}", args.len()),
+            format!(
+                "check expects exactly 1 value in lowered V1, got {}",
+                args.len()
+            ),
         ));
     };
     let observed = lower_expression_observed(
@@ -2277,7 +2337,10 @@ fn lower_keyword_panic_terminator(
         _ => {
             return Err(LoweringError::with_kind(
                 LoweringErrorKind::InvalidInput,
-                format!("panic expects at most 1 value in lowered V1, got {}", args.len()),
+                format!(
+                    "panic expects at most 1 value in lowered V1, got {}",
+                    args.len()
+                ),
             ))
         }
     };
@@ -2322,12 +2385,15 @@ fn lower_dot_intrinsic_call(
             format!("dot intrinsic '.{name}(...)' does not retain a checked result type"),
         )
     })?;
-    let result_type = checked_type_map.get(&checked_result).copied().ok_or_else(|| {
-        LoweringError::with_kind(
-            LoweringErrorKind::InvalidInput,
-            format!("dot intrinsic '.{name}(...)' does not retain a lowered result type"),
-        )
-    })?;
+    let result_type = checked_type_map
+        .get(&checked_result)
+        .copied()
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("dot intrinsic '.{name}(...)' does not retain a lowered result type"),
+            )
+        })?;
     let lowered_args = args
         .iter()
         .map(|arg| {
@@ -2537,7 +2603,10 @@ fn lower_pipe_or_fallback(
                 _ => {
                     return Err(LoweringError::with_kind(
                         LoweringErrorKind::InvalidInput,
-                        format!("report expects exactly 1 value in lowered V1 bodies, got {}", args.len()),
+                        format!(
+                            "report expects exactly 1 value in lowered V1 bodies, got {}",
+                            args.len()
+                        ),
                     ))
                 }
             };
@@ -2648,12 +2717,13 @@ fn lower_expression_observed(
     let lowered = match node {
         AstNode::Literal(Literal::Nil) => lower_nil_literal(type_table, cursor, expected_type),
         AstNode::Literal(literal) => {
-            let type_id = literal_type_id(typed_package, checked_type_map, literal).ok_or_else(|| {
-                LoweringError::with_kind(
-                    LoweringErrorKind::InvalidInput,
-                    "literal expression does not retain a lowering-owned type",
-                )
-            })?;
+            let type_id =
+                literal_type_id(typed_package, checked_type_map, literal).ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        "literal expression does not retain a lowering-owned type",
+                    )
+                })?;
             cursor.lower_literal(literal, type_id)
         }
         AstNode::UnaryOp {
@@ -2700,20 +2770,18 @@ fn lower_expression_observed(
                 describe_binary_operator(op)
             ),
         )),
-        AstNode::RecordInit { fields, .. } => {
-            lower_record_initializer(
-                typed_package,
-                type_table,
-                checked_type_map,
-                current_identity,
-                decl_index,
-                cursor,
-                source_unit_id,
-                scope_id,
-                expected_type,
-                fields,
-            )
-        }
+        AstNode::RecordInit { fields, .. } => lower_record_initializer(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            expected_type,
+            fields,
+        ),
         AstNode::ContainerLiteral {
             container_type,
             elements,
@@ -2770,7 +2838,12 @@ fn lower_expression_observed(
             name,
             args,
         ),
-        AstNode::FunctionCall { syntax_id, name, args, .. } => {
+        AstNode::FunctionCall {
+            syntax_id,
+            name,
+            args,
+            ..
+        } => {
             if let Ok(entry) = select_intrinsic(IntrinsicSurface::KeywordCall, name) {
                 lower_keyword_intrinsic_expression(
                     typed_package,
@@ -2816,7 +2889,11 @@ fn lower_expression_observed(
             &path.joined(),
             args,
         ),
-        AstNode::MethodCall { object, method, args } => {
+        AstNode::MethodCall {
+            object,
+            method,
+            args,
+        } => {
             let receiver = lower_expression(
                 typed_package,
                 type_table,
@@ -2965,7 +3042,8 @@ fn lower_expression_observed(
                 scope_id,
                 index,
             )?;
-            let Some(result_type) = index_access_type(type_table, lowered_container.type_id, index) else {
+            let Some(result_type) = index_access_type(type_table, lowered_container.type_id, index)
+            else {
                 return Err(LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,
                     "index access does not map to a lowered container element type",
@@ -3009,10 +3087,17 @@ fn lower_expression_observed(
                     format!("identifier '{name}' does not retain a syntax id"),
                 )
             })?;
-            let Some(reference) = typed_package.program.resolved().references.iter().find(|reference| {
-                reference.syntax_id == Some(syntax_id)
-                    && reference.kind == fol_resolver::ReferenceKind::Identifier
-            }) else {
+            let Some(reference) =
+                typed_package
+                    .program
+                    .resolved()
+                    .references
+                    .iter()
+                    .find(|reference| {
+                        reference.syntax_id == Some(syntax_id)
+                            && reference.kind == fol_resolver::ReferenceKind::Identifier
+                    })
+            else {
                 return Err(LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,
                     format!("identifier '{name}' is missing from resolver output"),
@@ -3046,28 +3131,49 @@ fn lower_expression_observed(
                     format!("identifier '{name}' does not retain a lowered reference type"),
                 )
             })?;
-            cursor.lower_identifier_reference(current_identity, decl_index, resolved_symbol, result_type)
+            cursor.lower_identifier_reference(
+                current_identity,
+                decl_index,
+                resolved_symbol,
+                result_type,
+            )
         }
         AstNode::QualifiedIdentifier { path } => {
             let syntax_id = path.syntax_id().ok_or_else(|| {
                 LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,
-                    format!("qualified identifier '{}' does not retain a syntax id", path.joined()),
+                    format!(
+                        "qualified identifier '{}' does not retain a syntax id",
+                        path.joined()
+                    ),
                 )
             })?;
-            let Some(reference) = typed_package.program.resolved().references.iter().find(|reference| {
-                reference.syntax_id == Some(syntax_id)
-                    && reference.kind == fol_resolver::ReferenceKind::QualifiedIdentifier
-            }) else {
+            let Some(reference) =
+                typed_package
+                    .program
+                    .resolved()
+                    .references
+                    .iter()
+                    .find(|reference| {
+                        reference.syntax_id == Some(syntax_id)
+                            && reference.kind == fol_resolver::ReferenceKind::QualifiedIdentifier
+                    })
+            else {
                 return Err(LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,
-                    format!("qualified identifier '{}' is missing from resolver output", path.joined()),
+                    format!(
+                        "qualified identifier '{}' is missing from resolver output",
+                        path.joined()
+                    ),
                 ));
             };
             let Some(symbol_id) = reference.resolved else {
                 return Err(LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,
-                    format!("qualified identifier '{}' does not resolve to a lowered symbol", path.joined()),
+                    format!(
+                        "qualified identifier '{}' does not resolve to a lowered symbol",
+                        path.joined()
+                    ),
                 ));
             };
             let resolved_symbol = typed_package
@@ -3077,7 +3183,10 @@ fn lower_expression_observed(
                 .ok_or_else(|| {
                     LoweringError::with_kind(
                         LoweringErrorKind::InvalidInput,
-                        format!("qualified identifier '{}' lost its resolved symbol", path.joined()),
+                        format!(
+                            "qualified identifier '{}' lost its resolved symbol",
+                            path.joined()
+                        ),
                     )
                 })?;
             let result_type = reference_type_id(typed_package, reference.id).ok_or_else(|| {
@@ -3098,7 +3207,12 @@ fn lower_expression_observed(
                     ),
                 )
             })?;
-            cursor.lower_identifier_reference(current_identity, decl_index, resolved_symbol, result_type)
+            cursor.lower_identifier_reference(
+                current_identity,
+                decl_index,
+                resolved_symbol,
+                result_type,
+            )
         }
         AstNode::Commented { node, .. } => lower_expression_expected(
             typed_package,
@@ -3153,7 +3267,9 @@ fn describe_expression(node: &AstNode) -> String {
     match node {
         AstNode::Assignment { .. } => "assignment".to_string(),
         AstNode::FunctionCall { name, .. } => format!("function call '{name}'"),
-        AstNode::QualifiedFunctionCall { path, .. } => format!("qualified function call '{}'", path.joined()),
+        AstNode::QualifiedFunctionCall { path, .. } => {
+            format!("qualified function call '{}'", path.joined())
+        }
         AstNode::MethodCall { method, .. } => format!("method call '{method}'"),
         AstNode::FieldAccess { field, .. } => format!("field access '.{field}'"),
         AstNode::IndexAccess { .. } => "index access".to_string(),
@@ -3265,10 +3381,7 @@ fn resolve_entry_variant_target(
     if !matches!(resolved_symbol.kind, SymbolKind::Type | SymbolKind::Alias) {
         return Ok(None);
     }
-    if !matches!(
-        type_table_entry_kind(type_table, lowered_type),
-        Some(())
-    ) {
+    if !matches!(type_table_entry_kind(type_table, lowered_type), Some(())) {
         return Ok(None);
     }
 
@@ -3284,7 +3397,11 @@ fn type_table_entry_kind(
     type_table: &crate::LoweredTypeTable,
     lowered_type: LoweredTypeId,
 ) -> Option<()> {
-    matches!(type_table.get(lowered_type), Some(crate::LoweredType::Entry { .. })).then_some(())
+    matches!(
+        type_table.get(lowered_type),
+        Some(crate::LoweredType::Entry { .. })
+    )
+    .then_some(())
 }
 
 fn lower_assignment_target(
@@ -3316,7 +3433,12 @@ fn lower_assignment_target(
         }
     };
 
-    if let Some(local_id) = cursor.routine.local_symbols.get(&resolved_symbol.id).copied() {
+    if let Some(local_id) = cursor
+        .routine
+        .local_symbols
+        .get(&resolved_symbol.id)
+        .copied()
+    {
         cursor.push_instr(
             None,
             LoweredInstrKind::StoreLocal {
@@ -3327,9 +3449,13 @@ fn lower_assignment_target(
         return Ok(lowered_value);
     }
 
-    let (owning_identity, owning_symbol_id) =
-        canonical_symbol_key(current_identity, resolved_symbol.mounted_from.as_ref(), resolved_symbol.id);
-    let Some(global_id) = decl_index.global_id_for_symbol(&owning_identity, owning_symbol_id) else {
+    let (owning_identity, owning_symbol_id) = canonical_symbol_key(
+        current_identity,
+        resolved_symbol.mounted_from.as_ref(),
+        resolved_symbol.id,
+    );
+    let Some(global_id) = decl_index.global_id_for_symbol(&owning_identity, owning_symbol_id)
+    else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
             format!(
@@ -3360,9 +3486,13 @@ fn resolve_reference_symbol<'a>(
             format!("reference '{display_name}' does not retain a syntax id"),
         )
     })?;
-    let Some(reference) = typed_package.program.resolved().references.iter().find(|reference| {
-        reference.syntax_id == Some(syntax_id) && reference.kind == kind
-    }) else {
+    let Some(reference) = typed_package
+        .program
+        .resolved()
+        .references
+        .iter()
+        .find(|reference| reference.syntax_id == Some(syntax_id) && reference.kind == kind)
+    else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
             format!("reference '{display_name}' is missing from resolver output"),
@@ -3423,15 +3553,20 @@ fn lower_function_call(
     args: &[AstNode],
 ) -> Result<LoweredValue, LoweringError> {
     let resolved_symbol = resolve_reference_symbol(typed_package, syntax_id, kind, display_name)?;
-    let (owning_identity, owning_symbol_id) =
-        canonical_symbol_key(current_identity, resolved_symbol.mounted_from.as_ref(), resolved_symbol.id);
+    let (owning_identity, owning_symbol_id) = canonical_symbol_key(
+        current_identity,
+        resolved_symbol.mounted_from.as_ref(),
+        resolved_symbol.id,
+    );
     let Some(callee) = decl_index.routine_id_for_symbol(&owning_identity, owning_symbol_id) else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
             format!("call target '{display_name}' does not map to a lowered routine definition"),
         ));
     };
-    let Some(result_type) = resolve_reference_type_id(typed_package, checked_type_map, syntax_id, kind) else {
+    let Some(result_type) =
+        resolve_reference_type_id(typed_package, checked_type_map, syntax_id, kind)
+    else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
             format!(
@@ -3468,11 +3603,8 @@ fn lower_function_call(
             .map(|value| value.local_id)
         })
         .collect::<Result<Vec<_>, _>>()?;
-    let call_error_type = lowered_symbol_error_type(
-        typed_package,
-        checked_type_map,
-        resolved_symbol.id,
-    );
+    let call_error_type =
+        lowered_symbol_error_type(typed_package, checked_type_map, resolved_symbol.id);
     let result_local = cursor.allocate_local_with_effect(result_type, call_error_type, None);
     cursor.push_instr(
         Some(result_local),
@@ -3511,7 +3643,10 @@ fn lowered_symbol_error_type(
     checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
     symbol_id: SymbolId,
 ) -> Option<LoweredTypeId> {
-    let declared_type = typed_package.program.typed_symbol(symbol_id)?.declared_type?;
+    let declared_type = typed_package
+        .program
+        .typed_symbol(symbol_id)?
+        .declared_type?;
     let fol_typecheck::CheckedType::Routine(signature) =
         typed_package.program.type_table().get(declared_type)?
     else {
@@ -3542,7 +3677,8 @@ fn resolve_method_target(
         let Some(receiver_checked_type) = typed_symbol.receiver_type else {
             continue;
         };
-        let Some(lowered_receiver_type) = checked_type_map.get(&receiver_checked_type).copied() else {
+        let Some(lowered_receiver_type) = checked_type_map.get(&receiver_checked_type).copied()
+        else {
             continue;
         };
         if lowered_receiver_type != receiver_type {
@@ -3551,14 +3687,17 @@ fn resolve_method_target(
 
         let (owning_identity, owning_symbol_id) =
             canonical_symbol_key(current_identity, symbol.mounted_from.as_ref(), symbol_id);
-        let Some(routine_id) = decl_index.routine_id_for_symbol(&owning_identity, owning_symbol_id) else {
+        let Some(routine_id) = decl_index.routine_id_for_symbol(&owning_identity, owning_symbol_id)
+        else {
             continue;
         };
         let Some(signature_checked_type) = typed_symbol.declared_type else {
             continue;
         };
-        let Some(fol_typecheck::CheckedType::Routine(signature)) =
-            typed_package.program.type_table().get(signature_checked_type)
+        let Some(fol_typecheck::CheckedType::Routine(signature)) = typed_package
+            .program
+            .type_table()
+            .get(signature_checked_type)
         else {
             continue;
         };
@@ -3618,7 +3757,10 @@ fn index_access_type(
             let index_value = literal_index_value(index)?;
             member_types.get(index_value).copied().or_else(|| {
                 let first = member_types.first().copied()?;
-                member_types.iter().all(|member| *member == first).then_some(first)
+                member_types
+                    .iter()
+                    .all(|member| *member == first)
+                    .then_some(first)
             })
         }
         _ => None,
@@ -3630,7 +3772,10 @@ fn expected_linear_element_type(
     expected_type: Option<LoweredTypeId>,
     kind: ContainerType,
 ) -> Option<LoweredTypeId> {
-    match (expected_type.and_then(|type_id| type_table.get(type_id)), kind) {
+    match (
+        expected_type.and_then(|type_id| type_table.get(type_id)),
+        kind,
+    ) {
         (Some(crate::LoweredType::Array { element_type, .. }), ContainerType::Array)
         | (Some(crate::LoweredType::Vector { element_type }), ContainerType::Vector)
         | (Some(crate::LoweredType::Sequence { element_type }), ContainerType::Sequence) => {
@@ -3716,7 +3861,11 @@ fn resolve_map_type(
     value_type: Option<LoweredTypeId>,
 ) -> Option<LoweredTypeId> {
     if let Some(type_id) = expected_type {
-        return matches!(type_table.get(type_id), Some(crate::LoweredType::Map { .. })).then_some(type_id);
+        return matches!(
+            type_table.get(type_id),
+            Some(crate::LoweredType::Map { .. })
+        )
+        .then_some(type_id);
     }
     Some(find_map_type(type_table, key_type?, value_type?))
 }
@@ -3749,7 +3898,12 @@ fn find_array_type(
                 }) if *actual_element == element_type && *actual_size == size
             )
         })
-        .unwrap_or_else(|| panic!("lowered type table lost array shape for element {}", element_type.0))
+        .unwrap_or_else(|| {
+            panic!(
+                "lowered type table lost array shape for element {}",
+                element_type.0
+            )
+        })
 }
 
 fn find_vector_type(
@@ -3766,7 +3920,12 @@ fn find_vector_type(
                 }) if *actual_element == element_type
             )
         })
-        .unwrap_or_else(|| panic!("lowered type table lost vector shape for element {}", element_type.0))
+        .unwrap_or_else(|| {
+            panic!(
+                "lowered type table lost vector shape for element {}",
+                element_type.0
+            )
+        })
 }
 
 fn find_sequence_type(
@@ -3783,10 +3942,18 @@ fn find_sequence_type(
                 }) if *actual_element == element_type
             )
         })
-        .unwrap_or_else(|| panic!("lowered type table lost sequence shape for element {}", element_type.0))
+        .unwrap_or_else(|| {
+            panic!(
+                "lowered type table lost sequence shape for element {}",
+                element_type.0
+            )
+        })
 }
 
-fn find_set_type(type_table: &crate::LoweredTypeTable, member_types: &[LoweredTypeId]) -> LoweredTypeId {
+fn find_set_type(
+    type_table: &crate::LoweredTypeTable,
+    member_types: &[LoweredTypeId],
+) -> LoweredTypeId {
     (0..type_table.len())
         .map(crate::LoweredTypeId)
         .find(|type_id| {
@@ -3865,7 +4032,9 @@ mod tests {
     };
     use fol_parser::ast::AstParser;
     use fol_parser::ast::Literal;
-    use fol_resolver::{resolve_workspace, PackageIdentity, PackageSourceKind, SourceUnitId, SymbolKind};
+    use fol_resolver::{
+        resolve_workspace, PackageIdentity, PackageSourceKind, SourceUnitId, SymbolKind,
+    };
     use fol_stream::FileStream;
     use fol_typecheck::Typechecker;
     use std::collections::BTreeMap;
@@ -4040,7 +4209,8 @@ mod tests {
         let float_type = types.intern_builtin(LoweredBuiltinType::Float);
         let str_type = types.intern_builtin(LoweredBuiltinType::Str);
 
-        let mut routine = LoweredRoutine::new(crate::LoweredRoutineId(0), "main", crate::LoweredBlockId(0));
+        let mut routine =
+            LoweredRoutine::new(crate::LoweredRoutineId(0), "main", crate::LoweredBlockId(0));
         let entry = routine.blocks.push(LoweredBlock {
             id: crate::LoweredBlockId(0),
             instructions: Vec::new(),
@@ -4059,22 +4229,43 @@ mod tests {
             .lower_literal(&Literal::String("ok".to_string()), str_type)
             .expect("string literals should lower");
 
-        assert_eq!(routine.blocks.get(entry).expect("entry block should exist").instructions.len(), 3);
+        assert_eq!(
+            routine
+                .blocks
+                .get(entry)
+                .expect("entry block should exist")
+                .instructions
+                .len(),
+            3
+        );
         assert_eq!(routine.locals.len(), 3);
         assert_eq!(int_value.local_id.0, 0);
         assert_eq!(float_value.local_id.0, 1);
         assert_eq!(str_value.local_id.0, 2);
         assert_eq!(
-            routine.instructions.get(crate::LoweredInstrId(0)).map(|instr| &instr.kind),
+            routine
+                .instructions
+                .get(crate::LoweredInstrId(0))
+                .map(|instr| &instr.kind),
             Some(&LoweredInstrKind::Const(LoweredOperand::Int(7)))
         );
         assert_eq!(
-            routine.instructions.get(crate::LoweredInstrId(1)).map(|instr| &instr.kind),
-            Some(&LoweredInstrKind::Const(LoweredOperand::Float(3.5f64.to_bits())))
+            routine
+                .instructions
+                .get(crate::LoweredInstrId(1))
+                .map(|instr| &instr.kind),
+            Some(&LoweredInstrKind::Const(LoweredOperand::Float(
+                3.5f64.to_bits()
+            )))
         );
         assert_eq!(
-            routine.instructions.get(crate::LoweredInstrId(2)).map(|instr| &instr.kind),
-            Some(&LoweredInstrKind::Const(LoweredOperand::Str("ok".to_string())))
+            routine
+                .instructions
+                .get(crate::LoweredInstrId(2))
+                .map(|instr| &instr.kind),
+            Some(&LoweredInstrKind::Const(LoweredOperand::Str(
+                "ok".to_string()
+            )))
         );
     }
 
@@ -4118,7 +4309,12 @@ mod tests {
             let param_names = routine
                 .params
                 .iter()
-                .filter_map(|local_id| routine.locals.get(*local_id).and_then(|local| local.name.clone()))
+                .filter_map(|local_id| {
+                    routine
+                        .locals
+                        .get(*local_id)
+                        .and_then(|local| local.name.clone())
+                })
                 .collect::<Vec<_>>();
             assert!(
                 param_names.iter().any(|name| name == "flag"),
@@ -4129,23 +4325,21 @@ mod tests {
 
     #[test]
     fn lowering_repro_lowers_non_empty_seq_literals_in_typed_v1_contexts() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] take(values: seq[str]): seq[str] = {\n",
-                "    return values\n",
-                "}\n",
-                "fun[] from_binding(): seq[str] = {\n",
-                "    var names: seq[str] = {\"Ada\", \"Lin\"}\n",
-                "    return names\n",
-                "}\n",
-                "fun[] from_return(): seq[str] = {\n",
-                "    return {\"Ada\", \"Lin\"}\n",
-                "}\n",
-                "fun[] from_arg(): seq[str] = {\n",
-                "    return take({\"Ada\", \"Lin\"})\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] take(values: seq[str]): seq[str] = {\n",
+            "    return values\n",
+            "}\n",
+            "fun[] from_binding(): seq[str] = {\n",
+            "    var names: seq[str] = {\"Ada\", \"Lin\"}\n",
+            "    return names\n",
+            "}\n",
+            "fun[] from_return(): seq[str] = {\n",
+            "    return {\"Ada\", \"Lin\"}\n",
+            "}\n",
+            "fun[] from_arg(): seq[str] = {\n",
+            "    return take({\"Ada\", \"Lin\"})\n",
+            "}\n",
+        ));
 
         for routine_name in ["from_binding", "from_return", "from_arg"] {
             let routine = lowered
@@ -4154,12 +4348,15 @@ mod tests {
                 .values()
                 .find(|routine| routine.name == routine_name)
                 .expect("sequence lowering routine should exist");
-            let construct = routine.instructions.iter().find_map(|instr| match &instr.kind {
-                LoweredInstrKind::ConstructLinear { kind, elements, .. } => {
-                    Some((*kind, elements.len()))
-                }
-                _ => None,
-            });
+            let construct = routine
+                .instructions
+                .iter()
+                .find_map(|instr| match &instr.kind {
+                    LoweredInstrKind::ConstructLinear { kind, elements, .. } => {
+                        Some((*kind, elements.len()))
+                    }
+                    _ => None,
+                });
 
             assert_eq!(
                 construct,
@@ -4171,24 +4368,22 @@ mod tests {
 
     #[test]
     fn lowering_repro_lowers_non_empty_set_and_map_literals_in_typed_v1_contexts() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] set_return(): set[int, str] = {\n",
-                "    return {1, \"two\"}\n",
-                "}\n",
-                "fun[] map_return(): map[str, int] = {\n",
-                "    return {{\"US\", 45}, {\"DE\", 82}}\n",
-                "}\n",
-                "fun[] from_set_index(): str = {\n",
-                "    var parts: set[int, str] = {1, \"two\"}\n",
-                "    return parts[1]\n",
-                "}\n",
-                "fun[] from_map_index(): int = {\n",
-                "    var counts: map[str, int] = {{\"US\", 45}, {\"DE\", 82}}\n",
-                "    return counts[\"DE\"]\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] set_return(): set[int, str] = {\n",
+            "    return {1, \"two\"}\n",
+            "}\n",
+            "fun[] map_return(): map[str, int] = {\n",
+            "    return {{\"US\", 45}, {\"DE\", 82}}\n",
+            "}\n",
+            "fun[] from_set_index(): str = {\n",
+            "    var parts: set[int, str] = {1, \"two\"}\n",
+            "    return parts[1]\n",
+            "}\n",
+            "fun[] from_map_index(): int = {\n",
+            "    var counts: map[str, int] = {{\"US\", 45}, {\"DE\", 82}}\n",
+            "    return counts[\"DE\"]\n",
+            "}\n",
+        ));
 
         let expected = [
             ("set_return", "set", 2usize),
@@ -4203,11 +4398,19 @@ mod tests {
                 .values()
                 .find(|routine| routine.name == routine_name)
                 .expect("aggregate lowering routine should exist");
-            let lowered_members = routine.instructions.iter().find_map(|instr| match (&instr.kind, aggregate_kind) {
-                (LoweredInstrKind::ConstructSet { members, .. }, "set") => Some(members.len()),
-                (LoweredInstrKind::ConstructMap { entries, .. }, "map") => Some(entries.len()),
-                _ => None,
-            });
+            let lowered_members =
+                routine
+                    .instructions
+                    .iter()
+                    .find_map(|instr| match (&instr.kind, aggregate_kind) {
+                        (LoweredInstrKind::ConstructSet { members, .. }, "set") => {
+                            Some(members.len())
+                        }
+                        (LoweredInstrKind::ConstructMap { entries, .. }, "map") => {
+                            Some(entries.len())
+                        }
+                        _ => None,
+                    });
 
             assert_eq!(
                 lowered_members,
@@ -4219,16 +4422,14 @@ mod tests {
 
     #[test]
     fn lowering_repro_keeps_exact_typed_container_instruction_shapes() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] seq_return(): seq[str] = {\n",
-                "    return {\"Ada\", \"Lin\"}\n",
-                "}\n",
-                "fun[] map_return(): map[str, int] = {\n",
-                "    return {{\"US\", 45}, {\"DE\", 82}}\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] seq_return(): seq[str] = {\n",
+            "    return {\"Ada\", \"Lin\"}\n",
+            "}\n",
+            "fun[] map_return(): map[str, int] = {\n",
+            "    return {{\"US\", 45}, {\"DE\", 82}}\n",
+            "}\n",
+        ));
 
         let seq_routine = lowered
             .entry_package()
@@ -4266,7 +4467,10 @@ mod tests {
             Some(LoweredInstrKind::Const(LoweredOperand::Str(value))) if value == "US"
         ));
         assert!(matches!(
-            map_routine.instructions.get(crate::LoweredInstrId(1)).map(|instr| &instr.kind),
+            map_routine
+                .instructions
+                .get(crate::LoweredInstrId(1))
+                .map(|instr| &instr.kind),
             Some(LoweredInstrKind::Const(LoweredOperand::Int(45)))
         ));
         assert!(matches!(
@@ -4274,7 +4478,10 @@ mod tests {
             Some(LoweredInstrKind::Const(LoweredOperand::Str(value))) if value == "DE"
         ));
         assert!(matches!(
-            map_routine.instructions.get(crate::LoweredInstrId(3)).map(|instr| &instr.kind),
+            map_routine
+                .instructions
+                .get(crate::LoweredInstrId(3))
+                .map(|instr| &instr.kind),
             Some(LoweredInstrKind::Const(LoweredOperand::Int(82)))
         ));
         assert!(matches!(
@@ -4285,56 +4492,54 @@ mod tests {
 
     #[test]
     fn lowering_repro_lowers_early_return_when_branches_as_statement_control_flow() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "var enabled: bol = true\n",
-                "var default_name: str = \"Ada\"\n",
-                "var low_count: int = 1\n",
-                "var high_count: int = 7\n",
-                "typ NameTag: rec = {\n",
-                "    label: str;\n",
-                "    code: int\n",
-                "}\n",
-                "typ Audit: rec = {\n",
-                "    active: bol;\n",
-                "    marker: NameTag\n",
-                "}\n",
-                "typ User: rec = {\n",
-                "    name: str;\n",
-                "    count: int;\n",
-                "    audit: Audit\n",
-                "}\n",
-                "fun[] build_tag(): NameTag = {\n",
-                "    return { label = \"stable\", code = high_count }\n",
-                "}\n",
-                "fun[] build_user(): User = {\n",
-                "    return {\n",
-                "        name = default_name,\n",
-                "        count = high_count,\n",
-                "        audit = {\n",
-                "            active = enabled,\n",
-                "            marker = build_tag(),\n",
-                "        },\n",
-                "    }\n",
-                "}\n",
-                "fun[] choose_count(): int = {\n",
-                "    when(enabled) {\n",
-                "        case(true) { high_count }\n",
-                "        * { low_count }\n",
-                "    }\n",
-                "}\n",
-                "fun[] main(): int = {\n",
-                "    var current: User = build_user()\n",
-                "    loop(enabled) {\n",
-                "        break\n",
-                "    }\n",
-                "    when(enabled) {\n",
-                "        case(true) { return current.audit.marker.code }\n",
-                "        * { return choose_count() }\n",
-                "    }\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "var enabled: bol = true\n",
+            "var default_name: str = \"Ada\"\n",
+            "var low_count: int = 1\n",
+            "var high_count: int = 7\n",
+            "typ NameTag: rec = {\n",
+            "    label: str;\n",
+            "    code: int\n",
+            "}\n",
+            "typ Audit: rec = {\n",
+            "    active: bol;\n",
+            "    marker: NameTag\n",
+            "}\n",
+            "typ User: rec = {\n",
+            "    name: str;\n",
+            "    count: int;\n",
+            "    audit: Audit\n",
+            "}\n",
+            "fun[] build_tag(): NameTag = {\n",
+            "    return { label = \"stable\", code = high_count }\n",
+            "}\n",
+            "fun[] build_user(): User = {\n",
+            "    return {\n",
+            "        name = default_name,\n",
+            "        count = high_count,\n",
+            "        audit = {\n",
+            "            active = enabled,\n",
+            "            marker = build_tag(),\n",
+            "        },\n",
+            "    }\n",
+            "}\n",
+            "fun[] choose_count(): int = {\n",
+            "    when(enabled) {\n",
+            "        case(true) { high_count }\n",
+            "        * { low_count }\n",
+            "    }\n",
+            "}\n",
+            "fun[] main(): int = {\n",
+            "    var current: User = build_user()\n",
+            "    loop(enabled) {\n",
+            "        break\n",
+            "    }\n",
+            "    when(enabled) {\n",
+            "        case(true) { return current.audit.marker.code }\n",
+            "        * { return choose_count() }\n",
+            "    }\n",
+            "}\n",
+        ));
         let routine = lowered
             .entry_package()
             .routine_decls
@@ -4344,7 +4549,12 @@ mod tests {
         let return_blocks = routine
             .blocks
             .iter()
-            .filter(|block| matches!(block.terminator, Some(crate::LoweredTerminator::Return { .. })))
+            .filter(|block| {
+                matches!(
+                    block.terminator,
+                    Some(crate::LoweredTerminator::Return { .. })
+                )
+            })
             .count();
 
         assert_eq!(routine.body_result, None);
@@ -4369,7 +4579,10 @@ mod tests {
         assert_eq!(routine.blocks.len(), 3);
         assert_eq!(routine.body_result, None);
         assert!(matches!(
-            routine.blocks.get(crate::LoweredBlockId(0)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(0))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Branch {
                 then_block: crate::LoweredBlockId(1),
                 else_block: crate::LoweredBlockId(2),
@@ -4377,27 +4590,31 @@ mod tests {
             })
         ));
         assert!(matches!(
-            routine.blocks.get(crate::LoweredBlockId(1)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(1))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Return { value: Some(_) })
         ));
         assert!(matches!(
-            routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(2))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Return { value: Some(_) })
         ));
     }
 
     #[test]
     fn comparison_intrinsic_lowering_emits_intrinsic_calls_with_canonical_ids() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] eq_main(): bol = {\n",
-                "    return .eq(1, 1)\n",
-                "}\n",
-                "fun[] lt_main(): bol = {\n",
-                "    return .lt(1, 2)\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] eq_main(): bol = {\n",
+            "    return .eq(1, 1)\n",
+            "}\n",
+            "fun[] lt_main(): bol = {\n",
+            "    return .lt(1, 2)\n",
+            "}\n",
+        ));
 
         let entry = lowered.entry_package();
         for (routine_name, intrinsic_name) in [("eq_main", "eq"), ("lt_main", "lt")] {
@@ -4409,10 +4626,15 @@ mod tests {
             let intrinsic_id = fol_intrinsics::intrinsic_by_canonical_name(intrinsic_name)
                 .expect("intrinsic should exist")
                 .id;
-            let lowered_call = routine.instructions.iter().find_map(|instr| match &instr.kind {
-                LoweredInstrKind::IntrinsicCall { intrinsic, args } => Some((*intrinsic, args.len())),
-                _ => None,
-            });
+            let lowered_call = routine
+                .instructions
+                .iter()
+                .find_map(|instr| match &instr.kind {
+                    LoweredInstrKind::IntrinsicCall { intrinsic, args } => {
+                        Some((*intrinsic, args.len()))
+                    }
+                    _ => None,
+                });
 
             assert_eq!(
                 lowered_call,
@@ -4424,13 +4646,11 @@ mod tests {
 
     #[test]
     fn boolean_intrinsic_lowering_emits_intrinsic_calls_with_canonical_ids() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] main(flag: bol): bol = {\n",
-                "    return .not(flag)\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] main(flag: bol): bol = {\n",
+            "    return .not(flag)\n",
+            "}\n",
+        ));
 
         let routine = lowered
             .entry_package()
@@ -4441,10 +4661,15 @@ mod tests {
         let intrinsic_id = fol_intrinsics::intrinsic_by_canonical_name("not")
             .expect("not intrinsic should exist")
             .id;
-        let lowered_call = routine.instructions.iter().find_map(|instr| match &instr.kind {
-            LoweredInstrKind::IntrinsicCall { intrinsic, args } => Some((*intrinsic, args.len())),
-            _ => None,
-        });
+        let lowered_call = routine
+            .instructions
+            .iter()
+            .find_map(|instr| match &instr.kind {
+                LoweredInstrKind::IntrinsicCall { intrinsic, args } => {
+                    Some((*intrinsic, args.len()))
+                }
+                _ => None,
+            });
 
         assert_eq!(
             lowered_call,
@@ -4455,13 +4680,11 @@ mod tests {
 
     #[test]
     fn length_intrinsic_lowering_emits_dedicated_length_instructions() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] main(items: seq[int]): int = {\n",
-                "    return .len(items)\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] main(items: seq[int]): int = {\n",
+            "    return .len(items)\n",
+            "}\n",
+        ));
 
         let routine = lowered
             .entry_package()
@@ -4469,10 +4692,13 @@ mod tests {
             .values()
             .find(|routine| routine.name == "main")
             .expect("length intrinsic lowering routine should exist");
-        let lowered_len = routine.instructions.iter().find_map(|instr| match &instr.kind {
-            LoweredInstrKind::LengthOf { operand } => Some(*operand),
-            _ => None,
-        });
+        let lowered_len = routine
+            .instructions
+            .iter()
+            .find_map(|instr| match &instr.kind {
+                LoweredInstrKind::LengthOf { operand } => Some(*operand),
+                _ => None,
+            });
 
         assert_eq!(
             lowered_len,
@@ -4483,13 +4709,11 @@ mod tests {
 
     #[test]
     fn diagnostic_intrinsic_lowering_emits_runtime_hooks_and_forwards_values() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] main(flag: bol): bol = {\n",
-                "    return .echo(flag)\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] main(flag: bol): bol = {\n",
+            "    return .echo(flag)\n",
+            "}\n",
+        ));
 
         let routine = lowered
             .entry_package()
@@ -4500,10 +4724,15 @@ mod tests {
         let intrinsic_id = fol_intrinsics::intrinsic_by_canonical_name("echo")
             .expect("echo intrinsic should exist")
             .id;
-        let lowered_hook = routine.instructions.iter().find_map(|instr| match &instr.kind {
-            LoweredInstrKind::RuntimeHook { intrinsic, args } => Some((*intrinsic, args.clone())),
-            _ => None,
-        });
+        let lowered_hook = routine
+            .instructions
+            .iter()
+            .find_map(|instr| match &instr.kind {
+                LoweredInstrKind::RuntimeHook { intrinsic, args } => {
+                    Some((*intrinsic, args.clone()))
+                }
+                _ => None,
+            });
 
         assert_eq!(
             lowered_hook,
@@ -4527,11 +4756,7 @@ mod tests {
         ));
         std::fs::write(
             &fixture,
-            concat!(
-                "fun[] main(): bol = {\n",
-                "    return .eq(1, 1)\n",
-                "}\n",
-            ),
+            concat!("fun[] main(): bol = {\n", "    return .eq(1, 1)\n", "}\n",),
         )
         .expect("should write lowering intrinsic identity fixture");
 
@@ -4576,7 +4801,8 @@ mod tests {
             .id;
 
         assert_eq!(
-            typed.entry_program()
+            typed
+                .entry_program()
                 .typed_node(call_syntax_id)
                 .and_then(|node| node.intrinsic_id),
             Some(canonical_intrinsic),
@@ -4589,10 +4815,14 @@ mod tests {
             .values()
             .find(|routine| routine.name == "main")
             .expect("lowered main routine should exist");
-        let lowered_intrinsic = main_routine.instructions.iter().find_map(|instr| match &instr.kind {
-            LoweredInstrKind::IntrinsicCall { intrinsic, .. } => Some(*intrinsic),
-            _ => None,
-        });
+        let lowered_intrinsic =
+            main_routine
+                .instructions
+                .iter()
+                .find_map(|instr| match &instr.kind {
+                    LoweredInstrKind::IntrinsicCall { intrinsic, .. } => Some(*intrinsic),
+                    _ => None,
+                });
 
         assert_eq!(
             lowered_intrinsic,
@@ -4605,7 +4835,8 @@ mod tests {
     fn nil_literal_lowering_stays_deferred_to_shell_lowering() {
         let mut types = LoweredTypeTable::new();
         let int_type = types.intern_builtin(LoweredBuiltinType::Int);
-        let mut routine = LoweredRoutine::new(crate::LoweredRoutineId(0), "main", crate::LoweredBlockId(0));
+        let mut routine =
+            LoweredRoutine::new(crate::LoweredRoutineId(0), "main", crate::LoweredBlockId(0));
         let entry = routine.blocks.push(LoweredBlock {
             id: crate::LoweredBlockId(0),
             instructions: Vec::new(),
@@ -4684,7 +4915,8 @@ mod tests {
             .lower_identifier_reference(
                 lowered_workspace.entry_identity(),
                 &decl_index,
-                typed.entry_program()
+                typed
+                    .entry_program()
                     .resolved()
                     .symbol(param_symbol)
                     .expect("parameter symbol should resolve"),
@@ -4695,7 +4927,8 @@ mod tests {
             .lower_identifier_reference(
                 lowered_workspace.entry_identity(),
                 &decl_index,
-                typed.entry_program()
+                typed
+                    .entry_program()
                     .resolved()
                     .symbol(global_symbol)
                     .expect("global symbol should resolve"),
@@ -4704,13 +4937,19 @@ mod tests {
             .expect("global references should lower to global loads");
 
         assert_eq!(
-            routine.instructions.get(crate::LoweredInstrId(0)).map(|instr| &instr.kind),
+            routine
+                .instructions
+                .get(crate::LoweredInstrId(0))
+                .map(|instr| &instr.kind),
             Some(&LoweredInstrKind::LoadLocal {
                 local: routine.local_symbols[&param_symbol],
             })
         );
         assert_eq!(
-            routine.instructions.get(crate::LoweredInstrId(1)).map(|instr| &instr.kind),
+            routine
+                .instructions
+                .get(crate::LoweredInstrId(1))
+                .map(|instr| &instr.kind),
             Some(&LoweredInstrKind::LoadGlobal {
                 global: package.globals[0],
             })
@@ -4822,19 +5061,28 @@ mod tests {
 
         assert_eq!(entry_block.instructions.len(), 3);
         assert_eq!(
-            routine.instructions.get(crate::LoweredInstrId(0)).map(|instr| &instr.kind),
+            routine
+                .instructions
+                .get(crate::LoweredInstrId(0))
+                .map(|instr| &instr.kind),
             Some(&LoweredInstrKind::Const(LoweredOperand::Int(1)))
         );
         assert!(
             matches!(
-                routine.instructions.get(crate::LoweredInstrId(1)).map(|instr| &instr.kind),
+                routine
+                    .instructions
+                    .get(crate::LoweredInstrId(1))
+                    .map(|instr| &instr.kind),
                 Some(LoweredInstrKind::StoreLocal { .. })
             ),
             "local binding initializer should lower into a store"
         );
         assert!(
             matches!(
-                routine.instructions.get(crate::LoweredInstrId(2)).map(|instr| &instr.kind),
+                routine
+                    .instructions
+                    .get(crate::LoweredInstrId(2))
+                    .map(|instr| &instr.kind),
                 Some(LoweredInstrKind::LoadLocal { .. })
             ),
             "final body expression should lower into a local load"
@@ -5044,19 +5292,17 @@ mod tests {
 
     #[test]
     fn propagation_lowering_branches_and_reports_recoverable_calls() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] load(flag: bol): int / str = {\n",
-                "    when(flag) {\n",
-                "        case(true) { report \"bad\" }\n",
-                "        * { return 7 }\n",
-                "    }\n",
-                "}\n",
-                "fun[] main(flag: bol): int / str = {\n",
-                "    return load(flag)\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] load(flag: bol): int / str = {\n",
+            "    when(flag) {\n",
+            "        case(true) { report \"bad\" }\n",
+            "        * { return 7 }\n",
+            "    }\n",
+            "}\n",
+            "fun[] main(flag: bol): int / str = {\n",
+            "    return load(flag)\n",
+            "}\n",
+        ));
 
         let routine = lowered
             .entry_package()
@@ -5067,46 +5313,47 @@ mod tests {
 
         assert!(routine.instructions.iter().any(|instr| matches!(
             instr.kind,
-            LoweredInstrKind::Call { error_type: Some(_), .. }
+            LoweredInstrKind::Call {
+                error_type: Some(_),
+                ..
+            }
         )));
-        assert!(routine.instructions.iter().any(|instr| matches!(
-            instr.kind,
-            LoweredInstrKind::CheckRecoverable { .. }
-        )));
-        assert!(routine.instructions.iter().any(|instr| matches!(
-            instr.kind,
-            LoweredInstrKind::UnwrapRecoverable { .. }
-        )));
-        assert!(routine.instructions.iter().any(|instr| matches!(
-            instr.kind,
-            LoweredInstrKind::ExtractRecoverableError { .. }
-        )));
-        assert!(routine.blocks.iter().any(|block| matches!(
-            block.terminator,
-            Some(LoweredTerminator::Branch { .. })
-        )));
-        assert!(routine.blocks.iter().any(|block| matches!(
-            block.terminator,
-            Some(LoweredTerminator::Report { .. })
-        )));
+        assert!(routine
+            .instructions
+            .iter()
+            .any(|instr| matches!(instr.kind, LoweredInstrKind::CheckRecoverable { .. })));
+        assert!(routine
+            .instructions
+            .iter()
+            .any(|instr| matches!(instr.kind, LoweredInstrKind::UnwrapRecoverable { .. })));
+        assert!(routine
+            .instructions
+            .iter()
+            .any(|instr| matches!(instr.kind, LoweredInstrKind::ExtractRecoverableError { .. })));
+        assert!(routine
+            .blocks
+            .iter()
+            .any(|block| matches!(block.terminator, Some(LoweredTerminator::Branch { .. }))));
+        assert!(routine
+            .blocks
+            .iter()
+            .any(|block| matches!(block.terminator, Some(LoweredTerminator::Report { .. }))));
     }
 
     #[test]
     fn check_lowering_observes_recoverable_bindings_without_propagation() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] load(flag: bol): int / str = {\n",
-                "    when(flag) {\n",
-                "        case(true) { report \"bad\" }\n",
-                "        * { return 7 }\n",
-                "    }\n",
-                "}\n",
-                "fun[] main(flag: bol): bol = {\n",
-                "    var attempt = load(flag)\n",
-                "    return check(attempt)\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] load(flag: bol): int / str = {\n",
+            "    when(flag) {\n",
+            "        case(true) { report \"bad\" }\n",
+            "        * { return 7 }\n",
+            "    }\n",
+            "}\n",
+            "fun[] main(flag: bol): bol = {\n",
+            "    var attempt = load(flag)\n",
+            "    return check(attempt)\n",
+            "}\n",
+        ));
 
         let routine = lowered
             .entry_package()
@@ -5121,31 +5368,29 @@ mod tests {
             .expect("attempt local should exist");
 
         assert!(attempt_local.recoverable_error_type.is_some());
-        assert!(routine.instructions.iter().any(|instr| matches!(
-            instr.kind,
-            LoweredInstrKind::CheckRecoverable { .. }
-        )));
-        assert!(!routine.blocks.iter().any(|block| matches!(
-            block.terminator,
-            Some(LoweredTerminator::Report { .. })
-        )));
+        assert!(routine
+            .instructions
+            .iter()
+            .any(|instr| matches!(instr.kind, LoweredInstrKind::CheckRecoverable { .. })));
+        assert!(!routine
+            .blocks
+            .iter()
+            .any(|block| matches!(block.terminator, Some(LoweredTerminator::Report { .. }))));
     }
 
     #[test]
     fn pipe_or_default_lowering_branches_to_a_plain_fallback_value() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] load(flag: bol): int / str = {\n",
-                "    when(flag) {\n",
-                "        case(true) { report \"bad\" }\n",
-                "        * { return 7 }\n",
-                "    }\n",
-                "}\n",
-                "fun[] main(flag: bol): int = {\n",
-                "    return load(flag) || 5\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] load(flag: bol): int / str = {\n",
+            "    when(flag) {\n",
+            "        case(true) { report \"bad\" }\n",
+            "        * { return 7 }\n",
+            "    }\n",
+            "}\n",
+            "fun[] main(flag: bol): int = {\n",
+            "    return load(flag) || 5\n",
+            "}\n",
+        ));
 
         let routine = lowered
             .entry_package()
@@ -5154,18 +5399,18 @@ mod tests {
             .find(|routine| routine.name == "main")
             .expect("main routine should exist");
 
-        assert!(routine.instructions.iter().any(|instr| matches!(
-            instr.kind,
-            LoweredInstrKind::CheckRecoverable { .. }
-        )));
-        assert!(routine.instructions.iter().any(|instr| matches!(
-            instr.kind,
-            LoweredInstrKind::UnwrapRecoverable { .. }
-        )));
-        assert!(routine.instructions.iter().any(|instr| matches!(
-            instr.kind,
-            LoweredInstrKind::Const(LoweredOperand::Int(5))
-        )));
+        assert!(routine
+            .instructions
+            .iter()
+            .any(|instr| matches!(instr.kind, LoweredInstrKind::CheckRecoverable { .. })));
+        assert!(routine
+            .instructions
+            .iter()
+            .any(|instr| matches!(instr.kind, LoweredInstrKind::UnwrapRecoverable { .. })));
+        assert!(routine
+            .instructions
+            .iter()
+            .any(|instr| matches!(instr.kind, LoweredInstrKind::Const(LoweredOperand::Int(5)))));
         assert!(!routine.blocks.iter().any(|block| matches!(
             block.terminator,
             Some(LoweredTerminator::Report { .. } | LoweredTerminator::Panic { .. })
@@ -5174,19 +5419,17 @@ mod tests {
 
     #[test]
     fn pipe_or_report_lowering_uses_error_branch_reports() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] load(flag: bol): int / str = {\n",
-                "    when(flag) {\n",
-                "        case(true) { report \"bad\" }\n",
-                "        * { return 7 }\n",
-                "    }\n",
-                "}\n",
-                "fun[] main(flag: bol): int / str = {\n",
-                "    return load(flag) || report \"fallback\"\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] load(flag: bol): int / str = {\n",
+            "    when(flag) {\n",
+            "        case(true) { report \"bad\" }\n",
+            "        * { return 7 }\n",
+            "    }\n",
+            "}\n",
+            "fun[] main(flag: bol): int / str = {\n",
+            "    return load(flag) || report \"fallback\"\n",
+            "}\n",
+        ));
 
         let routine = lowered
             .entry_package()
@@ -5195,27 +5438,25 @@ mod tests {
             .find(|routine| routine.name == "main")
             .expect("main routine should exist");
 
-        assert!(routine.blocks.iter().any(|block| matches!(
-            block.terminator,
-            Some(LoweredTerminator::Report { .. })
-        )));
+        assert!(routine
+            .blocks
+            .iter()
+            .any(|block| matches!(block.terminator, Some(LoweredTerminator::Report { .. }))));
     }
 
     #[test]
     fn pipe_or_panic_lowering_uses_error_branch_panics() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] load(flag: bol): int / str = {\n",
-                "    when(flag) {\n",
-                "        case(true) { report \"bad\" }\n",
-                "        * { return 7 }\n",
-                "    }\n",
-                "}\n",
-                "fun[] main(flag: bol): int = {\n",
-                "    return load(flag) || panic \"fallback\"\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] load(flag: bol): int / str = {\n",
+            "    when(flag) {\n",
+            "        case(true) { report \"bad\" }\n",
+            "        * { return 7 }\n",
+            "    }\n",
+            "}\n",
+            "fun[] main(flag: bol): int = {\n",
+            "    return load(flag) || panic \"fallback\"\n",
+            "}\n",
+        ));
 
         let routine = lowered
             .entry_package()
@@ -5224,21 +5465,19 @@ mod tests {
             .find(|routine| routine.name == "main")
             .expect("main routine should exist");
 
-        assert!(routine.blocks.iter().any(|block| matches!(
-            block.terminator,
-            Some(LoweredTerminator::Panic { .. })
-        )));
+        assert!(routine
+            .blocks
+            .iter()
+            .any(|block| matches!(block.terminator, Some(LoweredTerminator::Panic { .. }))));
     }
 
     #[test]
     fn standalone_panic_lowering_uses_keyword_intrinsic_terminators() {
-        let lowered = lower_fixture_workspace(
-            concat!(
-                "fun[] main(): int = {\n",
-                "    panic \"boom\"\n",
-                "}\n",
-            ),
-        );
+        let lowered = lower_fixture_workspace(concat!(
+            "fun[] main(): int = {\n",
+            "    panic \"boom\"\n",
+            "}\n",
+        ));
 
         let routine = lowered
             .entry_package()
@@ -5247,10 +5486,10 @@ mod tests {
             .find(|routine| routine.name == "main")
             .expect("main routine should exist");
 
-        assert!(routine.blocks.iter().any(|block| matches!(
-            block.terminator,
-            Some(LoweredTerminator::Panic { .. })
-        )));
+        assert!(routine
+            .blocks
+            .iter()
+            .any(|block| matches!(block.terminator, Some(LoweredTerminator::Panic { .. }))));
     }
 
     #[test]
@@ -5423,11 +5662,8 @@ mod tests {
                 .expect("system clock should be monotonic enough for tmp names")
                 .as_nanos()
         ));
-        std::fs::write(
-            &fixture,
-            "fun[] main(): int = {\n    return 1\n    2\n}",
-        )
-        .expect("should write lowering return fixture");
+        std::fs::write(&fixture, "fun[] main(): int = {\n    return 1\n    2\n}")
+            .expect("should write lowering return fixture");
 
         let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
             .expect("Should open lowering fixture");
@@ -5463,7 +5699,10 @@ mod tests {
             })
         );
         assert_eq!(
-            routine.instructions.get(crate::LoweredInstrId(0)).map(|instr| &instr.kind),
+            routine
+                .instructions
+                .get(crate::LoweredInstrId(0))
+                .map(|instr| &instr.kind),
             Some(&LoweredInstrKind::Const(LoweredOperand::Int(1)))
         );
         assert!(
@@ -5515,7 +5754,10 @@ mod tests {
 
         assert_eq!(entry_block.instructions.len(), 1);
         assert_eq!(
-            routine.instructions.get(crate::LoweredInstrId(0)).map(|instr| &instr.kind),
+            routine
+                .instructions
+                .get(crate::LoweredInstrId(0))
+                .map(|instr| &instr.kind),
             Some(&LoweredInstrKind::LoadLocal {
                 local: routine.params[0],
             })
@@ -5699,7 +5941,10 @@ mod tests {
 
         assert_eq!(routine.blocks.len(), 3);
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(0)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(0))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Branch {
                 condition: crate::LoweredLocalId(2),
                 then_block: crate::LoweredBlockId(1),
@@ -5707,13 +5952,19 @@ mod tests {
             })
         );
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(1)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(1))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Jump {
                 target: crate::LoweredBlockId(2),
             })
         );
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(2))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Return {
                 value: Some(crate::LoweredLocalId(4)),
             })
@@ -5759,7 +6010,10 @@ mod tests {
 
         assert_eq!(routine.blocks.len(), 4);
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(0)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(0))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Branch {
                 condition: crate::LoweredLocalId(2),
                 then_block: crate::LoweredBlockId(2),
@@ -5767,19 +6021,28 @@ mod tests {
             })
         );
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(2))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Jump {
                 target: crate::LoweredBlockId(1),
             })
         );
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(3)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(3))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Jump {
                 target: crate::LoweredBlockId(1),
             })
         );
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(1)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(1))
+                .and_then(|block| block.terminator.clone()),
             None
         );
         assert_eq!(routine.body_result, Some(crate::LoweredLocalId(3)));
@@ -5824,13 +6087,19 @@ mod tests {
 
         assert_eq!(routine.blocks.len(), 4);
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(0)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(0))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Jump {
                 target: crate::LoweredBlockId(1),
             })
         );
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(1)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(1))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Branch {
                 condition: crate::LoweredLocalId(2),
                 then_block: crate::LoweredBlockId(2),
@@ -5838,13 +6107,19 @@ mod tests {
             })
         );
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(2))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Jump {
                 target: crate::LoweredBlockId(1),
             })
         );
         assert!(matches!(
-            routine.blocks.get(crate::LoweredBlockId(3)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(3))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Return { .. })
         ));
     }
@@ -5888,13 +6163,19 @@ mod tests {
 
         assert_eq!(routine.blocks.len(), 4);
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(0)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(0))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Jump {
                 target: crate::LoweredBlockId(1),
             })
         );
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(1)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(1))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Branch {
                 condition: crate::LoweredLocalId(2),
                 then_block: crate::LoweredBlockId(2),
@@ -5902,13 +6183,19 @@ mod tests {
             })
         );
         assert_eq!(
-            routine.blocks.get(crate::LoweredBlockId(2)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(2))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Jump {
                 target: crate::LoweredBlockId(3),
             })
         );
         assert!(matches!(
-            routine.blocks.get(crate::LoweredBlockId(3)).and_then(|block| block.terminator.clone()),
+            routine
+                .blocks
+                .get(crate::LoweredBlockId(3))
+                .and_then(|block| block.terminator.clone()),
             Some(LoweredTerminator::Return { .. })
         ));
     }
@@ -5997,8 +6284,16 @@ mod tests {
 
         for (routine_name, expected_kind, expected_len) in [
             ("make_arr", crate::control::LoweredLinearKind::Array, 3usize),
-            ("make_vec", crate::control::LoweredLinearKind::Vector, 3usize),
-            ("make_seq", crate::control::LoweredLinearKind::Sequence, 3usize),
+            (
+                "make_vec",
+                crate::control::LoweredLinearKind::Vector,
+                3usize,
+            ),
+            (
+                "make_seq",
+                crate::control::LoweredLinearKind::Sequence,
+                3usize,
+            ),
         ] {
             let routine = lowered
                 .entry_package()
@@ -6006,14 +6301,17 @@ mod tests {
                 .values()
                 .find(|routine| routine.name == routine_name)
                 .expect("lowered routine should exist");
-            let construct = routine.instructions.iter().find_map(|instr| match &instr.kind {
-                LoweredInstrKind::ConstructLinear {
-                    kind,
-                    type_id: _,
-                    elements,
-                } => Some((*kind, elements.len())),
-                _ => None,
-            });
+            let construct = routine
+                .instructions
+                .iter()
+                .find_map(|instr| match &instr.kind {
+                    LoweredInstrKind::ConstructLinear {
+                        kind,
+                        type_id: _,
+                        elements,
+                    } => Some((*kind, elements.len())),
+                    _ => None,
+                });
 
             assert_eq!(construct, Some((expected_kind, expected_len)));
         }
@@ -6055,14 +6353,20 @@ mod tests {
             .values()
             .find(|routine| routine.name == "main")
             .expect("main routine should exist");
-        let set_instr = routine.instructions.iter().find_map(|instr| match &instr.kind {
-            LoweredInstrKind::ConstructSet { members, .. } => Some(members.len()),
-            _ => None,
-        });
-        let map_instr = routine.instructions.iter().find_map(|instr| match &instr.kind {
-            LoweredInstrKind::ConstructMap { entries, .. } => Some(entries.len()),
-            _ => None,
-        });
+        let set_instr = routine
+            .instructions
+            .iter()
+            .find_map(|instr| match &instr.kind {
+                LoweredInstrKind::ConstructSet { members, .. } => Some(members.len()),
+                _ => None,
+            });
+        let map_instr = routine
+            .instructions
+            .iter()
+            .find_map(|instr| match &instr.kind {
+                LoweredInstrKind::ConstructMap { entries, .. } => Some(entries.len()),
+                _ => None,
+            });
 
         assert_eq!(set_instr, Some(2));
         assert_eq!(map_instr, Some(2));
@@ -6112,10 +6416,10 @@ mod tests {
             .expect("typed routine should exist");
 
         assert!(
-            payload_routine.instructions.iter().any(|instr| matches!(
-                instr.kind,
-                LoweredInstrKind::Const(LoweredOperand::Str(_))
-            )),
+            payload_routine
+                .instructions
+                .iter()
+                .any(|instr| matches!(instr.kind, LoweredInstrKind::Const(LoweredOperand::Str(_)))),
             "entry payload access should lower the default payload expression"
         );
         assert!(
@@ -6263,8 +6567,8 @@ mod tests {
         )
         .expect("should write app package");
 
-        let mut stream =
-            FileStream::from_folder(app_dir.to_str().expect("utf8 temp path")).expect("Should open lowering fixture");
+        let mut stream = FileStream::from_folder(app_dir.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
         let syntax = parser
@@ -6362,10 +6666,14 @@ mod tests {
             "return payload lifting should lower to an explicit optional constructor"
         );
         assert!(
-            main.instructions.iter().filter(|instr| matches!(
-                instr.kind,
-                LoweredInstrKind::ConstructOptional { value: Some(_), .. }
-            )).count() >= 2,
+            main.instructions
+                .iter()
+                .filter(|instr| matches!(
+                    instr.kind,
+                    LoweredInstrKind::ConstructOptional { value: Some(_), .. }
+                ))
+                .count()
+                >= 2,
             "binding and call payload lifting should each lower to explicit optional constructors"
         );
         assert!(
@@ -6402,8 +6710,8 @@ mod tests {
         )
         .expect("should write app package");
 
-        let mut stream =
-            FileStream::from_folder(app_dir.to_str().expect("utf8 temp path")).expect("Should open lowering fixture");
+        let mut stream = FileStream::from_folder(app_dir.to_str().expect("utf8 temp path"))
+            .expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
         let syntax = parser
@@ -6425,69 +6733,61 @@ mod tests {
             .expect("main routine should exist");
 
         assert!(
-            main.instructions.iter().filter(|instr| matches!(
-                instr.kind,
-                LoweredInstrKind::ConstructOptional { value: Some(_), .. }
-            )).count() >= 2,
+            main.instructions
+                .iter()
+                .filter(|instr| matches!(
+                    instr.kind,
+                    LoweredInstrKind::ConstructOptional { value: Some(_), .. }
+                ))
+                .count()
+                >= 2,
             "local and imported shell aliases should both lower to explicit shell constructors"
         );
         assert!(
-            main.instructions.iter().filter(|instr| matches!(
-                instr.kind,
-                LoweredInstrKind::ConstructRecord { .. }
-            )).count() >= 2,
+            main.instructions
+                .iter()
+                .filter(|instr| matches!(instr.kind, LoweredInstrKind::ConstructRecord { .. }))
+                .count()
+                >= 2,
             "local and imported record contexts should both lower to explicit record constructors"
         );
         assert!(
-            main.instructions.iter().any(|instr| matches!(
-                instr.kind,
-                LoweredInstrKind::ConstructLinear { .. }
-            )),
+            main.instructions
+                .iter()
+                .any(|instr| matches!(instr.kind, LoweredInstrKind::ConstructLinear { .. })),
             "container literals should keep lowering alongside aggregate and shell surfaces"
         );
     }
 
     #[test]
     fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
-        let nil_error = lower_fixture_error(
-            "fun[] main(): int = {\n    return nil;\n}\n",
-        );
+        let nil_error = lower_fixture_error("fun[] main(): int = {\n    return nil;\n}\n");
         assert_eq!(nil_error.kind(), LoweringErrorKind::Unsupported);
-        assert!(
-            nil_error
-                .message()
-                .contains("nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1")
-        );
+        assert!(nil_error.message().contains(
+            "nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1"
+        ));
 
-        let operator_error = lower_fixture_error(
-            "fun[] main(): int = {\n    return 1 + 2;\n}\n",
-        );
+        let operator_error = lower_fixture_error("fun[] main(): int = {\n    return 1 + 2;\n}\n");
         assert_eq!(operator_error.kind(), LoweringErrorKind::Unsupported);
-        assert!(
-            operator_error
-                .message()
-                .contains("binary operator lowering for 'add' lands in a later lowering slice")
-        );
+        assert!(operator_error
+            .message()
+            .contains("binary operator lowering for 'add' lands in a later lowering slice"));
 
         let loop_error = lower_fixture_error(
             "fun[] main(items: seq[int]): int = {\n    loop(item in items) {\n        break;\n    }\n    return 0;\n}\n",
         );
         assert_eq!(loop_error.kind(), LoweringErrorKind::Unsupported);
-        assert!(
-            loop_error
-                .message()
-                .contains("iteration loop lowering is not part of the current lowered V1 control-flow milestone")
-        );
+        assert!(loop_error.message().contains(
+            "iteration loop lowering is not part of the current lowered V1 control-flow milestone"
+        ));
 
         let entry_error = lower_fixture_error(
             "typ Status: ent = {\n    var OK: int = 1;\n}\nfun[] main(): Status = {\n    return Status.OK;\n}\n",
         );
         assert_eq!(entry_error.kind(), LoweringErrorKind::Unsupported);
-        assert!(
-            entry_error
-                .message()
-                .contains("entry construction lowering for variant 'OK' lands in the pending aggregate slice")
-        );
+        assert!(entry_error.message().contains(
+            "entry construction lowering for variant 'OK' lands in the pending aggregate slice"
+        ));
     }
 
     #[test]

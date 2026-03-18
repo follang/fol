@@ -26,10 +26,7 @@ impl AnonymousRoutineKind {
 }
 
 impl AstParser {
-    fn lookahead_is_record_init_field(
-        &self,
-        tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> bool {
+    fn lookahead_is_record_init_field(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
         let current = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return false,
@@ -110,10 +107,7 @@ impl AstParser {
         })
     }
 
-    fn lookahead_is_spawn_expression(
-        &self,
-        tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> bool {
+    fn lookahead_is_spawn_expression(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
         let current = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return false,
@@ -139,14 +133,14 @@ impl AstParser {
 
         matches!(
             found.as_slice(),
-            [KEYWORD::Symbol(SYMBOL::AngleC), KEYWORD::Symbol(SYMBOL::SquarC)]
+            [
+                KEYWORD::Symbol(SYMBOL::AngleC),
+                KEYWORD::Symbol(SYMBOL::SquarC)
+            ]
         )
     }
 
-    fn lookahead_is_match_expression(
-        &self,
-        tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> bool {
+    fn lookahead_is_match_expression(&self, tokens: &fol_lexer::lexer::stage3::Elements) -> bool {
         let current = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return false,
@@ -605,7 +599,9 @@ impl AstParser {
             let inner = self.parse_logical_expression(tokens)?;
             let inner = self.attach_trailing_comments(
                 inner,
-                self.collect_comments_before(tokens, |key| matches!(key, KEYWORD::Symbol(SYMBOL::RoundC)))?,
+                self.collect_comments_before(tokens, |key| {
+                    matches!(key, KEYWORD::Symbol(SYMBOL::RoundC))
+                })?,
             );
             self.skip_layout(tokens);
 
@@ -889,7 +885,10 @@ impl AstParser {
         ) {
             return Err(Box::new(ParseError::from_token(
                 &assign,
-                format!("Expected '=' or '=>' before anonymous {} body", kind.label()),
+                format!(
+                    "Expected '=' or '=>' before anonymous {} body",
+                    kind.label()
+                ),
             )));
         }
         if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {

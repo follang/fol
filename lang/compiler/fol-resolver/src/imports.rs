@@ -1,8 +1,8 @@
+use crate::model::ScopeKind;
 use crate::{
     ImportId, PackageSourceKind, ResolvedProgram, ResolverError, ResolverErrorKind,
     ResolverSession, ScopeId,
 };
-use crate::model::ScopeKind;
 use fol_parser::ast::FolType;
 use std::path::{Path, PathBuf};
 
@@ -115,7 +115,8 @@ fn resolve_location_target_from_disk(
     let source_path = Path::new(&source_unit.path);
     let source_dir = source_path.parent().unwrap_or_else(|| Path::new("."));
     let target_path = resolve_directory_path(source_dir, &import.path_segments);
-    let loaded = session.load_package_from_directory(target_path.as_path(), PackageSourceKind::Local)?;
+    let loaded =
+        session.load_package_from_directory(target_path.as_path(), PackageSourceKind::Local)?;
     program.mount_loaded_package(&loaded)
 }
 
@@ -149,26 +150,21 @@ fn resolve_package_target_from_store(
     program: &mut ResolvedProgram,
     import: &crate::ResolvedImport,
 ) -> Result<ScopeId, ResolverError> {
-    let store_root = session
-        .config()
-        .package_store_root
-        .clone()
-        .ok_or_else(|| {
-            ResolverError::new(
-                ResolverErrorKind::InvalidInput,
-                format!(
-                    "resolver pkg import '{}' requires an explicit package store root",
-                    import
-                        .path_segments
-                        .iter()
-                        .map(|segment| segment.spelling.as_str())
-                        .collect::<Vec<_>>()
-                        .join("/")
-                ),
-            )
-        })?;
-    let loaded =
-        session.load_package_from_store(Path::new(&store_root), &import.path_segments)?;
+    let store_root = session.config().package_store_root.clone().ok_or_else(|| {
+        ResolverError::new(
+            ResolverErrorKind::InvalidInput,
+            format!(
+                "resolver pkg import '{}' requires an explicit package store root",
+                import
+                    .path_segments
+                    .iter()
+                    .map(|segment| segment.spelling.as_str())
+                    .collect::<Vec<_>>()
+                    .join("/")
+            ),
+        )
+    })?;
+    let loaded = session.load_package_from_store(Path::new(&store_root), &import.path_segments)?;
     program.mount_loaded_package(&loaded)
 }
 
@@ -265,7 +261,10 @@ fn import_error_from(
     }
 }
 
-fn resolve_directory_path(source_dir: &Path, path_segments: &[fol_parser::ast::UsePathSegment]) -> PathBuf {
+fn resolve_directory_path(
+    source_dir: &Path,
+    path_segments: &[fol_parser::ast::UsePathSegment],
+) -> PathBuf {
     let mut relative = PathBuf::new();
     for segment in path_segments {
         relative.push(&segment.spelling);

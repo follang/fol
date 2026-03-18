@@ -272,12 +272,7 @@ impl AstParser {
             }
         }
 
-        self.finish_use_path_segment(
-            &mut segments,
-            &mut current,
-            &mut pending_separator,
-            token,
-        )?;
+        self.finish_use_path_segment(&mut segments, &mut current, &mut pending_separator, token)?;
 
         Ok(segments)
     }

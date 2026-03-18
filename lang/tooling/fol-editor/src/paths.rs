@@ -35,7 +35,10 @@ impl EditorDocumentUri {
         if !path.is_absolute() {
             Err(EditorError::new(
                 EditorErrorKind::InvalidDocumentPath,
-                format!("path '{}' cannot be represented as a file uri", path.display()),
+                format!(
+                    "path '{}' cannot be represented as a file uri",
+                    path.display()
+                ),
             ))
         } else {
             Ok(Self(format!(
@@ -60,7 +63,10 @@ impl EditorDocumentUri {
         let decoded = percent_decode(raw_path).ok_or_else(|| {
             EditorError::new(
                 EditorErrorKind::InvalidDocumentUri,
-                format!("document uri '{}' does not map to a local file path", self.0),
+                format!(
+                    "document uri '{}' does not map to a local file path",
+                    self.0
+                ),
             )
         })?;
         Ok(PathBuf::from(decoded))
@@ -85,14 +91,9 @@ fn percent_encode(input: &str) -> String {
     let mut encoded = String::new();
     for byte in input.bytes() {
         match byte {
-            b'A'..=b'Z'
-            | b'a'..=b'z'
-            | b'0'..=b'9'
-            | b'/'
-            | b'-'
-            | b'_'
-            | b'.'
-            | b'~' => encoded.push(byte as char),
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'/' | b'-' | b'_' | b'.' | b'~' => {
+                encoded.push(byte as char)
+            }
             _ => encoded.push_str(&format!("%{:02X}", byte)),
         }
     }
@@ -154,6 +155,9 @@ mod tests {
     #[test]
     fn uri_parser_round_trips_percent_encoded_paths() {
         let uri = EditorDocumentUri::parse("file:///tmp/demo%20file.fol").unwrap();
-        assert_eq!(uri.to_file_path().unwrap(), PathBuf::from("/tmp/demo file.fol"));
+        assert_eq!(
+            uri.to_file_path().unwrap(),
+            PathBuf::from("/tmp/demo file.fol")
+        );
     }
 }

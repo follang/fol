@@ -1,561 +1,504 @@
-# FOL Build Plan: `build.fol` Must Be Real FOL
+# FOL Build System Plan: `lang/execution/fol-build`
 
-Last updated: 2026-03-17
+Last updated: 2026-03-18
+
+## No Backwards Compatibility
+
+This is a new project. There is no installed user base. There are no external consumers.
+When something is replaced, the old thing is deleted. No shims, no fallbacks, no parallel
+implementations, no deprecation periods, no migration warnings. If the new way is chosen,
+the old way does not exist.
+
+## Status
+
+Round 1 (build reset) is complete. All legacy `def root`/`def build` paths are deleted.
+The canonical build entry is `pro[] build(graph: Graph): non` and it is enforced.
+
+Round 2 (fol-build execution crate) is the current work.
+
+Round 2 slices:
+
+- [x] Slice 1. Create `lang/execution/fol-build` and move graph/api/semantic code out of `fol-package`
+- [x] Slice 2. Move runtime types and evaluator into `fol-build`
+- [x] Slice 3. Add `BuildStdlibScope` — resolver/typechecker injection surface
+- [x] Slice 4. Wire the build stdlib into the resolver (file-bound isolation)
+- [x] Slice 5. Wire the build stdlib into the typechecker
+- [x] Slice 6. Replace AST-walking evaluator with real lowered-IR executor
+- [x] Slice 7. Expand build API to Zig parity (modules, artifact.link, run args, path utils)
+- [x] Slice 8. Full control flow in `build.fol` (when, loop, helper routines)
+- [x] Slice 9. Frontend integration (full pipeline, -D options, named step selection)
+- [x] Slice 10. New example fixtures and regression coverage
+
+---
 
 ## Core Decision
 
-`build.fol` must work the way `build.zig` works in Zig at the architectural
-level:
+FOL uses a Zig-style build model. `build.fol` is a normal FOL program. It goes through
+the full compiler pipeline: stream → lexer → parser → resolver → typecheck → lower.
+The only difference from a regular FOL program is at the final step — instead of emitting
+Rust code via `fol-backend`, it is executed against a `BuildGraph` via `fol-build`.
 
-- it is a real source file in the language
-- it is parsed by the normal parser
-- it is resolved and typechecked by the normal semantic pipeline
-- its `def build(...)` body is executed as real language code
-- that execution is constrained by a build-runtime API and produces a build graph
+The build system lives in `lang/execution/fol-build`. All build execution code belongs
+there. `fol-package` keeps only entry validation and package metadata loading.
 
-What we must **not** ship as the final design:
+## Zig Reference
 
-- a forever-special string extractor
-- a frontend-only mini interpreter
-- a separate fake DSL that only looks like FOL
-- duplicated “build semantics” outside the real compiler/runtime path
+Zig's build entry:
 
-The current repository has useful groundwork, but it is still short of this
-goal. This plan replaces the older roadmap and focuses only on closing that
-semantic gap.
+```zig
+pub fn build(b: *std.Build) void {
+    const exe = b.addExecutable(.{ .name = "app", .root_source_file = .{ .path = "src/main.zig" } });
+    b.installArtifact(exe);
+}
+```
 
-## Current Truth At Head
+FOL equivalent:
 
-What is already true:
+```fol
+pro[] build(graph: Graph): non = {
+    var target   = graph.standard_target();
+    var optimize = graph.standard_optimize();
 
-- `build.fol` is lexed and parsed as ordinary FOL source text
-- editor tooling can parse/highlight/symbol-complete it
-- `fol-package` can load `build.fol` and detect compatibility controls plus the
-  canonical `def build(...)` entry
-- the repo has a build graph IR, build API surface, option model, artifact
-  model, step model, dependency model, generated-file model, and native model
-- `fol code build/run/test/check` can route modern and hybrid packages through a
-  graph-backed path
-- a shared restricted build-source evaluator exists in `fol-package`
-- that restricted evaluator now supports:
-  - plain method calls like `graph.add_exe("app", "src/app.fol")`
-  - object-style artifact creation like `graph.add_exe({ name = "...", root = "..." })`
-  - simple handle-style follow-up calls like `graph.install(app)` and
-    `graph.add_run(app)`
+    var app = graph.add_exe({
+        name     = "app",
+        root     = "src/main.fol",
+        target   = target,
+        optimize = optimize,
+    });
 
-What is still false:
+    graph.install(app);
+}
+```
 
-- `build.fol` is not yet resolved/typechecked/executed as an ordinary FOL
-  program
-- the build graph is not yet produced by normal language execution
-- arbitrary valid FOL code inside `def build(...)` does not work
-- method chains like `graph.step(...).depend_on(...)` are not real language
-  semantics yet
-- the current evaluator still recognizes patterns instead of executing typed FOL
+FOL copies the architecture, not the syntax.
 
-That last bullet is the real problem.
+## What `build.fol` Is
 
-## End State
+`build.fol` is a **file-bound** FOL program. Regular FOL code is folder-bound: a folder
+is a package, all `.fol` files in that folder share one package scope. `build.fol` is the
+one exception: it is a single file that is its own complete compilation unit. It does not
+share a namespace with sibling `.fol` files in the package folder.
 
-The correct finished model is:
+Rules for `build.fol`:
 
-1. `build.fol` is loaded as a normal package-oriented FOL source unit.
-2. The normal parser produces normal AST.
-3. The normal resolver resolves imports, names, namespaces, and types inside the
-   build file.
-4. The normal typechecker validates `def build(...)` against a real build stdlib
-   surface.
-5. A dedicated build-runtime evaluator executes the typed/lowered build routine
-   in a controlled environment.
-6. That runtime mutates a `build::Graph` object through ordinary method calls and
-   ordinary FOL values.
-7. The produced graph is validated and then executed by `fol code
-   build/run/test/check`.
+- Goes through the full FOL pipeline (lex → parse → resolve → typecheck → lower → build executor)
+- Does NOT include sibling `.fol` files in its scope
+- Has one implicit import: the build stdlib (`fol/build`), providing `Graph` and all handle types
+- CAN define helper `fun[]`/`pro[]`/`typ` declarations local to itself
+- Those helpers are NOT exported to the package — they exist only during build evaluation
+- Must declare exactly one `pro[] build(graph: Graph): non` as the entry point
+- Additional `use` imports are allowed for FOL stdlib utilities
 
-This gives FOL real Zig-style parity in the only sense that matters:
+## Pipeline
 
-- not “same syntax”
-- but “same architectural truth”
+```
+build.fol
+   │
+   ▼ (same as any .fol file)
+fol-stream → fol-lexer → fol-parser → fol-package (entry validation only)
+                                            │
+                                            ▼ (same as regular code)
+                                      fol-resolver → fol-typecheck → fol-lower
+                                                                          │
+                                                                          ▼ (different backend)
+                                                                      fol-build (executor)
+                                                                          │
+                                                                          ▼
+                                                                      BuildGraph
+                                                                          │
+                                                                          ▼
+                                                                    fol-frontend
+                                                               (build/run/test/check)
+```
 
-## Non-Negotiable Constraints
+## `lang/execution/fol-build` File Structure
 
-1. `build.fol` stays ordinary FOL syntax.
-2. The normal compiler pipeline stays the source of truth.
-3. Build execution is deterministic and capability-limited.
-4. Package metadata stays in `package.yaml`; build behavior lives in `build.fol`.
-5. This project is still very new and does not need backward-compatibility
-   preservation as a product requirement.
-6. We do not keep legacy implementations just because they existed first. If a
-   new semantic path replaces an older extracted/fallback path, the older path
-   should be deleted.
-7. Existing compatibility defs like `def x: pkg = ...` and `def y: loc = ...`
-   may exist during migration, but they must become a subset of the real build
-   model, not a permanent parallel system, and duplicate legacy routing should
-   be removed instead of maintained.
-8. The frontend must not own private build semantics once the shared runtime is
-   in place.
+```
+lang/execution/fol-build/
+├── Cargo.toml
+└── src/
+    ├── lib.rs          re-exports: BuildSession, BuildGraph, BuildExecutionError
+    ├── session.rs      BuildSession — top-level entry point for fol-frontend
+    ├── executor.rs     BuildIrExecutor — executes lowered FOL IR against BuildApi
+    ├── dispatch.rs     method call dispatch table (method name → BuildApi call)
+    ├── context.rs      BuildExecutionContext — graph, package root, options, cli args
+    ├── graph.rs        BuildGraph, all ID types, all edge types
+    ├── api.rs          BuildApi — Rust-level graph mutation interface
+    ├── stdlib.rs       BuildStdlibScope — resolver/typechecker injection surface
+    ├── semantic.rs     BuildSemanticType, BuildSemanticMethodSignature, etc.
+    ├── runtime.rs      BuildRuntimeValue, BuildRuntimeFrame, BuildRuntimeStmt
+    ├── artifact.rs     BuildArtifactKind, artifact-level edges (link, import, add_generated)
+    ├── step.rs         BuildStepKind, step planning, step attachments
+    ├── dependency.rs   DependencyBuildHandle, DependencyBuildSurface
+    ├── codegen.rs      CodegenRequest, SystemToolRequest
+    ├── option.rs       BuildOptionKind, ResolvedBuildOptionSet, -D CLI parsing
+    ├── native.rs       native artifact types
+    └── error.rs        BuildExecutionError
+```
 
-## Why Zig Matters Here
+## What Moves Out of `fol-package`
 
-Zig does not scrape `build.zig` for patterns. Zig runs real Zig code with a
-build API.
+| Source (`fol-package`) | Destination (`fol-build`) |
+|---|---|
+| `build_graph.rs` | `graph.rs` |
+| `build_api.rs` | `api.rs` |
+| `build_semantic.rs` | `semantic.rs` |
+| `build_runtime.rs` | `runtime.rs` |
+| `build_eval.rs` | `eval.rs` → replaced by `executor.rs` |
+| `build_step.rs` | `step.rs` |
+| `build_artifact.rs` | `artifact.rs` |
+| `build_dependency.rs` | `dependency.rs` |
+| `build_codegen.rs` | `codegen.rs` |
+| `build_option.rs` | `option.rs` |
+| `build_native.rs` | `native.rs` |
 
-FOL must do the analogous thing:
+`fol-package` keeps only:
 
-- `build.fol` must be real FOL code
-- `def build(...)` must be a real routine
-- `graph.add_exe(...)`, `graph.install(...)`, `graph.add_run(...)`,
-  `graph.step(...).depend_on(...)`, and similar calls must be validated by the
-  real resolver/typechecker and executed by a real evaluator
+- `build.rs` — `parse_package_build`, `PackageBuildDefinition`, `PackageBuildMode`
+- `build_entry.rs` — `validate_parsed_build_entry`, `BuildEntrySignatureExpectation`
+- `metadata.rs`, `session.rs`, `model.rs` — package metadata (unchanged)
 
-If we stop short of that, we do not have the right system.
+## The Executor
 
-## Legacy Policy
+The current `build_eval.rs` is an AST pattern matcher. It inspects the parsed AST of
+`build.fol` and dispatches to `BuildApi` by recognizing statement shapes. It does not
+execute FOL code — it reads FOL syntax.
 
-This plan assumes an aggressive cleanup policy.
+The new executor in `executor.rs` receives **lowered FOL IR** from `fol-lower` and
+executes it. It handles:
 
-We are not optimizing for backward compatibility because:
+- `var` bindings — store result in a local frame
+- method calls on `Graph` handle — dispatch to `BuildApi`
+- method calls on artifact/step/run/install/dependency/generated-file handles — dispatch to handle methods
+- `when` / `else` — conditional artifact and step registration
+- `loop` — iterate to add multiple artifacts or steps
+- helper `fun[]`/`pro[]` calls — execute helper bodies in a new frame
+- method chaining — `.add_arg().add_file_arg().set_env()`
 
-- the project is very new
-- there is no meaningful external compatibility burden yet
-- carrying parallel old and new implementations will slow down the architecture
-  and make the final system harder to reason about
+Capability model stays: arbitrary filesystem writes, network access, wall clock, and
+uncontrolled process execution are forbidden during build evaluation.
 
-Therefore:
+## The Build Stdlib Scope
 
-1. Do not preserve old build paths just because they already work.
-2. Do not keep fallback implementations once the real semantic path is ready.
-3. Do not add compatibility shims unless they are strictly temporary and on the
-   shortest path to deletion.
-4. Prefer replacement plus deletion over coexistence.
-5. Every migration phase should identify which temporary code gets removed at
-   the end of that phase.
+`stdlib.rs` produces a `BuildStdlibScope` that the resolver injects into `build.fol`
+compilation. This is what makes `Graph`, `Artifact`, `Step`, etc. visible to the resolver
+and typechecker as real types with real method signatures.
 
-The default bias must be:
+### Graph methods
 
-- build the correct path
-- switch to it
-- delete the obsolete path
+```
+standard_target(config?)    → Target
+standard_optimize(config?)  → Optimize
+option(config)              → UserOption
+add_exe(config)             → Artifact
+add_static_lib(config)      → Artifact
+add_shared_lib(config)      → Artifact
+add_test(config)            → Artifact
+add_module(config)          → Module          ← new
+step(name, description?)    → Step
+add_run(artifact)           → Run
+install(artifact)           → Install
+install_file(path)          → Install
+install_dir(path)           → Install
+write_file(config)          → GeneratedFile
+copy_file(config)           → GeneratedFile
+add_system_tool(config)     → GeneratedFile
+add_codegen(config)         → GeneratedFile
+dependency(alias, package)  → Dependency
+path_from_root(subpath)     → str             ← new
+build_root()                → str             ← new
+install_prefix()            → str             ← new
+```
 
-## New Execution Architecture
+### Artifact methods
 
-The target architecture should be:
+```
+link(dep_artifact)          → non             ← new (Zig: artifact.linkLibrary)
+import(dep_module)          → non             ← new (Zig: artifact.root_module.addImport)
+add_generated(gen_file)     → non             ← new
+```
 
-1. Source loading layer
-   - load `build.fol` into a dedicated build-package preparation path
-   - keep compatibility extraction available only as migration scaffolding
+### Run methods
 
-2. Semantic build compilation layer
-   - parse `build.fol`
-   - resolve against normal imports plus a build stdlib surface
-   - typecheck against the real `build` API types
+```
+add_arg(value)              → Run             ← new, chainable (Zig: run.addArg)
+add_file_arg(gen_file)      → Run             ← new, chainable (Zig: run.addFileArg)
+add_dir_arg(path)           → Run             ← new, chainable
+capture_stdout()            → GeneratedFile   ← new (Zig: run.captureStdOut)
+set_env(key, value)         → Run             ← new, chainable (Zig: run.setEnvironmentVariable)
+depend_on(step)             → Run             existing, chainable
+```
 
-3. Build-runtime lowering/evaluation layer
-   - lower the typed build routine into an interpreter-friendly form
-   - execute only the allowed build-time subset
-   - materialize graph mutations and option reads deterministically
+### Step methods
 
-4. Graph execution layer
-   - validate graph
-   - select requested step
-   - execute artifact/step/install/run/test/codegen actions
+```
+depend_on(step)             → Step            existing, chainable
+attach(gen_file)            → Step            ← new (attach generated file production to step)
+```
 
-The key distinction:
+### Install methods
 
-- semantic build compilation answers “is this valid FOL build code?”
-- build runtime answers “what graph does this valid build code produce?”
+```
+depend_on(step)             → Install         existing, chainable
+```
 
-## Work Phases
+### Dependency methods
 
-## Phase 0: Freeze The Direction
+```
+module(name)                → DependencyModule
+artifact(name)              → DependencyArtifact
+step(name)                  → DependencyStep
+generated(name)             → DependencyGeneratedOutput
+```
 
-Goal:
-- remove ambiguity about the end state
+## -D CLI Options
 
-Required outcomes:
-- all docs and progress notes say explicitly that the goal is real FOL semantic
-  execution, not a permanently restricted extractor
-- future work is measured against “does this move semantics into the real
-  pipeline?”
+Zig: `zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast -Denable-logs=true`
+
+FOL: `fol code build -Dtarget=x86_64-linux-gnu -Doptimize=release-fast -Denable-logs=true`
+
+`graph.standard_target()` reads `-Dtarget`. `graph.standard_optimize()` reads `-Doptimize`.
+`graph.option({ name = "enable-logs", kind = bool, default = false })` reads `-Denable-logs`.
+
+Option kinds: `bool`, `int`, `str`, `enum`, `path`, `target`, `optimize`.
+
+## Step Selection
+
+```sh
+fol code build              # runs install steps (default)
+fol code build docs         # runs the "docs" step
+fol code run                # runs the default run step
+fol code run --step serve   # runs the "serve" step
+fol code test               # runs test steps
+fol code check              # runs check steps
+```
+
+## Example: Full-Featured `build.fol`
+
+```fol
+fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
+    return graph.add_static_lib({ name = name, root = root });
+}
+
+pro[] build(graph: Graph): non = {
+    var target   = graph.standard_target();
+    var optimize = graph.standard_optimize();
+    var strip    = graph.option({ name = "strip", kind = bool, default = false });
+
+    var core = make_lib(graph, "core", "src/core/lib.fol");
+    var io   = make_lib(graph, "io",   "src/io/lib.fol");
+
+    var app = graph.add_exe({
+        name     = "app",
+        root     = "src/main.fol",
+        target   = target,
+        optimize = optimize,
+    });
+    app.link(core);
+    app.link(io);
+    graph.install(app);
+
+    var run = graph.add_run(app);
+    run.add_arg("--config").add_file_arg(graph.path_from_root("config/default.toml"));
+
+    when(target == "wasm32") {
+        var wasm_step = graph.step("wasm-pack", "Package WASM output");
+        var pack = graph.add_system_tool({
+            tool    = "wasm-pack",
+            args    = ["build", "--target", "web"],
+            outputs = ["pkg/app.wasm"],
+        });
+        wasm_step.attach(pack);
+    };
+
+    var docs_step = graph.step("docs", "Generate documentation");
+    var docs = graph.add_system_tool({
+        tool    = "doc-gen",
+        args    = ["src/", "--out", "docs/"],
+        outputs = ["docs/index.html"],
+    });
+    docs_step.attach(docs);
+}
+```
+
+## Example Fixtures to Add
+
+| Fixture | Demonstrates |
+|---|---|
+| `examples/exe_with_options/` | target + optimize + boolean option |
+| `examples/multi_lib/` | multiple libs, helper function, `artifact.link` |
+| `examples/codegen/` | `add_codegen` + `artifact.add_generated` |
+| `examples/workspace/` | multi-package, `dependency` + `artifact.import` |
+| `examples/custom_steps/` | named steps + `step.attach` |
+| `examples/run_args/` | `run.add_arg`, `run.add_file_arg`, `run.capture_stdout` |
+| `examples/conditional/` | `when` selecting platform-specific artifacts |
+
+## Slices
+
+### Slice 1 — Create `fol-build`, move graph/api/semantic
+
+Create `lang/execution/fol-build/Cargo.toml` and `src/lib.rs`.
+Move `build_graph.rs`, `build_api.rs`, `build_semantic.rs` into the new crate unchanged.
+Update `fol-package` to depend on `fol-build`.
+
+Exit criteria: `cargo build` passes, all tests pass.
+
+### Slice 2 — Move runtime types and evaluator
+
+Move `build_runtime.rs`, `build_eval.rs`, `build_step.rs`, `build_artifact.rs`,
+`build_dependency.rs`, `build_codegen.rs`, `build_option.rs`, `build_native.rs`.
+Create `error.rs`, `context.rs`, `session.rs` with stub implementations.
+
+`BuildExecutionContext`:
+```rust
+pub struct BuildExecutionContext {
+    pub graph: BuildGraph,
+    pub package_root: PathBuf,
+    pub install_prefix: Option<PathBuf>,
+    pub resolved_options: ResolvedBuildOptionSet,
+    pub cli_args: Vec<(String, String)>,
+}
+```
+
+`BuildSession`:
+```rust
+pub struct BuildSession { context: BuildExecutionContext }
+impl BuildSession {
+    pub fn new(package_root: PathBuf, cli_args: Vec<(String, String)>) -> Self
+    pub fn execute(&mut self, lowered: &LoweredBuildProgram) -> Result<BuildGraph, BuildExecutionError>
+    pub fn run_step(&self, step_name: &str) -> Result<(), BuildExecutionError>
+}
+```
+
+Exit criteria: `fol-package` contains only entry validation and metadata. `cargo build` passes.
+
+### Slice 3 — `BuildStdlibScope`
+
+Create `stdlib.rs`. Produce `BuildStdlibScope::canonical()` covering all Graph methods,
+all handle methods, all new methods listed above. Every entry has: receiver type, method
+name, parameter list (required/optional/variadic), return type.
+
+Unit tests: every method signature has correct receiver, return type, required params.
+
+Exit criteria: `BuildStdlibScope::canonical()` is complete and tested.
+
+### Slice 4 — Wire stdlib into resolver (file-bound)
+
+When the resolver encounters a file flagged as `ParsedSourceUnitKind::Build`:
+- Do not walk sibling `.fol` files
+- Inject `BuildStdlibScope::canonical()` as the ambient scope
+- `Graph` resolves to `BuildSemanticType::graph()`
+- Method calls on build handles resolve via `BuildSemanticMethodSignature` dispatch
 
 Exit criteria:
-- this plan is the active source of truth
+- `build.fol` with wrong method name produces a resolver error listing available methods
+- Sibling `.fol` files are not visible to `build.fol`
+- Helper `fun[]` declarations in `build.fol` are visible to the build entry
 
-## Phase 1: Define The Real Build Stdlib Surface
+### Slice 5 — Wire stdlib into typechecker
 
-Goal:
-- make the build API type surface concrete enough that resolver/typechecker can
-  reason about it
-
-Required work:
-- define the canonical `std` build package path and module surface
-- define public build types:
-  - `build::Graph`
-  - artifact handle types
-  - step handle types
-  - run handle types
-  - install handle types
-  - option handle/value types
-  - dependency handle types
-- define canonical method signatures for:
-  - `standard_target`
-  - `standard_optimize`
-  - `option`
-  - `add_exe`
-  - `add_static_lib`
-  - `add_shared_lib`
-  - `add_test`
-  - `step`
-  - `add_run`
-  - `install`
-  - `install_file`
-  - `install_dir`
-  - `dependency`
-  - generated-file / codegen / tool methods
-- define whether object-style argument records are nominal types or structural
-  record values
-- define the chaining surface:
-  - `graph.step(...).depend_on(...)`
-  - `graph.add_run(...).step` if needed
-  - `graph.install(...).step` if needed
-
-Tests required:
-- resolver tests for build stdlib imports
-- typechecker tests for build API method calls
-- typechecker tests for object-style config records
-- typechecker tests for method chaining on handles
+All build types are recognized. Method call argument types are validated. Record literals
+passed to build API calls are structurally validated (required fields present, unknown
+fields rejected). Return types of method calls match what the stdlib scope declares.
 
 Exit criteria:
-- `build.fol` signatures can be typechecked against real build API types
+- `var target = graph.standard_target()` typechecks
+- `graph.add_exe({ name = "app", root = "src/main.fol", target = target })` typechecks
+- Missing required field `root` in `add_exe` → typecheck error
+- Passing `Artifact` where `Step` is expected → typecheck error
 
-## Phase 2: Admit `build.fol` Into The Normal Semantic Pipeline
+### Slice 6 — Real lowered-IR executor
 
-Goal:
-- stop treating `build.fol` as semantically special-cased text
+Replace the AST-walking evaluator in `build_eval.rs` with `executor.rs`. The executor
+receives lowered FOL IR from `fol-lower` and executes it. Delete `build_eval.rs`.
 
-Required work:
-- create a dedicated package/source-unit kind for build units if needed, but keep
-  them in the normal parser/resolver/typechecker flow
-- load `build.fol` into the prepared workspace in a way that normal semantic
-  stages can see it
-- decide and implement visibility rules:
-  - can `build.fol` import package source modules?
-  - can package source import from `build.fol`?
-  - likely answer: build can see build stdlib and dependency build surfaces, but
-    ordinary package code cannot depend on build internals
-- ensure build source units are excluded from ordinary runtime artifact lowering
-  unless explicitly needed
-
-Tests required:
-- package preparation tests for build source units
-- resolver tests proving build units are visible where intended and hidden where
-  not intended
-- typechecker tests proving ordinary packages still reject inappropriate build
-  symbols
+Supported in executor:
+- `var` bindings
+- method calls on `Graph` and all handle types
+- `when` / `else`
+- `loop`
+- helper `fun[]`/`pro[]` calls (recursive frame execution)
+- method chaining
 
 Exit criteria:
-- `build.fol` reaches resolver and typechecker as a real source unit
+- All current build fixtures produce the same `BuildGraph` as before
+- `build.fol` with `when` executes conditionally
+- `build.fol` with a helper `fun[]` executes the helper correctly
+- The old AST evaluator is deleted
 
-## Phase 3: Locate And Validate The Canonical Build Entry
+### Slice 7 — Expand build API (Zig parity)
 
-Goal:
-- make `def build(...)` a semantically validated entry routine
+Add all new methods listed in the stdlib section. Each new method needs:
+- Graph IR representation (new edge type if needed)
+- `BuildApi` method in `api.rs`
+- Entry in `BuildStdlibScope` (resolver + typechecker sees it)
+- Dispatch case in `dispatch.rs` (executor routes to it)
+- Unit test in `fol-build`
+- At least one fixture using it
 
-Required work:
-- identify the canonical build entry after parse/resolution, not by raw-source
-  fallback
-- validate:
-  - exactly one required build entry
-  - allowed parameter shape
-  - allowed return type
-  - disallow ambiguous overload-like shapes if the language permits them later
-- emit proper semantic diagnostics with source locations
+New graph IR additions:
+- `BuildRunConfig` — stores args, env vars, capture target for run steps
+- `ArtifactLinkEdge` — artifact depends on another artifact
+- `ModuleImportEdge` — artifact imports a module
+- `StepAttachment` — step owns a generated file production
 
-Tests required:
-- zero build entry
-- multiple build entries
-- wrong parameter type
-- wrong return type
-- malformed build routine body with normal semantic diagnostics
+### Slice 8 — Full control flow in `build.fol`
 
-Exit criteria:
-- `build.fol` entry selection is semantic, not textual
-
-## Phase 4: Build-Time Capability Model
-
-Goal:
-- define what build code is allowed to do at runtime
-
-Required work:
-- specify allowed categories:
-  - graph mutation
-  - option reads
-  - deterministic path operations
-  - deterministic string/container operations
-  - controlled generated-file emission
-  - controlled external tool invocation
-- specify forbidden categories:
-  - arbitrary filesystem reads/writes
-  - arbitrary network
-  - wall-clock access
-  - ambient environment access outside declared inputs
-  - uncontrolled process execution
-- define the input envelope:
-  - package root
-  - working directory
-  - declared options
-  - target/optimize
-  - selected environment variables if any
-
-Tests required:
-- diagnostics for forbidden runtime surfaces
-- deterministic key tests for identical inputs
-- differing determinism keys when declared inputs differ
+`when`, `else`, `loop` work in `build.fol`. Helper routines defined in `build.fol` can
+be called from the build entry and from other helpers.
 
 Exit criteria:
-- build runtime permissions are explicit and testable
+- Fixture `examples/conditional/` conditionally adds a wasm artifact via `when`
+- Fixture `examples/multi_lib/` uses a helper `fun[] make_lib(...)` called from `build`
+- A loop over a sequence in `build.fol` adds multiple artifacts correctly
 
-## Phase 5: Real Build Routine Evaluation
+### Slice 9 — Frontend integration
 
-Goal:
-- execute typed build code rather than extracting patterns
+`fol-frontend` uses `BuildSession` from `fol-build` instead of calling `fol-package`'s
+evaluator. `build.fol` is compiled through the full pipeline before execution.
 
-Required work:
-- choose the execution representation:
-  - interpret typed AST directly, or
-  - lower build routines into a restricted runtime IR and interpret that
-- implement evaluation of:
-  - local variable bindings
-  - record literals used for build configs
-  - method calls on `build::Graph` and handles
-  - simple expression flow needed by build scripts
-  - handle passing through locals
-- preserve deterministic state updates into the build graph
-
-Initial supported runtime subset should cover:
-- `var target = graph.standard_target()`
-- `var optimize = graph.standard_optimize()`
-- object-style `add_exe` / library / test calls
-- `graph.install(app)`
-- `graph.add_run(app)`
-- `var step = graph.step(...)`
-- `step.depend_on(...)`
-
-Tests required:
-- evaluator tests for local handle flow
-- evaluator tests for method chaining
-- evaluator tests for object config records
-- evaluator tests for repeated and aliased handle usage
+CLI option parsing: `-Dname=value` pairs are passed to `BuildSession::new` as `cli_args`.
+Named step selection: `fol code build <step>` selects the named step from the graph.
 
 Exit criteria:
-- the current restricted string extractor is no longer needed for supported
-  build scripts
+- `fol code build` works end-to-end with the new pipeline
+- `fol code run` works
+- `fol code test` works
+- `fol code build -Dtarget=x86_64-linux-gnu` passes the option into `standard_target()`
+- `fol code build docs` executes the "docs" step
 
-## Phase 6: Remove Textual Build-Body Extraction
+### Slice 10 — Fixtures and regression coverage
 
-Goal:
-- delete the temporary extractor path once semantic evaluation covers the needed
-  surface
+Add all fixtures listed in the fixtures table. Add integration tests in `test/app/build/`:
+- `test_conditional_artifact` — `when` selects different artifacts
+- `test_helper_routine` — helper function used from `build`
+- `test_run_args` — `add_arg`, `add_file_arg`, `capture_stdout`
+- `test_artifact_link` — `artifact.link(dep.artifact(...))`
+- `test_module_import` — `artifact.import(dep.module(...))`
+- `test_codegen_artifact` — `add_codegen` + `artifact.add_generated`
+- `test_custom_step` — named step + `step.attach`
+- `test_d_options` — `graph.option(...)` + CLI `-D` flags
+- `test_path_utils` — `path_from_root`, `build_root`
 
-Required work:
-- switch `fol-package` build evaluation to the semantic runtime path
-- remove raw-source build-body extraction from the active execution path
-- keep only minimal compatibility scanning for top-level migration-only controls
-  if still needed
+Negative tests:
+- Wrong method name on `Artifact` → resolver error
+- `artifact.link` with wrong handle type → typecheck error
+- `when` condition is non-bool → typecheck error
+- `build.fol` with no canonical entry → clear error
+- `build.fol` with two canonical entries → clear error
 
-Tests required:
-- prove modern packages execute without textual extraction
-- prove editor and CLI behavior stays stable
+Exit criteria: all fixtures pass, all negative tests produce correct errors.
 
-Exit criteria:
-- supported modern `build.fol` execution no longer depends on line-based pattern
-  scraping
-- the old extractor implementation is deleted, not merely bypassed
+## Success Definition
 
-## Phase 7: Make Frontend Commands Fully Graph-Driven
+Done when all of this is true:
 
-Goal:
-- ensure `fol code build/run/test/check` execute the graph, not legacy workspace
-  assumptions
-
-Required work:
-- route command selection through evaluated graph steps only
-- make default command mapping explicit:
-  - `fol code build` requests step `build`
-  - `fol code run` requests step `run`
-  - `fol code test` requests step `test`
-  - `fol code check` requests step `check`
-- support custom named steps through CLI `--step`
-- remove remaining implicit `src/main.fol` fallback assumptions except where
-  intentionally preserved as default graph synthesis for packages without modern
-  build logic
-
-Tests required:
-- single-artifact build/run/test/check
-- custom named steps
-- multiple artifacts with explicit step selection
-- modern/hybrid packages with no compatibility fallback
-
-Exit criteria:
-- workspace commands are graph-driven by default
-
-## Phase 8: Step Handles And Chaining
-
-Goal:
-- support the natural builder style users actually expect
-
-Required work:
-- implement chained semantics such as:
-  - `graph.step("run", "Run the app").depend_on(run_app)`
-  - `graph.install(app).step` if that becomes the API shape
-  - run/install/test handles participating in step dependencies
-- define stable handle identity rules
-- define whether methods mutate in place or return updated handles
-
-Tests required:
-- chained step creation and dependency wiring
-- dependencies declared through handle methods instead of raw names
-- duplicate dependency handling
-
-Exit criteria:
-- documented chained build style works as real FOL code
-
-## Phase 9: Options As Real Values
-
-Goal:
-- make build options real semantic values, not placeholders
-
-Required work:
-- typecheck `target`, `optimize`, bool/int/string/path/enum options as real
-  build values
-- permit passing options through object config records
-- define how option defaults, overrides, and reads behave during evaluation
-
-Tests required:
-- CLI overrides reaching build runtime
-- option values flowing through local variables
-- option values inside `add_exe({ ... })`
-
-Exit criteria:
-- options participate in real semantic evaluation
-
-## Phase 10: Dependency Build Surfaces
-
-Goal:
-- allow one package’s build graph to consume another package’s exported build
-  surface semantically
-
-Required work:
-- define dependency build imports and handle visibility
-- expose modules/artifacts/steps/generated outputs from dependency builds
-- determine eager vs lazy dependency build evaluation
-
-Tests required:
-- dependency artifact consumption
-- dependency step wiring
-- dependency generated-file consumption
-
-Exit criteria:
-- dependency build surfaces are usable from real build code
-
-## Phase 11: Generated Files, Tools, And Native Inputs
-
-Goal:
-- cover the rest of the build graph surface through the real evaluator
-
-Required work:
-- generated file actions
-- codegen requests
-- controlled system-tool actions
-- native include/lib/link surfaces
-- test/docs/install style expansion as needed
-
-Tests required:
-- generated file feeding later artifact creation
-- codegen outputs consumed by artifacts
-- controlled external tool outputs
-- native attachment propagation
-
-Exit criteria:
-- major build graph node families are usable from semantic build execution
-
-## Phase 12: Compatibility Absorption
-
-Goal:
-- fold old package-control behavior into the real build model and delete parallel
-  legacy structure
-
-Required work:
-- decide how top-level `pkg` / `loc` compatibility defs map into real build
-  semantics
-- migrate package preparation to derive exports/dependencies from the real build
-  model where possible
-- delete duplicate compatibility code paths that no longer add value
-
-Tests required:
-- compatibility packages still load during migration
-- hybrid packages prefer semantic build execution
-- export/dependency behavior remains correct
-
-Exit criteria:
-- compatibility behavior is a subset of the real model, not a separate system
-- superseded legacy code paths are removed from the repository
-
-## Phase 13: Product Completion Criteria
-
-We are done only when all of these are true:
-
-1. `build.fol` is parsed, resolved, typechecked, and evaluated through the real
-   compiler/runtime path.
-2. The active execution path does not depend on textual build-body extraction.
-3. `fol code build/run/test/check` operate on the evaluated graph by default.
-4. Object-style artifact configs, option values, handle variables, and chained
-   step wiring work in real build code.
-5. Dependency surfaces, generated files, and install/run/test steps work through
-   that same semantic path.
-6. The old compatibility surface is either absorbed or intentionally tiny and
-   non-duplicative.
-
-## Immediate Implementation Order
-
-This is the recommended order to execute from current head:
-
-1. Phase 1: lock the real build stdlib surface and chaining API
-2. Phase 2: admit `build.fol` into resolver/typechecker as a real semantic unit
-3. Phase 3: semantic entry validation for `def build(...)`
-4. Phase 4: finalize build-time capability boundaries
-5. Phase 5: implement real build routine evaluation over typed/lowered code
-6. Phase 6: delete textual extraction from the active execution path
-7. Phase 7: make frontend commands fully graph-driven
-8. Phase 8 onward: expand chains, options, dependencies, generated files,
-   native/tooling, and compatibility absorption
-
-## Progress Tracking Template
-
-When work starts on this new plan, progress should be reported against phases,
-not vague percentages.
-
-Recommended tracking format:
-
-- Phase 1: not started / in progress / complete
-- Phase 2: not started / in progress / complete
-- Phase 3: not started / in progress / complete
-- Phase 4: not started / in progress / complete
-- Phase 5: not started / in progress / complete
-- Phase 6: not started / in progress / complete
-- Phase 7: not started / in progress / complete
-- Phase 8: not started / in progress / complete
-- Phase 9: not started / in progress / complete
-- Phase 10: not started / in progress / complete
-- Phase 11: not started / in progress / complete
-- Phase 12: not started / in progress / complete
-
-## Final Standard
-
-If a future implementation still needs to ask “can the restricted extractor
-understand this build pattern?”, the plan is not complete.
-
-The correct question is:
-
-- “is this valid FOL build code, and if so, what graph does its execution
-  produce?”
+- `lang/execution/fol-build` contains all build execution code
+- `fol-package` contains only entry validation and package metadata
+- `build.fol` goes through the full compiler pipeline before execution
+- `when`, `loop`, and helper routines work in `build.fol`
+- All new API methods (link, import, run args, path utils) are implemented and tested
+- `-D` CLI options work end-to-end
+- Named step selection works
+- All fixtures in `examples/` demonstrate a distinct build capability
+- All integration tests pass

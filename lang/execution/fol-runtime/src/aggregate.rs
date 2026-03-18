@@ -86,7 +86,11 @@ fn join_named_values(values: &[FolNamedValue]) -> String {
 
 pub fn render_record<T: FolRecord>(value: &T) -> String {
     let fields = value.fol_record_fields();
-    format!("{} {{ {} }}", value.fol_record_name(), join_named_values(&fields))
+    format!(
+        "{} {{ {} }}",
+        value.fol_record_name(),
+        join_named_values(&fields)
+    )
 }
 
 pub fn render_record_debug<T: FolRecord>(value: &T) -> String {
@@ -96,7 +100,11 @@ pub fn render_record_debug<T: FolRecord>(value: &T) -> String {
 pub fn render_entry<T: FolEntry>(value: &T) -> String {
     let fields = value.fol_entry_fields();
     if fields.is_empty() {
-        format!("{}.{}", value.fol_entry_name(), value.fol_entry_variant_name())
+        format!(
+            "{}.{}",
+            value.fol_entry_name(),
+            value.fol_entry_variant_name()
+        )
     } else {
         format!(
             "{}.{} {{ {} }}",
@@ -238,8 +246,7 @@ mod tests {
     #[test]
     fn prelude_example_shapes_show_backend_authorship_pattern() {
         use crate::prelude::{
-            render_entry, render_record, FolEchoFormat, FolEntry, FolInt, FolNamedValue,
-            FolRecord,
+            render_entry, render_record, FolEchoFormat, FolEntry, FolInt, FolNamedValue, FolRecord,
         };
 
         struct ExamplePoint {

@@ -174,7 +174,9 @@ impl AstParser {
             return self.parse_imp_decl(tokens);
         }
 
-        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Std)) && self.lookahead_is_std_decl(tokens) {
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Std))
+            && self.lookahead_is_std_decl(tokens)
+        {
             return self.parse_std_decl(tokens);
         }
 
@@ -210,10 +212,13 @@ impl AstParser {
             return Ok(node);
         }
 
-        if (matches!(key, KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot))
-            || AstParser::token_can_be_logical_name(&key)
+        if (matches!(
+            key,
+            KEYWORD::Symbol(SYMBOL::RoundO) | KEYWORD::Symbol(SYMBOL::Dot)
+        ) || AstParser::token_can_be_logical_name(&key)
             || key.is_textual_literal())
-            && self.lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
+            && self
+                .lookahead_is_general_invoke(tokens, matches!(key, KEYWORD::Symbol(SYMBOL::RoundO)))
         {
             return self.parse_invoke_stmt(tokens);
         }
@@ -244,8 +249,9 @@ impl AstParser {
         let mut lhs = self.parse_logical_or_expression(tokens)?;
 
         for _ in 0..32 {
-            let leading_comments =
-                self.collect_comments_before(tokens, |key| matches!(key, KEYWORD::Symbol(SYMBOL::Pipe)))?;
+            let leading_comments = self.collect_comments_before(tokens, |key| {
+                matches!(key, KEYWORD::Symbol(SYMBOL::Pipe))
+            })?;
             let op_token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => return Ok(lhs),

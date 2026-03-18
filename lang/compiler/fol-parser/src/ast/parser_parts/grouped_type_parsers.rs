@@ -26,7 +26,11 @@ impl AstParser {
                 return Ok(nodes);
             }
 
-            nodes.extend(self.parse_single_type_decl_with_options(tokens, options.clone(), false)?);
+            nodes.extend(self.parse_single_type_decl_with_options(
+                tokens,
+                options.clone(),
+                false,
+            )?);
 
             self.skip_ignorable(tokens);
             let sep = tokens.curr(false)?;

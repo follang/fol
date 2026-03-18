@@ -330,9 +330,8 @@ mod tests {
         );
 
         let mut type_table = LoweredTypeTable::new();
-        let recoverable_abi = LoweredRecoverableAbi::v1(
-            type_table.intern_builtin(LoweredBuiltinType::Bool),
-        );
+        let recoverable_abi =
+            LoweredRecoverableAbi::v1(type_table.intern_builtin(LoweredBuiltinType::Bool));
         let workspace = LoweredWorkspace::new(
             entry_identity.clone(),
             packages,

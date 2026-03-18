@@ -82,9 +82,9 @@ pub fn fol_tree_sitter_query_snapshots() -> &'static [TreeSitterQuerySnapshot] {
 #[cfg(test)]
 mod tests {
     use super::{
-        fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
-        fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
-        fol_tree_sitter_symbols_query,
+        fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
+        fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query,
+        fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
     };
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -113,7 +113,11 @@ mod tests {
         root
     }
 
-    fn run_tree_sitter_query(bundle_root: &Path, query_path: &Path, source_path: &Path) -> std::process::Output {
+    fn run_tree_sitter_query(
+        bundle_root: &Path,
+        query_path: &Path,
+        source_path: &Path,
+    ) -> std::process::Output {
         let cache_root = tree_sitter_cache_root("query");
         Command::new("tree-sitter")
             .env("XDG_CACHE_HOME", &cache_root)
@@ -166,7 +170,10 @@ mod tests {
             "unreachable_stmt",
             "break_stmt",
         ] {
-            assert!(grammar.contains(needle), "missing grammar rule marker: {needle}");
+            assert!(
+                grammar.contains(needle),
+                "missing grammar rule marker: {needle}"
+            );
         }
     }
 
@@ -192,7 +199,10 @@ mod tests {
             "nil_literal",
             "unwrap_expr",
         ] {
-            assert!(grammar.contains(needle), "missing v1 grammar marker: {needle}");
+            assert!(
+                grammar.contains(needle),
+                "missing v1 grammar marker: {needle}"
+            );
         }
     }
 
@@ -229,7 +239,10 @@ mod tests {
             "@number",
             "@comment",
         ] {
-            assert!(query.contains(needle), "missing highlight capture: {needle}");
+            assert!(
+                query.contains(needle),
+                "missing highlight capture: {needle}"
+            );
         }
     }
 
@@ -250,7 +263,8 @@ mod tests {
 
         assert!(grammar.contains("optional(field('modifiers', $.decl_modifiers))"));
         assert!(grammar.contains("seq('[', optional($.modifier_list), ']')"));
-        assert!(query.contains("(decl_modifiers \"[\" @punctuation.bracket \"]\" @punctuation.bracket)"));
+        assert!(query
+            .contains("(decl_modifiers \"[\" @punctuation.bracket \"]\" @punctuation.bracket)"));
         assert!(query.contains("(decl_modifiers (modifier_list (identifier) @attribute))"));
     }
 
@@ -273,7 +287,10 @@ mod tests {
             "(check_expr \"check\" @keyword.exception)",
             "(break_stmt \"break\" @keyword.repeat)",
         ] {
-            assert!(query.contains(needle), "missing declaration head capture: {needle}");
+            assert!(
+                query.contains(needle),
+                "missing declaration head capture: {needle}"
+            );
         }
     }
 
@@ -325,7 +342,10 @@ mod tests {
             "(nil_literal) @constant.builtin",
             "(boolean_literal) @boolean",
         ] {
-            assert!(query.contains(needle), "missing declaration role capture: {needle}");
+            assert!(
+                query.contains(needle),
+                "missing declaration role capture: {needle}"
+            );
         }
     }
 
@@ -336,7 +356,9 @@ mod tests {
 
         assert!(grammar.contains("field('declaration', choice($.plain_fun_decl, $.method_decl))"));
         assert!(grammar.contains("field('declaration', choice($.plain_log_decl, $.method_decl))"));
-        assert!(grammar.contains("seq('var', optional(field('modifiers', $.decl_modifiers)), $.typed_binding"));
+        assert!(grammar.contains(
+            "seq('var', optional(field('modifiers', $.decl_modifiers)), $.typed_binding"
+        ));
 
         for needle in [
             "(use_decl \"use\" @keyword.import)",
@@ -379,7 +401,10 @@ mod tests {
             "(var_decl (typed_binding name: (identifier) @local.definition))",
             "(fun_decl name: (identifier) @local.definition.function)",
         ] {
-            assert!(query.contains(needle), "missing locals capture marker: {needle}");
+            assert!(
+                query.contains(needle),
+                "missing locals capture marker: {needle}"
+            );
         }
     }
 
@@ -393,7 +418,10 @@ mod tests {
             "@symbol.variable",
             "@symbol.namespace",
         ] {
-            assert!(query.contains(needle), "missing symbol capture marker: {needle}");
+            assert!(
+                query.contains(needle),
+                "missing symbol capture marker: {needle}"
+            );
         }
     }
 
@@ -410,11 +438,19 @@ mod tests {
     fn corpus_smoke_cases_cover_real_v1_surfaces() {
         let corpus = fol_tree_sitter_corpus();
         assert_eq!(corpus.len(), 4);
-        assert!(corpus.iter().any(|case| case.source.contains("use shared: loc")));
+        assert!(corpus
+            .iter()
+            .any(|case| case.source.contains("use shared: loc")));
         assert!(corpus.iter().any(|case| case.source.contains("when(flag)")));
-        assert!(corpus.iter().any(|case| case.source.contains("report \"bad-input\"")));
-        assert!(corpus.iter().any(|case| case.source.contains("typ Summary: rec")));
-        assert!(corpus.iter().any(|case| case.source.contains("true") || case.source.contains("false")));
+        assert!(corpus
+            .iter()
+            .any(|case| case.source.contains("report \"bad-input\"")));
+        assert!(corpus
+            .iter()
+            .any(|case| case.source.contains("typ Summary: rec")));
+        assert!(corpus
+            .iter()
+            .any(|case| case.source.contains("true") || case.source.contains("false")));
     }
 
     #[test]
@@ -445,7 +481,11 @@ mod tests {
         let query_path = root.join("queries/fol/highlights.scm");
         std::fs::write(&query_path, "(missing_fol_node) @keyword").unwrap();
 
-        let output = run_tree_sitter_query(&root, &query_path, &PathBuf::from("xtra/logtiny/src/log.fol"));
+        let output = run_tree_sitter_query(
+            &root,
+            &query_path,
+            &PathBuf::from("xtra/logtiny/src/log.fol"),
+        );
 
         assert!(
             !output.status.success(),
@@ -545,7 +585,10 @@ mod tests {
             "(use_decl source_kind: (source_kind \"pkg\" @keyword.import))",
             "(use_decl source_kind: (source_kind \"std\" @keyword.import))",
         ] {
-            assert!(query.contains(needle), "missing source-kind capture: {needle}");
+            assert!(
+                query.contains(needle),
+                "missing source-kind capture: {needle}"
+            );
         }
 
         let root = build_bundle_root("import_source_kinds");
@@ -689,7 +732,11 @@ mod tests {
         );
         assert!(showcase_output.status.success());
         let showcase = String::from_utf8_lossy(&showcase_output.stdout);
-        for needle in ["punctuation.delimiter", "punctuation.bracket", "type.builtin"] {
+        for needle in [
+            "punctuation.delimiter",
+            "punctuation.bracket",
+            "type.builtin",
+        ] {
             assert!(
                 showcase.contains(needle),
                 "showcase fixture lost type annotation capture: {needle}\n{showcase}"
@@ -703,7 +750,11 @@ mod tests {
         );
         assert!(shell_output.status.success());
         let shell = String::from_utf8_lossy(&shell_output.stdout);
-        for needle in ["punctuation.delimiter", "punctuation.bracket", "type.builtin"] {
+        for needle in [
+            "punctuation.delimiter",
+            "punctuation.bracket",
+            "type.builtin",
+        ] {
             assert!(
                 shell.contains(needle),
                 "shell fixture lost type annotation capture: {needle}\n{shell}"
@@ -776,7 +827,12 @@ mod tests {
         );
         assert!(shell_output.status.success());
         let shell = String::from_utf8_lossy(&shell_output.stdout);
-        for needle in ["type.builtin", "constant.builtin", "operator", "punctuation.bracket"] {
+        for needle in [
+            "type.builtin",
+            "constant.builtin",
+            "operator",
+            "punctuation.bracket",
+        ] {
             assert!(
                 shell.contains(needle),
                 "shell fixture lost snapshot capture: {needle}\n{shell}"

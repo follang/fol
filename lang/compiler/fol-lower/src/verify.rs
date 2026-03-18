@@ -213,7 +213,13 @@ pub(crate) fn verify_workspace(workspace: &LoweredWorkspace) -> Result<(), Vec<L
 
                 match block.terminator.as_ref() {
                     Some(LoweredTerminator::Jump { target }) => {
-                        enqueue_target(routine.name.as_str(), &routine.blocks, &mut errors, &mut queue, *target);
+                        enqueue_target(
+                            routine.name.as_str(),
+                            &routine.blocks,
+                            &mut errors,
+                            &mut queue,
+                            *target,
+                        );
                     }
                     Some(LoweredTerminator::Branch {
                         condition,
@@ -505,17 +511,31 @@ fn verify_instruction(
             verify_local_reference(routine, instr.id.0, "length operand", *operand, errors);
         }
         crate::LoweredInstrKind::ConstructRecord { type_id, fields } => {
-            verify_type_reference(workspace, package, routine, instr.id.0, "record type", *type_id, errors);
+            verify_type_reference(
+                workspace,
+                package,
+                routine,
+                instr.id.0,
+                "record type",
+                *type_id,
+                errors,
+            );
             for (_, value) in fields {
                 verify_local_reference(routine, instr.id.0, "record field", *value, errors);
             }
         }
         crate::LoweredInstrKind::ConstructEntry {
-            type_id,
-            payload,
-            ..
+            type_id, payload, ..
         } => {
-            verify_type_reference(workspace, package, routine, instr.id.0, "entry type", *type_id, errors);
+            verify_type_reference(
+                workspace,
+                package,
+                routine,
+                instr.id.0,
+                "entry type",
+                *type_id,
+                errors,
+            );
             if let Some(payload) = payload {
                 verify_local_reference(routine, instr.id.0, "entry payload", *payload, errors);
             }
@@ -523,19 +543,31 @@ fn verify_instruction(
         crate::LoweredInstrKind::ConstructLinear {
             type_id, elements, ..
         } => {
-            verify_type_reference(workspace, package, routine, instr.id.0, "linear type", *type_id, errors);
+            verify_type_reference(
+                workspace,
+                package,
+                routine,
+                instr.id.0,
+                "linear type",
+                *type_id,
+                errors,
+            );
             for element in elements {
                 verify_local_reference(routine, instr.id.0, "linear element", *element, errors);
             }
         }
         crate::LoweredInstrKind::ConstructSet { type_id, members } => {
-            verify_type_reference(workspace, package, routine, instr.id.0, "set type", *type_id, errors);
+            verify_type_reference(
+                workspace, package, routine, instr.id.0, "set type", *type_id, errors,
+            );
             for member in members {
                 verify_local_reference(routine, instr.id.0, "set member", *member, errors);
             }
         }
         crate::LoweredInstrKind::ConstructMap { type_id, entries } => {
-            verify_type_reference(workspace, package, routine, instr.id.0, "map type", *type_id, errors);
+            verify_type_reference(
+                workspace, package, routine, instr.id.0, "map type", *type_id, errors,
+            );
             for (key, value) in entries {
                 verify_local_reference(routine, instr.id.0, "map key", *key, errors);
                 verify_local_reference(routine, instr.id.0, "map value", *value, errors);
@@ -543,7 +575,15 @@ fn verify_instruction(
         }
         crate::LoweredInstrKind::ConstructOptional { type_id, value }
         | crate::LoweredInstrKind::ConstructError { type_id, value } => {
-            verify_type_reference(workspace, package, routine, instr.id.0, "shell type", *type_id, errors);
+            verify_type_reference(
+                workspace,
+                package,
+                routine,
+                instr.id.0,
+                "shell type",
+                *type_id,
+                errors,
+            );
             if let Some(value) = value {
                 verify_local_reference(routine, instr.id.0, "shell value", *value, errors);
             }
@@ -560,7 +600,15 @@ fn verify_instruction(
             target_type,
         } => {
             verify_local_reference(routine, instr.id.0, "cast operand", *operand, errors);
-            verify_type_reference(workspace, package, routine, instr.id.0, "cast type", *target_type, errors);
+            verify_type_reference(
+                workspace,
+                package,
+                routine,
+                instr.id.0,
+                "cast type",
+                *target_type,
+                errors,
+            );
         }
     }
 
@@ -648,15 +696,23 @@ fn enqueue_target(
 mod tests {
     use super::verify_workspace;
     use crate::{
-        control::{LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredRoutine, LoweredTerminator},
-        ids::{LoweredBlockId, LoweredInstrId, LoweredLocalId, LoweredPackageId, LoweredRoutineId, LoweredTypeId},
+        control::{
+            LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredRoutine,
+            LoweredTerminator,
+        },
+        ids::{
+            LoweredBlockId, LoweredInstrId, LoweredLocalId, LoweredPackageId, LoweredRoutineId,
+            LoweredTypeId,
+        },
         model::{
             LoweredPackage, LoweredRecoverableAbi, LoweredSourceMap, LoweredSymbolOwnership,
             LoweredWorkspace,
         },
         types::{LoweredBuiltinType, LoweredTypeTable},
     };
-    use fol_resolver::{MountedSymbolProvenance, PackageIdentity, PackageSourceKind, SourceUnitId, SymbolId};
+    use fol_resolver::{
+        MountedSymbolProvenance, PackageIdentity, PackageSourceKind, SourceUnitId, SymbolId,
+    };
     use std::collections::BTreeMap;
 
     fn identity(name: &str) -> PackageIdentity {
@@ -693,14 +749,15 @@ mod tests {
             }),
         });
         let mut package = LoweredPackage::new(LoweredPackageId(0), identity.clone());
-        package
-            .routine_decls
-            .insert(LoweredRoutineId(0), routine);
+        package.routine_decls.insert(LoweredRoutineId(0), routine);
         let workspace = empty_workspace(identity, package);
 
-        let errors = verify_workspace(&workspace).expect_err("verifier should reject missing jump targets");
+        let errors =
+            verify_workspace(&workspace).expect_err("verifier should reject missing jump targets");
 
-        assert!(errors.iter().any(|error| error.message().contains("missing block 9")));
+        assert!(errors
+            .iter()
+            .any(|error| error.message().contains("missing block 9")));
     }
 
     #[test]
@@ -718,14 +775,15 @@ mod tests {
             terminator: Some(LoweredTerminator::Return { value: None }),
         });
         let mut package = LoweredPackage::new(LoweredPackageId(0), identity.clone());
-        package
-            .routine_decls
-            .insert(LoweredRoutineId(0), routine);
+        package.routine_decls.insert(LoweredRoutineId(0), routine);
         let workspace = empty_workspace(identity, package);
 
-        let errors = verify_workspace(&workspace).expect_err("verifier should reject unreachable blocks");
+        let errors =
+            verify_workspace(&workspace).expect_err("verifier should reject unreachable blocks");
 
-        assert!(errors.iter().any(|error| error.message().contains("unreachable block 1")));
+        assert!(errors
+            .iter()
+            .any(|error| error.message().contains("unreachable block 1")));
     }
 
     #[test]
@@ -754,18 +812,24 @@ mod tests {
         });
 
         let mut package = LoweredPackage::new(LoweredPackageId(0), identity.clone());
-        package
-            .routine_decls
-            .insert(LoweredRoutineId(0), routine);
+        package.routine_decls.insert(LoweredRoutineId(0), routine);
         let workspace = empty_workspace(identity, package);
 
         let errors = verify_workspace(&workspace)
             .expect_err("verifier should reject missing locals and missing lowered type ids");
 
-        assert!(errors.iter().any(|error| error.message().contains("references missing type 9")));
-        assert!(errors.iter().any(|error| error.message().contains("writes to missing local 1")));
-        assert!(errors.iter().any(|error| error.message().contains("uses missing operand local 2")));
-        assert!(errors.iter().any(|error| error.message().contains("return uses missing local 1")));
+        assert!(errors
+            .iter()
+            .any(|error| error.message().contains("references missing type 9")));
+        assert!(errors
+            .iter()
+            .any(|error| error.message().contains("writes to missing local 1")));
+        assert!(errors
+            .iter()
+            .any(|error| error.message().contains("uses missing operand local 2")));
+        assert!(errors
+            .iter()
+            .any(|error| error.message().contains("return uses missing local 1")));
     }
 
     #[test]
@@ -792,9 +856,7 @@ mod tests {
                 }),
             },
         );
-        package
-            .routine_decls
-            .insert(LoweredRoutineId(0), routine);
+        package.routine_decls.insert(LoweredRoutineId(0), routine);
         let workspace = empty_workspace(identity, package);
 
         let errors = verify_workspace(&workspace)

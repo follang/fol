@@ -4,7 +4,8 @@ use crate::{
     FrontendWorkspace,
 };
 pub fn work_info(workspace: &FrontendWorkspace) -> FrontendCommandResult {
-    let mut result = FrontendCommandResult::new("work info", workspace.info_summary_lines().join("\n"));
+    let mut result =
+        FrontendCommandResult::new("work info", workspace.info_summary_lines().join("\n"));
     result.artifacts.push(FrontendArtifactSummary::new(
         FrontendArtifactKind::WorkspaceRoot,
         "workspace-root",
@@ -76,8 +77,8 @@ pub fn work_status(
     let lockfile_path = workspace.root.root.join("fol.lock");
     let lockfile = if lockfile_path.is_file() {
         Some(
-            fol_package::parse_package_lockfile(
-                &std::fs::read_to_string(&lockfile_path).map_err(|error| {
+            fol_package::parse_package_lockfile(&std::fs::read_to_string(&lockfile_path).map_err(
+                |error| {
                     FrontendError::new(
                         FrontendErrorKind::CommandFailed,
                         format!(
@@ -86,8 +87,8 @@ pub fn work_status(
                             error
                         ),
                     )
-                })?,
-            )
+                },
+            )?)
             .map_err(FrontendError::from)?,
         )
     } else {
@@ -101,7 +102,11 @@ pub fn work_status(
         format!("members={}", workspace.members.len()),
         format!(
             "lockfile={}",
-            if lockfile.is_some() { "present" } else { "missing" }
+            if lockfile.is_some() {
+                "present"
+            } else {
+                "missing"
+            }
         ),
         format!("build-root={}", workspace.build_root.display()),
         format!("cache-root={}", workspace.cache_root.display()),
@@ -111,7 +116,10 @@ pub fn work_status(
     ];
 
     if let Some(lockfile) = &lockfile {
-        summary.push(format!("locked-git-dependencies={}", lockfile.entries.len()));
+        summary.push(format!(
+            "locked-git-dependencies={}",
+            lockfile.entries.len()
+        ));
         for entry in &lockfile.entries {
             summary.push(format!(
                 "  {} [{}] @ {}",
@@ -206,12 +214,16 @@ mod tests {
         assert!(result.summary.contains("/tmp/demo/app"));
         assert!(result.summary.contains("/tmp/demo/lib"));
         assert_eq!(result.artifacts.len(), 2);
-        assert_eq!(result.artifacts[0].kind, crate::FrontendArtifactKind::PackageRoot);
+        assert_eq!(
+            result.artifacts[0].kind,
+            crate::FrontendArtifactKind::PackageRoot
+        );
     }
 
     #[test]
     fn work_deps_reports_member_dependency_graphs() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_work_deps_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_work_deps_{}", std::process::id()));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
         fs::write(
@@ -234,7 +246,9 @@ mod tests {
         assert_eq!(result.command, "work deps");
         assert!(result.summary.contains("app:"));
         assert!(result.summary.contains("shared [loc] -> ../shared"));
-        assert!(result.summary.contains("logtiny [git] -> git+https://github.com/bresilla/logtiny"));
+        assert!(result
+            .summary
+            .contains("logtiny [git] -> git+https://github.com/bresilla/logtiny"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -264,7 +278,9 @@ mod tests {
         assert_eq!(result.command, "work status");
         assert!(result.summary.contains("lockfile=present"));
         assert!(result.summary.contains("locked-git-dependencies=1"));
-        assert!(result.summary.contains("logtiny [git+https://github.com/bresilla/logtiny] @ abcdef123456"));
+        assert!(result
+            .summary
+            .contains("logtiny [git+https://github.com/bresilla/logtiny] @ abcdef123456"));
 
         fs::remove_dir_all(root).ok();
     }

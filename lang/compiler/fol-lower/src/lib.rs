@@ -1,9 +1,9 @@
 //! Lowering from typed `V1` FOL workspaces into a backend-oriented IR.
 
 mod boundaries;
-mod errors;
 pub mod control;
 pub mod decls;
+mod errors;
 pub mod exprs;
 pub mod ids;
 pub mod model;
@@ -14,11 +14,11 @@ mod verify;
 
 use fol_resolver::{PackageIdentity, PackageSourceKind};
 
+pub use boundaries::{v1_lowering_boundaries, UnsupportedLoweringSurface};
 pub use control::{
     LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredOperand, LoweredRoutine,
     LoweredTerminator,
 };
-pub use boundaries::{v1_lowering_boundaries, UnsupportedLoweringSurface};
 pub use errors::{LoweringError, LoweringErrorKind};
 pub use ids::{
     IdTable, LoweredBlockId, LoweredGlobalId, LoweredInstrId, LoweredLocalId, LoweredPackageId,
@@ -32,9 +32,7 @@ pub use model::{
 };
 pub use render::render_lowered_workspace;
 pub use session::LoweringSession;
-pub use types::{
-    LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable,
-};
+pub use types::{LoweredBuiltinType, LoweredRoutineType, LoweredType, LoweredTypeTable};
 
 pub type LoweringResult<T> = Result<T, Vec<LoweringError>>;
 
@@ -64,8 +62,9 @@ impl Lowerer {
 
 fn compatibility_identity_for_program(typed: &fol_typecheck::TypedProgram) -> PackageIdentity {
     let canonical_root = typed
-        .source_units()
-        .first()
+        .ordinary_source_units()
+        .next()
+        .or_else(|| typed.source_units().first())
         .map(|source_unit| source_unit.path.clone())
         .unwrap_or_else(|| typed.package_name().to_string());
 
@@ -107,7 +106,10 @@ mod tests {
 
     #[test]
     fn lowering_smoke_accepts_typed_workspace_inputs() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
         let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
@@ -128,7 +130,10 @@ mod tests {
 
     #[test]
     fn lowering_compatibility_shim_wraps_typed_programs_as_single_entry_workspaces() {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
         let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();

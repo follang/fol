@@ -53,11 +53,7 @@ pub fn wrong_arity_message(entry: &IntrinsicEntry, actual: usize) -> String {
     )
 }
 
-pub fn wrong_type_family_message(
-    entry: &IntrinsicEntry,
-    expected: &str,
-    actual: &str,
-) -> String {
+pub fn wrong_type_family_message(entry: &IntrinsicEntry, expected: &str, actual: &str) -> String {
     format!(
         "{} expects {} but got {}",
         render_intrinsic_spelling(entry),
@@ -66,10 +62,7 @@ pub fn wrong_type_family_message(
     )
 }
 
-pub fn wrong_version_message(
-    entry: &IntrinsicEntry,
-    current: IntrinsicAvailability,
-) -> String {
+pub fn wrong_version_message(entry: &IntrinsicEntry, current: IntrinsicAvailability) -> String {
     format!(
         "{} belongs to {} but the current compiler milestone is {}",
         render_intrinsic_spelling(entry),

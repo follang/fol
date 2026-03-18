@@ -83,15 +83,14 @@ Current import surface:
   roots belong to `pkg`
 - `pkg` roots require both `package.yaml` and `build.fol`
 - `package.yaml` is metadata-only; `build.fol` is the package build entry file
-- today `fol` still executes compatibility-style dependency/export/root definitions
-  from `build.fol`
-- the routed `fol code build/run/test/check` path now starts from `build.fol`
-  by default and rejects modern graph-entry packages explicitly until graph
-  execution lands
-- the long-term direction is one canonical `build.fol` entrypoint that can host
-  both compatibility package controls and a real `build(...)` graph definition
+- `build.fol` uses one canonical routine entry: `pro[] build(graph: Graph): non`
+- `fol code build/run/test/check` route workspace execution from the evaluated
+  build graph defined in `build.fol`
+- old `def root`, `def build(...)`, and hybrid compatibility forms are not part
+  of the supported build surface
 - stray `package.fol` files are ignored
-- consumer-visible `pkg` names come only from build-declared exported roots
+- checked-in examples under `examples/` are the current source-of-truth build
+  packages
 
 Current C ABI boundary:
 - `build.fol` may now preserve inert native-artifact placeholders such as `header`,

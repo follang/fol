@@ -135,7 +135,7 @@ fn test_resolver_keeps_pkg_import_semantics_stable_through_package_provider() {
         .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "def root: loc = \"src/root\";\ndef fmt: loc = \"src/fmt\";\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
     )
     .expect("Should write the installed package build fixture");
     fs::write(store_root.join("json/src/root/value.fol"), "var[exp] answer: int = 42;\n")
@@ -150,7 +150,7 @@ fn test_resolver_keeps_pkg_import_semantics_stable_through_package_provider() {
         concat!(
             "use json: pkg = {json};\n",
             "fun[] main(): int = {\n",
-            "    return answer + json::fmt::formatted;\n",
+            "    return json::src::root::answer + json::src::fmt::formatted;\n",
             "}\n",
         ),
     )
@@ -175,7 +175,7 @@ fn test_resolver_keeps_pkg_import_semantics_stable_through_package_provider() {
         .into_iter()
         .find(|import| import.alias_name == "json")
         .expect("Resolver should keep the pkg import record");
-    let target_scope = import
+    let _target_scope = import
         .target_scope
         .expect("Pkg imports should still resolve to a mounted root scope");
     let routine_scope = resolved
@@ -184,25 +184,25 @@ fn test_resolver_keeps_pkg_import_semantics_stable_through_package_provider() {
         .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
         .expect("Resolver should create a routine scope for the importing package");
 
-    assert!(
-        resolved
-            .symbols_in_scope(target_scope)
-            .into_iter()
-            .any(|symbol| symbol.name == "answer" && symbol.kind == SymbolKind::ValueBinding),
-        "Pkg imports should still expose exported root symbols through the migrated provider boundary",
-    );
+    let answer_scope = resolved
+        .namespace_scope("json::src::root")
+        .expect("Pkg imports should expose semantic source namespaces through the provider boundary");
+    assert!(resolved
+        .symbols_in_scope(answer_scope)
+        .into_iter()
+        .any(|symbol| symbol.name == "answer" && symbol.kind == SymbolKind::ValueBinding));
     assert_eq!(
         resolved
             .references_in_scope(routine_scope)
             .into_iter()
             .find(|reference| {
                 reference.kind == ReferenceKind::QualifiedIdentifier
-                    && reference.name == "json::fmt::formatted"
+                    && reference.name == "json::src::fmt::formatted"
             })
             .and_then(|reference| reference.resolved)
             .is_some(),
         true,
-        "Pkg imports should still resolve qualified references through declared export namespaces",
+        "Pkg imports should still resolve qualified references through semantic source namespaces",
     );
 
     fs::remove_dir_all(&temp_root)

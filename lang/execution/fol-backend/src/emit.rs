@@ -148,11 +148,13 @@ pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFi
     files
 }
 
-pub fn emit_namespace_module_shells(session: &BackendSession) -> BackendResult<Vec<EmittedRustFile>> {
+pub fn emit_namespace_module_shells(
+    session: &BackendSession,
+) -> BackendResult<Vec<EmittedRustFile>> {
     let mut files = Vec::new();
     for namespace_plan in plan_namespace_layouts(session) {
         let emitted_items = render_namespace_items(session, &namespace_plan)?;
-            let mut contents = format!(
+        let mut contents = format!(
                 "use fol_runtime::prelude as rt;\n\npub(crate) const NAMESPACE_NAME: &str = \"{}\";\npub(crate) const SOURCE_UNIT_IDS: &[usize] = &[{}];\n\npub(crate) fn namespace_runtime_marker() -> &'static str {{\n    let _ = rt::crate_name();\n    NAMESPACE_NAME\n}}\n",
                 namespace_plan.full_namespace,
                 namespace_plan
@@ -162,19 +164,19 @@ pub fn emit_namespace_module_shells(session: &BackendSession) -> BackendResult<V
                     .collect::<Vec<_>>()
                     .join(", ")
             );
-            if !emitted_items.is_empty() {
-                contents.push('\n');
-                contents.push_str(&emitted_items);
-            }
-            files.push(EmittedRustFile {
-                path: format!(
-                    "src/packages/{}/{}",
-                    mangle_package_module_name(&namespace_plan.package_identity),
-                    namespace_plan.relative_file
-                ),
-                module_name: namespace_plan.module_name.clone(),
-                contents,
-            });
+        if !emitted_items.is_empty() {
+            contents.push('\n');
+            contents.push_str(&emitted_items);
+        }
+        files.push(EmittedRustFile {
+            path: format!(
+                "src/packages/{}/{}",
+                mangle_package_module_name(&namespace_plan.package_identity),
+                namespace_plan.relative_file
+            ),
+            module_name: namespace_plan.module_name.clone(),
+            contents,
+        });
     }
     Ok(files)
 }
@@ -201,7 +203,10 @@ pub fn emit_generated_crate_skeleton(session: &BackendSession) -> BackendResult<
     })
 }
 
-pub fn write_generated_crate(output_root: &Path, artifact: &BackendArtifact) -> BackendResult<PathBuf> {
+pub fn write_generated_crate(
+    output_root: &Path,
+    artifact: &BackendArtifact,
+) -> BackendResult<PathBuf> {
     let BackendArtifact::RustSourceCrate { root, files } = artifact else {
         return Err(BackendError::new(
             BackendErrorKind::InvalidInput,
@@ -214,14 +219,20 @@ pub fn write_generated_crate(output_root: &Path, artifact: &BackendArtifact) -> 
         fs::remove_dir_all(&crate_root).map_err(|error| {
             BackendError::new(
                 BackendErrorKind::EmissionFailure,
-                format!("failed to clean generated crate root '{}': {error}", crate_root.display()),
+                format!(
+                    "failed to clean generated crate root '{}': {error}",
+                    crate_root.display()
+                ),
             )
         })?;
     }
     fs::create_dir_all(&crate_root).map_err(|error| {
         BackendError::new(
             BackendErrorKind::EmissionFailure,
-            format!("failed to create generated crate root '{}': {error}", crate_root.display()),
+            format!(
+                "failed to create generated crate root '{}': {error}",
+                crate_root.display()
+            ),
         )
     })?;
 
@@ -231,14 +242,20 @@ pub fn write_generated_crate(output_root: &Path, artifact: &BackendArtifact) -> 
             fs::create_dir_all(parent).map_err(|error| {
                 BackendError::new(
                     BackendErrorKind::EmissionFailure,
-                    format!("failed to create generated module dir '{}': {error}", parent.display()),
+                    format!(
+                        "failed to create generated module dir '{}': {error}",
+                        parent.display()
+                    ),
                 )
             })?;
         }
         fs::write(&path, &file.contents).map_err(|error| {
             BackendError::new(
                 BackendErrorKind::EmissionFailure,
-                format!("failed to write generated file '{}': {error}", path.display()),
+                format!(
+                    "failed to write generated file '{}': {error}",
+                    path.display()
+                ),
             )
         })?;
     }
@@ -251,7 +268,10 @@ pub fn prepare_generated_build_dir(output_root: &Path) -> BackendResult<PathBuf>
     fs::create_dir_all(&build_root).map_err(|error| {
         BackendError::new(
             BackendErrorKind::EmissionFailure,
-            format!("failed to create backend build root '{}': {error}", build_root.display()),
+            format!(
+                "failed to create backend build root '{}': {error}",
+                build_root.display()
+            ),
         )
     })?;
     Ok(build_root)
@@ -268,7 +288,10 @@ pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
         .map_err(|error| {
             BackendError::new(
                 BackendErrorKind::BuildFailure,
-                format!("failed to launch cargo build for '{}': {error}", manifest_path.display()),
+                format!(
+                    "failed to launch cargo build for '{}': {error}",
+                    manifest_path.display()
+                ),
             )
         })?;
 
@@ -292,14 +315,20 @@ pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
         .ok_or_else(|| {
             BackendError::new(
                 BackendErrorKind::BuildFailure,
-                format!("generated crate root '{}' does not have a valid package name", crate_root.display()),
+                format!(
+                    "generated crate root '{}' does not have a valid package name",
+                    crate_root.display()
+                ),
             )
         })?;
     let binary_path = crate_root.join("target").join("release").join(package_name);
     if !binary_path.exists() {
         return Err(BackendError::new(
             BackendErrorKind::BuildFailure,
-            format!("cargo build succeeded but '{}' is missing", binary_path.display()),
+            format!(
+                "cargo build succeeded but '{}' is missing",
+                binary_path.display()
+            ),
         ));
     }
 
@@ -330,19 +359,21 @@ pub fn emit_backend_artifact(
     fs::create_dir_all(&final_binary_dir).map_err(|error| {
         BackendError::new(
             BackendErrorKind::BuildFailure,
-            format!("failed to create backend binary dir '{}': {error}", final_binary_dir.display()),
+            format!(
+                "failed to create backend binary dir '{}': {error}",
+                final_binary_dir.display()
+            ),
         )
     })?;
-    let final_binary = final_binary_dir.join(
-        built_binary
-            .file_name()
-            .ok_or_else(|| {
-                BackendError::new(
-                    BackendErrorKind::BuildFailure,
-                    format!("built binary '{}' does not have a file name", built_binary.display()),
-                )
-            })?,
-    );
+    let final_binary = final_binary_dir.join(built_binary.file_name().ok_or_else(|| {
+        BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "built binary '{}' does not have a file name",
+                built_binary.display()
+            ),
+        )
+    })?);
     fs::copy(&built_binary, &final_binary).map_err(|error| {
         BackendError::new(
             BackendErrorKind::BuildFailure,
@@ -358,7 +389,10 @@ pub fn emit_backend_artifact(
         fs::remove_dir_all(&crate_root).map_err(|error| {
             BackendError::new(
                 BackendErrorKind::BuildFailure,
-                format!("failed to remove generated crate dir '{}': {error}", crate_root.display()),
+                format!(
+                    "failed to remove generated crate dir '{}': {error}",
+                    crate_root.display()
+                ),
             )
         })?;
     }
@@ -406,7 +440,9 @@ fn resolve_entry_callable(
     session: &BackendSession,
     entry_candidate: &fol_lower::LoweredEntryCandidate,
 ) -> Option<EntryCallable> {
-    let package = session.workspace().package(&entry_candidate.package_identity)?;
+    let package = session
+        .workspace()
+        .package(&entry_candidate.package_identity)?;
     let routine = package.routine_decls.get(&entry_candidate.routine_id)?;
     if routine.receiver_type.is_some() || !routine.params.is_empty() {
         return None;
@@ -417,12 +453,10 @@ fn resolve_entry_callable(
         _ => return None,
     };
     let source_unit_id = routine.source_unit_id?;
-    let namespace_plan = plan_namespace_layouts(session)
-        .into_iter()
-        .find(|plan| {
-            plan.package_identity == entry_candidate.package_identity
-                && plan.source_unit_ids.contains(&source_unit_id)
-        })?;
+    let namespace_plan = plan_namespace_layouts(session).into_iter().find(|plan| {
+        plan.package_identity == entry_candidate.package_identity
+            && plan.source_unit_ids.contains(&source_unit_id)
+    })?;
     if render_routine_definition(
         session.workspace(),
         &entry_candidate.package_identity,
@@ -456,7 +490,10 @@ fn render_namespace_items(
     session: &BackendSession,
     namespace_plan: &crate::NamespaceLayoutPlan,
 ) -> BackendResult<String> {
-    let Some(package) = session.workspace().package(&namespace_plan.package_identity) else {
+    let Some(package) = session
+        .workspace()
+        .package(&namespace_plan.package_identity)
+    else {
         return Ok(String::new());
     };
     let mut items = Vec::new();
@@ -464,7 +501,11 @@ fn render_namespace_items(
     let mut types = package
         .type_decls
         .values()
-        .filter(|type_decl| namespace_plan.source_unit_ids.contains(&type_decl.source_unit_id))
+        .filter(|type_decl| {
+            namespace_plan
+                .source_unit_ids
+                .contains(&type_decl.source_unit_id)
+        })
         .cloned()
         .collect::<Vec<_>>();
     types.sort_by_key(|type_decl| type_decl.runtime_type.0);
@@ -505,7 +546,11 @@ fn render_namespace_items(
     let mut globals = package
         .global_decls
         .values()
-        .filter(|global| namespace_plan.source_unit_ids.contains(&global.source_unit_id))
+        .filter(|global| {
+            namespace_plan
+                .source_unit_ids
+                .contains(&global.source_unit_id)
+        })
         .cloned()
         .collect::<Vec<_>>();
     globals.sort_by_key(|global| global.id.0);
@@ -523,9 +568,9 @@ fn render_namespace_items(
         .routine_decls
         .values()
         .filter(|routine| {
-            routine
-                .source_unit_id
-                .is_some_and(|source_unit_id| namespace_plan.source_unit_ids.contains(&source_unit_id))
+            routine.source_unit_id.is_some_and(|source_unit_id| {
+                namespace_plan.source_unit_ids.contains(&source_unit_id)
+            })
         })
         .cloned()
         .collect::<Vec<_>>();
@@ -656,9 +701,10 @@ mod tests {
         assert_eq!(emitted.module_name, "cargo");
         assert!(emitted.contents.contains("[package]"));
         assert!(emitted.contents.contains("edition = \"2021\""));
-        assert!(emitted
-            .contents
-            .contains(&format!("name = \"{}\"", session.workspace_identity().crate_dir_name)));
+        assert!(emitted.contents.contains(&format!(
+            "name = \"{}\"",
+            session.workspace_identity().crate_dir_name
+        )));
         assert!(emitted.contents.contains("[dependencies]"));
         assert!(emitted.contents.contains("fol-runtime = { path = "));
         assert!(emitted.contents.contains("/fol-runtime"));
@@ -704,13 +750,23 @@ mod tests {
 
         assert_eq!(emitted.len(), 4);
         assert_eq!(emitted[0].path, "src/packages/pkg__entry__app/root.rs");
-        assert!(emitted[0].contents.contains("use fol_runtime::prelude as rt;"));
-        assert!(emitted[0].contents.contains("NAMESPACE_NAME: &str = \"app\""));
-        assert!(emitted[0].contents.contains("SOURCE_UNIT_IDS: &[usize] = &[0]"));
+        assert!(emitted[0]
+            .contents
+            .contains("use fol_runtime::prelude as rt;"));
+        assert!(emitted[0]
+            .contents
+            .contains("NAMESPACE_NAME: &str = \"app\""));
+        assert!(emitted[0]
+            .contents
+            .contains("SOURCE_UNIT_IDS: &[usize] = &[0]"));
         assert_eq!(emitted[1].path, "src/packages/pkg__entry__app/math.rs");
-        assert!(emitted[1].contents.contains("NAMESPACE_NAME: &str = \"app::math\""));
+        assert!(emitted[1]
+            .contents
+            .contains("NAMESPACE_NAME: &str = \"app::math\""));
         assert_eq!(emitted[3].path, "src/packages/pkg__local__shared/util.rs");
-        assert!(emitted[3].contents.contains("NAMESPACE_NAME: &str = \"shared::util\""));
+        assert!(emitted[3]
+            .contents
+            .contains("NAMESPACE_NAME: &str = \"shared::util\""));
     }
 
     #[test]
@@ -849,7 +905,8 @@ mod tests {
         let BackendArtifact::CompiledBinary {
             crate_root,
             binary_path,
-        } = &artifact else {
+        } = &artifact
+        else {
             panic!("expected compiled artifact");
         };
 
@@ -898,10 +955,10 @@ mod tests {
             .iter()
             .any(|file| file.path.ends_with("pkg__entry__app/api/mod.rs")
                 && file.contents.contains("pub mod tools;")));
-        assert!(emitted
-            .iter()
-            .any(|file| file.path.ends_with("pkg__entry__app/api/tools/mod.rs")
-                && file.contents.contains("pub mod math;")));
+        assert!(emitted.iter().any(
+            |file| file.path.ends_with("pkg__entry__app/api/tools/mod.rs")
+                && file.contents.contains("pub mod math;")
+        ));
 
         let _ = fs::remove_dir_all(&fixture_root);
     }
@@ -915,7 +972,10 @@ mod tests {
             panic!("expected RustSourceCrate artifact");
         };
 
-        let mut sorted_paths = files.iter().map(|file| file.path.clone()).collect::<Vec<_>>();
+        let mut sorted_paths = files
+            .iter()
+            .map(|file| file.path.clone())
+            .collect::<Vec<_>>();
         let original_paths = sorted_paths.clone();
         sorted_paths.sort();
 
@@ -933,9 +993,8 @@ mod tests {
 
     #[test]
     fn executable_backend_handles_recoverable_entry_failure_through_process_outcome() {
-        let output = build_and_run_fixture(
-            "fun[] main(): int / str = {\n    report \"broken\"\n}\n",
-        );
+        let output =
+            build_and_run_fixture("fun[] main(): int / str = {\n    report \"broken\"\n}\n");
 
         assert_eq!(output.status.code(), Some(1));
         assert!(String::from_utf8_lossy(&output.stderr).contains("broken"));
@@ -943,16 +1002,14 @@ mod tests {
 
     #[test]
     fn executable_backend_handles_recoverable_propagation_between_zero_arg_routines() {
-        let output = build_and_run_fixture(
-            concat!(
-                "fun[] load(): int / str = {\n",
-                "    report \"bad-input\"\n",
-                "}\n",
-                "fun[] main(): int / str = {\n",
-                "    return load()\n",
-                "}\n",
-            ),
-        );
+        let output = build_and_run_fixture(concat!(
+            "fun[] load(): int / str = {\n",
+            "    report \"bad-input\"\n",
+            "}\n",
+            "fun[] main(): int / str = {\n",
+            "    return load()\n",
+            "}\n",
+        ));
 
         assert_eq!(output.status.code(), Some(1));
         assert!(String::from_utf8_lossy(&output.stderr).contains("bad-input"));
@@ -960,15 +1017,13 @@ mod tests {
 
     #[test]
     fn executable_backend_runs_container_length_programs() {
-        let output = build_and_run_fixture(
-            concat!(
-                "fun[] main(): int = {\n",
-                "    var values: seq[int] = {1, 2, 3}\n",
-                "    .echo(.len(values))\n",
-                "    return 0\n",
-                "}\n",
-            ),
-        );
+        let output = build_and_run_fixture(concat!(
+            "fun[] main(): int = {\n",
+            "    var values: seq[int] = {1, 2, 3}\n",
+            "    .echo(.len(values))\n",
+            "    return 0\n",
+            "}\n",
+        ));
 
         assert!(output.status.success());
         assert!(String::from_utf8_lossy(&output.stdout).contains("3"));
@@ -976,14 +1031,12 @@ mod tests {
 
     #[test]
     fn executable_backend_runs_echo_programs() {
-        let output = build_and_run_fixture(
-            concat!(
-                "fun[] main(): int = {\n",
-                "    .echo(\"hello\")\n",
-                "    return 0\n",
-                "}\n",
-            ),
-        );
+        let output = build_and_run_fixture(concat!(
+            "fun[] main(): int = {\n",
+            "    .echo(\"hello\")\n",
+            "    return 0\n",
+            "}\n",
+        ));
 
         assert!(output.status.success());
         assert!(String::from_utf8_lossy(&output.stdout).contains("hello"));
@@ -991,17 +1044,15 @@ mod tests {
 
     #[test]
     fn executable_backend_runs_check_programs() {
-        let output = build_and_run_fixture(
-            concat!(
-                "fun[] load(): int / str = {\n",
-                "    report \"broken\"\n",
-                "}\n",
-                "fun[] main(): int = {\n",
-                "    .echo(check(load()))\n",
-                "    return 0\n",
-                "}\n",
-            ),
-        );
+        let output = build_and_run_fixture(concat!(
+            "fun[] load(): int / str = {\n",
+            "    report \"broken\"\n",
+            "}\n",
+            "fun[] main(): int = {\n",
+            "    .echo(check(load()))\n",
+            "    return 0\n",
+            "}\n",
+        ));
 
         assert!(output.status.success());
         assert!(String::from_utf8_lossy(&output.stdout).contains("true"));
@@ -1009,17 +1060,15 @@ mod tests {
 
     #[test]
     fn executable_backend_runs_pipe_or_fallback_programs() {
-        let output = build_and_run_fixture(
-            concat!(
-                "fun[] load(): int / str = {\n",
-                "    report \"broken\"\n",
-                "}\n",
-                "fun[] main(): int = {\n",
-                "    .echo(load() || 9)\n",
-                "    return 0\n",
-                "}\n",
-            ),
-        );
+        let output = build_and_run_fixture(concat!(
+            "fun[] load(): int / str = {\n",
+            "    report \"broken\"\n",
+            "}\n",
+            "fun[] main(): int = {\n",
+            "    .echo(load() || 9)\n",
+            "    return 0\n",
+            "}\n",
+        ));
 
         assert!(output.status.success());
         assert!(String::from_utf8_lossy(&output.stdout).contains("9"));
@@ -1054,9 +1103,16 @@ mod tests {
             ),
         )
         .expect("app source");
-        fs::write(shared_root.join("lib.fol"), "var[exp] loc_answer: int = 2\n").expect("shared");
-        fs::write(std_root.join("fmt").join("lib.fol"), "var[exp] std_answer: int = 3\n")
-            .expect("std");
+        fs::write(
+            shared_root.join("lib.fol"),
+            "var[exp] loc_answer: int = 2\n",
+        )
+        .expect("shared");
+        fs::write(
+            std_root.join("fmt").join("lib.fol"),
+            "var[exp] std_answer: int = 3\n",
+        )
+        .expect("std");
         fs::write(
             pkg_math_root.join("package.yaml"),
             "name: math\nversion: 0.1.0\n",
@@ -1064,7 +1120,7 @@ mod tests {
         .expect("pkg manifest");
         fs::write(
             pkg_math_root.join("build.fol"),
-            "def root: loc = {\"src\"}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
         )
         .expect("pkg build");
         fs::create_dir_all(pkg_math_root.join("src")).expect("pkg src");

@@ -6,9 +6,7 @@ pub fn render_report(report: &DiagnosticReport) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        Diagnostic, DiagnosticLocation, DiagnosticReport, DiagnosticSuggestion, Severity,
-    };
+    use crate::{Diagnostic, DiagnosticLocation, DiagnosticReport, DiagnosticSuggestion, Severity};
     use serde_json::Value;
 
     #[test]
@@ -79,7 +77,10 @@ mod tests {
         assert!(diagnostic["notes"].is_array());
         assert!(diagnostic["helps"].is_array());
         assert!(diagnostic["suggestions"].is_array());
-        assert_eq!(diagnostic["labels"].as_array().map(|items| items.len()), Some(2));
+        assert_eq!(
+            diagnostic["labels"].as_array().map(|items| items.len()),
+            Some(2)
+        );
         assert_eq!(diagnostic["notes"][0], "shadowed here");
         assert_eq!(diagnostic["helps"][0], "rename the local binding");
         assert_eq!(diagnostic["suggestions"][0]["replacement"], "other_name");

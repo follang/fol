@@ -1,6 +1,4 @@
-use fol_frontend::{
-    init_root, new_project_with_mode, PackageTargetKind, FrontendArtifactKind,
-};
+use fol_frontend::{init_root, new_project_with_mode, FrontendArtifactKind, PackageTargetKind};
 use std::fs;
 use std::path::PathBuf;
 
@@ -33,12 +31,21 @@ fn init_root_scaffolds_binary_packages_through_public_api() {
         fs::read_to_string(root.join("package.yaml")).expect("should read package manifest"),
         format!(
             "name: {}\nversion: 0.1.0\n",
-            root.file_name().and_then(|name| name.to_str()).unwrap_or("app")
+            root.file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("app")
         )
     );
     assert_eq!(
         fs::read_to_string(root.join("build.fol")).expect("should read build file"),
-        "def root: loc = \"src\"\n"
+        concat!(
+            "// build.fol is the package build entry file.\n",
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "}\n",
+        )
     );
 
     fs::remove_dir_all(root).ok();
@@ -49,10 +56,14 @@ fn init_root_scaffolds_workspace_roots_through_public_api() {
     let root = temp_root("init_workspace");
     fs::create_dir_all(&root).expect("should create integration temp root");
 
-    let result = init_root(&root, true, PackageTargetKind::Bin).expect("workspace init should succeed");
+    let result =
+        init_root(&root, true, PackageTargetKind::Bin).expect("workspace init should succeed");
 
     assert_eq!(result.command, "init");
-    assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::WorkspaceRoot);
+    assert_eq!(
+        result.artifacts[0].kind,
+        FrontendArtifactKind::WorkspaceRoot
+    );
     assert!(root.join("fol.work.yaml").is_file());
     assert!(!root.join("package.yaml").exists());
 
@@ -92,7 +103,10 @@ fn new_project_scaffolds_workspace_roots_through_public_api() {
     let root = parent.join("demo");
 
     assert_eq!(result.command, "new");
-    assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::WorkspaceRoot);
+    assert_eq!(
+        result.artifacts[0].kind,
+        FrontendArtifactKind::WorkspaceRoot
+    );
     assert!(root.join("fol.work.yaml").is_file());
     assert!(!root.join("package.yaml").exists());
 

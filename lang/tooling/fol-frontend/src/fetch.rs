@@ -1,6 +1,6 @@
 use crate::{
-    FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendError,
-    FrontendResult, FrontendWorkspace, FrontendConfig,
+    FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendConfig,
+    FrontendError, FrontendResult, FrontendWorkspace,
 };
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
@@ -111,14 +111,16 @@ pub fn fetch_workspace_with_config(
             &resolution.lockfile_path,
             fol_package::render_package_lockfile(&resolution.lockfile),
         )
-        .map_err(|error| FrontendError::new(
-            crate::FrontendErrorKind::CommandFailed,
-            format!(
-                "failed to write lockfile '{}': {}",
-                resolution.lockfile_path.display(),
-                error
-            ),
-        ))?;
+        .map_err(|error| {
+            FrontendError::new(
+                crate::FrontendErrorKind::CommandFailed,
+                format!(
+                    "failed to write lockfile '{}': {}",
+                    resolution.lockfile_path.display(),
+                    error
+                ),
+            )
+        })?;
     }
     let stale_pruned = prune_stale_git_materializations(workspace, config, &resolution.lockfile)?;
 
@@ -215,9 +217,8 @@ fn resolve_workspace_fetch(
     let git_store_root = select_git_store_root(config, workspace);
     let git_session =
         fol_package::PackageGitSourceSession::new(workspace.git_cache_root.clone(), git_store_root);
-    let mut package_session = fol_package::PackageSession::with_config(
-        preparation.package_config.clone(),
-    );
+    let mut package_session =
+        fol_package::PackageSession::with_config(preparation.package_config.clone());
     let mut queued_roots = preparation
         .packages
         .iter()
@@ -260,7 +261,8 @@ fn resolve_workspace_fetch(
         for dependency in metadata.dependencies {
             match dependency.source_kind {
                 fol_package::PackageDependencySourceKind::Local => {
-                    let dependency_root = absolute_dependency_root(&canonical_root, &dependency.target);
+                    let dependency_root =
+                        absolute_dependency_root(&canonical_root, &dependency.target);
                     fol_package::parse_package_metadata(&dependency_root.join("package.yaml"))
                         .map_err(FrontendError::from)?;
                     fol_package::parse_package_build(&dependency_root.join("build.fol"))
@@ -286,10 +288,12 @@ fn resolve_workspace_fetch(
                             .entries
                             .iter()
                             .find(|entry| entry.alias == dependency.alias)
-                            .ok_or_else(|| lock_mismatch_error(format!(
-                                "missing git dependency '{}' in fol.lock",
-                                dependency.alias
-                            )))?;
+                            .ok_or_else(|| {
+                                lock_mismatch_error(format!(
+                                    "missing git dependency '{}' in fol.lock",
+                                    dependency.alias
+                                ))
+                            })?;
                         if entry.locator != locator.raw {
                             return Err(lock_mismatch_error(format!(
                                 "git dependency '{}' points to '{}' in package.yaml but '{}' in fol.lock",
@@ -334,7 +338,10 @@ fn resolve_workspace_fetch(
                             source_kind: fol_package::PackageDependencySourceKind::Git,
                             locator: locator.raw.clone(),
                             selected_revision: materialization.selected_revision.clone(),
-                            materialized_root: materialization.store_root.to_string_lossy().to_string(),
+                            materialized_root: materialization
+                                .store_root
+                                .to_string_lossy()
+                                .to_string(),
                         });
                     }
                 }
@@ -371,7 +378,9 @@ fn resolve_workspace_fetch(
     })
 }
 
-fn load_existing_lockfile(workspace: &FrontendWorkspace) -> FrontendResult<fol_package::PackageLockfile> {
+fn load_existing_lockfile(
+    workspace: &FrontendWorkspace,
+) -> FrontendResult<fol_package::PackageLockfile> {
     let path = lockfile_path(workspace);
     let raw = std::fs::read_to_string(&path).map_err(|error| {
         FrontendError::new(
@@ -396,16 +405,22 @@ fn lock_mismatch_error(message: impl Into<String>) -> FrontendError {
 fn with_fetch_guidance(mut error: FrontendError, config: &FrontendConfig) -> FrontendError {
     let message = error.message().to_ascii_lowercase();
     if config.offline_fetch {
-        error = error.with_note("offline mode only works when the git source already exists in the local cache");
+        error = error.with_note(
+            "offline mode only works when the git source already exists in the local cache",
+        );
     }
     if config.locked_fetch {
-        error = error.with_note("locked mode requires package.yaml and fol.lock to describe the same git dependencies");
+        error = error.with_note(
+            "locked mode requires package.yaml and fol.lock to describe the same git dependencies",
+        );
     }
     if message.contains("permission denied")
         || message.contains("could not read from remote repository")
         || message.contains("authentication failed")
     {
-        error = error.with_note("check that your git remote credentials and SSH keys are available to `git`");
+        error = error.with_note(
+            "check that your git remote credentials and SSH keys are available to `git`",
+        );
     }
     if message.contains("could not resolve host")
         || message.contains("name or service not known")
@@ -434,7 +449,10 @@ fn prune_stale_git_materializations(
     let live_roots = lockfile
         .entries
         .iter()
-        .map(|entry| std::fs::canonicalize(&entry.materialized_root).unwrap_or_else(|_| PathBuf::from(&entry.materialized_root)))
+        .map(|entry| {
+            std::fs::canonicalize(&entry.materialized_root)
+                .unwrap_or_else(|_| PathBuf::from(&entry.materialized_root))
+        })
         .collect::<BTreeSet<_>>();
     let mut removed = 0usize;
     let mut stack = vec![git_store_root];
@@ -446,7 +464,10 @@ fn prune_stale_git_materializations(
             if !path.is_dir() {
                 continue;
             }
-            let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or_default();
+            let file_name = path
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or_default();
             if file_name.starts_with("rev_") {
                 let canonical = std::fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
                 if !live_roots.contains(&canonical) {
@@ -490,10 +511,7 @@ fn render_update_summary(fetch_summary: &str, revision_changes: &[LockRevisionCh
     if revision_changes.is_empty() {
         lines.push("pinned revisions unchanged".to_string());
     } else {
-        lines.push(format!(
-            "revisions changed: {}",
-            revision_changes.len()
-        ));
+        lines.push(format!("revisions changed: {}", revision_changes.len()));
         for change in revision_changes {
             lines.push(format!(
                 "{}: {} -> {}",
@@ -513,7 +531,9 @@ fn absolute_dependency_root(package_root: &Path, target: &str) -> PathBuf {
     }
 }
 
-fn locator_use_path_segments(locator: &fol_package::PackageLocator) -> Vec<fol_parser::ast::UsePathSegment> {
+fn locator_use_path_segments(
+    locator: &fol_package::PackageLocator,
+) -> Vec<fol_parser::ast::UsePathSegment> {
     locator
         .path_segments
         .iter()
@@ -532,7 +552,33 @@ mod tests {
         select_package_store_root,
     };
     use crate::{FrontendConfig, FrontendWorkspace, PackageRoot, WorkspaceRoot};
-    use std::{fs, path::{Path, PathBuf}, process::Command};
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+        process::Command,
+    };
+
+    fn semantic_bin_build() -> &'static str {
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "}\n",
+        )
+    }
+
+    fn semantic_lib_build(name: &str) -> String {
+        format!(
+            concat!(
+                "pro[] build(graph: Graph): non = {{\n",
+                "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
+                "    graph.install(lib);\n",
+                "}}\n",
+            ),
+            name = name
+        )
+    }
 
     fn temp_root(label: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
@@ -548,11 +594,12 @@ mod tests {
 
     #[test]
     fn package_preparation_reads_formal_workspace_members() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_prepare_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_prepare_{}", std::process::id()));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -579,7 +626,10 @@ mod tests {
 
     #[test]
     fn package_preparation_rejects_members_without_formal_build_files() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_prepare_missing_{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_prepare_missing_{}",
+            std::process::id()
+        ));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
@@ -608,7 +658,7 @@ mod tests {
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -623,7 +673,9 @@ mod tests {
         let result = fetch_workspace(&workspace).unwrap();
 
         assert_eq!(result.command, "fetch");
-        assert!(result.summary.contains("prepared 1 workspace package(s) and resolved 1 package root(s) into"));
+        assert!(result
+            .summary
+            .contains("prepared 1 workspace package(s) and resolved 1 package root(s) into"));
         assert_eq!(result.artifacts.len(), 5);
         assert_eq!(result.artifacts[4].path, Some(app));
 
@@ -669,11 +721,12 @@ mod tests {
 
     #[test]
     fn fetch_summary_prefers_configured_store_root_in_reported_artifacts() {
-        let root = std::env::temp_dir().join(format!("fol_frontend_fetch_summary_{}", std::process::id()));
+        let root =
+            std::env::temp_dir().join(format!("fol_frontend_fetch_summary_{}", std::process::id()));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -714,8 +767,10 @@ mod tests {
             ),
         )
         .expect("should write app manifest");
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
-        fs::write(app.join("src/main.fol"), "var[exp] answer: int = 1\n").expect("should write app source");
+        fs::write(app.join("build.fol"), semantic_bin_build())
+            .expect("should write app build");
+        fs::write(app.join("src/main.fol"), "var[exp] answer: int = 1\n")
+            .expect("should write app source");
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -730,14 +785,16 @@ mod tests {
         let result = fetch_workspace(&workspace).expect("fetch should succeed");
 
         assert!(root.join("fol.lock").is_file());
-        let lockfile = fs::read_to_string(root.join("fol.lock")).expect("lockfile should be readable");
+        let lockfile =
+            fs::read_to_string(root.join("fol.lock")).expect("lockfile should be readable");
         assert!(lockfile.contains("alias: logtiny"));
         assert!(lockfile.contains("source: git"));
         assert!(result.artifacts.iter().any(|artifact| {
             artifact.label == "lockfile" && artifact.path == Some(root.join("fol.lock"))
         }));
         assert!(result.artifacts.iter().any(|artifact| {
-            artifact.path
+            artifact
+                .path
                 .as_ref()
                 .map(|path| path.to_string_lossy().contains("rev_"))
                 .unwrap_or(false)
@@ -753,7 +810,7 @@ mod tests {
             format!("name: {name}\nversion: {version}\n"),
         )
         .expect("package metadata should be writable");
-        fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+        fs::write(root.join("build.fol"), semantic_lib_build(name))
             .expect("package build should be writable");
         fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
             .expect("package source should be writable");

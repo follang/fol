@@ -37,12 +37,14 @@ pub fn collect_routine_scopes(
                 .iter()
                 .cloned()
                 .map(move |item| (SourceUnitId(source_unit_id), item))
+                .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
 
     for (source_unit_id, item) in work_items {
         let scope_id = top_level_scope_id(program, source_unit_id, &item);
-        if let Err(error) = traverse_top_level_item(session, program, source_unit_id, scope_id, &item)
+        if let Err(error) =
+            traverse_top_level_item(session, program, source_unit_id, scope_id, &item)
         {
             errors.push(error);
         }
@@ -142,20 +144,50 @@ fn traverse_node(
             insert_generic_symbols(program, source_unit_id, routine_scope, generics)?;
             for generic in generics {
                 for constraint in &generic.constraints {
-                    resolve_type_reference(session, program, source_unit_id, routine_scope, constraint)?;
+                    resolve_type_reference(
+                        session,
+                        program,
+                        source_unit_id,
+                        routine_scope,
+                        constraint,
+                    )?;
                 }
             }
             if let Some(receiver_type) = receiver_type {
-                resolve_type_reference(session, program, source_unit_id, routine_scope, receiver_type)?;
+                resolve_type_reference(
+                    session,
+                    program,
+                    source_unit_id,
+                    routine_scope,
+                    receiver_type,
+                )?;
             }
             for param in params {
-                resolve_type_reference(session, program, source_unit_id, routine_scope, &param.param_type)?;
+                resolve_type_reference(
+                    session,
+                    program,
+                    source_unit_id,
+                    routine_scope,
+                    &param.param_type,
+                )?;
             }
             if let Some(return_type) = return_type {
-                resolve_type_reference(session, program, source_unit_id, routine_scope, return_type)?;
+                resolve_type_reference(
+                    session,
+                    program,
+                    source_unit_id,
+                    routine_scope,
+                    return_type,
+                )?;
             }
             if let Some(error_type) = error_type {
-                resolve_type_reference(session, program, source_unit_id, routine_scope, error_type)?;
+                resolve_type_reference(
+                    session,
+                    program,
+                    source_unit_id,
+                    routine_scope,
+                    error_type,
+                )?;
             }
 
             for capture in captures {
@@ -238,13 +270,31 @@ fn traverse_node(
             });
 
             for param in params {
-                resolve_type_reference(session, program, source_unit_id, routine_scope, &param.param_type)?;
+                resolve_type_reference(
+                    session,
+                    program,
+                    source_unit_id,
+                    routine_scope,
+                    &param.param_type,
+                )?;
             }
             if let Some(return_type) = return_type {
-                resolve_type_reference(session, program, source_unit_id, routine_scope, return_type)?;
+                resolve_type_reference(
+                    session,
+                    program,
+                    source_unit_id,
+                    routine_scope,
+                    return_type,
+                )?;
             }
             if let Some(error_type) = error_type {
-                resolve_type_reference(session, program, source_unit_id, routine_scope, error_type)?;
+                resolve_type_reference(
+                    session,
+                    program,
+                    source_unit_id,
+                    routine_scope,
+                    error_type,
+                )?;
             }
 
             for capture in captures {
@@ -312,11 +362,35 @@ fn traverse_node(
             record_qualified_identifier_reference(program, source_unit_id, scope_id, path)?;
         }
         AstNode::BinaryOp { left, right, .. } => {
-            traverse_node(session, program, source_unit_id, scope_id, left, false, routine_context)?;
-            traverse_node(session, program, source_unit_id, scope_id, right, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                left,
+                false,
+                routine_context,
+            )?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                right,
+                false,
+                routine_context,
+            )?;
         }
         AstNode::UnaryOp { operand, .. } => {
-            traverse_node(session, program, source_unit_id, scope_id, operand, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                operand,
+                false,
+                routine_context,
+            )?;
         }
         AstNode::FunctionCall {
             surface: CallSurface::DotIntrinsic,
@@ -324,7 +398,15 @@ fn traverse_node(
             ..
         } => {
             for arg in args {
-                traverse_node(session, program, source_unit_id, scope_id, arg, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    arg,
+                    false,
+                    routine_context,
+                )?;
             }
         }
         AstNode::FunctionCall {
@@ -346,52 +428,156 @@ fn traverse_node(
                 )?;
             }
             for arg in args {
-                traverse_node(session, program, source_unit_id, scope_id, arg, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    arg,
+                    false,
+                    routine_context,
+                )?;
             }
         }
         AstNode::QualifiedFunctionCall { path, args } => {
             record_qualified_function_call_reference(program, source_unit_id, scope_id, path)?;
             for arg in args {
-                traverse_node(session, program, source_unit_id, scope_id, arg, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    arg,
+                    false,
+                    routine_context,
+                )?;
             }
         }
         AstNode::Invoke { callee, args } => {
-            traverse_node(session, program, source_unit_id, scope_id, callee, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                callee,
+                false,
+                routine_context,
+            )?;
             for arg in args {
-                traverse_node(session, program, source_unit_id, scope_id, arg, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    arg,
+                    false,
+                    routine_context,
+                )?;
             }
         }
         AstNode::NamedArgument { value, .. }
         | AstNode::Unpack { value }
         | AstNode::Spawn { task: value }
         | AstNode::Return { value: Some(value) } => {
-            traverse_node(session, program, source_unit_id, scope_id, value, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                value,
+                false,
+                routine_context,
+            )?;
         }
         AstNode::Assignment { target, value } => {
-            traverse_node(session, program, source_unit_id, scope_id, target, false, routine_context)?;
-            traverse_node(session, program, source_unit_id, scope_id, value, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                target,
+                false,
+                routine_context,
+            )?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                value,
+                false,
+                routine_context,
+            )?;
         }
         AstNode::Return { value: None }
         | AstNode::Break
         | AstNode::AsyncStage
         | AstNode::AwaitStage => {}
         AstNode::MethodCall { object, args, .. } => {
-            traverse_node(session, program, source_unit_id, scope_id, object, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                object,
+                false,
+                routine_context,
+            )?;
             for arg in args {
-                traverse_node(session, program, source_unit_id, scope_id, arg, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    arg,
+                    false,
+                    routine_context,
+                )?;
             }
         }
         AstNode::TemplateCall { object, .. }
         | AstNode::FieldAccess { object, .. }
         | AstNode::AvailabilityAccess { target: object } => {
-            traverse_node(session, program, source_unit_id, scope_id, object, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                object,
+                false,
+                routine_context,
+            )?;
         }
         AstNode::IndexAccess { container, index } => {
-            traverse_node(session, program, source_unit_id, scope_id, container, false, routine_context)?;
-            traverse_node(session, program, source_unit_id, scope_id, index, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                container,
+                false,
+                routine_context,
+            )?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                index,
+                false,
+                routine_context,
+            )?;
         }
         AstNode::ChannelAccess { channel, .. } => {
-            traverse_node(session, program, source_unit_id, scope_id, channel, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                channel,
+                false,
+                routine_context,
+            )?;
         }
         AstNode::SliceAccess {
             container,
@@ -399,29 +585,85 @@ fn traverse_node(
             end,
             ..
         } => {
-            traverse_node(session, program, source_unit_id, scope_id, container, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                container,
+                false,
+                routine_context,
+            )?;
             if let Some(start) = start {
-                traverse_node(session, program, source_unit_id, scope_id, start, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    start,
+                    false,
+                    routine_context,
+                )?;
             }
             if let Some(end) = end {
-                traverse_node(session, program, source_unit_id, scope_id, end, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    end,
+                    false,
+                    routine_context,
+                )?;
             }
         }
         AstNode::PatternAccess {
             container,
             patterns,
         } => {
-            traverse_node(session, program, source_unit_id, scope_id, container, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                container,
+                false,
+                routine_context,
+            )?;
             for pattern in patterns {
-                traverse_node(session, program, source_unit_id, scope_id, pattern, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    pattern,
+                    false,
+                    routine_context,
+                )?;
             }
         }
         AstNode::PatternCapture { pattern, .. } => {
-            traverse_node(session, program, source_unit_id, scope_id, pattern, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                pattern,
+                false,
+                routine_context,
+            )?;
         }
         AstNode::ContainerLiteral { elements, .. } => {
             for element in elements {
-                traverse_node(session, program, source_unit_id, scope_id, element, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    element,
+                    false,
+                    routine_context,
+                )?;
             }
         }
         AstNode::RecordInit { fields, .. } => {
@@ -446,7 +688,13 @@ fn traverse_node(
                 program.add_scope(ScopeKind::RollingBinder, scope_id, source_unit_id);
             for binding in bindings {
                 if let Some(type_hint) = &binding.type_hint {
-                    resolve_type_reference(session, program, source_unit_id, rolling_scope, type_hint)?;
+                    resolve_type_reference(
+                        session,
+                        program,
+                        source_unit_id,
+                        rolling_scope,
+                        type_hint,
+                    )?;
                 }
                 traverse_node(
                     session,
@@ -492,10 +740,26 @@ fn traverse_node(
         }
         AstNode::Range { start, end, .. } => {
             if let Some(start) = start {
-                traverse_node(session, program, source_unit_id, scope_id, start, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    start,
+                    false,
+                    routine_context,
+                )?;
             }
             if let Some(end) = end {
-                traverse_node(session, program, source_unit_id, scope_id, end, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    end,
+                    false,
+                    routine_context,
+                )?;
             }
         }
         AstNode::VarDecl { name, value, .. } => {
@@ -507,7 +771,15 @@ fn traverse_node(
                 resolve_type_reference(session, program, source_unit_id, scope_id, type_hint)?;
             }
             if let Some(value) = value {
-                traverse_node(session, program, source_unit_id, scope_id, value, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    value,
+                    false,
+                    routine_context,
+                )?;
             }
             if !is_top_level_node {
                 insert_local_symbol(
@@ -529,7 +801,15 @@ fn traverse_node(
                 resolve_type_reference(session, program, source_unit_id, scope_id, type_hint)?;
             }
             if let Some(value) = value {
-                traverse_node(session, program, source_unit_id, scope_id, value, false, routine_context)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    value,
+                    false,
+                    routine_context,
+                )?;
             }
             if !is_top_level_node {
                 insert_local_symbol(
@@ -550,7 +830,15 @@ fn traverse_node(
             {
                 resolve_type_reference(session, program, source_unit_id, scope_id, type_hint)?;
             }
-            traverse_node(session, program, source_unit_id, scope_id, value, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                value,
+                false,
+                routine_context,
+            )?;
             if !is_top_level_node {
                 for name in binding_names(pattern) {
                     insert_local_symbol(
@@ -565,14 +853,30 @@ fn traverse_node(
             }
         }
         AstNode::Yield { value } => {
-            traverse_node(session, program, source_unit_id, scope_id, value, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                value,
+                false,
+                routine_context,
+            )?;
         }
         AstNode::When {
             expr,
             cases,
             default,
         } => {
-            traverse_node(session, program, source_unit_id, scope_id, expr, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                expr,
+                false,
+                routine_context,
+            )?;
             for case in cases {
                 match case {
                     WhenCase::Case { condition, body } => {
@@ -733,7 +1037,15 @@ fn traverse_node(
             binding,
             body,
         } => {
-            traverse_node(session, program, source_unit_id, scope_id, channel, false, routine_context)?;
+            traverse_node(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                channel,
+                false,
+                routine_context,
+            )?;
             let select_scope = program.add_scope(ScopeKind::Block, scope_id, source_unit_id);
             if let Some(binding) = binding {
                 insert_local_symbol(
@@ -758,7 +1070,14 @@ fn traverse_node(
             }
         }
         AstNode::Block { statements } => {
-            traverse_block_body(session, program, source_unit_id, scope_id, statements, routine_context)?;
+            traverse_block_body(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                statements,
+                routine_context,
+            )?;
         }
         AstNode::Program {
             declarations: statements,
@@ -800,7 +1119,13 @@ fn traverse_node(
             insert_generic_symbols(program, source_unit_id, type_scope, generics)?;
             for generic in generics {
                 for constraint in &generic.constraints {
-                    resolve_type_reference(session, program, source_unit_id, type_scope, constraint)?;
+                    resolve_type_reference(
+                        session,
+                        program,
+                        source_unit_id,
+                        type_scope,
+                        constraint,
+                    )?;
                 }
             }
             for contract in contracts {
@@ -815,7 +1140,13 @@ fn traverse_node(
             params, def_type, ..
         } => {
             for param in params {
-                resolve_type_reference(session, program, source_unit_id, scope_id, &param.param_type)?;
+                resolve_type_reference(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    &param.param_type,
+                )?;
             }
             resolve_type_reference(session, program, source_unit_id, scope_id, def_type)?;
         }
@@ -833,7 +1164,13 @@ fn traverse_node(
             insert_generic_symbols(program, source_unit_id, impl_scope, generics)?;
             for generic in generics {
                 for constraint in &generic.constraints {
-                    resolve_type_reference(session, program, source_unit_id, impl_scope, constraint)?;
+                    resolve_type_reference(
+                        session,
+                        program,
+                        source_unit_id,
+                        impl_scope,
+                        constraint,
+                    )?;
                 }
             }
             resolve_type_reference(session, program, source_unit_id, impl_scope, target)?;
@@ -1549,7 +1886,15 @@ fn resolve_type_reference(
         FolType::Limited { base, limits } => {
             resolve_type_reference(session, program, source_unit_id, scope_id, base)?;
             for limit in limits {
-                traverse_node(session, program, source_unit_id, scope_id, limit, false, None)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    limit,
+                    false,
+                    None,
+                )?;
             }
         }
         FolType::Function {
@@ -1602,7 +1947,15 @@ fn resolve_type_definition(
                 resolve_type_reference(session, program, source_unit_id, scope_id, field_type)?;
             }
             for member in members {
-                traverse_node(session, program, source_unit_id, scope_id, member, false, None)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    member,
+                    false,
+                    None,
+                )?;
             }
         }
         TypeDefinition::Entry {
@@ -1612,7 +1965,15 @@ fn resolve_type_definition(
                 resolve_type_reference(session, program, source_unit_id, scope_id, variant_type)?;
             }
             for member in members {
-                traverse_node(session, program, source_unit_id, scope_id, member, false, None)?;
+                traverse_node(
+                    session,
+                    program,
+                    source_unit_id,
+                    scope_id,
+                    member,
+                    false,
+                    None,
+                )?;
             }
         }
         TypeDefinition::Alias { target } => {

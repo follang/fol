@@ -3146,30 +3146,15 @@ fn v1_boundary_rejects_v3_expression_surfaces() {
 }
 
 #[test]
-fn ordinary_typechecking_rejects_build_fol_source_units() {
-    let errors = typecheck_fixture_folder_errors(&[(
-        "build.fol",
-        "`package build`\n",
-    )]);
+fn ordinary_typechecking_keeps_build_fol_source_units_without_failing() {
+    let typed = typecheck_fixture_folder(&[("build.fol", "`package build`\n")]);
 
-    assert!(
-        errors.iter().any(|error| {
-            error.kind() == TypecheckErrorKind::Unsupported
-                && error
-                    .message()
-                    .contains("ordinary typechecking does not interpret build.fol package semantics")
-        }),
-        "Expected a build.fol typechecking boundary diagnostic, got: {errors:?}"
+    assert_eq!(typed.source_units().len(), 1);
+    assert_eq!(
+        typed.source_units()[0].kind,
+        fol_parser::ast::ParsedSourceUnitKind::Build
     );
-    assert!(
-        errors.iter().any(|error| {
-            error
-                .origin()
-                .and_then(|origin| origin.file.as_deref())
-                .is_some_and(|file| file.ends_with("build.fol"))
-        }),
-        "Expected build.fol boundary diagnostics to keep the source-unit path, got: {errors:?}"
-    );
+    assert_eq!(typed.build_source_units().count(), 1);
 }
 
 #[test]
@@ -3677,7 +3662,10 @@ fn workspace_typechecking_keeps_direct_pkg_import_declaration_facts() {
         &root,
         &[
             ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
-            ("store/json/build.fol", "def root: loc = \"src\";\n"),
+            (
+                "store/json/build.fol",
+                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            ),
             (
                 "store/json/src/lib.fol",
                 concat!(
@@ -3722,22 +3710,25 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
         &root,
         &[
             ("store/core/package.yaml", "name: core\nversion: 1.0.0\n"),
-            ("store/core/build.fol", "def root: loc = \"src\";\n"),
+            (
+                "store/core/build.fol",
+                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            ),
             ("store/core/src/lib.fol", "typ[exp] Count: int;\n"),
-            ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
+            (
+                "store/json/package.yaml",
+                "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
+            ),
             (
                 "store/json/build.fol",
-                concat!(
-                    "def core: pkg = \"core\";\n",
-                    "def root: loc = \"src\";\n",
-                ),
+                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
             ),
             (
                 "store/json/src/lib.fol",
                 concat!(
                     "use core: pkg = {core};\n",
-                    "var[exp] answer: Count = 42;\n",
-                    "fun[exp] bump(value: Count): Count = {\n",
+                    "var[exp] answer: core::src::Count = 42;\n",
+                    "fun[exp] bump(value: core::src::Count): core::src::Count = {\n",
                     "    return value + 1;\n",
                     "}\n",
                 ),
@@ -4150,11 +4141,14 @@ fn legacy_single_package_typecheck_rejects_imported_pkg_values_explicitly() {
         &root,
         &[
             ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
-            ("store/json/build.fol", "def root: loc = \"src\";\n"),
+            (
+                "store/json/build.fol",
+                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            ),
             ("store/json/src/lib.fol", "var[exp] answer: int = 42;\n"),
             (
                 "app/main.fol",
-                "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+                "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n}\n",
             ),
         ],
     );

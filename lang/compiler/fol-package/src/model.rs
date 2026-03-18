@@ -1,8 +1,10 @@
 use crate::{
-    build_dependency::DependencyBuildSurfaceSet, build_native::NativeArtifactSet,
-    PackageBuildDefinition, PackageIdentity, PackageMetadata, PackageSourceKind,
+    build_dependency::DependencyBuildSurfaceSet,
+    build_entry::{BuildEntrySignatureExpectation, BuildEntryValidationError, ValidatedBuildEntry},
+    build_native::NativeArtifactSet,
+    PackageBuildDefinition, PackageBuildMode, PackageIdentity, PackageMetadata, PackageSourceKind,
 };
-use fol_parser::ast::ParsedPackage;
+use fol_parser::ast::{ParsedPackage, ParsedSourceUnit, ParsedSourceUnitKind};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PreparedExportMount {
@@ -62,12 +64,40 @@ impl PreparedPackage {
         self.identity.source_kind
     }
 
-    pub fn build_entry_point(&self) -> Option<&crate::build::PackageBuildEntryPoint> {
-        self.build.as_ref().and_then(|build| build.entry_point())
+    pub fn build_mode(&self) -> PackageBuildMode {
+        self.build
+            .as_ref()
+            .map(PackageBuildDefinition::mode)
+            .unwrap_or(PackageBuildMode::Empty)
     }
 
-    pub fn has_build_entry_point(&self) -> bool {
-        self.build_entry_point().is_some()
+    pub fn source_units(&self) -> &[ParsedSourceUnit] {
+        &self.syntax.source_units
+    }
+
+    pub fn build_source_units(&self) -> impl Iterator<Item = &ParsedSourceUnit> {
+        self.syntax
+            .source_units
+            .iter()
+            .filter(|unit| unit.kind == ParsedSourceUnitKind::Build)
+    }
+
+    pub fn ordinary_source_units(&self) -> impl Iterator<Item = &ParsedSourceUnit> {
+        self.syntax
+            .source_units
+            .iter()
+            .filter(|unit| unit.kind == ParsedSourceUnitKind::Ordinary)
+    }
+
+    pub fn validate_semantic_build_entry(
+        &self,
+        expectation: &BuildEntrySignatureExpectation,
+    ) -> Result<ValidatedBuildEntry, Vec<BuildEntryValidationError>> {
+        crate::build_entry::validate_parsed_build_entry(&self.syntax, expectation)
+    }
+
+    pub fn has_semantic_build_entry(&self, expectation: &BuildEntrySignatureExpectation) -> bool {
+        self.validate_semantic_build_entry(expectation).is_ok()
     }
 }
 
@@ -76,17 +106,20 @@ mod tests {
     use super::PreparedPackage;
     use crate::{
         build_dependency::DependencyBuildSurfaceSet,
+        build_entry::BuildEntrySignatureExpectation,
         build_native::{NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet},
-        build::{PackageBuildCompatibility, PackageBuildEntryPoint, PackageBuildEntryPointKind},
-        BuildDependency, BuildExport, PackageBuildDefinition, PackageConfig, PackageDependencyDecl,
-        PackageDependencySourceKind, PackageIdentity, PackageLocator, PackageMetadata,
-        PackageNativeArtifact, PackageNativeArtifactKind, PackageSourceKind, PreparedExportMount,
+        PackageBuildDefinition, PackageBuildMode, PackageConfig, PackageDependencyDecl,
+        PackageDependencySourceKind, PackageIdentity, PackageMetadata, PackageSourceKind,
+        PreparedExportMount,
     };
-    use fol_parser::ast::{AstParser, ParsedPackage};
+    use fol_parser::ast::{AstParser, ParsedPackage, ParsedSourceUnitKind};
     use fol_stream::FileStream;
 
     fn parse_fixture_package() -> ParsedPackage {
-        let fixture_path = concat!(env!("CARGO_MANIFEST_DIR"), "/../../../test/parser/simple_var.fol");
+        let fixture_path = concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/../../../test/parser/simple_var.fol"
+        );
         let mut stream = FileStream::from_file(fixture_path).expect("Should open package fixture");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
@@ -125,6 +158,10 @@ mod tests {
         assert!(prepared.dependency_surfaces.is_none());
         assert!(prepared.native_surfaces.is_none());
         assert_eq!(prepared.syntax.source_units.len(), 1);
+        assert_eq!(
+            prepared.source_units()[0].kind,
+            ParsedSourceUnitKind::Ordinary
+        );
     }
 
     #[test]
@@ -155,25 +192,7 @@ mod tests {
                 }],
             },
             PackageBuildDefinition {
-                compatibility: PackageBuildCompatibility {
-                    dependencies: vec![BuildDependency {
-                        alias: "core".to_string(),
-                        locator: PackageLocator::installed_store("core", vec!["core".to_string()]),
-                    }],
-                    exports: vec![BuildExport {
-                        alias: "root".to_string(),
-                        relative_path: "src".to_string(),
-                    }],
-                    native_artifacts: vec![PackageNativeArtifact {
-                        alias: "api".to_string(),
-                        kind: PackageNativeArtifactKind::Header,
-                        relative_path: "include/api.h".to_string(),
-                    }],
-                },
-                entry_point: Some(PackageBuildEntryPoint {
-                    kind: PackageBuildEntryPointKind::BuildFunction,
-                    name: "build".to_string(),
-                }),
+                mode: PackageBuildMode::ModernOnly,
             },
             vec![PreparedExportMount {
                 source_namespace: "json::src".to_string(),
@@ -184,34 +203,107 @@ mod tests {
             syntax,
         );
 
-        assert_eq!(prepared.metadata.as_ref().map(|meta| meta.name.as_str()), Some("json"));
         assert_eq!(
-            prepared
-                .build
-                .as_ref()
-                .map(|build| build.exports().len()),
-            Some(1)
+            prepared.metadata.as_ref().map(|meta| meta.name.as_str()),
+            Some("json")
         );
         assert_eq!(
-            prepared
-                .build
-                .as_ref()
-                .map(|build| build.native_artifacts().len()),
-            Some(1)
+            prepared.build.as_ref().map(|build| build.mode()),
+            Some(PackageBuildMode::ModernOnly)
         );
         assert_eq!(prepared.exports.len(), 1);
         assert!(prepared.dependency_surfaces.is_some());
         assert_eq!(
-            prepared.native_surfaces.as_ref().map(|set| set.definitions().len()),
+            prepared
+                .native_surfaces
+                .as_ref()
+                .map(|set| set.definitions().len()),
             Some(1)
         );
-        assert!(prepared.has_build_entry_point());
-        assert_eq!(
-            prepared.build_entry_point(),
-            Some(&PackageBuildEntryPoint {
-                kind: PackageBuildEntryPointKind::BuildFunction,
-                name: "build".to_string(),
-            })
+        assert_eq!(prepared.build_mode(), PackageBuildMode::ModernOnly);
+    }
+
+    #[test]
+    fn prepared_package_helpers_split_build_and_ordinary_units() {
+        let mut syntax = parse_fixture_package();
+        syntax.source_units.push(fol_parser::ast::ParsedSourceUnit {
+            path: "build.fol".to_string(),
+            package: syntax.package.clone(),
+            namespace: syntax.package.clone(),
+            kind: ParsedSourceUnitKind::Build,
+            items: Vec::new(),
+        });
+        let prepared = PreparedPackage::new(
+            PackageIdentity {
+                source_kind: PackageSourceKind::Entry,
+                canonical_root: "/tmp/fixture".to_string(),
+                display_name: "fixture".to_string(),
+            },
+            syntax,
         );
+
+        assert_eq!(prepared.build_source_units().count(), 1);
+        assert_eq!(prepared.ordinary_source_units().count(), 1);
+        assert_eq!(
+            prepared
+                .build_source_units()
+                .next()
+                .map(|unit| unit.path.as_str()),
+            Some("build.fol")
+        );
+    }
+
+    #[test]
+    fn prepared_package_can_validate_semantic_build_entries() {
+        let syntax = fol_parser::ast::ParsedPackage {
+            package: "demo".to_string(),
+            source_units: vec![fol_parser::ast::ParsedSourceUnit {
+                path: "build.fol".to_string(),
+                package: "demo".to_string(),
+                namespace: "demo".to_string(),
+                kind: ParsedSourceUnitKind::Build,
+                items: vec![fol_parser::ast::ParsedTopLevel {
+                    node_id: fol_parser::ast::SyntaxNodeId(1),
+                    node: fol_parser::ast::AstNode::ProDecl {
+                        syntax_id: None,
+                        options: Vec::new(),
+                        generics: Vec::new(),
+                        name: "build".to_string(),
+                        receiver_type: None,
+                        captures: Vec::new(),
+                        params: vec![fol_parser::ast::Parameter {
+                            name: "graph".to_string(),
+                            param_type: fol_parser::ast::FolType::Named {
+                                syntax_id: None,
+                                name: "Graph".to_string(),
+                            },
+                            is_borrowable: false,
+                            is_mutex: false,
+                            default: None,
+                        }],
+                        return_type: Some(fol_parser::ast::FolType::None),
+                        error_type: None,
+                        body: Vec::new(),
+                        inquiries: Vec::new(),
+                    },
+                    meta: fol_parser::ast::ParsedTopLevelMeta::default(),
+                }],
+            }],
+            syntax_index: fol_parser::ast::SyntaxIndex::default(),
+        };
+        let prepared = PreparedPackage::new(
+            PackageIdentity {
+                source_kind: PackageSourceKind::Entry,
+                canonical_root: "/tmp/demo".to_string(),
+                display_name: "demo".to_string(),
+            },
+            syntax,
+        );
+
+        let validated = prepared
+            .validate_semantic_build_entry(&BuildEntrySignatureExpectation::canonical())
+            .expect("prepared packages should validate semantic build entries");
+        assert_eq!(validated.candidate.name, "build");
+        assert!(prepared.has_semantic_build_entry(&BuildEntrySignatureExpectation::canonical()));
     }
 }

@@ -35,7 +35,8 @@ impl Iterator for Gen {
             let current_file = stream_loc.file.clone();
             let loc = point::Location::from_stream_location(&stream_loc);
 
-            if self.previous_file.is_some() && self.previous_file.as_ref() != current_file.as_ref() {
+            if self.previous_file.is_some() && self.previous_file.as_ref() != current_file.as_ref()
+            {
                 let mut boundary = point::Location::from_stream_location(&stream_loc);
                 boundary.adjust(stream_loc.row, 0);
                 self.pending = Some(Ok((ch, loc)));

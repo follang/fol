@@ -140,13 +140,22 @@ mod tests {
 
         assert_eq!(config.output.mode, OutputMode::Json);
         assert_eq!(config.profile_override, Some(FrontendProfile::Release));
-        assert_eq!(config.std_root_override, Some(std::path::PathBuf::from("/tmp/std")));
+        assert_eq!(
+            config.std_root_override,
+            Some(std::path::PathBuf::from("/tmp/std"))
+        );
         assert_eq!(
             config.package_store_root_override,
             Some(std::path::PathBuf::from("/tmp/pkg"))
         );
-        assert_eq!(config.build_root_override, Some(std::path::PathBuf::from("/tmp/build")));
-        assert_eq!(config.cache_root_override, Some(std::path::PathBuf::from("/tmp/cache")));
+        assert_eq!(
+            config.build_root_override,
+            Some(std::path::PathBuf::from("/tmp/build"))
+        );
+        assert_eq!(
+            config.cache_root_override,
+            Some(std::path::PathBuf::from("/tmp/cache"))
+        );
         assert_eq!(
             config.git_cache_root_override,
             Some(std::path::PathBuf::from("/tmp/git-cache"))
@@ -155,7 +164,10 @@ mod tests {
             config.build_target_override.as_deref(),
             Some("aarch64-macos-gnu")
         );
-        assert_eq!(config.build_optimize_override.as_deref(), Some("release-fast"));
+        assert_eq!(
+            config.build_optimize_override.as_deref(),
+            Some("release-fast")
+        );
         assert_eq!(config.build_step_override.as_deref(), Some("docs"));
         assert_eq!(
             config.build_option_overrides,

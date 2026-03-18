@@ -66,10 +66,7 @@ pub fn internal_complete_command_with_tokens(
     tokens: &[String],
 ) -> FrontendResult<FrontendCommandResult> {
     let matches = internal_complete_matches(tokens);
-    Ok(FrontendCommandResult::new(
-        "_complete",
-        matches.join("\n"),
-    ))
+    Ok(FrontendCommandResult::new("_complete", matches.join("\n")))
 }
 
 pub fn internal_complete_matches(tokens: &[String]) -> Vec<String> {
@@ -98,7 +95,9 @@ fn collect_matches_for_command(
                 continue;
             }
             let name_match = subcommand.get_name() == head;
-            let alias_match = subcommand.get_visible_aliases().any(|alias| alias == head.as_str());
+            let alias_match = subcommand
+                .get_visible_aliases()
+                .any(|alias| alias == head.as_str());
             if name_match || alias_match {
                 collect_matches_for_command(subcommand, tail, prefix, matches);
                 return;

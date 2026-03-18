@@ -36,9 +36,7 @@ pub enum QueryOperandContract {
 impl QueryOperandContract {
     pub const fn expected_operands(self) -> &'static str {
         match self {
-            Self::LengthQueryable => {
-                "one string, array, vector, sequence, set, or map operand"
-            }
+            Self::LengthQueryable => "one string, array, vector, sequence, set, or map operand",
         }
     }
 }

@@ -25,8 +25,8 @@ fn internal_completion_matches_follow_command_context_through_public_api() {
 
 #[test]
 fn completion_commands_dispatch_through_public_frontend_entrypoints() {
-    let (_, completion) =
-        run_command_from_args(["fol", "completion", "bash"]).expect("completion command should run");
+    let (_, completion) = run_command_from_args(["fol", "completion", "bash"])
+        .expect("completion command should run");
     let (_, complete) =
         run_command_from_args(["fol", "_complete", "emit", "ru"]).expect("_complete should run");
 

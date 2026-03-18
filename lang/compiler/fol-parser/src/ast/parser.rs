@@ -267,7 +267,10 @@ mod tests {
         let diagnostic = error.to_diagnostic();
 
         assert_eq!(diagnostic.code.as_str(), "P1002");
-        assert_eq!(diagnostic.message, "Executable calls are not allowed at file root");
+        assert_eq!(
+            diagnostic.message,
+            "Executable calls are not allowed at file root"
+        );
         assert_eq!(
             diagnostic.primary_location(),
             Some(&DiagnosticLocation {
