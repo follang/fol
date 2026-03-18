@@ -14,6 +14,7 @@ pub mod option;
 pub mod runtime;
 pub mod semantic;
 pub mod step;
+pub mod stdlib;
 
 pub use api::{
     validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildArtifactHandle,
@@ -92,3 +93,4 @@ pub use step::{
     BuildStepEventKind, BuildStepExecutionRequest, BuildStepExecutionResult, BuildStepPlanError,
     BuildStepReport,
 };
+pub use stdlib::BuildStdlibScope;
