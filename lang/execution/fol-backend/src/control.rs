@@ -48,11 +48,10 @@ pub fn render_terminator(
             None => Ok("return rt::FolRecover::err(());".to_string()),
         },
         LoweredTerminator::Panic { value } => match value {
-            Some(value) => Ok(format!(
-                "panic!(\"{}\", rt::render_echo(&{}));",
-                "{}",
-                render_local_name(package_identity, routine, *value)?
-            )),
+            Some(value) => {
+                let name = render_local_name(package_identity, routine, *value)?;
+                Ok(format!("panic!(\"{{}}\", rt::render_echo(&{name}));"))
+            }
             None => Ok("panic!(\"panic\");".to_string()),
         },
         LoweredTerminator::Unreachable => Ok("unreachable!();".to_string()),

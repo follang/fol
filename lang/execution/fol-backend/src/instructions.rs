@@ -641,8 +641,12 @@ fn render_local_name(
 
 fn render_operand(operand: &LoweredOperand) -> String {
     match operand {
-        LoweredOperand::Local(_) => "/*local*/".to_string(),
-        LoweredOperand::Global(_) => "/*global*/".to_string(),
+        LoweredOperand::Local(_) => {
+            r#"compile_error!("unimplemented operand: Local")"#.to_string()
+        }
+        LoweredOperand::Global(_) => {
+            r#"compile_error!("unimplemented operand: Global")"#.to_string()
+        }
         LoweredOperand::Int(value) => format!("{value}_i64"),
         LoweredOperand::Float(bits) => format!("f64::from_bits({bits})"),
         LoweredOperand::Bool(value) => value.to_string(),
