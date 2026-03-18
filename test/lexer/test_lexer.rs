@@ -2285,15 +2285,39 @@ mod lexer_error_tests {
         std::fs::write(&temp_path, "/* missing close")
             .expect("Should write unterminated block-comment lexer fixture");
 
-        let tokens = tokenize_file(
-            temp_path
-                .to_str()
-                .expect("Unterminated block-comment fixture path should be valid utf-8"),
-        );
+        let path_str = temp_path
+            .to_str()
+            .expect("Unterminated block-comment fixture path should be valid utf-8");
+        let mut file_stream = FileStream::from_file(path_str)
+            .expect("Should open unterminated block-comment fixture");
+        let mut lexer = Elements::init(&mut file_stream);
+        let mut found_error = false;
+        for _ in 0..10_000 {
+            match lexer.curr(false) {
+                Ok(token) => {
+                    if token.key() == KEYWORD::Void(VOID::EndFile) {
+                        break;
+                    }
+                    if lexer.bump().is_none() {
+                        break;
+                    }
+                }
+                Err(e) => {
+                    let msg = e.to_string();
+                    assert!(
+                        msg.contains("unterminated block comment"),
+                        "Unterminated slash block comment should produce a specific error, got: {}",
+                        msg
+                    );
+                    found_error = true;
+                    break;
+                }
+            }
+        }
 
         assert!(
-            tokens.iter().any(|(key, _)| key.is_illegal()),
-            "Unterminated slash block comments should use the same illegal-token path as other malformed comment spans"
+            found_error,
+            "Unterminated slash block comment at EOF should produce a lexer error"
         );
 
         std::fs::remove_file(&temp_path).ok();

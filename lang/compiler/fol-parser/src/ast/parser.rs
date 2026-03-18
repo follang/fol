@@ -161,7 +161,11 @@ impl Default for AstParser {
 
 impl AstParser {
     fn enter_depth<'a>(&'a self, depth: &'a Cell<usize>) -> ParseDepthGuard<'a> {
-        depth.set(depth.get() + 1);
+        let new_depth = depth
+            .get()
+            .checked_add(1)
+            .expect("parser: depth guard overflow; possible infinite recursion in parser");
+        depth.set(new_depth);
         ParseDepthGuard { depth }
     }
 

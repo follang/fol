@@ -108,7 +108,12 @@ impl Element {
         }
         if code.curr()?.0 == '*' {
             while !(code.curr()?.0 == '*' && code.peek(0)?.0 == '/') {
-                if is_eof(&code.peek(0)?.0) || code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR {
+                if is_eof(&code.peek(0)?.0) {
+                    return Err(catch!(Flaw::ReadingBadContent {
+                        msg: Some("unterminated block comment: '/*' has no matching '*/'".to_string())
+                    }));
+                };
+                if code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR {
                     self.set_key(Illegal);
                     return Ok(());
                 };

@@ -47,11 +47,13 @@ impl AstParser {
         open_token: &fol_lexer::lexer::stage3::element::Element,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let mut fields = Vec::new();
+        let mut closed = false;
         for _ in 0..256 {
             self.skip_ignorable(tokens);
             let token = tokens.curr(false)?;
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
                 let _ = tokens.bump();
+                closed = true;
                 break;
             }
 
@@ -86,18 +88,27 @@ impl AstParser {
                     Ok(KEYWORD::Symbol(SYMBOL::CurlyC))
                 ) {
                     let _ = tokens.bump();
+                    closed = true;
                     break;
                 }
                 continue;
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
                 let _ = tokens.bump();
+                closed = true;
                 break;
             }
 
             return Err(Box::new(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or '}' in record initializer".to_string(),
+            )));
+        }
+
+        if !closed {
+            return Err(Box::new(ParseError::from_token(
+                open_token,
+                "Record initializer exceeds maximum field count (256)".to_string(),
             )));
         }
 

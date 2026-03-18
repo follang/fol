@@ -37,13 +37,18 @@ impl AstParser {
     }
 
     pub(super) fn skip_layout(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
-        for _ in 0..128 {
+        let mut count = 0u32;
+        loop {
             let token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,
             };
 
             if Self::key_is_layout_ignorable(&token.key()) {
+                count += 1;
+                if count > 128 {
+                    panic!("parser: skip_layout exceeded 128-token limit; possible infinite layout loop");
+                }
                 if tokens.bump().is_none() {
                     break;
                 }
@@ -88,13 +93,18 @@ impl AstParser {
     }
 
     pub(super) fn skip_ignorable(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
-        for _ in 0..128 {
+        let mut count = 0u32;
+        loop {
             let token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,
             };
 
             if Self::key_is_soft_ignorable(&token.key()) {
+                count += 1;
+                if count > 128 {
+                    panic!("parser: skip_ignorable exceeded 128-token limit; possible infinite ignorable loop");
+                }
                 if tokens.bump().is_none() {
                     break;
                 }

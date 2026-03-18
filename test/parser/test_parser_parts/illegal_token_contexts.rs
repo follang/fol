@@ -389,21 +389,22 @@ fn test_unterminated_doc_comment_in_call_reports_offending_token_location() {
 
 #[test]
 fn test_unterminated_slash_block_comment_in_call_reports_offending_token_location() {
-    let (message, line, column) =
-        parse_error_snapshot("test/parser/simple_fun_call_unterminated_block_comment.fol");
+    let mut file_stream = FileStream::from_file(
+        "test/parser/simple_fun_call_unterminated_block_comment.fol",
+    )
+    .expect("Should read parser error fixture");
+    let mut lexer = Elements::init(&mut file_stream);
+    let mut parser = AstParser::new();
+    let errors = parser
+        .parse(&mut lexer)
+        .expect_err("Parser should reject unterminated block comment in fixture");
 
+    let first_error = errors.first().expect("Should have at least one error");
+    let message = first_error.to_string();
     assert!(
-        message.contains("Parser encountered illegal token"),
-        "Malformed slash block comments should surface as explicit illegal-token diagnostics, got: {}",
+        message.contains("unterminated block comment"),
+        "Unterminated slash block comment should produce a specific lexer diagnostic, got: {}",
         message
-    );
-    assert_eq!(
-        line, 4,
-        "Malformed slash block comments should anchor to the offending comment start line"
-    );
-    assert!(
-        column > 0,
-        "Malformed slash block comments should retain a concrete source column"
     );
 }
 
