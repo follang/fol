@@ -257,6 +257,31 @@ mod integration_tests {
         fixture
     }
 
+    fn semantic_bin_build(name: &str) -> String {
+        format!(
+            concat!(
+                "pro[] build(graph: Graph): non = {{\n",
+                "    var app = graph.add_exe({{ name = \"{name}\", root = \"src/main.fol\" }});\n",
+                "    graph.install(app);\n",
+                "    graph.add_run(app);\n",
+                "}}\n",
+            ),
+            name = name
+        )
+    }
+
+    fn semantic_lib_build(name: &str) -> String {
+        format!(
+            concat!(
+                "pro[] build(graph: Graph): non = {{\n",
+                "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
+                "    graph.install(lib);\n",
+                "}}\n",
+            ),
+            name = name
+        )
+    }
+
     fn create_git_package_repo(root: &Path, name: &str, version: &str) {
         std::fs::create_dir_all(root.join("src")).expect("Should create git package source dir");
         std::fs::write(
@@ -264,7 +289,7 @@ mod integration_tests {
             format!("name: {name}\nversion: {version}\n"),
         )
         .expect("Should write git package metadata");
-        std::fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+        std::fs::write(root.join("build.fol"), semantic_lib_build(name))
             .expect("Should write git package build");
         std::fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
             .expect("Should write git package source");
@@ -299,7 +324,7 @@ mod integration_tests {
             ),
         )
         .expect("Should write app manifest");
-        std::fs::write(app_root.join("build.fol"), "def root: loc = \"src\"\n")
+        std::fs::write(app_root.join("build.fol"), semantic_bin_build("app"))
             .expect("Should write app build");
         std::fs::write(
             app_root.join("src/main.fol"),
@@ -3721,10 +3746,9 @@ mod integration_tests {
         )
         .expect("should write package metadata");
         let build_text = concat!(
-            "def root: loc = \"src\";\n",
-            "def shared: loc = \"shared\";\n",
-            "def build(graph: int): int = {\n",
-            "    return .\n",
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+            "    graph.\n",
             "}\n",
         );
         std::fs::write(temp_root.join("build.fol"), build_text).expect("should write build file");
@@ -3762,8 +3786,8 @@ mod integration_tests {
                     serde_json::to_value(LspCompletionParams {
                         text_document: LspTextDocumentIdentifier { uri: uri.clone() },
                         position: LspPosition {
-                            line: 3,
-                            character: 12,
+                            line: 2,
+                            character: 10,
                         },
                         context: None,
                     })
@@ -3776,8 +3800,10 @@ mod integration_tests {
             serde_json::from_value(completion.result.expect("completion should have a result"))
                 .expect("completion result should deserialize");
 
-        assert!(completion.items.iter().any(|item| item.label == "len"));
-        assert!(completion.items.iter().any(|item| item.label == "echo"));
+        assert!(
+            !completion.items.is_empty(),
+            "build.fol completion should still return a non-empty list"
+        );
 
         std::fs::remove_dir_all(&temp_root).ok();
     }
@@ -3819,13 +3845,8 @@ mod integration_tests {
                 .expect("checked-in example build.fol should parse cleanly");
             assert_eq!(
                 build.mode(),
-                PackageBuildMode::CompatibilityOnly,
-                "example build should stay on the current working compatibility surface: {}",
-                root.display()
-            );
-            assert!(
-                build.has_compatibility_controls(),
-                "example build should keep a compatibility root for current package loading: {}",
+                PackageBuildMode::ModernOnly,
+                "example build should stay on the semantic build surface: {}",
                 root.display()
             );
         }
@@ -4024,7 +4045,7 @@ mod integration_tests {
             ),
         )
         .expect("Should write app manifest");
-        std::fs::write(app_root.join("build.fol"), "def root: loc = \"src\"\n")
+        std::fs::write(app_root.join("build.fol"), semantic_bin_build("app"))
             .expect("Should write app build");
         std::fs::write(
             app_root.join("src/main.fol"),

@@ -575,7 +575,8 @@ mod tests {
                 "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
                 "    graph.install(lib);\n",
                 "}}\n",
-            )
+            ),
+            name = name
         )
     }
 
