@@ -431,10 +431,10 @@ fn lower_named_routine_signature(
         record_symbol_type(typed, param_symbol_id, param_type)?;
         lowered_params.push(param_type);
     }
-    let lowered_return = return_type
-        .as_ref()
-        .map(|ty| lower_type(typed, resolved, signature_scope, ty))
-        .transpose()?;
+    let lowered_return = match return_type {
+        None | Some(FolType::None) => None,
+        Some(ty) => Some(lower_type(typed, resolved, signature_scope, ty)?),
+    };
     let lowered_error = error_type
         .as_ref()
         .map(|ty| lower_type(typed, resolved, signature_scope, ty))
