@@ -577,7 +577,7 @@ Round 1 slice tracker:
 
 - [x] Slice 1. Add a concrete Phase 8 implementation tracker for step handles
   and chaining.
-- [ ] Slice 2. Extend install requests and handles with step identity so install
+- [x] Slice 2. Extend install requests and handles with step identity so install
   operations can participate in step dependency chains.
 - [ ] Slice 3. Replay install dependency edges through the shared build
   evaluator instead of treating installs as dependency-isolated metadata.

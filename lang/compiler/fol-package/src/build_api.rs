@@ -242,6 +242,8 @@ pub struct InstallDirRequest {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InstallHandle {
     pub install_id: crate::build_graph::BuildInstallId,
+    pub step_id: crate::build_graph::BuildStepId,
+    pub name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -426,28 +428,42 @@ impl<'a> BuildApi<'a> {
         request: InstallArtifactRequest,
     ) -> Result<InstallHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let step_id = self
+            .graph
+            .add_step(crate::build_graph::BuildStepKind::Install, request.name.clone());
         let install_id = self.graph.add_install_with_target(
             crate::build_graph::BuildInstallKind::Artifact,
-            request.name,
+            request.name.clone(),
             Some(crate::build_graph::BuildInstallTarget::Artifact(
                 request.artifact.artifact_id,
             )),
         );
-        Ok(InstallHandle { install_id })
+        Ok(InstallHandle {
+            install_id,
+            step_id,
+            name: request.name,
+        })
     }
 
     pub fn install_file(&mut self, request: InstallFileRequest) -> Result<InstallHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let step_id = self
+            .graph
+            .add_step(crate::build_graph::BuildStepKind::Install, request.name.clone());
         let generated = self.graph.add_generated_file(
             crate::build_graph::BuildGeneratedFileKind::Copy,
             request.path,
         );
         let install_id = self.graph.add_install_with_target(
             crate::build_graph::BuildInstallKind::File,
-            request.name,
+            request.name.clone(),
             Some(crate::build_graph::BuildInstallTarget::GeneratedFile(generated)),
         );
-        Ok(InstallHandle { install_id })
+        Ok(InstallHandle {
+            install_id,
+            step_id,
+            name: request.name,
+        })
     }
 
     pub fn write_file(&mut self, request: WriteFileRequest) -> Result<GeneratedFileHandle, BuildApiError> {
@@ -508,14 +524,21 @@ impl<'a> BuildApi<'a> {
 
     pub fn install_dir(&mut self, request: InstallDirRequest) -> Result<InstallHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(BuildApiError::InvalidName)?;
+        let step_id = self
+            .graph
+            .add_step(crate::build_graph::BuildStepKind::Install, request.name.clone());
         let install_id = self.graph.add_install_with_target(
             crate::build_graph::BuildInstallKind::Directory,
-            request.name,
+            request.name.clone(),
             Some(crate::build_graph::BuildInstallTarget::DirectoryPath(
                 request.path,
             )),
         );
-        Ok(InstallHandle { install_id })
+        Ok(InstallHandle {
+            install_id,
+            step_id,
+            name: request.name,
+        })
     }
 
     pub fn dependency(&mut self, request: DependencyRequest) -> Result<DependencyHandle, BuildApiError> {
@@ -856,14 +879,24 @@ mod tests {
             .expect("valid directory install should succeed");
 
         assert_eq!(api.graph().installs()[0].id, artifact_install.install_id);
+        assert_eq!(artifact_install.name, "install-app");
+        assert_eq!(api.graph().steps()[0].id, artifact_install.step_id);
+        assert_eq!(api.graph().steps()[0].kind, BuildStepKind::Install);
+        assert_eq!(api.graph().steps()[0].name, "install-app");
         assert_eq!(api.graph().installs()[0].kind, BuildInstallKind::Artifact);
         assert_eq!(
             api.graph().installs()[0].target,
             Some(BuildInstallTarget::Artifact(exe.artifact_id))
         );
         assert_eq!(api.graph().installs()[1].id, file_install.install_id);
+        assert_eq!(file_install.name, "install-config");
+        assert_eq!(api.graph().steps()[1].id, file_install.step_id);
+        assert_eq!(api.graph().steps()[1].kind, BuildStepKind::Install);
         assert_eq!(api.graph().installs()[1].kind, BuildInstallKind::File);
         assert_eq!(api.graph().installs()[2].id, dir_install.install_id);
+        assert_eq!(dir_install.name, "install-assets");
+        assert_eq!(api.graph().steps()[2].id, dir_install.step_id);
+        assert_eq!(api.graph().steps()[2].kind, BuildStepKind::Install);
         assert_eq!(api.graph().installs()[2].kind, BuildInstallKind::Directory);
         assert_eq!(
             api.graph().installs()[2].target,
