@@ -311,6 +311,24 @@ mod tests {
     }
 
     #[test]
+    fn package_build_parser_rejects_old_def_build_headers() {
+        let build_path = write_build_fixture(
+            "legacy_def_build",
+            "def build(graph: Graph): non = graph;\n",
+        );
+
+        let error =
+            parse_package_build(&build_path).expect_err("Old def build headers should fail");
+
+        assert_eq!(error.kind(), PackageErrorKind::InvalidInput);
+        assert!(error
+            .to_string()
+            .contains("package loader could not parse package build file"));
+
+        fs::remove_dir_all(build_path.parent().unwrap()).ok();
+    }
+
+    #[test]
     fn package_build_parser_rejects_plain_pro_build_headers() {
         let build_path = write_build_fixture(
             "plain_pro_build",

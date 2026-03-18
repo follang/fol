@@ -4,13 +4,13 @@ Last updated: 2026-03-18
 
 ## Tracking
 
-Current reset status: in progress
+Current reset status: complete
 
 Round 1 slices:
 
 - [x] Slice 1. Replace the remaining bullet-only tracking with a concrete 10-slice execution checklist
 - [x] Slice 2. Delete compatibility parsing and fallback extraction from `fol-package::build`
-- [ ] Slice 3. Reject old `build.fol` forms by enforcing only `pro[] build(graph: Graph): non`
+- [x] Slice 3. Reject old `build.fol` forms by enforcing only `pro[] build(graph: Graph): non`
 - [x] Slice 4. Load package-store dependencies from `package.yaml`, not compatibility `def pkg = ...`
 - [x] Slice 5. Stop projecting compatibility exports/native artifacts through prepared package loading
 - [x] Slice 6. Remove compatibility/hybrid frontend routing and fallback default build execution
@@ -31,14 +31,14 @@ Implemented already:
 
 Not done yet:
 
-- [ ] Reject `def build(...)` as invalid old syntax
-- [ ] Reject `def root: loc = ...` as invalid old syntax
+- [x] Reject `def build(...)` as invalid old syntax
+- [x] Reject `def root: loc = ...` as invalid old syntax
 - [x] Remove compatibility extraction from `fol-package`
-- [ ] Remove compatibility/hybrid workflow branching from frontend routing
+- [x] Remove compatibility/hybrid workflow branching from frontend routing
 - [x] Rehome formal package dependency/export loading off old `build.fol` defs
 - [x] Replace old pkg/import fixtures and tests that still depend on compatibility defs
-- [ ] Rewrite docs/scaffolds/examples so they teach only the new build model
-- [ ] Delete the remaining legacy build-only tests, fixtures, and code paths
+- [x] Rewrite docs/scaffolds/examples so they teach only the new build model
+- [x] Delete the remaining legacy build-only tests, fixtures, and code paths
 
 ## Core Decision
 

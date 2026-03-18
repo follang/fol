@@ -4014,6 +4014,75 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_cli_code_build_rejects_old_root_build_syntax() {
+        let root = unique_temp_root("old_root_build_syntax");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(root.join("build.fol"), "def root: loc = \"src\";\n")
+            .expect("should write old build syntax");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .expect("should write app source");
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            !output.status.success(),
+            "old root build syntax should fail: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        );
+        assert!(
+            stderr.contains("canonical `pro[] build(graph: Graph): non` entry"),
+            "old root build syntax should point at the canonical build entry: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        );
+
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn test_cli_code_build_rejects_plain_pro_build_headers() {
+        let root = unique_temp_root("plain_pro_build_header");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            "pro build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .expect("should write non-canonical build header");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .expect("should write app source");
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(
+            !output.status.success(),
+            "plain pro build header should fail: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        );
+        assert!(
+            stderr.contains("canonical `pro[] build(graph: Graph): non` entry"),
+            "plain pro build header should point at the canonical build entry: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        );
+
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
     #[ignore = "requires network access to github.com"]
     fn test_frontend_fetches_public_logtiny_from_github() {
         let temp_root = unique_temp_root("frontend_fetch_public_logtiny");
