@@ -2592,6 +2592,44 @@ mod tests {
     }
 
     #[test]
+    fn build_source_evaluator_keeps_mixed_generated_output_families() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
+            "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
+            "    var tool = graph.add_system_tool({ tool = \"flatc\", output = \"gen/schema.fol\" });\n",
+            "    var codegen = graph.add_codegen({ kind = \"schema\", input = \"schema/api.yaml\", output = \"gen/api.fol\" });\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("mixed generated outputs should evaluate")
+            .expect("build body should produce a graph");
+        let kinds = evaluated
+            .evaluated
+            .generated_files
+            .iter()
+            .map(|file| file.kind)
+            .collect::<Vec<_>>();
+
+        assert_eq!(evaluated.evaluated.generated_files.len(), 4);
+        assert!(kinds.contains(&BuildRuntimeGeneratedFileKind::Write));
+        assert!(kinds.contains(&BuildRuntimeGeneratedFileKind::Copy));
+        assert!(kinds.contains(&BuildRuntimeGeneratedFileKind::ToolOutput));
+        assert!(kinds.contains(&BuildRuntimeGeneratedFileKind::CodegenOutput));
+    }
+
+    #[test]
     fn build_source_evaluator_records_dependency_module_and_artifact_queries() {
         let source = concat!(
             "def build(graph: Graph): Graph = {\n",
