@@ -809,7 +809,7 @@ mod tests {
     }
 
     #[test]
-    fn workspace_route_planner_rejects_old_compatibility_members() {
+    fn workspace_route_planner_rejects_old_build_members() {
         let root = std::env::temp_dir().join(format!(
             "fol_frontend_build_route_old_build_{}_{}",
             std::process::id(),
@@ -889,7 +889,7 @@ mod tests {
     }
 
     #[test]
-    fn modern_members_plan_custom_steps_without_compatibility_controls() {
+    fn modern_members_plan_custom_steps_from_semantic_builds() {
         let root = std::env::temp_dir().join(format!(
             "fol_frontend_build_route_modern_custom_steps_{}_{}",
             std::process::id(),

@@ -105,13 +105,11 @@ impl PreparedPackage {
 mod tests {
     use super::PreparedPackage;
     use crate::{
-        build::PackageBuildCompatibility,
         build_dependency::DependencyBuildSurfaceSet,
         build_entry::BuildEntrySignatureExpectation,
         build_native::{NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet},
-        BuildDependency, BuildExport, PackageBuildDefinition, PackageBuildMode, PackageConfig,
-        PackageDependencyDecl, PackageDependencySourceKind, PackageIdentity, PackageLocator,
-        PackageMetadata, PackageNativeArtifact, PackageNativeArtifactKind, PackageSourceKind,
+        PackageBuildDefinition, PackageBuildMode, PackageConfig, PackageDependencyDecl,
+        PackageDependencySourceKind, PackageIdentity, PackageMetadata, PackageSourceKind,
         PreparedExportMount,
     };
     use fol_parser::ast::{AstParser, ParsedPackage, ParsedSourceUnitKind};
@@ -194,21 +192,6 @@ mod tests {
                 }],
             },
             PackageBuildDefinition {
-                compatibility: PackageBuildCompatibility {
-                    dependencies: vec![BuildDependency {
-                        alias: "core".to_string(),
-                        locator: PackageLocator::installed_store("core", vec!["core".to_string()]),
-                    }],
-                    exports: vec![BuildExport {
-                        alias: "root".to_string(),
-                        relative_path: "src".to_string(),
-                    }],
-                    native_artifacts: vec![PackageNativeArtifact {
-                        alias: "api".to_string(),
-                        kind: PackageNativeArtifactKind::Header,
-                        relative_path: "include/api.h".to_string(),
-                    }],
-                },
                 mode: PackageBuildMode::ModernOnly,
             },
             vec![PreparedExportMount {
@@ -225,15 +208,8 @@ mod tests {
             Some("json")
         );
         assert_eq!(
-            prepared.build.as_ref().map(|build| build.exports().len()),
-            Some(1)
-        );
-        assert_eq!(
-            prepared
-                .build
-                .as_ref()
-                .map(|build| build.native_artifacts().len()),
-            Some(1)
+            prepared.build.as_ref().map(|build| build.mode()),
+            Some(PackageBuildMode::ModernOnly)
         );
         assert_eq!(prepared.exports.len(), 1);
         assert!(prepared.dependency_surfaces.is_some());
@@ -288,9 +264,13 @@ mod tests {
                 kind: ParsedSourceUnitKind::Build,
                 items: vec![fol_parser::ast::ParsedTopLevel {
                     node_id: fol_parser::ast::SyntaxNodeId(1),
-                    node: fol_parser::ast::AstNode::DefDecl {
+                    node: fol_parser::ast::AstNode::ProDecl {
+                        syntax_id: None,
                         options: Vec::new(),
+                        generics: Vec::new(),
                         name: "build".to_string(),
+                        receiver_type: None,
+                        captures: Vec::new(),
                         params: vec![fol_parser::ast::Parameter {
                             name: "graph".to_string(),
                             param_type: fol_parser::ast::FolType::Named {
@@ -301,11 +281,10 @@ mod tests {
                             is_mutex: false,
                             default: None,
                         }],
-                        def_type: fol_parser::ast::FolType::Named {
-                            syntax_id: None,
-                            name: "Graph".to_string(),
-                        },
+                        return_type: Some(fol_parser::ast::FolType::None),
+                        error_type: None,
                         body: Vec::new(),
+                        inquiries: Vec::new(),
                     },
                     meta: fol_parser::ast::ParsedTopLevelMeta::default(),
                 }],

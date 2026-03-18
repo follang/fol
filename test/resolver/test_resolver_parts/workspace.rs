@@ -188,7 +188,7 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
 
 #[test]
 fn test_resolver_legacy_program_api_matches_workspace_entry_program() {
-    let temp_root = unique_temp_root("workspace_compatibility");
+    let temp_root = unique_temp_root("workspace_legacy_program_api");
     fs::create_dir_all(temp_root.join("app"))
         .expect("Should create the importing package root fixture directory");
     fs::create_dir_all(temp_root.join("shared"))

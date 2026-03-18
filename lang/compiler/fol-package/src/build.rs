@@ -2,46 +2,12 @@ use crate::{
     build_entry::{
         validate_parsed_build_entry, BuildEntrySignatureExpectation, BuildEntryValidationError,
     },
-    PackageError, PackageErrorKind, PackageLocator,
+    PackageError, PackageErrorKind,
 };
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::{AstParser, ParsedPackage, SyntaxOrigin};
 use fol_stream::FileStream;
 use std::path::Path;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BuildDependency {
-    pub alias: String,
-    pub locator: PackageLocator,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BuildExport {
-    pub alias: String,
-    pub relative_path: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PackageNativeArtifactKind {
-    Header,
-    Object,
-    StaticLibrary,
-    SharedLibrary,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PackageNativeArtifact {
-    pub alias: String,
-    pub kind: PackageNativeArtifactKind,
-    pub relative_path: String,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct PackageBuildCompatibility {
-    pub dependencies: Vec<BuildDependency>,
-    pub exports: Vec<BuildExport>,
-    pub native_artifacts: Vec<PackageNativeArtifact>,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PackageBuildMode {
@@ -53,55 +19,28 @@ impl PackageBuildMode {
     pub fn has_semantic_build_entry(self) -> bool {
         matches!(self, Self::ModernOnly)
     }
-
-    pub fn has_compatibility_controls(self) -> bool {
-        false
-    }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PackageBuildDefinition {
-    pub compatibility: PackageBuildCompatibility,
     pub mode: PackageBuildMode,
 }
 
 impl Default for PackageBuildDefinition {
     fn default() -> Self {
         Self {
-            compatibility: PackageBuildCompatibility::default(),
             mode: PackageBuildMode::Empty,
         }
     }
 }
 
 impl PackageBuildDefinition {
-    pub fn compatibility(&self) -> &PackageBuildCompatibility {
-        &self.compatibility
-    }
-
-    pub fn dependencies(&self) -> &[BuildDependency] {
-        &self.compatibility.dependencies
-    }
-
-    pub fn exports(&self) -> &[BuildExport] {
-        &self.compatibility.exports
-    }
-
-    pub fn native_artifacts(&self) -> &[PackageNativeArtifact] {
-        &self.compatibility.native_artifacts
-    }
-
-    pub fn has_compatibility_controls(&self) -> bool {
-        false
-    }
-
     pub fn mode(&self) -> PackageBuildMode {
         self.mode
     }
 
     fn semantic_only() -> Self {
         Self {
-            compatibility: PackageBuildCompatibility::default(),
             mode: PackageBuildMode::ModernOnly,
         }
     }
@@ -109,7 +48,7 @@ impl PackageBuildDefinition {
 
 pub fn classify_semantic_build_mode(
     parsed: &ParsedPackage,
-    _has_compatibility_controls: bool,
+    _unused: bool,
 ) -> PackageBuildMode {
     if validate_parsed_build_entry(parsed, &BuildEntrySignatureExpectation::canonical()).is_ok() {
         PackageBuildMode::ModernOnly
@@ -439,9 +378,7 @@ mod tests {
     #[test]
     fn package_build_mode_helpers_expose_semantic_only_participation() {
         assert!(!PackageBuildMode::Empty.has_semantic_build_entry());
-        assert!(!PackageBuildMode::Empty.has_compatibility_controls());
         assert!(PackageBuildMode::ModernOnly.has_semantic_build_entry());
-        assert!(!PackageBuildMode::ModernOnly.has_compatibility_controls());
     }
 
     #[test]

@@ -34,9 +34,8 @@ pub mod paths;
 pub mod session;
 
 pub use build::{
-    classify_semantic_build_mode, parse_package_build, parse_package_build_mode, BuildDependency,
-    BuildExport, PackageBuildCompatibility, PackageBuildDefinition, PackageBuildMode,
-    PackageNativeArtifact, PackageNativeArtifactKind,
+    classify_semantic_build_mode, parse_package_build, parse_package_build_mode,
+    PackageBuildDefinition, PackageBuildMode,
 };
 pub use build_api::{
     validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildArtifactHandle,
@@ -89,7 +88,6 @@ pub use build_graph::{
     BuildOptionId, BuildOptionKind, BuildStep, BuildStepDependency, BuildStepId, BuildStepKind,
 };
 pub use build_native::{
-    project_compatibility_native_artifact, project_compatibility_native_artifacts,
     NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeIncludePath,
     NativeLibraryPath, NativeLinkDirective, NativeLinkInput, NativeLinkMode, NativePlatform,
     NativeSearchPathOrigin,

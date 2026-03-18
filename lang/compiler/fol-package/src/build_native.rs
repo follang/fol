@@ -80,37 +80,6 @@ impl NativeArtifactDefinition {
     }
 }
 
-impl From<PackageNativeArtifactKind> for NativeArtifactKind {
-    fn from(value: PackageNativeArtifactKind) -> Self {
-        match value {
-            PackageNativeArtifactKind::Header => NativeArtifactKind::Header,
-            PackageNativeArtifactKind::Object => NativeArtifactKind::Object,
-            PackageNativeArtifactKind::StaticLibrary => NativeArtifactKind::StaticLibrary,
-            PackageNativeArtifactKind::SharedLibrary => NativeArtifactKind::SharedLibrary,
-        }
-    }
-}
-
-pub fn project_compatibility_native_artifact(
-    artifact: &PackageNativeArtifact,
-) -> NativeArtifactDefinition {
-    NativeArtifactDefinition {
-        name: artifact.alias.clone(),
-        kind: artifact.kind.into(),
-        relative_path: artifact.relative_path.clone(),
-    }
-}
-
-pub fn project_compatibility_native_artifacts(
-    artifacts: &[PackageNativeArtifact],
-) -> NativeArtifactSet {
-    let mut set = NativeArtifactSet::new();
-    for artifact in artifacts {
-        set.add(project_compatibility_native_artifact(artifact));
-    }
-    set
-}
-
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct NativeArtifactSet {
     definitions: Vec<NativeArtifactDefinition>,
@@ -133,12 +102,10 @@ impl NativeArtifactSet {
 #[cfg(test)]
 mod tests {
     use super::{
-        project_compatibility_native_artifact, project_compatibility_native_artifacts,
         NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeIncludePath,
         NativeLibraryPath, NativeLinkDirective, NativeLinkInput, NativeLinkMode, NativePlatform,
         NativeSearchPathOrigin,
     };
-    use crate::build::{PackageNativeArtifact, PackageNativeArtifactKind};
 
     #[test]
     fn native_artifact_set_starts_empty() {
@@ -284,43 +251,4 @@ mod tests {
             "crypto.dll"
         );
     }
-
-    #[test]
-    fn compatibility_projection_maps_placeholder_native_artifacts() {
-        let artifact = PackageNativeArtifact {
-            alias: "api".to_string(),
-            kind: PackageNativeArtifactKind::Header,
-            relative_path: "include/api.h".to_string(),
-        };
-
-        assert_eq!(
-            project_compatibility_native_artifact(&artifact),
-            NativeArtifactDefinition {
-                name: "api".to_string(),
-                kind: NativeArtifactKind::Header,
-                relative_path: "include/api.h".to_string(),
-            }
-        );
-    }
-
-    #[test]
-    fn compatibility_projection_preserves_multiple_native_placeholders() {
-        let set = project_compatibility_native_artifacts(&[
-            PackageNativeArtifact {
-                alias: "core".to_string(),
-                kind: PackageNativeArtifactKind::Object,
-                relative_path: "native/core.o".to_string(),
-            },
-            PackageNativeArtifact {
-                alias: "ssl".to_string(),
-                kind: PackageNativeArtifactKind::StaticLibrary,
-                relative_path: "native/libssl.a".to_string(),
-            },
-        ]);
-
-        assert_eq!(set.definitions().len(), 2);
-        assert_eq!(set.definitions()[0].kind, NativeArtifactKind::Object);
-        assert_eq!(set.definitions()[1].kind, NativeArtifactKind::StaticLibrary);
-    }
 }
-use crate::build::{PackageNativeArtifact, PackageNativeArtifactKind};

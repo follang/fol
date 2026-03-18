@@ -52,7 +52,7 @@ impl Resolver {
 
     /// Resolve one parsed package into scopes, symbols, references, and imports.
     ///
-    /// This is the legacy single-program compatibility surface. New semantic
+    /// This is the legacy single-program surface. New semantic
     /// consumers should prefer the workspace APIs and then read the entry
     /// package from the returned `ResolvedWorkspace`.
     pub fn resolve_package(
@@ -64,7 +64,7 @@ impl Resolver {
 
     /// Resolve one parsed package with an explicit resolver configuration.
     ///
-    /// This is the legacy single-program compatibility surface.
+    /// This is the legacy single-program surface.
     pub fn resolve_package_with_config(
         &mut self,
         syntax: fol_parser::ast::ParsedPackage,
@@ -92,7 +92,7 @@ impl Resolver {
 
     /// Resolve one fol-package prepared package with a fresh resolver session.
     ///
-    /// This is the legacy single-program compatibility surface.
+    /// This is the legacy single-program surface.
     pub fn resolve_prepared_package(
         &mut self,
         prepared: PreparedPackage,
@@ -102,7 +102,7 @@ impl Resolver {
 
     /// Resolve one fol-package prepared package with an explicit resolver configuration.
     ///
-    /// This is the legacy single-program compatibility surface.
+    /// This is the legacy single-program surface.
     pub fn resolve_prepared_package_with_config(
         &mut self,
         prepared: PreparedPackage,
