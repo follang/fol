@@ -332,7 +332,7 @@ Round 1 slice tracker:
 
 Round 2 slice tracker:
 
-- [ ] Slice 1. Add a concrete Phase 3 migration tracker for deleting textual
+- [x] Slice 1. Add a concrete Phase 3 migration tracker for deleting textual
   build-entry fallback paths.
 - [x] Slice 2. Add a semantic helper that classifies modern vs compatibility
   build modes from parsed build syntax.
@@ -351,6 +351,27 @@ Round 2 slice tracker:
   surface.
 - [x] Slice 10. Delete the last temporary legacy build-entry helpers and clean
   up call sites.
+
+Phase 3 migration tracker:
+
+- Deleted:
+  - AST extraction no longer records legacy build-entry metadata.
+  - Raw-source fallback no longer invents semantic `def build(...)` entries.
+  - `PackageBuildDefinition` no longer carries legacy entry-point result
+    objects.
+  - prepared-package/package-session callers no longer consume legacy build-entry
+    helper APIs.
+  - temporary legacy build-entry helpers and re-exports have been removed from
+    active call sites.
+- Still intentionally temporary during migration:
+  - raw-source fallback may still recover compatibility-only `pkg` / `loc` /
+    native-artifact metadata when hybrid files fail to parse, but that path does
+    not classify semantic build entries and is now outside build-entry
+    selection.
+- Exit condition for final deletion:
+  - once compatibility absorption removes the remaining migration-only fallback
+    for compatibility controls, textual build-entry fallback paths are fully
+    gone.
 
 ## Phase 4: Build-Time Capability Model
 
