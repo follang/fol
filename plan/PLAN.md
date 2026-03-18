@@ -589,7 +589,7 @@ Round 1 slice tracker:
   evaluation.
 - [x] Slice 7. Support `RunHandle.depend_on(...)` chaining in shared build
   evaluation.
-- [ ] Slice 8. Support `InstallHandle.depend_on(...)` chaining in shared build
+- [x] Slice 8. Support `InstallHandle.depend_on(...)` chaining in shared build
   evaluation.
 - [ ] Slice 9. Deduplicate repeated step dependencies so chained and explicit
   dependency wiring stays stable.
