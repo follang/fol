@@ -753,7 +753,7 @@ Round 1 slice tracker:
   not re-scan raw build source to classify workflow mode.
 - [x] Slice 4. Remove frontend raw-source build-entry detection and classify
   workspace members from semantic package build parsing only.
-- [ ] Slice 5. Add frontend regressions for broken modern and broken hybrid
+- [x] Slice 5. Add frontend regressions for broken modern and broken hybrid
   `build.fol` workspace classification.
 - [ ] Slice 6. Rename frontend workspace build request APIs away from
   compatibility-only terminology.

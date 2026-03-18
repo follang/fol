@@ -960,6 +960,81 @@ mod tests {
     }
 
     #[test]
+    fn workspace_route_planner_keeps_broken_hybrid_builds_in_compatibility_mode() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_broken_hybrid_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: hybrid\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = {\n",
+        )
+        .unwrap();
+
+        let route = plan_workspace_build_route(
+            &FrontendWorkspace {
+                root: WorkspaceRoot::new(root.clone()),
+                members: vec![PackageRoot::new(root.clone())],
+                std_root_override: None,
+                package_store_root_override: None,
+                build_root: root.join(".fol/build"),
+                cache_root: root.join(".fol/cache"),
+                git_cache_root: root.join(".fol/cache/git"),
+            },
+            "build",
+        )
+        .expect("broken hybrid build should still classify through compatibility controls");
+
+        assert_eq!(route.members[0].mode, FrontendBuildWorkflowMode::Compatibility);
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_route_planner_rejects_broken_modern_builds() {
+        let root = std::env::temp_dir().join(format!(
+            "fol_frontend_build_route_broken_modern_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time before epoch")
+                .as_nanos()
+        ));
+        fs::create_dir_all(root.join("src")).unwrap();
+        fs::write(root.join("package.yaml"), "name: modern\nversion: 0.1.0\n").unwrap();
+        fs::write(root.join("build.fol"), "def build(graph: Graph): Graph = {\n").unwrap();
+
+        let error = plan_workspace_build_route(
+            &FrontendWorkspace {
+                root: WorkspaceRoot::new(root.clone()),
+                members: vec![PackageRoot::new(root.clone())],
+                std_root_override: None,
+                package_store_root_override: None,
+                build_root: root.join(".fol/build"),
+                cache_root: root.join(".fol/cache"),
+                git_cache_root: root.join(".fol/cache/git"),
+            },
+            "build",
+        )
+        .expect_err("broken modern-only build should stay a parse failure");
+
+        assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
+        assert!(
+            error
+                .message()
+                .contains("package loader could not parse package build file")
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn modern_members_plan_custom_steps_without_compatibility_controls() {
         let root = std::env::temp_dir().join(format!(
             "fol_frontend_build_route_modern_custom_steps_{}_{}",
