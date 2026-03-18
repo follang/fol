@@ -133,29 +133,8 @@ pub fn plan_workspace_build_route(
 }
 
 fn load_member_build_mode(build_path: &std::path::Path) -> FrontendResult<FrontendBuildWorkflowMode> {
-    let source = std::fs::read_to_string(build_path).map_err(|error| {
-        FrontendError::new(
-            FrontendErrorKind::CommandFailed,
-            format!("failed to read build file '{}': {error}", build_path.display()),
-        )
-    })?;
-    let parsed = fol_package::parse_package_build(build_path);
-    let has_semantic_entry = source_declares_semantic_build_entry(&source);
-    let has_compatibility_controls = parsed
-        .as_ref()
-        .map(|build| build.has_compatibility_controls())
-        .unwrap_or(false);
-
-    if has_semantic_entry {
-        return Ok(if has_compatibility_controls {
-            FrontendBuildWorkflowMode::Hybrid
-        } else {
-            FrontendBuildWorkflowMode::Modern
-        });
-    }
-
-    let build = parsed?;
-    FrontendBuildWorkflowMode::from_package_build_mode(build.mode()).ok_or_else(|| {
+    let mode = fol_package::parse_package_build_mode(build_path)?;
+    FrontendBuildWorkflowMode::from_package_build_mode(mode).ok_or_else(|| {
         FrontendError::new(
             FrontendErrorKind::Internal,
             format!(
@@ -163,13 +142,6 @@ fn load_member_build_mode(build_path: &std::path::Path) -> FrontendResult<Fronte
                 build_path.display()
             ),
         )
-    })
-}
-
-fn source_declares_semantic_build_entry(source: &str) -> bool {
-    source.lines().any(|raw_line| {
-        let line = raw_line.split_once("//").map_or(raw_line, |(prefix, _)| prefix).trim();
-        line.starts_with("def build(")
     })
 }
 
@@ -953,12 +925,12 @@ mod tests {
         fs::write(compatibility.join("build.fol"), "def root: loc = \"src\";\n").unwrap();
         fs::write(
             hybrid.join("build.fol"),
-            "def root: loc = \"src\";\ndef build(graph: int): int = graph;\n",
+            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = graph;\n",
         )
         .unwrap();
         fs::write(
             modern.join("build.fol"),
-            "def build(graph: int): int = graph;\n",
+            "def build(graph: Graph): Graph = graph;\n",
         )
         .unwrap();
 
@@ -1002,7 +974,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.step(\"docs\");\n",
                 "    return graph\n",
                 "}\n",
@@ -1054,7 +1026,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "def root: loc = \"src\";\n",
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.step(\"docs\");\n",
                 "    return graph\n",
                 "}\n",
@@ -1172,7 +1144,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.step(\"docs\");\n",
                 "    graph.step(\"lint\");\n",
                 "    return graph\n",
@@ -1209,7 +1181,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.add_exe(\"app\", \"src/main.fol\");\n",
                 "    graph.step(\"gen\");\n",
                 "    graph.step(\"docs\", \"gen\");\n",
@@ -1254,7 +1226,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.step(\"docs\");\n",
                 "    return graph\n",
                 "}\n",
@@ -1300,7 +1272,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "def root: loc = \"src\";\n",
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.step(\"docs\");\n",
                 "    return graph\n",
                 "}\n",
@@ -1344,7 +1316,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.add_exe(\"app\", \"src/main.fol\");\n",
                 "    graph.add_run(\"serve\", \"app\");\n",
                 "    return graph\n",
@@ -1394,7 +1366,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "def root: loc = \"src\";\n",
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
                 "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
                 "    graph.add_run(\"serve\", \"serve_app\");\n",
@@ -1451,7 +1423,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "def root: loc = \"src\";\n",
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
                 "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
                 "    graph.step(\"serve_app\");\n",
@@ -1508,7 +1480,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
                 "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
                 "    return graph\n",
@@ -1561,7 +1533,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
                 "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
                 "    return graph\n",
@@ -1625,7 +1597,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    graph.add_exe(\"app\", \"src/app.fol\");\n",
                 "    graph.add_run(\"serve\", \"app\");\n",
                 "    return graph\n",
@@ -1686,7 +1658,7 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "def build(graph: int): int = {\n",
+                "def build(graph: Graph): Graph = {\n",
                 "    var target = graph.standard_target();\n",
                 "    var optimize = graph.standard_optimize();\n",
                 "    var app = graph.add_exe({\n",
@@ -1754,7 +1726,7 @@ mod tests {
         fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
-            "def build(graph: int): int = graph;\n",
+            "def build(graph: Graph): Graph = graph;\n",
         )
         .unwrap();
         fs::write(
@@ -1790,7 +1762,7 @@ mod tests {
         fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
-            "def build(graph: int): int = graph;\n",
+            "def build(graph: Graph): Graph = graph;\n",
         )
         .unwrap();
         fs::write(root.join("src/lib.fol"), "var[exp] answer: int = 42;\n").unwrap();

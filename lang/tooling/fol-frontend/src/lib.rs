@@ -749,9 +749,9 @@ mod tests {
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         let build_fol = if hybrid {
-            "def root: loc = \"src\";\ndef build(graph: int): int = graph;\n"
+            "def root: loc = \"src\";\ndef build(graph: Graph): Graph = graph;\n"
         } else {
-            "def build(graph: int): int = graph;\n"
+            "def build(graph: Graph): Graph = graph;\n"
         };
         std::fs::write(root.join("build.fol"), build_fol).unwrap();
         std::fs::write(src.join("main.fol"), "fun[] main(): int = {\n    return 0\n}\n").unwrap();

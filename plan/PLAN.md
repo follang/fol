@@ -751,7 +751,7 @@ Round 1 slice tracker:
   compatibility participation directly.
 - [x] Slice 3. Add a shared `parse_package_build_mode(...)` helper so callers do
   not re-scan raw build source to classify workflow mode.
-- [ ] Slice 4. Remove frontend raw-source build-entry detection and classify
+- [x] Slice 4. Remove frontend raw-source build-entry detection and classify
   workspace members from semantic package build parsing only.
 - [ ] Slice 5. Add frontend regressions for broken modern and broken hybrid
   `build.fol` workspace classification.
