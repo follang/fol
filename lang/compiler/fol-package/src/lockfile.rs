@@ -140,6 +140,16 @@ pub fn parse_package_lockfile(raw: &str) -> Result<PackageLockfile, PackageError
         )
     })?;
 
+    if version != LOCKFILE_VERSION {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package lockfile version {} is not compatible with supported version {}",
+                version, LOCKFILE_VERSION
+            ),
+        ));
+    }
+
     Ok(PackageLockfile { version, entries })
 }
 
@@ -256,6 +266,14 @@ mod tests {
         let right = sample_lockfile();
 
         assert_eq!(left.identity_hash(), right.identity_hash());
+    }
+
+    #[test]
+    fn package_lockfile_rejects_incompatible_version() {
+        let error = parse_package_lockfile("version: 99\n")
+            .expect_err("incompatible lockfile version should fail");
+
+        assert!(error.message().contains("not compatible with supported version"));
     }
 
     #[test]
