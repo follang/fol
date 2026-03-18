@@ -6,6 +6,19 @@ Last updated: 2026-03-18
 
 Current reset status: in progress
 
+Round 1 slices:
+
+- [x] Slice 1. Replace the remaining bullet-only tracking with a concrete 10-slice execution checklist
+- [ ] Slice 2. Delete compatibility parsing and fallback extraction from `fol-package::build`
+- [ ] Slice 3. Reject old `build.fol` forms by enforcing only `pro[] build(graph: Graph): non`
+- [ ] Slice 4. Load package-store dependencies from `package.yaml`, not compatibility `def pkg = ...`
+- [ ] Slice 5. Stop projecting compatibility exports/native artifacts through prepared package loading
+- [ ] Slice 6. Remove compatibility/hybrid frontend routing and fallback default build execution
+- [ ] Slice 7. Rewrite frontend scaffolds and frontend unit tests to generate only the new build form
+- [ ] Slice 8. Rewrite resolver and integration fixtures/tests that still depend on `def root`
+- [ ] Slice 9. Rewrite docs and examples so they teach only the new build model
+- [ ] Slice 10. Add semantic-only regression coverage for old syntax and invalid build entry shapes
+
 Implemented already:
 
 - [x] Canonical semantic build entry switched to `pro[] build(graph: Graph): non`
