@@ -593,7 +593,7 @@ Round 1 slice tracker:
   evaluation.
 - [x] Slice 9. Deduplicate repeated step dependencies so chained and explicit
   dependency wiring stays stable.
-- [ ] Slice 10. Re-export, test, and lock the full Phase 8 step-handle and
+- [x] Slice 10. Re-export, test, and lock the full Phase 8 step-handle and
   chaining round.
 
 ## Phase 9: Options As Real Values

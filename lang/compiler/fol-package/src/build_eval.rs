@@ -2461,6 +2461,89 @@ mod tests {
     }
 
     #[test]
+    fn build_source_evaluator_keeps_step_like_handle_chains_stable() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var lint = graph.step(\"lint\");\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
+            "    var run_app = graph.add_run(app);\n",
+            "    var install_app = graph.install(app);\n",
+            "    run_app.depend_on(lint);\n",
+            "    install_app.depend_on(lint);\n",
+            "    graph.step(\"bundle\", run_app, install_app, run_app).depend_on(lint);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("combined handle chaining should evaluate")
+            .expect("build body should produce operations");
+
+        let lint = evaluated
+            .result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "lint")
+            .expect("lint step should exist");
+        let run = evaluated
+            .result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "run")
+            .expect("run step should exist");
+        let install = evaluated
+            .result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "install")
+            .expect("install step should exist");
+        let bundle = evaluated
+            .result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "bundle")
+            .expect("bundle step should exist");
+
+        assert_eq!(
+            evaluated
+                .result
+                .graph
+                .step_dependencies_for(run.id)
+                .collect::<Vec<_>>(),
+            vec![lint.id]
+        );
+        assert_eq!(
+            evaluated
+                .result
+                .graph
+                .step_dependencies_for(install.id)
+                .collect::<Vec<_>>(),
+            vec![lint.id]
+        );
+        assert_eq!(
+            evaluated
+                .result
+                .graph
+                .step_dependencies_for(bundle.id)
+                .collect::<Vec<_>>(),
+            vec![run.id, install.id, lint.id]
+        );
+    }
+
+    #[test]
     fn evaluated_build_program_surface_keeps_runtime_metadata_and_graph_result() {
         let result = BuildEvaluationResult::new(
             BuildEvaluationBoundary::GraphConstructionSubset,
