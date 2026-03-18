@@ -708,7 +708,7 @@ Round 1 slice tracker:
   generated-output metadata.
 - [x] Slice 4. Parse object-style `graph.write_file({ ... })` configs in shared
   semantic build evaluation.
-- [ ] Slice 5. Parse object-style `graph.copy_file({ ... })` configs in shared
+- [x] Slice 5. Parse object-style `graph.copy_file({ ... })` configs in shared
   semantic build evaluation.
 - [ ] Slice 6. Parse object-style `graph.add_system_tool({ ... })` configs in
   shared semantic build evaluation.
