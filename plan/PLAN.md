@@ -656,6 +656,28 @@ Tests required:
 Exit criteria:
 - dependency build surfaces are usable from real build code
 
+Round 1 slice tracker:
+- [x] Slice 1. Add a concrete Phase 10 implementation tracker for semantic
+  dependency build surfaces.
+- [ ] Slice 2. Add shared dependency surface lookup helpers and evaluation-mode
+  parsing utilities.
+- [ ] Slice 3. Extend dependency API requests/handles with semantic surface and
+  evaluation-mode metadata.
+- [ ] Slice 4. Extend the semantic build stdlib/runtime models with dependency
+  surface query method signatures and runtime value kinds.
+- [ ] Slice 5. Preserve declared dependency requests and queried dependency
+  surfaces in evaluated build results.
+- [ ] Slice 6. Parse object-style `graph.dependency({ ... })` configs in shared
+  semantic build evaluation.
+- [ ] Slice 7. Support dependency handle queries for modules and artifacts in
+  real build code.
+- [ ] Slice 8. Support dependency handle queries for steps and generated
+  outputs in real build code.
+- [ ] Slice 9. Add regressions proving dependency surfaces are consumable
+  through semantic build evaluation.
+- [ ] Slice 10. Re-export, test, and lock the full Phase 10 dependency-surface
+  round.
+
 ## Phase 11: Generated Files, Tools, And Native Inputs
 
 Goal:
