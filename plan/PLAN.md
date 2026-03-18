@@ -585,9 +585,9 @@ Round 1 slice tracker:
   chained calls can bind and reuse `step` / `run` / `install` results.
 - [x] Slice 5. Parse nested method-call receivers in build-source evaluation so
   expressions like `graph.step(...).depend_on(...)` can be evaluated directly.
-- [ ] Slice 6. Support `StepHandle.depend_on(...)` chaining in shared build
+- [x] Slice 6. Support `StepHandle.depend_on(...)` chaining in shared build
   evaluation.
-- [ ] Slice 7. Support `RunHandle.depend_on(...)` chaining in shared build
+- [x] Slice 7. Support `RunHandle.depend_on(...)` chaining in shared build
   evaluation.
 - [ ] Slice 8. Support `InstallHandle.depend_on(...)` chaining in shared build
   evaluation.

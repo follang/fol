@@ -931,6 +931,21 @@ fn parse_build_handle_method_ast(
             )?;
             Ok(Some(BuildExtractionValue::StepHandle(step_name)))
         }
+        BuildExtractionValue::RunHandle(step_name) if method == "depend_on" => {
+            let depends_on = args
+                .iter()
+                .filter_map(|arg| resolve_step_reference_ast(arg, scope))
+                .collect::<Vec<_>>();
+            if depends_on.is_empty() || depends_on.len() != args.len() {
+                return Err(build_source_unsupported(build_path, method, 1, method.len()));
+            }
+            append_dependencies_to_operation(
+                extracted,
+                &BuildExtractionValue::RunHandle(step_name.clone()),
+                &depends_on,
+            )?;
+            Ok(Some(BuildExtractionValue::RunHandle(step_name)))
+        }
         BuildExtractionValue::StepHandle(_)
         | BuildExtractionValue::RunHandle(_)
         | BuildExtractionValue::InstallHandle(_) => Err(build_source_unsupported(
@@ -953,6 +968,10 @@ fn append_dependencies_to_operation(
             &operation.kind,
             BuildEvaluationOperationKind::Step(request)
                 if matches!(handle, BuildExtractionValue::StepHandle(step_name) if request.name == *step_name)
+        ) || matches!(
+            &operation.kind,
+            BuildEvaluationOperationKind::AddRun(request)
+                if matches!(handle, BuildExtractionValue::RunHandle(step_name) if request.name == *step_name)
         )
     }) else {
         let step_name = match handle {
@@ -972,7 +991,11 @@ fn append_dependencies_to_operation(
             request.depends_on.extend(depends_on.iter().cloned());
             Ok(())
         }
-        _ => unreachable!("matched step operation kind"),
+        BuildEvaluationOperationKind::AddRun(request) => {
+            request.depends_on.extend(depends_on.iter().cloned());
+            Ok(())
+        }
+        _ => unreachable!("matched step-like operation kind"),
     }
 }
 
@@ -2313,6 +2336,54 @@ mod tests {
                 .result
                 .graph
                 .step_dependencies_for(docs.id)
+                .collect::<Vec<_>>(),
+            vec![lint.id]
+        );
+    }
+
+    #[test]
+    fn build_source_evaluator_supports_run_handle_depend_on_chains() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var lint = graph.step(\"lint\");\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
+            "    graph.add_run(app).depend_on(lint);\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("run-handle chaining should evaluate")
+            .expect("build body should produce operations");
+
+        let run = evaluated
+            .result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "run")
+            .expect("run step should exist");
+        let lint = evaluated
+            .result
+            .graph
+            .steps()
+            .iter()
+            .find(|step| step.name == "lint")
+            .expect("lint step should exist");
+        assert_eq!(
+            evaluated
+                .result
+                .graph
+                .step_dependencies_for(run.id)
                 .collect::<Vec<_>>(),
             vec![lint.id]
         );
