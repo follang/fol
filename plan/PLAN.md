@@ -631,7 +631,7 @@ Round 1 slice tracker:
   record configs.
 - [x] Slice 7. Let artifact config fields carry deferred literal-or-option
   values instead of eager placeholder strings.
-- [ ] Slice 8. Resolve deferred artifact option values into runtime artifact
+- [x] Slice 8. Resolve deferred artifact option values into runtime artifact
   metadata for `root`, `target`, and `optimize`.
 - [ ] Slice 9. Add regression coverage proving CLI/build-input option values
   reach evaluated artifact metadata through local variables and object configs.

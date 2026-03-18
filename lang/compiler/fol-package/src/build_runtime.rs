@@ -33,6 +33,8 @@ pub struct BuildRuntimeArtifact {
     pub name: String,
     pub kind: BuildRuntimeArtifactKind,
     pub root_module: String,
+    pub target: Option<String>,
+    pub optimize: Option<String>,
 }
 
 impl BuildRuntimeArtifact {
@@ -45,7 +47,19 @@ impl BuildRuntimeArtifact {
             name: name.into(),
             kind,
             root_module: root_module.into(),
+            target: None,
+            optimize: None,
         }
+    }
+
+    pub fn with_target_config(
+        mut self,
+        target: Option<impl Into<String>>,
+        optimize: Option<impl Into<String>>,
+    ) -> Self {
+        self.target = target.map(|value| value.into());
+        self.optimize = optimize.map(|value| value.into());
+        self
     }
 }
 
@@ -278,8 +292,23 @@ mod tests {
 
         assert_eq!(exe.kind, BuildRuntimeArtifactKind::Executable);
         assert_eq!(exe.root_module, "src/app.fol");
+        assert_eq!(exe.target, None);
+        assert_eq!(exe.optimize, None);
         assert_eq!(test.kind, BuildRuntimeArtifactKind::Test);
         assert_eq!(test.name, "app_test");
+    }
+
+    #[test]
+    fn runtime_artifacts_can_carry_target_and_optimize_metadata() {
+        let artifact = BuildRuntimeArtifact::new(
+            "app",
+            BuildRuntimeArtifactKind::Executable,
+            "src/app.fol",
+        )
+        .with_target_config(Some("x86_64-linux-gnu"), Some("release-fast"));
+
+        assert_eq!(artifact.target.as_deref(), Some("x86_64-linux-gnu"));
+        assert_eq!(artifact.optimize.as_deref(), Some("release-fast"));
     }
 
     #[test]

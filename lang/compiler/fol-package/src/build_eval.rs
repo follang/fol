@@ -451,6 +451,16 @@ impl BuildExtractionConfigValue {
             Self::OptionRef(option) => option.name.clone(),
         }
     }
+
+    fn resolve(&self, resolved: &ResolvedBuildOptionSet) -> String {
+        match self {
+            Self::Literal(value) => value.clone(),
+            Self::OptionRef(option) => resolved
+                .get(option.name.as_str())
+                .map(str::to_string)
+                .unwrap_or_else(|| option.name.clone()),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1222,14 +1232,34 @@ fn evaluated_build_program_from_extracted(
             BuildRuntimeArtifact::new(
                 artifact.name.clone(),
                 BuildRuntimeArtifactKind::Executable,
-                artifact.root_module.placeholder_string(),
+                artifact.root_module.resolve(&result.resolved_options),
+            )
+            .with_target_config(
+                artifact
+                    .target
+                    .as_ref()
+                    .map(|value| value.resolve(&result.resolved_options)),
+                artifact
+                    .optimize
+                    .as_ref()
+                    .map(|value| value.resolve(&result.resolved_options)),
             )
         })
         .chain(extracted.test_artifacts.iter().map(|artifact| {
             BuildRuntimeArtifact::new(
                 artifact.name.clone(),
                 BuildRuntimeArtifactKind::Test,
-                artifact.root_module.placeholder_string(),
+                artifact.root_module.resolve(&result.resolved_options),
+            )
+            .with_target_config(
+                artifact
+                    .target
+                    .as_ref()
+                    .map(|value| value.resolve(&result.resolved_options)),
+                artifact
+                    .optimize
+                    .as_ref()
+                    .map(|value| value.resolve(&result.resolved_options)),
             )
         }))
         .collect::<Vec<_>>();
@@ -2004,6 +2034,45 @@ mod tests {
                 if name == "optimize" && *kind == BuildExtractionOptionKind::Optimize
         ));
         drop(package_root);
+    }
+
+    #[test]
+    fn build_source_evaluator_resolves_deferred_artifact_option_values_into_runtime_metadata() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var root = graph.option({ name = \"root\", kind = \"path\", default = \"src/demo.fol\" });\n",
+            "    var target = graph.standard_target();\n",
+            "    var optimize = graph.standard_optimize();\n",
+            "    graph.add_exe({ name = \"demo\", root = root, target = target, optimize = optimize });\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                target: BuildTargetTriple::parse("x86_64-linux-gnu"),
+                optimize: BuildOptimizeMode::parse("release-fast"),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("deferred artifact configs should evaluate")
+            .expect("build body should produce operations");
+
+        let artifact = evaluated
+            .evaluated
+            .artifacts
+            .iter()
+            .find(|artifact| artifact.name == "demo")
+            .expect("artifact should exist");
+
+        assert_eq!(artifact.root_module, "src/demo.fol");
+        assert_eq!(artifact.target.as_deref(), Some("x86_64-linux-gnu"));
+        assert_eq!(artifact.optimize.as_deref(), Some("release-fast"));
     }
 
     #[test]
