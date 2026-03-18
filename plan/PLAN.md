@@ -759,7 +759,7 @@ Round 1 slice tracker:
   compatibility-only terminology.
 - [x] Slice 7. Rename compatibility-only frontend routing fixtures and test
   wording to absorbed-build terminology.
-- [ ] Slice 8. Update scaffolded `build.fol` templates to describe
+- [x] Slice 8. Update scaffolded `build.fol` templates to describe
   compatibility defs as migration-only controls under the real build entry.
 - [ ] Slice 9. Update high-level README wording to reflect graph-driven routing
   and compatibility absorption status.

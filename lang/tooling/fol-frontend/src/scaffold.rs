@@ -128,19 +128,19 @@ fn starter_build_file(target: PackageTargetKind) -> &'static str {
     match target {
         PackageTargetKind::Bin => concat!(
             "// build.fol is the package build entry file.\n",
-            "// Today the frontend reads compatibility definitions here.\n",
+            "// Compatibility defs here are a migration subset of the real build model.\n",
             "def root: loc = \"src\"\n",
             "\n",
-            "// Future graph-backed builds will add a canonical build entry here.\n",
-            "// def build(graph: int): int = graph;\n",
+            "// Add a canonical graph entry here when the package needs custom build steps.\n",
+            "// def build(graph: Graph): Graph = graph;\n",
         ),
         PackageTargetKind::Lib => concat!(
             "// build.fol is the package build entry file.\n",
-            "// Today the frontend reads compatibility definitions here.\n",
+            "// Compatibility defs here are a migration subset of the real build model.\n",
             "def root: loc = \"src\"\n",
             "\n",
-            "// Library packages can later expose build steps from this file.\n",
-            "// def build(graph: int): int = graph;\n",
+            "// Library packages can expose graph-driven build steps from this file.\n",
+            "// def build(graph: Graph): Graph = graph;\n",
         ),
     }
 }
@@ -185,11 +185,11 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "// Today the frontend reads compatibility definitions here.\n",
+                "// Compatibility defs here are a migration subset of the real build model.\n",
                 "def root: loc = \"src\"\n",
                 "\n",
-                "// Future graph-backed builds will add a canonical build entry here.\n",
-                "// def build(graph: int): int = graph;\n",
+                "// Add a canonical graph entry here when the package needs custom build steps.\n",
+                "// def build(graph: Graph): Graph = graph;\n",
             )
         );
 
@@ -240,11 +240,11 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "// Today the frontend reads compatibility definitions here.\n",
+                "// Compatibility defs here are a migration subset of the real build model.\n",
                 "def root: loc = \"src\"\n",
                 "\n",
-                "// Future graph-backed builds will add a canonical build entry here.\n",
-                "// def build(graph: int): int = graph;\n",
+                "// Add a canonical graph entry here when the package needs custom build steps.\n",
+                "// def build(graph: Graph): Graph = graph;\n",
             )
         );
 
@@ -263,11 +263,11 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "// Today the frontend reads compatibility definitions here.\n",
+                "// Compatibility defs here are a migration subset of the real build model.\n",
                 "def root: loc = \"src\"\n",
                 "\n",
-                "// Library packages can later expose build steps from this file.\n",
-                "// def build(graph: int): int = graph;\n",
+                "// Library packages can expose graph-driven build steps from this file.\n",
+                "// def build(graph: Graph): Graph = graph;\n",
             )
         );
 
@@ -306,11 +306,11 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "// Today the frontend reads compatibility definitions here.\n",
+                "// Compatibility defs here are a migration subset of the real build model.\n",
                 "def root: loc = \"src\"\n",
                 "\n",
-                "// Future graph-backed builds will add a canonical build entry here.\n",
-                "// def build(graph: int): int = graph;\n",
+                "// Add a canonical graph entry here when the package needs custom build steps.\n",
+                "// def build(graph: Graph): Graph = graph;\n",
             )
         );
 
