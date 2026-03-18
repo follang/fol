@@ -635,7 +635,7 @@ Round 1 slice tracker:
   metadata for `root`, `target`, and `optimize`.
 - [x] Slice 9. Add regression coverage proving CLI/build-input option values
   reach evaluated artifact metadata through local variables and object configs.
-- [ ] Slice 10. Re-export, test, and lock the full Phase 9 real-option round.
+- [x] Slice 10. Re-export, test, and lock the full Phase 9 real-option round.
 
 ## Phase 10: Dependency Build Surfaces
 
