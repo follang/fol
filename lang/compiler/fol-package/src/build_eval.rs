@@ -2310,6 +2310,50 @@ mod tests {
     }
 
     #[test]
+    fn build_source_evaluator_keeps_full_dependency_surface_usage_together() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var dep = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"on-demand\" });\n",
+            "    var module = dep.module(\"root\");\n",
+            "    var artifact = dep.artifact(\"corelib\");\n",
+            "    var step = dep.step(\"check\");\n",
+            "    var generated = dep.generated(\"bindings\");\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("dependency surface should evaluate")
+            .expect("build body should produce a graph");
+        let query_kinds = evaluated
+            .evaluated
+            .dependency_queries
+            .iter()
+            .map(|query| query.kind)
+            .collect::<Vec<_>>();
+
+        assert_eq!(evaluated.evaluated.dependencies.len(), 1);
+        assert_eq!(
+            evaluated.evaluated.dependencies[0].evaluation_mode,
+            Some(crate::DependencyBuildEvaluationMode::OnDemand)
+        );
+        assert_eq!(evaluated.evaluated.dependency_queries.len(), 4);
+        assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Module));
+        assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Artifact));
+        assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Step));
+        assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::GeneratedOutput));
+    }
+
+    #[test]
     fn build_source_evaluator_resolves_deferred_artifact_option_values_into_runtime_metadata() {
         let source = concat!(
             "def build(graph: Graph): Graph = {\n",
