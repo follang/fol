@@ -1,504 +1,595 @@
-# FOL Build System Plan: `lang/execution/fol-build`
+# FOL V1 Hardening Plan
 
 Last updated: 2026-03-18
 
+## Context
+
+Round 1 (build reset) and Round 2 (fol-build execution crate) are complete.
+
+Round 3 is a hardening pass across the entire compiler pipeline, from
+stream through backend, including the package system, build executor,
+frontend tooling, editor, and cross-cutting concerns. The goal is to
+eliminate panics on user input, close validation gaps, fix bugs found
+during deep audit, and unify project-level inconsistencies before V1.
+
+## Audit Summary
+
+A full audit of every crate produced 80+ findings across 6 areas. They are
+grouped into 10 slices ordered by severity and pipeline position.
+
 ## No Backwards Compatibility
 
-This is a new project. There is no installed user base. There are no external consumers.
-When something is replaced, the old thing is deleted. No shims, no fallbacks, no parallel
-implementations, no deprecation periods, no migration warnings. If the new way is chosen,
-the old way does not exist.
-
-## Status
-
-Round 1 (build reset) is complete. All legacy `def root`/`def build` paths are deleted.
-The canonical build entry is `pro[] build(graph: Graph): non` and it is enforced.
-
-Round 2 (fol-build execution crate) is the current work.
-
-Round 2 slices:
-
-- [x] Slice 1. Create `lang/execution/fol-build` and move graph/api/semantic code out of `fol-package`
-- [x] Slice 2. Move runtime types and evaluator into `fol-build`
-- [x] Slice 3. Add `BuildStdlibScope` — resolver/typechecker injection surface
-- [x] Slice 4. Wire the build stdlib into the resolver (file-bound isolation)
-- [x] Slice 5. Wire the build stdlib into the typechecker
-- [x] Slice 6. Replace AST-walking evaluator with real lowered-IR executor
-- [x] Slice 7. Expand build API to Zig parity (modules, artifact.link, run args, path utils)
-- [x] Slice 8. Full control flow in `build.fol` (when, loop, helper routines)
-- [x] Slice 9. Frontend integration (full pipeline, -D options, named step selection)
-- [x] Slice 10. New example fixtures and regression coverage
+Same policy as before. If something is replaced, the old thing is deleted.
 
 ---
 
-## Core Decision
-
-FOL uses a Zig-style build model. `build.fol` is a normal FOL program. It goes through
-the full compiler pipeline: stream → lexer → parser → resolver → typecheck → lower.
-The only difference from a regular FOL program is at the final step — instead of emitting
-Rust code via `fol-backend`, it is executed against a `BuildGraph` via `fol-build`.
-
-The build system lives in `lang/execution/fol-build`. All build execution code belongs
-there. `fol-package` keeps only entry validation and package metadata loading.
-
-## Zig Reference
-
-Zig's build entry:
-
-```zig
-pub fn build(b: *std.Build) void {
-    const exe = b.addExecutable(.{ .name = "app", .root_source_file = .{ .path = "src/main.zig" } });
-    b.installArtifact(exe);
-}
-```
-
-FOL equivalent:
-
-```fol
-pro[] build(graph: Graph): non = {
-    var target   = graph.standard_target();
-    var optimize = graph.standard_optimize();
-
-    var app = graph.add_exe({
-        name     = "app",
-        root     = "src/main.fol",
-        target   = target,
-        optimize = optimize,
-    });
-
-    graph.install(app);
-}
-```
-
-FOL copies the architecture, not the syntax.
-
-## What `build.fol` Is
-
-`build.fol` is a **file-bound** FOL program. Regular FOL code is folder-bound: a folder
-is a package, all `.fol` files in that folder share one package scope. `build.fol` is the
-one exception: it is a single file that is its own complete compilation unit. It does not
-share a namespace with sibling `.fol` files in the package folder.
-
-Rules for `build.fol`:
-
-- Goes through the full FOL pipeline (lex → parse → resolve → typecheck → lower → build executor)
-- Does NOT include sibling `.fol` files in its scope
-- Has one implicit import: the build stdlib (`fol/build`), providing `Graph` and all handle types
-- CAN define helper `fun[]`/`pro[]`/`typ` declarations local to itself
-- Those helpers are NOT exported to the package — they exist only during build evaluation
-- Must declare exactly one `pro[] build(graph: Graph): non` as the entry point
-- Additional `use` imports are allowed for FOL stdlib utilities
-
-## Pipeline
-
-```
-build.fol
-   │
-   ▼ (same as any .fol file)
-fol-stream → fol-lexer → fol-parser → fol-package (entry validation only)
-                                            │
-                                            ▼ (same as regular code)
-                                      fol-resolver → fol-typecheck → fol-lower
-                                                                          │
-                                                                          ▼ (different backend)
-                                                                      fol-build (executor)
-                                                                          │
-                                                                          ▼
-                                                                      BuildGraph
-                                                                          │
-                                                                          ▼
-                                                                    fol-frontend
-                                                               (build/run/test/check)
-```
-
-## `lang/execution/fol-build` File Structure
-
-```
-lang/execution/fol-build/
-├── Cargo.toml
-└── src/
-    ├── lib.rs          re-exports: BuildSession, BuildGraph, BuildExecutionError
-    ├── session.rs      BuildSession — top-level entry point for fol-frontend
-    ├── executor.rs     BuildIrExecutor — executes lowered FOL IR against BuildApi
-    ├── dispatch.rs     method call dispatch table (method name → BuildApi call)
-    ├── context.rs      BuildExecutionContext — graph, package root, options, cli args
-    ├── graph.rs        BuildGraph, all ID types, all edge types
-    ├── api.rs          BuildApi — Rust-level graph mutation interface
-    ├── stdlib.rs       BuildStdlibScope — resolver/typechecker injection surface
-    ├── semantic.rs     BuildSemanticType, BuildSemanticMethodSignature, etc.
-    ├── runtime.rs      BuildRuntimeValue, BuildRuntimeFrame, BuildRuntimeStmt
-    ├── artifact.rs     BuildArtifactKind, artifact-level edges (link, import, add_generated)
-    ├── step.rs         BuildStepKind, step planning, step attachments
-    ├── dependency.rs   DependencyBuildHandle, DependencyBuildSurface
-    ├── codegen.rs      CodegenRequest, SystemToolRequest
-    ├── option.rs       BuildOptionKind, ResolvedBuildOptionSet, -D CLI parsing
-    ├── native.rs       native artifact types
-    └── error.rs        BuildExecutionError
-```
-
-## What Moves Out of `fol-package`
-
-| Source (`fol-package`) | Destination (`fol-build`) |
-|---|---|
-| `build_graph.rs` | `graph.rs` |
-| `build_api.rs` | `api.rs` |
-| `build_semantic.rs` | `semantic.rs` |
-| `build_runtime.rs` | `runtime.rs` |
-| `build_eval.rs` | `eval.rs` → replaced by `executor.rs` |
-| `build_step.rs` | `step.rs` |
-| `build_artifact.rs` | `artifact.rs` |
-| `build_dependency.rs` | `dependency.rs` |
-| `build_codegen.rs` | `codegen.rs` |
-| `build_option.rs` | `option.rs` |
-| `build_native.rs` | `native.rs` |
-
-`fol-package` keeps only:
-
-- `build.rs` — `parse_package_build`, `PackageBuildDefinition`, `PackageBuildMode`
-- `build_entry.rs` — `validate_parsed_build_entry`, `BuildEntrySignatureExpectation`
-- `metadata.rs`, `session.rs`, `model.rs` — package metadata (unchanged)
-
-## The Executor
-
-The current `build_eval.rs` is an AST pattern matcher. It inspects the parsed AST of
-`build.fol` and dispatches to `BuildApi` by recognizing statement shapes. It does not
-execute FOL code — it reads FOL syntax.
-
-The new executor in `executor.rs` receives **lowered FOL IR** from `fol-lower` and
-executes it. It handles:
-
-- `var` bindings — store result in a local frame
-- method calls on `Graph` handle — dispatch to `BuildApi`
-- method calls on artifact/step/run/install/dependency/generated-file handles — dispatch to handle methods
-- `when` / `else` — conditional artifact and step registration
-- `loop` — iterate to add multiple artifacts or steps
-- helper `fun[]`/`pro[]` calls — execute helper bodies in a new frame
-- method chaining — `.add_arg().add_file_arg().set_env()`
-
-Capability model stays: arbitrary filesystem writes, network access, wall clock, and
-uncontrolled process execution are forbidden during build evaluation.
-
-## The Build Stdlib Scope
-
-`stdlib.rs` produces a `BuildStdlibScope` that the resolver injects into `build.fol`
-compilation. This is what makes `Graph`, `Artifact`, `Step`, etc. visible to the resolver
-and typechecker as real types with real method signatures.
-
-### Graph methods
-
-```
-standard_target(config?)    → Target
-standard_optimize(config?)  → Optimize
-option(config)              → UserOption
-add_exe(config)             → Artifact
-add_static_lib(config)      → Artifact
-add_shared_lib(config)      → Artifact
-add_test(config)            → Artifact
-add_module(config)          → Module          ← new
-step(name, description?)    → Step
-add_run(artifact)           → Run
-install(artifact)           → Install
-install_file(path)          → Install
-install_dir(path)           → Install
-write_file(config)          → GeneratedFile
-copy_file(config)           → GeneratedFile
-add_system_tool(config)     → GeneratedFile
-add_codegen(config)         → GeneratedFile
-dependency(alias, package)  → Dependency
-path_from_root(subpath)     → str             ← new
-build_root()                → str             ← new
-install_prefix()            → str             ← new
-```
-
-### Artifact methods
-
-```
-link(dep_artifact)          → non             ← new (Zig: artifact.linkLibrary)
-import(dep_module)          → non             ← new (Zig: artifact.root_module.addImport)
-add_generated(gen_file)     → non             ← new
-```
-
-### Run methods
-
-```
-add_arg(value)              → Run             ← new, chainable (Zig: run.addArg)
-add_file_arg(gen_file)      → Run             ← new, chainable (Zig: run.addFileArg)
-add_dir_arg(path)           → Run             ← new, chainable
-capture_stdout()            → GeneratedFile   ← new (Zig: run.captureStdOut)
-set_env(key, value)         → Run             ← new, chainable (Zig: run.setEnvironmentVariable)
-depend_on(step)             → Run             existing, chainable
-```
-
-### Step methods
-
-```
-depend_on(step)             → Step            existing, chainable
-attach(gen_file)            → Step            ← new (attach generated file production to step)
-```
-
-### Install methods
-
-```
-depend_on(step)             → Install         existing, chainable
-```
-
-### Dependency methods
-
-```
-module(name)                → DependencyModule
-artifact(name)              → DependencyArtifact
-step(name)                  → DependencyStep
-generated(name)             → DependencyGeneratedOutput
-```
-
-## -D CLI Options
-
-Zig: `zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast -Denable-logs=true`
-
-FOL: `fol code build -Dtarget=x86_64-linux-gnu -Doptimize=release-fast -Denable-logs=true`
-
-`graph.standard_target()` reads `-Dtarget`. `graph.standard_optimize()` reads `-Doptimize`.
-`graph.option({ name = "enable-logs", kind = bool, default = false })` reads `-Denable-logs`.
-
-Option kinds: `bool`, `int`, `str`, `enum`, `path`, `target`, `optimize`.
-
-## Step Selection
-
-```sh
-fol code build              # runs install steps (default)
-fol code build docs         # runs the "docs" step
-fol code run                # runs the default run step
-fol code run --step serve   # runs the "serve" step
-fol code test               # runs test steps
-fol code check              # runs check steps
-```
-
-## Example: Full-Featured `build.fol`
-
-```fol
-fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
-    return graph.add_static_lib({ name = name, root = root });
-}
-
-pro[] build(graph: Graph): non = {
-    var target   = graph.standard_target();
-    var optimize = graph.standard_optimize();
-    var strip    = graph.option({ name = "strip", kind = bool, default = false });
-
-    var core = make_lib(graph, "core", "src/core/lib.fol");
-    var io   = make_lib(graph, "io",   "src/io/lib.fol");
-
-    var app = graph.add_exe({
-        name     = "app",
-        root     = "src/main.fol",
-        target   = target,
-        optimize = optimize,
-    });
-    app.link(core);
-    app.link(io);
-    graph.install(app);
-
-    var run = graph.add_run(app);
-    run.add_arg("--config").add_file_arg(graph.path_from_root("config/default.toml"));
-
-    when(target == "wasm32") {
-        var wasm_step = graph.step("wasm-pack", "Package WASM output");
-        var pack = graph.add_system_tool({
-            tool    = "wasm-pack",
-            args    = ["build", "--target", "web"],
-            outputs = ["pkg/app.wasm"],
-        });
-        wasm_step.attach(pack);
-    };
-
-    var docs_step = graph.step("docs", "Generate documentation");
-    var docs = graph.add_system_tool({
-        tool    = "doc-gen",
-        args    = ["src/", "--out", "docs/"],
-        outputs = ["docs/index.html"],
-    });
-    docs_step.attach(docs);
-}
-```
-
-## Example Fixtures to Add
-
-| Fixture | Demonstrates |
-|---|---|
-| `examples/exe_with_options/` | target + optimize + boolean option |
-| `examples/multi_lib/` | multiple libs, helper function, `artifact.link` |
-| `examples/codegen/` | `add_codegen` + `artifact.add_generated` |
-| `examples/workspace/` | multi-package, `dependency` + `artifact.import` |
-| `examples/custom_steps/` | named steps + `step.attach` |
-| `examples/run_args/` | `run.add_arg`, `run.add_file_arg`, `run.capture_stdout` |
-| `examples/conditional/` | `when` selecting platform-specific artifacts |
-
-## Slices
-
-### Slice 1 — Create `fol-build`, move graph/api/semantic
-
-Create `lang/execution/fol-build/Cargo.toml` and `src/lib.rs`.
-Move `build_graph.rs`, `build_api.rs`, `build_semantic.rs` into the new crate unchanged.
-Update `fol-package` to depend on `fol-build`.
-
-Exit criteria: `cargo build` passes, all tests pass.
-
-### Slice 2 — Move runtime types and evaluator
-
-Move `build_runtime.rs`, `build_eval.rs`, `build_step.rs`, `build_artifact.rs`,
-`build_dependency.rs`, `build_codegen.rs`, `build_option.rs`, `build_native.rs`.
-Create `error.rs`, `context.rs`, `session.rs` with stub implementations.
-
-`BuildExecutionContext`:
+## Round 3 Slices
+
+- [ ] Slice 1. Lexer: off-by-one fix, missing keywords, typos
+- [ ] Slice 2. Parser: loop limits, depth guards, error recovery
+- [ ] Slice 3. Resolver: unwrap/expect removal, scope validation, path safety
+- [ ] Slice 4. Typechecker: catch-all elimination, type table safety, error taxonomy
+- [ ] Slice 5. Lowering: panic removal, test fixes, type validation
+- [ ] Slice 6. Backend: codegen string escaping, generated code safety
+- [ ] Slice 7. Package: lockfile version check, git hostname validation, metadata parsing
+- [ ] Slice 8. Build executor: recursion limits, scope bounds, name validation, panic removal
+- [ ] Slice 9. Frontend and editor: CLI dispatch safety, binary output capture, diagnostics
+- [ ] Slice 10. Cross-cutting: version unification, dependency cleanup, legacy removal
+
+---
+
+### Slice 1 — Lexer: off-by-one fix, missing keywords, typos
+
+**Severity**: CRITICAL
+
+Three bugs in the lexer must be fixed before anything else.
+
+#### 1a. Off-by-one in sliding window peek/seek
+
+**Files**: `fol-lexer/src/lexer/stage2/elements.rs` (lines 47-52, 59-64),
+`fol-lexer/src/lexer/stage3/elements.rs` (lines 68-73, 80-85)
+
+When `ignore=true` and a space is encountered, `u` is incremented without
+rechecking bounds. After `u += 1`, `u` can equal `SLIDER`, causing an
+out-of-bounds panic on `self.next_vec()[u]`.
+
+Fix: check `u + 1 < SLIDER` before incrementing, or recheck after increment.
+
+#### 1b. Missing keyword handlers in stage1 lexer
+
+**File**: `fol-lexer/src/lexer/stage1/element.rs` (lines 414-468)
+
+The `alpha()` function's keyword match statement is missing entries for:
+
+- `"get"` → `BUILDIN::Get` (CRITICAL — keyword exists in enum, Display, and
+  parser but the lexer never produces it)
+- `"nor"` → `BUILDIN::Nor` (MEDIUM)
+- `"at"` → `BUILDIN::At` (MEDIUM)
+
+Add the missing match arms.
+
+#### 1c. Typo: "yeild" should be "yield"
+
+**Files**: `fol-lexer/src/token/buildin/mod.rs` (line 44 enum, line 104 Display),
+`fol-lexer/src/lexer/stage1/element.rs` (line 450 match arm)
+
+The enum variant is `Yeild` and the keyword string is `"yeild"`. Fix the
+spelling to `Yield` / `"yield"` everywhere. This is a breaking change to
+any existing FOL code using `yeild`, but per policy that is acceptable.
+
+Exit criteria: no off-by-one panic possible, all defined keywords are lexable,
+`yield` is spelled correctly.
+
+---
+
+### Slice 2 — Parser: loop limits, depth guards, error recovery
+
+**Severity**: HIGH
+
+#### 2a. Silent truncation on hardcoded loop limits
+
+**File**: `fol-parser/src/ast/parser_parts/primary_expression_parsers.rs` (line 50)
+
+Record initializer field parsing loops `for _ in 0..256`. If a record has
+more than 256 fields, the remaining fields are silently dropped.
+
+**File**: `fol-parser/src/ast/parser_parts/expression_atoms_and_literal_lowering.rs`
+(lines 40, 91) — `skip_layout` and `skip_ignorable` limit to 128 iterations.
+
+Fix: either raise a parser error when the limit is hit, or remove the limit
+and rely on the depth guard instead.
+
+#### 2b. Parser depth guard overflow in release builds
+
+**File**: `fol-parser/src/ast/parser.rs` (lines 137-147)
+
+`ParseDepthGuard` increments depth with `+ 1` without overflow check. The
+`debug_assert` on line 144 only fires in debug builds. In release, the counter
+wraps silently.
+
+Fix: use `checked_add(1)` and return a parser error on overflow.
+
+#### 2c. Unclosed block comment produces confusing error
+
+**File**: `fol-lexer/src/lexer/stage1/element.rs` (lines 109-119)
+
+An unclosed `/* ... ` produces an `Illegal` token instead of a clear
+"unterminated block comment" diagnostic.
+
+Fix: add a specific error variant or diagnostic message for unterminated
+comments.
+
+Exit criteria: loop limits produce errors instead of silent truncation,
+depth guard cannot overflow, unterminated comments produce clear diagnostics.
+
+---
+
+### Slice 3 — Resolver: unwrap/expect removal, scope validation, path safety
+
+**Severity**: HIGH
+
+#### 3a. expect() on scope lookup after mutation
+
+**File**: `fol-resolver/src/model.rs` (line 699)
+
+`insert_mounted_symbol` calls `.expect("mounted symbol target scope should exist")`
+on a scope lookup that could fail if scope state becomes inconsistent.
+
+Fix: return a resolver error instead of panicking.
+
+#### 3b. Missing source unit validation in traverse
+
+**File**: `fol-resolver/src/traverse.rs` (line 69)
+
+`program.source_unit(source_unit_id).expect(...)` — if a source unit is deleted
+between collection and traversal, this panics.
+
+Fix: return a diagnostic error.
+
+#### 3c. Namespace scope lookup with expect()
+
+**File**: `fol-resolver/src/collect.rs` (line 58)
+
+Namespace scope is looked up with `.expect()` assuming it always exists.
+
+Fix: propagate as resolver error.
+
+#### 3d. Import path validation gap
+
+**File**: `fol-resolver/src/imports.rs` (lines 264-278)
+
+`resolve_directory_path()` does not validate that path segments don't contain
+`..` or absolute path components in relative import context.
+
+Fix: reject path segments containing `..`, `/`, or that start with `/`.
+
+#### 3e. Silent symbol skip in mount_visible_symbols_from_scope
+
+**File**: `fol-resolver/src/model.rs` (lines 628-654)
+
+If a foreign symbol ID becomes invalid, the resolver silently `continue`s
+without any diagnostic.
+
+Fix: emit a warning diagnostic.
+
+#### 3f. Build stdlib scope return value ignored
+
+**File**: `fol-resolver/src/inject.rs` (line 21)
+
+`init_build_stdlib_scope()` returns `Option<ScopeId>` but the return value
+is not checked.
+
+Fix: if build stdlib injection fails for a package with build units, return
+a resolver error.
+
+Exit criteria: zero `.expect()` or `.unwrap()` calls on resolver data
+influenced by user input, import paths validated against traversal.
+
+---
+
+### Slice 4 — Typechecker: catch-all elimination, type table safety, error taxonomy
+
+**Severity**: HIGH
+
+#### 4a. Catch-all pattern silently types unknown nodes as None
+
+**File**: `fol-typecheck/src/exprs.rs` (line 448)
+
 ```rust
-pub struct BuildExecutionContext {
-    pub graph: BuildGraph,
-    pub package_root: PathBuf,
-    pub install_prefix: Option<PathBuf>,
-    pub resolved_options: ResolvedBuildOptionSet,
-    pub cli_args: Vec<(String, String)>,
+_ => {
+    for child in node.children() {
+        let _ = type_node(typed, resolved, context, child)?;
+    }
+    Ok(TypedExpr::none())
 }
 ```
 
-`BuildSession`:
-```rust
-pub struct BuildSession { context: BuildExecutionContext }
-impl BuildSession {
-    pub fn new(package_root: PathBuf, cli_args: Vec<(String, String)>) -> Self
-    pub fn execute(&mut self, lowered: &LoweredBuildProgram) -> Result<BuildGraph, BuildExecutionError>
-    pub fn run_step(&self, step_name: &str) -> Result<(), BuildExecutionError>
-}
-```
+Any unhandled AST node type gets `None` type. New language features could
+silently pass typechecking.
 
-Exit criteria: `fol-package` contains only entry validation and metadata. `cargo build` passes.
+Fix: log/warn on unknown node types, or enumerate all expected node types
+explicitly.
 
-### Slice 3 — `BuildStdlibScope`
+#### 4b. Routine scope fallback without validation
 
-Create `stdlib.rs`. Produce `BuildStdlibScope::canonical()` covering all Graph methods,
-all handle methods, all new methods listed above. Every entry has: receiver type, method
-name, parameter list (required/optional/variadic), return type.
+**File**: `fol-typecheck/src/exprs.rs` (line 244)
 
-Unit tests: every method signature has correct receiver, return type, required params.
+`.unwrap_or(context.scope_id)` silently uses parent scope if routine scope
+mapping fails.
 
-Exit criteria: `BuildStdlibScope::canonical()` is complete and tested.
+Fix: return a typecheck error if the routine scope cannot be resolved.
 
-### Slice 4 — Wire stdlib into resolver (file-bound)
+#### 4c. Silent failures in multi-package type hydration
 
-When the resolver encounters a file flagged as `ParsedSourceUnitKind::Build`:
-- Do not walk sibling `.fol` files
-- Inject `BuildStdlibScope::canonical()` as the ambient scope
-- `Graph` resolves to `BuildSemanticType::graph()`
-- Method calls on build handles resolve via `BuildSemanticMethodSignature` dispatch
+**File**: `fol-typecheck/src/session.rs` (lines 216-238, 269-274)
 
-Exit criteria:
-- `build.fol` with wrong method name produces a resolver error listing available methods
-- Sibling `.fol` files are not visible to `build.fol`
-- Helper `fun[]` declarations in `build.fol` are visible to the build entry
+Three places where package context loss during type import produces generic
+"Internal" errors without identifying which package or symbol failed.
 
-### Slice 5 — Wire stdlib into typechecker
+Fix: include package identity and symbol name in error messages.
 
-All build types are recognized. Method call argument types are validated. Record literals
-passed to build API calls are structurally validated (required fields present, unknown
-fields rejected). Return types of method calls match what the stdlib scope declares.
+#### 4d. Unchecked type table access with generic errors
 
-Exit criteria:
-- `var target = graph.standard_target()` typechecks
-- `graph.add_exe({ name = "app", root = "src/main.fol", target = target })` typechecks
-- Missing required field `root` in `add_exe` → typecheck error
-- Passing `Artifact` where `Step` is expected → typecheck error
+**File**: `fol-typecheck/src/decls.rs` (lines 691-706)
 
-### Slice 6 — Real lowered-IR executor
+Two different error messages for the same class of failure (symbol table loss).
 
-Replace the AST-walking evaluator in `build_eval.rs` with `executor.rs`. The executor
-receives lowered FOL IR from `fol-lower` and executes it. Delete `build_eval.rs`.
+Fix: unify error format, include symbol ID and context.
 
-Supported in executor:
-- `var` bindings
-- method calls on `Graph` and all handle types
-- `when` / `else`
-- `loop`
-- helper `fun[]`/`pro[]` calls (recursive frame execution)
-- method chaining
+#### 4e. TypecheckErrorKind has only 4 variants for 12+ scenarios
 
-Exit criteria:
-- All current build fixtures produce the same `BuildGraph` as before
-- `build.fol` with `when` executes conditionally
-- `build.fol` with a helper `fun[]` executes the helper correctly
-- The old AST evaluator is deleted
+The error taxonomy is too coarse. `Internal` is used for many distinct failure
+modes that should be distinguishable.
 
-### Slice 7 — Expand build API (Zig parity)
+Fix: add error variants: `ScopeResolutionFailed`, `TypeImportFailed`,
+`SymbolTableCorrupted`, `UnsupportedSyntax`.
 
-Add all new methods listed in the stdlib section. Each new method needs:
-- Graph IR representation (new edge type if needed)
-- `BuildApi` method in `api.rs`
-- Entry in `BuildStdlibScope` (resolver + typechecker sees it)
-- Dispatch case in `dispatch.rs` (executor routes to it)
-- Unit test in `fol-build`
-- At least one fixture using it
+Exit criteria: no catch-all `_ =>` that silently assigns None type,
+all type errors include context (package, symbol, location).
 
-New graph IR additions:
-- `BuildRunConfig` — stores args, env vars, capture target for run steps
-- `ArtifactLinkEdge` — artifact depends on another artifact
-- `ModuleImportEdge` — artifact imports a module
-- `StepAttachment` — step owns a generated file production
+---
 
-### Slice 8 — Full control flow in `build.fol`
+### Slice 5 — Lowering: panic removal, test fixes, type validation
 
-`when`, `else`, `loop` work in `build.fol`. Helper routines defined in `build.fol` can
-be called from the build entry and from other helpers.
+**Severity**: HIGH
 
-Exit criteria:
-- Fixture `examples/conditional/` conditionally adds a wasm artifact via `when`
-- Fixture `examples/multi_lib/` uses a helper `fun[] make_lib(...)` called from `build`
-- A loop over a sequence in `build.fol` adds multiple artifacts correctly
+#### 5a. Panics in test code with wrong variable names
 
-### Slice 9 — Frontend integration
+**File**: `fol-backend/src/control.rs` (lines 114-119, 238)
 
-`fol-frontend` uses `BuildSession` from `fol-build` instead of calling `fol-package`'s
-evaluator. `build.fol` is compiled through the full pipeline before execution.
+Test declares `let _table` but uses `table` (without underscore). This is
+a compilation error in the test.
 
-CLI option parsing: `-Dname=value` pairs are passed to `BuildSession::new` as `cli_args`.
-Named step selection: `fol code build <step>` selects the named step from the graph.
+Fix: rename `_table` to `table`.
 
-Exit criteria:
-- `fol code build` works end-to-end with the new pipeline
-- `fol code run` works
-- `fol code test` works
-- `fol code build -Dtarget=x86_64-linux-gnu` passes the option into `standard_target()`
-- `fol code build docs` executes the "docs" step
+#### 5b. Set member type validation incomplete
 
-### Slice 10 — Fixtures and regression coverage
+**File**: `fol-lower/src/exprs.rs` (lines 3756-3765)
 
-Add all fixtures listed in the fixtures table. Add integration tests in `test/app/build/`:
-- `test_conditional_artifact` — `when` selects different artifacts
-- `test_helper_routine` — helper function used from `build`
-- `test_run_args` — `add_arg`, `add_file_arg`, `capture_stdout`
-- `test_artifact_link` — `artifact.link(dep.artifact(...))`
-- `test_module_import` — `artifact.import(dep.module(...))`
-- `test_codegen_artifact` — `add_codegen` + `artifact.add_generated`
-- `test_custom_step` — named step + `step.attach`
-- `test_d_options` — `graph.option(...)` + CLI `-D` flags
-- `test_path_utils` — `path_from_root`, `build_root`
+For heterogeneous sets with literal indexing, the fallback checks if all
+members are the same type. If they aren't and the index is out of range,
+the wrong type variant may be accessed.
 
-Negative tests:
-- Wrong method name on `Artifact` → resolver error
-- `artifact.link` with wrong handle type → typecheck error
-- `when` condition is non-bool → typecheck error
-- `build.fol` with no canonical entry → clear error
-- `build.fol` with two canonical entries → clear error
+Fix: emit a lowering error for heterogeneous set indexing with non-constant
+index.
 
-Exit criteria: all fixtures pass, all negative tests produce correct errors.
+Exit criteria: no panics in test code, type validation for set indexing.
+
+---
+
+### Slice 6 — Backend: codegen string escaping, generated code safety
+
+**Severity**: CRITICAL
+
+#### 6a. String escaping bug in panic terminator codegen
+
+**File**: `fol-backend/src/control.rs` (lines 50-55)
+
+The panic terminator generates `panic!("{}", ...)` but the format string
+`"{}"` is itself a format placeholder being rendered through another
+`format!()`. The generated Rust code may be malformed.
+
+Fix: verify the double-format produces correct Rust, or simplify to direct
+string interpolation.
+
+#### 6b. Dead code placeholders in operand rendering
+
+**File**: `fol-backend/src/instructions.rs` (lines 644-645)
+
+`LoweredOperand::Local(_)` and `::Global(_)` emit `/*local*/` and `/*global*/`
+comment strings instead of valid Rust code.
+
+Fix: return a codegen error for unimplemented operand types.
+
+#### 6c. Excessive .clone() in generated container operations
+
+**File**: `fol-backend/src/instructions.rs` (lines 302-311, 1495+)
+
+Every container index access clones both the index and the result. This adds
+unnecessary allocation overhead.
+
+Fix: generate move semantics where ownership allows, avoid double-clone.
+
+#### 6d. unreachable!() in type mapping
+
+**File**: `fol-backend/src/types.rs` (line 358)
+
+`LoweredBuiltinType::Str => unreachable!(...)` — if this path is ever hit,
+it panics instead of producing a codegen error.
+
+Fix: return `Err(BackendError::...)`.
+
+Exit criteria: generated Rust code compiles correctly for all panic/error
+paths, no `unreachable!()` in production codegen paths.
+
+---
+
+### Slice 7 — Package: lockfile version check, git hostname validation, metadata parsing
+
+**Severity**: MEDIUM-HIGH
+
+#### 7a. Lockfile version not validated for compatibility
+
+**File**: `fol-package/src/lockfile.rs` (lines 72-144)
+
+After parsing the lockfile version number, no check verifies it matches the
+expected version. Future format changes would silently read incompatible
+lockfiles.
+
+Fix: add `if version != LOCKFILE_VERSION { return Err(...) }`.
+
+#### 7b. Git locator hostname not validated
+
+**File**: `fol-package/src/locator.rs` (lines 110-187)
+
+SSH and HTTPS locators parse the host but don't validate it for DNS compliance.
+A malicious locator could contain injection characters.
+
+Fix: validate hostname format (alphanumeric, dots, hyphens only).
+
+#### 7c. Metadata inline comment stripping doesn't handle escaped quotes
+
+**File**: `fol-package/src/metadata.rs` (lines 293-307)
+
+`strip_inline_comment()` doesn't handle backslash-escaped quotes inside
+strings. A value like `"path with \" inside"` is mis-parsed.
+
+Fix: handle `\\` and `\"` escape sequences in the scanner.
+
+#### 7d. Package name validation missing length limit
+
+**File**: `fol-package/src/metadata.rs` (lines 358-374)
+
+`is_valid_package_name()` has no length constraint. An extremely long name
+could cause allocation issues.
+
+Fix: add `if name.len() > 256 { return false }`.
+
+#### 7e. Git revision sanitization path traversal
+
+**File**: `fol-package/src/paths.rs` (lines 37-46)
+
+`sanitize_revision_segment()` replaces non-alphanumeric chars with `_` but
+a carefully crafted revision could still produce unexpected paths. The current
+implementation is safe (replaces `/` with `_`), but should be documented and
+tested against traversal vectors.
+
+Fix: add explicit test cases for `../`, `..\\`, `\x00` inputs.
+
+Exit criteria: lockfile version mismatch produces clear error, git hostnames
+are validated, metadata parsing handles edge cases.
+
+---
+
+### Slice 8 — Build executor: recursion limits, scope bounds, name validation, panic removal
+
+**Severity**: HIGH
+
+#### 8a. No recursion depth limit in executor
+
+**File**: `fol-build/src/executor.rs`
+
+`eval_expr()`, `exec_stmt()`, and `exec_body()` call each other recursively
+without any depth limit. A deeply nested build script could overflow the stack.
+
+Fix: add `recursion_depth: usize` field to `BuildBodyExecutor`, check against
+`MAX_EVAL_DEPTH` (e.g., 256) at each recursive entry point.
+
+#### 8b. No recursion depth limit in graph cycle detection
+
+**File**: `fol-build/src/graph.rs` (lines 576-613)
+
+`visit_step_dependencies()` uses recursive DFS without depth limiting.
+
+Fix: add `MAX_GRAPH_DEPTH` constant, check `stack.len()` at each recursive call,
+or convert to iterative DFS.
+
+#### 8c. Unbounded scope growth
+
+**File**: `fol-build/src/executor.rs` (lines 130-142)
+
+`scope: BTreeMap` and `helpers: BTreeMap` grow without limit.
+
+Fix: add `MAX_SCOPE_SIZE` (e.g., 10,000) and check before each insert.
+
+#### 8d. No validation of option names or step names
+
+**Files**: `fol-build/src/executor.rs` (lines 567-581, 650-690)
+
+Names extracted from user build code go directly into scope maps without
+validation. Reserved names, empty strings, or names with special characters
+are accepted.
+
+Fix: validate names against `[a-z][a-z0-9_-]*` pattern before insertion.
+
+#### 8e. Panics in artifact output processing
+
+**File**: `fol-build/src/artifact.rs` (lines 357, 363, 369)
+
+Three `panic!()` calls in match arms for unexpected output types.
+
+Fix: return `BuildEvaluationError` instead.
+
+#### 8f. unreachable!() in executor type matching
+
+**File**: `fol-build/src/executor.rs` (line 1126)
+
+Fix: return proper error.
+
+Exit criteria: build executor cannot stack-overflow on any input, all names
+validated, zero panics in production paths.
+
+---
+
+### Slice 9 — Frontend and editor: CLI dispatch safety, binary output capture, diagnostics
+
+**Severity**: HIGH
+
+#### 9a. Multiple unwrap() on cli.command in dispatch path
+
+**File**: `fol-frontend/src/lib.rs` (lines 427-470)
+
+After checking `cli.command.is_none()`, code calls `.unwrap()` on command
+references throughout the dispatch function.
+
+Fix: use pattern matching or `let Some(cmd) = ... else { ... }`.
+
+#### 9b. Binary execution stderr not captured on failure
+
+**File**: `fol-frontend/src/direct.rs` (lines 297-308)
+
+Process execution uses `.status()` instead of `.output()`, discarding stderr
+from the executed binary. Users don't see their program's error messages.
+
+Fix: use `.output()` and forward stderr to the user.
+
+**File**: `fol-frontend/src/compile.rs` (lines 196-201)
+
+Same pattern — binary output discarded on failure.
+
+#### 9c. Silent path canonicalization fallback
+
+**File**: `fol-frontend/src/fetch.rs` (line 244)
+
+`canonicalize(&root).unwrap_or(root.clone())` silently falls back without
+diagnostic. Symlinks or permission issues go unreported.
+
+Fix: log a warning when canonicalization fails.
+
+#### 9d. "ParserMissmatch" typo in error types
+
+**File**: `fol-types/src/error.rs`
+
+Variant name `ParserMissmatch` — should be `ParserMismatch`.
+
+Fix: rename the variant.
+
+#### 9e. DiagnosticCode::unknown() returns "E0000"
+
+**File**: `fol-diagnostics/src/codes.rs` (lines 12-14)
+
+"E0000" could collide with a real error code.
+
+Fix: use a sentinel like "E????" or "EUNKNOWN".
+
+#### 9f. Color output control is global state
+
+**File**: `fol-frontend/src/ui.rs` (lines 27-50)
+
+`colored::control::set_override(...)` sets global state, not thread-safe.
+
+Fix: remove global override, use per-writer color control or accept the
+global as a process-level setting (document it).
+
+Exit criteria: CLI dispatch cannot panic, binary stderr is always visible
+to the user, all typos fixed.
+
+---
+
+### Slice 10 — Cross-cutting: version unification, dependency cleanup, legacy removal
+
+**Severity**: MEDIUM
+
+#### 10a. Crate version inconsistency
+
+9 crates are at `0.1.4`, 7 crates are at `0.1.0`. All workspace members
+should use the same version.
+
+Fix: set all crates to `0.1.4` (or use workspace version inheritance).
+
+#### 10b. colored crate version mismatch
+
+- `fol-lexer`, `fol-types`, `fol-stream`: `colored = "1"`
+- `fol-parser`, `fol-diagnostics`: `colored = "1.9"`
+- `fol-frontend`: `colored = "2"`
+
+Fix: unify to `colored = "2"` everywhere and update any API differences.
+
+#### 10c. Legacy test directory still exists
+
+**Path**: `test/legacy/` — contains old `.mod` files.
+
+Per project policy: delete entirely.
+
+#### 10d. Dead code attributes
+
+**Files**: `fol-lexer/src/point.rs` (lines 1-2), `fol-types/src/mod.rs` (line 1)
+
+`#![allow(dead_code)]` and `#![allow(unused_variables)]` suppress warnings
+for unused code.
+
+Fix: audit and remove dead code, then remove the allow attributes.
+
+#### 10e. .gitignore issues
+
+**File**: `.gitignore`
+
+- Line 3: `".dirnev"` is a typo for `.direnv`
+- Line 7: `"docs"` is too broad
+- Missing: `*.swp`, `.idea/`, `*.log`
+
+Fix: correct typo, narrow docs pattern, add missing patterns.
+
+#### 10f. Build artifacts in test fixtures
+
+**Path**: `test/app/build/exe_object_config/.fol/build/`
+
+Compiled artifacts are checked into the repository.
+
+Fix: add `.fol/build/` to `.gitignore` and remove from git.
+
+#### 10g. fol-package depends on fol-build (architectural inversion)
+
+The compiler layer depends on the execution layer. This is an architecture
+smell but is currently functional because fol-package re-exports build types.
+
+Fix (deferred): document the dependency direction, consider whether fol-package
+should only depend on fol-build types (not execution logic).
+
+Exit criteria: all crates at same version, single colored version, no legacy
+files, clean .gitignore.
+
+---
+
+## Issue Count by Severity
+
+| Severity | Count | Slices |
+|----------|-------|--------|
+| CRITICAL | 6 | 1, 6 |
+| HIGH | 25 | 2, 3, 4, 5, 8, 9 |
+| MEDIUM | 18 | 7, 10 |
+| LOW | 8 | scattered |
 
 ## Success Definition
 
-Done when all of this is true:
+Done when:
 
-- `lang/execution/fol-build` contains all build execution code
-- `fol-package` contains only entry validation and package metadata
-- `build.fol` goes through the full compiler pipeline before execution
-- `when`, `loop`, and helper routines work in `build.fol`
-- All new API methods (link, import, run args, path utils) are implemented and tested
-- `-D` CLI options work end-to-end
-- Named step selection works
-- All fixtures in `examples/` demonstrate a distinct build capability
-- All integration tests pass
+- Zero `.unwrap()` or `.expect()` on data reachable from user input
+- Zero `panic!()` or `unreachable!()` in production (non-test) code paths
+- All defined keywords produce correct tokens
+- Parser cannot silently truncate input
+- Build executor cannot stack-overflow
+- All generated Rust code compiles correctly
+- All crate versions and dependency versions are unified
+- No legacy files remain
+- All tests pass
