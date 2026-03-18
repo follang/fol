@@ -1088,6 +1088,37 @@ fn parse_build_graph_method_ast(
                 kind: BuildExtractionOptionKind::Optimize,
             })))
         }
+        "option" => {
+            let [AstNode::RecordInit { fields, .. }] = args else {
+                return Err(build_source_unsupported(build_path, method, 1, method.len()));
+            };
+            let name = fields
+                .iter()
+                .find(|field| field.name == "name")
+                .and_then(|field| resolve_build_string_arg_ast(&field.value, scope))
+                .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+            let kind = fields
+                .iter()
+                .find(|field| field.name == "kind")
+                .and_then(|field| parse_build_option_kind_ast(&field.value, scope))
+                .ok_or_else(|| build_source_unsupported(build_path, method, 1, method.len()))?;
+            let default = fields
+                .iter()
+                .find(|field| field.name == "default")
+                .and_then(|field| parse_build_option_default_ast(kind, &field.value));
+            extracted.operations.push(BuildEvaluationOperation {
+                origin,
+                kind: BuildEvaluationOperationKind::Option(crate::UserOptionRequest {
+                    name: name.clone(),
+                    kind: build_option_kind_from_extraction(kind),
+                    default,
+                }),
+            });
+            Ok(Some(BuildExtractionValue::OptionRef(BuildExtractionOptionRef {
+                name,
+                kind,
+            })))
+        }
         "add_exe" | "add_static_lib" | "add_shared_lib" | "add_test" => {
             parse_named_artifact_call_ast(extracted, scope, build_path, method, args)
         }
@@ -1259,6 +1290,57 @@ fn resolve_build_string_arg_ast(
             _ => None,
         },
         _ => None,
+    }
+}
+
+fn parse_build_option_kind_ast(
+    node: &AstNode,
+    scope: &BuildExtractionScope,
+) -> Option<BuildExtractionOptionKind> {
+    let raw = resolve_build_string_arg_ast(node, scope)?;
+    match raw.as_str() {
+        "bool" => Some(BuildExtractionOptionKind::Bool),
+        "int" => Some(BuildExtractionOptionKind::Int),
+        "string" => Some(BuildExtractionOptionKind::String),
+        "enum" => Some(BuildExtractionOptionKind::Enum),
+        "path" => Some(BuildExtractionOptionKind::Path),
+        _ => None,
+    }
+}
+
+fn parse_build_option_default_ast(
+    kind: BuildExtractionOptionKind,
+    node: &AstNode,
+) -> Option<crate::BuildOptionValue> {
+    match (kind, node) {
+        (BuildExtractionOptionKind::Bool, AstNode::Literal(Literal::Boolean(value))) => {
+            Some(crate::BuildOptionValue::Bool(*value))
+        }
+        (BuildExtractionOptionKind::Int, AstNode::Literal(Literal::Integer(value))) => {
+            Some(crate::BuildOptionValue::Int(*value))
+        }
+        (BuildExtractionOptionKind::String, AstNode::Literal(Literal::String(value))) => {
+            Some(crate::BuildOptionValue::String(value.clone()))
+        }
+        (BuildExtractionOptionKind::Enum, AstNode::Literal(Literal::String(value))) => {
+            Some(crate::BuildOptionValue::Enum(value.clone()))
+        }
+        (BuildExtractionOptionKind::Path, AstNode::Literal(Literal::String(value))) => {
+            Some(crate::BuildOptionValue::Path(value.clone()))
+        }
+        _ => None,
+    }
+}
+
+fn build_option_kind_from_extraction(kind: BuildExtractionOptionKind) -> crate::BuildOptionKind {
+    match kind {
+        BuildExtractionOptionKind::Target => crate::BuildOptionKind::Target,
+        BuildExtractionOptionKind::Optimize => crate::BuildOptionKind::Optimize,
+        BuildExtractionOptionKind::Bool => crate::BuildOptionKind::Bool,
+        BuildExtractionOptionKind::Int => crate::BuildOptionKind::Int,
+        BuildExtractionOptionKind::String => crate::BuildOptionKind::String,
+        BuildExtractionOptionKind::Enum => crate::BuildOptionKind::Enum,
+        BuildExtractionOptionKind::Path => crate::BuildOptionKind::Path,
     }
 }
 
@@ -2376,6 +2458,36 @@ mod tests {
             .collect::<Vec<_>>();
         step_names.sort_unstable();
         assert_eq!(step_names, vec!["install", "run"]);
+    }
+
+    #[test]
+    fn build_source_evaluator_supports_user_option_record_configs() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var strip = graph.option({ name = \"strip\", kind = \"bool\", default = false });\n",
+            "    var jobs = graph.option({ name = \"jobs\", kind = \"int\", default = 8 });\n",
+            "    var flavor = graph.option({ name = \"flavor\", kind = \"enum\", default = \"fast\" });\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("user option configs should evaluate")
+            .expect("build body should produce operations");
+
+        assert_eq!(evaluated.result.option_declarations.declarations().len(), 3);
+        assert_eq!(evaluated.result.resolved_options.get("strip"), Some("false"));
+        assert_eq!(evaluated.result.resolved_options.get("jobs"), Some("8"));
+        assert_eq!(evaluated.result.resolved_options.get("flavor"), Some("fast"));
     }
 
     #[test]

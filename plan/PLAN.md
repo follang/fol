@@ -627,7 +627,7 @@ Round 1 slice tracker:
   CLI override coercion against option kinds.
 - [x] Slice 5. Replace placeholder build-source option names with typed symbolic
   option references.
-- [ ] Slice 6. Add shared build-source parsing for `graph.option({ ... })`
+- [x] Slice 6. Add shared build-source parsing for `graph.option({ ... })`
   record configs.
 - [ ] Slice 7. Let artifact config fields carry deferred literal-or-option
   values instead of eager placeholder strings.
