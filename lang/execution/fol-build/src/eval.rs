@@ -889,6 +889,14 @@ pub fn evaluate_build_source(
     let Some((executor, body)) = BuildBodyExecutor::from_file(build_path)? else {
         return Ok(None);
     };
+    let mut resolved_inputs = std::collections::BTreeMap::new();
+    if let Some(target) = &request.inputs.target {
+        resolved_inputs.insert("target".to_string(), target.render());
+    }
+    if let Some(optimize) = request.inputs.optimize {
+        resolved_inputs.insert("optimize".to_string(), optimize.as_str().to_string());
+    }
+    let executor = executor.with_resolved_inputs(resolved_inputs);
     let exec_output = executor.execute(&body)?;
     if exec_output.operations.is_empty() {
         return Ok(None);
@@ -3018,5 +3026,110 @@ mod tests {
         assert!(inputs
             .iter()
             .any(|i| matches!(i, crate::graph::BuildArtifactInput::GeneratedFile(id) if *id == schema.id)));
+    }
+
+    #[test]
+    fn build_source_evaluator_executes_when_condition_conditionally() {
+        let source = concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var optimize = graph.standard_optimize();\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
+            "    when(optimize == \"release-fast\") {\n",
+            "        {\n",
+            "            graph.step(\"strip\");\n",
+            "        }\n",
+            "    };\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request_release = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                optimize: Some(BuildOptimizeMode::ReleaseFast),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let request_debug = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let release_eval = evaluate_build_source(&request_release, &build_path, source)
+            .expect("when with matching optimize should evaluate")
+            .expect("release build should produce operations");
+        let debug_eval = evaluate_build_source(&request_debug, &build_path, source)
+            .expect("when without matching optimize should evaluate")
+            .expect("debug build should produce operations");
+
+        assert!(release_eval.result.graph.steps().iter().any(|s| s.name == "strip"));
+        assert!(!debug_eval.result.graph.steps().iter().any(|s| s.name == "strip"));
+    }
+
+    #[test]
+    fn build_source_evaluator_executes_helper_routine_called_from_build_entry() {
+        let source = concat!(
+            "fun[] make_lib(graph: Graph, root: str): Artifact = {\n",
+            "    return graph.add_static_lib({ name = root, root = root });\n",
+            "}\n",
+            "pro[] build(graph: Graph): non = {\n",
+            "    var core = make_lib(graph, \"core\");\n",
+            "    var io   = make_lib(graph, \"io\");\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("helper routine call should evaluate")
+            .expect("build with helpers should produce operations");
+
+        let artifacts = evaluated.result.graph.artifacts();
+        assert!(artifacts.iter().any(|a| a.name == "core"));
+        assert!(artifacts.iter().any(|a| a.name == "io"));
+    }
+
+    #[test]
+    fn build_source_evaluator_executes_loop_over_string_list() {
+        let source = concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    loop(name in {\"core\", \"io\", \"utils\"}) {\n",
+            "        graph.add_static_lib({ name = name, root = name });\n",
+            "    };\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("loop over string list should evaluate")
+            .expect("loop should produce operations for each iteration");
+
+        let artifacts = evaluated.result.graph.artifacts();
+        assert!(artifacts.iter().any(|a| a.name == "core"));
+        assert!(artifacts.iter().any(|a| a.name == "io"));
+        assert!(artifacts.iter().any(|a| a.name == "utils"));
     }
 }

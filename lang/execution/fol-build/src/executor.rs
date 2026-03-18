@@ -15,7 +15,8 @@ use crate::runtime::{
 };
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::{
-    AstNode, BinaryOperator, CallSurface, Literal, ParsedPackage, RecordInitField, WhenCase,
+    AstNode, BinaryOperator, CallSurface, Literal, LoopCondition, ParsedPackage, RecordInitField,
+    WhenCase,
 };
 use fol_stream::FileStream;
 use std::collections::BTreeMap;
@@ -102,6 +103,7 @@ enum ExecValue {
         alias: String,
         query_name: String,
     },
+    List(Vec<ExecValue>),
 }
 
 
@@ -135,6 +137,8 @@ pub struct BuildBodyExecutor {
     next_run_index: usize,
     next_install_index: usize,
     last_value: Option<ExecValue>,
+    /// Resolved values for standard options (target, optimize), used when evaluating `when` conditions.
+    resolved_inputs: BTreeMap<String, String>,
 }
 
 impl BuildBodyExecutor {
@@ -234,6 +238,7 @@ impl BuildBodyExecutor {
             next_run_index: 0,
             next_install_index: 0,
             last_value: None,
+            resolved_inputs: BTreeMap::new(),
         };
 
         Ok(Some((executor, body)))
@@ -243,6 +248,12 @@ impl BuildBodyExecutor {
     pub fn execute(mut self, body: &[AstNode]) -> Result<ExecutionOutput, BuildEvaluationError> {
         self.exec_body(body)?;
         Ok(self.output)
+    }
+
+    /// Set resolved option values used when evaluating `when` conditions.
+    pub fn with_resolved_inputs(mut self, inputs: BTreeMap<String, String>) -> Self {
+        self.resolved_inputs = inputs;
+        self
     }
 
     fn exec_body(&mut self, stmts: &[AstNode]) -> Result<(), BuildEvaluationError> {
@@ -286,8 +297,14 @@ impl BuildBodyExecutor {
                 Ok(())
             }
 
-            AstNode::When { cases, default, .. } => {
-                self.exec_when(cases, default.as_deref())?;
+            AstNode::When { expr, cases, default } => {
+                self.exec_when(expr, cases, default.as_deref())?;
+                self.last_value = None;
+                Ok(())
+            }
+
+            AstNode::Loop { condition, body } => {
+                self.exec_loop(condition, body)?;
                 self.last_value = None;
                 Ok(())
             }
@@ -301,9 +318,24 @@ impl BuildBodyExecutor {
 
     fn exec_when(
         &mut self,
+        expr: &AstNode,
         cases: &[WhenCase],
         default: Option<&[AstNode]>,
     ) -> Result<(), BuildEvaluationError> {
+        // When there are no case sub-clauses, the outer `expr` acts as a boolean gate:
+        // `when(condition) { { body } }` — run body only when condition is truthy.
+        // `when(condition) { stmts }` — the parser puts direct statements into `default`.
+        if cases.is_empty() {
+            if self.eval_condition(expr)? {
+                if let Some(default_body) = default {
+                    self.exec_body(default_body)?;
+                }
+            }
+            return Ok(());
+        }
+
+        // When case sub-clauses are present, the outer expr is the match subject.
+        // Each `case(condition)` is evaluated; the first match wins.
         let mut matched = false;
         for case in cases {
             match case {
@@ -311,6 +343,7 @@ impl BuildBodyExecutor {
                     if self.eval_condition(condition)? {
                         self.exec_body(body)?;
                         matched = true;
+                        break;
                     }
                 }
                 _ => {
@@ -324,6 +357,58 @@ impl BuildBodyExecutor {
             }
         }
         Ok(())
+    }
+
+    fn exec_loop(
+        &mut self,
+        condition: &LoopCondition,
+        body: &[AstNode],
+    ) -> Result<(), BuildEvaluationError> {
+        match condition {
+            LoopCondition::Iteration { var, iterable, .. } => {
+                let items = self.eval_iterable(iterable)?;
+                for item in items {
+                    self.scope.insert(var.clone(), item);
+                    self.exec_body(body)?;
+                }
+            }
+            LoopCondition::Condition(_) => {
+                // While-like loops are not supported in build evaluation
+            }
+        }
+        Ok(())
+    }
+
+    fn eval_iterable(&self, node: &AstNode) -> Result<Vec<ExecValue>, BuildEvaluationError> {
+        match node {
+            AstNode::ContainerLiteral { elements, .. } => {
+                let mut result = Vec::with_capacity(elements.len());
+                for elem in elements {
+                    match elem {
+                        AstNode::Literal(Literal::String(s)) => {
+                            result.push(ExecValue::Str(s.clone()));
+                        }
+                        AstNode::Literal(Literal::Boolean(b)) => {
+                            result.push(ExecValue::Bool(*b));
+                        }
+                        AstNode::Identifier { name, .. } => {
+                            if let Some(v) = self.scope.get(name.as_str()) {
+                                result.push(v.clone());
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                Ok(result)
+            }
+            AstNode::Identifier { name, .. } => {
+                match self.scope.get(name.as_str()) {
+                    Some(ExecValue::List(items)) => Ok(items.clone()),
+                    _ => Ok(Vec::new()),
+                }
+            }
+            _ => Ok(Vec::new()),
+        }
     }
 
     fn eval_condition(&self, cond: &AstNode) -> Result<bool, BuildEvaluationError> {
@@ -374,8 +459,24 @@ impl BuildBodyExecutor {
             AstNode::Literal(Literal::Boolean(b)) => Some(b.to_string()),
             AstNode::Identifier { name, .. } => {
                 match self.scope.get(name.as_str()) {
-                    Some(ExecValue::Target(s)) => Some(s.clone()),
-                    Some(ExecValue::Optimize(s)) => Some(s.clone()),
+                    Some(ExecValue::Target(option_name)) => {
+                        // Resolve actual target value from inputs if available
+                        self.resolved_inputs
+                            .get(option_name.as_str())
+                            .cloned()
+                            .or_else(|| Some(option_name.clone()))
+                    }
+                    Some(ExecValue::Optimize(option_name)) => {
+                        self.resolved_inputs
+                            .get(option_name.as_str())
+                            .cloned()
+                            .or_else(|| Some(option_name.clone()))
+                    }
+                    Some(ExecValue::OptionRef(option_name)) => {
+                        self.resolved_inputs
+                            .get(option_name.as_str())
+                            .cloned()
+                    }
                     Some(ExecValue::Str(s)) => Some(s.clone()),
                     Some(ExecValue::Bool(b)) => Some(b.to_string()),
                     _ => None,
@@ -410,6 +511,17 @@ impl BuildBodyExecutor {
                     Ok(None)
                 }
             }
+
+            AstNode::ContainerLiteral { elements, .. } => {
+                let items = self.eval_iterable(&AstNode::ContainerLiteral {
+                    container_type: fol_parser::ast::ContainerType::Array,
+                    elements: elements.clone(),
+                })?;
+                Ok(Some(ExecValue::List(items)))
+            }
+
+            AstNode::Literal(Literal::String(s)) => Ok(Some(ExecValue::Str(s.clone()))),
+            AstNode::Literal(Literal::Boolean(b)) => Ok(Some(ExecValue::Bool(*b))),
 
             _ => Ok(None),
         }
