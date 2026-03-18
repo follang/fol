@@ -1065,7 +1065,10 @@ fn parse_build_graph_method_ast(
                     name.clone(),
                 )),
             });
-            Ok(Some(BuildExtractionValue::OptionName(name)))
+            Ok(Some(BuildExtractionValue::OptionRef(BuildExtractionOptionRef {
+                name,
+                kind: BuildExtractionOptionKind::Target,
+            })))
         }
         "standard_optimize" => {
             let name = match args {
@@ -1080,7 +1083,10 @@ fn parse_build_graph_method_ast(
                     StandardOptimizeRequest::new(name.clone()),
                 ),
             });
-            Ok(Some(BuildExtractionValue::OptionName(name)))
+            Ok(Some(BuildExtractionValue::OptionRef(BuildExtractionOptionRef {
+                name,
+                kind: BuildExtractionOptionKind::Optimize,
+            })))
         }
         "add_exe" | "add_static_lib" | "add_shared_lib" | "add_test" => {
             parse_named_artifact_call_ast(extracted, scope, build_path, method, args)
@@ -1215,9 +1221,27 @@ struct BuildExtractionScope {
     next_install_index: usize,
 }
 
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BuildExtractionOptionKind {
+    Target,
+    Optimize,
+    Bool,
+    Int,
+    String,
+    Enum,
+    Path,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct BuildExtractionOptionRef {
+    name: String,
+    kind: BuildExtractionOptionKind,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum BuildExtractionValue {
-    OptionName(String),
+    OptionRef(BuildExtractionOptionRef),
     Artifact(ExtractedBuildArtifact),
     StepHandle(String),
     RunHandle(String),
@@ -1231,7 +1255,7 @@ fn resolve_build_string_arg_ast(
     match node {
         AstNode::Literal(Literal::String(value)) => Some(value.clone()),
         AstNode::Identifier { name, .. } => match scope.values.get(name.as_str()) {
-            Some(BuildExtractionValue::OptionName(name)) => Some(name.clone()),
+            Some(BuildExtractionValue::OptionRef(option)) => Some(option.name.clone()),
             _ => None,
         },
         _ => None,
@@ -1488,10 +1512,12 @@ mod tests {
         forbidden_capability_error, forbidden_capability_message, AllowedBuildTimeOperation,
         BuildEvaluationBoundary, BuildEvaluationError, BuildEnvironmentSelectionPolicy,
         BuildEvaluationErrorKind, BuildEvaluationInputEnvelope, BuildEvaluationInputs,
-        BuildRuntimeCapabilityModel, EvaluatedBuildProgram, ForbiddenBuildTimeOperation,
+        BuildExtractionOptionKind, BuildExtractionOptionRef, BuildExtractionScope,
+        BuildExtractionValue, BuildRuntimeCapabilityModel, EvaluatedBuildProgram,
+        ForbiddenBuildTimeOperation,
         BuildEvaluationInstallArtifactRequest, BuildEvaluationOperation,
         BuildEvaluationOperationKind, BuildEvaluationRequest, BuildEvaluationResult,
-        BuildEvaluationRunRequest, BuildEvaluationStepRequest,
+        BuildEvaluationRunRequest, BuildEvaluationStepRequest, resolve_build_string_arg_ast,
     };
     use crate::build_option::{
         BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet, BuildTargetTriple,
@@ -1504,7 +1530,7 @@ mod tests {
     };
     use crate::build_api::{CopyFileRequest, WriteFileRequest};
     use fol_diagnostics::{DiagnosticCode, ToDiagnostic};
-    use fol_parser::ast::SyntaxOrigin;
+    use fol_parser::ast::{AstNode, SyntaxOrigin};
     use std::{
         collections::BTreeMap,
         fs,
@@ -1749,6 +1775,36 @@ mod tests {
         assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
         assert!(error.message().contains("jobs"));
         assert!(error.message().contains("fast"));
+    }
+
+    #[test]
+    fn build_source_option_refs_keep_symbolic_kind_and_name() {
+        let mut scope = BuildExtractionScope::default();
+        scope.values.insert(
+            "target".to_string(),
+            BuildExtractionValue::OptionRef(BuildExtractionOptionRef {
+                name: "target".to_string(),
+                kind: BuildExtractionOptionKind::Target,
+            }),
+        );
+
+        let resolved = resolve_build_string_arg_ast(
+            &AstNode::Identifier {
+                syntax_id: None,
+                name: "target".to_string(),
+            },
+            &scope,
+        );
+        let stored = scope.values.get("target");
+
+        assert_eq!(resolved, Some("target".to_string()));
+        assert!(matches!(
+            stored,
+            Some(BuildExtractionValue::OptionRef(BuildExtractionOptionRef {
+                name,
+                kind: BuildExtractionOptionKind::Target
+            })) if name == "target"
+        ));
     }
 
     #[test]
@@ -2311,7 +2367,15 @@ mod tests {
             .any(|binding| binding.step_name == "run"));
         assert_eq!(evaluated.result.graph.artifacts().len(), 1);
         assert_eq!(evaluated.result.graph.installs().len(), 1);
-        assert_eq!(evaluated.result.graph.steps().len(), 1);
+        let mut step_names = evaluated
+            .result
+            .graph
+            .steps()
+            .iter()
+            .map(|step| step.name.as_str())
+            .collect::<Vec<_>>();
+        step_names.sort_unstable();
+        assert_eq!(step_names, vec!["install", "run"]);
     }
 
     #[test]

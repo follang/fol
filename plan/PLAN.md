@@ -625,7 +625,7 @@ Round 1 slice tracker:
   preserve that metadata through build evaluation.
 - [x] Slice 4. Seed resolved option values from declared defaults and validate
   CLI override coercion against option kinds.
-- [ ] Slice 5. Replace placeholder build-source option names with typed symbolic
+- [x] Slice 5. Replace placeholder build-source option names with typed symbolic
   option references.
 - [ ] Slice 6. Add shared build-source parsing for `graph.option({ ... })`
   record configs.
