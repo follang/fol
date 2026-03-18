@@ -29,6 +29,14 @@ pub enum BuildRuntimeArtifactKind {
     Test,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildRuntimeGeneratedFileKind {
+    Write,
+    Copy,
+    ToolOutput,
+    CodegenOutput,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildRuntimeArtifact {
     pub name: String,
@@ -36,6 +44,27 @@ pub struct BuildRuntimeArtifact {
     pub root_module: String,
     pub target: Option<String>,
     pub optimize: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeGeneratedFile {
+    pub name: String,
+    pub relative_path: String,
+    pub kind: BuildRuntimeGeneratedFileKind,
+}
+
+impl BuildRuntimeGeneratedFile {
+    pub fn new(
+        name: impl Into<String>,
+        relative_path: impl Into<String>,
+        kind: BuildRuntimeGeneratedFileKind,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            relative_path: relative_path.into(),
+            kind,
+        }
+    }
 }
 
 impl BuildRuntimeArtifact {
@@ -120,6 +149,7 @@ pub struct BuildRuntimeDependencyQuery {
 pub enum BuildRuntimeHandleKind {
     Graph,
     Artifact,
+    GeneratedFile,
     Step,
     Run,
     Install,
@@ -289,7 +319,8 @@ mod tests {
         find_record_field, BuildExecutionRepresentation, BuildRuntimeArtifact,
         BuildRuntimeArtifactKind, BuildRuntimeDependency, BuildRuntimeDependencyQuery,
         BuildRuntimeDependencyQueryKind, BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind,
-        BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeHandle, BuildRuntimeHandleKind,
+        BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeGeneratedFile,
+        BuildRuntimeGeneratedFileKind, BuildRuntimeHandle, BuildRuntimeHandleKind,
         BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram,
         BuildRuntimeReceiverKind, BuildRuntimeRecordField, BuildRuntimeStepBinding,
         BuildRuntimeStepBindingKind, BuildRuntimeStmt, BuildRuntimeValue,
@@ -325,6 +356,25 @@ mod tests {
         assert_eq!(exe.optimize, None);
         assert_eq!(test.kind, BuildRuntimeArtifactKind::Test);
         assert_eq!(test.name, "app_test");
+    }
+
+    #[test]
+    fn runtime_generated_files_cover_write_copy_tool_and_codegen_outputs() {
+        let write = BuildRuntimeGeneratedFile::new(
+            "version",
+            "gen/version.fol",
+            BuildRuntimeGeneratedFileKind::Write,
+        );
+        let tool = BuildRuntimeGeneratedFile::new(
+            "bindings",
+            "gen/bindings.fol",
+            BuildRuntimeGeneratedFileKind::ToolOutput,
+        );
+
+        assert_eq!(write.name, "version");
+        assert_eq!(write.relative_path, "gen/version.fol");
+        assert_eq!(write.kind, BuildRuntimeGeneratedFileKind::Write);
+        assert_eq!(tool.kind, BuildRuntimeGeneratedFileKind::ToolOutput);
     }
 
     #[test]
@@ -365,6 +415,10 @@ mod tests {
             BuildRuntimeHandleKind::Graph,
             "graph",
         ));
+        let generated = BuildRuntimeValue::Handle(BuildRuntimeHandle::new(
+            BuildRuntimeHandleKind::GeneratedFile,
+            "gen/version.fol",
+        ));
         let target = BuildRuntimeValue::Target("x86_64-linux-gnu".to_string());
         let optimize = BuildRuntimeValue::Optimize("release-safe".to_string());
 
@@ -380,6 +434,13 @@ mod tests {
             optimize,
             BuildRuntimeValue::Optimize("release-safe".to_string())
         );
+        assert!(matches!(
+            generated,
+            BuildRuntimeValue::Handle(BuildRuntimeHandle {
+                kind: BuildRuntimeHandleKind::GeneratedFile,
+                ..
+            })
+        ));
     }
 
     #[test]

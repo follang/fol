@@ -704,7 +704,7 @@ Round 1 slice tracker:
   generated-file, tool, and native-input work.
 - [x] Slice 2. Extend the semantic build stdlib surface with generated-file,
   system-tool, and codegen graph methods.
-- [ ] Slice 3. Extend runtime models with generated-file handles and evaluated
+- [x] Slice 3. Extend runtime models with generated-file handles and evaluated
   generated-output metadata.
 - [ ] Slice 4. Parse object-style `graph.write_file({ ... })` configs in shared
   semantic build evaluation.
