@@ -2,6 +2,16 @@ use fol_frontend::{run_command_from_args_in_dir, FrontendArtifactKind};
 use std::fs;
 use std::path::PathBuf;
 
+fn semantic_bin_build() -> &'static str {
+    concat!(
+        "pro[] build(graph: Graph): non = {\n",
+        "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    graph.install(app);\n",
+        "    graph.add_run(app);\n",
+        "}\n",
+    )
+}
+
 fn temp_root(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
         "fol_frontend_artifacts_{}_{}_{}",
@@ -20,7 +30,7 @@ fn build_and_emit_commands_report_explicit_root_artifacts() {
     fs::create_dir_all(root.join("src")).expect("should create source root");
     fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
         .expect("should write manifest");
-    fs::write(root.join("build.fol"), "def root: loc = \"src\"\n").expect("should write build");
+    fs::write(root.join("build.fol"), semantic_bin_build()).expect("should write build");
     fs::write(
         root.join("src/main.fol"),
         "fun[] main(): int = {\n    return 0\n}\n",

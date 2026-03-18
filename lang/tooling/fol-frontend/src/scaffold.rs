@@ -135,19 +135,18 @@ fn starter_build_file(target: PackageTargetKind) -> &'static str {
     match target {
         PackageTargetKind::Bin => concat!(
             "// build.fol is the package build entry file.\n",
-            "// Compatibility defs here are a migration subset of the real build model.\n",
-            "def root: loc = \"src\"\n",
-            "\n",
-            "// Add a canonical graph entry here when the package needs custom build steps.\n",
-            "// pro[] build(graph: Graph): non = graph;\n",
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "}\n",
         ),
         PackageTargetKind::Lib => concat!(
             "// build.fol is the package build entry file.\n",
-            "// Compatibility defs here are a migration subset of the real build model.\n",
-            "def root: loc = \"src\"\n",
-            "\n",
-            "// Library packages can expose graph-driven build steps from this file.\n",
-            "// pro[] build(graph: Graph): non = graph;\n",
+            "pro[] build(graph: Graph): non = {\n",
+            "    var lib = graph.add_static_lib({ name = \"demo\", root = \"src/lib.fol\" });\n",
+            "    graph.install(lib);\n",
+            "}\n",
         ),
     }
 }
@@ -195,11 +194,11 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "// Compatibility defs here are a migration subset of the real build model.\n",
-                "def root: loc = \"src\"\n",
-                "\n",
-                "// Add a canonical graph entry here when the package needs custom build steps.\n",
-                "// pro[] build(graph: Graph): non = graph;\n",
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+                "    graph.install(app);\n",
+                "    graph.add_run(app);\n",
+                "}\n",
             )
         );
 
@@ -254,11 +253,11 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "// Compatibility defs here are a migration subset of the real build model.\n",
-                "def root: loc = \"src\"\n",
-                "\n",
-                "// Add a canonical graph entry here when the package needs custom build steps.\n",
-                "// pro[] build(graph: Graph): non = graph;\n",
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+                "    graph.install(app);\n",
+                "    graph.add_run(app);\n",
+                "}\n",
             )
         );
 
@@ -279,11 +278,10 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "// Compatibility defs here are a migration subset of the real build model.\n",
-                "def root: loc = \"src\"\n",
-                "\n",
-                "// Library packages can expose graph-driven build steps from this file.\n",
-                "// pro[] build(graph: Graph): non = graph;\n",
+                "pro[] build(graph: Graph): non = {\n",
+                "    var lib = graph.add_static_lib({ name = \"demo\", root = \"src/lib.fol\" });\n",
+                "    graph.install(lib);\n",
+                "}\n",
             )
         );
 
@@ -327,11 +325,11 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "// Compatibility defs here are a migration subset of the real build model.\n",
-                "def root: loc = \"src\"\n",
-                "\n",
-                "// Add a canonical graph entry here when the package needs custom build steps.\n",
-                "// pro[] build(graph: Graph): non = graph;\n",
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+                "    graph.install(app);\n",
+                "    graph.add_run(app);\n",
+                "}\n",
             )
         );
 

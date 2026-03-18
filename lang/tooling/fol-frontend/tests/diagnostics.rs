@@ -5,6 +5,27 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
+fn semantic_bin_build() -> &'static str {
+    concat!(
+        "pro[] build(graph: Graph): non = {\n",
+        "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+        "    graph.install(app);\n",
+        "    graph.add_run(app);\n",
+        "}\n",
+    )
+}
+
+fn semantic_lib_build(name: &str) -> String {
+    format!(
+        concat!(
+            "pro[] build(graph: Graph): non = {{\n",
+            "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
+            "    graph.install(lib);\n",
+            "}}\n",
+        )
+    )
+}
+
 fn temp_root(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
         "fol_frontend_diagnostics_{}_{}_{}",
@@ -125,7 +146,7 @@ fn create_app_with_git_dep(app: &std::path::Path, remote: &std::path::Path) {
         ),
     )
     .expect("should write app manifest");
-    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
+    fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write app build");
     fs::write(
         app.join("src/main.fol"),
         "fun[] main(): int = {\n    return 0\n}\n",
@@ -140,7 +161,7 @@ fn create_git_package_repo(root: &std::path::Path, name: &str, version: &str) {
         format!("name: {name}\nversion: {version}\n"),
     )
     .expect("package metadata should be writable");
-    fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+    fs::write(root.join("build.fol"), semantic_lib_build(name))
         .expect("package build should be writable");
     fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
         .expect("package source should be writable");

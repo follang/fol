@@ -696,6 +696,17 @@ mod tests {
     };
     use std::{fs, path::PathBuf};
 
+    fn semantic_bin_build() -> &'static str {
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "    graph.add_test({ name = \"app_test\", root = \"src/main.fol\" });\n",
+            "}\n",
+        )
+    }
+
     #[test]
     fn check_workspace_runs_the_real_pipeline_for_workspace_members() {
         let root = std::env::temp_dir().join(format!("fol_frontend_check_{}", std::process::id()));
@@ -703,7 +714,7 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -736,7 +747,7 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -793,7 +804,7 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -833,7 +844,7 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -872,7 +883,7 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -912,7 +923,7 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -948,7 +959,7 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -984,7 +995,7 @@ mod tests {
             let src = package.join("src");
             fs::create_dir_all(&src).unwrap();
             fs::write(package.join("package.yaml"), "name: pkg\nversion: 0.1.0\n").unwrap();
-            fs::write(package.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+            fs::write(package.join("build.fol"), semantic_bin_build()).unwrap();
             fs::write(
                 src.join("main.fol"),
                 "fun[] main(): int = {\n    return 0\n}\n",
@@ -1019,7 +1030,7 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",
@@ -1061,7 +1072,7 @@ mod tests {
         let src = app.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0\n}\n",

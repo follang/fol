@@ -6,6 +6,27 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+fn semantic_bin_build() -> &'static str {
+    concat!(
+        "pro[] build(graph: Graph): non = {\n",
+        "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+        "    graph.install(app);\n",
+        "    graph.add_run(app);\n",
+        "}\n",
+    )
+}
+
+fn semantic_lib_build(name: &str) -> String {
+    format!(
+        concat!(
+            "pro[] build(graph: Graph): non = {{\n",
+            "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
+            "    graph.install(lib);\n",
+            "}}\n",
+        )
+    )
+}
+
 fn temp_root(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
         "fol_frontend_fetch_{}_{}_{}",
@@ -27,10 +48,10 @@ fn fetch_round_trip_prepares_and_reports_local_workspace_packages() {
     fs::create_dir_all(&lib).expect("should create lib package");
     fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n")
         .expect("should write app manifest");
-    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
+    fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write app build");
     fs::write(lib.join("package.yaml"), "name: lib\nversion: 0.1.0\n")
         .expect("should write lib manifest");
-    fs::write(lib.join("build.fol"), "def root: loc = \"src\"\n").expect("should write lib build");
+    fs::write(lib.join("build.fol"), semantic_bin_build()).expect("should write lib build");
 
     let workspace = FrontendWorkspace {
         root: WorkspaceRoot::new(root.clone()),
@@ -61,7 +82,7 @@ fn fetch_round_trip_prefers_frontend_config_store_root_in_artifacts() {
     fs::create_dir_all(&app).expect("should create app package");
     fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n")
         .expect("should write app manifest");
-    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
+    fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write app build");
 
     let workspace = FrontendWorkspace {
         root: WorkspaceRoot::new(root.clone()),
@@ -93,7 +114,7 @@ fn fetch_locked_requires_existing_lockfile() {
     fs::create_dir_all(&app).expect("should create app package");
     fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n")
         .expect("should write app manifest");
-    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
+    fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write app build");
 
     let workspace = FrontendWorkspace {
         root: WorkspaceRoot::new(root.clone()),
@@ -282,7 +303,7 @@ fn create_app_with_git_dep(app: &Path, remote: &Path) {
         ),
     )
     .expect("should write app manifest");
-    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
+    fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write app build");
     fs::write(
         app.join("src/main.fol"),
         "fun[] main(): int = {\n    return 0\n}\n",
@@ -297,7 +318,7 @@ fn create_git_package_repo(root: &Path, name: &str, version: &str) {
         format!("name: {name}\nversion: {version}\n"),
     )
     .expect("package metadata should be writable");
-    fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+    fs::write(root.join("build.fol"), semantic_lib_build(name))
         .expect("package build should be writable");
     fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
         .expect("package source should be writable");

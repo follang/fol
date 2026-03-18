@@ -38,7 +38,14 @@ fn init_root_scaffolds_binary_packages_through_public_api() {
     );
     assert_eq!(
         fs::read_to_string(root.join("build.fol")).expect("should read build file"),
-        "def root: loc = \"src\"\n"
+        concat!(
+            "// build.fol is the package build entry file.\n",
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "}\n",
+        )
     );
 
     fs::remove_dir_all(root).ok();

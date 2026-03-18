@@ -8,6 +8,28 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+fn semantic_bin_build() -> &'static str {
+    concat!(
+        "pro[] build(graph: Graph): non = {\n",
+        "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+        "    graph.install(app);\n",
+        "    graph.add_run(app);\n",
+        "    graph.add_test({ name = \"app_test\", root = \"src/main.fol\" });\n",
+        "}\n",
+    )
+}
+
+fn semantic_lib_build(name: &str) -> String {
+    format!(
+        concat!(
+            "pro[] build(graph: Graph): non = {{\n",
+            "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
+            "    graph.install(lib);\n",
+            "}}\n",
+        )
+    )
+}
+
 fn temp_root(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
         "fol_frontend_compile_{}_{}_{}",
@@ -26,7 +48,7 @@ fn sample_workspace(root: &PathBuf) -> FrontendWorkspace {
     fs::create_dir_all(&src).expect("should create source tree");
     fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n")
         .expect("should write manifest");
-    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write build file");
+    fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write build file");
     fs::write(
         src.join("main.fol"),
         "fun[] main(): int = {\n    return 0\n}\n",
@@ -99,7 +121,7 @@ fn create_app_with_git_dep(app: &Path, remote: &Path) {
         ),
     )
     .expect("should write app manifest");
-    fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").expect("should write app build");
+    fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write app build");
     fs::write(
         app.join("src/main.fol"),
         "fun[] main(): int = {\n    return 0\n}\n",
@@ -114,7 +136,7 @@ fn create_git_package_repo(root: &Path, name: &str, version: &str) {
         format!("name: {name}\nversion: {version}\n"),
     )
     .expect("package metadata should be writable");
-    fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+    fs::write(root.join("build.fol"), semantic_lib_build(name))
         .expect("package build should be writable");
     fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
         .expect("package source should be writable");
@@ -181,7 +203,7 @@ fn test_command_traverses_all_runnable_workspace_members_through_public_api() {
         "name: tools\nversion: 0.1.0\n",
     )
     .expect("should write tools manifest");
-    fs::write(tools_root.join("build.fol"), "def root: loc = \"src\"\n")
+    fs::write(tools_root.join("build.fol"), semantic_bin_build())
         .expect("should write tools build");
     fs::write(
         tools_src.join("main.fol"),

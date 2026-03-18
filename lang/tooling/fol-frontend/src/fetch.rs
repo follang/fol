@@ -558,6 +558,27 @@ mod tests {
         process::Command,
     };
 
+    fn semantic_bin_build() -> &'static str {
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "}\n",
+        )
+    }
+
+    fn semantic_lib_build(name: &str) -> String {
+        format!(
+            concat!(
+                "pro[] build(graph: Graph): non = {{\n",
+                "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
+                "    graph.install(lib);\n",
+                "}}\n",
+            )
+        )
+    }
+
     fn temp_root(label: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
             "fol_frontend_fetch_{}_{}_{}",
@@ -577,7 +598,7 @@ mod tests {
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -636,7 +657,7 @@ mod tests {
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -704,7 +725,7 @@ mod tests {
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
         fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n").unwrap();
+        fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -745,7 +766,7 @@ mod tests {
             ),
         )
         .expect("should write app manifest");
-        fs::write(app.join("build.fol"), "def root: loc = \"src\"\n")
+        fs::write(app.join("build.fol"), semantic_bin_build())
             .expect("should write app build");
         fs::write(app.join("src/main.fol"), "var[exp] answer: int = 1\n")
             .expect("should write app source");
@@ -788,7 +809,7 @@ mod tests {
             format!("name: {name}\nversion: {version}\n"),
         )
         .expect("package metadata should be writable");
-        fs::write(root.join("build.fol"), "def root: loc = \"src\"\n")
+        fs::write(root.join("build.fol"), semantic_lib_build(name))
             .expect("package build should be writable");
         fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
             .expect("package source should be writable");
