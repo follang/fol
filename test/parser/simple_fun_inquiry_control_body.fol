@@ -3,7 +3,7 @@ fun[] inspect(value: int): int = {
     where(self) {
         if(value > 0) => value;
         while(value > 0) => break;
-        yeild value;
+        yield value;
         return value;
     }
 }

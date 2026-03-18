@@ -218,7 +218,7 @@ fn test_loop_yield_without_semicolon_is_accepted() {
     let mut parser = AstParser::new();
     let ast = parser
         .parse(&mut lexer)
-        .expect("Parser should parse yeild without semicolon");
+        .expect("Parser should parse yield without semicolon");
 
     let loop_body = match ast {
         AstNode::Program { declarations } => only_root_routine_body_nodes(&declarations)

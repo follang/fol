@@ -123,7 +123,7 @@ seg goes: mod = {  }
 fun[itr] chars(sentence: str): opt[char] = {
     var i = 0;
     loop (i < .len(sentence)) {
-        yeild Some(sentence.get(i))
+        yield Some(sentence.get(i))
         i ++
     }
 }

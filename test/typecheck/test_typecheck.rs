@@ -1461,7 +1461,7 @@ fn loop_typing_rejects_non_boolean_conditions_and_reserved_yields() {
         "main.fol",
         "fun[] bad(items: seq[int]): seq[int] = {\n\
              loop(item in items) {\n\
-                 yeild item;\n\
+                 yield item;\n\
              }\n\
              return items;\n\
          }\n",
@@ -1472,9 +1472,9 @@ fn loop_typing_rejects_non_boolean_conditions_and_reserved_yields() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("yeild typing is not part of the V1 typecheck milestone")
+                    .contains("yield typing is not part of the V1 typecheck milestone")
         }),
-        "Expected an explicit yeild boundary diagnostic, got: {yield_errors:?}"
+        "Expected an explicit yield boundary diagnostic, got: {yield_errors:?}"
     );
 }
 

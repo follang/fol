@@ -1,4 +1,4 @@
 each (_ in entries when ready) {
-    yeild 1;
+    yield 1;
     break;
 }

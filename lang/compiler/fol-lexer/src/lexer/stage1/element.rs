@@ -447,7 +447,7 @@ impl Element {
             "self" => self.set_key(Keyword(BUILDIN::Selfi)),
             "break" => self.set_key(Keyword(BUILDIN::Break)),
             "return" => self.set_key(Keyword(BUILDIN::Return)),
-            "yeild" => self.set_key(Keyword(BUILDIN::Yeild)),
+            "yield" => self.set_key(Keyword(BUILDIN::Yield)),
             "panic" => self.set_key(Keyword(BUILDIN::Panic)),
             "report" => self.set_key(Keyword(BUILDIN::Report)),
             "check" => self.set_key(Keyword(BUILDIN::Check)),
@@ -463,6 +463,9 @@ impl Element {
             "async" => self.set_key(Keyword(BUILDIN::Async)),
             "await" => self.set_key(Keyword(BUILDIN::Await)),
             "select" => self.set_key(Keyword(BUILDIN::Select)),
+            "get" => self.set_key(Keyword(BUILDIN::Get)),
+            "nor" => self.set_key(Keyword(BUILDIN::Nor)),
+            "at" => self.set_key(Keyword(BUILDIN::At)),
             _ => self.set_key(Identifier),
         }
         Ok(())

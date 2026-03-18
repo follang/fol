@@ -116,7 +116,7 @@ impl AstParser {
             return self.parse_break_stmt(tokens);
         }
 
-        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Yeild)) {
+        if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Yield)) {
             return self.parse_yield_stmt(tokens);
         }
 

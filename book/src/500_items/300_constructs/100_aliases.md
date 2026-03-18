@@ -60,7 +60,7 @@ typ[ext] str: str;
 
 fun (str)to_array(): vec[chr] = {
     loop(x in self){
-        yeild x; 
+        yield x; 
     }
 }
 

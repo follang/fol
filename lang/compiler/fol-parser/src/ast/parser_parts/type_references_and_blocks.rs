@@ -206,7 +206,7 @@ impl AstParser {
                 continue;
             }
 
-            if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
                 body.push(self.parse_yield_stmt(tokens)?);
                 continue;
             }
@@ -498,7 +498,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let yield_token = tokens.curr(false)?;
-        if !matches!(yield_token.key(), KEYWORD::Keyword(BUILDIN::Yeild)) {
+        if !matches!(yield_token.key(), KEYWORD::Keyword(BUILDIN::Yield)) {
             return Err(Box::new(ParseError::from_token(
                 &yield_token,
                 "Expected 'yield' statement".to_string(),
@@ -508,7 +508,7 @@ impl AstParser {
         if !(self.is_inside_routine() || self.is_inside_loop()) {
             return Err(Box::new(ParseError::from_token(
                 &yield_token,
-                "'yeild' is only allowed inside routines or loops".to_string(),
+                "'yield' is only allowed inside routines or loops".to_string(),
             )));
         }
 

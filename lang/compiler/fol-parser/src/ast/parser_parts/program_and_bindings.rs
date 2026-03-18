@@ -588,7 +588,7 @@ impl AstParser {
                     key,
                     KEYWORD::Keyword(BUILDIN::Return)
                         | KEYWORD::Keyword(BUILDIN::Break)
-                        | KEYWORD::Keyword(BUILDIN::Yeild)
+                        | KEYWORD::Keyword(BUILDIN::Yield)
                         | KEYWORD::Keyword(BUILDIN::When)
                         | KEYWORD::Keyword(BUILDIN::If)
                         | KEYWORD::Keyword(BUILDIN::Select)
@@ -621,7 +621,7 @@ impl AstParser {
                         &mut errors,
                         |parser, tokens| parser.parse_break_stmt(tokens).map(|_| ()),
                     )
-                } else if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+                } else if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
                     self.reject_file_root_form(
                         tokens,
                         &token,
@@ -807,7 +807,7 @@ impl AstParser {
                 continue;
             }
 
-            if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
                 let before = (
                     token.loc().row(),
                     token.loc().col(),

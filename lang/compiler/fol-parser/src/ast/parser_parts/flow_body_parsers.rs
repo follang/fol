@@ -179,7 +179,7 @@ impl AstParser {
             return Ok(vec![node]);
         }
 
-        if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
             let node = self.parse_yield_stmt(tokens)?;
             return Ok(vec![node]);
         }

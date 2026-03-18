@@ -181,7 +181,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Cross-file continuation of declarations, routine headers, and `use` paths is rejected.
 - `return` is rejected outside routine contexts.
 - `break` is rejected outside loop contexts.
-- `yeild` is rejected at file scope and outside routine contexts.
+- `yield` is rejected at file scope and outside routine contexts.
 - Numeric overflow no longer falls back to `AstNode::Identifier`.
 - Oversized decimal and prefixed numeric literals now fail explicitly at parse time.
 - `use` declarations now preserve structured path segments instead of only opaque flattened text.

@@ -74,7 +74,7 @@ impl AstParser {
                 continue;
             }
 
-            if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
                 body.push(self.parse_yield_stmt(tokens)?);
                 continue;
             }
@@ -572,7 +572,7 @@ impl AstParser {
                 continue;
             }
 
-            if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
                 body.push(self.parse_yield_stmt(tokens)?);
                 continue;
             }

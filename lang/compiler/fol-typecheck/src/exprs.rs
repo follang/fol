@@ -443,7 +443,7 @@ fn type_node_with_expectation(
         AstNode::Break => Ok(TypedExpr::value(typed.builtin_types().never)),
         AstNode::Yield { .. } => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "yeild typing is not part of the V1 typecheck milestone",
+            "yield typing is not part of the V1 typecheck milestone",
         )),
         _ => {
             for child in node.children() {
