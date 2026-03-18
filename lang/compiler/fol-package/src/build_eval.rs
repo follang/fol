@@ -985,13 +985,20 @@ fn parse_build_handle_method_ast(
 ) -> Result<Option<BuildExtractionValue>, BuildEvaluationError> {
     match receiver {
         BuildExtractionValue::DependencyHandle(dependency)
-            if method == "module" || method == "artifact" =>
+            if method == "module"
+                || method == "artifact"
+                || method == "step"
+                || method == "generated" =>
         {
             let query = parse_dependency_query_ast(&dependency, scope, build_path, method, args)?;
-            let value = if method == "module" {
-                BuildExtractionValue::DependencyModuleHandle(query.clone())
-            } else {
-                BuildExtractionValue::DependencyArtifactHandle(query.clone())
+            let value = match method {
+                "module" => BuildExtractionValue::DependencyModuleHandle(query.clone()),
+                "artifact" => BuildExtractionValue::DependencyArtifactHandle(query.clone()),
+                "step" => BuildExtractionValue::DependencyStepHandle(query.clone()),
+                "generated" => {
+                    BuildExtractionValue::DependencyGeneratedOutputHandle(query.clone())
+                }
+                _ => unreachable!("dependency query methods are filtered above"),
             };
             extracted.dependency_queries.push(BuildRuntimeDependencyQuery {
                 dependency_alias: query.dependency_alias,
@@ -2259,6 +2266,47 @@ mod tests {
             .any(|query| query.dependency_alias == "core"
                 && query.query_name == "corelib"
                 && query.kind == BuildRuntimeDependencyQueryKind::Artifact));
+    }
+
+    #[test]
+    fn build_source_evaluator_records_dependency_step_and_generated_queries() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var core = graph.dependency({ alias = \"core\", package = \"org/core\" });\n",
+            "    var step = core.step(\"check\");\n",
+            "    var generated = core.generated(\"bindings\");\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("dependency queries should evaluate")
+            .expect("build body should produce a graph");
+
+        assert_eq!(evaluated.evaluated.dependency_queries.len(), 2);
+        assert!(evaluated
+            .evaluated
+            .dependency_queries
+            .iter()
+            .any(|query| query.dependency_alias == "core"
+                && query.query_name == "check"
+                && query.kind == BuildRuntimeDependencyQueryKind::Step));
+        assert!(evaluated
+            .evaluated
+            .dependency_queries
+            .iter()
+            .any(|query| query.dependency_alias == "core"
+                && query.query_name == "bindings"
+                && query.kind == BuildRuntimeDependencyQueryKind::GeneratedOutput));
     }
 
     #[test]

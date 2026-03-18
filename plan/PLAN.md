@@ -671,7 +671,7 @@ Round 1 slice tracker:
   semantic build evaluation.
 - [x] Slice 7. Support dependency handle queries for modules and artifacts in
   real build code.
-- [ ] Slice 8. Support dependency handle queries for steps and generated
+- [x] Slice 8. Support dependency handle queries for steps and generated
   outputs in real build code.
 - [ ] Slice 9. Add regressions proving dependency surfaces are consumable
   through semantic build evaluation.
