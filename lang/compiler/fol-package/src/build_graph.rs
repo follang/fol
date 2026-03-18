@@ -291,6 +291,13 @@ impl BuildGraph {
     }
 
     pub fn add_step_dependency(&mut self, step: BuildStepId, depends_on: BuildStepId) {
+        if self
+            .step_dependencies
+            .iter()
+            .any(|edge| edge.step == step && edge.depends_on == depends_on)
+        {
+            return;
+        }
         self.step_dependencies.push(BuildStepDependency { step, depends_on });
     }
 
@@ -601,6 +608,24 @@ mod tests {
 
         assert_eq!(install_dependencies, vec![compile]);
         assert_eq!(run_dependencies, vec![compile]);
+    }
+
+    #[test]
+    fn build_graph_dedupes_repeated_step_dependencies() {
+        let mut graph = BuildGraph::new();
+        let compile = graph.add_step(BuildStepKind::Default, "compile");
+        let run = graph.add_step(BuildStepKind::Run, "run");
+
+        graph.add_step_dependency(run, compile);
+        graph.add_step_dependency(run, compile);
+
+        assert_eq!(
+            graph.step_dependencies(),
+            &[BuildStepDependency {
+                step: run,
+                depends_on: compile,
+            }]
+        );
     }
 
     #[test]

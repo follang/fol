@@ -591,7 +591,7 @@ Round 1 slice tracker:
   evaluation.
 - [x] Slice 8. Support `InstallHandle.depend_on(...)` chaining in shared build
   evaluation.
-- [ ] Slice 9. Deduplicate repeated step dependencies so chained and explicit
+- [x] Slice 9. Deduplicate repeated step dependencies so chained and explicit
   dependency wiring stays stable.
 - [ ] Slice 10. Re-export, test, and lock the full Phase 8 step-handle and
   chaining round.
