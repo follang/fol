@@ -659,7 +659,7 @@ Exit criteria:
 Round 1 slice tracker:
 - [x] Slice 1. Add a concrete Phase 10 implementation tracker for semantic
   dependency build surfaces.
-- [ ] Slice 2. Add shared dependency surface lookup helpers and evaluation-mode
+- [x] Slice 2. Add shared dependency surface lookup helpers and evaluation-mode
   parsing utilities.
 - [ ] Slice 3. Extend dependency API requests/handles with semantic surface and
   evaluation-mode metadata.

@@ -29,6 +29,15 @@ impl DependencyBuildEvaluationMode {
             Self::OnDemand => "on-demand",
         }
     }
+
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw {
+            "eager" => Some(Self::Eager),
+            "lazy" => Some(Self::Lazy),
+            "on-demand" => Some(Self::OnDemand),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -97,6 +106,30 @@ impl DependencyBuildSurfaceSet {
 
     pub fn add(&mut self, surface: DependencyBuildSurface) {
         self.surfaces.push(surface);
+    }
+
+    pub fn find(&self, alias: &str) -> Option<&DependencyBuildSurface> {
+        self.surfaces.iter().find(|surface| surface.alias == alias)
+    }
+}
+
+impl DependencyBuildSurface {
+    pub fn find_module(&self, name: &str) -> Option<&DependencyModuleSurface> {
+        self.modules.iter().find(|module| module.name == name)
+    }
+
+    pub fn find_artifact(&self, name: &str) -> Option<&DependencyArtifactSurface> {
+        self.artifacts.iter().find(|artifact| artifact.name == name)
+    }
+
+    pub fn find_step(&self, name: &str) -> Option<&DependencyStepSurface> {
+        self.steps.iter().find(|step| step.name == name)
+    }
+
+    pub fn find_generated_output(&self, name: &str) -> Option<&DependencyGeneratedOutputSurface> {
+        self.generated_outputs
+            .iter()
+            .find(|output| output.name == name)
     }
 }
 
@@ -187,6 +220,19 @@ mod tests {
         assert_eq!(DependencyBuildEvaluationMode::Eager.as_str(), "eager");
         assert_eq!(DependencyBuildEvaluationMode::Lazy.as_str(), "lazy");
         assert_eq!(DependencyBuildEvaluationMode::OnDemand.as_str(), "on-demand");
+        assert_eq!(
+            DependencyBuildEvaluationMode::parse("eager"),
+            Some(DependencyBuildEvaluationMode::Eager)
+        );
+        assert_eq!(
+            DependencyBuildEvaluationMode::parse("lazy"),
+            Some(DependencyBuildEvaluationMode::Lazy)
+        );
+        assert_eq!(
+            DependencyBuildEvaluationMode::parse("on-demand"),
+            Some(DependencyBuildEvaluationMode::OnDemand)
+        );
+        assert_eq!(DependencyBuildEvaluationMode::parse("ambient"), None);
     }
 
     #[test]
@@ -243,6 +289,69 @@ mod tests {
         assert_eq!(modules[0].source_namespace, "json::src");
         assert_eq!(modules[1].name, "codec");
         assert_eq!(modules[1].source_namespace, "json::src::codec");
+    }
+
+    #[test]
+    fn dependency_surface_sets_can_find_surfaces_by_alias() {
+        let mut set = DependencyBuildSurfaceSet::new();
+        set.add(DependencyBuildSurface {
+            alias: "core".to_string(),
+            modules: Vec::new(),
+            source_roots: Vec::new(),
+            artifacts: Vec::new(),
+            steps: Vec::new(),
+            generated_outputs: Vec::new(),
+        });
+
+        assert_eq!(set.find("core").map(|surface| surface.alias.as_str()), Some("core"));
+        assert!(set.find("json").is_none());
+    }
+
+    #[test]
+    fn dependency_surface_lookups_find_named_members() {
+        let surface = DependencyBuildSurface {
+            alias: "core".to_string(),
+            modules: vec![DependencyModuleSurface {
+                name: "root".to_string(),
+                source_namespace: "core::src".to_string(),
+            }],
+            source_roots: vec![DependencySourceRootSurface {
+                relative_path: "src".to_string(),
+                namespace_prefix: "core::src".to_string(),
+            }],
+            artifacts: vec![DependencyArtifactSurface {
+                name: "corelib".to_string(),
+                artifact_kind: "static-lib".to_string(),
+            }],
+            steps: vec![DependencyStepSurface {
+                name: "check".to_string(),
+                step_kind: "check".to_string(),
+            }],
+            generated_outputs: vec![DependencyGeneratedOutputSurface {
+                name: "bindings".to_string(),
+                relative_path: "gen/bindings.fol".to_string(),
+            }],
+        };
+
+        assert_eq!(
+            surface.find_module("root").map(|module| module.source_namespace.as_str()),
+            Some("core::src")
+        );
+        assert_eq!(
+            surface.find_artifact("corelib").map(|artifact| artifact.artifact_kind.as_str()),
+            Some("static-lib")
+        );
+        assert_eq!(
+            surface.find_step("check").map(|step| step.step_kind.as_str()),
+            Some("check")
+        );
+        assert_eq!(
+            surface
+                .find_generated_output("bindings")
+                .map(|output| output.relative_path.as_str()),
+            Some("gen/bindings.fol")
+        );
+        assert!(surface.find_module("missing").is_none());
     }
 }
 use crate::PreparedExportMount;
