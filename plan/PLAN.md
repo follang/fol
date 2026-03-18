@@ -743,6 +743,29 @@ Exit criteria:
 - compatibility behavior is a subset of the real model, not a separate system
 - superseded legacy code paths are removed from the repository
 
+Round 1 slice tracker:
+
+- [x] Slice 1. Add a concrete Phase 12 implementation tracker with completion
+  rules.
+- [ ] Slice 2. Add `PackageBuildMode` helpers that expose semantic and
+  compatibility participation directly.
+- [ ] Slice 3. Add a shared `parse_package_build_mode(...)` helper so callers do
+  not re-scan raw build source to classify workflow mode.
+- [ ] Slice 4. Remove frontend raw-source build-entry detection and classify
+  workspace members from semantic package build parsing only.
+- [ ] Slice 5. Add frontend regressions for broken modern and broken hybrid
+  `build.fol` workspace classification.
+- [ ] Slice 6. Rename frontend workspace build request APIs away from
+  compatibility-only terminology.
+- [ ] Slice 7. Rename compatibility-only frontend routing fixtures and test
+  wording to absorbed-build terminology.
+- [ ] Slice 8. Update scaffolded `build.fol` templates to describe
+  compatibility defs as migration-only controls under the real build entry.
+- [ ] Slice 9. Update high-level README wording to reflect graph-driven routing
+  and compatibility absorption status.
+- [ ] Slice 10. Re-export, test, and lock the Phase 12 compatibility-absorption
+  cleanup round.
+
 ## Phase 13: Product Completion Criteria
 
 We are done only when all of these are true:
