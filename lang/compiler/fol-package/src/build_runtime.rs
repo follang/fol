@@ -1,3 +1,4 @@
+use crate::build_dependency::DependencyBuildEvaluationMode;
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,6 +92,28 @@ impl BuildRuntimeStepBinding {
             artifact_name: artifact_name.map(|name| name.into()),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeDependency {
+    pub alias: String,
+    pub package: String,
+    pub evaluation_mode: Option<DependencyBuildEvaluationMode>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildRuntimeDependencyQueryKind {
+    Module,
+    Artifact,
+    Step,
+    GeneratedOutput,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeDependencyQuery {
+    pub dependency_alias: String,
+    pub query_name: String,
+    pub kind: BuildRuntimeDependencyQueryKind,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -263,13 +286,15 @@ pub enum BuildRuntimeStmt {
 #[cfg(test)]
 mod tests {
     use super::{
-        BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
-        BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeFrame,
-        BuildRuntimeHandle, BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall,
-        BuildRuntimeProgram, BuildRuntimeReceiverKind, BuildRuntimeRecordField,
-        BuildRuntimeStepBinding, BuildRuntimeStepBindingKind, BuildRuntimeStmt,
-        BuildRuntimeValue, find_record_field,
+        find_record_field, BuildExecutionRepresentation, BuildRuntimeArtifact,
+        BuildRuntimeArtifactKind, BuildRuntimeDependency, BuildRuntimeDependencyQuery,
+        BuildRuntimeDependencyQueryKind, BuildRuntimeDiagnostic, BuildRuntimeDiagnosticKind,
+        BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeHandle, BuildRuntimeHandleKind,
+        BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram,
+        BuildRuntimeReceiverKind, BuildRuntimeRecordField, BuildRuntimeStepBinding,
+        BuildRuntimeStepBindingKind, BuildRuntimeStmt, BuildRuntimeValue,
     };
+    use crate::build_dependency::DependencyBuildEvaluationMode;
 
     #[test]
     fn runtime_programs_record_the_chosen_execution_representation() {
@@ -375,6 +400,29 @@ mod tests {
             BuildRuntimeHandleKind::DependencyGeneratedOutput,
             BuildRuntimeHandleKind::DependencyGeneratedOutput
         );
+    }
+
+    #[test]
+    fn runtime_dependency_records_capture_alias_package_and_query_kind() {
+        let dependency = BuildRuntimeDependency {
+            alias: "core".to_string(),
+            package: "org/core".to_string(),
+            evaluation_mode: Some(DependencyBuildEvaluationMode::Lazy),
+        };
+        let query = BuildRuntimeDependencyQuery {
+            dependency_alias: "core".to_string(),
+            query_name: "bindings".to_string(),
+            kind: BuildRuntimeDependencyQueryKind::GeneratedOutput,
+        };
+
+        assert_eq!(dependency.alias, "core");
+        assert_eq!(dependency.package, "org/core");
+        assert_eq!(
+            dependency.evaluation_mode,
+            Some(DependencyBuildEvaluationMode::Lazy)
+        );
+        assert_eq!(query.kind, BuildRuntimeDependencyQueryKind::GeneratedOutput);
+        assert_eq!(query.query_name, "bindings");
     }
 
     #[test]

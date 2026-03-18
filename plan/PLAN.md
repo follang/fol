@@ -665,7 +665,7 @@ Round 1 slice tracker:
   evaluation-mode metadata.
 - [x] Slice 4. Extend the semantic build stdlib/runtime models with dependency
   surface query method signatures and runtime value kinds.
-- [ ] Slice 5. Preserve declared dependency requests and queried dependency
+- [x] Slice 5. Preserve declared dependency requests and queried dependency
   surfaces in evaluated build results.
 - [ ] Slice 6. Parse object-style `graph.dependency({ ... })` configs in shared
   semantic build evaluation.

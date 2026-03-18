@@ -8,7 +8,8 @@ use crate::build_api::{CopyFileRequest, WriteFileRequest};
 use crate::build_codegen::{CodegenRequest, SystemToolRequest};
 use crate::build_runtime::{
     BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
-    BuildRuntimeProgram, BuildRuntimeStepBinding, BuildRuntimeStepBindingKind,
+    BuildRuntimeDependency, BuildRuntimeDependencyQuery, BuildRuntimeProgram,
+    BuildRuntimeStepBinding, BuildRuntimeStepBindingKind,
 };
 use crate::build_option::{
     BuildOptionDeclaration, BuildOptionDeclarationSet, BuildOptimizeMode, BuildTargetTriple,
@@ -435,6 +436,7 @@ pub struct BuildEvaluationResult {
     pub package_root: String,
     pub option_declarations: BuildOptionDeclarationSet,
     pub resolved_options: ResolvedBuildOptionSet,
+    pub dependency_requests: Vec<DependencyRequest>,
     pub graph: BuildGraph,
 }
 
@@ -489,6 +491,8 @@ pub struct EvaluatedBuildSource {
 pub struct EvaluatedBuildProgram {
     pub program: BuildRuntimeProgram,
     pub artifacts: Vec<BuildRuntimeArtifact>,
+    pub dependencies: Vec<BuildRuntimeDependency>,
+    pub dependency_queries: Vec<BuildRuntimeDependencyQuery>,
     pub step_bindings: Vec<BuildRuntimeStepBinding>,
     pub result: BuildEvaluationResult,
 }
@@ -500,6 +504,7 @@ impl BuildEvaluationResult {
         package_root: impl Into<String>,
         option_declarations: BuildOptionDeclarationSet,
         resolved_options: ResolvedBuildOptionSet,
+        dependency_requests: Vec<DependencyRequest>,
         graph: BuildGraph,
     ) -> Self {
         Self {
@@ -508,6 +513,7 @@ impl BuildEvaluationResult {
             package_root: package_root.into(),
             option_declarations,
             resolved_options,
+            dependency_requests,
             graph,
         }
     }
@@ -518,6 +524,7 @@ pub fn evaluate_build_plan(
 ) -> Result<BuildEvaluationResult, BuildEvaluationError> {
     let mut step_names = BTreeMap::new();
     let mut artifact_names = BTreeMap::new();
+    let mut dependency_requests = Vec::new();
     let mut option_declarations = BuildOptionDeclarationSet::new();
     let raw_option_overrides = request.inputs.options.clone();
     let mut resolved_options = ResolvedBuildOptionSet::new();
@@ -692,6 +699,7 @@ pub fn evaluate_build_plan(
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
             }
             BuildEvaluationOperationKind::Dependency(operation_request) => {
+                dependency_requests.push(operation_request.clone());
                 api.dependency(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
             }
@@ -746,6 +754,7 @@ pub fn evaluate_build_plan(
         request.package_root.clone(),
         option_declarations,
         resolved_options,
+        dependency_requests,
         graph,
     ))
 }
@@ -1268,10 +1277,21 @@ fn evaluated_build_program_from_extracted(
             )
         }))
         .collect::<Vec<_>>();
+    let dependencies = result
+        .dependency_requests
+        .iter()
+        .map(|request| BuildRuntimeDependency {
+            alias: request.alias.clone(),
+            package: request.package.clone(),
+            evaluation_mode: request.evaluation_mode,
+        })
+        .collect::<Vec<_>>();
 
     EvaluatedBuildProgram {
         program: BuildRuntimeProgram::new(BuildExecutionRepresentation::RestrictedRuntimeIr),
         artifacts,
+        dependencies,
+        dependency_queries: Vec::new(),
         step_bindings,
         result: result.clone(),
     }
@@ -1775,6 +1795,7 @@ mod tests {
             "app",
             crate::BuildOptionDeclarationSet::new(),
             crate::ResolvedBuildOptionSet::new(),
+            Vec::new(),
             graph.clone(),
         );
 
@@ -1796,6 +1817,7 @@ mod tests {
             "pkg",
             crate::BuildOptionDeclarationSet::new(),
             crate::ResolvedBuildOptionSet::new(),
+            Vec::new(),
             BuildGraph::new(),
         );
 
@@ -1912,11 +1934,33 @@ mod tests {
             "pkg",
             declarations,
             resolved,
+            Vec::new(),
             BuildGraph::new(),
         );
 
         assert_eq!(result.option_declarations.declarations().len(), 1);
         assert_eq!(result.resolved_options.get("optimize"), Some("release-fast"));
+    }
+
+    #[test]
+    fn build_evaluation_result_keeps_declared_dependency_requests() {
+        let dependencies = vec![DependencyRequest {
+            alias: "core".to_string(),
+            package: "org/core".to_string(),
+            evaluation_mode: Some(crate::DependencyBuildEvaluationMode::Lazy),
+            surface: None,
+        }];
+        let result = BuildEvaluationResult::new(
+            BuildEvaluationBoundary::GraphConstructionSubset,
+            BuildRuntimeCapabilityModel::new(vec![AllowedBuildTimeOperation::GraphMutation], Vec::new()),
+            "pkg",
+            BuildOptionDeclarationSet::new(),
+            ResolvedBuildOptionSet::new(),
+            dependencies.clone(),
+            BuildGraph::new(),
+        );
+
+        assert_eq!(result.dependency_requests, dependencies);
     }
 
     #[test]
@@ -3033,6 +3077,7 @@ mod tests {
             "/pkg",
             BuildOptionDeclarationSet::new(),
             ResolvedBuildOptionSet::new(),
+            Vec::new(),
             BuildGraph::new(),
         );
         let evaluated = EvaluatedBuildProgram {
@@ -3044,6 +3089,12 @@ mod tests {
                 crate::build_runtime::BuildRuntimeArtifactKind::Executable,
                 "src/app.fol",
             )],
+            dependencies: vec![crate::build_runtime::BuildRuntimeDependency {
+                alias: "core".to_string(),
+                package: "org/core".to_string(),
+                evaluation_mode: None,
+            }],
+            dependency_queries: Vec::new(),
             step_bindings: vec![crate::build_runtime::BuildRuntimeStepBinding::new(
                 "run",
                 crate::build_runtime::BuildRuntimeStepBindingKind::DefaultRun,
@@ -3053,6 +3104,7 @@ mod tests {
         };
 
         assert_eq!(evaluated.artifacts.len(), 1);
+        assert_eq!(evaluated.dependencies.len(), 1);
         assert_eq!(evaluated.step_bindings.len(), 1);
         assert_eq!(evaluated.result.package_root, "/pkg");
     }

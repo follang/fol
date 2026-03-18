@@ -351,6 +351,8 @@ fn plan_member_default_execution(
                 fol_package::BuildExecutionRepresentation::RestrictedRuntimeIr,
             ),
             artifacts,
+            dependencies: Vec::new(),
+            dependency_queries: Vec::new(),
             step_bindings,
             result: fol_package::BuildEvaluationResult::new(
                 fol_package::BuildEvaluationBoundary::GraphConstructionSubset,
@@ -358,6 +360,7 @@ fn plan_member_default_execution(
                 member.member_root.display().to_string(),
                 fol_package::BuildOptionDeclarationSet::new(),
                 fol_package::ResolvedBuildOptionSet::new(),
+                Vec::new(),
                 graph.clone(),
             ),
         },
