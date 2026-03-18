@@ -29,17 +29,6 @@ pub fn is_symbol(ch: &char) -> bool {
         || '{' <= *ch && *ch <= '~'
 }
 
-pub fn is_oct_digit(ch: &char) -> bool {
-    '0' <= *ch && *ch <= '7' || *ch == '_'
-}
-pub fn is_hex_digit(ch: &char) -> bool {
-    '0' <= *ch && *ch <= '9' || 'a' <= *ch && *ch <= 'f' || 'A' <= *ch && *ch <= 'F' || *ch == '_'
-}
-
-pub fn is_alphanumeric(ch: &char) -> bool {
-    is_digit(ch) || is_alpha(ch)
-}
-
 pub fn is_void(ch: &char) -> bool {
     is_eol(ch) || is_space(ch)
 }

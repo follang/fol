@@ -1,6 +1,6 @@
 use crate::point;
 use fol_stream::{CharacterProvider, FileStream};
-use fol_types::{Con, Vod, Win, SLIDER};
+use fol_types::{Con, Win, SLIDER};
 use std::fmt;
 
 // Stage 0 owns raw character windowing only.
@@ -126,10 +126,6 @@ impl Elements {
                 }
             }
         }
-    }
-    pub fn debug(&self) -> Vod {
-        println!("{}\t{}", self.curr()?.1, self.curr()?.0);
-        Ok(())
     }
 }
 

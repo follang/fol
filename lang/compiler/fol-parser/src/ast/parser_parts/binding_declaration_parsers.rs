@@ -20,14 +20,6 @@ impl AstParser {
                     Box::new(ParseError::from_token(token, error.to_string())) as Box<dyn Glitch>
                 })
             }
-            fol_lexer::token::KEYWORD::Literal(LITERAL::Bool) => match raw {
-                "true" => Ok(AstNode::Literal(Literal::Boolean(true))),
-                "false" => Ok(AstNode::Literal(Literal::Boolean(false))),
-                _ => Ok(AstNode::Identifier {
-                    syntax_id: self.record_syntax_origin(token),
-                    name: raw.to_string(),
-                }),
-            },
             _ => self.parse_literal(raw),
         }
     }
