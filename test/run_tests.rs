@@ -3807,6 +3807,37 @@ mod integration_tests {
     }
 
     #[test]
+    fn test_build_fixture_pkg_dependency_package_runs_with_explicit_store_root() {
+        let root = build_fixture_root("pkg_dependency_run");
+        let app_root = root.join("app");
+        let pkg_root = root.join("pkg");
+
+        let run = run_fol_in_dir(
+            &app_root,
+            &[
+                "code",
+                "run",
+                "--package-store-root",
+                pkg_root
+                    .to_str()
+                    .expect("package-store fixture path should be valid utf-8"),
+            ],
+        );
+        assert!(
+            run.status.success(),
+            "pkg run fixture should run with an explicit package-store root: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&run.stdout).contains("ran "),
+            "pkg run fixture should report a run summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+    }
+
+    #[test]
     #[ignore = "requires network access to github.com"]
     fn test_frontend_fetches_public_logtiny_from_github() {
         let temp_root = unique_temp_root("frontend_fetch_public_logtiny");
