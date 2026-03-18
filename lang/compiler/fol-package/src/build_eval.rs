@@ -1182,7 +1182,12 @@ fn parse_build_graph_method_ast(
             };
             extracted.operations.push(BuildEvaluationOperation {
                 origin,
-                kind: BuildEvaluationOperationKind::Dependency(DependencyRequest { alias, package }),
+                kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
+                    alias,
+                    package,
+                    evaluation_mode: None,
+                    surface: None,
+                }),
             });
             Ok(None)
         }
@@ -2389,6 +2394,8 @@ mod tests {
                     kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
                         alias: "logtiny".to_string(),
                         package: "org/logtiny".to_string(),
+                        evaluation_mode: None,
+                        surface: None,
                     }),
                 },
             ],

@@ -1,6 +1,7 @@
 use crate::build_dependency::{
-    DependencyArtifactSurfaceSet, DependencyBuildHandle, DependencyGeneratedOutputSurfaceSet,
-    DependencyModuleSurfaceSet, DependencyStepSurfaceSet,
+    DependencyArtifactSurfaceSet, DependencyBuildEvaluationMode, DependencyBuildHandle,
+    DependencyBuildSurface, DependencyGeneratedOutputSurfaceSet, DependencyModuleSurfaceSet,
+    DependencyStepSurfaceSet,
 };
 use crate::build_codegen::{CodegenRequest, GeneratedFileInstallProjection, SystemToolRequest};
 use crate::build_graph::BuildGraph;
@@ -258,6 +259,8 @@ pub struct GeneratedFileHandle {
 pub struct DependencyRequest {
     pub alias: String,
     pub package: String,
+    pub evaluation_mode: Option<DependencyBuildEvaluationMode>,
+    pub surface: Option<DependencyBuildSurface>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -265,6 +268,7 @@ pub struct DependencyHandle {
     pub alias: String,
     pub package: String,
     pub root_module_id: crate::build_graph::BuildModuleId,
+    pub evaluation_mode: Option<DependencyBuildEvaluationMode>,
     pub build: DependencyBuildHandle,
     pub modules: DependencyModuleSurfaceSet,
     pub artifacts: DependencyArtifactSurfaceSet,
@@ -558,6 +562,8 @@ impl<'a> BuildApi<'a> {
         validate_build_name(&request.alias).map_err(BuildApiError::InvalidName)?;
         let alias = request.alias;
         let package = request.package;
+        let evaluation_mode = request.evaluation_mode;
+        let surface = request.surface;
         let module_id = self.graph.add_module(
             crate::build_graph::BuildModuleKind::Imported,
             format!("{alias}:{package}"),
@@ -566,14 +572,35 @@ impl<'a> BuildApi<'a> {
             alias: alias.clone(),
             package: package.clone(),
             root_module_id: module_id,
+            evaluation_mode,
             build: DependencyBuildHandle {
                 alias,
                 package,
             },
-            modules: DependencyModuleSurfaceSet::default(),
-            artifacts: DependencyArtifactSurfaceSet::default(),
-            steps: DependencyStepSurfaceSet::default(),
-            generated_outputs: DependencyGeneratedOutputSurfaceSet::default(),
+            modules: surface
+                .as_ref()
+                .map(|surface| DependencyModuleSurfaceSet {
+                    modules: surface.modules.clone(),
+                })
+                .unwrap_or_default(),
+            artifacts: surface
+                .as_ref()
+                .map(|surface| DependencyArtifactSurfaceSet {
+                    artifacts: surface.artifacts.clone(),
+                })
+                .unwrap_or_default(),
+            steps: surface
+                .as_ref()
+                .map(|surface| DependencyStepSurfaceSet {
+                    steps: surface.steps.clone(),
+                })
+                .unwrap_or_default(),
+            generated_outputs: surface
+                .as_ref()
+                .map(|surface| DependencyGeneratedOutputSurfaceSet {
+                    generated_outputs: surface.generated_outputs.clone(),
+                })
+                .unwrap_or_default(),
         })
     }
 }
@@ -590,6 +617,10 @@ mod tests {
     };
     use crate::build_codegen::{
         CodegenKind, CodegenRequest, GeneratedFileInstallProjection, SystemToolRequest,
+    };
+    use crate::build_dependency::{
+        DependencyArtifactSurface, DependencyBuildEvaluationMode, DependencyBuildSurface,
+        DependencyGeneratedOutputSurface, DependencyModuleSurface, DependencyStepSurface,
     };
     use crate::build_graph::BuildGraph;
     use crate::build_graph::{
@@ -929,20 +960,45 @@ mod tests {
             .dependency(DependencyRequest {
                 alias: "logtiny".to_string(),
                 package: "org/logtiny".to_string(),
+                evaluation_mode: Some(DependencyBuildEvaluationMode::Lazy),
+                surface: Some(DependencyBuildSurface {
+                    alias: "logtiny".to_string(),
+                    modules: vec![DependencyModuleSurface {
+                        name: "root".to_string(),
+                        source_namespace: "logtiny::src".to_string(),
+                    }],
+                    source_roots: Vec::new(),
+                    artifacts: vec![DependencyArtifactSurface {
+                        name: "logtiny".to_string(),
+                        artifact_kind: "static-lib".to_string(),
+                    }],
+                    steps: vec![DependencyStepSurface {
+                        name: "check".to_string(),
+                        step_kind: "check".to_string(),
+                    }],
+                    generated_outputs: vec![DependencyGeneratedOutputSurface {
+                        name: "bindings".to_string(),
+                        relative_path: "gen/bindings.fol".to_string(),
+                    }],
+                }),
             })
             .expect("valid dependency request should succeed");
 
         assert_eq!(dependency.alias, "logtiny");
         assert_eq!(dependency.package, "org/logtiny");
+        assert_eq!(
+            dependency.evaluation_mode,
+            Some(DependencyBuildEvaluationMode::Lazy)
+        );
         assert_eq!(api.graph().modules()[0].id, dependency.root_module_id);
         assert_eq!(api.graph().modules()[0].kind, BuildModuleKind::Imported);
         assert_eq!(api.graph().modules()[0].name, "logtiny:org/logtiny");
         assert_eq!(dependency.build.alias, "logtiny");
         assert_eq!(dependency.build.package, "org/logtiny");
-        assert!(dependency.modules.modules.is_empty());
-        assert!(dependency.artifacts.artifacts.is_empty());
-        assert!(dependency.steps.steps.is_empty());
-        assert!(dependency.generated_outputs.generated_outputs.is_empty());
+        assert_eq!(dependency.modules.modules.len(), 1);
+        assert_eq!(dependency.artifacts.artifacts.len(), 1);
+        assert_eq!(dependency.steps.steps.len(), 1);
+        assert_eq!(dependency.generated_outputs.generated_outputs.len(), 1);
     }
 
     #[test]

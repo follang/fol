@@ -661,7 +661,7 @@ Round 1 slice tracker:
   dependency build surfaces.
 - [x] Slice 2. Add shared dependency surface lookup helpers and evaluation-mode
   parsing utilities.
-- [ ] Slice 3. Extend dependency API requests/handles with semantic surface and
+- [x] Slice 3. Extend dependency API requests/handles with semantic surface and
   evaluation-mode metadata.
 - [ ] Slice 4. Extend the semantic build stdlib/runtime models with dependency
   surface query method signatures and runtime value kinds.
