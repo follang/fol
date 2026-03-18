@@ -749,7 +749,7 @@ Round 1 slice tracker:
   rules.
 - [x] Slice 2. Add `PackageBuildMode` helpers that expose semantic and
   compatibility participation directly.
-- [ ] Slice 3. Add a shared `parse_package_build_mode(...)` helper so callers do
+- [x] Slice 3. Add a shared `parse_package_build_mode(...)` helper so callers do
   not re-scan raw build source to classify workflow mode.
 - [ ] Slice 4. Remove frontend raw-source build-entry detection and classify
   workspace members from semantic package build parsing only.

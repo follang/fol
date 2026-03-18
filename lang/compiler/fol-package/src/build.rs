@@ -163,6 +163,10 @@ pub fn parse_package_build(path: &Path) -> Result<PackageBuildDefinition, Packag
     Ok(build)
 }
 
+pub fn parse_package_build_mode(path: &Path) -> Result<PackageBuildMode, PackageError> {
+    parse_package_build(path).map(|build| build.mode())
+}
+
 fn build_parse_error(
     path: &Path,
     errors: Vec<Box<dyn fol_types::Glitch>>,
@@ -463,9 +467,9 @@ fn build_item_error(
 mod tests {
     use super::{
         classify_semantic_build_mode, extract_package_build_definition,
-        extract_package_build_definition_from_source_fallback, parse_package_build, BuildDependency,
-        BuildExport, PackageBuildCompatibility, PackageBuildDefinition, PackageBuildMode,
-        PackageNativeArtifact, PackageNativeArtifactKind,
+        extract_package_build_definition_from_source_fallback, parse_package_build,
+        parse_package_build_mode, BuildDependency, BuildExport, PackageBuildCompatibility,
+        PackageBuildDefinition, PackageBuildMode, PackageNativeArtifact, PackageNativeArtifactKind,
     };
     use crate::{PackageErrorKind, PackageLocator};
     use fol_parser::ast::AstParser;
@@ -1042,6 +1046,29 @@ mod tests {
         assert_eq!(build.dependencies().len(), 1);
         assert_eq!(build.exports().len(), 1);
         assert_eq!(build.mode(), PackageBuildMode::Hybrid);
+
+        fs::remove_dir_all(&temp_root)
+            .expect("Temporary build fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn shared_build_mode_parser_returns_classified_mode() {
+        let temp_root = unique_temp_root("build_mode_parser");
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(
+            &build_path,
+            concat!(
+                "def root: loc = \"src\";\n",
+                "def build(graph: int): int = graph;\n",
+            ),
+        )
+        .expect("Should write the build mode parser fixture");
+
+        let mode = parse_package_build_mode(&build_path)
+            .expect("Shared build mode parser should classify hybrid build files");
+
+        assert_eq!(mode, PackageBuildMode::Hybrid);
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary build fixture root should be removable after the test");
