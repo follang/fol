@@ -675,7 +675,7 @@ Round 1 slice tracker:
   outputs in real build code.
 - [x] Slice 9. Add regressions proving dependency surfaces are consumable
   through semantic build evaluation.
-- [ ] Slice 10. Re-export, test, and lock the full Phase 10 dependency-surface
+- [x] Slice 10. Re-export, test, and lock the full Phase 10 dependency-surface
   round.
 
 ## Phase 11: Generated Files, Tools, And Native Inputs

@@ -98,7 +98,8 @@ pub use build_option::{
     StandardTargetDeclaration, UserOptionDeclaration,
 };
 pub use build_runtime::{
-    find_record_field, BuildExecutionRepresentation, BuildRuntimeDiagnostic,
+    find_record_field, BuildExecutionRepresentation, BuildRuntimeDependency,
+    BuildRuntimeDependencyQuery, BuildRuntimeDependencyQueryKind, BuildRuntimeDiagnostic,
     BuildRuntimeDiagnosticKind, BuildRuntimeExpr, BuildRuntimeFrame, BuildRuntimeHandle,
     BuildRuntimeHandleKind, BuildRuntimeLocalId, BuildRuntimeMethodCall, BuildRuntimeProgram,
     BuildRuntimeReceiverKind, BuildRuntimeRecordField, BuildRuntimeStmt, BuildRuntimeValue,
@@ -399,6 +400,49 @@ mod tests {
             .iter()
             .any(|binding| binding.step_name == "run"));
         assert_eq!(evaluated.result.graph.artifacts().len(), 1);
+    }
+
+    #[test]
+    fn crate_root_reexports_phase_ten_dependency_surface() {
+        let source = concat!(
+            "def build(graph: Graph): Graph = {\n",
+            "    var dep = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"lazy\" });\n",
+            "    var module = dep.module(\"root\");\n",
+            "    var artifact = dep.artifact(\"corelib\");\n",
+            "    var step = dep.step(\"check\");\n",
+            "    var generated = dep.generated(\"bindings\");\n",
+            "    return graph\n",
+            "}\n",
+        );
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, source)
+            .expect("crate root dependency evaluation should succeed")
+            .expect("crate root dependency evaluation should produce a graph");
+        let query_kinds = evaluated
+            .evaluated
+            .dependency_queries
+            .iter()
+            .map(|query| query.kind)
+            .collect::<Vec<_>>();
+
+        assert_eq!(evaluated.evaluated.dependencies.len(), 1);
+        assert_eq!(
+            evaluated.evaluated.dependencies[0].evaluation_mode,
+            Some(DependencyBuildEvaluationMode::Lazy)
+        );
+        assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Module));
+        assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Artifact));
+        assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Step));
+        assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::GeneratedOutput));
     }
 
     #[test]
