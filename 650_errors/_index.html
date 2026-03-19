@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-26cdcf2c.js";
+            window.path_to_searchindex_js = "../searchindex-28302f77.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e2f4f3cc.js"></script>
@@ -191,20 +191,23 @@ errors that can be propagated or handled, typically associated with <code>report
 <li>how the current compiler reports syntax, package, and resolver failures</li>
 </ul>
 <h2 id="current-compiler-diagnostics"><a class="header" href="#current-compiler-diagnostics">Current compiler diagnostics</a></h2>
-<p>The current compiler surface already guarantees a few reporting behaviors across
+<p>The current compiler surface guarantees the following reporting behaviors across
 the active parser/package/resolver/typecheck/lower/backend chain:</p>
 <ul>
-<li>parser, package-loading, resolver, typecheck, and lowering failures keep exact primary
-<code>file:line:column</code> locations</li>
+<li>every diagnostic carries a stable code shown in brackets (e.g. <code>error[R1003]:</code>)</li>
+<li>all failures keep exact primary <code>file:line:column</code> locations</li>
 <li>human-readable diagnostics render source snippets and underline the primary span</li>
-<li>related sites such as duplicate declarations or ambiguity candidates can appear
+<li>related sites such as duplicate declarations or ambiguity candidates appear
 as secondary labels</li>
 <li>JSON diagnostics preserve the same structured information with labels, notes,
 helps, and stable producer-owned diagnostic codes</li>
+<li>the parser recovers after failed declarations instead of cascading errors</li>
+<li>duplicate diagnostics on the same line are suppressed, with a hard cap at 50</li>
+<li>LSP diagnostics are deduplicated by line and code before reaching the editor</li>
 </ul>
 <p>The exact wording of messages is still implementation detail, but the current
-compiler contract is that locations and structured diagnostic shape are stable
-enough to build tests and tooling around them.</p>
+compiler contract is that locations, codes, and structured diagnostic shape are
+stable enough to build tests and tooling around them.</p>
 <p>For the detailed compiler-facing reporting model, see
 <a href="/docs/spec/errors/300_diagnostics">Compiler Diagnostics</a>.</p>
 

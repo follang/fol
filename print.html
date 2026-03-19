@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-26cdcf2c.js";
+            window.path_to_searchindex_js = "searchindex-28302f77.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-e2f4f3cc.js"></script>
@@ -788,8 +788,11 @@ Tree-sitter alone.</p>
 <h2 id="diagnostics"><a class="header" href="#diagnostics">Diagnostics</a></h2>
 <p>Compiler diagnostics remain canonical.</p>
 <p>The server adapts them into LSP diagnostics for the currently open document.</p>
-<p>This is why CLI compiler failures and editor diagnostics should stay aligned in
-message quality and meaning.</p>
+<p>LSP diagnostics include the diagnostic code in the message (e.g.
+<code>[R1003] could not resolve name 'answer'</code>) so editors display the code inline.</p>
+<p>The server deduplicates diagnostics by <code>(line, code)</code> before publishing. This
+means a parse cascade that produces many identical errors on the same line will
+show at most one diagnostic per line per code in the editor.</p>
 <h2 id="expected-behavior"><a class="header" href="#expected-behavior">Expected Behavior</a></h2>
 <p>If the LSP client is attached correctly, you should expect:</p>
 <ul>
@@ -1772,7 +1775,7 @@ BK_SELF            `self`
 
 BK_BREAK           `break`
 BK_RETURN          `return`
-BK_YEILD           `yeild`
+BK_YEILD           `yield`
 BK_PANIC           `panic`
 BK_REPORT          `report`
 BK_CHECK           `check`
@@ -3847,11 +3850,11 @@ fun[] add2(): {fun (x: int): int} = {
 </code></pre>
 <h3 id="generators"><a class="header" href="#generators">Generators</a></h3>
 <p>A generator is very similar to a function that returns an array, in that a generator has parameters, can be called, and generates a sequence of values. However, instead of building an array containing all the values and returning them all at once, a generator yields the values one at a time, which requires less memory and allows the caller to get started processing the first few values immediately. In short, a generator looks like a function but behaves like an iterator.</p>
-<p>For a function to be a generator (thus to make the keyword <code>yeild</code> accesable), it needs to return a type of container: <code>arr, vec, seq, mat</code> but not <code>set, any</code>.</p>
+<p>For a function to be a generator (thus to make the keyword <code>yield</code> accesable), it needs to return a type of container: <code>arr, vec, seq, mat</code> but not <code>set, any</code>.</p>
 <pre><code>fun someIter: vec[int] = {
     var curInt = 0;
     loop(){
-        yeild curInt.inc(1)
+        yield curInt.inc(1)
     }
 }
 </code></pre>
@@ -4122,7 +4125,7 @@ pro main: int = {
 
 fun (str)to_array(): vec[chr] = {
     loop(x in self){
-        yeild x; 
+        yield x; 
     }
 }
 
@@ -4824,20 +4827,23 @@ errors that can be propagated or handled, typically associated with <code>report
 <li>how the current compiler reports syntax, package, and resolver failures</li>
 </ul>
 <h2 id="current-compiler-diagnostics"><a class="header" href="#current-compiler-diagnostics">Current compiler diagnostics</a></h2>
-<p>The current compiler surface already guarantees a few reporting behaviors across
+<p>The current compiler surface guarantees the following reporting behaviors across
 the active parser/package/resolver/typecheck/lower/backend chain:</p>
 <ul>
-<li>parser, package-loading, resolver, typecheck, and lowering failures keep exact primary
-<code>file:line:column</code> locations</li>
+<li>every diagnostic carries a stable code shown in brackets (e.g. <code>error[R1003]:</code>)</li>
+<li>all failures keep exact primary <code>file:line:column</code> locations</li>
 <li>human-readable diagnostics render source snippets and underline the primary span</li>
-<li>related sites such as duplicate declarations or ambiguity candidates can appear
+<li>related sites such as duplicate declarations or ambiguity candidates appear
 as secondary labels</li>
 <li>JSON diagnostics preserve the same structured information with labels, notes,
 helps, and stable producer-owned diagnostic codes</li>
+<li>the parser recovers after failed declarations instead of cascading errors</li>
+<li>duplicate diagnostics on the same line are suppressed, with a hard cap at 50</li>
+<li>LSP diagnostics are deduplicated by line and code before reaching the editor</li>
 </ul>
 <p>The exact wording of messages is still implementation detail, but the current
-compiler contract is that locations and structured diagnostic shape are stable
-enough to build tests and tooling around them.</p>
+compiler contract is that locations, codes, and structured diagnostic shape are
+stable enough to build tests and tooling around them.</p>
 <p>For the detailed compiler-facing reporting model, see
 <a href="/docs/spec/errors/300_diagnostics">Compiler Diagnostics</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -5090,15 +5096,43 @@ human renderer</li>
 <ul>
 <li>severity</li>
 <li>main message</li>
+<li>a stable diagnostic code (e.g. <code>P1001</code>, <code>R1003</code>, <code>T1003</code>)</li>
 <li>one primary location</li>
 <li>zero or more related locations</li>
 <li>notes</li>
 <li>helps</li>
 <li>suggestions</li>
-<li>a stable producer-owned code in the structured model</li>
 </ul>
 <p>The current compiler mostly emits <code>Error</code>, but the reporting layer also supports
 <code>Warning</code> and <code>Info</code>.</p>
+<h2 id="diagnostic-codes"><a class="header" href="#diagnostic-codes">Diagnostic codes</a></h2>
+<p>Every diagnostic carries a stable producer-owned code. The code identifies the
+error family and specific failure without relying on message text.</p>
+<p>Current code families:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Prefix</th><th>Producer</th><th>Examples</th></tr>
+</thead>
+<tbody>
+<tr><td><code>P1xxx</code></td><td>parser</td><td><code>P1001</code> syntax, <code>P1002</code> file root</td></tr>
+<tr><td><code>K1xxx</code></td><td>package loading</td><td><code>K1001</code> metadata, <code>K1002</code> layout</td></tr>
+<tr><td><code>R1xxx</code></td><td>resolver</td><td><code>R1003</code> unresolved, <code>R1005</code> ambiguous</td></tr>
+<tr><td><code>T1xxx</code></td><td>type checker</td><td><code>T1003</code> type mismatch</td></tr>
+<tr><td><code>L1xxx</code></td><td>lowering</td><td><code>L1001</code> unsupported surface</td></tr>
+<tr><td><code>K11xx</code></td><td>build evaluator</td><td><code>K1101</code> build failure</td></tr>
+</tbody>
+</table>
+</div>
+<p>Codes are structurally assigned. The parser carries an explicit <code>ParseErrorKind</code>
+field on each error rather than deriving the code from message text. This means
+message wording can change without breaking code identity.</p>
+<p>Human output shows codes in brackets:</p>
+<pre><code class="language-text">error[R1003]: could not resolve name 'answer'
+</code></pre>
+<p>JSON output includes the code as a top-level field:</p>
+<pre><code class="language-json">{ "code": "R1003", "message": "could not resolve name 'answer'" }
+</code></pre>
 <h2 id="primary-location"><a class="header" href="#primary-location">Primary location</a></h2>
 <p>The most important part of a diagnostic is its primary location.</p>
 <p>That location is currently expressed as:</p>
@@ -5110,6 +5144,9 @@ human renderer</li>
 </ul>
 <p>This is what allows the compiler to point at the exact token or source span that
 caused the failure.</p>
+<p>Every diagnostic now carries a real location. Parser errors that previously
+lacked locations (safety-bound overflows, constraint violations like duplicate
+parameter names) now extract file/line/column from the current token position.</p>
 <p>Typical examples:</p>
 <ul>
 <li>a parser error at the token that made a declaration invalid</li>
@@ -5147,11 +5184,33 @@ express one</li>
 </ul>
 <p>This split matters because tooling and tests can preserve structure instead of
 trying to parse intent back out of prose.</p>
+<h2 id="error-recovery"><a class="header" href="#error-recovery">Error recovery</a></h2>
+<p>The parser implements error recovery so that a single syntax mistake does not
+cascade into dozens of unrelated errors.</p>
+<p>When a declaration parse fails, the parser calls <code>sync_to_next_declaration</code> to
+skip forward to the next declaration-start keyword (<code>fun</code>, <code>var</code>, <code>def</code>, <code>typ</code>,
+<code>pro</code>, <code>log</code>, <code>seg</code>, <code>ali</code>, <code>imp</code>, <code>lab</code>, <code>con</code>, <code>use</code>) or EOF. This means:</p>
+<ul>
+<li><code>fun[exp] emit(...) = { ... }</code> produces exactly 1 error, not 20+</li>
+<li>two broken declarations separated by a good one produce 2 errors, and the
+good declaration still parses correctly</li>
+</ul>
+<h2 id="cascade-suppression"><a class="header" href="#cascade-suppression">Cascade suppression</a></h2>
+<p>Even with parser recovery, edge cases in any pipeline stage can cascade.</p>
+<p>The diagnostic report layer applies two safety nets:</p>
+<ul>
+<li><strong>same-code, same-line dedup</strong>: if the most recently added diagnostic has the
+same code and same line as a new one, the new one is suppressed</li>
+<li><strong>hard cap</strong>: the report accepts at most 50 diagnostics total and shows
+“(output truncated)” when the limit is reached</li>
+</ul>
+<p>These limits prevent walls of identical errors without hiding genuinely distinct
+failures.</p>
 <h2 id="human-readable-diagnostics"><a class="header" href="#human-readable-diagnostics">Human-readable diagnostics</a></h2>
 <p>By default the CLI prints human-readable diagnostics.</p>
 <p>The current renderer is designed around:</p>
 <ul>
-<li>a severity-prefixed message</li>
+<li>a severity prefix with a diagnostic code bracket (e.g. <code>error[R1003]:</code>)</li>
 <li>an arrow line with <code>file:line:column</code></li>
 <li>a source snippet when the file and line can be loaded</li>
 <li>an underline for the primary span</li>
@@ -5159,7 +5218,7 @@ trying to parse intent back out of prose.</p>
 <li>note/help lines after the main snippet</li>
 </ul>
 <p>Illustrative shape:</p>
-<pre><code class="language-text">error: could not resolve name `answer`
+<pre><code class="language-text">error[R1003]: could not resolve name 'answer'
   --&gt; app/main.fol:3:12
     |
   3 |     return answer
@@ -5167,14 +5226,9 @@ trying to parse intent back out of prose.</p>
   note: no visible declaration with that name was found in the current scope chain
   help: check imports or declare the name before use
 </code></pre>
-<p>This example is intentionally illustrative.</p>
-<p>The current contract is about the information that survives:</p>
-<ul>
-<li>exact primary location</li>
-<li>snippet-oriented rendering when source is available</li>
-<li>related labels, notes, and helps</li>
-</ul>
-<p>The exact wording and final formatting details can still evolve.</p>
+<p>Messages are clean human-readable text. The compiler does not prepend internal
+kind labels like <code>ResolverUnresolvedName:</code> to messages. The diagnostic code in
+brackets is the stable identifier.</p>
 <h2 id="source-fallbacks"><a class="header" href="#source-fallbacks">Source fallbacks</a></h2>
 <p>Sometimes the compiler knows the location but cannot render the source line
 itself.</p>
@@ -5217,8 +5271,8 @@ diagnostic model.</p>
 <p>Illustrative shape:</p>
 <pre><code class="language-json">{
   "severity": "Error",
-  "code": "R2001",
-  "message": "could not resolve name `answer`",
+  "code": "R1003",
+  "message": "could not resolve name 'answer'",
   "location": {
     "file": "app/main.fol",
     "line": 3,
@@ -5256,10 +5310,12 @@ structured fields are first-class rather than reverse-engineered from text.</p>
 <li>resolver</li>
 <li>type checking</li>
 <li>lowering</li>
+<li>build evaluator</li>
+<li>backend</li>
 </ul>
 <p>That means diagnostics are already strong across:</p>
 <ul>
-<li>syntax errors</li>
+<li>syntax errors (with error recovery so cascades are contained)</li>
 <li>package metadata and package-root errors</li>
 <li>import-loading failures</li>
 <li>unresolved names</li>
@@ -5269,6 +5325,7 @@ structured fields are first-class rather than reverse-engineered from text.</p>
 <li>unsupported lowered <code>V1</code> surfaces before target emission</li>
 <li>backend emission and build failures when lowered <code>V1</code> workspaces cannot become
 runnable artifacts</li>
+<li>build graph evaluation failures</li>
 </ul>
 <p>This is the important boundary for the current compiler stage:</p>
 <ul>
@@ -5280,18 +5337,6 @@ emission/build failures</li>
 subset, while later targets, optimizations, and C ABI work remain outside
 this chapter</li>
 </ul>
-<h2 id="stable-codes"><a class="header" href="#stable-codes">Stable codes</a></h2>
-<p>The current diagnostics model carries stable producer-owned codes.</p>
-<p>The important idea is not the exact prefix letters.
-The important idea is ownership and stability:</p>
-<ul>
-<li>parser owns parser-family codes</li>
-<li>package loading owns package-family codes</li>
-<li>resolver owns resolver-family codes</li>
-<li>future semantic phases will own their own families as well</li>
-</ul>
-<p>This is better than deriving codes from free-form message text, because message
-wording can change without breaking code identity.</p>
 <h2 id="what-diagnostics-do-not-guarantee"><a class="header" href="#what-diagnostics-do-not-guarantee">What diagnostics do not guarantee</a></h2>
 <p>Diagnostics are strong, but they are not a substitute for the later semantic
 phases.</p>
@@ -5305,8 +5350,8 @@ phases.</p>
 </ul>
 <p>So the current guarantee is:</p>
 <ul>
-<li>if stream, lexer, parser, package loading, or resolver can identify the
-problem now, diagnostics should be structured and exact</li>
+<li>if stream, lexer, parser, package loading, resolver, typechecker, or lowering
+can identify the problem now, diagnostics should be structured and exact</li>
 </ul>
 <p>But not:</p>
 <ul>
@@ -5315,7 +5360,8 @@ problem now, diagnostics should be structured and exact</li>
 <h2 id="practical-rule-of-thumb"><a class="header" href="#practical-rule-of-thumb">Practical rule of thumb</a></h2>
 <p>When reading compiler output, think in this order:</p>
 <ol>
-<li>trust the primary location first</li>
+<li>look at the diagnostic code in brackets to identify the error family</li>
+<li>trust the primary location</li>
 <li>use related labels to understand competing or earlier sites</li>
 <li>read notes for technical context</li>
 <li>read helps for the most actionable next step</li>

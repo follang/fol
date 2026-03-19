@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-26cdcf2c.js";
+            window.path_to_searchindex_js = "../searchindex-28302f77.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e2f4f3cc.js"></script>
@@ -208,8 +208,11 @@ Tree-sitter alone.</p>
 <h2 id="diagnostics"><a class="header" href="#diagnostics">Diagnostics</a></h2>
 <p>Compiler diagnostics remain canonical.</p>
 <p>The server adapts them into LSP diagnostics for the currently open document.</p>
-<p>This is why CLI compiler failures and editor diagnostics should stay aligned in
-message quality and meaning.</p>
+<p>LSP diagnostics include the diagnostic code in the message (e.g.
+<code>[R1003] could not resolve name 'answer'</code>) so editors display the code inline.</p>
+<p>The server deduplicates diagnostics by <code>(line, code)</code> before publishing. This
+means a parse cascade that produces many identical errors on the same line will
+show at most one diagnostic per line per code in the editor.</p>
 <h2 id="expected-behavior"><a class="header" href="#expected-behavior">Expected Behavior</a></h2>
 <p>If the LSP client is attached correctly, you should expect:</p>
 <ul>
