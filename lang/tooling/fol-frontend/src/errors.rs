@@ -20,6 +20,16 @@ impl FrontendErrorKind {
             Self::Internal => "FrontendInternal",
         }
     }
+
+    pub fn diagnostic_code(self) -> &'static str {
+        match self {
+            Self::InvalidInput => "F1001",
+            Self::WorkspaceNotFound => "F1002",
+            Self::PackageFailed => "F1003",
+            Self::CommandFailed => "F1004",
+            Self::Internal => "F1099",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -81,6 +91,17 @@ impl fmt::Display for FrontendError {
 
 impl std::error::Error for FrontendError {}
 
+impl ToDiagnostic for FrontendError {
+    fn to_diagnostic(&self) -> Diagnostic {
+        let mut diagnostic =
+            Diagnostic::error(self.kind.diagnostic_code(), self.message.clone());
+        for note in &self.notes {
+            diagnostic = diagnostic.with_note(note.clone());
+        }
+        diagnostic
+    }
+}
+
 pub type FrontendResult<T> = Result<T, FrontendError>;
 
 impl From<std::io::Error> for FrontendError {
@@ -134,5 +155,28 @@ mod tests {
                 "run `fol work info`".to_string()
             ]
         );
+    }
+
+    #[test]
+    fn frontend_error_to_diagnostic_carries_stable_code() {
+        use fol_diagnostics::ToDiagnostic;
+
+        let error = FrontendError::new(FrontendErrorKind::WorkspaceNotFound, "missing root")
+            .with_note("check your working directory");
+
+        let diagnostic = error.to_diagnostic();
+
+        assert_eq!(diagnostic.code.as_str(), "F1002");
+        assert_eq!(diagnostic.message, "missing root");
+        assert_eq!(diagnostic.notes, vec!["check your working directory".to_string()]);
+    }
+
+    #[test]
+    fn frontend_error_kind_diagnostic_codes_are_stable() {
+        assert_eq!(FrontendErrorKind::InvalidInput.diagnostic_code(), "F1001");
+        assert_eq!(FrontendErrorKind::WorkspaceNotFound.diagnostic_code(), "F1002");
+        assert_eq!(FrontendErrorKind::PackageFailed.diagnostic_code(), "F1003");
+        assert_eq!(FrontendErrorKind::CommandFailed.diagnostic_code(), "F1004");
+        assert_eq!(FrontendErrorKind::Internal.diagnostic_code(), "F1099");
     }
 }
