@@ -520,13 +520,13 @@ pub fn compile_member_workspace(
         prepared,
         resolver_config(workspace, config),
     )
-    .map_err(lower_resolver_errors)?;
+    .map_err(FrontendError::from_errors)?;
     let typed = fol_typecheck::Typechecker::new()
         .check_resolved_workspace(resolved)
-        .map_err(lower_typecheck_errors)?;
+        .map_err(FrontendError::from_errors)?;
     fol_lower::Lowerer::new()
         .lower_typed_workspace(typed)
-        .map_err(lower_lowering_errors)
+        .map_err(FrontendError::from_errors)
 }
 
 fn compile_member_workspace_targeted(
@@ -662,35 +662,3 @@ fn selected_workspace_members(
     }
 }
 
-fn lower_resolver_errors(errors: Vec<fol_resolver::ResolverError>) -> FrontendError {
-    FrontendError::new(
-        FrontendErrorKind::CommandFailed,
-        errors
-            .into_iter()
-            .map(|error| error.to_string())
-            .collect::<Vec<_>>()
-            .join("\n"),
-    )
-}
-
-fn lower_typecheck_errors(errors: Vec<fol_typecheck::TypecheckError>) -> FrontendError {
-    FrontendError::new(
-        FrontendErrorKind::CommandFailed,
-        errors
-            .into_iter()
-            .map(|error| error.to_string())
-            .collect::<Vec<_>>()
-            .join("\n"),
-    )
-}
-
-fn lower_lowering_errors(errors: Vec<fol_lower::LoweringError>) -> FrontendError {
-    FrontendError::new(
-        FrontendErrorKind::CommandFailed,
-        errors
-            .into_iter()
-            .map(|error| error.to_string())
-            .collect::<Vec<_>>()
-            .join("\n"),
-    )
-}

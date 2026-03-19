@@ -1,3 +1,4 @@
+use fol_diagnostics::{Diagnostic, ToDiagnostic};
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,6 +27,7 @@ pub struct FrontendError {
     kind: FrontendErrorKind,
     message: String,
     notes: Vec<String>,
+    diagnostics: Vec<Diagnostic>,
 }
 
 impl FrontendError {
@@ -34,6 +36,18 @@ impl FrontendError {
             kind,
             message: message.into(),
             notes: Vec::new(),
+            diagnostics: Vec::new(),
+        }
+    }
+
+    pub fn from_errors<E: ToDiagnostic>(errors: Vec<E>) -> Self {
+        let diagnostics: Vec<Diagnostic> = errors.iter().map(|e| e.to_diagnostic()).collect();
+        let message = format!("compilation failed with {} error(s)", diagnostics.len());
+        Self {
+            kind: FrontendErrorKind::CommandFailed,
+            message,
+            notes: Vec::new(),
+            diagnostics,
         }
     }
 
@@ -47,6 +61,10 @@ impl FrontendError {
 
     pub fn notes(&self) -> &[String] {
         &self.notes
+    }
+
+    pub fn diagnostics(&self) -> &[Diagnostic] {
+        &self.diagnostics
     }
 
     pub fn with_note(mut self, note: impl Into<String>) -> Self {
