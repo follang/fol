@@ -1,6 +1,6 @@
 use crate::lexer::stage0;
 use crate::point;
-use fol_types::{catch, error::*, Vod};
+use crate::{LexerError, Vod};
 use std::fmt;
 
 use crate::token::{
@@ -85,7 +85,7 @@ impl Element {
             self.alpha(code)?;
         } else {
             let msg = format!("{} {}", code.curr()?.0, "is not a recognized character");
-            return Err(catch!(Flaw::ReadingBadContent { msg: Some(msg) }));
+            return Err(LexerError::ReadingBadContent(msg));
         }
         Ok(())
     }
@@ -108,9 +108,9 @@ impl Element {
         if code.curr()?.0 == '*' {
             while !(code.curr()?.0 == '*' && code.peek(0)?.0 == '/') {
                 if is_eof(&code.peek(0)?.0) {
-                    return Err(catch!(Flaw::ReadingBadContent {
-                        msg: Some("unterminated block comment: '/*' has no matching '*/'".to_string())
-                    }));
+                    return Err(LexerError::ReadingBadContent(
+                        "unterminated block comment: '/*' has no matching '*/'".to_string(),
+                    ));
                 };
                 if code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR {
                     self.set_key(Illegal);

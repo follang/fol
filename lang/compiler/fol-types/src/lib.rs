@@ -2,10 +2,8 @@
 
 #[macro_use]
 pub mod r#mod;
-pub mod error;
 
 // Basic types
-pub use error::*;
 pub use r#mod::*;
 
 pub fn canonical_identifier_key(name: &str) -> String {

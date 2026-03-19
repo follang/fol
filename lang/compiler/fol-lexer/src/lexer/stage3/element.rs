@@ -2,7 +2,7 @@ use crate::lexer::stage2;
 use crate::point;
 use crate::token::{literal::LITERAL, void::VOID};
 use crate::token::{KEYWORD, KEYWORD::*};
-use fol_types::*;
+use crate::{LexerError, Vod};
 use std::fmt;
 
 // Stage 3 owns final disambiguation only.
@@ -159,13 +159,11 @@ impl Element {
             let mut elem = el.peek(0, false)?;
             elem.append(&el.peek(1, false)?);
             self.bump(el);
-            return Err(catch!(Typo::LexerSpaceAdd {
-                msg: Some(format!(
-                    "Expected {} but {} was given",
-                    KEYWORD::Void(VOID::Space),
-                    elem.key()
-                )),
-            }));
+            return Err(LexerError::LexerSpaceAdd(format!(
+                "Expected {} but {} was given",
+                KEYWORD::Void(VOID::Space),
+                elem.key()
+            )));
         }
         Ok(())
     }

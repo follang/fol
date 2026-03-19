@@ -114,7 +114,7 @@ impl AstParser {
             let token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(error) => {
-                    errors.push(error);
+                    errors.push(error.into());
                     break;
                 }
             };

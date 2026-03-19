@@ -2,7 +2,7 @@ use crate::lexer::stage1;
 use crate::point;
 use crate::token::{operator::OPERATOR, symbol::SYMBOL, void::VOID};
 use crate::token::{KEYWORD, KEYWORD::*};
-use fol_types::Vod;
+use crate::Vod;
 use std::fmt;
 
 // Stage 2 owns token folding and normalization only.
