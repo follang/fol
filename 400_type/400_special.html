@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-28302f77.js";
+            window.path_to_searchindex_js = "../searchindex-479cd81c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e2f4f3cc.js"></script>
@@ -208,8 +208,9 @@ Plain inference from <code>nil</code> alone is not supported.</p>
 <li>postfix unwrap <code>value!</code> applies to those shell values.</li>
 <li>routine calls declared with <code>ResultType / ErrorType</code> are not <code>err[...]</code>
 shells.</li>
-<li>use propagation, <code>check(...)</code>, or <code>expr || fallback</code> for those routine calls
-instead of <code>!</code>.</li>
+<li>use <code>check(...)</code> or <code>expr || fallback</code> for those routine calls instead of
+<code>!</code>.</li>
+<li>use <code>err[...]</code> when you need a storable error value.</li>
 </ul>
 
                     </main>

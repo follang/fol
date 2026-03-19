@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-28302f77.js";
+            window.path_to_searchindex_js = "../../searchindex-479cd81c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-e2f4f3cc.js"></script>
@@ -303,7 +303,8 @@ pro main: int = {
 <li><code>report expr</code> exits through that declared error path</li>
 <li>routine call results declared with <code>/ ErrorType</code> are not <code>err[...]</code> shell
 values</li>
-<li>use propagation, <code>check(...)</code>, or <code>expr || fallback</code> for those calls</li>
+<li>use <code>check(...)</code> or <code>expr || fallback</code> for those calls</li>
+<li>ordinary plain-value use of <code>/ ErrorType</code> calls is rejected</li>
 <li>keep postfix <code>!</code> for <code>opt[...]</code> and <code>err[...]</code> shell values</li>
 </ul>
 <p>{{% /notice %}}</p>
@@ -318,8 +319,8 @@ values</li>
     report "missing path"
 }
 </code></pre>
-<p>and are handled at the call site with propagation, <code>check(...)</code>, or <code>||</code>
-rather than shell unwrap.</p>
+<p>and are handled at the call site with <code>check(...)</code> or <code>||</code> rather than shell
+unwrap or plain propagation.</p>
 <p>Current intrinsic note:</p>
 <ul>
 <li><code>.echo(...)</code> is a dot-root diagnostic intrinsic</li>

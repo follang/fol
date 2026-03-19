@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-28302f77.js";
+            window.path_to_searchindex_js = "../searchindex-479cd81c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e2f4f3cc.js"></script>
@@ -208,7 +208,6 @@ model.</p>
 main error-handling tool.</p>
 <p>Instead, the implemented recoverable-call surfaces are:</p>
 <ul>
-<li>propagation through a compatible surrounding routine</li>
 <li><code>check(expr)</code></li>
 <li><code>expr || fallback</code></li>
 </ul>
@@ -266,13 +265,8 @@ fun must_succeed(path: str): int = {
 <p>The current compiler does not claim that plain <code>|</code> automatically forwards both
 the success value and the error to the next stage.</p>
 <p>That older description is too broad for the current implementation.</p>
-<p>For recoverable calls in <code>V1</code>, use:</p>
-<ul>
-<li>propagation</li>
-<li><code>check(expr)</code></li>
-<li><code>expr || fallback</code></li>
-</ul>
-<p>and treat ordinary <code>|</code> as value piping rather than the main recoverable-error
+<p>For recoverable calls in <code>V1</code>, use <code>check(expr)</code> or <code>expr || fallback</code>, and
+treat ordinary <code>|</code> as value piping rather than the main recoverable-error
 mechanism.</p>
 
                     </main>

@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-28302f77.js";
+            window.path_to_searchindex_js = "../../searchindex-479cd81c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-e2f4f3cc.js"></script>
@@ -194,7 +194,8 @@
 <li>a function declared as <code>fun[] read(...): T / E</code> does not return an <code>err[E]</code>
 shell value</li>
 <li>it returns through a recoverable routine error path</li>
-<li>handle that path with propagation, <code>check(...)</code>, or <code>expr || fallback</code></li>
+<li>handle that path immediately with <code>check(...)</code> or <code>expr || fallback</code></li>
+<li>plain assignment, return, and ordinary expression use are rejected</li>
 <li>postfix <code>!</code> stays reserved for <code>opt[...]</code> and <code>err[...]</code> shell values
 {{% notice warn %}}</li>
 </ul>

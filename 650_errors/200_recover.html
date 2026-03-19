@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-28302f77.js";
+            window.path_to_searchindex_js = "../searchindex-479cd81c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-e2f4f3cc.js"></script>
@@ -175,91 +175,58 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="recoverable-errors"><a class="header" href="#recoverable-errors">Recoverable errors</a></h1>
-<p>Recoverable errors are part of the current <code>V1</code> compiler contract.</p>
-<p>FOL routines may declare both:</p>
+<p>Recoverable errors are part of the current <code>V1</code> language contract, but they are
+split into two different surfaces:</p>
 <ul>
-<li>a success type</li>
-<li>an error type</li>
+<li><code>T / E</code> for routine-call handling</li>
+<li><code>err[...]</code> for normal storable values</li>
 </ul>
-<p>The current signature form is:</p>
-<pre><code class="language-fol">fun load(path: str): int / str = { ... }
+<p>Those are intentionally not the same thing.</p>
+<h2 id="t--e-is-immediate-call-site-handling"><a class="header" href="#t--e-is-immediate-call-site-handling"><code>T / E</code> is immediate call-site handling</a></h2>
+<p>Use <code>/ ErrorType</code> after the success type:</p>
+<pre><code class="language-fol">fun read_code(path: str): int / str = {
+    when(path == "") {
+        case(true) { report "missing path" }
+        * { return 7 }
+    }
+}
 </code></pre>
 <p>This means:</p>
 <ul>
-<li>successful execution yields <code>int</code></li>
-<li>failure yields <code>str</code></li>
-<li><code>report expr</code> exits through the routine’s error path</li>
+<li>success yields <code>int</code></li>
+<li><code>report expr</code> exits through the routine error path with <code>str</code></li>
+<li>the call result is not a storable plain value</li>
 </ul>
-<h2 id="declaring-error-aware-routines"><a class="header" href="#declaring-error-aware-routines">Declaring error-aware routines</a></h2>
-<p>Use <code>/ ErrorType</code> after the success type:</p>
-<pre><code class="language-fol">fun load(path: str): int / str = {
-    when(path == "") {
-        case(true) { report "empty path" }
-        * { return 1 }
-    }
+<p><code>report expr</code> must match the declared error type:</p>
+<pre><code class="language-fol">fun read_code(path: str): int / str = {
+    report "missing path"
 }
 </code></pre>
-<p><code>report expr</code> must produce a value compatible with the declared <code>ErrorType</code>.</p>
-<p>This is checked by the current compiler. The following is invalid:</p>
-<pre><code class="language-fol">fun load(path: str): int / str = {
+<p>The following is invalid because the reported value is the wrong type:</p>
+<pre><code class="language-fol">fun read_code(path: str): int / str = {
     report 1
 }
 </code></pre>
-<p>because <code>1</code> is <code>int</code>, while the routine declares <code>str</code> as its error type.</p>
-<p>The same rule applies to methods:</p>
-<pre><code class="language-fol">typ Parser: rec = {
-    name: str
-}
-
-fun (Parser)parse_err(code: int): str = {
-    return "bad-input"
-}
-
-fun run(tool: Parser, code: int): int / str = {
-    report tool.parse_err(code)
-}
+<h2 id="no-plain-propagation"><a class="header" href="#no-plain-propagation">No plain propagation</a></h2>
+<p>In current <code>V1</code>, <code>/ ErrorType</code> routine results do not flow through ordinary
+expressions.</p>
+<p>These are rejected:</p>
+<pre><code class="language-fol">var value = read_code(path)
+return read_code(path)
+consume(read_code(path))
+read_code(path) + 1
 </code></pre>
-<h2 id="propagation"><a class="header" href="#propagation">Propagation</a></h2>
-<p>Calling an error-aware routine in a plain value position propagates the error
-upward, but only inside another error-aware routine with a compatible error
-type.</p>
-<pre><code class="language-fol">fun read_code(path: str): int / str = {
-    when(path == "") {
-        case(true) { report "missing path" }
-        * { return 7 }
-    }
-}
-
-fun main(path: str): int / str = {
-    return read_code(path)
-}
-</code></pre>
-<p>This works because <code>main</code> also declares <code>/ str</code>.</p>
-<p>If the surrounding routine does not declare a compatible error type, the call is
-rejected during type checking.</p>
-<h2 id="inspecting-a-recoverable-call"><a class="header" href="#inspecting-a-recoverable-call">Inspecting a recoverable call</a></h2>
-<p><code>check(expr)</code> is the <code>V1</code> surface for asking whether an error-aware routine call
-failed.</p>
+<p><code>/ ErrorType</code> must be handled immediately at the call site.</p>
+<h2 id="check"><a class="header" href="#check"><code>check(...)</code></a></h2>
+<p><code>check(expr)</code> asks whether a <code>/ ErrorType</code> routine call failed.</p>
 <p>It returns <code>bol</code>.</p>
-<pre><code class="language-fol">fun read_code(path: str): int / str = {
-    when(path == "") {
-        case(true) { report "missing path" }
-        * { return 7 }
-    }
-}
-
-fun main(path: str): int / str = {
-    var value: int = read_code(path) || 0
-
-    when(check(read_code(path))) {
-        case(true) { report "read failed" }
-        * { return value }
-    }
+<pre><code class="language-fol">fun main(path: str): bol = {
+    return check(read_code(path))
 }
 </code></pre>
-<h2 id="recovering-with-"><a class="header" href="#recovering-with-">Recovering with <code>||</code></a></h2>
-<p><code>expr || fallback</code> is the <code>V1</code> shorthand for recovering from an error-aware
-routine call.</p>
+<p><code>check(...)</code> works on recoverable routine calls, not on <code>err[...]</code> shell values.</p>
+<h2 id=""><a class="header" href="#"><code>||</code></a></h2>
+<p><code>expr || fallback</code> handles a <code>/ ErrorType</code> routine call immediately.</p>
 <p>Rules:</p>
 <ul>
 <li>if <code>expr</code> succeeds, use its success value</li>
@@ -273,18 +240,11 @@ routine call.</p>
 </li>
 </ul>
 <p>Examples:</p>
-<pre><code class="language-fol">fun read_code(path: str): int / str = {
-    when(path == "") {
-        case(true) { report "missing path" }
-        * { return 7 }
-    }
-}
-
-fun with_default(path: str): int = {
+<pre><code class="language-fol">fun with_default(path: str): int = {
     return read_code(path) || 0
 }
 
-fun propagate_with_context(path: str): int / str = {
+fun with_context(path: str): int / str = {
     return read_code(path) || report "read failed"
 }
 
@@ -292,53 +252,47 @@ fun must_succeed(path: str): int = {
     return read_code(path) || panic "read failed"
 }
 </code></pre>
-<h2 id="routine-errors-are-not-err-shells"><a class="header" href="#routine-errors-are-not-err-shells">Routine errors are not <code>err[...]</code> shells</a></h2>
-<p>Routine call results with <code>/ ErrorType</code> are not the same thing as <code>err[...]</code>
-shell values.</p>
-<p>That distinction is important in the current compiler:</p>
-<ul>
-<li><code>check(expr)</code> and <code>expr || fallback</code> work on error-aware routine calls</li>
-<li>postfix <code>!</code> works on shell values such as <code>opt[...]</code> and <code>err[...]</code></li>
-<li>postfix <code>!</code> does not unwrap routine call results declared with <code>/ ErrorType</code></li>
-</ul>
-<p>Examples:</p>
-<pre><code class="language-fol">var failure: err[str] = "broken"
-var value: str = failure!
+<h2 id="err-is-the-storable-error-form"><a class="header" href="#err-is-the-storable-error-form"><code>err[...]</code> is the storable error form</a></h2>
+<p><code>err[...]</code> is a normal value type.</p>
+<p>You may store it, pass it, return it, and unwrap it later:</p>
+<pre><code class="language-fol">ali Failure: err[str]
+
+fun keep(value: Failure): Failure = {
+    return value
+}
+
+fun unwrap(value: Failure): str = {
+    return value!
+}
 </code></pre>
-<p>This is a shell unwrap.</p>
-<p>The following is a different surface:</p>
+<p>This is different from:</p>
 <pre><code class="language-fol">fun read_code(path: str): int / str = { ... }
 </code></pre>
-<p>Here the call result is a recoverable routine result, not an <code>err[...]</code> shell.
-Use propagation, <code>check(...)</code>, or <code>||</code> with it.</p>
+<p>A call to <code>read_code(...)</code> is not an <code>err[str]</code> value. If you need a storable
+error container, use <code>err[...]</code>. If you use <code>/ ErrorType</code>, handle it with
+<code>check(...)</code> or <code>||</code>.</p>
 <h2 id="current-v1-boundary"><a class="header" href="#current-v1-boundary">Current V1 boundary</a></h2>
 <p>The current compiler supports:</p>
 <ul>
 <li>declared routine error types with <code>/</code></li>
 <li><code>report expr</code></li>
-<li>propagation through compatible routine contexts</li>
 <li><code>check(expr)</code></li>
 <li><code>expr || fallback</code></li>
-<li>lowering of these surfaces into explicit recoverable-error IR</li>
+<li><code>err[...]</code> shell/value behavior</li>
 </ul>
-<p>For backend work, the important current <code>V1</code> runtime distinction is:</p>
+<p>The current compiler rejects:</p>
 <ul>
-<li>routine recoverable results map to the <code>fol-runtime</code> recoverable ABI</li>
-<li>shell values such as <code>opt[...]</code> and <code>err[...]</code> map to separate shell runtime
-types</li>
-<li>those two categories are intentionally not merged</li>
+<li>plain assignment of <code>/ ErrorType</code> call results</li>
+<li>direct returns of <code>/ ErrorType</code> call results</li>
+<li>implicit conversion from <code>/ ErrorType</code> into <code>err[...]</code></li>
+<li>postfix <code>!</code> on <code>/ ErrorType</code> routine calls</li>
 </ul>
-<p>So a future backend should treat a lowered recoverable routine result as the
-runtime recoverable object, not as an <code>err[...]</code> shell and not as a tuple-like
-user value.</p>
-<p>The current compiler does not yet claim:</p>
+<p>For backend work:</p>
 <ul>
-<li>advanced Zig-style success/error capture syntax</li>
-<li>cleanup constructs like <code>errdefer</code></li>
-<li>backend-specific calling conventions beyond the stable <code>fol-runtime</code>
-recoverable boundary</li>
+<li><code>/ ErrorType</code> routine calls lower through the recoverable runtime ABI</li>
+<li><code>err[...]</code> remains a separate shell/value runtime type</li>
 </ul>
-<p>Those belong to later milestones.</p>
+<p>Those two categories are intentionally not merged.</p>
 
                     </main>
 
