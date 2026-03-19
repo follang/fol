@@ -90,7 +90,7 @@ Used in ~30 lexer signatures (`Con<Element>`, `Con<Part<char>>`, `Vod`).
 
 ## Implementation Slices
 
-### Slice 1: Strip colors from compiler library crates
+### Slice 1: Strip colors from compiler library crates ✅
 
 Remove the `colored` and `terminal_size` dependencies from all compiler crates.
 Library code must produce plain text.
@@ -115,7 +115,7 @@ Exit condition:
 - `cargo tree -p fol-diagnostics | grep colored` returns nothing
 - all compiler crate tests pass with plain text output
 
-### Slice 2: Add color support to fol-frontend diagnostic rendering
+### Slice 2: Add color support to fol-frontend diagnostic rendering ✅
 
 After Slice 1, `render_human.rs` in `fol-diagnostics` produces plain text.
 The frontend needs to apply colors at the presentation layer.
@@ -133,7 +133,7 @@ Exit condition:
 - `fol tool lsp` and CLI human output still show colored diagnostics
 - `fol-diagnostics` crate has no color dependency
 
-### Slice 3: Replace lexer error types with a concrete enum
+### Slice 3: Replace lexer error types with a concrete enum ✅
 
 The lexer uses `Flaw`, `Typo`, `Slip` through `Box<dyn Glitch>` via the
 `Con<T>` and `Vod` aliases. Replace with a concrete enum.
@@ -163,7 +163,7 @@ Exit condition:
 - no `Box<dyn Glitch>` in fol-lexer or fol-stream
 - `Con<T>`, `Vod`, `Errors` are deleted
 
-### Slice 4: Parser returns Vec\<Diagnostic\> at the public boundary
+### Slice 4: Parser returns Vec\<Diagnostic\> at the public boundary ✅
 
 The parser internally collects `Vec<Box<dyn Glitch>>` during error recovery.
 These are always `ParseError`. Change the public API to return `Vec<Diagnostic>`.
