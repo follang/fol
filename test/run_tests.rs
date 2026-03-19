@@ -85,7 +85,7 @@ mod integration_tests {
     }
 
     fn example_package_roots() -> Vec<PathBuf> {
-        let root = repo_root().join("examples");
+        let root = repo_root().join("test/app/formal");
         vec![
             root.join("exe_basic"),
             root.join("static_lib"),
