@@ -244,7 +244,7 @@ Preferred end state:
 - recoverable metadata exists only on expression nodes/references required by `||` and `check(...)`
 - local symbols do not carry recoverable-effect state
 
-### Slice 7: Remove generic recoverable materialization from lowering
+### Slice 7: Remove generic recoverable materialization from lowering `[complete]`
 
 This is the core strictness change in lowering.
 

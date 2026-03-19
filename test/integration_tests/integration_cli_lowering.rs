@@ -248,6 +248,7 @@ use super::*;
         assert!(stdout.contains("CheckRecoverable"));
         assert!(stdout.contains("UnwrapRecoverable"));
         assert!(stdout.contains("Report"));
+        assert!(!stdout.contains("ExtractRecoverableError"));
 
         fs::remove_dir_all(&temp_root).ok();
     }
@@ -331,6 +332,7 @@ use super::*;
         assert!(stdout.contains("CheckRecoverable"));
         assert!(stdout.contains("UnwrapRecoverable"));
         assert!(stdout.contains("Const(Int(5))"));
+        assert!(!stdout.contains("ExtractRecoverableError"));
 
         fs::remove_dir_all(&temp_root).ok();
     }

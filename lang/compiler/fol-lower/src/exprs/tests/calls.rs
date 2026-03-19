@@ -309,6 +309,10 @@ fn explicit_report_fallback_lowering_branches_and_reports_recoverable_calls() {
         .instructions
         .iter()
         .any(|instr| matches!(instr.kind, LoweredInstrKind::CheckRecoverable { .. })));
+    assert!(!routine
+        .instructions
+        .iter()
+        .any(|instr| matches!(instr.kind, LoweredInstrKind::ExtractRecoverableError { .. })));
     assert!(routine
         .blocks
         .iter()
@@ -378,6 +382,10 @@ fn pipe_or_default_lowering_branches_to_a_plain_fallback_value() {
         .instructions
         .iter()
         .any(|instr| matches!(instr.kind, LoweredInstrKind::UnwrapRecoverable { .. })));
+    assert!(!routine
+        .instructions
+        .iter()
+        .any(|instr| matches!(instr.kind, LoweredInstrKind::ExtractRecoverableError { .. })));
     assert!(routine
         .instructions
         .iter()

@@ -47,88 +47,6 @@ pub(crate) fn lower_expression(
     )
 }
 
-pub(crate) fn materialize_recoverable_value(
-    typed_package: &fol_typecheck::TypedPackage,
-    type_table: &crate::LoweredTypeTable,
-    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
-    _current_identity: &PackageIdentity,
-    _decl_index: &WorkspaceDeclIndex,
-    cursor: &mut RoutineCursor<'_>,
-    _source_unit_id: SourceUnitId,
-    _scope_id: ScopeId,
-    lowered: LoweredValue,
-) -> Result<LoweredValue, LoweringError> {
-    let Some(error_type) = lowered.recoverable_error_type else {
-        return Ok(lowered);
-    };
-    let Some(routine_error_type) = super::body::routine_error_type(cursor, type_table) else {
-        return Err(LoweringError::with_kind(
-            LoweringErrorKind::InvalidInput,
-            "recoverable value reached a plain lowering context outside an error-aware routine",
-        ));
-    };
-    if routine_error_type != error_type {
-        return Err(LoweringError::with_kind(
-            LoweringErrorKind::InvalidInput,
-            format!(
-                "recoverable value with lowered error type {} cannot propagate through routine error type {}",
-                error_type.0, routine_error_type.0
-            ),
-        ));
-    }
-
-    let bool_type = checked_type_map
-        .get(&typed_package.program.builtin_types().bool_)
-        .copied()
-        .ok_or_else(|| {
-            LoweringError::with_kind(
-                LoweringErrorKind::InvalidInput,
-                "lowered workspace lost builtin bool while materializing a recoverable value",
-            )
-        })?;
-    let condition_local = cursor.allocate_local(bool_type, None);
-    cursor.push_instr(
-        Some(condition_local),
-        LoweredInstrKind::CheckRecoverable {
-            operand: lowered.local_id,
-        },
-    )?;
-
-    let error_block = cursor.create_block();
-    let success_block = cursor.create_block();
-    cursor.terminate_current_block(crate::LoweredTerminator::Branch {
-        condition: condition_local,
-        then_block: error_block,
-        else_block: success_block,
-    })?;
-
-    cursor.switch_block(error_block)?;
-    let error_local = cursor.allocate_local(error_type, None);
-    cursor.push_instr(
-        Some(error_local),
-        LoweredInstrKind::ExtractRecoverableError {
-            operand: lowered.local_id,
-        },
-    )?;
-    cursor.terminate_current_block(crate::LoweredTerminator::Report {
-        value: Some(error_local),
-    })?;
-
-    cursor.switch_block(success_block)?;
-    let success_local = cursor.allocate_local(lowered.type_id, None);
-    cursor.push_instr(
-        Some(success_local),
-        LoweredInstrKind::UnwrapRecoverable {
-            operand: lowered.local_id,
-        },
-    )?;
-    Ok(LoweredValue {
-        local_id: success_local,
-        type_id: lowered.type_id,
-        recoverable_error_type: None,
-    })
-}
-
 pub(crate) fn lower_expression_expected(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
@@ -153,17 +71,15 @@ pub(crate) fn lower_expression_expected(
         expected_type,
         node,
     )?;
-    let lowered = materialize_recoverable_value(
-        typed_package,
-        type_table,
-        checked_type_map,
-        current_identity,
-        decl_index,
-        cursor,
-        source_unit_id,
-        scope_id,
-        lowered,
-    )?;
+    if let Some(error_type) = lowered.recoverable_error_type {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!(
+                "recoverable value with lowered error type {} cannot enter plain expected lowering; handle it with '||' or check(...)",
+                error_type.0
+            ),
+        ));
+    }
     apply_expected_shell_wrap(type_table, cursor, expected_type, lowered)
 }
 
@@ -701,4 +617,3 @@ pub(crate) fn lower_expression_observed(
     }?;
     apply_expected_shell_wrap(type_table, cursor, expected_type, lowered)
 }
-
