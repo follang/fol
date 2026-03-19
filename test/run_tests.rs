@@ -366,4 +366,57 @@ mod integration_tests {
     #[cfg(test)]
     #[path = "integration_editor_and_build.rs"]
     mod editor_and_build;
+
+    #[cfg(test)]
+    mod language_facts {
+        #[test]
+        fn builtin_type_names_are_nonempty_and_unique() {
+            let names = fol_typecheck::BuiltinType::ALL_NAMES;
+            assert!(names.len() >= 6);
+            let mut seen = std::collections::HashSet::new();
+            for name in names {
+                assert!(!name.is_empty(), "builtin type name must not be empty");
+                assert!(seen.insert(name), "duplicate builtin type name: {name}");
+            }
+        }
+
+        #[test]
+        fn declaration_keywords_are_nonempty_and_unique() {
+            let keywords = fol_lexer::token::buildin::DECLARATION_KEYWORDS;
+            assert!(keywords.len() >= 12);
+            let mut seen = std::collections::HashSet::new();
+            for kw in keywords {
+                assert!(!kw.is_empty());
+                assert!(seen.insert(kw), "duplicate declaration keyword: {kw}");
+            }
+        }
+
+        #[test]
+        fn source_kind_names_are_canonical() {
+            let kinds = fol_parser::SOURCE_KIND_NAMES;
+            assert_eq!(kinds.len(), 3);
+            assert!(kinds.contains(&"loc"));
+            assert!(kinds.contains(&"std"));
+            assert!(kinds.contains(&"pkg"));
+        }
+
+        #[test]
+        fn container_and_shell_type_names_are_canonical() {
+            let containers = fol_parser::CONTAINER_TYPE_NAMES;
+            let shells = fol_parser::SHELL_TYPE_NAMES;
+            assert!(containers.contains(&"vec"));
+            assert!(containers.contains(&"map"));
+            assert!(shells.contains(&"opt"));
+            assert!(shells.contains(&"err"));
+        }
+
+        #[test]
+        fn intrinsic_registry_has_entries() {
+            let registry = fol_intrinsics::intrinsic_registry();
+            assert!(!registry.is_empty(), "intrinsic registry must not be empty");
+            for entry in registry {
+                assert!(!entry.name.is_empty(), "intrinsic name must not be empty");
+            }
+        }
+    }
 }

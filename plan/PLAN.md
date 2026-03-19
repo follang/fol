@@ -203,7 +203,7 @@ Likely handwritten forever:
 
 ## Implementation Slices
 
-### Slice 1: Stabilize tooling test baselines
+### Slice 1: Stabilize tooling test baselines ✓ COMPLETE
 
 Before changing architecture, make tooling tests trustworthy again.
 
@@ -224,7 +224,7 @@ Exit condition:
 
 both pass in the normal repo environment, or environment-dependent tests are explicitly isolated and labeled
 
-### Slice 2: Define the diagnostics/editor contract
+### Slice 2: Define the diagnostics/editor contract ✓ COMPLETE
 
 Write down the exact bridge between `fol-diagnostics` and editor consumers.
 
@@ -251,7 +251,7 @@ Exit condition:
 
 - one written contract exists and tests assert it
 
-### Slice 3: Extract a compiler-owned LSP diagnostic adapter
+### Slice 3: Extract a compiler-owned LSP diagnostic adapter ✓ COMPLETE
 
 Move `Diagnostic -> editor/LSP-facing diagnostic payload` out of ad hoc editor code.
 
@@ -279,7 +279,7 @@ Exit condition:
 
 - `fol-editor` consumes the shared adapter instead of rebuilding the mapping locally
 
-### Slice 4: Unify diagnostic suppression policy deliberately
+### Slice 4: Unify diagnostic suppression policy deliberately ✓ COMPLETE
 
 Current CLI and LSP suppression logic are separate.
 
@@ -296,7 +296,7 @@ Exit condition:
 
 - duplicate suppression is intentional, documented, and tested across CLI and LSP
 
-### Slice 5: Export compiler-owned semantic display helpers
+### Slice 5: Export compiler-owned semantic display helpers ✓ COMPLETE
 
 Reduce duplicated semantic presentation logic in `fol-editor`.
 
@@ -318,7 +318,7 @@ Exit condition:
 
 - semantic display strings used by hover/completion are derived from compiler-owned helpers
 
-### Slice 6: Tighten LSP semantic lookups around compiler state
+### Slice 6: Tighten LSP semantic lookups around compiler state ✓ COMPLETE
 
 Reduce fallback heuristics where semantic data should exist.
 
@@ -346,7 +346,7 @@ Exit condition:
 
 - the semantic feature matrix clearly distinguishes canonical compiler-backed behavior from emergency fallback behavior
 
-### Slice 7: Create a language facts manifest for editor tooling
+### Slice 7: Create a language facts manifest for editor tooling ✓ COMPLETE
 
 Introduce a compiler-owned export of syntax-visible facts.
 

@@ -43,5 +43,6 @@ fol-package = { path = "lang/compiler/fol-package" }
 fol-diagnostics = { path = "lang/compiler/fol-diagnostics" }
 fol-resolver = { path = "lang/compiler/fol-resolver" }
 fol-typecheck = { path = "lang/compiler/fol-typecheck" }
+fol-intrinsics = { path = "lang/compiler/fol-intrinsics" }
 fol-editor = { path = "lang/tooling/fol-editor" }
 serde_json = "1"
