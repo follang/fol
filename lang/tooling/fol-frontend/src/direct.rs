@@ -442,6 +442,11 @@ pub fn run_direct_compile_with_io(
     }
 
     let rendered = diagnostics.output(output_format);
+    let rendered = if frontend_config.output.mode == OutputMode::Human {
+        crate::colorize::colorize_diagnostics(&rendered)
+    } else {
+        rendered
+    };
     if !rendered.trim().is_empty() {
         let _ = writeln!(stdout, "{rendered}");
     }
@@ -586,8 +591,13 @@ fn lower_compiler_glitch(error: &dyn Glitch) -> Option<fol_diagnostics::Diagnost
 }
 
 fn render_direct_diagnostics(report: &DiagnosticReport, mode: OutputMode) -> String {
-    report.output(match mode {
+    let rendered = report.output(match mode {
         OutputMode::Json => OutputFormat::Json,
         _ => OutputFormat::Human,
-    })
+    });
+    if mode == OutputMode::Human {
+        crate::colorize::colorize_diagnostics(&rendered)
+    } else {
+        rendered
+    }
 }
