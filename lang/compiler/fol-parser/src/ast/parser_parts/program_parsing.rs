@@ -162,10 +162,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_binding_alternative_decl(tokens) {
-                    Ok(nodes) => self.extend_top_level_entries(&mut entries, &token, nodes),
-                    Err(error) => errors.push(error),
+                    Ok(nodes) => {
+                        self.extend_top_level_entries(&mut entries, &token, nodes);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -179,19 +184,17 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_var_decl(tokens) {
-                    Ok(nodes) => self.extend_top_level_entries(&mut entries, &token, nodes),
-                    Err(error) => errors.push(error),
-                }
-
-                if let Ok(current) = tokens.curr(false) {
-                    let after = (
-                        current.loc().row(),
-                        current.loc().col(),
-                        current.con().to_string(),
-                    );
-                    if before == after && tokens.bump().is_none() {
-                        break;
+                    Ok(nodes) => {
+                        self.extend_top_level_entries(&mut entries, &token, nodes);
+                        self.bump_if_no_progress(tokens, before);
                     }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
+                }
+                if tokens.curr(false).is_err() {
+                    break;
                 }
                 continue;
             }
@@ -203,19 +206,17 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_let_decl(tokens) {
-                    Ok(nodes) => self.extend_top_level_entries(&mut entries, &token, nodes),
-                    Err(error) => errors.push(error),
-                }
-
-                if let Ok(current) = tokens.curr(false) {
-                    let after = (
-                        current.loc().row(),
-                        current.loc().col(),
-                        current.con().to_string(),
-                    );
-                    if before == after && tokens.bump().is_none() {
-                        break;
+                    Ok(nodes) => {
+                        self.extend_top_level_entries(&mut entries, &token, nodes);
+                        self.bump_if_no_progress(tokens, before);
                     }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
+                }
+                if tokens.curr(false).is_err() {
+                    break;
                 }
                 continue;
             }
@@ -227,19 +228,17 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_con_decl(tokens) {
-                    Ok(nodes) => self.extend_top_level_entries(&mut entries, &token, nodes),
-                    Err(error) => errors.push(error),
-                }
-
-                if let Ok(current) = tokens.curr(false) {
-                    let after = (
-                        current.loc().row(),
-                        current.loc().col(),
-                        current.con().to_string(),
-                    );
-                    if before == after && tokens.bump().is_none() {
-                        break;
+                    Ok(nodes) => {
+                        self.extend_top_level_entries(&mut entries, &token, nodes);
+                        self.bump_if_no_progress(tokens, before);
                     }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
+                }
+                if tokens.curr(false).is_err() {
+                    break;
                 }
                 continue;
             }
@@ -251,10 +250,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_lab_decl(tokens) {
-                    Ok(nodes) => self.extend_top_level_entries(&mut entries, &token, nodes),
-                    Err(error) => errors.push(error),
+                    Ok(nodes) => {
+                        self.extend_top_level_entries(&mut entries, &token, nodes);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -268,10 +272,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_use_decl(tokens) {
-                    Ok(nodes) => self.extend_top_level_entries(&mut entries, &token, nodes),
-                    Err(error) => errors.push(error),
+                    Ok(nodes) => {
+                        self.extend_top_level_entries(&mut entries, &token, nodes);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -285,10 +294,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_seg_decl(tokens) {
-                    Ok(node) => self.push_top_level_entry(&mut entries, &token, node),
-                    Err(error) => errors.push(error),
+                    Ok(node) => {
+                        self.push_top_level_entry(&mut entries, &token, node);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -302,10 +316,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_imp_decl(tokens) {
-                    Ok(node) => self.push_top_level_entry(&mut entries, &token, node),
-                    Err(error) => errors.push(error),
+                    Ok(node) => {
+                        self.push_top_level_entry(&mut entries, &token, node);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -319,10 +338,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_std_decl(tokens) {
-                    Ok(node) => self.push_top_level_entry(&mut entries, &token, node),
-                    Err(error) => errors.push(error),
+                    Ok(node) => {
+                        self.push_top_level_entry(&mut entries, &token, node);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -336,10 +360,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_def_decl(tokens) {
-                    Ok(node) => self.push_top_level_entry(&mut entries, &token, node),
-                    Err(error) => errors.push(error),
+                    Ok(node) => {
+                        self.push_top_level_entry(&mut entries, &token, node);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -353,10 +382,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_alias_decl(tokens) {
-                    Ok(node) => self.push_top_level_entry(&mut entries, &token, node),
-                    Err(error) => errors.push(error),
+                    Ok(node) => {
+                        self.push_top_level_entry(&mut entries, &token, node);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -370,10 +404,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_type_decl(tokens) {
-                    Ok(nodes) => self.extend_top_level_entries(&mut entries, &token, nodes),
-                    Err(error) => errors.push(error),
+                    Ok(nodes) => {
+                        self.extend_top_level_entries(&mut entries, &token, nodes);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -387,10 +426,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_fun_decl(tokens) {
-                    Ok(node) => self.push_top_level_entry(&mut entries, &token, node),
-                    Err(error) => errors.push(error),
+                    Ok(node) => {
+                        self.push_top_level_entry(&mut entries, &token, node);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -404,10 +448,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_log_decl(tokens) {
-                    Ok(node) => self.push_top_level_entry(&mut entries, &token, node),
-                    Err(error) => errors.push(error),
+                    Ok(node) => {
+                        self.push_top_level_entry(&mut entries, &token, node);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }
@@ -421,10 +470,15 @@ impl AstParser {
                     token.con().to_string(),
                 );
                 match self.parse_pro_decl(tokens) {
-                    Ok(node) => self.push_top_level_entry(&mut entries, &token, node),
-                    Err(error) => errors.push(error),
+                    Ok(node) => {
+                        self.push_top_level_entry(&mut entries, &token, node);
+                        self.bump_if_no_progress(tokens, before);
+                    }
+                    Err(error) => {
+                        errors.push(error);
+                        self.sync_to_next_declaration(tokens);
+                    }
                 }
-                self.bump_if_no_progress(tokens, before);
                 if tokens.curr(false).is_err() {
                     break;
                 }

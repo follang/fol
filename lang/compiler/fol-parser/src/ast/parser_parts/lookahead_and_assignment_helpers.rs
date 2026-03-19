@@ -385,6 +385,40 @@ impl AstParser {
         false
     }
 
+    /// Skip tokens until we find a declaration-start keyword or EOF.
+    /// Used for error recovery: after a failed declaration parse, advance
+    /// past the junk so the main loop can re-enter on the next declaration.
+    pub(super) fn sync_to_next_declaration(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) {
+        for _ in 0..8_192 {
+            match tokens.curr(false) {
+                Ok(token) => {
+                    let key = token.key();
+                    if key.is_eof() {
+                        break;
+                    }
+                    // is_assign() covers Use, Def, Seg, Var, Fun, Pro, Typ, Ali, Imp, Lab, Con.
+                    // Also stop on Std, Log, and Let which are declaration starters
+                    // not covered by is_assign().
+                    if key.is_assign()
+                        || matches!(
+                            key,
+                            KEYWORD::Keyword(BUILDIN::Std)
+                                | KEYWORD::Keyword(BUILDIN::Log)
+                                | KEYWORD::Keyword(BUILDIN::Let)
+                        )
+                    {
+                        break;
+                    }
+                    tokens.bump();
+                }
+                Err(_) => break,
+            }
+        }
+    }
+
     pub(super) fn bump_if_no_progress(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,

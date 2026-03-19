@@ -225,6 +225,69 @@ mod tests {
     use super::{ParseErrorKind, *};
     use fol_types::canonical_identifier_key;
 
+    fn parse_string(input: &str) -> Result<crate::ParsedPackage, Vec<Box<dyn Glitch>>> {
+        let dir = std::env::temp_dir().join(format!(
+            "fol_parser_recovery_test_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("test.fol"), input).unwrap();
+        let mut stream = fol_stream::FileStream::from_file(
+            dir.join("test.fol").to_str().unwrap(),
+        )
+        .unwrap();
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let result = parser.parse_package(&mut lexer);
+        let _ = std::fs::remove_dir_all(&dir);
+        result
+    }
+
+    #[test]
+    fn single_parse_error_does_not_cascade_into_many() {
+        // Use square brackets for params (should be parens) to force a parse error.
+        let input = concat!(
+            "fun[] broken[x: int]: int = {\n",
+            "    return 1\n",
+            "}\n",
+            "\n",
+            "fun[] valid(): int = {\n",
+            "    return 2\n",
+            "}\n",
+        );
+        let result = parse_string(input);
+        match result {
+            Ok(_) => panic!("expected parse errors for malformed fun declaration"),
+            Err(errors) => {
+                assert!(
+                    errors.len() <= 3,
+                    "should not cascade: got {} errors",
+                    errors.len()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn two_broken_declarations_produce_bounded_errors() {
+        let input = concat!(
+            "fun[bad1](): int = { return 1 }\n",
+            "fun[bad2](): int = { return 2 }\n",
+        );
+        let result = parse_string(input);
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(
+            errors.len() <= 4,
+            "two bad decls should produce bounded errors, got {}",
+            errors.len()
+        );
+    }
+
     #[test]
     fn canonical_identifier_key_normalizes_ascii_case_and_underscores() {
         assert_eq!(canonical_identifier_key("Foo_Bar"), "foobar");
