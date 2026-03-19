@@ -415,7 +415,7 @@ Exit condition:
 
 - tree-sitter changes stop being guesswork
 
-### Slice 10: Add a compiler-feature update checklist to docs and tests
+### Slice 10: Add a compiler-feature update checklist to docs and tests ✓ COMPLETE
 
 Every language feature should go through the same maintenance checklist.
 

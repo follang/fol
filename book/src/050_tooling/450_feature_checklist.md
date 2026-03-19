@@ -5,6 +5,25 @@ error surface is added.
 
 This chapter is about maintenance discipline, not just implementation order.
 
+## Quick Reference
+
+When adding a feature, touch these layers in order:
+
+1. **Lexer** — new keywords, operators, tokens
+2. **Parser** — new AST nodes, syntax rules
+3. **Semantics** — resolver, typecheck, lowering, intrinsics
+4. **Diagnostics** — new error/warning cases
+5. **LSP** — hover, completion, definition, symbols
+6. **Tree-sitter** — grammar, queries, corpus
+7. **Generated facts** — compiler-owned constants
+8. **Docs** — language chapters, tooling pages
+9. **Tests** — unit, integration, editor, corpus
+
+Automated guards exist for some of these. The `treesitter_sync` integration
+tests verify that `highlights.scm` matches compiler-owned constants for builtin
+types, intrinsic names, container/shell types, and source kinds. Adding a new
+constant to the compiler without updating Tree-sitter will fail those tests.
+
 ## 1. Lexical Surface
 
 Check:
