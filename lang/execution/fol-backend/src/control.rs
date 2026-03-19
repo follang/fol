@@ -135,7 +135,6 @@ mod tests {
         let condition = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(bool_id),
-            recoverable_error_type: None,
             name: Some("flag".to_string()),
         });
 
@@ -166,7 +165,6 @@ mod tests {
         let value = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(int_id),
-            recoverable_error_type: None,
             name: Some("value".to_string()),
         });
 
@@ -198,7 +196,6 @@ mod tests {
         let value = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(str_id),
-            recoverable_error_type: None,
             name: Some("message".to_string()),
         });
 
@@ -262,19 +259,16 @@ mod tests {
         let flag = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(bool_id),
-            recoverable_error_type: None,
             name: Some("flag".to_string()),
         });
         let value = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(1),
             type_id: Some(int_id),
-            recoverable_error_type: None,
             name: Some("value".to_string()),
         });
         let message = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(2),
             type_id: Some(str_id),
-            recoverable_error_type: None,
             name: Some("message".to_string()),
         });
 
@@ -331,7 +325,6 @@ mod tests {
         let value = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(int_id),
-            recoverable_error_type: None,
             name: Some("value".to_string()),
         });
 

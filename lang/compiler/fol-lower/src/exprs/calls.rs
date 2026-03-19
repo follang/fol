@@ -585,7 +585,7 @@ pub(crate) fn lower_function_call(
         .collect::<Result<Vec<_>, _>>()?;
     let call_error_type =
         lowered_symbol_error_type(typed_package, checked_type_map, resolved_symbol.id);
-    let result_local = cursor.allocate_local_with_effect(result_type, call_error_type, None);
+    let result_local = cursor.allocate_local(result_type, None);
     cursor.push_instr(
         Some(result_local),
         LoweredInstrKind::Call {

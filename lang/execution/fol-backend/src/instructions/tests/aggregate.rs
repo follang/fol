@@ -25,19 +25,16 @@ fn aggregate_and_container_rendering_emits_native_array_literals() {
     let a = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("a".to_string()),
     });
     let b = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("b".to_string()),
     });
     let result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(array_id),
-        recoverable_error_type: None,
         name: Some("arr".to_string()),
     });
     let instruction = LoweredInstr {
@@ -74,25 +71,21 @@ fn aggregate_and_container_rendering_emits_vector_and_sequence_runtime_construct
     let a = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("a".to_string()),
     });
     let b = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("b".to_string()),
     });
     let vec_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(vec_id),
-        recoverable_error_type: None,
         name: Some("vec".to_string()),
     });
     let seq_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(3),
         type_id: Some(seq_id),
-        recoverable_error_type: None,
         name: Some("seq".to_string()),
     });
     let vec_instr = LoweredInstr {
@@ -145,25 +138,21 @@ fn aggregate_and_container_rendering_emits_set_and_map_runtime_constructors() {
     let a = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("a".to_string()),
     });
     let b = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("b".to_string()),
     });
     let set_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(set_id),
-        recoverable_error_type: None,
         name: Some("set".to_string()),
     });
     let map_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(3),
         type_id: Some(map_id),
-        recoverable_error_type: None,
         name: Some("map".to_string()),
     });
     let set_instr = LoweredInstr {
@@ -221,55 +210,46 @@ fn aggregate_and_container_rendering_emits_runtime_index_helpers() {
     let array = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(array_id),
-        recoverable_error_type: None,
         name: Some("arr".to_string()),
     });
     let vector = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(vec_id),
-        recoverable_error_type: None,
         name: Some("vec".to_string()),
     });
     let sequence = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(seq_id),
-        recoverable_error_type: None,
         name: Some("seq".to_string()),
     });
     let map = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(3),
         type_id: Some(map_id),
-        recoverable_error_type: None,
         name: Some("map".to_string()),
     });
     let index = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(4),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("index".to_string()),
     });
     let arr_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(5),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("a".to_string()),
     });
     let vec_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(6),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("b".to_string()),
     });
     let seq_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(7),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("c".to_string()),
     });
     let map_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(8),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("d".to_string()),
     });
 
@@ -396,19 +376,16 @@ fn aggregate_and_container_rendering_emits_record_and_entry_constructors() {
     let value = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
     let record_out = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(record_type),
-        recoverable_error_type: None,
         name: Some("record".to_string()),
     });
     let entry_out = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(entry_type),
-        recoverable_error_type: None,
         name: Some("entry".to_string()),
     });
 
@@ -480,49 +457,41 @@ fn aggregate_and_container_snapshot_stays_stable() {
     let a = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("a".to_string()),
     });
     let b = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("b".to_string()),
     });
     let arr = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(array_id),
-        recoverable_error_type: None,
         name: Some("arr".to_string()),
     });
     let vec = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(3),
         type_id: Some(vec_id),
-        recoverable_error_type: None,
         name: Some("vec".to_string()),
     });
     let seq = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(4),
         type_id: Some(seq_id),
-        recoverable_error_type: None,
         name: Some("seq".to_string()),
     });
     let set = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(5),
         type_id: Some(set_id),
-        recoverable_error_type: None,
         name: Some("set".to_string()),
     });
     let map = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(6),
         type_id: Some(map_id),
-        recoverable_error_type: None,
         name: Some("map".to_string()),
     });
     let out = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(7),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("out".to_string()),
     });
 
@@ -609,7 +578,6 @@ fn unsupported_lowered_instruction_families_fail_explicitly() {
     let local_id = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
 

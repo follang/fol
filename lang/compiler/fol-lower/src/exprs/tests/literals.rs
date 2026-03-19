@@ -791,7 +791,6 @@ fn declaration_index_tracks_globals_and_routines_by_owning_package() {
             source_unit_id: SourceUnitId(0),
             name: "answer".to_string(),
             type_id: crate::LoweredTypeId(0),
-            recoverable_error_type: None,
             mutable: false,
         },
     );
@@ -834,4 +833,3 @@ fn declaration_index_tracks_globals_and_routines_by_owning_package() {
         Some(crate::LoweredRoutineId(0))
     );
 }
-

@@ -266,7 +266,7 @@ Exit condition:
 
 - lowering no longer implements implicit propagation
 
-### Slice 8: Remove recoverable local storage from lowered IR
+### Slice 8: Remove recoverable local storage from lowered IR `[complete]`
 
 The current lowered local model can store `recoverable_error_type` on locals.
 

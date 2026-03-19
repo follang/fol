@@ -325,7 +325,7 @@ pub(crate) fn lower_expression_observed(
                     })
                     .collect::<Result<Vec<_>, _>>()?,
             );
-            let result_local = cursor.allocate_local_with_effect(result_type, error_type, None);
+            let result_local = cursor.allocate_local(result_type, None);
             cursor.push_instr(
                 Some(result_local),
                 LoweredInstrKind::Call {

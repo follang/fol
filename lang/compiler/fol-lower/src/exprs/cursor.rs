@@ -28,7 +28,6 @@ pub(crate) struct EntryVariantLowering {
 #[derive(Debug, Default)]
 pub(crate) struct WorkspaceDeclIndex {
     globals: BTreeMap<(PackageIdentity, SymbolId), LoweredGlobalId>,
-    global_effects: BTreeMap<(PackageIdentity, LoweredGlobalId), Option<LoweredTypeId>>,
     routines: BTreeMap<(PackageIdentity, SymbolId), LoweredRoutineId>,
     routine_params: BTreeMap<LoweredRoutineId, Vec<LoweredTypeId>>,
     entry_variants: BTreeMap<(PackageIdentity, SymbolId, String), EntryVariantLowering>,
@@ -57,10 +56,6 @@ impl WorkspaceDeclIndex {
                 index
                     .globals
                     .insert((package.identity.clone(), global.symbol_id), global.id);
-                index.global_effects.insert(
-                    (package.identity.clone(), global.id),
-                    global.recoverable_error_type,
-                );
             }
             for routine in package.routine_decls.values() {
                 if let Some(symbol_id) = routine.symbol_id {
@@ -87,10 +82,6 @@ impl WorkspaceDeclIndex {
         for global in package.global_decls.values() {
             self.globals
                 .insert((package.identity.clone(), global.symbol_id), global.id);
-            self.global_effects.insert(
-                (package.identity.clone(), global.id),
-                global.recoverable_error_type,
-            );
         }
         for routine in package.routine_decls.values() {
             if let Some(symbol_id) = routine.symbol_id {
@@ -121,17 +112,6 @@ impl WorkspaceDeclIndex {
         symbol_id: SymbolId,
     ) -> Option<LoweredRoutineId> {
         self.routines.get(&(identity.clone(), symbol_id)).copied()
-    }
-
-    pub(crate) fn global_recoverable_error_type(
-        &self,
-        identity: &PackageIdentity,
-        global_id: LoweredGlobalId,
-    ) -> Option<LoweredTypeId> {
-        self.global_effects
-            .get(&(identity.clone(), global_id))
-            .copied()
-            .flatten()
     }
 
     pub(crate) fn routine_param_types(
@@ -313,19 +293,9 @@ impl<'a> RoutineCursor<'a> {
         type_id: LoweredTypeId,
         name: Option<String>,
     ) -> LoweredLocalId {
-        self.allocate_local_with_effect(type_id, None, name)
-    }
-
-    pub(crate) fn allocate_local_with_effect(
-        &mut self,
-        type_id: LoweredTypeId,
-        recoverable_error_type: Option<LoweredTypeId>,
-        name: Option<String>,
-    ) -> LoweredLocalId {
         let local_id = self.routine.locals.push(LoweredLocal {
             id: LoweredLocalId(self.next_local_index),
             type_id: Some(type_id),
-            recoverable_error_type,
             name,
         });
         self.next_local_index += 1;
@@ -400,13 +370,7 @@ impl<'a> RoutineCursor<'a> {
         result_type: LoweredTypeId,
     ) -> Result<LoweredValue, LoweringError> {
         if let Some(local_id) = self.routine.local_symbols.get(&resolved_symbol.id).copied() {
-            let recoverable_error_type = self
-                .routine
-                .locals
-                .get(local_id)
-                .and_then(|local| local.recoverable_error_type);
-            let result_local =
-                self.allocate_local_with_effect(result_type, recoverable_error_type, None);
+            let result_local = self.allocate_local(result_type, None);
             self.push_instr(
                 Some(result_local),
                 LoweredInstrKind::LoadLocal { local: local_id },
@@ -414,7 +378,7 @@ impl<'a> RoutineCursor<'a> {
             return Ok(LoweredValue {
                 local_id: result_local,
                 type_id: result_type,
-                recoverable_error_type,
+                recoverable_error_type: None,
             });
         }
 
@@ -433,10 +397,7 @@ impl<'a> RoutineCursor<'a> {
                 ),
             ));
         };
-        let recoverable_error_type =
-            decl_index.global_recoverable_error_type(&owning_identity, global_id);
-        let result_local =
-            self.allocate_local_with_effect(result_type, recoverable_error_type, None);
+        let result_local = self.allocate_local(result_type, None);
         self.push_instr(
             Some(result_local),
             LoweredInstrKind::LoadGlobal { global: global_id },
@@ -444,7 +405,7 @@ impl<'a> RoutineCursor<'a> {
         Ok(LoweredValue {
             local_id: result_local,
             type_id: result_type,
-            recoverable_error_type,
+            recoverable_error_type: None,
         })
     }
 }

@@ -21,13 +21,11 @@ fn runtime_shaped_instruction_rendering_emits_length_via_runtime_prelude() {
     let source = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("items".to_string()),
     });
     let result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("count".to_string()),
     });
     let instruction = LoweredInstr {
@@ -54,13 +52,11 @@ fn runtime_shaped_instruction_rendering_emits_echo_via_runtime_hook() {
     let value = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
     let result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("shown".to_string()),
     });
     let instruction = LoweredInstr {
@@ -90,13 +86,11 @@ fn runtime_shaped_instruction_rendering_emits_check_recoverable_via_runtime_help
     let source = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: None,
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
     let result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(bool_id),
-        recoverable_error_type: None,
         name: Some("failed".to_string()),
     });
     let instruction = LoweredInstr {
@@ -123,13 +117,11 @@ fn runtime_shaped_instruction_rendering_emits_unwrap_recoverable_success_lane() 
     let source = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: None,
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
     let result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("unwrapped".to_string()),
     });
     let instruction = LoweredInstr {
@@ -155,13 +147,11 @@ fn runtime_shaped_instruction_rendering_emits_recoverable_error_extraction() {
     let source = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: None,
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
     let result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: None,
-        recoverable_error_type: None,
         name: Some("error".to_string()),
     });
     let instruction = LoweredInstr {
@@ -189,19 +179,16 @@ fn runtime_shaped_instruction_rendering_emits_optional_shell_construction() {
     let payload = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
     let some_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(optional_id),
-        recoverable_error_type: None,
         name: Some("maybe".to_string()),
     });
     let nil_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(optional_id),
-        recoverable_error_type: None,
         name: Some("empty".to_string()),
     });
     let some_instr = LoweredInstr {
@@ -249,13 +236,11 @@ fn runtime_shaped_instruction_rendering_emits_error_shell_construction() {
     let payload = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
     let result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(error_id),
-        recoverable_error_type: None,
         name: Some("error".to_string()),
     });
     let instruction = LoweredInstr {
@@ -289,25 +274,21 @@ fn runtime_shaped_instruction_rendering_emits_shell_unwraps_for_optional_and_err
     let maybe = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(optional_id),
-        recoverable_error_type: None,
         name: Some("maybe".to_string()),
     });
     let err = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(error_id),
-        recoverable_error_type: None,
         name: Some("err".to_string()),
     });
     let a = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("a".to_string()),
     });
     let b = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(3),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("b".to_string()),
     });
     let optional_instr = LoweredInstr {
@@ -352,55 +333,46 @@ fn runtime_shaped_instruction_snapshot_stays_stable() {
     let value = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
     let rec = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: None,
-        recoverable_error_type: None,
         name: Some("recover".to_string()),
     });
     let maybe = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(optional_id),
-        recoverable_error_type: None,
         name: Some("maybe".to_string()),
     });
     let err = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(3),
         type_id: Some(error_id),
-        recoverable_error_type: None,
         name: Some("err".to_string()),
     });
     let count = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(4),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("count".to_string()),
     });
     let shown = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(5),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("shown".to_string()),
     });
     let failed = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(6),
         type_id: Some(bool_id),
-        recoverable_error_type: None,
         name: Some("failed".to_string()),
     });
     let ok = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(7),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("ok".to_string()),
     });
     let bad = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(8),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("bad".to_string()),
     });
 

@@ -3,6 +3,18 @@ use std::collections::BTreeSet;
 
 use super::helpers::{verify_local_reference, verify_type_reference};
 
+fn recoverable_error_type_for_local(
+    routine: &crate::LoweredRoutine,
+    local_id: crate::LoweredLocalId,
+) -> Option<crate::LoweredTypeId> {
+    routine.instructions.iter().find_map(|instr| match &instr.kind {
+        crate::LoweredInstrKind::Call { error_type, .. } if instr.result == Some(local_id) => {
+            *error_type
+        }
+        _ => None,
+    })
+}
+
 pub(super) fn verify_instruction(
     workspace: &LoweredWorkspace,
     package: &crate::LoweredPackage,
@@ -75,21 +87,6 @@ pub(super) fn verify_instruction(
                     *error_type,
                     errors,
                 );
-            }
-            if let Some(result) = instr.result {
-                let local_effect = routine
-                    .locals
-                    .get(result)
-                    .and_then(|local| local.recoverable_error_type);
-                if local_effect != *error_type {
-                    errors.push(LoweringError::with_kind(
-                        LoweringErrorKind::InvalidInput,
-                        format!(
-                            "lowered routine '{}' call instruction {} writes recoverable effect {:?} but local {} stores {:?}",
-                            routine.name, instr.id.0, error_type, result.0, local_effect
-                        ),
-                    ));
-                }
             }
         }
         crate::LoweredInstrKind::IntrinsicCall { intrinsic, args } => {
@@ -284,15 +281,12 @@ pub(super) fn verify_instruction(
         crate::LoweredInstrKind::CheckRecoverable { operand }
         | crate::LoweredInstrKind::UnwrapRecoverable { operand }
         | crate::LoweredInstrKind::ExtractRecoverableError { operand } => {
-            let operand_effect = routine
-                .locals
-                .get(*operand)
-                .and_then(|local| local.recoverable_error_type);
+            let operand_effect = recoverable_error_type_for_local(routine, *operand);
             if operand_effect.is_none() {
                 errors.push(LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,
                     format!(
-                        "lowered routine '{}' instruction {} expects a recoverable operand local {}",
+                        "lowered routine '{}' instruction {} expects a recoverable call-result operand local {}",
                         routine.name, instr.id.0, operand.0
                     ),
                 ));

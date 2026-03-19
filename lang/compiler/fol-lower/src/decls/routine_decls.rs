@@ -205,7 +205,6 @@ pub fn lower_routine_decl(
         let local_id = routine.locals.push(LoweredLocal {
             id: crate::LoweredLocalId(next_local_index),
             type_id: Some(receiver_type),
-            recoverable_error_type: None,
             name: Some("self".to_string()),
         });
         routine.params.push(local_id);
@@ -267,7 +266,6 @@ pub fn lower_routine_decl(
         let local_id = routine.locals.push(LoweredLocal {
             id: crate::LoweredLocalId(next_local_index),
             type_id: Some(param_type),
-            recoverable_error_type: None,
             name: Some(param.name.clone()),
         });
         let Some(param_symbol_id) = find_symbol_in_scope_or_descendants(

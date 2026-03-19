@@ -35,13 +35,11 @@ fn core_instruction_rendering_covers_constants_and_local_global_storage_shapes()
     let result_local = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
     let other_local = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("other".to_string()),
     });
 
@@ -97,13 +95,11 @@ fn core_instruction_rendering_emits_plain_routine_calls_for_non_recoverable_site
     let arg_local = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("value".to_string()),
     });
     let result_local = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("result".to_string()),
     });
     let call = LoweredInstr {
@@ -133,13 +129,11 @@ fn core_instruction_rendering_emits_record_field_accesses_as_native_member_reads
     let base_local = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("user".to_string()),
     });
     let result_local = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("age".to_string()),
     });
     let access = LoweredInstr {
@@ -170,31 +164,26 @@ fn core_instruction_rendering_emits_scalar_intrinsics_as_native_rust_ops() {
     let lhs = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("lhs".to_string()),
     });
     let rhs = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("rhs".to_string()),
     });
     let bool_value = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(bool_id),
-        recoverable_error_type: None,
         name: Some("flag".to_string()),
     });
     let eq_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(3),
         type_id: Some(bool_id),
-        recoverable_error_type: None,
         name: Some("same".to_string()),
     });
     let not_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(4),
         type_id: Some(bool_id),
-        recoverable_error_type: None,
         name: Some("flipped".to_string()),
     });
     let eq_instr = LoweredInstr {
@@ -239,31 +228,26 @@ fn combined_core_instruction_snapshot_stays_stable() {
     let lhs = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("lhs".to_string()),
     });
     let rhs = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("rhs".to_string()),
     });
     let flag = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(bool_id),
-        recoverable_error_type: None,
         name: Some("flag".to_string()),
     });
     let tmp = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(3),
         type_id: Some(int_id),
-        recoverable_error_type: None,
         name: Some("tmp".to_string()),
     });
     let bool_result = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(4),
         type_id: Some(bool_id),
-        recoverable_error_type: None,
         name: Some("same".to_string()),
     });
 

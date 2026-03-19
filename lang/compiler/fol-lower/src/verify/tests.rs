@@ -97,7 +97,6 @@ fn verifier_rejects_dangling_locals_and_missing_type_ids() {
     routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(LoweredTypeId(9)),
-        recoverable_error_type: None,
         name: Some("bad".to_string()),
     });
     routine.instructions.push(LoweredInstr {
@@ -183,7 +182,6 @@ fn verifier_rejects_intrinsic_calls_using_non_pure_intrinsics() {
     routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(bool_type),
-        recoverable_error_type: None,
         name: Some("flag".to_string()),
     });
     routine.instructions.push(LoweredInstr {
@@ -237,19 +235,16 @@ fn verifier_rejects_runtime_hooks_with_results_and_helper_without_results() {
     routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
         type_id: Some(bool_type),
-        recoverable_error_type: None,
         name: Some("flag".to_string()),
     });
     routine.locals.push(LoweredLocal {
         id: LoweredLocalId(1),
         type_id: Some(seq_type),
-        recoverable_error_type: None,
         name: Some("items".to_string()),
     });
     routine.locals.push(LoweredLocal {
         id: LoweredLocalId(2),
         type_id: Some(int_type),
-        recoverable_error_type: None,
         name: Some("count".to_string()),
     });
     routine.instructions.push(LoweredInstr {
@@ -300,5 +295,63 @@ fn verifier_rejects_runtime_hooks_with_results_and_helper_without_results() {
         error
             .message()
             .contains("length helper instruction 1 must write a result local")
+    }));
+}
+
+#[test]
+fn verifier_rejects_recoverable_helpers_on_non_call_results() {
+    let identity = identity("app");
+    let mut type_table = LoweredTypeTable::new();
+    let bool_type = type_table.intern_builtin(LoweredBuiltinType::Bool);
+    let recoverable_abi = LoweredRecoverableAbi::v1(bool_type);
+    let mut routine = LoweredRoutine::new(LoweredRoutineId(0), "main", LoweredBlockId(0));
+    routine.locals.push(LoweredLocal {
+        id: LoweredLocalId(0),
+        type_id: Some(bool_type),
+        name: Some("flag".to_string()),
+    });
+    routine.locals.push(LoweredLocal {
+        id: LoweredLocalId(1),
+        type_id: Some(bool_type),
+        name: Some("checked".to_string()),
+    });
+    routine.instructions.push(LoweredInstr {
+        id: LoweredInstrId(0),
+        result: Some(LoweredLocalId(0)),
+        kind: LoweredInstrKind::Const(crate::LoweredOperand::Bool(true)),
+    });
+    routine.instructions.push(LoweredInstr {
+        id: LoweredInstrId(1),
+        result: Some(LoweredLocalId(1)),
+        kind: LoweredInstrKind::CheckRecoverable {
+            operand: LoweredLocalId(0),
+        },
+    });
+    routine.blocks.push(LoweredBlock {
+        id: LoweredBlockId(0),
+        instructions: vec![LoweredInstrId(0), LoweredInstrId(1)],
+        terminator: Some(LoweredTerminator::Return {
+            value: Some(LoweredLocalId(1)),
+        }),
+    });
+
+    let mut package = LoweredPackage::new(LoweredPackageId(0), identity.clone());
+    package.routine_decls.insert(LoweredRoutineId(0), routine);
+    let workspace = LoweredWorkspace::new(
+        identity.clone(),
+        BTreeMap::from([(identity, package)]),
+        Vec::new(),
+        type_table,
+        LoweredSourceMap::new(),
+        recoverable_abi,
+    );
+
+    let errors = verify_workspace(&workspace)
+        .expect_err("verifier should reject recoverable helpers on plain locals");
+
+    assert!(errors.iter().any(|error| {
+        error
+            .message()
+            .contains("expects a recoverable call-result operand local 0")
     }));
 }

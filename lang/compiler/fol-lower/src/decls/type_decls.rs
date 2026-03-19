@@ -503,7 +503,6 @@ pub(super) fn lower_global_decl(
         source_unit_id,
         name: name.to_string(),
         type_id,
-        recoverable_error_type: None,
         mutable,
     };
     *next_global_index += 1;

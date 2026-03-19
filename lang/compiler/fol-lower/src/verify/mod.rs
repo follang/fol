@@ -63,17 +63,6 @@ pub(crate) fn verify_workspace(workspace: &LoweredWorkspace) -> Result<(), Vec<L
                     ),
                 ));
             }
-            if let Some(error_type) = global.recoverable_error_type {
-                if workspace.type_table().get(error_type).is_none() {
-                    errors.push(LoweringError::with_kind(
-                        LoweringErrorKind::InvalidInput,
-                        format!(
-                            "lowered global '{}' references missing recoverable error type {}",
-                            global.name, error_type.0
-                        ),
-                    ));
-                }
-            }
         }
 
         for type_decl in package.type_decls.values() {
@@ -145,17 +134,6 @@ fn verify_routine(
                     format!(
                         "lowered routine '{}' local {:?} references missing type {}",
                         routine.name, local.name, type_id.0
-                    ),
-                ));
-            }
-        }
-        if let Some(error_type) = local.recoverable_error_type {
-            if workspace.type_table().get(error_type).is_none() {
-                errors.push(LoweringError::with_kind(
-                    LoweringErrorKind::InvalidInput,
-                    format!(
-                        "lowered routine '{}' local {:?} references missing recoverable error type {}",
-                        routine.name, local.name, error_type.0
                     ),
                 ));
             }
