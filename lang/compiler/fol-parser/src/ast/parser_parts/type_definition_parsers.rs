@@ -286,14 +286,22 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Type entry definition exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Type entry definition exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Type entry definition exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_record_type_definition(
@@ -586,14 +594,22 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Type record definition exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Type record definition exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Type record definition exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     fn type_member_key(&self, node: &AstNode) -> String {

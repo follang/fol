@@ -53,13 +53,21 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Grouped type declarations exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Grouped type declarations exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Grouped type declarations exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 }

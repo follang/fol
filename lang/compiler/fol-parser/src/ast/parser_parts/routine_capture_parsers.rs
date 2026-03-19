@@ -4,18 +4,27 @@ impl AstParser {
     pub(super) fn ensure_unique_capture_names(
         &self,
         captures: &[String],
+        tokens: &fol_lexer::lexer::stage3::Elements,
     ) -> Result<(), Box<dyn Glitch>> {
         let mut seen = HashSet::new();
         for capture in captures {
             if !seen.insert(canonical_identifier_key(capture)) {
-                return Err(Box::new(ParseError {
-                    kind: ParseErrorKind::Syntax,
-                    message: format!("Duplicate capture name '{}'", capture),
-                    file: None,
-                    line: 1,
-                    column: 1,
-                    length: 1,
-                }));
+                let error = if let Ok(token) = tokens.curr(false) {
+                    ParseError::from_token(
+                        &token,
+                        format!("Duplicate capture name '{}'", capture),
+                    )
+                } else {
+                    ParseError {
+                        kind: ParseErrorKind::Syntax,
+                        message: format!("Duplicate capture name '{}'", capture),
+                        file: None,
+                        line: 0,
+                        column: 0,
+                        length: 0,
+                    }
+                };
+                return Err(Box::new(error));
             }
         }
 
@@ -80,13 +89,21 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Routine capture parsing exceeded safety bound".to_string(),
-            file: None,
-            line: 1,
-            column: 1,
-            length: 1,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Routine capture parsing exceeded safety bound".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Routine capture parsing exceeded safety bound".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 }

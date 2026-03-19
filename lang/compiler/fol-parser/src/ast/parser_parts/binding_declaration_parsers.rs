@@ -7,20 +7,23 @@ impl AstParser {
         token: &fol_lexer::lexer::stage3::element::Element,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let raw = token.con().trim();
+        let wrap_err = |error: Box<dyn Glitch>| -> Box<dyn Glitch> {
+            Box::new(ParseError::from_token(token, error.to_string()))
+        };
 
         match token.key() {
             fol_lexer::token::KEYWORD::Literal(LITERAL::CookedQuoted)
-            | fol_lexer::token::KEYWORD::Literal(LITERAL::RawQuoted) => self.parse_literal(raw),
+            | fol_lexer::token::KEYWORD::Literal(LITERAL::RawQuoted) => {
+                self.parse_literal(raw).map_err(wrap_err)
+            }
             fol_lexer::token::KEYWORD::Literal(LITERAL::Decimal)
             | fol_lexer::token::KEYWORD::Literal(LITERAL::Float)
             | fol_lexer::token::KEYWORD::Literal(LITERAL::Hexadecimal)
             | fol_lexer::token::KEYWORD::Literal(LITERAL::Octal)
             | fol_lexer::token::KEYWORD::Literal(LITERAL::Binary) => {
-                self.parse_literal(raw).map_err(|error| {
-                    Box::new(ParseError::from_token(token, error.to_string())) as Box<dyn Glitch>
-                })
+                self.parse_literal(raw).map_err(wrap_err)
             }
-            _ => self.parse_literal(raw),
+            _ => self.parse_literal(raw).map_err(wrap_err),
         }
     }
 
@@ -90,14 +93,22 @@ impl AstParser {
         default_options: Vec<VarOption>,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         if tokens.bump().is_none() {
-            return Err(Box::new(ParseError {
-                kind: ParseErrorKind::Syntax,
-                message: format!("Unexpected EOF after '{}' declaration", keyword),
-                file: None,
-                line: 1,
-                column: 1,
-                length: 1,
-            }));
+            let error = if let Ok(token) = tokens.curr(false) {
+                ParseError::from_token(
+                    &token,
+                    format!("Unexpected EOF after '{}' declaration", keyword),
+                )
+            } else {
+                ParseError {
+                    kind: ParseErrorKind::Syntax,
+                    message: format!("Unexpected EOF after '{}' declaration", keyword),
+                    file: None,
+                    line: 0,
+                    column: 0,
+                    length: 0,
+                }
+            };
+            return Err(Box::new(error));
         }
         self.skip_ignorable(tokens)?;
         let options = self.parse_binding_options(tokens, default_options)?;
@@ -148,14 +159,25 @@ impl AstParser {
                     .into_iter()
                     .map(|pattern| match pattern {
                         BindingPattern::Name(name) => Ok(name),
-                        other => Err(Box::new(ParseError {
-                            kind: ParseErrorKind::Unsupported,
-                            message: format!("Unsupported plain binding pattern: {other:?}"),
-                            file: None,
-                            line: 0,
-                            column: 0,
-                            length: 0,
-                        }) as Box<dyn Glitch>),
+                        other => {
+                            let error = if let Ok(token) = tokens.curr(false) {
+                                ParseError::from_token_with_kind(
+                                    &token,
+                                    ParseErrorKind::Unsupported,
+                                    format!("Unsupported plain binding pattern: {other:?}"),
+                                )
+                            } else {
+                                ParseError {
+                                    kind: ParseErrorKind::Unsupported,
+                                    message: format!("Unsupported plain binding pattern: {other:?}"),
+                                    file: None,
+                                    line: 0,
+                                    column: 0,
+                                    length: 0,
+                                }
+                            };
+                            Err(Box::new(error) as Box<dyn Glitch>)
+                        }
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 nodes.extend(self.build_binding_nodes(

@@ -467,10 +467,10 @@ impl AstParser {
                 format!("Expected ':' after {} parameter name", kind.label()),
             )));
         }
-        self.ensure_unique_parameter_names(&params, "parameter")?;
+        self.ensure_unique_parameter_names(&params, "parameter", tokens)?;
 
         let captures = self.parse_optional_routine_capture_list(tokens)?;
-        self.ensure_unique_capture_names(&captures)?;
+        self.ensure_unique_capture_names(&captures, tokens)?;
 
         self.skip_ignorable(tokens)?;
         let mut return_type = None;
@@ -560,10 +560,10 @@ impl AstParser {
                 "Expected ':' after function parameter name".to_string(),
             )));
         }
-        self.ensure_unique_parameter_names(&params, "parameter")?;
+        self.ensure_unique_parameter_names(&params, "parameter", tokens)?;
 
         let captures = self.parse_optional_routine_capture_list(tokens)?;
-        self.ensure_unique_capture_names(&captures)?;
+        self.ensure_unique_capture_names(&captures, tokens)?;
 
         self.skip_ignorable(tokens)?;
         let mut return_type = None;

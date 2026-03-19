@@ -155,34 +155,52 @@ impl Default for AstParser {
 }
 
 impl AstParser {
-    fn enter_depth<'a>(&'a self, depth: &'a Cell<usize>) -> Result<ParseDepthGuard<'a>, Box<dyn Glitch>> {
+    fn enter_depth<'a>(
+        &'a self,
+        depth: &'a Cell<usize>,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Result<ParseDepthGuard<'a>, Box<dyn Glitch>> {
         let new_depth = depth
             .get()
             .checked_add(1)
             .ok_or_else(|| {
-                Box::new(ParseError {
-                    kind: ParseErrorKind::Syntax,
-                    message: "Depth guard overflow; possible infinite recursion in parser".to_string(),
-                    file: None,
-                    line: 0,
-                    column: 0,
-                    length: 0,
-                }) as Box<dyn Glitch>
+                let error = if let Ok(token) = tokens.curr(false) {
+                    ParseError::from_token(
+                        &token,
+                        "Depth guard overflow; possible infinite recursion in parser".to_string(),
+                    )
+                } else {
+                    ParseError {
+                        kind: ParseErrorKind::Syntax,
+                        message: "Depth guard overflow; possible infinite recursion in parser".to_string(),
+                        file: None,
+                        line: 0,
+                        column: 0,
+                        length: 0,
+                    }
+                };
+                Box::new(error) as Box<dyn Glitch>
             })?;
         depth.set(new_depth);
         Ok(ParseDepthGuard { depth })
     }
 
-    pub(super) fn enter_routine_context(&self) -> Result<ParseDepthGuard<'_>, Box<dyn Glitch>> {
-        self.enter_depth(&self.routine_depth)
+    pub(super) fn enter_routine_context(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Result<ParseDepthGuard<'_>, Box<dyn Glitch>> {
+        self.enter_depth(&self.routine_depth, tokens)
     }
 
     pub(super) fn is_inside_routine(&self) -> bool {
         self.routine_depth.get() > 0
     }
 
-    pub(super) fn enter_loop_context(&self) -> Result<ParseDepthGuard<'_>, Box<dyn Glitch>> {
-        self.enter_depth(&self.loop_depth)
+    pub(super) fn enter_loop_context(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Result<ParseDepthGuard<'_>, Box<dyn Glitch>> {
+        self.enter_depth(&self.loop_depth, tokens)
     }
 
     pub(super) fn is_inside_loop(&self) -> bool {

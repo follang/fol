@@ -39,14 +39,22 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let (keyword, options) = self.lookahead_binding_alternative(tokens).ok_or_else(|| {
-            Box::new(ParseError {
-                kind: ParseErrorKind::Syntax,
-                message: "Expected binding alternative".to_string(),
-                file: None,
-                line: 0,
-                column: 0,
-                length: 0,
-            }) as Box<dyn Glitch>
+            let error: ParseError = if let Ok(token) = tokens.curr(false) {
+                ParseError::from_token(
+                    &token,
+                    "Expected binding alternative".to_string(),
+                )
+            } else {
+                ParseError {
+                    kind: ParseErrorKind::Syntax,
+                    message: "Expected binding alternative".to_string(),
+                    file: None,
+                    line: 0,
+                    column: 0,
+                    length: 0,
+                }
+            };
+            Box::new(error) as Box<dyn Glitch>
         })?;
 
         let _ = tokens.bump();

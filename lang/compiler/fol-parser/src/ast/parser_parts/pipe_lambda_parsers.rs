@@ -146,7 +146,7 @@ impl AstParser {
 
         let params = self.parse_pipe_lambda_params(tokens)?;
 
-        self.ensure_unique_parameter_names(&params, "parameter")?;
+        self.ensure_unique_parameter_names(&params, "parameter", tokens)?;
 
         self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
@@ -160,7 +160,7 @@ impl AstParser {
 
         self.skip_ignorable(tokens)?;
         let captures = self.parse_optional_routine_capture_list(tokens)?;
-        self.ensure_unique_capture_names(&captures)?;
+        self.ensure_unique_capture_names(&captures, tokens)?;
 
         self.skip_ignorable(tokens)?;
         let mut return_type = None;

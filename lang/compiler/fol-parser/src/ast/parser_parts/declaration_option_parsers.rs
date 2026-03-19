@@ -5,49 +5,45 @@ impl AstParser {
         &self,
         options: &[DeclOption],
         context: &str,
+        tokens: &fol_lexer::lexer::stage3::Elements,
     ) -> Result<(), Box<dyn Glitch>> {
         let mut saw_export = false;
         let mut saw_hidden = false;
         let mut saw_normal = false;
 
+        let make_error = |message: String| -> Box<dyn Glitch> {
+            let error = if let Ok(token) = tokens.curr(false) {
+                ParseError::from_token(&token, message)
+            } else {
+                ParseError {
+                    kind: ParseErrorKind::Syntax,
+                    message,
+                    file: None,
+                    line: 0,
+                    column: 0,
+                    length: 0,
+                }
+            };
+            Box::new(error)
+        };
+
         for option in options {
             match option {
                 DeclOption::Export => {
                     if saw_export {
-                        return Err(Box::new(ParseError {
-                            kind: ParseErrorKind::Syntax,
-                            message: format!("Duplicate {} option 'export'", context),
-                            file: None,
-                            line: 1,
-                            column: 1,
-                            length: 1,
-                        }));
+                        return Err(make_error(format!("Duplicate {} option 'export'", context)));
                     }
                     saw_export = true;
                 }
                 DeclOption::Hidden => {
                     if saw_hidden {
-                        return Err(Box::new(ParseError {
-                            kind: ParseErrorKind::Syntax,
-                            message: format!("Duplicate {} option 'hidden'", context),
-                            file: None,
-                            line: 1,
-                            column: 1,
-                            length: 1,
-                        }));
+                        return Err(make_error(format!("Duplicate {} option 'hidden'", context)));
                     }
                     saw_hidden = true;
                 }
                 DeclOption::Normal => {
                     if saw_normal {
-                        return Err(Box::new(ParseError {
-                            kind: ParseErrorKind::Syntax,
-                            message: format!("Duplicate {} option 'normal'", context),
-                            file: None,
-                            line: 1,
-                            column: 1,
-                            length: 1,
-                        }));
+                        return Err(make_error(format!("Duplicate {} option 'normal'", context)));
                     }
                     saw_normal = true;
                 }
@@ -55,14 +51,7 @@ impl AstParser {
         }
 
         if (saw_export as u8 + saw_hidden as u8 + saw_normal as u8) > 1 {
-            return Err(Box::new(ParseError {
-                kind: ParseErrorKind::Syntax,
-                message: format!("Conflicting {} visibility options", context),
-                file: None,
-                line: 1,
-                column: 1,
-                length: 1,
-            }));
+            return Err(make_error(format!("Conflicting {} visibility options", context)));
         }
 
         Ok(())
@@ -91,7 +80,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
                 let _ = tokens.bump();
-                self.validate_decl_visibility_options(&options, context)?;
+                self.validate_decl_visibility_options(&options, context, tokens)?;
                 return Ok(options);
             }
 
@@ -123,14 +112,14 @@ impl AstParser {
                     Ok(KEYWORD::Symbol(SYMBOL::SquarC))
                 ) {
                     let _ = tokens.bump();
-                    self.validate_decl_visibility_options(&options, context)?;
+                    self.validate_decl_visibility_options(&options, context, tokens)?;
                     return Ok(options);
                 }
                 continue;
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
                 let _ = tokens.bump();
-                self.validate_decl_visibility_options(&options, context)?;
+                self.validate_decl_visibility_options(&options, context, tokens)?;
                 return Ok(options);
             }
 
@@ -140,13 +129,21 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Declaration options exceeded parser limit".to_string(),
-            file: None,
-            line: 1,
-            column: 1,
-            length: 1,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Declaration options exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Declaration options exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 }

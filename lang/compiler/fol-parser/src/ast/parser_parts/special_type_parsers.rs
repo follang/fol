@@ -486,14 +486,22 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Scalar type option list exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Scalar type option list exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Scalar type option list exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_type_argument_list(
@@ -563,14 +571,22 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Type argument list exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Type argument list exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Type argument list exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_array_type_arguments(

@@ -257,45 +257,70 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Generic parsing exceeded safety bound".to_string(),
-            file: None,
-            line: 1,
-            column: 1,
-            length: 1,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Generic parsing exceeded safety bound".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Generic parsing exceeded safety bound".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parameters_to_generics(
         &self,
         params: Vec<Parameter>,
+        tokens: &fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
         params
             .into_iter()
             .map(|param| {
                 if param.default.is_some() {
-                    return Err(Box::new(ParseError {
-                        kind: ParseErrorKind::Syntax,
-                        message: "Default values are not allowed in routine generic headers"
-                            .to_string(),
-                        file: None,
-                        line: 1,
-                        column: 1,
-                        length: 1,
-                    }) as Box<dyn Glitch>);
+                    let error = if let Ok(token) = tokens.curr(false) {
+                        ParseError::from_token(
+                            &token,
+                            "Default values are not allowed in routine generic headers".to_string(),
+                        )
+                    } else {
+                        ParseError {
+                            kind: ParseErrorKind::Syntax,
+                            message: "Default values are not allowed in routine generic headers"
+                                .to_string(),
+                            file: None,
+                            line: 0,
+                            column: 0,
+                            length: 0,
+                        }
+                    };
+                    return Err(Box::new(error) as Box<dyn Glitch>);
                 }
 
                 if matches!(param.param_type, FolType::Sequence { .. }) {
-                    return Err(Box::new(ParseError {
-                        kind: ParseErrorKind::Syntax,
-                        message: "Variadic parameters are not allowed in routine generic headers"
-                            .to_string(),
-                        file: None,
-                        line: 1,
-                        column: 1,
-                        length: 1,
-                    }) as Box<dyn Glitch>);
+                    let error = if let Ok(token) = tokens.curr(false) {
+                        ParseError::from_token(
+                            &token,
+                            "Variadic parameters are not allowed in routine generic headers".to_string(),
+                        )
+                    } else {
+                        ParseError {
+                            kind: ParseErrorKind::Syntax,
+                            message: "Variadic parameters are not allowed in routine generic headers"
+                                .to_string(),
+                            file: None,
+                            line: 0,
+                            column: 0,
+                            length: 0,
+                        }
+                    };
+                    return Err(Box::new(error) as Box<dyn Glitch>);
                 }
 
                 let constraints = if matches!(param.param_type.named_text().as_deref(), Some("any"))
@@ -317,18 +342,27 @@ impl AstParser {
         &self,
         params: &[Parameter],
         kind: &str,
+        tokens: &fol_lexer::lexer::stage3::Elements,
     ) -> Result<(), Box<dyn Glitch>> {
         let mut seen_names = HashSet::new();
         for param in params {
             if !seen_names.insert(canonical_identifier_key(&param.name)) {
-                return Err(Box::new(ParseError {
-                    kind: ParseErrorKind::Syntax,
-                    message: format!("Duplicate {} name '{}'", kind, param.name),
-                    file: None,
-                    line: 1,
-                    column: 1,
-                    length: 1,
-                }));
+                let error = if let Ok(token) = tokens.curr(false) {
+                    ParseError::from_token(
+                        &token,
+                        format!("Duplicate {} name '{}'", kind, param.name),
+                    )
+                } else {
+                    ParseError {
+                        kind: ParseErrorKind::Syntax,
+                        message: format!("Duplicate {} name '{}'", kind, param.name),
+                        file: None,
+                        line: 0,
+                        column: 0,
+                        length: 0,
+                    }
+                };
+                return Err(Box::new(error));
             }
         }
         Ok(())
@@ -402,14 +436,22 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Generic parsing exceeded safety bound".to_string(),
-            file: None,
-            line: 1,
-            column: 1,
-            length: 1,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Generic parsing exceeded safety bound".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Generic parsing exceeded safety bound".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_routine_options(

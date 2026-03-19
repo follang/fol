@@ -561,7 +561,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens)?;
-        let _loop_context = self.enter_loop_context()?;
+        let _loop_context = self.enter_loop_context(tokens)?;
         let body = if matches!(
             loop_token.key(),
             KEYWORD::Keyword(BUILDIN::While | BUILDIN::Loop | BUILDIN::For | BUILDIN::Each)

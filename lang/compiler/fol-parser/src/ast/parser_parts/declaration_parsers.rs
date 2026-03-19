@@ -503,14 +503,22 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Type contracts exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Type contracts exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Type contracts exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_type_options(
@@ -584,14 +592,22 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Type options exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Type options exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Type options exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_use_path(
@@ -634,14 +650,22 @@ impl AstParser {
             }
         }
 
-        Err(Box::new(ParseError {
-            kind: ParseErrorKind::Syntax,
-            message: "Use path parsing exceeded safety bound".to_string(),
-            file: None,
-            line: 1,
-            column: 1,
-            length: 1,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Use path parsing exceeded safety bound".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Use path parsing exceeded safety bound".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     fn type_contracts_from_generics(

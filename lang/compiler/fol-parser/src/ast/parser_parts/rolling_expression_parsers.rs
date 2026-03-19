@@ -99,14 +99,22 @@ impl AstParser {
                     )));
                 }
 
-                return Err(Box::new(ParseError {
-                    kind: ParseErrorKind::Syntax,
-                    message: "Rolling binding list exceeded parser limit".to_string(),
-                    file: None,
-                    line: 0,
-                    column: 0,
-                    length: 0,
-                }));
+                let error = if let Ok(token) = tokens.curr(false) {
+                    ParseError::from_token(
+                        &token,
+                        "Rolling binding list exceeded parser limit".to_string(),
+                    )
+                } else {
+                    ParseError {
+                        kind: ParseErrorKind::Syntax,
+                        message: "Rolling binding list exceeded parser limit".to_string(),
+                        file: None,
+                        line: 0,
+                        column: 0,
+                        length: 0,
+                    }
+                };
+                return Err(Box::new(error));
             }
         }
 

@@ -95,13 +95,13 @@ impl AstParser {
                         "Expected ':' after function parameter name".to_string(),
                     )));
                 }
-                self.ensure_unique_parameter_names(&parsed_params, "parameter")?;
+                self.ensure_unique_parameter_names(&parsed_params, "parameter", tokens)?;
                 params = parsed_params;
             }
 
             self.skip_ignorable(tokens)?;
             let captures = self.parse_optional_routine_capture_list(tokens)?;
-            self.ensure_unique_capture_names(&captures)?;
+            self.ensure_unique_capture_names(&captures, tokens)?;
 
             let (body, inquiries) = self.parse_named_routine_body(
                 tokens,
@@ -128,7 +128,7 @@ impl AstParser {
             self.parse_routine_generics_and_params(tokens, "Expected '(' after function name")?;
         self.skip_ignorable(tokens)?;
         let captures = self.parse_optional_routine_capture_list(tokens)?;
-        self.ensure_unique_capture_names(&captures)?;
+        self.ensure_unique_capture_names(&captures, tokens)?;
 
         self.skip_ignorable(tokens)?;
         let mut return_type = None;
@@ -250,13 +250,13 @@ impl AstParser {
                         "Expected ':' after function parameter name".to_string(),
                     )));
                 }
-                self.ensure_unique_parameter_names(&parsed_params, "parameter")?;
+                self.ensure_unique_parameter_names(&parsed_params, "parameter", tokens)?;
                 params = parsed_params;
             }
 
             self.skip_ignorable(tokens)?;
             let captures = self.parse_optional_routine_capture_list(tokens)?;
-            self.ensure_unique_capture_names(&captures)?;
+            self.ensure_unique_capture_names(&captures, tokens)?;
 
             let (body, inquiries) = self.parse_named_routine_body(
                 tokens,
@@ -283,7 +283,7 @@ impl AstParser {
             self.parse_routine_generics_and_params(tokens, "Expected '(' after logical name")?;
         self.skip_ignorable(tokens)?;
         let captures = self.parse_optional_routine_capture_list(tokens)?;
-        self.ensure_unique_capture_names(&captures)?;
+        self.ensure_unique_capture_names(&captures, tokens)?;
 
         self.skip_ignorable(tokens)?;
         let mut return_type = None;
@@ -405,13 +405,13 @@ impl AstParser {
                         "Expected ':' after function parameter name".to_string(),
                     )));
                 }
-                self.ensure_unique_parameter_names(&parsed_params, "parameter")?;
+                self.ensure_unique_parameter_names(&parsed_params, "parameter", tokens)?;
                 params = parsed_params;
             }
 
             self.skip_ignorable(tokens)?;
             let captures = self.parse_optional_routine_capture_list(tokens)?;
-            self.ensure_unique_capture_names(&captures)?;
+            self.ensure_unique_capture_names(&captures, tokens)?;
 
             let (body, inquiries) = self.parse_named_routine_body(
                 tokens,
@@ -438,7 +438,7 @@ impl AstParser {
             self.parse_routine_generics_and_params(tokens, "Expected '(' after procedure name")?;
         self.skip_ignorable(tokens)?;
         let captures = self.parse_optional_routine_capture_list(tokens)?;
-        self.ensure_unique_capture_names(&captures)?;
+        self.ensure_unique_capture_names(&captures, tokens)?;
 
         self.skip_ignorable(tokens)?;
         let mut return_type = None;
@@ -516,7 +516,7 @@ impl AstParser {
                         "Expected ':' after parameter name".to_string(),
                     )));
                 }
-                self.ensure_unique_parameter_names(&first_list, "parameter")?;
+                self.ensure_unique_parameter_names(&first_list, "parameter", tokens)?;
                 return Ok((Vec::new(), first_list));
             }
         };
@@ -528,12 +528,12 @@ impl AstParser {
                     "Expected ':' after parameter name".to_string(),
                 )));
             }
-            self.ensure_unique_parameter_names(&first_list, "parameter")?;
+            self.ensure_unique_parameter_names(&first_list, "parameter", tokens)?;
             return Ok((Vec::new(), first_list));
         }
 
-        self.ensure_unique_parameter_names(&first_list, "generic")?;
-        let generics = self.parameters_to_generics(first_list)?;
+        self.ensure_unique_parameter_names(&first_list, "generic", tokens)?;
+        let generics = self.parameters_to_generics(first_list, tokens)?;
         let _ = tokens.bump();
         let params = self.parse_parameter_list(tokens)?;
         Ok((generics, params))
