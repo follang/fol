@@ -49,7 +49,7 @@ impl SemanticSnapshot {
             CompletionContext::DotTrigger => return self.dot_intrinsic_fallback_completion_items(),
         }
         let mut items = self.local_completion_items(position);
-        items.extend(self.current_package_top_level_completion_items(position));
+        items.extend(self.current_package_top_level_completion_items());
         items.extend(self.import_alias_completion_items(position));
         items.extend(self.fallback_local_scope_items(document, position));
         items.extend(self.fallback_current_package_top_level_items(document, position));
@@ -217,12 +217,11 @@ impl SemanticSnapshot {
 
     fn current_package_top_level_completion_items(
         &self,
-        position: LspPosition,
     ) -> Vec<EditorCompletionItem> {
         let Some(program) = self.current_program() else {
             return Vec::new();
         };
-        let Some(namespace) = self.current_namespace_for_position(position) else {
+        let Some(namespace) = self.current_namespace() else {
             return Vec::new();
         };
         let mut items = Vec::new();
@@ -524,9 +523,8 @@ impl SemanticSnapshot {
             .map(|unit| (program, unit.scope_id))
     }
 
-    fn current_namespace_for_position(&self, position: LspPosition) -> Option<String> {
+    fn current_namespace(&self) -> Option<String> {
         let program = self.current_program()?;
-        let _ = position;
         self.current_source_unit(program)
             .map(|unit| unit.namespace.clone())
     }

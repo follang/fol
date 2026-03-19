@@ -286,19 +286,21 @@ pub fn render_local_name(
     ))
 }
 
-pub fn render_operand(operand: &LoweredOperand) -> String {
+pub fn render_operand(operand: &LoweredOperand) -> BackendResult<String> {
     match operand {
-        LoweredOperand::Local(_) => {
-            r#"compile_error!("unimplemented operand: Local")"#.to_string()
-        }
-        LoweredOperand::Global(_) => {
-            r#"compile_error!("unimplemented operand: Global")"#.to_string()
-        }
-        LoweredOperand::Int(value) => format!("{value}_i64"),
-        LoweredOperand::Float(bits) => format!("f64::from_bits({bits})"),
-        LoweredOperand::Bool(value) => value.to_string(),
-        LoweredOperand::Char(value) => format!("{value:?}"),
-        LoweredOperand::Str(value) => format!("rt::FolStr::from({value:?})"),
-        LoweredOperand::Nil => "rt::FolOption::nil()".to_string(),
+        LoweredOperand::Local(_) => Err(BackendError::new(
+            BackendErrorKind::Unsupported,
+            "unimplemented operand: Local",
+        )),
+        LoweredOperand::Global(_) => Err(BackendError::new(
+            BackendErrorKind::Unsupported,
+            "unimplemented operand: Global",
+        )),
+        LoweredOperand::Int(value) => Ok(format!("{value}_i64")),
+        LoweredOperand::Float(bits) => Ok(format!("f64::from_bits({bits})")),
+        LoweredOperand::Bool(value) => Ok(value.to_string()),
+        LoweredOperand::Char(value) => Ok(format!("{value:?}")),
+        LoweredOperand::Str(value) => Ok(format!("rt::FolStr::from({value:?})")),
+        LoweredOperand::Nil => Ok("rt::FolOption::nil()".to_string()),
     }
 }

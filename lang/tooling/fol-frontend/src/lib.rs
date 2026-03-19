@@ -78,6 +78,8 @@ pub use workspace::{
     FrontendWorkspaceConfig,
 };
 
+use std::io::Write;
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Frontend;
 
@@ -89,15 +91,17 @@ impl Frontend {
     pub fn run(&self) -> FrontendResult<()> {
         let args = std::env::args_os().collect::<Vec<_>>();
         let (output, result) = run_command_from_args(args)?;
-        println!(
-            "{}",
-            output
-                .render_command_summary(&result)
-                .map_err(|error| FrontendError::new(
-                    FrontendErrorKind::Internal,
-                    error.to_string()
-                ))?
-        );
+        let rendered = output
+            .render_command_summary(&result)
+            .map_err(|error| FrontendError::new(
+                FrontendErrorKind::Internal,
+                error.to_string()
+            ))?;
+        writeln!(std::io::stdout(), "{rendered}")
+            .map_err(|error| FrontendError::new(
+                FrontendErrorKind::Internal,
+                error.to_string()
+            ))?;
         Ok(())
     }
 }

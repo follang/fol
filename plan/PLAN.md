@@ -36,11 +36,11 @@ Last updated: 2026-03-18
 - [x] 4d. Typecheck: `eprintln!` in catch-all type inference → proper diagnostic (`exprs/mod.rs:475`)
 
 ### Slice 5 — Backend + frontend fixes
-- [ ] 5a. Backend: `compile_error!()` strings for Local/Global operands → `BackendError` (`instructions/helpers.rs:291-296`)
-- [ ] 5b. Frontend: `eprintln!` in fetch.rs → use structured warning (`fetch.rs:245`)
-- [ ] 5c. Frontend: `Frontend::run()` uses `println!` bypassing IO injection → use writer (`lib.rs:92`)
-- [ ] 5d. Editor: remove `let _ = position;` dead param in `current_namespace_for_position()` (`lsp/semantic.rs:529`)
-- [ ] 5e. Frontend: remove unused `_config` params from 4 editor command functions (`editor.rs:48,57,66,75`)
+- [x] 5a. Backend: `compile_error!()` strings for Local/Global operands → `BackendError` (`instructions/helpers.rs:291-296`)
+- [x] 5b. Frontend: `eprintln!` in fetch.rs → use structured warning (`fetch.rs:245`)
+- [x] 5c. Frontend: `Frontend::run()` uses `println!` bypassing IO injection → use writer (`lib.rs:92`)
+- [x] 5d. Editor: remove `let _ = position;` dead param in `current_namespace_for_position()` (`lsp/semantic.rs:529`)
+- [x] 5e. Frontend: remove unused `_config` params from 4 editor command functions (`editor.rs:48,57,66,75`)
 
 ### Slice 6 — Cargo.toml cleanup
 - [ ] 6a. Root `Cargo.toml`: `colored = "1"` → `"2"` to match all crates

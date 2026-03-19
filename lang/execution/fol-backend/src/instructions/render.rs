@@ -32,7 +32,7 @@ pub fn render_core_instruction_in_workspace(
     match &instruction.kind {
         LoweredInstrKind::Const(operand) => {
             let result = rendered_result_local(package_identity, routine, instruction)?;
-            Ok(format!("let {result} = {};", render_operand(operand)))
+            Ok(format!("let {result} = {};", render_operand(operand)?))
         }
         LoweredInstrKind::LoadLocal { local } => {
             let result = rendered_result_local(package_identity, routine, instruction)?;

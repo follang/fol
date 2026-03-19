@@ -73,16 +73,16 @@ pub fn dispatch_cli(
         }
         Some(FrontendCommand::Tool(command)) => match &command.command {
             ToolSubcommand::Lsp(_) => crate::editor_lsp_command(config),
-            ToolSubcommand::Parse(command) => crate::editor_parse_command(&command.path, config),
+            ToolSubcommand::Parse(command) => crate::editor_parse_command(&command.path),
             ToolSubcommand::Highlight(command) => {
-                crate::editor_highlight_command(&command.path, config)
+                crate::editor_highlight_command(&command.path)
             }
             ToolSubcommand::Symbols(command) => {
-                crate::editor_symbols_command(&command.path, config)
+                crate::editor_symbols_command(&command.path)
             }
             ToolSubcommand::Tree(command) => match &command.command {
                 cli::TreeSubcommand::Generate(command) => {
-                    crate::editor_tree_generate_command(&command.path, config)
+                    crate::editor_tree_generate_command(&command.path)
                 }
             },
             ToolSubcommand::Completion(command) => {
