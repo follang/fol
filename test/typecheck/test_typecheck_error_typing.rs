@@ -145,6 +145,166 @@ fn pipe_or_typing_rejects_incompatible_fallback_values() {
 }
 
 #[test]
+fn recoverable_calls_reject_inferred_plain_bindings() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int = {\n\
+             var captured = load();\n\
+             return 0;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("initializer for 'captured'")
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        "Expected the strict inferred-binding diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_reject_typed_plain_bindings() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             var captured: int = load();\n\
+             return 0;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("initializer for 'captured'")
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        "Expected the strict typed-binding diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_reject_direct_plain_returns() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             return load();\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("return expression")
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        "Expected the strict return diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_reject_plain_arguments_even_in_error_aware_routines() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): int / str = {\n\
+             report \"bad\";\n\
+             return 1;\n\
+         }\n\
+         fun[] consume(value: int): int = {\n\
+             return value;\n\
+         }\n\
+         fun[] main(): int / str = {\n\
+             return consume(load());\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("call to 'consume'")
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        "Expected the strict argument diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_reject_field_access_receivers() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ User: rec = { name: str }\n\
+         fun[] load(): User / str = {\n\
+             report \"bad\";\n\
+             return { name = \"ok\" };\n\
+         }\n\
+         fun[] main(): str = {\n\
+             return load().name;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("field access '.name' receiver")
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        "Expected the strict field-access diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_reject_method_receivers() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ User: rec = { name: str }\n\
+         fun[] (User)label(): str = {\n\
+             return \"ok\";\n\
+         }\n\
+         fun[] load(): User / str = {\n\
+             report \"bad\";\n\
+             return { name = \"ok\" };\n\
+         }\n\
+         fun[] main(): str = {\n\
+             return load().label();\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("method receiver for 'label'")
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        "Expected the strict method-receiver diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn recoverable_calls_do_not_implicitly_convert_into_err_shell_bindings() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
@@ -833,4 +993,3 @@ fn entry_value_typing_rejects_unknown_variants() {
         "Expected an unknown-entry-variant diagnostic, got: {errors:?}"
     );
 }
-

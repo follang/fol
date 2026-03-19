@@ -6,6 +6,7 @@ use std::collections::BTreeSet;
 use super::helpers::{
     ensure_assignable, find_symbol_in_scope_chain, internal_error, merge_recoverable_effects,
     node_origin, plain_value_expr, reject_recoverable_error_shell_conversion,
+    reject_recoverable_plain_use,
 };
 use super::{TypeContext, TypedExpr};
 use super::type_node_with_expectation;
@@ -89,13 +90,20 @@ pub(crate) fn type_binding_initializer(
             Ok(TypedExpr::value(expected))
         }
         (None, Some(inferred_expr)) => {
+            if inferred_expr.recoverable_effect.is_some() {
+                let error = reject_recoverable_plain_use(
+                    value.and_then(|node| node_origin(resolved, node)),
+                    format!("initializer for '{name}'"),
+                )
+                .expect_err("recoverable plain-use rejection should always return an error");
+                return Err(error);
+            }
             let inferred = inferred_expr
                 .required_value(format!("initializer for '{name}' does not have a type"))?;
             let symbol = typed.typed_symbol_mut(symbol_id).ok_or_else(|| {
                 internal_error("typed symbol table lost an inferred binding", None)
             })?;
             symbol.declared_type = Some(inferred);
-            symbol.recoverable_effect = inferred_expr.recoverable_effect;
             Ok(inferred_expr)
         }
         (Some(expected), None) => Ok(TypedExpr::value(expected)),

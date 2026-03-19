@@ -745,8 +745,8 @@ fn routine_error_calls_keep_recoverable_effects_on_call_references() {
              report \"bad\";\n\
              return 1;\n\
          }\n\
-         fun[] main(): int / str = {\n\
-             return load();\n\
+         fun[] main(): bol = {\n\
+             return check(load());\n\
          }\n",
     )]);
 
@@ -767,37 +767,34 @@ fn routine_error_calls_keep_recoverable_effects_on_call_references() {
 }
 
 #[test]
-fn inferred_bindings_can_keep_recoverable_call_effects() {
-    let typed = typecheck_fixture_folder(&[(
+fn inferred_bindings_reject_recoverable_call_results() {
+    let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
          }\n\
-         fun[] main(): int / str = {\n\
+         fun[] main(): int = {\n\
              var current = load();\n\
              return 0;\n\
          }\n",
     )]);
 
-    let (_current_id, current) = find_typed_symbol(&typed, "current", SymbolKind::ValueBinding);
-
     assert_eq!(
-        current
-            .declared_type
-            .and_then(|type_id| typed.type_table().get(type_id)),
-        Some(&CheckedType::Builtin(BuiltinType::Int))
-    );
-    assert_eq!(
-        current
-            .recoverable_effect
-            .and_then(|effect| typed.type_table().get(effect.error_type)),
-        Some(&CheckedType::Builtin(BuiltinType::Str))
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("initializer for 'current'")
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        true,
+        "Expected a strict binding diagnostic, got: {errors:?}"
     );
 }
 
 #[test]
-fn plain_use_of_errorful_calls_requires_error_aware_routines() {
+fn plain_use_of_errorful_calls_rejects_plain_value_contexts() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
         "fun[] load(): int / str = {\n\
@@ -815,15 +812,15 @@ fn plain_use_of_errorful_calls_requires_error_aware_routines() {
             error.kind() == TypecheckErrorKind::InvalidInput
                 && error
                     .message()
-                    .contains("requires a surrounding routine with a declared error type in V1")
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
         }),
         "Expected a plain-use errorful-call diagnostic, got: {errors:?}"
     );
 }
 
 #[test]
-fn propagation_typing_accepts_matching_error_types_in_plain_value_contexts() {
-    let typed = typecheck_fixture_folder(&[(
+fn propagation_typing_rejects_matching_error_types_in_plain_value_contexts() {
+    let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
@@ -834,13 +831,14 @@ fn propagation_typing_accepts_matching_error_types_in_plain_value_contexts() {
          }\n",
     )]);
 
-    let syntax_id = find_named_routine_syntax_id(&typed, "main");
-    assert_eq!(
-        typed
-            .typed_node(syntax_id)
-            .and_then(|node| node.inferred_type)
-            .and_then(|type_id| typed.type_table().get(type_id)),
-        Some(&CheckedType::Builtin(BuiltinType::Int))
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        "Expected a strict no-propagation diagnostic, got: {errors:?}"
     );
 }
 
@@ -859,12 +857,11 @@ fn propagation_typing_rejects_incompatible_error_types_in_plain_value_contexts()
 
     assert!(
         errors.iter().any(|error| {
-            error.kind() == TypecheckErrorKind::IncompatibleType
+            error.kind() == TypecheckErrorKind::InvalidInput
                 && error
                     .message()
-                    .contains("propagates 'Builtin(Str)' but the surrounding routine declares 'Builtin(Int)'")
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
         }),
-        "Expected an incompatible propagated-error diagnostic, got: {errors:?}"
+        "Expected a strict no-propagation diagnostic, got: {errors:?}"
     );
 }
-

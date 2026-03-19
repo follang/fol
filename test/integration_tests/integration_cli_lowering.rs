@@ -208,7 +208,7 @@ use super::*;
     }
 
     #[test]
-    fn test_cli_error_propagation_lowers_successfully_across_multiple_routines() {
+    fn test_cli_explicit_recoverable_handling_lowers_successfully_across_multiple_routines() {
         use std::fs;
 
         let temp_root = unique_temp_root("cli_error_propagation");
@@ -224,10 +224,10 @@ use super::*;
                 "    }\n",
                 "}\n",
                 "fun[] mid(flag: bol): int / str = {\n",
-                "    return leaf(flag)\n",
+                "    return leaf(flag) || report \"mid-bad\"\n",
                 "}\n",
                 "fun[] main(flag: bol): int / str = {\n",
-                "    return mid(flag)\n",
+                "    return mid(flag) || report \"main-bad\"\n",
                 "}\n",
             ),
         )
@@ -243,11 +243,10 @@ use super::*;
 
         assert!(
             output.status.success(),
-            "error propagation fixture should compile, got:\n{stdout}"
+            "explicit recoverable-handling fixture should compile, got:\n{stdout}"
         );
         assert!(stdout.contains("CheckRecoverable"));
         assert!(stdout.contains("UnwrapRecoverable"));
-        assert!(stdout.contains("ExtractRecoverableError"));
         assert!(stdout.contains("Report"));
 
         fs::remove_dir_all(&temp_root).ok();
@@ -270,8 +269,7 @@ use super::*;
                 "    }\n",
                 "}\n",
                 "fun[] main(flag: bol): bol = {\n",
-                "    var attempt = load(flag)\n",
-                "    return check(attempt)\n",
+                "    return check(load(flag))\n",
                 "}\n",
             ),
         )
@@ -461,8 +459,8 @@ use super::*;
                 "        break\n",
                 "    }\n",
                 "    when(flag) {\n",
-                "        case(true) { return remote(flag) }\n",
-                "        * { return leaf(flag) }\n",
+                "        case(true) { return remote(flag) || report \"mid-shared-bad\" }\n",
+                "        * { return leaf(flag) || report \"mid-leaf-bad\" }\n",
                 "    }\n",
                 "}\n",
             ),
@@ -473,8 +471,8 @@ use super::*;
             concat!(
                 "fun[] main(flag: bol): int / str = {\n",
                 "    when(flag) {\n",
-                "        case(true) { return mid(flag) }\n",
-                "        * { return leaf(flag) }\n",
+                "        case(true) { return mid(flag) || report \"main-mid-bad\" }\n",
+                "        * { return leaf(flag) || report \"main-leaf-bad\" }\n",
                 "    }\n",
                 "}\n",
             ),
@@ -497,7 +495,7 @@ use super::*;
         assert!(stdout.contains("package app"));
         assert!(stdout.contains("package shared"));
         assert!(stdout.contains("CheckRecoverable"));
-        assert!(stdout.contains("ExtractRecoverableError"));
+        assert!(stdout.contains("Report"));
 
         fs::remove_dir_all(&temp_root).ok();
     }
@@ -719,4 +717,3 @@ use super::*;
 
         fs::remove_dir_all(&temp_root).ok();
     }
-

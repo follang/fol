@@ -6,9 +6,9 @@ fun[] load(flag: bol): int / str = {
 }
 
 fun[] forward(flag: bol): int / str = {
-    return load(flag)
+    return load(flag) || report "forward-bad-input"
 }
 
 fun[] main(): int / str = {
-    return forward(true)
+    return forward(true) || report "main-bad-input"
 }

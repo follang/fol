@@ -1,110 +1,449 @@
-# FOL Diagnostics Overhaul Plan
+# FOL Strict Error Model Plan
 
 Last updated: 2026-03-19
 
-## Problems Found
+## Goal
 
-1. **Error cascade** — A single parse error (e.g. `fun[exp]` instead of `fun(exp)`)
-   produces 20+ "Expected declaration at file root" errors, one per remaining token.
-   The parser has no sync-to-next-declaration after a failed declaration parse.
+Move FOL to a strict split between:
 
-2. **No dedup anywhere** — DiagnosticReport, LSP, and CLI all pass every error through
-   without deduplication. Same message at adjacent tokens = wall of identical errors.
+- `err[...]` as a normal first-class value type
+- `T / E` as a call-site control-flow surface only
 
-3. **Ugly error message prefixes** — Display impl prepends "ResolverUnresolvedName: ",
-   "TypecheckIncompatibleType: " etc. to every message. Redundant since the diagnostic
-   code (R1003, T1003) already identifies the kind. Users see:
-   `error: ResolverUnresolvedName: could not resolve 'x'` instead of
-   `error[R1003]: could not resolve 'x'`
+Under this model:
 
-4. **Error classification is message-based** — `ParseErrorKind::classify()` does
-   substring matching on error text ("at file root" → FileRoot). Fragile — any message
-   change silently changes the diagnostic code.
+- `err[...]` values can be stored, passed, returned, and later handled
+- routines declared as `fun[] name(): T / E` do not produce a storable value
+- `var x = name()` is illegal when `name(): T / E`
+- `var x: T = name()` is illegal when `name(): T / E`
+- `check(name())` remains legal if `check(...)` stays in the language
+- `name() || fallback` remains legal
+- plain propagation through ordinary expression contexts is removed
+- captured recoverable-call locals are removed
+- implicit materialization of recoverable results in lowering is removed
 
-5. **33 locationless parse errors** — Safety-bound-exceeded and constraint errors use
-   `file: None, line: 0, column: 0`. These produce diagnostics with no navigable location.
+This is a deliberate breaking change. Per project policy, the old behavior should be deleted rather than preserved behind compatibility paths.
 
-6. **No error limit** — 100 errors = 100 errors displayed. No "...and N more" cutoff.
+## Language Decision
 
-7. **Diagnostic code not shown in human output** — The rendered output shows
-   `error: message` but never shows the code (P1001, R1003, etc.). Users can't look
-   up error codes.
+### Final semantic split
 
-## Slices
+1. `err[...]` is the only error-shaped thing that is a normal value.
+2. `T / E` is not a value type. It is a routine-call outcome that must be handled at the call site.
+3. A `/ E` result may only appear in dedicated handling surfaces.
 
-### Slice 1 — Parser error recovery (the cascade fix)
+Initial allowed `/ E` handling surfaces:
 
-After a declaration parse fails, skip tokens to the next declaration keyword or
-newline-then-keyword, instead of falling through token-by-token to the catch-all.
+- `expr || fallback`
+- `check(expr)` if we keep it
+- possibly future dedicated syntax like `try`, `catch`, `match_err`, etc.
 
-- [x] 1a. Add `sync_to_next_declaration(tokens)` method — skip tokens until the next
-      declaration-start keyword (`fun`, `var`, `def`, `typ`, `pro`, `log`, `seg`,
-      `ali`, `imp`, `lab`, `con`, `use`) or EOF. Stop BEFORE the keyword (don't consume it).
-      (`program_parsing.rs`)
-- [x] 1b. In every `Err(error)` arm of declaration parsing in
-      `parse_top_level_entries_with_surface`, after pushing the error, call
-      `sync_to_next_declaration(tokens)` instead of relying on `bump_if_no_progress`
-- [x] 1c. Test: `fun[exp] emit(...) = { ... }` → exactly 1 error (P1001), not 20+
-- [x] 1d. Test: two broken declarations separated by a good one → 2 errors, middle
-      declaration still parsed correctly
+Initial forbidden `/ E` surfaces:
 
-### Slice 2 — Cascade suppression in DiagnosticReport
+- variable binding
+- assignment target initialization
+- record field initialization
+- container elements
+- function arguments to ordinary routines
+- return expressions
+- arithmetic/logical/comparison operands
+- control-flow selectors and conditions
+- method receivers
+- field/index access
+- shell unwrap `!`
 
-Safety net for all pipeline stages. Even with parser recovery, edge cases can cascade.
+### Consequence
 
-- [x] 2a. In `DiagnosticReport::add_diagnostic()`, skip if the new diagnostic has
-      the same code AND same line as the most recently added diagnostic
-      (`fol-diagnostics/src/lib.rs`)
-- [x] 2b. Add max error limit: cap at 50 diagnostics total, show "(output truncated)"
-- [x] 2c. Tests: same code/same line → 1 diagnostic; different lines → 2; limit → capped
+This removes the current hybrid model where `/ E` can flow through expression typing and be implicitly propagated by surrounding `... / E` routines.
 
-### Slice 3 — Clean error messages (remove kind prefixes)
+The new language story becomes:
 
-Error messages should be the human-readable message, not "ResolverUnresolvedName: msg".
+- use `err[...]` when you want a real value that represents success/error state
+- use `T / E` when you want immediate call-site handling with `||` or `check(...)`
 
-- [x] 3a. Change `ResolverError::Display` to output just `self.message` instead of
-      `"{kind_label}: {message}"` (`fol-resolver/src/errors.rs:104-107`)
-- [x] 3b. Same for `TypecheckError::Display` (`fol-typecheck/src/errors.rs`)
-- [x] 3c. Same for `PackageError::Display` (`fol-package/src/errors.rs`)
-- [x] 3d. Same for `LoweringError::Display` (`fol-lower/src/errors.rs`)
-- [x] 3e. Same for `BuildEvaluationError::Display` (`fol-build/src/eval/error.rs`)
-- [x] 3f. Update any tests that assert on the prefixed format
+## Current Compiler Behavior To Remove
 
-### Slice 4 — Show diagnostic codes in human output
+The current compiler has a recoverable-effect model:
 
-Users should see `error[R1003]:` not just `error:` so they can look up codes.
+- typechecking attaches `recoverable_effect` metadata to typed expressions and typed symbols
+- inferred locals may retain a recoverable effect
+- plain expression contexts call `plain_value_expr(...)`, which currently permits propagation in `ErrorCallMode::Propagate`
+- lowering materializes recoverable values into control flow using `CheckRecoverable`, `UnwrapRecoverable`, and `ExtractRecoverableError`
 
-- [x] 4a. In `render_human.rs`, change `"{prefix}: {message}"` to
-      `"{prefix}[{code}]: {message}"` when code is not EUNKNOWN
-- [x] 4b. Update render tests to expect the new format
+Current behaviors that must be deleted:
 
-### Slice 5 — Structural ParseErrorKind (replace substring matching)
+1. Inferred bindings can capture recoverable call results.
+2. Plain expression use of `/ E` inside matching `... / E` routines can implicitly propagate.
+3. `return load()` is legal because lowering converts recoverable values into report-or-unwrap control flow.
+4. Lowered locals may retain `recoverable_error_type`.
 
-Replace the fragile `ParseErrorKind::classify(message)` with a field on `ParseError`.
+## Target Architecture
 
-- [x] 5a. Add `kind: ParseErrorKind` field to `ParseError` struct
-- [x] 5b. Add `ParseError::from_token_with_kind(token, kind, message)` constructor
-- [x] 5c. Update `ParseError::from_token()` to set kind from an explicit parameter
-      or default to `Syntax`
-- [x] 5d. At each error creation site in parser_parts/, set the correct kind directly
-      instead of relying on message text classification
-- [x] 5e. Remove `ParseErrorKind::classify()` — no longer needed
-- [x] 5f. Update `to_diagnostic()` to use `self.kind` directly
+### Type system
 
-### Slice 6 — Fix locationless parse errors
+Keep both representations distinct:
 
-Fix the 33 `ParseError` constructions that use `file: None, line: 0`.
+- `CheckedType::Error { inner }` for `err[...]`
+- `RoutineType { return_type, error_type }` for `T / E`
 
-- [x] 6a. For safety-bound-exceeded errors (routine_header_parsers, binding_declaration_parsers,
-      rolling_expression_parsers, etc.), pass `tokens` and use `tokens.curr(false)` or
-      the last valid token for location
-- [x] 6b. For constraint errors (duplicate parameter names, invalid patterns), use the
-      offending token's location
-- [x] 6c. All parse errors now have real file/line/column from current token
+Do not introduce any coercion or conversion path between them.
 
-### Slice 7 — LSP diagnostic improvements
+### Typechecking
 
-- [x] 7a. Deduplicate LSP diagnostics by (line, code) before sending to editor
-      (`lsp/analysis.rs`)
-- [x] 7b. Include diagnostic code in LSP diagnostic message so editors show it
-- [x] 7c. Test: parse cascade → at most 1 LSP diagnostic per line per code
+Change the meaning of a recoverable effect:
+
+- a recoverable effect becomes evidence that an expression is only valid in dedicated handling surfaces
+- it is no longer something that ordinary value contexts may propagate
+
+Concretely:
+
+- any ordinary value context that sees `recoverable_effect.is_some()` must error
+- the old “surrounding routine declares compatible error type” rule is removed for ordinary expressions
+- `ErrorCallMode::Propagate` should be removed
+- the only remaining “observe” contexts should be the dedicated handlers like `||` and `check(...)`
+
+### Lowering
+
+Lowering should stop supporting generic materialization of recoverable values.
+
+Instead:
+
+- `||` lowers directly from an observed recoverable call result
+- `check(...)` lowers directly from an observed recoverable call result if kept
+- all ordinary expression lowering assumes no recoverable result reaches it
+- generic propagation helpers should be deleted
+
+### Runtime / IR
+
+The recoverable ABI may still exist for routine calls, but only the dedicated handling constructs should touch it.
+
+That means:
+
+- `CheckRecoverable`, `UnwrapRecoverable`, and `ExtractRecoverableError` may remain as IR instructions
+- generic lowering paths that synthesize propagation from arbitrary expressions should be removed
+- recoverable instructions should appear only under `||`, `check(...)`, or any later explicit handling construct
+
+## Implementation Slices
+
+### Slice 1: Freeze the language contract in tests first `[complete]`
+
+Before changing implementation, rewrite and add tests so the strict model is explicit.
+
+- Add typecheck tests that reject:
+  - `var x = load()` where `load(): T / E`
+  - `var x: T = load()`
+  - `return load()`
+  - `return load() + 1`
+  - `consume(load())`
+  - `when(load()) { ... }`
+  - `loop(load()) { ... }` if applicable
+  - `load().field`
+  - `load()[0]`
+  - `load().method()`
+- Keep tests that accept:
+  - `load() || fallback`
+  - `load() || report ...`
+  - `load() || panic ...`
+  - `check(load())` if `check(...)` survives
+- Add tests that continue to accept normal `err[...]` value behavior:
+  - `var x: err[int] = ...`
+  - passing `err[...]` to routines
+  - returning `err[...]`
+  - unwrap `value!` on `err[...]`
+- Delete tests that currently assert inferred recoverable locals are valid.
+- Delete tests that currently assert plain propagation through routine bodies is valid.
+
+Exit condition:
+
+- test names and expectations describe the new model before implementation lands
+
+### Slice 2: Replace propagation with hard rejection in typechecking `[complete]`
+
+Centralize the strict rule in the typechecker helpers.
+
+- Remove `ErrorCallMode::Propagate`
+- Keep a single “observed recoverable expression” mode only for explicit handlers
+- Replace `plain_value_expr(...)` behavior:
+  - if `recoverable_effect.is_some()`, ordinary use is always an error
+  - emit a dedicated message like:
+    - `recoverable routine results with '/ ErrorType' cannot be used as plain values; handle them with '||' or check(...)`
+- Audit every call site of `plain_value_expr(...)`
+- Rename helpers if needed so the semantics are obvious:
+  - for example `require_plain_value_expr(...)`
+  - and `observe_recoverable_expr(...)`
+
+Exit condition:
+
+- no ordinary expression context can silently propagate a `/ E` result
+
+### Slice 3: Ban binding capture completely `[complete]`
+
+Binding capture needs an explicit direct check even after Slice 2, because bindings currently infer and store the recoverable effect.
+
+- In binding initializer typing:
+  - reject any initializer whose typed expression has `recoverable_effect.is_some()`
+  - do this for both explicit and inferred bindings
+- Remove code that stores `symbol.recoverable_effect` for inferred bindings
+- Audit grouped/destructured bindings and record fields for the same issue
+- Ensure diagnostics say the problem is the `/ E` call result itself, not a downstream type mismatch
+
+Exit condition:
+
+- there is no valid path where a local symbol retains a recoverable effect from a routine call
+
+### Slice 4: Ban implicit return propagation `[complete]`
+
+Current `return load()` works because the typechecker and lowerer treat `/ E` as materializable.
+
+- In return typing:
+  - reject `recoverable_effect.is_some()` before ordinary assignability
+  - replace the old compatibility-based propagation rule with an explicit handling requirement
+- Update diagnostics accordingly
+
+Exit condition:
+
+- `return load()` is illegal unless wrapped in a future explicit handler form
+
+### Slice 5: Ban `/ E` in all ordinary expression surfaces
+
+Do a full audit of typechecking sites that currently accept plain values.
+
+Surfaces to cover:
+
+- binary operators
+- unary operators other than dedicated handlers
+- function and method arguments
+- field access
+- index access
+- record initializers
+- container literals
+- `when` selectors and branch conditions
+- loop conditions and iterables
+- intrinsic operands except dedicated handlers
+- dot-root intrinsics
+
+Expected result:
+
+- every one of these surfaces rejects `/ E` values directly and consistently
+- the old “requires a surrounding routine with a declared error type” diagnostics disappear from strict-mode paths
+
+Exit condition:
+
+- the only surviving legal `/ E` consumer surfaces are explicit handlers
+
+### Slice 6: Simplify typed metadata
+
+Once bindings and plain expressions can no longer carry recoverable results, simplify the typed model.
+
+- Re-evaluate whether `TypedSymbol.recoverable_effect` is still needed
+- Re-evaluate whether `TypedReference.recoverable_effect` is still needed for ordinary references
+- Likely keep `TypedExpr.recoverable_effect` only as transient expression metadata for explicit handlers
+- Remove any typed metadata that exists only to support captured recoverable locals
+
+Preferred end state:
+
+- recoverable metadata exists only on expression nodes/references required by `||` and `check(...)`
+- local symbols do not carry recoverable-effect state
+
+### Slice 7: Remove generic recoverable materialization from lowering
+
+This is the core strictness change in lowering.
+
+- Delete or rewrite `materialize_recoverable_value(...)`
+- Delete the idea that ordinary `lower_expression_expected(...)` may convert a recoverable value into report-or-unwrap control flow
+- Ensure ordinary lowering errors if a recoverable result leaks into it
+- Keep direct lowering for:
+  - `||`
+  - `check(...)` if retained
+
+This will likely simplify:
+
+- `lower_expression_expected(...)`
+- local binding lowering
+- return lowering
+- any call sites that currently choose between observed vs expected lowering based on recoverable local state
+
+Exit condition:
+
+- lowering no longer implements implicit propagation
+
+### Slice 8: Remove recoverable local storage from lowered IR
+
+The current lowered local model can store `recoverable_error_type` on locals.
+
+Under the strict model, that should disappear for ordinary locals.
+
+- Audit `RoutineCursor`, local allocation helpers, and verifier logic
+- Remove `recoverable_error_type` from locals if no longer necessary
+- If some recoverable operand metadata is still needed for direct `||`/`check(...)` lowering, keep it only as temporary expression lowering state, not as persistent general-purpose local storage
+- Update verifier assumptions and tests
+
+Preferred end state:
+
+- routine call recoverable metadata is attached only to the specific call-result lowering path, not stored as a general local capability
+
+### Slice 9: Keep `err[...]` as the real value-based error surface
+
+After removing `/ E` capture and propagation, strengthen `err[...]` as the first-class error container.
+
+Short-term work:
+
+- keep existing `err[...]` type behavior intact
+- keep postfix `!` behavior for `err[...]`
+- ensure docs clearly state `err[...]` is the storable form
+
+Follow-up design work:
+
+- design `err[...]` methods or operators such as:
+  - `.unbox()`
+  - `.is_err()`
+  - `.if_err(...)`
+  - `.map(...)`
+  - `.map_err(...)`
+- decide whether those methods belong to dot-method syntax, intrinsic lowering, or library methods
+
+This method design is separate from the strict `/ E` cleanup and should not block it.
+
+### Slice 10: Rewrite diagnostics
+
+Current diagnostics are phrased around the propagation model. They need to be rewritten to teach the strict model.
+
+Messages to remove or replace:
+
+- `requires a surrounding routine with a declared error type in V1`
+- any wording that implies plain value contexts may propagate
+
+Messages to add:
+
+- `/ ErrorType` results are not plain values
+- `/ ErrorType` results cannot be assigned to variables
+- `/ ErrorType` results cannot be returned directly
+- `/ ErrorType` results must be handled with `||` or `check(...)`
+- `err[...]` is the value form if you need storage and later handling
+
+Exit condition:
+
+- diagnostics explain the language rule directly instead of exposing internal propagation machinery
+
+### Slice 11: Rewrite docs to match the strict model
+
+The docs currently describe propagation as part of the V1 contract. That must be removed.
+
+Files already known to need updates:
+
+- `book/src/650_errors/200_recover.md`
+- `book/src/400_type/400_special.md`
+- `book/src/500_items/200_routines/_index.md`
+- `book/src/500_items/200_routines/200_functions.md`
+- any examples that show `return load()` or captured recoverable locals
+
+Required doc changes:
+
+- remove propagation as supported behavior
+- state that `/ E` is immediate handling only
+- show `||` and `check(...)` examples
+- state clearly that `err[...]` is the value-based alternative
+
+Exit condition:
+
+- docs no longer teach or imply implicit propagation
+
+### Slice 12: Remove outdated integration fixtures and examples
+
+Audit tests and examples for old behavior.
+
+- Replace propagation fixtures with strict-handling fixtures
+- delete or rewrite fixtures that rely on:
+  - `return load()`
+  - `var attempt = load()`
+  - `return load() + 1`
+- keep fixtures that demonstrate:
+  - `||` defaulting
+  - `|| report`
+  - `|| panic`
+  - `check(load())`
+  - `err[...]` shell/value use
+
+Exit condition:
+
+- no fixture in the repo demonstrates the removed propagation model
+
+## Specific Code Areas To Audit
+
+### Typecheck
+
+- `lang/compiler/fol-typecheck/src/exprs/helpers.rs`
+- `lang/compiler/fol-typecheck/src/exprs/bindings.rs`
+- `lang/compiler/fol-typecheck/src/exprs/controlflow.rs`
+- `lang/compiler/fol-typecheck/src/exprs/operators.rs`
+- `lang/compiler/fol-typecheck/src/exprs/calls.rs`
+- `lang/compiler/fol-typecheck/src/exprs/access.rs`
+- `lang/compiler/fol-typecheck/src/exprs/literals.rs`
+- `lang/compiler/fol-typecheck/src/exprs/mod.rs`
+- `lang/compiler/fol-typecheck/src/model.rs`
+
+### Lowering
+
+- `lang/compiler/fol-lower/src/exprs/expressions.rs`
+- `lang/compiler/fol-lower/src/exprs/calls.rs`
+- `lang/compiler/fol-lower/src/exprs/bindings.rs`
+- `lang/compiler/fol-lower/src/exprs/body.rs`
+- `lang/compiler/fol-lower/src/exprs/cursor.rs`
+- `lang/compiler/fol-lower/src/verify/instruction.rs`
+- `lang/compiler/fol-lower/src/verify/mod.rs`
+
+### Docs and tests
+
+- `test/typecheck/test_typecheck_foundation.rs`
+- `test/typecheck/test_typecheck_error_typing.rs`
+- `test/integration_tests/integration_cli_lowering.rs`
+- `test/apps/fixtures/recoverable_propagation/main.fol`
+- `test/apps/fixtures/recoverable_fallback/main.fol`
+- `book/src/650_errors/200_recover.md`
+- `book/src/400_type/400_special.md`
+- `book/src/500_items/200_routines/_index.md`
+- `book/src/500_items/200_routines/200_functions.md`
+
+## Ordered Execution Plan
+
+1. Rewrite tests to define the strict contract.
+2. Change typechecker helpers so `/ E` is rejected in all ordinary value contexts.
+3. Ban binding capture explicitly and remove symbol-level recoverable locals.
+4. Ban direct return propagation.
+5. Audit all expression surfaces for consistent rejection.
+6. Simplify typed metadata.
+7. Remove generic recoverable materialization from lowering.
+8. Remove lowered local recoverable storage if no longer needed.
+9. Rewrite diagnostics.
+10. Rewrite docs and examples.
+11. Run full test suite and remove any remaining propagation-era behavior.
+
+## Acceptance Criteria
+
+The strict model is complete when all of the following are true:
+
+- `err[...]` remains a normal value type.
+- `/ E` results cannot be assigned to locals.
+- `/ E` results cannot be returned directly.
+- `/ E` results cannot appear in ordinary expressions.
+- only explicit handler surfaces can consume `/ E`.
+- no typed local symbol stores recoverable-call state.
+- lowering no longer performs implicit propagation.
+- docs and tests consistently teach the strict split.
+
+## Non-Goals
+
+- preserving backward compatibility with propagation-based `/ E` code
+- introducing migration warnings
+- adding fallback behavior
+- merging `/ E` and `err[...]` into one representation
+
+## Follow-Up After This Plan
+
+After the strict split lands, do a separate design pass for `err[...]` ergonomics:
+
+- value methods
+- library helpers
+- pattern/match support
+- naming of `unbox`, `unwrap`, `if_err`, `map_err`, etc.
+
+That work should start only after the `/ E` propagation model has been fully removed.

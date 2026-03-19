@@ -237,7 +237,7 @@ fn errorful_call_lowering_retains_explicit_error_type_metadata() {
              return 1;\n\
          }\n\
          fun[] main(): int / str = {\n\
-             return load();\n\
+             return load() || report \"forwarded\";\n\
          }\n",
     );
 
@@ -278,7 +278,7 @@ fn errorful_call_lowering_retains_explicit_error_type_metadata() {
 }
 
 #[test]
-fn propagation_lowering_branches_and_reports_recoverable_calls() {
+fn explicit_report_fallback_lowering_branches_and_reports_recoverable_calls() {
     let lowered = lower_fixture_workspace(concat!(
         "fun[] load(flag: bol): int / str = {\n",
         "    when(flag) {\n",
@@ -287,7 +287,7 @@ fn propagation_lowering_branches_and_reports_recoverable_calls() {
         "    }\n",
         "}\n",
         "fun[] main(flag: bol): int / str = {\n",
-        "    return load(flag)\n",
+        "    return load(flag) || report \"forwarded\"\n",
         "}\n",
     ));
 
@@ -310,14 +310,6 @@ fn propagation_lowering_branches_and_reports_recoverable_calls() {
         .iter()
         .any(|instr| matches!(instr.kind, LoweredInstrKind::CheckRecoverable { .. })));
     assert!(routine
-        .instructions
-        .iter()
-        .any(|instr| matches!(instr.kind, LoweredInstrKind::UnwrapRecoverable { .. })));
-    assert!(routine
-        .instructions
-        .iter()
-        .any(|instr| matches!(instr.kind, LoweredInstrKind::ExtractRecoverableError { .. })));
-    assert!(routine
         .blocks
         .iter()
         .any(|block| matches!(block.terminator, Some(LoweredTerminator::Branch { .. }))));
@@ -337,8 +329,7 @@ fn check_lowering_observes_recoverable_bindings_without_propagation() {
         "    }\n",
         "}\n",
         "fun[] main(flag: bol): bol = {\n",
-        "    var attempt = load(flag)\n",
-        "    return check(attempt)\n",
+        "    return check(load(flag))\n",
         "}\n",
     ));
 
@@ -348,13 +339,6 @@ fn check_lowering_observes_recoverable_bindings_without_propagation() {
         .values()
         .find(|routine| routine.name == "main")
         .expect("main routine should exist");
-    let attempt_local = routine
-        .locals
-        .iter()
-        .find(|local| local.name.as_deref() == Some("attempt"))
-        .expect("attempt local should exist");
-
-    assert!(attempt_local.recoverable_error_type.is_some());
     assert!(routine
         .instructions
         .iter()
@@ -570,4 +554,3 @@ fn index_access_lowering_emits_explicit_container_access_instructions() {
         "container index access should lower into an explicit IndexAccess instruction"
     );
 }
-

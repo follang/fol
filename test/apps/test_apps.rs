@@ -694,7 +694,7 @@ fn intrinsics_panic_check_fixture_compiles_and_runs() {
 }
 
 #[test]
-fn recoverable_propagation_fixture_compiles_and_runs() {
+fn recoverable_explicit_report_fixture_compiles_and_runs() {
     let fixture = fixture_root("recoverable_propagation");
 
     let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
@@ -703,11 +703,11 @@ fn recoverable_propagation_fixture_compiles_and_runs() {
     let run_output = compile_and_run_app(&fixture);
     assert!(
         !run_output.status.success(),
-        "propagated recoverable error should fail at process boundary\nstdout=\n{}\nstderr=\n{}",
+        "explicitly reported recoverable error should fail at process boundary\nstdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&run_output.stdout),
         String::from_utf8_lossy(&run_output.stderr)
     );
-    assert_output_contains(&run_output, "recoverable error");
+    assert_output_contains(&run_output, "main-bad-input");
 }
 
 #[test]
@@ -861,7 +861,7 @@ fn fail_recoverable_plain_context_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_recoverable_plain_context");
 
     let output = compile_app_expect_failure(&fixture);
-    assert_output_contains(&output, "declared error type");
+    assert_output_contains(&output, "cannot use a routine result with '/ ErrorType' as a plain value");
 }
 
 #[test]

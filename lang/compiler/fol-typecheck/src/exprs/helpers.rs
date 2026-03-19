@@ -15,41 +15,18 @@ pub(crate) fn observe_context(context: TypeContext) -> TypeContext {
     }
 }
 
-pub(crate) fn ensure_propagatable_effect(
-    typed: &TypedProgram,
-    context: TypeContext,
-    effect: RecoverableCallEffect,
+pub(crate) fn reject_recoverable_plain_use(
     origin: Option<SyntaxOrigin>,
     usage: impl Into<String>,
 ) -> Result<(), TypecheckError> {
     let usage = usage.into();
-    let Some(routine_error_type) = context.routine_error_type else {
-        return Err(match origin {
-            Some(origin) => TypecheckError::with_origin(
-                TypecheckErrorKind::InvalidInput,
-                format!("{usage} requires a surrounding routine with a declared error type in V1"),
-                origin,
-            ),
-            None => TypecheckError::new(
-                TypecheckErrorKind::InvalidInput,
-                format!("{usage} requires a surrounding routine with a declared error type in V1"),
-            ),
-        });
-    };
-    if !is_v1_assignable(typed, routine_error_type, effect.error_type)? {
-        let message = format!(
-            "{usage} propagates '{}' but the surrounding routine declares '{}'",
-            describe_type(typed, effect.error_type),
-            describe_type(typed, routine_error_type),
-        );
-        return Err(match origin {
-            Some(origin) => {
-                TypecheckError::with_origin(TypecheckErrorKind::IncompatibleType, message, origin)
-            }
-            None => TypecheckError::new(TypecheckErrorKind::IncompatibleType, message),
-        });
-    }
-    Ok(())
+    let message = format!(
+        "{usage} cannot use a routine result with '/ ErrorType' as a plain value in V1; handle it with '||' or check(...)"
+    );
+    Err(match origin {
+        Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin),
+        None => TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
+    })
 }
 
 pub(crate) fn merge_recoverable_effects(
@@ -90,10 +67,11 @@ pub(crate) fn plain_value_expr(
     origin: Option<SyntaxOrigin>,
     usage: impl Into<String>,
 ) -> Result<TypedExpr, TypecheckError> {
-    if let Some(effect) = expr.recoverable_effect {
+    if expr.recoverable_effect.is_some() {
         match context.error_call_mode {
             ErrorCallMode::Propagate => {
-                ensure_propagatable_effect(typed, context, effect, origin, usage)?;
+                let _ = typed;
+                reject_recoverable_plain_use(origin, usage)?;
             }
             ErrorCallMode::Observe => {}
         }
