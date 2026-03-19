@@ -43,9 +43,9 @@ Last updated: 2026-03-18
 - [x] 5e. Frontend: remove unused `_config` params from 4 editor command functions (`editor.rs:48,57,66,75`)
 
 ### Slice 6 — Cargo.toml cleanup
-- [ ] 6a. Root `Cargo.toml`: `colored = "1"` → `"2"` to match all crates
-- [ ] 6b. Root `Cargo.toml`: remove redundant direct deps (only `fol-frontend` is used by `main.rs`)
-- [ ] 6c. Unify `dyn-clone` version strings: `"1.0"` → `"1"` in `fol-parser/Cargo.toml`
-- [ ] 6d. Unify `serde` version strings: `"1.0"` → `"1"` in `fol-diagnostics/Cargo.toml`
-- [ ] 6e. Root `Cargo.toml`: add `"env"` feature to clap, or remove clap (it's redundant)
-- [ ] 6f. `fol-resolver/Cargo.toml`: remove `fol-lexer` and `fol-stream` from `[dev-dependencies]` (already in `[dependencies]`)
+- [x] 6a. Root `Cargo.toml`: removed `colored`, `clap`, and all redundant deps
+- [x] 6b. Root `Cargo.toml`: only `fol-frontend` in `[dependencies]`, test crates in `[dev-dependencies]`
+- [x] 6c. Unified `dyn-clone` version string
+- [x] 6d. Unified `serde` version string
+- [x] 6e. Removed `clap` from root (redundant with fol-frontend)
+- [x] 6f. Removed redundant `[dev-dependencies]` from fol-resolver
