@@ -49,5 +49,6 @@ Current `V1` shell note:
 - postfix unwrap `value!` applies to those shell values.
 - routine calls declared with `ResultType / ErrorType` are not `err[...]`
   shells.
-- use propagation, `check(...)`, or `expr || fallback` for those routine calls
-  instead of `!`.
+- use `check(...)` or `expr || fallback` for those routine calls instead of
+  `!`.
+- use `err[...]` when you need a storable error value.

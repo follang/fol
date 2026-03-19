@@ -324,7 +324,7 @@ Exit condition:
 
 - diagnostics explain the language rule directly instead of exposing internal propagation machinery
 
-### Slice 11: Rewrite docs to match the strict model
+### Slice 11: Rewrite docs to match the strict model `[complete]`
 
 The docs currently describe propagation as part of the V1 contract. That must be removed.
 

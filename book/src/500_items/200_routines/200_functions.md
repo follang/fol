@@ -25,7 +25,8 @@ Current `V1` note:
 - a function declared as `fun[] read(...): T / E` does not return an `err[E]`
   shell value
 - it returns through a recoverable routine error path
-- handle that path with propagation, `check(...)`, or `expr || fallback`
+- handle that path immediately with `check(...)` or `expr || fallback`
+- plain assignment, return, and ordinary expression use are rejected
 - postfix `!` stays reserved for `opt[...]` and `err[...]` shell values
 {{% notice warn %}}
 

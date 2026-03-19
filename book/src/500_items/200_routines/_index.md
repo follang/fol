@@ -166,7 +166,8 @@ Current `V1` routine summary:
 - `report expr` exits through that declared error path
 - routine call results declared with `/ ErrorType` are not `err[...]` shell
   values
-- use propagation, `check(...)`, or `expr || fallback` for those calls
+- use `check(...)` or `expr || fallback` for those calls
+- ordinary plain-value use of `/ ErrorType` calls is rejected
 - keep postfix `!` for `opt[...]` and `err[...]` shell values
 
 {{% /notice %}}
@@ -184,8 +185,8 @@ fun[] read(path: str): int / str = {
     report "missing path"
 }
 ```
-and are handled at the call site with propagation, `check(...)`, or `||`
-rather than shell unwrap.
+and are handled at the call site with `check(...)` or `||` rather than shell
+unwrap or plain propagation.
 
 Current intrinsic note:
 
