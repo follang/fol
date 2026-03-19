@@ -467,14 +467,6 @@ pub(crate) fn type_node_with_expectation(
             "yield typing is not part of the V1 typecheck milestone",
         )),
         _ => {
-            let debug_repr = format!("{node:?}");
-            let variant = debug_repr
-                .split_once(|c: char| !c.is_alphanumeric() && c != '_')
-                .map(|(v, _)| v)
-                .unwrap_or(&debug_repr);
-            eprintln!(
-                "[typecheck] unknown AST node '{variant}' reached catch-all — treating as None (UnsupportedSyntax)"
-            );
             for child in node.children() {
                 let _ = type_node(typed, resolved, context, child)?;
             }

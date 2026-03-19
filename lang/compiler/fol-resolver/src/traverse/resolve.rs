@@ -274,7 +274,7 @@ fn resolve_qualified_root(
             .find(|import| import.alias_symbol == import_symbol)
             .and_then(|import| import.target_scope);
         if let Some(target_scope) = import {
-            return Ok((target_scope, scope_namespace(program, target_scope)));
+            return Ok((target_scope, scope_namespace(program, target_scope)?));
         }
     }
 
@@ -380,15 +380,23 @@ pub fn qualified_path_origin(
         .cloned()
 }
 
-fn scope_namespace(program: &ResolvedProgram, scope_id: ScopeId) -> String {
-    match program
+fn scope_namespace(program: &ResolvedProgram, scope_id: ScopeId) -> Result<String, ResolverError> {
+    let kind = program
         .scope(scope_id)
         .map(|scope| &scope.kind)
-        .expect("qualified path scope should exist")
-    {
-        ScopeKind::ProgramRoot { package } => package.clone(),
-        ScopeKind::NamespaceRoot { namespace } => namespace.clone(),
-        other => panic!("qualified path root scope must be package or namespace, got {other:?}"),
+        .ok_or_else(|| {
+            ResolverError::new(
+                ResolverErrorKind::Internal,
+                "qualified path scope should exist",
+            )
+        })?;
+    match kind {
+        ScopeKind::ProgramRoot { package } => Ok(package.clone()),
+        ScopeKind::NamespaceRoot { namespace } => Ok(namespace.clone()),
+        other => Err(ResolverError::new(
+            ResolverErrorKind::Internal,
+            format!("qualified path root scope must be package or namespace, got {other:?}"),
+        )),
     }
 }
 

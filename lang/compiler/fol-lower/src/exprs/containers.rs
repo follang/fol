@@ -268,7 +268,7 @@ fn lower_linear_container_literal(
         expected_type,
         element_type,
         lowered_elements.len(),
-    ) else {
+    )? else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
             "empty linear container literals require an expected container type in lowered V1",
@@ -351,7 +351,10 @@ fn lower_set_literal(
         members.push(lowered.local_id);
     }
 
-    let type_id = expected_type.unwrap_or_else(|| find_set_type(type_table, &member_types));
+    let type_id = match expected_type {
+        Some(t) => t,
+        None => find_set_type(type_table, &member_types)?,
+    };
     let result_local = cursor.allocate_local(type_id, None);
     cursor.push_instr(
         Some(result_local),
@@ -435,7 +438,7 @@ fn lower_map_literal(
         entries.push((lowered_key.local_id, lowered_value.local_id));
     }
 
-    let Some(type_id) = resolve_map_type(type_table, expected_type, expected_key, expected_value)
+    let Some(type_id) = resolve_map_type(type_table, expected_type, expected_key, expected_value)?
     else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
@@ -559,23 +562,25 @@ fn resolve_linear_container_type(
     expected_type: Option<LoweredTypeId>,
     element_type: Option<LoweredTypeId>,
     len: usize,
-) -> Option<LoweredTypeId> {
+) -> Result<Option<LoweredTypeId>, LoweringError> {
     if let Some(type_id) = expected_type {
-        return match (type_table.get(type_id), kind) {
+        return Ok(match (type_table.get(type_id), kind) {
             (Some(crate::LoweredType::Array { .. }), ContainerType::Array)
             | (Some(crate::LoweredType::Vector { .. }), ContainerType::Vector)
             | (Some(crate::LoweredType::Sequence { .. }), ContainerType::Sequence) => Some(type_id),
             _ => None,
-        };
+        });
     }
 
-    let element_type = element_type?;
-    Some(match kind {
-        ContainerType::Array => find_array_type(type_table, element_type, Some(len)),
-        ContainerType::Vector => find_vector_type(type_table, element_type),
-        ContainerType::Sequence => find_sequence_type(type_table, element_type),
-        ContainerType::Set | ContainerType::Map => return None,
-    })
+    let Some(element_type) = element_type else {
+        return Ok(None);
+    };
+    Ok(Some(match kind {
+        ContainerType::Array => find_array_type(type_table, element_type, Some(len))?,
+        ContainerType::Vector => find_vector_type(type_table, element_type)?,
+        ContainerType::Sequence => find_sequence_type(type_table, element_type)?,
+        ContainerType::Set | ContainerType::Map => return Ok(None),
+    }))
 }
 
 fn expected_set_member_types(
@@ -613,15 +618,18 @@ fn resolve_map_type(
     expected_type: Option<LoweredTypeId>,
     key_type: Option<LoweredTypeId>,
     value_type: Option<LoweredTypeId>,
-) -> Option<LoweredTypeId> {
+) -> Result<Option<LoweredTypeId>, LoweringError> {
     if let Some(type_id) = expected_type {
-        return matches!(
+        return Ok(matches!(
             type_table.get(type_id),
             Some(crate::LoweredType::Map { .. })
         )
-        .then_some(type_id);
+        .then_some(type_id));
     }
-    Some(find_map_type(type_table, key_type?, value_type?))
+    let (Some(key), Some(value)) = (key_type, value_type) else {
+        return Ok(None);
+    };
+    Ok(Some(find_map_type(type_table, key, value)?))
 }
 
 fn lowered_linear_kind(kind: ContainerType) -> Result<LoweredLinearKind, LoweringError> {
@@ -640,7 +648,7 @@ fn find_array_type(
     type_table: &crate::LoweredTypeTable,
     element_type: LoweredTypeId,
     size: Option<usize>,
-) -> LoweredTypeId {
+) -> Result<LoweredTypeId, LoweringError> {
     (0..type_table.len())
         .map(crate::LoweredTypeId)
         .find(|type_id| {
@@ -652,10 +660,13 @@ fn find_array_type(
                 }) if *actual_element == element_type && *actual_size == size
             )
         })
-        .unwrap_or_else(|| {
-            panic!(
-                "lowered type table lost array shape for element {}",
-                element_type.0
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::Internal,
+                format!(
+                    "lowered type table lost array shape for element {}",
+                    element_type.0
+                ),
             )
         })
 }
@@ -663,7 +674,7 @@ fn find_array_type(
 fn find_vector_type(
     type_table: &crate::LoweredTypeTable,
     element_type: LoweredTypeId,
-) -> LoweredTypeId {
+) -> Result<LoweredTypeId, LoweringError> {
     (0..type_table.len())
         .map(crate::LoweredTypeId)
         .find(|type_id| {
@@ -674,10 +685,13 @@ fn find_vector_type(
                 }) if *actual_element == element_type
             )
         })
-        .unwrap_or_else(|| {
-            panic!(
-                "lowered type table lost vector shape for element {}",
-                element_type.0
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::Internal,
+                format!(
+                    "lowered type table lost vector shape for element {}",
+                    element_type.0
+                ),
             )
         })
 }
@@ -685,7 +699,7 @@ fn find_vector_type(
 fn find_sequence_type(
     type_table: &crate::LoweredTypeTable,
     element_type: LoweredTypeId,
-) -> LoweredTypeId {
+) -> Result<LoweredTypeId, LoweringError> {
     (0..type_table.len())
         .map(crate::LoweredTypeId)
         .find(|type_id| {
@@ -696,10 +710,13 @@ fn find_sequence_type(
                 }) if *actual_element == element_type
             )
         })
-        .unwrap_or_else(|| {
-            panic!(
-                "lowered type table lost sequence shape for element {}",
-                element_type.0
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::Internal,
+                format!(
+                    "lowered type table lost sequence shape for element {}",
+                    element_type.0
+                ),
             )
         })
 }
@@ -707,7 +724,7 @@ fn find_sequence_type(
 fn find_set_type(
     type_table: &crate::LoweredTypeTable,
     member_types: &[LoweredTypeId],
-) -> LoweredTypeId {
+) -> Result<LoweredTypeId, LoweringError> {
     (0..type_table.len())
         .map(crate::LoweredTypeId)
         .find(|type_id| {
@@ -718,14 +735,19 @@ fn find_set_type(
                 }) if actual_members == member_types
             )
         })
-        .unwrap_or_else(|| panic!("lowered type table lost set shape"))
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::Internal,
+                "lowered type table lost set shape",
+            )
+        })
 }
 
 fn find_map_type(
     type_table: &crate::LoweredTypeTable,
     key_type: LoweredTypeId,
     value_type: LoweredTypeId,
-) -> LoweredTypeId {
+) -> Result<LoweredTypeId, LoweringError> {
     (0..type_table.len())
         .map(crate::LoweredTypeId)
         .find(|type_id| {
@@ -737,5 +759,10 @@ fn find_map_type(
                 }) if *actual_key == key_type && *actual_value == value_type
             )
         })
-        .unwrap_or_else(|| panic!("lowered type table lost map shape"))
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::Internal,
+                "lowered type table lost map shape",
+            )
+        })
 }

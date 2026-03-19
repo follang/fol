@@ -30,10 +30,10 @@ Last updated: 2026-03-18
 - [x] 3d. Fix locationless errors (`line: 0, column: 0, file: None`) in `pipe_expression_parsers.rs:7-13`, `binding_declaration_parsers.rs:341-350`, `routine_header_parsers.rs:667-673,480-486`
 
 ### Slice 4 — Resolver + typecheck + lower panics → errors
-- [ ] 4a. Resolver: `panic!` in qualified-path scope matching → error (`traverse/resolve.rs:391`)
-- [ ] 4b. Lower: 5 `panic!` in type table lookups → errors (`exprs/containers.rs:656,678,700,721,740`)
-- [ ] 4c. Resolver: `eprintln!` in `mount_visible_symbols_from_scope` → proper warning/diagnostic (`model.rs:638`)
-- [ ] 4d. Typecheck: `eprintln!` in catch-all type inference → proper diagnostic (`exprs/mod.rs:475`)
+- [x] 4a. Resolver: `panic!` in qualified-path scope matching → error (`traverse/resolve.rs:391`)
+- [x] 4b. Lower: 5 `panic!` in type table lookups → errors (`exprs/containers.rs:656,678,700,721,740`)
+- [x] 4c. Resolver: `eprintln!` in `mount_visible_symbols_from_scope` → proper warning/diagnostic (`model.rs:638`)
+- [x] 4d. Typecheck: `eprintln!` in catch-all type inference → proper diagnostic (`exprs/mod.rs:475`)
 
 ### Slice 5 — Backend + frontend fixes
 - [ ] 5a. Backend: `compile_error!()` strings for Local/Global operands → `BackendError` (`instructions/helpers.rs:291-296`)

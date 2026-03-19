@@ -635,11 +635,6 @@ impl ResolvedProgram {
     ) -> Result<(), ResolverError> {
         for foreign_symbol_id in foreign_symbols {
             let Some(symbol) = loaded.program.symbol(*foreign_symbol_id) else {
-                eprintln!(
-                    "resolver: skipping invalid foreign symbol id {:?} from package '{}'",
-                    foreign_symbol_id,
-                    loaded.identity.display_name
-                );
                 continue;
             };
             if symbol.visibility != Some(ParsedDeclVisibility::Exported)
