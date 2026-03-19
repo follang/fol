@@ -568,7 +568,7 @@ use super::*;
         let mut diagnostics = DiagnosticReport::new();
 
         let parse_errors = parser
-            .parse(&mut lexer)
+            .parse_script_package(&mut lexer)
             .expect_err("Parser should fail on illegal token");
 
         for error in parse_errors {
@@ -625,7 +625,7 @@ use super::*;
         let mut parser = AstParser::new();
         let mut diagnostics = DiagnosticReport::new();
         let parse_errors = parser
-            .parse(&mut lexer)
+            .parse_script_package(&mut lexer)
             .expect_err("Parser should fail on illegal token");
 
         for error in parse_errors {
@@ -671,7 +671,7 @@ use super::*;
         let mut lexer = Elements::init(&mut file_stream);
         let mut parser = AstParser::new();
         let errors = parser
-            .parse(&mut lexer)
+            .parse_script_package(&mut lexer)
             .expect_err("Second source should surface a parser-visible error");
 
         let parse_error = errors

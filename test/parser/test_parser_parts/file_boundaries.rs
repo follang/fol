@@ -25,7 +25,7 @@ fn parse_program_from_folder(
     .expect("Should build a parser folder fixture stream");
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    parser.parse(&mut lexer)
+    parse_script_as_program(&mut parser, &mut lexer)
 }
 
 fn parse_decl_package_from_folder(

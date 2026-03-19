@@ -797,7 +797,7 @@ fn test_function_call_nested_dangling_operator_reports_parse_error() {
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
+    let errors = parse_script_as_program(&mut parser, &mut lexer).expect_err(
         "Parser should fail when nested function call argument has a dangling operator",
     );
 

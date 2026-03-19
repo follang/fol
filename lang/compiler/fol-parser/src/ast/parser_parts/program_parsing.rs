@@ -16,21 +16,6 @@ impl AstParser {
         }
     }
 
-    /// Legacy mixed-root compatibility path. New callers should prefer `parse_package()`.
-    pub fn parse(
-        &mut self,
-        tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Vec<Box<dyn Glitch>>> {
-        let parsed = self.parse_script_package(tokens)?;
-        Ok(AstNode::Program {
-            declarations: parsed
-                .source_units
-                .into_iter()
-                .flat_map(|unit| unit.items.into_iter().map(|item| item.node))
-                .collect(),
-        })
-    }
-
     pub fn parse_package(
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,

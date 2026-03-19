@@ -113,32 +113,33 @@ use super::*;
         .expect("Should open literal continuity fixture");
         let mut lexer = Elements::init(&mut file_stream);
         let mut parser = AstParser::new();
-        let ast = parser.parse(&mut lexer).expect(
+        let package = parser.parse_script_package(&mut lexer).expect(
             "Supported literal forms should survive stream and lexer into exact AST literals",
         );
 
-        match ast {
-            AstNode::Program { declarations } => {
-                assert_eq!(
-                    declarations,
-                    vec![
-                        AstNode::Literal(Literal::String("hello".to_string())),
-                        AstNode::Literal(Literal::Character('c')),
-                        AstNode::Literal(Literal::String("true".to_string())),
-                        AstNode::Literal(Literal::Integer(42)),
-                        AstNode::Literal(Literal::Float(3.5)),
-                        AstNode::Literal(Literal::Integer(0x1A)),
-                        AstNode::Literal(Literal::Integer(0o17)),
-                        AstNode::Literal(Literal::Integer(0b1010)),
-                        AstNode::Literal(Literal::Boolean(true)),
-                        AstNode::Literal(Literal::Boolean(false)),
-                        AstNode::Literal(Literal::Nil),
-                    ],
-                    "Cross-phase literal continuity should preserve exact AST literal values for supported forms"
-                );
-            }
-            _ => panic!("Expected program node"),
-        }
+        let declarations: Vec<AstNode> = package
+            .source_units
+            .into_iter()
+            .flat_map(|unit| unit.items.into_iter().map(|item| item.node))
+            .collect();
+
+        assert_eq!(
+            declarations,
+            vec![
+                AstNode::Literal(Literal::String("hello".to_string())),
+                AstNode::Literal(Literal::Character('c')),
+                AstNode::Literal(Literal::String("true".to_string())),
+                AstNode::Literal(Literal::Integer(42)),
+                AstNode::Literal(Literal::Float(3.5)),
+                AstNode::Literal(Literal::Integer(0x1A)),
+                AstNode::Literal(Literal::Integer(0o17)),
+                AstNode::Literal(Literal::Integer(0b1010)),
+                AstNode::Literal(Literal::Boolean(true)),
+                AstNode::Literal(Literal::Boolean(false)),
+                AstNode::Literal(Literal::Nil),
+            ],
+            "Cross-phase literal continuity should preserve exact AST literal values for supported forms"
+        );
 
         fs::remove_dir_all(&temp_root).ok();
     }
@@ -157,7 +158,7 @@ use super::*;
         let mut parser = AstParser::new();
 
         // Should be able to parse without crashing
-        match parser.parse(&mut lexer) {
+        match parser.parse_script_package(&mut lexer) {
             Ok(_ast) => {
                 println!("Lexer to parser integration successful");
             }

@@ -4,7 +4,7 @@ use std::time::Instant;
 #[test]
 fn test_lexer_performance() {
     // Use the more complex legacy test file from the unified test tree
-    let test_file = "test/legacy/main/main.fol";
+    let test_file = "test/stream/fixture/main/main.fol";
 
     if std::path::Path::new(test_file).exists() {
         let start = Instant::now();

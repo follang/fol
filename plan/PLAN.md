@@ -5,23 +5,23 @@ Last updated: 2026-03-18
 ## Slices
 
 ### Slice 1 — Dead code removal (lexer)
-- [ ] 1a. Remove `ANY` variant from all 5 token enums: `BUILDIN`, `SYMBOL`, `OPERATOR`, `LITERAL`, `VOID` (`token/*/mod.rs` line 6 each)
-- [ ] 1b. Remove `SYMBOL::Greater`, `SYMBOL::Less` — never emitted, shadowed by `AngleO`/`AngleC` (`token/symbol/mod.rs`)
-- [ ] 1c. Remove `SYMBOL::Tik` — backtick consumed by comment scanner, never emitted as symbol (`token/symbol/mod.rs`)
-- [ ] 1d. Remove `LITERAL::Bool` variant + dead match arm in parser (`token/literal/mod.rs:9`, `binding_declaration_parsers.rs:23`)
-- [ ] 1e. Remove `get_keyword()` — incomplete stub, never called (`token/mod.rs:188-192`)
-- [ ] 1f. Remove `is_oct_digit`, `is_hex_digit`, `is_alphanumeric` — never called (`token/help.rs:32-41`)
-- [ ] 1g. Remove `TokenStream` and `Lexer` traits — declared, never implemented (`lib.rs:15-30`)
-- [ ] 1h. Remove commented-out `println!` (`stage2/elements.rs:160`)
-- [ ] 1i. Remove `debug()`, `echo()`, `window()` println methods from all 4 stages (`stage0-3/elements.rs`)
-- [ ] 1j. Remove `crate_name()` wrapper — only used in test, constant `CRATE_NAME` is already exported (`fol-intrinsics/src/lib.rs:38-40`)
+- [x] 1a. Remove `ANY` variant from all 5 token enums
+- [x] 1b. Remove `SYMBOL::Greater`, `SYMBOL::Less`
+- [x] 1c. Remove `SYMBOL::Tik`
+- [x] 1d. Remove `LITERAL::Bool` variant + dead match arm in parser
+- [x] 1e. Remove `get_keyword()`
+- [x] 1f. Remove `is_oct_digit`, `is_hex_digit`, `is_alphanumeric`
+- [x] 1g. Remove `TokenStream` and `Lexer` traits
+- [x] 1h. Remove commented-out `println!`
+- [x] 1i. Remove `debug()`, `echo()`, `window()` println methods
+- [x] 1j. Remove `crate_name()` wrapper
 
 ### Slice 2 — Legacy removal
-- [ ] 2a. Remove parser legacy `parse()` method and doc comment (`program_parsing.rs:19-32`)
-- [ ] 2b. Remove `compatibility_identity_for_program()` shim + its test (`fol-lower/src/lib.rs:58-63, 132`)
-- [ ] 2c. Delete `test/legacy/` directory
-- [ ] 2d. Delete committed build artifacts: `test/app/build/*/.fol/build/` (64 files)
-- [ ] 2e. Remove "Slash comments remain a compatibility surface" comment (`stage1/element.rs:95`)
+- [x] 2a. Remove parser legacy `parse()` method and doc comment (`program_parsing.rs:19-32`)
+- [x] 2b. Remove `compatibility_identity_for_program()` shim + its test (`fol-lower/src/lib.rs:58-63, 132`)
+- [x] 2c. Delete `test/legacy/` directory
+- [x] 2d. Delete committed build artifacts: `test/app/build/*/.fol/build/` (64 files)
+- [x] 2e. Remove "Slash comments remain a compatibility surface" comment (`stage1/element.rs:95`)
 
 ### Slice 3 — Parser panics → errors
 - [ ] 3a. `skip_layout` panic → return parser error (`expression_atoms_and_literal_lowering.rs:50`)

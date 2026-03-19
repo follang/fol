@@ -92,7 +92,6 @@ impl Element {
 
     //checking
     pub fn slash_comment(&mut self, code: &mut stage0::Elements) -> Vod {
-        // Slash comments remain a compatibility surface for now.
         self.con.push_str(&code.curr()?.0.to_string());
         self.bump(code)?;
         if code.curr()?.0 == '/' {

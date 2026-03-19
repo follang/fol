@@ -442,7 +442,7 @@ fn test_function_parsing() {
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
 
-    match parser.parse(&mut lexer) {
+    match parse_script_as_program(&mut parser, &mut lexer) {
         Ok(ast) => {
             match &ast {
                 AstNode::Program { declarations } => {

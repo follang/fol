@@ -406,7 +406,7 @@ fn test_function_method_receiver_syntax_rejects_builtin_keyword_receiver_type() 
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
+    let errors = parse_script_as_program(&mut parser, &mut lexer).expect_err(
         "Parser should reject function receiver syntax with builtin keyword receiver type",
     );
 
@@ -431,7 +431,7 @@ fn test_procedure_method_receiver_syntax_rejects_builtin_keyword_receiver_type()
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
+    let errors = parse_script_as_program(&mut parser, &mut lexer).expect_err(
         "Parser should reject procedure receiver syntax with builtin keyword receiver type",
     );
 
@@ -469,7 +469,7 @@ fn test_function_custom_error_type_allows_incompatible_report_local_var_as_synta
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    parser.parse(&mut lexer).expect(
+    parse_script_as_program(&mut parser, &mut lexer).expect(
         "Parser should keep incompatible report local vars as syntax-only forms after semantic validation removal",
     );
 }
@@ -496,7 +496,7 @@ fn test_function_custom_error_type_allows_incompatible_report_inferred_local_var
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    parser.parse(&mut lexer).expect(
+    parse_script_as_program(&mut parser, &mut lexer).expect(
         "Parser should keep incompatible inferred report locals as syntax-only forms after semantic validation removal",
     );
 }
@@ -510,7 +510,7 @@ fn test_function_custom_error_type_accepts_nested_inferred_local_report() {
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    parser.parse(&mut lexer).expect(
+    parse_script_as_program(&mut parser, &mut lexer).expect(
         "Parser should accept nested inferred-local report compatible with custom error type",
     );
 }
@@ -524,7 +524,7 @@ fn test_function_custom_error_type_allows_nested_inferred_local_report_mismatch_
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    parser.parse(&mut lexer).expect(
+    parse_script_as_program(&mut parser, &mut lexer).expect(
         "Parser should keep nested inferred-local report mismatches as syntax-only forms after semantic validation removal",
     );
 }
@@ -538,7 +538,7 @@ fn test_function_custom_error_type_accepts_loop_inferred_local_report() {
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    parser.parse(&mut lexer).expect(
+    parse_script_as_program(&mut parser, &mut lexer).expect(
         "Parser should accept loop inferred-local report compatible with custom error type",
     );
 }
@@ -552,7 +552,7 @@ fn test_function_custom_error_type_allows_loop_inferred_local_report_mismatch_as
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    parser.parse(&mut lexer).expect(
+    parse_script_as_program(&mut parser, &mut lexer).expect(
         "Parser should keep loop inferred-local report mismatches as syntax-only forms after semantic validation removal",
     );
 }
@@ -565,7 +565,7 @@ fn test_function_custom_error_type_accepts_nested_shadowed_report_identifier() {
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    parser.parse(&mut lexer).expect(
+    parse_script_as_program(&mut parser, &mut lexer).expect(
         "Parser should accept nested shadowed identifier compatible with custom error type",
     );
 }
@@ -579,7 +579,7 @@ fn test_function_custom_error_type_allows_nested_shadowed_report_identifier_mism
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    parser.parse(&mut lexer).expect(
+    parse_script_as_program(&mut parser, &mut lexer).expect(
         "Parser should keep nested shadowed report mismatches as syntax-only forms after semantic validation removal",
     );
 }

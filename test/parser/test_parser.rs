@@ -9,6 +9,30 @@ use fol_parser::ast::{
 };
 use fol_stream::FileStream;
 
+/// Test-only helper: wraps `parse_script_package()` into `AstNode::Program`.
+trait TestParse {
+    fn parse(
+        &mut self,
+        lexer: &mut Elements,
+    ) -> Result<AstNode, Vec<Box<dyn fol_types::Glitch>>>;
+}
+
+impl TestParse for AstParser {
+    fn parse(
+        &mut self,
+        lexer: &mut Elements,
+    ) -> Result<AstNode, Vec<Box<dyn fol_types::Glitch>>> {
+        let parsed = self.parse_script_package(lexer)?;
+        Ok(AstNode::Program {
+            declarations: parsed
+                .source_units
+                .into_iter()
+                .flat_map(|unit| unit.items.into_iter().map(|item| item.node))
+                .collect(),
+        })
+    }
+}
+
 fn inquiry_target_key(target: &InquiryTarget) -> String {
     target.duplicate_key()
 }
@@ -78,6 +102,20 @@ fn use_decl_path_text(node: &AstNode) -> Option<String> {
 fn use_decl_matches_path(node: &AstNode, expected_name: &str, expected_path: &str) -> bool {
     matches!(node, AstNode::UseDecl { name, .. } if name == expected_name)
         && use_decl_path_text(node).as_deref() == Some(expected_path)
+}
+
+fn parse_script_as_program(
+    parser: &mut AstParser,
+    lexer: &mut Elements,
+) -> Result<AstNode, Vec<Box<dyn fol_types::Glitch>>> {
+    let parsed = parser.parse_script_package(lexer)?;
+    Ok(AstNode::Program {
+        declarations: parsed
+            .source_units
+            .into_iter()
+            .flat_map(|unit| unit.items.into_iter().map(|item| item.node))
+            .collect(),
+    })
 }
 
 fn parse_package_from_file(path: &str) -> ParsedPackage {

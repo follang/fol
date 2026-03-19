@@ -8,7 +8,7 @@ fn test_function_call_with_unmatched_close_paren_argument_reports_parse_error() 
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
+    let errors = parse_script_as_program(&mut parser, &mut lexer).expect_err(
         "Parser should fail when function call argument list contains unmatched ')' token",
     );
 
@@ -42,7 +42,7 @@ fn test_method_call_with_unmatched_close_paren_argument_reports_parse_error() {
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
+    let errors = parse_script_as_program(&mut parser, &mut lexer).expect_err(
         "Parser should fail when method call argument list contains unmatched ')' token",
     );
 
@@ -76,7 +76,7 @@ fn test_top_level_call_with_unmatched_close_paren_argument_reports_parse_error()
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(
+    let errors = parse_script_as_program(&mut parser, &mut lexer).expect_err(
         "Parser should fail when top-level call argument list contains unmatched ')' token",
     );
 
@@ -210,7 +210,7 @@ fn assert_first_parse_error(path: &str, expected_message_substring: &str, expect
 
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser.parse(&mut lexer).expect_err(&format!(
+    let errors = parse_script_as_program(&mut parser, &mut lexer).expect_err(&format!(
         "Parser should fail for malformed fixture: {}",
         path
     ));

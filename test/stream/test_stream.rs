@@ -254,11 +254,11 @@ mod stream_tests {
     #[test]
     fn test_file_input_used_as_folder_source_uses_parent_directory() {
         let from_file_as_folder = fol_stream::Source::init(
-            "test/legacy/main/main.fol",
+            "test/stream/fixture/main/main.fol",
             fol_stream::SourceType::Folder,
         )
         .expect("File path used as folder source should resolve through its parent directory");
-        let from_folder = fol_stream::Source::init("test/legacy/main", fol_stream::SourceType::Folder)
+        let from_folder = fol_stream::Source::init("test/stream/fixture/main", fol_stream::SourceType::Folder)
             .expect("Folder source should resolve normally");
 
         let file_as_folder_paths: Vec<_> = from_file_as_folder.iter().map(|source| &source.path).collect();
@@ -280,13 +280,13 @@ mod stream_tests {
         assert!(
             from_file_as_folder
                 .iter()
-                .all(|source| source.call == "test/legacy/main/main.fol"),
+                .all(|source| source.call == "test/stream/fixture/main/main.fol"),
             "Folder-mode file input should preserve the original file call site"
         );
         assert!(
             from_folder
                 .iter()
-                .all(|source| source.call == "test/legacy/main"),
+                .all(|source| source.call == "test/stream/fixture/main"),
             "Direct folder input should preserve the folder call site"
         );
     }
@@ -342,7 +342,7 @@ mod stream_tests {
 
     #[test]
     fn test_file_boundary_resets_location_to_line_one_column_one() {
-        let mut stream = FileStream::from_folder("test/legacy/main")
+        let mut stream = FileStream::from_folder("test/stream/fixture/main")
             .expect("Should build stream from multiple sources");
         let mut previous_file = None;
 
