@@ -1,5 +1,5 @@
 use super::cursor::{LoweredValue, RoutineCursor, WorkspaceDeclIndex};
-use super::expressions::{lower_expression_expected, lower_expression_observed};
+use super::expressions::lower_expression_expected;
 use crate::{
     control::LoweredInstrKind,
     ids::LoweredTypeId,
@@ -45,43 +45,22 @@ pub(crate) fn lower_local_binding(
                 format!("binding '{name}' does not retain a lowered storage type"),
             )
         })?;
-    let recoverable_error_type = typed_package
-        .program
-        .typed_symbol(symbol_id)
-        .and_then(|symbol| symbol.recoverable_effect)
-        .and_then(|effect| checked_type_map.get(&effect.error_type).copied());
-    let local_id =
-        cursor.allocate_local_with_effect(type_id, recoverable_error_type, Some(name.to_string()));
+    let local_id = cursor.allocate_local(type_id, Some(name.to_string()));
     cursor.routine.local_symbols.insert(symbol_id, local_id);
 
     if let Some(value) = value {
-        let lowered_value = if recoverable_error_type.is_some() {
-            lower_expression_observed(
-                typed_package,
-                type_table,
-                checked_type_map,
-                current_identity,
-                decl_index,
-                cursor,
-                source_unit_id,
-                scope_id,
-                Some(type_id),
-                value,
-            )?
-        } else {
-            lower_expression_expected(
-                typed_package,
-                type_table,
-                checked_type_map,
-                current_identity,
-                decl_index,
-                cursor,
-                source_unit_id,
-                scope_id,
-                Some(type_id),
-                value,
-            )?
-        };
+        let lowered_value = lower_expression_expected(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            Some(type_id),
+            value,
+        )?;
         cursor.push_instr(
             None,
             LoweredInstrKind::StoreLocal {
@@ -92,13 +71,13 @@ pub(crate) fn lower_local_binding(
         Ok(Some(LoweredValue {
             local_id,
             type_id,
-            recoverable_error_type,
+            recoverable_error_type: None,
         }))
     } else {
         Ok(Some(LoweredValue {
             local_id,
             type_id,
-            recoverable_error_type,
+            recoverable_error_type: None,
         }))
     }
 }

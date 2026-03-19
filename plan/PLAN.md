@@ -230,7 +230,7 @@ Exit condition:
 
 - the only surviving legal `/ E` consumer surfaces are explicit handlers
 
-### Slice 6: Simplify typed metadata
+### Slice 6: Simplify typed metadata `[complete]`
 
 Once bindings and plain expressions can no longer carry recoverable results, simplify the typed model.
 

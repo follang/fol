@@ -503,16 +503,7 @@ pub(super) fn lower_global_decl(
         source_unit_id,
         name: name.to_string(),
         type_id,
-        recoverable_error_type: typed_package
-            .program
-            .typed_symbol(symbol_id)
-            .and_then(|symbol| symbol.recoverable_effect)
-            .and_then(|effect| {
-                lowered_package
-                    .checked_type_map
-                    .get(&effect.error_type)
-                    .copied()
-            }),
+        recoverable_error_type: None,
         mutable,
     };
     *next_global_index += 1;

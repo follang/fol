@@ -916,9 +916,6 @@ pub(crate) fn type_for_reference(
             )
         })?;
     let type_id = symbol_type(typed, resolved, symbol_id, origin.clone())?;
-    let symbol_effect = typed
-        .typed_symbol(symbol_id)
-        .and_then(|symbol| symbol.recoverable_effect);
     let typed_reference = typed.typed_reference_mut(reference_id).ok_or_else(|| {
         TypecheckError::with_origin(
             TypecheckErrorKind::Internal,
@@ -932,8 +929,7 @@ pub(crate) fn type_for_reference(
         )
     })?;
     typed_reference.resolved_type = Some(type_id);
-    typed_reference.recoverable_effect = symbol_effect;
-    Ok(TypedExpr::value(type_id).with_optional_effect(symbol_effect))
+    Ok(TypedExpr::value(type_id))
 }
 
 pub(crate) fn symbol_type(
