@@ -1,4 +1,4 @@
-use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root};
+use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root, temp_root};
 use super::super::{
     completion_helpers::completion_context, completion_helpers::CompletionContext,
     EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCompletionContext,
@@ -376,6 +376,106 @@ fn lsp_server_handles_hover_definition_and_document_symbols() {
         serde_json::from_value(symbols.result.unwrap()).unwrap();
     assert!(symbols.iter().any(|symbol| symbol.name == "helper"));
     assert!(symbols.iter().any(|symbol| symbol.name == "main"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_diagnostics_include_code_in_message() {
+    let (root, uri) = sample_package_root("diag_code_msg");
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(
+        &mut server,
+        uri,
+        "fun[] main(): int = {\n    return missing_value\n}\n",
+    );
+
+    assert!(!diagnostics[0].diagnostics.is_empty());
+    let first = &diagnostics[0].diagnostics[0];
+    assert!(
+        first.message.starts_with(&format!("[{}]", first.code)),
+        "diagnostic message should start with [CODE], got: {}",
+        first.message,
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_diagnostics_deduplicated_by_line_and_code() {
+    use crate::lsp::analysis::dedup_diagnostics;
+    use crate::{LspDiagnostic, LspDiagnosticSeverity, LspPosition, LspRange};
+
+    let make = |line: u32, code: &str, msg: &str| LspDiagnostic {
+        range: LspRange {
+            start: LspPosition {
+                line,
+                character: 0,
+            },
+            end: LspPosition {
+                line,
+                character: 1,
+            },
+        },
+        severity: LspDiagnosticSeverity::Error,
+        code: code.to_string(),
+        source: "fol".to_string(),
+        message: msg.to_string(),
+        related_information: Vec::new(),
+    };
+
+    let diagnostics = vec![
+        make(0, "P1001", "first"),
+        make(0, "P1001", "second cascade"),
+        make(0, "P1001", "third cascade"),
+        make(1, "P1001", "different line"),
+        make(0, "R1003", "different code same line"),
+    ];
+
+    let deduped = dedup_diagnostics(diagnostics);
+
+    // line 0, P1001: only the first is kept
+    let line0_p1001: Vec<_> = deduped
+        .iter()
+        .filter(|d| d.range.start.line == 0 && d.code == "P1001")
+        .collect();
+    assert_eq!(line0_p1001.len(), 1);
+    assert_eq!(line0_p1001[0].message, "first");
+
+    // line 1, P1001: kept (different line)
+    assert!(deduped
+        .iter()
+        .any(|d| d.range.start.line == 1 && d.code == "P1001"));
+
+    // line 0, R1003: kept (different code)
+    assert!(deduped
+        .iter()
+        .any(|d| d.range.start.line == 0 && d.code == "R1003"));
+
+    assert_eq!(deduped.len(), 3);
+}
+
+#[test]
+fn lsp_parse_cascade_yields_at_most_one_diagnostic_per_line_per_code() {
+    let (root, uri) = sample_package_root("cascade_dedup");
+    // Intentionally broken syntax that can produce multiple parse errors on the same line
+    let broken = "fun[] main(a b c d e f: int = {\n    return 0\n}\n";
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, broken);
+
+    let diags = &diagnostics[0].diagnostics;
+    // Collect (line, code) pairs and verify uniqueness
+    let mut seen = std::collections::HashSet::new();
+    for d in diags {
+        let key = (d.range.start.line, d.code.clone());
+        assert!(
+            seen.insert(key.clone()),
+            "duplicate diagnostic on line {} with code {}: {}",
+            d.range.start.line,
+            d.code,
+            d.message,
+        );
+    }
 
     fs::remove_dir_all(root).ok();
 }

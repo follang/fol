@@ -9,6 +9,7 @@ use fol_parser::ast::{AstParser, ParseError};
 use fol_resolver::{Resolver, ResolverError};
 use fol_stream::{FileStream, Source, SourceType};
 use fol_typecheck::{TypecheckError, Typechecker};
+use std::collections::HashSet;
 use std::path::Path;
 
 use super::semantic::SemanticSnapshot;
@@ -18,7 +19,18 @@ pub(super) fn analyze_document(
     mapping: &EditorWorkspaceMapping,
 ) -> EditorResult<Vec<LspDiagnostic>> {
     let snapshot = analyze_document_semantics(document, mapping)?;
-    Ok(snapshot.diagnostics)
+    Ok(dedup_diagnostics(snapshot.diagnostics))
+}
+
+/// Deduplicate LSP diagnostics by (line, code), keeping only the first
+/// diagnostic for each unique pair. This prevents cascade errors from
+/// flooding the editor with redundant markers on the same line.
+pub(crate) fn dedup_diagnostics(diagnostics: Vec<LspDiagnostic>) -> Vec<LspDiagnostic> {
+    let mut seen = HashSet::new();
+    diagnostics
+        .into_iter()
+        .filter(|d| seen.insert((d.range.start.line, d.code.clone())))
+        .collect()
 }
 
 pub(super) fn analyze_document_semantics(

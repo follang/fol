@@ -1,10 +1,12 @@
-mod analysis;
+pub(crate) mod analysis;
 pub(crate) mod completion_helpers;
 mod semantic;
 mod transport;
 mod types;
 
 pub use transport::run_lsp_stdio;
+#[cfg(test)]
+pub(crate) use transport::run_lsp_stdio_with_io;
 pub use types::{
     EditorCompletionItem, JsonRpcError, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
     JsonRpcResponse, LspCompletionContext, LspCompletionItem, LspCompletionList,
