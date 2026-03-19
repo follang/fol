@@ -145,6 +145,15 @@ pub fn diagnostic_to_lsp(diagnostic: &Diagnostic) -> LspDiagnostic {
 
 /// Deduplicate LSP diagnostics by (line, code), keeping only the first
 /// diagnostic for each unique pair.
+///
+/// This is the **view-layer** dedup. It runs after diagnostics from
+/// multiple compiler stages have been converted to LSP format, catching
+/// cross-stage duplicates (e.g., parser and resolver both flagging the
+/// same line with the same code).
+///
+/// The **report-layer** dedup in [`DiagnosticReport::add_diagnostic`]
+/// handles consecutive same-code + same-line suppression and a hard cap
+/// at 50 diagnostics. Both layers are intentional and complementary.
 pub fn dedup_lsp_diagnostics(diagnostics: Vec<LspDiagnostic>) -> Vec<LspDiagnostic> {
     let mut seen = std::collections::HashSet::new();
     diagnostics
@@ -261,6 +270,82 @@ mod tests {
         );
         let lsp = diagnostic_to_lsp(&diagnostic);
         assert!(lsp.related_information.is_empty());
+    }
+
+    #[test]
+    fn dedup_keeps_different_codes_on_same_line() {
+        let d1 = diagnostic_to_lsp(
+            &Diagnostic::error("P1001", "syntax").with_primary_label(DiagnosticLocation {
+                file: Some("a.fol".to_string()),
+                line: 5,
+                column: 1,
+                length: Some(1),
+            }),
+        );
+        let d2 = diagnostic_to_lsp(
+            &Diagnostic::error("R1003", "unresolved").with_primary_label(DiagnosticLocation {
+                file: Some("a.fol".to_string()),
+                line: 5,
+                column: 3,
+                length: Some(2),
+            }),
+        );
+        let result = dedup_lsp_diagnostics(vec![d1, d2]);
+        assert_eq!(result.len(), 2, "different codes on same line must be kept");
+    }
+
+    #[test]
+    fn dedup_keeps_same_code_on_different_lines() {
+        let d1 = diagnostic_to_lsp(
+            &Diagnostic::error("P1001", "first").with_primary_label(DiagnosticLocation {
+                file: Some("a.fol".to_string()),
+                line: 3,
+                column: 1,
+                length: Some(1),
+            }),
+        );
+        let d2 = diagnostic_to_lsp(
+            &Diagnostic::error("P1001", "second").with_primary_label(DiagnosticLocation {
+                file: Some("a.fol".to_string()),
+                line: 7,
+                column: 1,
+                length: Some(1),
+            }),
+        );
+        let result = dedup_lsp_diagnostics(vec![d1, d2]);
+        assert_eq!(result.len(), 2, "same code on different lines must be kept");
+    }
+
+    #[test]
+    fn report_and_lsp_dedup_layers_complement_each_other() {
+        use crate::DiagnosticReport;
+
+        // Report-layer: consecutive same-code + same-line suppressed
+        let mut report = DiagnosticReport::new();
+        let loc = DiagnosticLocation {
+            file: Some("a.fol".to_string()),
+            line: 5,
+            column: 1,
+            length: Some(1),
+        };
+        report.add_diagnostic(Diagnostic::error("P1001", "a").with_primary_label(loc.clone()));
+        report.add_diagnostic(Diagnostic::error("P1001", "b").with_primary_label(loc.clone()));
+        assert_eq!(report.diagnostics.len(), 1, "report layer deduped consecutive");
+
+        // Now simulate cross-stage: parser + resolver both flag line 5
+        let lsp_diags: Vec<LspDiagnostic> = report
+            .diagnostics
+            .iter()
+            .map(diagnostic_to_lsp)
+            .chain(std::iter::once(diagnostic_to_lsp(
+                &Diagnostic::error("P1001", "cross-stage duplicate")
+                    .with_primary_label(loc.clone()),
+            )))
+            .collect();
+
+        assert_eq!(lsp_diags.len(), 2, "before view-layer dedup");
+        let deduped = dedup_lsp_diagnostics(lsp_diags);
+        assert_eq!(deduped.len(), 1, "view-layer caught cross-stage duplicate");
     }
 
     #[test]
