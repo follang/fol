@@ -53,14 +53,10 @@ impl AstParser {
         self.parse_package(tokens)
     }
 
-    fn glitch_vec_to_diagnostics(errors: Vec<Box<dyn Glitch>>) -> Vec<fol_diagnostics::Diagnostic> {
-        errors.into_iter().map(|error| {
-            if let Some(parse_error) = error.as_any().downcast_ref::<ParseError>() {
-                use fol_diagnostics::ToDiagnostic;
-                parse_error.to_diagnostic()
-            } else {
-                fol_diagnostics::Diagnostic::from_glitch(error.as_ref(), fol_diagnostics::Severity::Error, None)
-            }
+    fn glitch_vec_to_diagnostics(errors: Vec<ParseError>) -> Vec<fol_diagnostics::Diagnostic> {
+        errors.into_iter().map(|e| {
+            use fol_diagnostics::ToDiagnostic;
+            e.to_diagnostic()
         }).collect()
     }
 
@@ -86,17 +82,17 @@ impl AstParser {
         token: &fol_lexer::lexer::stage3::element::Element,
         before: (usize, usize, String),
         message: &str,
-        errors: &mut Vec<Box<dyn Glitch>>,
+        errors: &mut Vec<ParseError>,
         parse: F,
     ) -> bool
     where
         F: FnOnce(
             &mut Self,
             &mut fol_lexer::lexer::stage3::Elements,
-        ) -> Result<(), Box<dyn Glitch>>,
+        ) -> Result<(), ParseError>,
     {
         match parse(self, tokens) {
-            Ok(()) => errors.push(Box::new(ParseError::from_token_with_kind(token, ParseErrorKind::FileRoot, message.to_string()))),
+            Ok(()) => errors.push(ParseError::from_token_with_kind(token, ParseErrorKind::FileRoot, message.to_string())),
             Err(error) => errors.push(error),
         }
         self.bump_if_no_progress(tokens, before);
@@ -118,10 +114,10 @@ impl AstParser {
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         surface: RootSurface,
-    ) -> Result<(Vec<ParsedTopLevel>, SyntaxIndex), Vec<Box<dyn Glitch>>> {
+    ) -> Result<(Vec<ParsedTopLevel>, SyntaxIndex), Vec<ParseError>> {
         self.start_syntax_tracking();
         let mut entries = Vec::new();
-        let mut errors: Vec<Box<dyn Glitch>> = Vec::new();
+        let mut errors: Vec<ParseError> = Vec::new();
 
         for _ in 0..8_192 {
             let token = match tokens.curr(false) {
@@ -139,10 +135,10 @@ impl AstParser {
             }
 
             if key.is_illegal() {
-                errors.push(Box::new(ParseError::from_token(
+                errors.push(ParseError::from_token(
                     &token,
                     format!("Parser encountered illegal token '{}'", token.con()),
-                )));
+                ));
                 if tokens.bump().is_none() {
                     break;
                 }
@@ -726,11 +722,11 @@ impl AstParser {
                     )
                     || (key.is_ident() && token.con().trim() == "nil"))
             {
-                errors.push(Box::new(ParseError::from_token_with_kind(
+                errors.push(ParseError::from_token_with_kind(
                     &token,
                     ParseErrorKind::FileRoot,
                     "Literal expressions are not allowed at file root".to_string(),
-                )));
+                ));
                 if tokens.bump().is_none() {
                     break;
                 }
@@ -739,11 +735,11 @@ impl AstParser {
             }
 
             if matches!(surface, RootSurface::DeclarationOnly) {
-                errors.push(Box::new(ParseError::from_token_with_kind(
+                errors.push(ParseError::from_token_with_kind(
                     &token,
                     ParseErrorKind::FileRoot,
                     "Expected declaration or standalone comment at file root".to_string(),
-                )));
+                ));
                 if tokens.bump().is_none() {
                     break;
                 }

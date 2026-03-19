@@ -5,7 +5,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         mut node: AstNode,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         for _ in 0..256 {
             let leading_comments = self.collect_comments_before(tokens, |key| {
                 matches!(

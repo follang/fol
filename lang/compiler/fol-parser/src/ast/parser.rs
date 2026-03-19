@@ -8,7 +8,6 @@ use super::{
 };
 use fol_diagnostics::{Diagnostic, DiagnosticLocation, ToDiagnostic};
 use fol_lexer::token::{BUILDIN, KEYWORD, LITERAL, OPERATOR, SYMBOL, VOID};
-use fol_types::*;
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -106,13 +105,16 @@ impl fmt::Display for ParseError {
 
 impl std::error::Error for ParseError {}
 
-impl Glitch for ParseError {
-    fn clone_box(&self) -> Box<dyn Glitch> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+impl From<fol_lexer::LexerError> for ParseError {
+    fn from(e: fol_lexer::LexerError) -> Self {
+        Self {
+            kind: ParseErrorKind::Syntax,
+            message: e.to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        }
     }
 }
 
@@ -159,7 +161,7 @@ impl AstParser {
         &'a self,
         depth: &'a Cell<usize>,
         tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> Result<ParseDepthGuard<'a>, Box<dyn Glitch>> {
+    ) -> Result<ParseDepthGuard<'a>, ParseError> {
         let new_depth = depth
             .get()
             .checked_add(1)
@@ -179,7 +181,7 @@ impl AstParser {
                         length: 0,
                     }
                 };
-                Box::new(error) as Box<dyn Glitch>
+                error
             })?;
         depth.set(new_depth);
         Ok(ParseDepthGuard { depth })
@@ -188,7 +190,7 @@ impl AstParser {
     pub(super) fn enter_routine_context(
         &self,
         tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> Result<ParseDepthGuard<'_>, Box<dyn Glitch>> {
+    ) -> Result<ParseDepthGuard<'_>, ParseError> {
         self.enter_depth(&self.routine_depth, tokens)
     }
 
@@ -199,7 +201,7 @@ impl AstParser {
     pub(super) fn enter_loop_context(
         &self,
         tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> Result<ParseDepthGuard<'_>, Box<dyn Glitch>> {
+    ) -> Result<ParseDepthGuard<'_>, ParseError> {
         self.enter_depth(&self.loop_depth, tokens)
     }
 
@@ -239,7 +241,7 @@ mod tests {
     use super::{ParseErrorKind, *};
     use fol_types::canonical_identifier_key;
 
-    fn parse_string(input: &str) -> Result<crate::ParsedPackage, Vec<Box<dyn Glitch>>> {
+    fn parse_string(input: &str) -> Result<crate::ParsedPackage, Vec<Diagnostic>> {
         let dir = std::env::temp_dir().join(format!(
             "fol_parser_recovery_test_{}_{}",
             std::process::id(),

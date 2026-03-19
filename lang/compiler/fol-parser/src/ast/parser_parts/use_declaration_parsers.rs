@@ -11,12 +11,12 @@ impl AstParser {
         &self,
         token: &fol_lexer::lexer::stage3::element::Element,
         path: &str,
-    ) -> Result<(), Box<dyn Glitch>> {
+    ) -> Result<(), ParseError> {
         if path.trim_end().ends_with("::") {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 token,
                 "Expected name after '::' in use path".to_string(),
-            )));
+            ));
         }
 
         Ok(())
@@ -25,13 +25,13 @@ impl AstParser {
     pub(super) fn parse_use_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let use_token = tokens.curr(false)?;
         if !matches!(use_token.key(), KEYWORD::Keyword(BUILDIN::Use)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &use_token,
                 "Expected 'use' declaration".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -53,10 +53,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &assign,
                 "Expected '=' in use declaration".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -68,7 +68,7 @@ impl AstParser {
     fn parse_use_paths(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<ParsedUsePath>, Box<dyn Glitch>> {
+    ) -> Result<Vec<ParsedUsePath>, ParseError> {
         let mut paths = Vec::new();
 
         for _ in 0..256 {
@@ -115,16 +115,16 @@ impl AstParser {
         path_type: FolType,
         paths: Vec<ParsedUsePath>,
         use_token: &fol_lexer::lexer::stage3::element::Element,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let assigned_paths = match paths.len() {
             1 => vec![paths[0].clone(); names.len()],
             n if n == names.len() => paths,
             _ => {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     use_token,
                     "Use path count must match declared names or provide a single shared path"
                         .to_string(),
-                )))
+                ))
             }
         };
 
@@ -144,7 +144,7 @@ impl AstParser {
     fn parse_use_names(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<String>, Box<dyn Glitch>> {
+    ) -> Result<Vec<String>, ParseError> {
         let mut names = Vec::new();
         let mut seen_names = HashSet::new();
 
@@ -152,10 +152,10 @@ impl AstParser {
             let name_token = tokens.curr(false)?;
             let name = Self::expect_named_label(&name_token, "Expected identifier after 'use'")?;
             if !seen_names.insert(canonical_identifier_key(&name)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &name_token,
                     format!("Duplicate use name '{}'", name),
-                )));
+                ));
             }
 
             names.push(name);
@@ -182,7 +182,7 @@ impl AstParser {
     fn parse_direct_use_path(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<String, Box<dyn Glitch>> {
+    ) -> Result<String, ParseError> {
         let mut path = String::new();
 
         for _ in 0..256 {
@@ -206,10 +206,10 @@ impl AstParser {
 
         if path.is_empty() {
             let token = tokens.curr(false)?;
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Expected use path".to_string(),
-            )));
+            ));
         }
 
         let token = tokens.curr(false)?;
@@ -221,7 +221,7 @@ impl AstParser {
         &self,
         path: &str,
         token: &fol_lexer::lexer::stage3::element::Element,
-    ) -> Result<Vec<UsePathSegment>, Box<dyn Glitch>> {
+    ) -> Result<Vec<UsePathSegment>, ParseError> {
         if path.contains("://") {
             return Ok(vec![UsePathSegment {
                 separator: None,
@@ -283,16 +283,16 @@ impl AstParser {
         current: &mut String,
         pending_separator: &mut Option<UsePathSeparator>,
         token: &fol_lexer::lexer::stage3::element::Element,
-    ) -> Result<(), Box<dyn Glitch>> {
+    ) -> Result<(), ParseError> {
         if current.is_empty() {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 token,
                 if pending_separator.is_some() {
                     "Expected use path segment after separator".to_string()
                 } else {
                     "Expected use path segment".to_string()
                 },
-            )));
+            ));
         }
 
         segments.push(UsePathSegment {

@@ -5,13 +5,13 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         expr: AstNode,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let for_token = tokens.curr(false)?;
         if !matches!(for_token.key(), KEYWORD::Keyword(BUILDIN::For)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &for_token,
                 "Expected 'for' in rolling expression".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
@@ -37,10 +37,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close,
                 "Expected '}' to close rolling expression".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -54,7 +54,7 @@ impl AstParser {
     pub(super) fn parse_rolling_bindings(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<RollingBinding>, Box<dyn Glitch>> {
+    ) -> Result<Vec<RollingBinding>, ParseError> {
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
                 let _ = tokens.bump();
@@ -72,10 +72,10 @@ impl AstParser {
                     let binding_token = tokens.curr(false)?;
                     let binding = self.parse_rolling_binding(tokens)?;
                     if !seen_names.insert(canonical_identifier_key(&binding.name)) {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &binding_token,
                             format!("Duplicate rolling binding '{}'", binding.name),
-                        )));
+                        ));
                     }
                     bindings.push(binding);
                     self.skip_ignorable(tokens)?;
@@ -93,10 +93,10 @@ impl AstParser {
                         return Ok(bindings);
                     }
 
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &sep,
                         "Expected ',', ';', or ')' in rolling bindings".to_string(),
-                    )));
+                    ));
                 }
 
                 let error = if let Ok(token) = tokens.curr(false) {
@@ -114,7 +114,7 @@ impl AstParser {
                         length: 0,
                     }
                 };
-                return Err(Box::new(error));
+                return Err(error);
             }
         }
 
@@ -124,10 +124,10 @@ impl AstParser {
             let binding_token = tokens.curr(false)?;
             let binding = self.parse_rolling_binding(tokens)?;
             if !seen_names.insert(canonical_identifier_key(&binding.name)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &binding_token,
                     format!("Duplicate rolling binding '{}'", binding.name),
-                )));
+                ));
             }
             bindings.push(binding);
             self.skip_ignorable(tokens)?;
@@ -152,7 +152,7 @@ impl AstParser {
     pub(super) fn parse_rolling_binding(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<RollingBinding, Box<dyn Glitch>> {
+    ) -> Result<RollingBinding, ParseError> {
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
                 let _ = tokens.bump();
@@ -180,10 +180,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let in_token = tokens.curr(false)?;
         if !matches!(in_token.key(), KEYWORD::Keyword(BUILDIN::In)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &in_token,
                 "Expected 'in' in rolling binding".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;

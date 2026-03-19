@@ -7,7 +7,7 @@ impl AstParser {
         missing_name_error: &str,
         missing_group_name_error: &str,
         missing_mutex_close_error: &str,
-    ) -> Result<(Vec<String>, bool), Box<dyn Glitch>> {
+    ) -> Result<(Vec<String>, bool), ParseError> {
         let token = tokens.curr(false)?;
 
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO))
@@ -21,10 +21,10 @@ impl AstParser {
 
             let second_open = tokens.curr(false)?;
             if !matches!(second_open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &second_open,
                     "Expected second '(' to start mutex parameter".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens)?;
@@ -36,20 +36,20 @@ impl AstParser {
 
             let close_inner = tokens.curr(false)?;
             if !matches!(close_inner.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &close_inner,
                     missing_mutex_close_error.to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens)?;
 
             let close_outer = tokens.curr(false)?;
             if !matches!(close_outer.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &close_outer,
                     missing_mutex_close_error.to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             return Ok((vec![name], true));
@@ -90,7 +90,7 @@ impl AstParser {
             Vec<Parameter>,
             Option<fol_lexer::lexer::stage3::element::Element>,
         ),
-        Box<dyn Glitch>,
+        ParseError,
     > {
         let mut params = Vec::new();
         let mut first_untyped = None;
@@ -107,10 +107,10 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 let (function_name, function_type) = self.parse_function_type_signature(tokens)?;
                 let Some(param_name) = function_name else {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected named function header in higher-order parameter".to_string(),
-                    )));
+                    ));
                 };
 
                 params.push(Parameter {
@@ -136,10 +136,10 @@ impl AstParser {
                     return Ok((params, first_untyped));
                 }
 
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected ',', ';', or ')' after generic parameter".to_string(),
-                )));
+                ));
             }
 
             let (names, is_mutex) = self.parse_parameter_name_group(
@@ -198,10 +198,10 @@ impl AstParser {
                         || matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundC))
                         || next.key().is_terminal()
                     {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &next,
                             "Expected default value expression after '=' in parameter".to_string(),
-                        )));
+                        ));
                     }
 
                     Some(self.parse_logical_expression(tokens)?)
@@ -214,10 +214,10 @@ impl AstParser {
 
             if is_variadic && default.is_some() {
                 let token = tokens.curr(false)?;
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Variadic parameters cannot have default values".to_string(),
-                )));
+                ));
             }
 
             for name in names {
@@ -238,10 +238,10 @@ impl AstParser {
                 || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
             {
                 if is_variadic {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &sep,
                         "Variadic parameter must be the last parameter".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
                 continue;
@@ -251,10 +251,10 @@ impl AstParser {
                 return Ok((params, first_untyped));
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ')' after generic parameter".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -272,14 +272,14 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     pub(super) fn parameters_to_generics(
         &self,
         params: Vec<Parameter>,
         tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
+    ) -> Result<Vec<Generic>, ParseError> {
         params
             .into_iter()
             .map(|param| {
@@ -300,7 +300,7 @@ impl AstParser {
                             length: 0,
                         }
                     };
-                    return Err(Box::new(error) as Box<dyn Glitch>);
+                    return Err(error);
                 }
 
                 if matches!(param.param_type, FolType::Sequence { .. }) {
@@ -320,7 +320,7 @@ impl AstParser {
                             length: 0,
                         }
                     };
-                    return Err(Box::new(error) as Box<dyn Glitch>);
+                    return Err(error);
                 }
 
                 let constraints = if matches!(param.param_type.named_text().as_deref(), Some("any"))
@@ -343,7 +343,7 @@ impl AstParser {
         params: &[Parameter],
         kind: &str,
         tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> Result<(), Box<dyn Glitch>> {
+    ) -> Result<(), ParseError> {
         let mut seen_names = HashSet::new();
         for param in params {
             if !seen_names.insert(canonical_identifier_key(&param.name)) {
@@ -362,7 +362,7 @@ impl AstParser {
                         length: 0,
                     }
                 };
-                return Err(Box::new(error));
+                return Err(error);
             }
         }
         Ok(())
@@ -371,7 +371,7 @@ impl AstParser {
     pub(super) fn parse_generic_list(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
+    ) -> Result<Vec<Generic>, ParseError> {
         self.parse_generic_list_with_close(tokens, SYMBOL::RoundC, ")")
     }
 
@@ -380,7 +380,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         close_symbol: SYMBOL,
         close_label: &str,
-    ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
+    ) -> Result<Vec<Generic>, ParseError> {
         let mut generics = Vec::new();
         let mut seen_names = HashSet::new();
 
@@ -395,10 +395,10 @@ impl AstParser {
 
             let name = Self::expect_named_label(&token, "Expected generic parameter name")?;
             if !seen_names.insert(canonical_identifier_key(&name)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     format!("Duplicate generic name '{}'", name),
-                )));
+                ));
             }
             let _ = tokens.bump();
 
@@ -427,13 +427,13 @@ impl AstParser {
                 return Ok(generics);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 format!(
                     "Expected ',', ';', or '{}' after generic parameter",
                     close_label
                 ),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -451,13 +451,13 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     pub(super) fn parse_routine_options(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<FunOption>, Box<dyn Glitch>> {
+    ) -> Result<Vec<FunOption>, ParseError> {
         self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
@@ -486,10 +486,10 @@ impl AstParser {
                 "mut" | "mutable" => FunOption::Mutable,
                 "itr" | "iter" | "iterator" => FunOption::Iterator,
                 _ => {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Unknown routine option".to_string(),
-                    )))
+                    ))
                 }
             };
             options.push(option);
@@ -518,10 +518,10 @@ impl AstParser {
                 return Ok(options);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ']' in routine options".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -539,13 +539,13 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     pub(super) fn parse_parameter_list(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<Parameter>, Box<dyn Glitch>> {
+    ) -> Result<Vec<Parameter>, ParseError> {
         let mut params = Vec::new();
         let mut seen_names = HashSet::new();
 
@@ -561,16 +561,16 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 let (function_name, function_type) = self.parse_function_type_signature(tokens)?;
                 let Some(param_name) = function_name else {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected named function header in higher-order parameter".to_string(),
-                    )));
+                    ));
                 };
                 if !seen_names.insert(canonical_identifier_key(&param_name)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         format!("Duplicate parameter name '{}'", param_name),
-                    )));
+                    ));
                 }
 
                 params.push(Parameter {
@@ -596,10 +596,10 @@ impl AstParser {
                     return Ok(params);
                 }
 
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected ',', ';', or ')' after parameter".to_string(),
-                )));
+                ));
             }
 
             let (names, is_mutex) = self.parse_parameter_name_group(
@@ -610,18 +610,18 @@ impl AstParser {
             )?;
             let first_name = names[0].clone();
             if !seen_names.insert(canonical_identifier_key(&first_name)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     format!("Duplicate parameter name '{}'", first_name),
-                )));
+                ));
             }
             for grouped_name in names.iter().skip(1) {
                 if !seen_names.insert(canonical_identifier_key(grouped_name)) {
                     let name_token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &name_token,
                         format!("Duplicate parameter name '{}'", grouped_name),
-                    )));
+                    ));
                 }
             }
 
@@ -661,10 +661,10 @@ impl AstParser {
                         || matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundC))
                         || next.key().is_terminal()
                     {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &next,
                             "Expected default value expression after '=' in parameter".to_string(),
-                        )));
+                        ));
                     }
 
                     Some(self.parse_logical_expression(tokens)?)
@@ -677,10 +677,10 @@ impl AstParser {
 
             if is_variadic && default.is_some() {
                 let token = tokens.curr(false)?;
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Variadic parameters cannot have default values".to_string(),
-                )));
+                ));
             }
 
             for param_name in names {
@@ -701,10 +701,10 @@ impl AstParser {
                 || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
             {
                 if is_variadic {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &sep,
                         "Variadic parameter must be the last parameter".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
                 continue;
@@ -714,10 +714,10 @@ impl AstParser {
                 return Ok(params);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ')' after parameter".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -735,14 +735,14 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     pub(super) fn parse_routine_name_with_optional_receiver(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         missing_name_message: &str,
-    ) -> Result<(Option<FolType>, String), Box<dyn Glitch>> {
+    ) -> Result<(Option<FolType>, String), ParseError> {
         let mut receiver_type = None;
         let current = tokens.curr(false)?;
 
@@ -766,10 +766,10 @@ impl AstParser {
                 | Some(FolType::QualifiedNamed { .. })
                 | Some(FolType::Any)
                 | Some(FolType::None) => {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &receiver_token,
                         "Method receiver type cannot be any, non, or none".to_string(),
-                    )));
+                    ));
                 }
                 Some(_) => {}
                 None => unreachable!("receiver_type is set above"),
@@ -778,10 +778,10 @@ impl AstParser {
             self.skip_ignorable(tokens)?;
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &close,
                     "Expected ')' after method receiver type".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens)?;

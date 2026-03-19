@@ -4,7 +4,7 @@ impl AstParser {
     pub(super) fn parse_use_options(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<UseOption>, Box<dyn Glitch>> {
+    ) -> Result<Vec<UseOption>, ParseError> {
         self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
@@ -35,49 +35,49 @@ impl AstParser {
                 "-" | "hid" | "hidden" => UseOption::Hidden,
                 "nor" | "normal" => UseOption::Normal,
                 _ => {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Unknown use option".to_string(),
-                    )))
+                    ))
                 }
             };
             match option {
                 UseOption::Export => {
                     if saw_export {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             "Duplicate use option 'export'".to_string(),
-                        )));
+                        ));
                     }
                     if saw_hidden {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             "Conflicting use options 'export' and 'hidden'".to_string(),
-                        )));
+                        ));
                     }
                     saw_export = true;
                 }
                 UseOption::Hidden => {
                     if saw_hidden {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             "Duplicate use option 'hidden'".to_string(),
-                        )));
+                        ));
                     }
                     if saw_export {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             "Conflicting use options 'export' and 'hidden'".to_string(),
-                        )));
+                        ));
                     }
                     saw_hidden = true;
                 }
                 UseOption::Normal => {
                     if saw_normal {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             "Duplicate use option 'normal'".to_string(),
-                        )));
+                        ));
                     }
                     saw_normal = true;
                 }
@@ -108,10 +108,10 @@ impl AstParser {
                 return Ok(options);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ']' in use options".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -129,6 +129,6 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 }

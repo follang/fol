@@ -37,7 +37,7 @@ impl AstParser {
     pub(super) fn parse_binding_alternative_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let (keyword, options) = self.lookahead_binding_alternative(tokens).ok_or_else(|| {
             let error: ParseError = if let Ok(token) = tokens.curr(false) {
                 ParseError::from_token(
@@ -54,7 +54,7 @@ impl AstParser {
                     length: 0,
                 }
             };
-            Box::new(error) as Box<dyn Glitch>
+            error
         })?;
 
         let _ = tokens.bump();

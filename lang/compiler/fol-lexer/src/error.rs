@@ -22,20 +22,3 @@ impl fmt::Display for LexerError {
 }
 
 impl std::error::Error for LexerError {}
-
-// Temporary Glitch impl — will be removed in Slice 5
-impl fol_types::Glitch for LexerError {
-    fn clone_box(&self) -> Box<dyn fol_types::Glitch> {
-        Box::new(self.clone())
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-// Allow `?` to convert LexerError into Box<dyn Glitch> for parser compatibility
-impl From<LexerError> for Box<dyn fol_types::Glitch> {
-    fn from(e: LexerError) -> Self {
-        Box::new(e)
-    }
-}

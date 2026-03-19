@@ -6,12 +6,12 @@ impl AstParser {
         options: &[DeclOption],
         context: &str,
         tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> Result<(), Box<dyn Glitch>> {
+    ) -> Result<(), ParseError> {
         let mut saw_export = false;
         let mut saw_hidden = false;
         let mut saw_normal = false;
 
-        let make_error = |message: String| -> Box<dyn Glitch> {
+        let make_error = |message: String| -> ParseError {
             let error = if let Ok(token) = tokens.curr(false) {
                 ParseError::from_token(&token, message)
             } else {
@@ -24,7 +24,7 @@ impl AstParser {
                     length: 0,
                 }
             };
-            Box::new(error)
+            error
         };
 
         for option in options {
@@ -61,7 +61,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         context: &str,
-    ) -> Result<Vec<DeclOption>, Box<dyn Glitch>> {
+    ) -> Result<Vec<DeclOption>, ParseError> {
         let open = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(Vec::new()),
@@ -89,10 +89,10 @@ impl AstParser {
                 "-" | "hid" | "hidden" => DeclOption::Hidden,
                 "nor" | "normal" => DeclOption::Normal,
                 _ => {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         format!("Unknown {} option", context),
-                    )))
+                    ))
                 }
             };
             options.push(option);
@@ -123,10 +123,10 @@ impl AstParser {
                 return Ok(options);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ']' in declaration options".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -144,6 +144,6 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 }

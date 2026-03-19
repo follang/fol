@@ -4,13 +4,13 @@ impl AstParser {
     pub(super) fn parse_seg_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let seg_token = tokens.curr(false)?;
         if !matches!(seg_token.key(), KEYWORD::Keyword(BUILDIN::Seg)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &seg_token,
                 "Expected 'seg' declaration".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -25,23 +25,23 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &colon,
                 "Expected ':' after segment name".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
 
         let def_type = self.parse_type_reference_tokens(tokens)?;
         if !matches!(def_type, FolType::Module { .. }) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &seg_token,
                 format!(
                     "Segment declarations require module types, found '{}'",
                     Self::fol_type_label(&def_type)
                 ),
-            )));
+            ));
         }
 
         self.skip_ignorable(tokens)?;
@@ -60,10 +60,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '{' to start segment body".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 

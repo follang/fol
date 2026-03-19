@@ -1,9 +1,30 @@
 // FOL Stream - Sophisticated file/folder to character stream conversion
 // Handles .mod directories specially and creates unified character streams
 
-use fol_types::*;
 use std::ffi::OsStr;
 use std::path::Path;
+
+/// Stream-local error type for file I/O failures.
+#[derive(Debug, Clone)]
+pub enum StreamError {
+    NoSources,
+    ReadFailed(String),
+    InvalidPath(String),
+    InvalidNamespace(String),
+}
+
+impl std::fmt::Display for StreamError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            StreamError::NoSources => write!(f, "No sources provided"),
+            StreamError::ReadFailed(msg) => write!(f, "{msg}"),
+            StreamError::InvalidPath(msg) => write!(f, "{msg}"),
+            StreamError::InvalidNamespace(msg) => write!(f, "{msg}"),
+        }
+    }
+}
+
+impl std::error::Error for StreamError {}
 
 /// Character provider trait for streaming characters with location info
 pub trait CharacterProvider {
@@ -13,7 +34,7 @@ pub trait CharacterProvider {
 /// Stream source trait for converting paths to character providers
 pub trait StreamSource {
     type Provider: CharacterProvider;
-    fn into_provider(self) -> Result<Self::Provider, Box<dyn Glitch>>;
+    fn into_provider(self) -> Result<Self::Provider, StreamError>;
 }
 
 /// Location tracking for characters in source files
@@ -43,7 +64,7 @@ pub enum SourceType {
 
 impl Source {
     /// Initialize sources from input path with package name
-    pub fn init(input: &str, source_type: SourceType) -> Result<Vec<Self>, Box<dyn Glitch>> {
+    pub fn init(input: &str, source_type: SourceType) -> Result<Vec<Self>, StreamError> {
         let package_name = detect_package_name(input)?;
         source(input, source_type, &package_name)
     }
@@ -53,7 +74,7 @@ impl Source {
         input: &str,
         source_type: SourceType,
         package_name: &str,
-    ) -> Result<Vec<Self>, Box<dyn Glitch>> {
+    ) -> Result<Vec<Self>, StreamError> {
         let package_name = validate_package_name(package_name)?;
         source(input, source_type, &package_name)
     }
@@ -138,34 +159,29 @@ impl Default for FileStream {
 
 impl FileStream {
     /// Create from a single file path
-    pub fn from_file(path: &str) -> Result<Self, Box<dyn Glitch>> {
+    pub fn from_file(path: &str) -> Result<Self, StreamError> {
         let sources = Source::init(path, SourceType::File)?;
         Self::from_sources(sources)
     }
 
     /// Create from a folder path (with sophisticated .mod handling)
-    pub fn from_folder(path: &str) -> Result<Self, Box<dyn Glitch>> {
+    pub fn from_folder(path: &str) -> Result<Self, StreamError> {
         let sources = Source::init(path, SourceType::Folder)?;
         Self::from_sources(sources)
     }
 
     /// Create from a list of sources
-    pub fn from_sources(mut sources: Vec<Source>) -> Result<Self, Box<dyn Glitch>> {
+    pub fn from_sources(mut sources: Vec<Source>) -> Result<Self, StreamError> {
         if sources.is_empty() {
-            return Err(Box::new(BasicError {
-                message: "No sources provided".to_string(),
-            }));
+            return Err(StreamError::NoSources);
         }
 
         // Eager loading is intentional for this hardening cycle so stream identity,
         // traversal order, and per-file location resets are fixed before later phases.
         for source in &mut sources {
-            source.data =
-                std::fs::read_to_string(&source.path).map_err(|e| -> Box<dyn Glitch> {
-                    Box::new(BasicError {
-                        message: format!("Failed to read file {}: {}", source.path, e),
-                    })
-                })?;
+            source.data = std::fs::read_to_string(&source.path).map_err(|e| {
+                StreamError::ReadFailed(format!("Failed to read file {}: {}", source.path, e))
+            })?;
         }
 
         let char_buffers = sources
@@ -190,11 +206,9 @@ impl FileStream {
     ///
     /// Each source must have its `data` field already populated. The `path`
     /// field is used for location reporting but the file is never read.
-    pub fn from_preloaded(sources: Vec<Source>) -> Result<Self, Box<dyn Glitch>> {
+    pub fn from_preloaded(sources: Vec<Source>) -> Result<Self, StreamError> {
         if sources.is_empty() {
-            return Err(Box::new(BasicError {
-                message: "No sources provided".to_string(),
-            }));
+            return Err(StreamError::NoSources);
         }
         let char_buffers = sources
             .iter()
@@ -269,7 +283,7 @@ fn source(
     input: &str,
     source_type: SourceType,
     package_name: &str,
-) -> Result<Vec<Source>, Box<dyn Glitch>> {
+) -> Result<Vec<Source>, StreamError> {
     let mut sources = Vec::new();
     let validated_path = check_validity(input, source_type.clone())?;
 
@@ -287,8 +301,9 @@ fn source(
         SourceType::Folder => {
             let discovered_files = from_dir(&validated_path)?;
             if discovered_files.is_empty() {
-                let msg = "No .fol files found".to_string();
-                return Err(Box::new(BasicError { message: msg }));
+                return Err(StreamError::InvalidPath(
+                    "No .fol files found".to_string(),
+                ));
             }
 
             for file_path in discovered_files {
@@ -312,19 +327,13 @@ fn source(
 /// Key innovation: .mod directories are SKIPPED during traversal!
 /// This allows for modular organization where .mod directories contain
 /// mixed file types and module-specific code that's handled separately.
-fn from_dir(directory: &str) -> Result<Vec<String>, Box<dyn Glitch>> {
-    let paths = std::fs::read_dir(directory).map_err(|e| -> Box<dyn Glitch> {
-        Box::new(BasicError {
-            message: format!("Cannot read directory {}: {}", directory, e),
-        })
+fn from_dir(directory: &str) -> Result<Vec<String>, StreamError> {
+    let paths = std::fs::read_dir(directory).map_err(|e| {
+        StreamError::ReadFailed(format!("Cannot read directory {}: {}", directory, e))
     })?;
-    let mut entries = paths
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| -> Box<dyn Glitch> {
-            Box::new(BasicError {
-                message: format!("Cannot read directory entry: {}", e),
-            })
-        })?;
+    let mut entries = paths.collect::<Result<Vec<_>, _>>().map_err(|e| {
+        StreamError::ReadFailed(format!("Cannot read directory entry: {}", e))
+    })?;
     entries.sort_by(|left, right| {
         left.file_name()
             .to_string_lossy()
@@ -361,19 +370,19 @@ fn from_dir(directory: &str) -> Result<Vec<String>, Box<dyn Glitch>> {
 }
 
 /// Validate input path and return canonical path
-fn check_validity(input: &str, source_type: SourceType) -> Result<String, Box<dyn Glitch>> {
+fn check_validity(input: &str, source_type: SourceType) -> Result<String, StreamError> {
     let path = Path::new(input);
 
     if !path.exists() {
-        let msg = format!("Path {} does not exist", input);
-        return Err(Box::new(BasicError { message: msg }));
+        return Err(StreamError::InvalidPath(format!(
+            "Path {} does not exist",
+            input
+        )));
     }
 
     let canonical_path = std::fs::canonicalize(path)
-        .map_err(|e| -> Box<dyn Glitch> {
-            Box::new(BasicError {
-                message: format!("Cannot resolve path {}: {}", input, e),
-            })
+        .map_err(|e| {
+            StreamError::InvalidPath(format!("Cannot resolve path {}: {}", input, e))
         })?
         .to_string_lossy()
         .to_string();
@@ -385,23 +394,26 @@ fn check_validity(input: &str, source_type: SourceType) -> Result<String, Box<dy
             // If file provided but folder expected, use parent directory
             if let Some(parent) = path.parent() {
                 let parent_canonical = std::fs::canonicalize(parent)
-                    .map_err(|e| -> Box<dyn Glitch> {
-                        Box::new(BasicError {
-                            message: format!("Cannot resolve parent path: {}", e),
-                        })
+                    .map_err(|e| {
+                        StreamError::InvalidPath(format!(
+                            "Cannot resolve parent path: {}",
+                            e
+                        ))
                     })?
                     .to_string_lossy()
                     .to_string();
                 Ok(parent_canonical)
             } else {
-                let msg = format!("Invalid path for folder source: {}", input);
-                Err(Box::new(BasicError { message: msg }))
+                Err(StreamError::InvalidPath(format!(
+                    "Invalid path for folder source: {}",
+                    input
+                )))
             }
         }
-        (true, SourceType::File) => {
-            let msg = format!("Expected file but got directory: {}", input);
-            Err(Box::new(BasicError { message: msg }))
-        }
+        (true, SourceType::File) => Err(StreamError::InvalidPath(format!(
+            "Expected file but got directory: {}",
+            input
+        ))),
     }
 }
 
@@ -409,13 +421,13 @@ fn check_validity(input: &str, source_type: SourceType) -> Result<String, Box<dy
 pub fn sources(
     input: String,
     source_type: SourceType,
-) -> Result<impl Iterator<Item = Source>, Box<dyn Glitch>> {
+) -> Result<impl Iterator<Item = Source>, StreamError> {
     let sources = Source::init(&input, source_type)?;
     Ok(sources.into_iter())
 }
 
 /// Detect package name from the explicit entry root instead of host build files.
-fn detect_package_name(input_path: &str) -> Result<String, Box<dyn Glitch>> {
+fn detect_package_name(input_path: &str) -> Result<String, StreamError> {
     let path = std::path::Path::new(input_path);
     let fallback_root = if path.is_file() {
         path.parent().unwrap_or(path)
@@ -438,16 +450,14 @@ fn detect_package_name(input_path: &str) -> Result<String, Box<dyn Glitch>> {
     validate_package_name(&fallback_name)
 }
 
-fn validate_package_name(package_name: &str) -> Result<String, Box<dyn Glitch>> {
+fn validate_package_name(package_name: &str) -> Result<String, StreamError> {
     if is_valid_namespace_component(package_name) {
         Ok(package_name.to_string())
     } else {
-        Err(Box::new(BasicError {
-            message: format!(
-                "Invalid package name '{}': package names must follow namespace identifier rules",
-                package_name
-            ),
-        }))
+        Err(StreamError::InvalidNamespace(format!(
+            "Invalid package name '{}': package names must follow namespace identifier rules",
+            package_name
+        )))
     }
 }
 
@@ -456,7 +466,7 @@ fn compute_namespace(
     file_path: &str,
     root_path: &str,
     package_name: &str,
-) -> Result<String, Box<dyn Glitch>> {
+) -> Result<String, StreamError> {
     let file_path = std::path::Path::new(file_path);
     let root_path = std::path::Path::new(root_path);
 
@@ -485,11 +495,11 @@ fn compute_namespace(
                 let name = component
                     .as_os_str()
                     .to_str()
-                    .ok_or_else(|| -> Box<dyn Glitch> {
-                        Box::new(BasicError {
-                            message: "Invalid namespace component: path segment is not valid UTF-8"
+                    .ok_or_else(|| {
+                        StreamError::InvalidNamespace(
+                            "Invalid namespace component: path segment is not valid UTF-8"
                                 .to_string(),
-                        })
+                        )
                     })?;
 
                 // Skip .mod directories in namespace (they were already filtered out)
@@ -498,12 +508,10 @@ fn compute_namespace(
                 }
 
                 if !is_valid_namespace_component(name) {
-                    return Err(Box::new(BasicError {
-                        message: format!(
-                            "Invalid namespace component '{}': namespace components must follow identifier rules",
-                            name
-                        ),
-                    }));
+                    return Err(StreamError::InvalidNamespace(format!(
+                        "Invalid namespace component '{}': namespace components must follow identifier rules",
+                        name
+                    )));
                 }
 
                 namespace_parts.push(name.to_string());
@@ -551,7 +559,7 @@ mod unit_tests {
         fs::create_dir_all(temp_root.join("nested"))
             .expect("Should create temp folders for char-buffer test");
         fs::write(temp_root.join("alpha.fol"), "alpha\n").expect("Should write alpha temp source");
-        fs::write(temp_root.join("nested/beta.fol"), "beta🌍\n")
+        fs::write(temp_root.join("nested/beta.fol"), "beta\u{1f30d}\n")
             .expect("Should write beta temp source");
 
         let sources = Source::init(

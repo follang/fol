@@ -12,13 +12,13 @@ impl AstParser {
     pub(super) fn parse_flow_body_nodes(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let flow = tokens.curr(false)?;
         if !matches!(flow.key(), KEYWORD::Operator(OPERATOR::Flow)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &flow,
                 "Expected '=>' to start flow body".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;

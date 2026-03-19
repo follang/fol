@@ -4,7 +4,7 @@ impl AstParser {
     pub(super) fn parse_optional_error_type_after_return_type(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Option<FolType>, Box<dyn Glitch>> {
+    ) -> Result<Option<FolType>, ParseError> {
         self.skip_ignorable(tokens)?;
         let Ok(separator) = tokens.curr(false) else {
             return Ok(None);
@@ -16,10 +16,10 @@ impl AstParser {
                 self.skip_ignorable(tokens)?;
                 Ok(Some(self.parse_type_reference_tokens(tokens)?))
             }
-            KEYWORD::Symbol(SYMBOL::Colon) => Err(Box::new(ParseError::from_token(
+            KEYWORD::Symbol(SYMBOL::Colon) => Err(ParseError::from_token(
                 &separator,
                 "Expected '/' before routine error type".to_string(),
-            ))),
+            )),
             _ => Ok(None),
         }
     }
@@ -27,13 +27,13 @@ impl AstParser {
     pub(super) fn parse_fun_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let fun_token = tokens.curr(false)?;
         if !matches!(fun_token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &fun_token,
                 "Expected 'fun' declaration".to_string(),
-            )));
+            ));
         }
         let decl_line = fun_token.loc().row();
 
@@ -82,10 +82,10 @@ impl AstParser {
                 assign.key(),
                 KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow)
             ) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &assign,
                     "Expected '=' or '=>' before function body".to_string(),
-                )));
+                ));
             }
             if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                 let _ = tokens.bump();
@@ -97,10 +97,10 @@ impl AstParser {
                 let _ = tokens.bump();
                 let (parsed_params, first_untyped) = self.parse_routine_header_list(tokens)?;
                 if let Some(token) = first_untyped {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected ':' after function parameter name".to_string(),
-                    )));
+                    ));
                 }
                 self.ensure_unique_parameter_names(&parsed_params, "parameter", tokens)?;
                 params = parsed_params;
@@ -156,10 +156,10 @@ impl AstParser {
             assign.key(),
             KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow)
         ) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &assign,
                 "Expected '=' or '=>' before function body".to_string(),
-            )));
+            ));
         }
         if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
             let _ = tokens.bump();
@@ -189,13 +189,13 @@ impl AstParser {
     pub(super) fn parse_log_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let log_token = tokens.curr(false)?;
         if !matches!(log_token.key(), KEYWORD::Keyword(BUILDIN::Log)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &log_token,
                 "Expected 'log' declaration".to_string(),
-            )));
+            ));
         }
 
         let decl_line = log_token.loc().row();
@@ -243,10 +243,10 @@ impl AstParser {
                 assign.key(),
                 KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow)
             ) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &assign,
                     "Expected '=' or '=>' before logical body".to_string(),
-                )));
+                ));
             }
             if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                 let _ = tokens.bump();
@@ -258,10 +258,10 @@ impl AstParser {
                 let _ = tokens.bump();
                 let (parsed_params, first_untyped) = self.parse_routine_header_list(tokens)?;
                 if let Some(token) = first_untyped {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected ':' after function parameter name".to_string(),
-                    )));
+                    ));
                 }
                 self.ensure_unique_parameter_names(&parsed_params, "parameter", tokens)?;
                 params = parsed_params;
@@ -317,10 +317,10 @@ impl AstParser {
             assign.key(),
             KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow)
         ) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &assign,
                 "Expected '=' or '=>' before logical body".to_string(),
-            )));
+            ));
         }
         if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
             let _ = tokens.bump();
@@ -350,13 +350,13 @@ impl AstParser {
     pub(super) fn parse_pro_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let pro_token = tokens.curr(false)?;
         if !matches!(pro_token.key(), KEYWORD::Keyword(BUILDIN::Pro)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &pro_token,
                 "Expected 'pro' declaration".to_string(),
-            )));
+            ));
         }
 
         let decl_line = pro_token.loc().row();
@@ -404,10 +404,10 @@ impl AstParser {
                 assign.key(),
                 KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow)
             ) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &assign,
                     "Expected '=' or '=>' before procedure body".to_string(),
-                )));
+                ));
             }
             if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                 let _ = tokens.bump();
@@ -419,10 +419,10 @@ impl AstParser {
                 let _ = tokens.bump();
                 let (parsed_params, first_untyped) = self.parse_routine_header_list(tokens)?;
                 if let Some(token) = first_untyped {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected ':' after function parameter name".to_string(),
-                    )));
+                    ));
                 }
                 self.ensure_unique_parameter_names(&parsed_params, "parameter", tokens)?;
                 params = parsed_params;
@@ -478,10 +478,10 @@ impl AstParser {
             assign.key(),
             KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow)
         ) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &assign,
                 "Expected '=' or '=>' before procedure body".to_string(),
-            )));
+            ));
         }
         if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
             let _ = tokens.bump();
@@ -512,14 +512,14 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         missing_open_message: &str,
-    ) -> Result<(Vec<Generic>, Vec<Parameter>), Box<dyn Glitch>> {
+    ) -> Result<(Vec<Generic>, Vec<Parameter>), ParseError> {
         self.skip_ignorable(tokens)?;
         let open_paren = tokens.curr(false)?;
         if !matches!(open_paren.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open_paren,
                 missing_open_message.to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -530,10 +530,10 @@ impl AstParser {
             Ok(token) => token,
             Err(_) => {
                 if let Some(token) = first_untyped {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected ':' after parameter name".to_string(),
-                    )));
+                    ));
                 }
                 self.ensure_unique_parameter_names(&first_list, "parameter", tokens)?;
                 return Ok((Vec::new(), first_list));
@@ -542,10 +542,10 @@ impl AstParser {
 
         if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             if let Some(token) = first_untyped {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Expected ':' after parameter name".to_string(),
-                )));
+                ));
             }
             self.ensure_unique_parameter_names(&first_list, "parameter", tokens)?;
             return Ok((Vec::new(), first_list));

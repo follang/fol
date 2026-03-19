@@ -4,7 +4,7 @@ impl AstParser {
     fn parse_pipe_lambda_params(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<Parameter>, Box<dyn Glitch>> {
+    ) -> Result<Vec<Parameter>, ParseError> {
         let mut params = Vec::new();
 
         self.skip_ignorable(tokens)?;
@@ -25,17 +25,17 @@ impl AstParser {
                 let token = tokens.curr(false)?;
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                     let Some(next_key) = self.next_significant_key_from_window(tokens) else {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             "Expected lambda parameter name after ','".to_string(),
-                        )));
+                        ));
                     };
 
                     if matches!(next_key, KEYWORD::Symbol(SYMBOL::Pipe)) {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             "Expected lambda parameter name after ','".to_string(),
-                        )));
+                        ));
                     }
 
                     let _ = tokens.bump();
@@ -80,10 +80,10 @@ impl AstParser {
 
             if is_variadic && default.is_some() {
                 let token = tokens.curr(false)?;
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Variadic parameters cannot have default values".to_string(),
-                )));
+                ));
             }
 
             for name in names {
@@ -105,10 +105,10 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 if is_variadic {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Variadic parameter must be the last parameter".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens)?;
@@ -124,23 +124,23 @@ impl AstParser {
                 return Ok(params);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Expected ',', ';', or '|' after lambda parameters".to_string(),
-            )));
+            ));
         }
     }
 
     pub(super) fn parse_pipe_lambda_expr(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::Pipe)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '|' to start lambda expression".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -151,10 +151,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::Pipe)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close,
                 "Expected closing '|' after lambda parameters".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -205,10 +205,10 @@ impl AstParser {
                     };
                     if !inquiry_targets.insert(canonical_identifier_key(&target)) {
                         let token = tokens.curr(false)?;
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             format!("Duplicate inquiry clause for '{}'", target),
-                        )));
+                        ));
                     }
                     inquiries.push(inquiry);
                 }

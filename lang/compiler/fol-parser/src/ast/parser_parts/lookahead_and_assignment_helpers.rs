@@ -396,13 +396,13 @@ impl AstParser {
         tokens: &fol_lexer::lexer::stage3::Elements,
         decl_line: usize,
         message: &str,
-    ) -> Result<(), Box<dyn Glitch>> {
+    ) -> Result<(), ParseError> {
         if let Ok(next) = tokens.curr(false) {
             if next.loc().row() > decl_line && next.key().is_assign() {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     decl_token,
                     message.to_string(),
-                )));
+                ));
             }
         }
         Ok(())

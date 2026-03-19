@@ -5,7 +5,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         missing_close_message: &str,
-    ) -> Result<(Vec<AstNode>, Vec<AstNode>), Box<dyn Glitch>> {
+    ) -> Result<(Vec<AstNode>, Vec<AstNode>), ParseError> {
         let mut body = Vec::new();
         let mut inquiries = Vec::new();
         let mut inquiry_targets = HashSet::new();
@@ -32,10 +32,10 @@ impl AstParser {
                         _ => String::new(),
                     };
                     if !inquiry_targets.insert(canonical_identifier_key(&target)) {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             format!("Duplicate inquiry clause for '{}'", target),
-                        )));
+                        ));
                     }
                     inquiries.push(inquiry);
                 }
@@ -48,18 +48,18 @@ impl AstParser {
             }
 
             if token.key().is_boundary() {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     missing_close_message.to_string(),
-                )));
+                ));
             }
 
             if token.key().is_eof() {
                 let anchor = anchor_token.unwrap_or(token);
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &anchor,
                     missing_close_message.to_string(),
-                )));
+                ));
             }
 
             let key = token.key();
@@ -276,16 +276,16 @@ impl AstParser {
             Some(token) => token,
             None => tokens.curr(false)?,
         };
-        Err(Box::new(ParseError::from_token(
+        Err(ParseError::from_token(
             &anchor,
             missing_close_message.to_string(),
-        )))
+        ))
     }
 
     pub(super) fn parse_optional_inquiry_clause(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         self.skip_ignorable(tokens)?;
         let where_token = match tokens.curr(false) {
             Ok(token) => token,
@@ -300,10 +300,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '(' after 'where'".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -315,10 +315,10 @@ impl AstParser {
             let target = self.parse_inquiry_target(tokens)?;
             let duplicate_key = target.duplicate_key();
             if !seen_targets.insert(canonical_identifier_key(&duplicate_key)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &target_token,
                     format!("Duplicate inquiry clause for '{}'", duplicate_key),
-                )));
+                ));
             }
             targets.push(target);
 
@@ -334,10 +334,10 @@ impl AstParser {
                 continue;
             }
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &close,
                     "Expected ',', ';', or ')' after inquiry target".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             break;
@@ -357,10 +357,10 @@ impl AstParser {
         }
 
         if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open_body,
                 "Expected '{' or '=>' to start inquiry body".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -377,7 +377,7 @@ impl AstParser {
     pub(super) fn parse_inquiry_target(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<InquiryTarget, Box<dyn Glitch>> {
+    ) -> Result<InquiryTarget, ParseError> {
         self.skip_ignorable(tokens)?;
         let token = tokens.curr(false)?;
 
@@ -438,7 +438,7 @@ impl AstParser {
     fn parse_inquiry_body(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let mut body = Vec::new();
         let mut anchor_token = None;
 
@@ -456,10 +456,10 @@ impl AstParser {
 
             if token.key().is_eof() {
                 let anchor = anchor_token.unwrap_or(token);
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &anchor,
                     "Expected '}' to close inquiry body".to_string(),
-                )));
+                ));
             }
 
             let key = token.key();
@@ -618,9 +618,9 @@ impl AstParser {
             Some(token) => token,
             None => tokens.curr(false)?,
         };
-        Err(Box::new(ParseError::from_token(
+        Err(ParseError::from_token(
             &anchor,
             "Inquiry body exceeded parser limit".to_string(),
-        )))
+        ))
     }
 }

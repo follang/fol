@@ -65,13 +65,13 @@ impl AstParser {
     pub(super) fn parse_def_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let def_token = tokens.curr(false)?;
         if !matches!(def_token.key(), KEYWORD::Keyword(BUILDIN::Def)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &def_token,
                 "Expected 'def' declaration".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -88,10 +88,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &colon,
                 "Expected ':' after definition name".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -99,20 +99,20 @@ impl AstParser {
         let def_type_token = tokens.curr(false)?;
         let def_type = self.parse_type_reference_tokens(tokens)?;
         if !self.is_supported_definition_type(&def_type) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &def_type_token,
                 format!(
                     "Definition declarations currently support only mod[...], blk[...], tst[...], pkg, loc, mac, alt, or def[] types, found '{}'",
                     Self::fol_type_label(&def_type)
                 ),
-            )));
+            ));
         }
         if !params.is_empty() && !self.definition_supports_params(&def_type) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &def_type_token,
                 "Definition parameters are currently supported only for mac definitions"
                     .to_string(),
-            )));
+            ));
         }
 
         self.skip_ignorable(tokens)?;
@@ -129,10 +129,10 @@ impl AstParser {
                 });
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &next,
                 "Expected '=' before definition body".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -140,10 +140,10 @@ impl AstParser {
         let body = if self.definition_uses_block_body(&def_type) {
             let open_body = tokens.curr(false)?;
             if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &open_body,
                     "Expected '{' to start definition body".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.parse_block_body(tokens, "Expected '}' to close definition body")?
@@ -164,13 +164,13 @@ impl AstParser {
     pub(super) fn parse_alias_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let ali_token = tokens.curr(false)?;
         if !matches!(ali_token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &ali_token,
                 "Expected 'ali' declaration".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -183,10 +183,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &colon,
                 "Expected ':' after alias name".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -201,13 +201,13 @@ impl AstParser {
     pub(super) fn parse_type_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let typ_token = tokens.curr(false)?;
         if !matches!(typ_token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &typ_token,
                 "Expected 'typ' declaration".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -230,7 +230,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         options: Vec<TypeOption>,
         consume_terminator: bool,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let name_token = tokens.curr(false)?;
         let name = Self::expect_named_label(&name_token, "Expected type declaration name")?;
         let _ = tokens.bump();
@@ -261,10 +261,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &colon,
                 "Expected ':' after type name".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -283,10 +283,10 @@ impl AstParser {
 
         if names.len() > 1 && (!generics.is_empty() || !explicit_contracts.is_empty()) {
             let token = tokens.curr(false).unwrap_or(name_token);
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Type generics and explicit contracts are currently supported only on single-name type declarations".to_string(),
-            )));
+            ));
         }
 
         if consume_terminator {
@@ -298,10 +298,10 @@ impl AstParser {
             n if n == names.len() => type_defs,
             _ => {
                 let token = tokens.curr(false).unwrap_or(name_token);
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Type definition count must match declared names or provide a single shared definition".to_string(),
-                )));
+                ));
             }
         };
 
@@ -324,7 +324,7 @@ impl AstParser {
     pub(super) fn parse_type_definition(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<TypeDefinition, Box<dyn Glitch>> {
+    ) -> Result<TypeDefinition, ParseError> {
         let marker = tokens.curr(false)?.con().trim().to_string();
         if marker == "ent" {
             let _ = tokens.bump();
@@ -334,10 +334,10 @@ impl AstParser {
 
             let assign = tokens.curr(false)?;
             if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &assign,
                     "Expected '=' after entry type marker".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens)?;
@@ -362,13 +362,13 @@ impl AstParser {
                 });
             }
             if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &assign,
                     format!(
                         "Expected '=' after {} type marker",
                         if marker == "obj" { "object" } else { "record" }
                     ),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens)?;
@@ -392,7 +392,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         marker_name: &str,
-    ) -> Result<(), Box<dyn Glitch>> {
+    ) -> Result<(), ParseError> {
         self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
@@ -412,16 +412,16 @@ impl AstParser {
             return Ok(());
         }
 
-        Err(Box::new(ParseError::from_token(
+        Err(ParseError::from_token(
             &token,
             format!("Unknown {} type marker option", marker_name),
-        )))
+        ))
     }
 
     pub(super) fn parse_type_generic_header(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
+    ) -> Result<Vec<Generic>, ParseError> {
         self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
@@ -452,7 +452,7 @@ impl AstParser {
     pub(super) fn parse_type_contract_header(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<FolType>, Box<dyn Glitch>> {
+    ) -> Result<Vec<FolType>, ParseError> {
         self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
@@ -497,10 +497,10 @@ impl AstParser {
                 return Ok(contracts);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ')' in type contracts".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -518,13 +518,13 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     pub(super) fn parse_type_options(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<TypeOption>, Box<dyn Glitch>> {
+    ) -> Result<Vec<TypeOption>, ParseError> {
         self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
@@ -554,10 +554,10 @@ impl AstParser {
                 "nothing" | "non" => TypeOption::Nothing,
                 "ext" => TypeOption::Extension,
                 _ => {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Unknown type option".to_string(),
-                    )))
+                    ))
                 }
             };
             options.push(option);
@@ -586,10 +586,10 @@ impl AstParser {
                 return Ok(options);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ']' in type options".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -607,13 +607,13 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     pub(super) fn parse_use_path(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<String, Box<dyn Glitch>> {
+    ) -> Result<String, ParseError> {
         let mut path = String::new();
 
         for _ in 0..512 {
@@ -627,10 +627,10 @@ impl AstParser {
             }
 
             if token.key().is_boundary() {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Expected '}' to close use path".to_string(),
-                )));
+                ));
             }
 
             Self::reject_illegal_token(&token)?;
@@ -665,7 +665,7 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     fn type_contracts_from_generics(
@@ -693,7 +693,7 @@ impl AstParser {
     fn parse_definition_parameter_header(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<Parameter>, Box<dyn Glitch>> {
+    ) -> Result<Vec<Parameter>, ParseError> {
         self.skip_ignorable(tokens)?;
         let current = match tokens.curr(false) {
             Ok(token) => token,

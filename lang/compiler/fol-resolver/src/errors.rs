@@ -4,7 +4,6 @@ use fol_diagnostics::{
 };
 use fol_package::PackageError;
 use fol_parser::ast::SyntaxOrigin;
-use fol_types::Glitch;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResolverErrorKind {
@@ -96,16 +95,6 @@ impl std::fmt::Display for ResolverError {
 }
 
 impl std::error::Error for ResolverError {}
-
-impl Glitch for ResolverError {
-    fn clone_box(&self) -> Box<dyn Glitch> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
 
 impl ToDiagnosticLocation for ResolverError {
     fn to_diagnostic_location(&self, file: Option<String>) -> DiagnosticLocation {

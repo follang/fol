@@ -12,4 +12,3 @@ fol-diagnostics = { path = "../fol-diagnostics" }
 fol-intrinsics = { path = "../fol-intrinsics" }
 fol-parser = { path = "../fol-parser" }
 fol-resolver = { path = "../fol-resolver" }
-fol-types = { path = "../fol-types" }

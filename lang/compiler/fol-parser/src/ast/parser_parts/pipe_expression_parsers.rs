@@ -1,13 +1,13 @@
 use super::*;
 
 impl AstParser {
-    fn pipe_stage_from_nodes(&self, nodes: Vec<AstNode>, anchor: &fol_lexer::lexer::stage3::element::Element) -> Result<AstNode, Box<dyn Glitch>> {
+    fn pipe_stage_from_nodes(&self, nodes: Vec<AstNode>, anchor: &fol_lexer::lexer::stage3::element::Element) -> Result<AstNode, ParseError> {
         let mut iter = nodes.into_iter();
         let Some(first) = iter.next() else {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 anchor,
                 "Pipe stage produced no AST nodes".to_string(),
-            )));
+            ));
         };
 
         let mut statements = vec![first];
@@ -68,7 +68,7 @@ impl AstParser {
     fn parse_pipe_stage_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         self.skip_ignorable(tokens)?;
         let token = tokens.curr(false)?;
 
@@ -242,7 +242,7 @@ impl AstParser {
     pub(super) fn parse_pipe_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let mut lhs = self.parse_logical_or_expression(tokens)?;
 
         for _ in 0..32 {
@@ -274,14 +274,14 @@ impl AstParser {
             self.skip_layout(tokens)?;
             let next = tokens.curr(false)?;
             if next.key().is_terminal() || next.key().is_eof() {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &next,
                     if consume_count == 2 {
                         "Expected expression after '||'".to_string()
                     } else {
                         "Expected expression after '|'".to_string()
                     },
-                )));
+                ));
             }
 
             let rhs = self.parse_pipe_stage_expression(tokens)?;

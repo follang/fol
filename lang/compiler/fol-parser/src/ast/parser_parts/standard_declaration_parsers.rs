@@ -55,13 +55,13 @@ impl AstParser {
     pub(super) fn parse_std_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let std_token = tokens.curr(false)?;
         if !matches!(std_token.key(), KEYWORD::Keyword(BUILDIN::Std)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &std_token,
                 "Expected 'std' declaration".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -76,10 +76,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &colon,
                 "Expected ':' after standard name".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -90,10 +90,10 @@ impl AstParser {
             "blu" => StandardKind::Blueprint,
             "ext" => StandardKind::Extended,
             other => {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &kind_token,
                     format!("Unknown standard kind '{}'", other),
-                )))
+                ))
             }
         };
         let _ = tokens.bump();
@@ -112,20 +112,20 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &assign,
                 "Expected '=' before standard body".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens)?;
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '{' to start standard body".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -148,7 +148,7 @@ impl AstParser {
     fn parse_standard_protocol_body(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let mut body = Vec::new();
         let mut seen_members = HashSet::new();
         let mut anchor_token = None;
@@ -167,10 +167,10 @@ impl AstParser {
 
             if token.key().is_eof() {
                 let anchor = anchor_token.unwrap_or(token);
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &anchor,
                     "Expected '}' to close standard body".to_string(),
-                )));
+                ));
             }
 
             if matches!(
@@ -233,27 +233,27 @@ impl AstParser {
                 continue;
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Protocol standards currently support only routine, alias, type, and constant declarations"
                     .to_string(),
-            )));
+            ));
         }
 
         let anchor = match anchor_token {
             Some(token) => token,
             None => tokens.curr(false)?,
         };
-        Err(Box::new(ParseError::from_token(
+        Err(ParseError::from_token(
             &anchor,
             "Standard body exceeded parser limit".to_string(),
-        )))
+        ))
     }
 
     fn parse_standard_blueprint_body(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let mut body = Vec::new();
         let mut seen_members = HashSet::new();
         let mut anchor_token = None;
@@ -272,10 +272,10 @@ impl AstParser {
 
             if token.key().is_eof() {
                 let anchor = anchor_token.unwrap_or(token);
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &anchor,
                     "Expected '}' to close standard body".to_string(),
-                )));
+                ));
             }
 
             if self.lookahead_binding_alternative(tokens).is_some() {
@@ -454,27 +454,27 @@ impl AstParser {
                 continue;
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Blueprint standards currently support only field, routine, alias, and type declarations"
                     .to_string(),
-            )));
+            ));
         }
 
         let anchor = match anchor_token {
             Some(token) => token,
             None => tokens.curr(false)?,
         };
-        Err(Box::new(ParseError::from_token(
+        Err(ParseError::from_token(
             &anchor,
             "Standard body exceeded parser limit".to_string(),
-        )))
+        ))
     }
 
     fn parse_standard_extended_body(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let mut body = Vec::new();
         let mut seen_members = HashSet::new();
         let mut anchor_token = None;
@@ -493,10 +493,10 @@ impl AstParser {
 
             if token.key().is_eof() {
                 let anchor = anchor_token.unwrap_or(token);
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &anchor,
                     "Expected '}' to close standard body".to_string(),
-                )));
+                ));
             }
 
             if matches!(
@@ -610,27 +610,27 @@ impl AstParser {
                 continue;
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Extended standards currently support only routine, field, alias, and type declarations"
                     .to_string(),
-            )));
+            ));
         }
 
         let anchor = match anchor_token {
             Some(token) => token,
             None => tokens.curr(false)?,
         };
-        Err(Box::new(ParseError::from_token(
+        Err(ParseError::from_token(
             &anchor,
             "Standard body exceeded parser limit".to_string(),
-        )))
+        ))
     }
 
     pub(super) fn parse_standard_routine_signature(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let routine_token = tokens.curr(false)?;
         let routine_kind = routine_token.key().clone();
         let _ = tokens.bump();
@@ -682,10 +682,10 @@ impl AstParser {
                 inquiries = parsed_inquiries;
             }
             _ => {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &next,
                     "Expected ';', '=', or '=>' after standard routine declaration".to_string(),
-                )))
+                ))
             }
         }
 
@@ -771,12 +771,12 @@ impl AstParser {
         anchor: Option<fol_lexer::lexer::stage3::element::Element>,
         fallback: &fol_lexer::lexer::stage3::element::Element,
         key: &str,
-    ) -> Box<dyn Glitch> {
+    ) -> ParseError {
         let token = anchor.unwrap_or_else(|| fallback.clone());
-        Box::new(ParseError::from_token(
+        ParseError::from_token(
             &token,
             format!("Duplicate standard member '{}'", key),
-        ))
+        )
     }
 
     fn peek_standard_member_anchor_token(

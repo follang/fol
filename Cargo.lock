@@ -163,14 +163,12 @@ dependencies = [
  "fol-lexer",
  "fol-parser",
  "fol-stream",
- "fol-types",
 ]
 
 [[package]]
 name = "fol-diagnostics"
 version = "0.1.4"
 dependencies = [
- "fol-types",
  "serde",
  "serde_json",
 ]
@@ -209,7 +207,6 @@ dependencies = [
  "fol-resolver",
  "fol-stream",
  "fol-typecheck",
- "fol-types",
  "serde_json",
 ]
 
@@ -239,7 +236,6 @@ dependencies = [
  "fol-resolver",
  "fol-stream",
  "fol-typecheck",
- "fol-types",
 ]
 
 [[package]]
@@ -251,7 +247,6 @@ dependencies = [
  "fol-lexer",
  "fol-parser",
  "fol-stream",
- "fol-types",
 ]
 
 [[package]]
@@ -284,9 +279,6 @@ version = "0.1.4"
 [[package]]
 name = "fol-stream"
 version = "0.1.4"
-dependencies = [
- "fol-types",
-]
 
 [[package]]
 name = "fol-typecheck"
@@ -296,7 +288,6 @@ dependencies = [
  "fol-intrinsics",
  "fol-parser",
  "fol-resolver",
- "fol-types",
 ]
 
 [[package]]

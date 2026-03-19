@@ -4,13 +4,13 @@ impl AstParser {
     pub(super) fn parse_imp_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let imp_token = tokens.curr(false)?;
         if !matches!(imp_token.key(), KEYWORD::Keyword(BUILDIN::Imp)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &imp_token,
                 "Expected 'imp' declaration".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -28,10 +28,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &colon,
                 "Expected ':' after implementation name".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
@@ -55,10 +55,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '{' to start implementation body".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 

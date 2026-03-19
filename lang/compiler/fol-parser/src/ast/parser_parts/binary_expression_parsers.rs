@@ -4,14 +4,14 @@ impl AstParser {
     pub(super) fn parse_logical_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         self.parse_pipe_expression(tokens)
     }
 
     pub(super) fn parse_logical_or_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let mut lhs = self.parse_logical_xor_expression(tokens)?;
 
         for _ in 0..32 {
@@ -67,7 +67,7 @@ impl AstParser {
     pub(super) fn parse_logical_xor_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let mut lhs = self.parse_logical_and_expression(tokens)?;
 
         for _ in 0..32 {
@@ -103,7 +103,7 @@ impl AstParser {
     pub(super) fn parse_logical_and_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let mut lhs = self.parse_comparison_expression(tokens)?;
 
         for _ in 0..32 {
@@ -159,7 +159,7 @@ impl AstParser {
     pub(super) fn parse_comparison_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let mut lhs = self.parse_range_expression(tokens)?;
 
         for _ in 0..32 {
@@ -263,7 +263,7 @@ impl AstParser {
     pub(super) fn parse_range_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let leading_comments = self.collect_comment_nodes(tokens)?;
         if let Ok(token) = tokens.curr(false) {
             let is_open_start_range = matches!(
@@ -287,10 +287,10 @@ impl AstParser {
                             | KEYWORD::Symbol(SYMBOL::SquarC)
                     )
                 {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &operator_token,
                         "Expected expression after '..'".to_string(),
-                    )));
+                    ));
                 }
 
                 let rhs = self.parse_add_sub_expression(tokens)?;
@@ -353,10 +353,10 @@ impl AstParser {
             ));
         }
         if next.key().is_terminal() {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &op_token,
                 format!("Expected expression after '{}'", op_token.con().trim()),
-            )));
+            ));
         }
 
         let rhs = self.parse_add_sub_expression(tokens)?;
@@ -418,7 +418,7 @@ impl AstParser {
     pub(super) fn parse_add_sub_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let mut lhs = self.parse_mul_div_expression(tokens)?;
 
         for _ in 0..32 {
@@ -471,7 +471,7 @@ impl AstParser {
     pub(super) fn parse_mul_div_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let mut lhs = self.parse_pow_expression(tokens)?;
 
         for _ in 0..32 {
@@ -525,7 +525,7 @@ impl AstParser {
     pub(super) fn parse_pow_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let lhs = self.parse_primary_expression(tokens)?;
         let leading_comments = self.collect_comments_before(tokens, |key| {
             matches!(key, KEYWORD::Symbol(SYMBOL::Carret))
