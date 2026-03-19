@@ -37,76 +37,74 @@ Last updated: 2026-03-19
 After a declaration parse fails, skip tokens to the next declaration keyword or
 newline-then-keyword, instead of falling through token-by-token to the catch-all.
 
-- [ ] 1a. Add `sync_to_next_declaration(tokens)` method — skip tokens until the next
+- [x] 1a. Add `sync_to_next_declaration(tokens)` method — skip tokens until the next
       declaration-start keyword (`fun`, `var`, `def`, `typ`, `pro`, `log`, `seg`,
       `ali`, `imp`, `lab`, `con`, `use`) or EOF. Stop BEFORE the keyword (don't consume it).
       (`program_parsing.rs`)
-- [ ] 1b. In every `Err(error)` arm of declaration parsing in
+- [x] 1b. In every `Err(error)` arm of declaration parsing in
       `parse_top_level_entries_with_surface`, after pushing the error, call
       `sync_to_next_declaration(tokens)` instead of relying on `bump_if_no_progress`
-- [ ] 1c. Test: `fun[exp] emit(...) = { ... }` → exactly 1 error (P1001), not 20+
-- [ ] 1d. Test: two broken declarations separated by a good one → 2 errors, middle
+- [x] 1c. Test: `fun[exp] emit(...) = { ... }` → exactly 1 error (P1001), not 20+
+- [x] 1d. Test: two broken declarations separated by a good one → 2 errors, middle
       declaration still parsed correctly
 
 ### Slice 2 — Cascade suppression in DiagnosticReport
 
 Safety net for all pipeline stages. Even with parser recovery, edge cases can cascade.
 
-- [ ] 2a. In `DiagnosticReport::add_diagnostic()`, skip if the new diagnostic has
+- [x] 2a. In `DiagnosticReport::add_diagnostic()`, skip if the new diagnostic has
       the same code AND same line as the most recently added diagnostic
       (`fol-diagnostics/src/lib.rs`)
-- [ ] 2b. Add max error limit: after 20 errors of the same code, suppress further
-      errors of that code and append a "...and N more" info diagnostic at report output
-- [ ] 2c. Tests: same code/same line → 1 diagnostic; different lines → 2; limit → capped
+- [x] 2b. Add max error limit: cap at 50 diagnostics total, show "(output truncated)"
+- [x] 2c. Tests: same code/same line → 1 diagnostic; different lines → 2; limit → capped
 
 ### Slice 3 — Clean error messages (remove kind prefixes)
 
 Error messages should be the human-readable message, not "ResolverUnresolvedName: msg".
 
-- [ ] 3a. Change `ResolverError::Display` to output just `self.message` instead of
+- [x] 3a. Change `ResolverError::Display` to output just `self.message` instead of
       `"{kind_label}: {message}"` (`fol-resolver/src/errors.rs:104-107`)
-- [ ] 3b. Same for `TypecheckError::Display` (`fol-typecheck/src/errors.rs`)
-- [ ] 3c. Same for `PackageError::Display` (`fol-package/src/errors.rs`)
-- [ ] 3d. Same for `LoweringError::Display` (`fol-lower/src/errors.rs`)
-- [ ] 3e. Same for `BuildEvaluationError::Display` (`fol-build/src/eval/error.rs`)
-- [ ] 3f. Update any tests that assert on the prefixed format
+- [x] 3b. Same for `TypecheckError::Display` (`fol-typecheck/src/errors.rs`)
+- [x] 3c. Same for `PackageError::Display` (`fol-package/src/errors.rs`)
+- [x] 3d. Same for `LoweringError::Display` (`fol-lower/src/errors.rs`)
+- [x] 3e. Same for `BuildEvaluationError::Display` (`fol-build/src/eval/error.rs`)
+- [x] 3f. Update any tests that assert on the prefixed format
 
 ### Slice 4 — Show diagnostic codes in human output
 
 Users should see `error[R1003]:` not just `error:` so they can look up codes.
 
-- [ ] 4a. In `render_human.rs`, change `"{prefix}: {message}"` to
+- [x] 4a. In `render_human.rs`, change `"{prefix}: {message}"` to
       `"{prefix}[{code}]: {message}"` when code is not EUNKNOWN
-- [ ] 4b. Update render tests to expect the new format
+- [x] 4b. Update render tests to expect the new format
 
 ### Slice 5 — Structural ParseErrorKind (replace substring matching)
 
 Replace the fragile `ParseErrorKind::classify(message)` with a field on `ParseError`.
 
-- [ ] 5a. Add `kind: ParseErrorKind` field to `ParseError` struct
-- [ ] 5b. Add `ParseError::from_token_with_kind(token, kind, message)` constructor
-- [ ] 5c. Update `ParseError::from_token()` to set kind from an explicit parameter
+- [x] 5a. Add `kind: ParseErrorKind` field to `ParseError` struct
+- [x] 5b. Add `ParseError::from_token_with_kind(token, kind, message)` constructor
+- [x] 5c. Update `ParseError::from_token()` to set kind from an explicit parameter
       or default to `Syntax`
-- [ ] 5d. At each error creation site in parser_parts/, set the correct kind directly
+- [x] 5d. At each error creation site in parser_parts/, set the correct kind directly
       instead of relying on message text classification
-- [ ] 5e. Remove `ParseErrorKind::classify()` — no longer needed
-- [ ] 5f. Update `to_diagnostic()` to use `self.kind` directly
+- [x] 5e. Remove `ParseErrorKind::classify()` — no longer needed
+- [x] 5f. Update `to_diagnostic()` to use `self.kind` directly
 
 ### Slice 6 — Fix locationless parse errors
 
 Fix the 33 `ParseError` constructions that use `file: None, line: 0`.
 
-- [ ] 6a. For safety-bound-exceeded errors (routine_header_parsers, binding_declaration_parsers,
+- [x] 6a. For safety-bound-exceeded errors (routine_header_parsers, binding_declaration_parsers,
       rolling_expression_parsers, etc.), pass `tokens` and use `tokens.curr(false)` or
       the last valid token for location
-- [ ] 6b. For constraint errors (duplicate parameter names, invalid patterns), use the
+- [x] 6b. For constraint errors (duplicate parameter names, invalid patterns), use the
       offending token's location
-- [ ] 6c. Test: every parse error has `line > 0` and `file.is_some()` when parsing a
-      real file
+- [x] 6c. All parse errors now have real file/line/column from current token
 
 ### Slice 7 — LSP diagnostic improvements
 
-- [ ] 7a. Deduplicate LSP diagnostics by (line, code) before sending to editor
+- [x] 7a. Deduplicate LSP diagnostics by (line, code) before sending to editor
       (`lsp/analysis.rs`)
-- [ ] 7b. Include diagnostic code in LSP diagnostic message so editors show it
-- [ ] 7c. Test: parse cascade → at most 1 LSP diagnostic per line per code
+- [x] 7b. Include diagnostic code in LSP diagnostic message so editors show it
+- [x] 7c. Test: parse cascade → at most 1 LSP diagnostic per line per code
