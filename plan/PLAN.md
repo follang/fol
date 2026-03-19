@@ -281,7 +281,7 @@ Preferred end state:
 
 - routine call recoverable metadata is attached only to the specific call-result lowering path, not stored as a general local capability
 
-### Slice 9: Keep `err[...]` as the real value-based error surface
+### Slice 9: Keep `err[...]` as the real value-based error surface `[complete]`
 
 After removing `/ E` capture and propagation, strengthen `err[...]` as the first-class error container.
 

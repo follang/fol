@@ -145,6 +145,41 @@ fn pipe_or_typing_rejects_incompatible_fallback_values() {
 }
 
 #[test]
+fn err_shell_values_remain_storable_passable_and_returnable() {
+    let _typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "ali Failure: err[str]\n\
+         fun[] keep(value: Failure): Failure = {\n\
+             return value;\n\
+         }\n\
+         fun[] main(): Failure = {\n\
+             var raised: Failure = \"broken\";\n\
+             return keep(raised);\n\
+         }\n",
+    )]);
+}
+
+#[test]
+fn err_shell_values_keep_postfix_unwrap_behavior() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "ali Failure: err[str]\n\
+         fun[] main(value: Failure): str = {\n\
+             return value!;\n\
+         }\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Str))
+    );
+}
+
+#[test]
 fn recoverable_calls_reject_inferred_plain_bindings() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
