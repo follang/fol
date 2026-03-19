@@ -402,13 +402,13 @@ mod tests {
     }
 
     #[test]
-    fn executable_backend_handles_recoverable_propagation_between_zero_arg_routines() {
+    fn executable_backend_handles_explicit_recoverable_report_between_zero_arg_routines() {
         let output = build_and_run_fixture(concat!(
             "fun[] load(): int / str = {\n",
             "    report \"bad-input\"\n",
             "}\n",
             "fun[] main(): int / str = {\n",
-            "    return load()\n",
+            "    return load() || report \"bad-input\"\n",
             "}\n",
         ));
 

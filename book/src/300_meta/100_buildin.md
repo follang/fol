@@ -254,7 +254,6 @@ fun[] read_code(path: str): int / str = { ... }
 
 are handled with:
 
-- propagation
 - `check(expr)`
 - `expr || fallback`
 

@@ -12,5 +12,5 @@ fun load(flag: bol): int / str = {
 }
 
 fun demo(flag: bol): int = {
-    return load(flag)
+    return load(flag) || 0
 }

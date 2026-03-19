@@ -695,7 +695,7 @@ fn intrinsics_panic_check_fixture_compiles_and_runs() {
 
 #[test]
 fn recoverable_explicit_report_fixture_compiles_and_runs() {
-    let fixture = fixture_root("recoverable_propagation");
+    let fixture = fixture_root("recoverable_report");
 
     let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
     assert_artifact_paths_exist(&compile_output);

@@ -347,7 +347,7 @@ Exit condition:
 
 - docs no longer teach or imply implicit propagation
 
-### Slice 12: Remove outdated integration fixtures and examples
+### Slice 12: Remove outdated integration fixtures and examples `[complete]`
 
 Audit tests and examples for old behavior.
 
