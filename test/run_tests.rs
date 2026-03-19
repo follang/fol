@@ -368,6 +368,10 @@ mod integration_tests {
     mod editor_and_build;
 
     #[cfg(test)]
+    #[path = "integration_diagnostics_pipeline.rs"]
+    mod diagnostics_pipeline;
+
+    #[cfg(test)]
     mod language_facts {
         #[test]
         fn builtin_type_names_are_nonempty_and_unique() {
