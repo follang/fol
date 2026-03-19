@@ -1,3 +1,27 @@
+//! Diagnostic-to-LSP conversion contract.
+//!
+//! This module defines the stable bridge between `fol_diagnostics::Diagnostic`
+//! (compiler-owned) and `LspDiagnostic` (editor wire format).
+//!
+//! ## Contract
+//!
+//! - **Severity**: `Error` → `Error(1)`, `Warning` → `Warning(2)`, `Info` → `Information(3)`
+//! - **Code**: `diagnostic.code.as_str()` copied verbatim
+//! - **Source**: always `"fol"`
+//! - **Message**: `[{code}] {message}`, followed by `\nnotes:\n- ...` and `\nhelps:\n- ...` when present
+//! - **Range**: 1-indexed `(line, column, length)` → 0-indexed LSP `(line, character)` range on a single line
+//! - **Related information**: secondary labels with file paths → `LspDiagnosticRelatedInformation`
+//!
+//! ## Dedup layers
+//!
+//! Two dedup layers exist by design:
+//!
+//! - **`DiagnosticReport` (compiler)**: consecutive same-code + same-line suppression, hard cap at 50
+//! - **`dedup_diagnostics` (editor)**: HashSet-based `(line, code)` dedup across all diagnostics
+//!
+//! The compiler layer catches cascades at production time. The editor layer catches
+//! cross-stage duplicates after conversion (e.g., parser and resolver both flagging the same line).
+
 use fol_diagnostics::{Diagnostic, DiagnosticLabelKind, DiagnosticLocation, Severity};
 use serde::{Deserialize, Serialize};
 
@@ -145,6 +169,76 @@ mod tests {
         assert_eq!(range.start.line, 3);
         assert_eq!(range.start.character, 2);
         assert_eq!(range.end.character, 7);
+    }
+
+    #[test]
+    fn contract_source_is_always_fol() {
+        let diagnostic = Diagnostic::error("P1001", "syntax error");
+        let lsp = diagnostic_to_lsp(&diagnostic);
+        assert_eq!(lsp.source, "fol");
+    }
+
+    #[test]
+    fn contract_severity_maps_error_warning_info() {
+        let err = diagnostic_to_lsp(&Diagnostic::error("E0001", "e"));
+        let warn = diagnostic_to_lsp(&Diagnostic::warning("W0001", "w"));
+        let info = diagnostic_to_lsp(&Diagnostic::info("I0001", "i"));
+        assert_eq!(err.severity, LspDiagnosticSeverity::Error);
+        assert_eq!(warn.severity, LspDiagnosticSeverity::Warning);
+        assert_eq!(info.severity, LspDiagnosticSeverity::Information);
+    }
+
+    #[test]
+    fn contract_code_is_diagnostic_code_verbatim() {
+        let diagnostic = Diagnostic::error("R1003", "unresolved");
+        let lsp = diagnostic_to_lsp(&diagnostic);
+        assert_eq!(lsp.code, "R1003");
+    }
+
+    #[test]
+    fn contract_message_prefixed_with_code_in_brackets() {
+        let diagnostic = Diagnostic::error("T1003", "type mismatch");
+        let lsp = diagnostic_to_lsp(&diagnostic);
+        assert_eq!(lsp.message, "[T1003] type mismatch");
+    }
+
+    #[test]
+    fn contract_notes_appended_after_message() {
+        let diagnostic = Diagnostic::error("R1003", "unresolved")
+            .with_note("no matching declaration found");
+        let lsp = diagnostic_to_lsp(&diagnostic);
+        assert!(lsp.message.contains("\nnotes:\n- no matching declaration found"));
+    }
+
+    #[test]
+    fn contract_helps_appended_after_notes() {
+        let diagnostic = Diagnostic::error("R1003", "unresolved")
+            .with_note("context")
+            .with_help("add an import");
+        let lsp = diagnostic_to_lsp(&diagnostic);
+        let note_pos = lsp.message.find("notes:").unwrap();
+        let help_pos = lsp.message.find("helps:").unwrap();
+        assert!(help_pos > note_pos);
+        assert!(lsp.message.contains("\nhelps:\n- add an import"));
+    }
+
+    #[test]
+    fn contract_missing_location_defaults_to_line_0_char_0() {
+        let diagnostic = Diagnostic::error("P1001", "no location");
+        let lsp = diagnostic_to_lsp(&diagnostic);
+        assert_eq!(lsp.range.start.line, 0);
+        assert_eq!(lsp.range.start.character, 0);
+    }
+
+    #[test]
+    fn contract_secondary_labels_without_file_excluded_from_related() {
+        let diagnostic = Diagnostic::error("R1003", "test")
+            .with_secondary_label(
+                DiagnosticLocation { file: None, line: 1, column: 1, length: Some(1) },
+                "no file",
+            );
+        let lsp = diagnostic_to_lsp(&diagnostic);
+        assert!(lsp.related_information.is_empty());
     }
 
     #[test]

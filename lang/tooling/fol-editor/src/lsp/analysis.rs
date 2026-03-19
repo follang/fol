@@ -25,6 +25,12 @@ pub(super) fn analyze_document(
 /// Deduplicate LSP diagnostics by (line, code), keeping only the first
 /// diagnostic for each unique pair. This prevents cascade errors from
 /// flooding the editor with redundant markers on the same line.
+///
+/// This is the editor-layer dedup. The compiler-layer dedup in
+/// `DiagnosticReport::add_diagnostic` handles consecutive same-code +
+/// same-line suppression and a hard cap at 50. Both layers are intentional:
+/// the compiler catches cascades at production time, the editor catches
+/// cross-stage duplicates after conversion.
 pub(crate) fn dedup_diagnostics(diagnostics: Vec<LspDiagnostic>) -> Vec<LspDiagnostic> {
     let mut seen = HashSet::new();
     diagnostics
@@ -151,6 +157,11 @@ pub(super) fn diagnostic_targets_path(diagnostic: &Diagnostic, path: &Path) -> b
         .unwrap_or(false)
 }
 
+/// Parse a single file for diagnostics when no package root is available.
+///
+/// Current implementation writes the file to a temp directory on disk and
+/// parses via `parse_directory_diagnostics`. This is a known weakness: future
+/// work (Slice 3) should replace this with in-memory source/stream construction.
 pub(super) fn parse_single_file_diagnostics(
     path: &Path,
     text: &str,
@@ -232,6 +243,15 @@ pub(super) fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagn
     }
 }
 
+/// Convert a `dyn Glitch` to a `Diagnostic` via manual downcast chain.
+///
+/// This is a known weakness: the chain currently handles ParseError,
+/// PackageError, ResolverError, and TypecheckError. Missing: LoweringError
+/// and BuildEvaluationError. Unknown types fall back to `E9999`.
+///
+/// Future work (Slice 3) should replace this with trait-based dispatch
+/// so that all `Glitch` implementors produce diagnostics at their
+/// production site instead of requiring a central downcast.
 pub(super) fn glitch_to_diagnostic(error: &dyn fol_types::Glitch) -> Diagnostic {
     if let Some(parse_error) = error.as_any().downcast_ref::<ParseError>() {
         return parse_error.to_diagnostic();
