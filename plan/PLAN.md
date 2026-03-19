@@ -2,314 +2,314 @@
 
 Last updated: 2026-03-19
 
-## Problem
+## Problems
 
-Every compiler stage produces structured errors with stable codes, locations,
-labels, notes, and helps. Every error type implements `ToDiagnostic`. But the
-conversion to `Diagnostic` happens too late and in the wrong places:
+### 1. Glitch trait forces type erasure and downcasting
 
-1. The parser erases type information at its public API boundary by returning
-   `Vec<Box<dyn Glitch>>`. This forces downstream code to manually downcast
-   back to `ParseError` just to call `.to_diagnostic()`.
+The `Glitch` trait in `fol-types` erases concrete error types into
+`Box<dyn Glitch>`. Every consumer that needs structured error data must then
+downcast back to the original type. This creates:
 
-2. The frontend has **two separate** compilation paths with different error
-   handling strategies:
-   - `direct.rs` uses a `DiagnosticReport` but feeds it through a 5-type
-     downcast chain (`lower_compiler_glitch()`)
-   - `compile/mod.rs` uses `lower_resolver_errors()`, `lower_typecheck_errors()`,
-     `lower_lowering_errors()` which **destroy** all diagnostic structure by
-     calling `.to_string()` and stuffing the result into a `FrontendError`
+- a 5-type downcast chain in `fol-frontend/direct.rs` (`lower_compiler_glitch`)
+- a 4-type downcast chain in `fol-editor/analysis.rs` (`glitch_to_diagnostic`)
+- 2 downcast sites in `fol-package` to recover `ParseError` location data
+- downcast sites in integration tests
 
-3. The editor has its own parallel downcast chain (`glitch_to_diagnostic()`)
-   that duplicates the frontend's.
+All concrete error types already implement `ToDiagnostic`. The type erasure
+is unnecessary.
 
-4. `FrontendError` does not implement `ToDiagnostic`. It carries no diagnostic
-   code, no location, no labels. Structured compiler errors that pass through
-   `FrontendError` lose everything.
+### 2. Two frontend compilation paths with different error handling
 
-## Root Cause
+- `direct.rs`: uses `DiagnosticReport` + downcast chain
+- `compile/mod.rs`: uses `lower_*_errors()` which flatten structured errors
+  to plain strings via `.to_string()`, losing codes, locations, and labels
 
-The `Glitch` trait lives in `fol-types` (the lowest crate). `ToDiagnostic` and
-`Diagnostic` live in `fol-diagnostics` (one level up). So `Glitch` cannot carry
-a `to_diagnostic()` method without creating a circular dependency.
+### 3. Colors baked into compiler library crates
 
-But every concrete error type that implements `Glitch` also implements
-`ToDiagnostic`. The type erasure into `Box<dyn Glitch>` is what forces the
-downcast chains.
+The `colored` crate is a dependency in 5 compiler/library crates:
+
+- `fol-types` — `logit!` macro uses `.red()`
+- `fol-stream` — error messages use `.red()`
+- `fol-lexer` — every token `Display` impl uses `.black().on_red()` etc.
+- `fol-parser` — dependency inherited but not directly used
+- `fol-diagnostics` — `render_human.rs` applies colors unconditionally
+
+Colors should only exist in `fol-frontend` where the output mode is known.
+Library crates should produce plain text.
+
+### 4. Legacy error types with no purpose
+
+`fol-types` defines `Flaw`, `Typo`, `Slip` — old error enums used only in
+the lexer (3 call sites). Also defines type aliases `Con<T>`, `Vod`, `Errors`
+that wrap `Box<dyn Glitch>`. These are legacy abstractions that spread the
+trait object pattern.
 
 ## Solution
 
-Convert errors to `Diagnostic` at the production site — before type erasure
-happens. Then pass `Diagnostic` objects through the pipeline instead of boxed
-trait objects.
+1. Replace `Box<dyn Glitch>` with concrete error types everywhere
+2. Convert compiler errors to `Diagnostic` at the production site
+3. Strip colors from all compiler/library crates
+4. Move colored rendering to `fol-frontend` only
 
-The conversion chain becomes:
+## Current Inventory
 
+### Glitch implementations (10 types)
+
+| Type | Crate | Also implements ToDiagnostic | Used as Box\<dyn Glitch\> |
+|------|-------|------------------------------|---------------------------|
+| BasicError | fol-types | No | Yes (stream I/O) |
+| Flaw | fol-types | No | Yes (lexer stage1) |
+| Typo | fol-types | No | Yes (lexer stage3) |
+| Slip | fol-types | No | Dead code |
+| ParseError | fol-parser | Yes | Yes (parser public API) |
+| PackageError | fol-package | Yes | No (returned typed) |
+| ResolverError | fol-resolver | Yes | No (returned typed) |
+| TypecheckError | fol-typecheck | Yes | No (returned typed) |
+| LoweringError | fol-lower | Yes | No (returned typed) |
+| BuildEvaluationError | fol-build | Yes | No (returned typed) |
+
+### Glitch-dependent type aliases in fol-types
+
+```rust
+pub type Con<T> = Result<T, Box<dyn Glitch + 'static>>;
+pub type Vod = Result<(), Box<dyn Glitch + 'static>>;
+pub type Errors = Vec<Box<dyn Glitch>>;
 ```
-Parser     → Vec<Diagnostic>   (converts ParseError at the API boundary)
-Package    → PackageError      (already typed, caller calls .to_diagnostic())
-Resolver   → Vec<Diagnostic>   (converts ResolverError at the API boundary)
-Typecheck  → Vec<Diagnostic>   (converts TypecheckError at the API boundary)
-Lower      → Vec<Diagnostic>   (converts LoweringError at the API boundary)
-Build      → Diagnostic        (converts BuildEvaluationError at the API boundary)
-Frontend   → DiagnosticReport  (collects Diagnostics, renders to CLI/JSON)
-Editor/LSP → Vec<LspDiagnostic>(adapts Diagnostics to LSP wire format)
-```
 
-No downcast chains. No string flattening. No fallback `E9999` codes.
+Used in ~30 lexer signatures (`Con<Element>`, `Con<Part<char>>`, `Vod`).
 
-## Current State
+### Color usage in compiler crates
 
-### What already works
-
-- All compiler error types implement both `Glitch` and `ToDiagnostic`
-- `DiagnosticReport` already aggregates and renders diagnostics
-- `fol-diagnostics::lsp` already adapts `Diagnostic → LspDiagnostic`
-- The editor's semantic analysis path (resolver, typecheck) already calls
-  `.to_diagnostic()` directly on typed errors
-- Diagnostic codes are stable: P1xxx, K1xxx, R1xxx, T1xxx, L1xxx, K11xx
-
-### What needs to change
-
-| Location | Problem | Fix |
-|----------|---------|-----|
-| `fol-parser` public API | Returns `Vec<Box<dyn Glitch>>` | Return `Vec<Diagnostic>` |
-| `fol-frontend/direct.rs` | `lower_compiler_glitch()` downcast chain | Use `Diagnostic` directly |
-| `fol-frontend/compile/mod.rs` | `lower_*_errors()` flattens to strings | Use `DiagnosticReport` |
-| `fol-editor/analysis.rs` | `glitch_to_diagnostic()` downcast chain | Use `Diagnostic` directly |
-| `FrontendError` | No `ToDiagnostic`, no codes | Implement `ToDiagnostic` with F1xxx codes |
-| `Glitch` trait | Used for polymorphic storage but forces erasure | Reduce usage to parser internals |
+| Crate | Files | Usage |
+|-------|-------|-------|
+| fol-types | mod.rs | `logit!` macro: `.red()`, `terminal_size` |
+| fol-stream | lib.rs | Error messages: `.red()` |
+| fol-lexer | 9 files | Every Display impl: `.black().on_red()`, `.white().on_black()` |
+| fol-parser | — | Cargo.toml dep only, no direct usage |
+| fol-diagnostics | render_human.rs | `.red().bold()`, `.yellow().bold()`, `.blue().bold()` |
 
 ## Implementation Slices
 
-### Slice 1: Parser returns Diagnostic at the public boundary
+### Slice 1: Strip colors from compiler library crates
 
-The parser internally uses `Vec<Box<dyn Glitch>>` for error collection during
-recovery. All of these are `ParseError` in practice. Change the public API
-to convert at the boundary.
+Remove the `colored` and `terminal_size` dependencies from all compiler crates.
+Library code must produce plain text.
 
 Work:
 
-- change `parse_package()` return type from `Result<T, Vec<Box<dyn Glitch>>>`
-  to `Result<T, Vec<Diagnostic>>`
-- same for `parse_script_package()` and `parse_decl_package()`
-- add a private helper that maps `Vec<Box<dyn Glitch>>` → `Vec<Diagnostic>`
-  by downcasting to `ParseError` (with `from_glitch` fallback)
-- keep internal parser methods using `Box<dyn Glitch>` — only change the
-  public return type
+- `fol-types`: remove `colored` and `terminal_size` from Cargo.toml, rewrite
+  `logit!` macro without colors (or delete it if unused outside tests)
+- `fol-stream`: remove `colored` from Cargo.toml, strip `.red()` from error
+  messages in `lib.rs`
+- `fol-lexer`: remove `colored` from Cargo.toml, rewrite all token Display
+  impls to use plain text labels (e.g. `BUILDIN:fun` instead of colored blocks)
+- `fol-parser`: remove `colored` from Cargo.toml
+- `fol-diagnostics`: remove `colored` from Cargo.toml, make `render_human.rs`
+  output plain text (colors will be added by the frontend in a later slice)
+
+Keep `colored` only in `fol-frontend`.
+
+Exit condition:
+
+- `cargo tree -p fol-lexer | grep colored` returns nothing
+- `cargo tree -p fol-diagnostics | grep colored` returns nothing
+- all compiler crate tests pass with plain text output
+
+### Slice 2: Add color support to fol-frontend diagnostic rendering
+
+After Slice 1, `render_human.rs` in `fol-diagnostics` produces plain text.
+The frontend needs to apply colors at the presentation layer.
+
+Work:
+
+- add a render option or wrapper in `fol-frontend` that colorizes diagnostic
+  output before printing
+- or: make `render_human.rs` accept a color flag/trait so the frontend can
+  opt in
+- keep `fol-diagnostics` color-free as a library
+
+Exit condition:
+
+- `fol tool lsp` and CLI human output still show colored diagnostics
+- `fol-diagnostics` crate has no color dependency
+
+### Slice 3: Replace lexer error types with a concrete enum
+
+The lexer uses `Flaw`, `Typo`, `Slip` through `Box<dyn Glitch>` via the
+`Con<T>` and `Vod` aliases. Replace with a concrete enum.
+
+Work:
+
+- define `LexerError` enum in `fol-lexer` (or `fol-types`):
+  ```rust
+  enum LexerError {
+      ReadingBadContent(String),
+      GettingNoEntry(String),
+      GettingWrongPath(String),
+      LexerSpaceAdd(String),
+      ParserMismatch(String),
+  }
+  ```
+- replace `Con<T>` with `Result<T, LexerError>` across lexer stages
+- replace `Vod` with `Result<(), LexerError>`
+- delete `Flaw`, `Typo`, `Slip`
+- delete `Con<T>`, `Vod`, `Errors` type aliases
+- delete the `catch!` macro (just use `LexerError::Variant(msg)`)
+- update `fol-stream` to return `Result<T, StreamError>` or `Result<T, String>`
+  instead of `Result<T, Box<dyn Glitch>>`
+
+Exit condition:
+
+- no `Box<dyn Glitch>` in fol-lexer or fol-stream
+- `Con<T>`, `Vod`, `Errors` are deleted
+
+### Slice 4: Parser returns Vec\<Diagnostic\> at the public boundary
+
+The parser internally collects `Vec<Box<dyn Glitch>>` during error recovery.
+These are always `ParseError`. Change the public API to return `Vec<Diagnostic>`.
+
+Work:
+
+- change `parse_package()` return from `Result<T, Vec<Box<dyn Glitch>>>` to
+  `Result<T, Vec<Diagnostic>>`
+- same for `parse_script_package()`, `parse_decl_package()`
+- add a private conversion: in the public methods, map each boxed error to
+  `Diagnostic` via downcast-to-ParseError (this is the LAST downcast, owned
+  by the parser itself)
+- internally the parser can keep `Vec<Box<dyn Glitch>>` for now, or switch to
+  `Vec<ParseError>` if straightforward
 - update all callers:
-  - `fol-package` (`parse_directory_package_syntax`)
-  - `fol-frontend/direct.rs` (`compile_file`)
-  - `fol-editor/analysis.rs` (`parse_single_file_diagnostics`,
-    `parse_directory_diagnostics`)
+  - `fol-package` session and build modules
+  - `fol-frontend/direct.rs`
+  - `fol-editor/analysis.rs`
 
 Exit condition:
 
-- `parse_package()` returns `Vec<Diagnostic>`
-- no downstream code needs to downcast `Box<dyn Glitch>` from parser output
+- parser public API returns `Vec<Diagnostic>`
+- no downstream code downcasts parser output
 
-### Slice 2: Frontend direct mode uses Diagnostic natively
+### Slice 5: Remove Glitch implementations from compiler error types
 
-The `direct.rs` compilation path already uses `DiagnosticReport`. But it feeds
-errors through `add_compiler_glitch()` → `lower_compiler_glitch()` which is
-a 5-type downcast chain.
-
-After Slice 1, parser errors arrive as `Vec<Diagnostic>`. The remaining error
-types (resolver, typecheck, lower) are already typed and have `.to_diagnostic()`.
+After Slices 3-4, the only remaining `Glitch` users are `BasicError` (used by
+`fol-stream` before Slice 3) and the parser's internal error collection.
 
 Work:
 
-- in `compile_file()`:
-  - parser errors: iterate `Vec<Diagnostic>`, call `report.add_diagnostic()`
-  - package error: call `error.to_diagnostic()`, then `report.add_diagnostic()`
-  - resolver errors: iterate, call `.to_diagnostic()` + `report.add_diagnostic()`
-  - typecheck errors: same
-  - lowering errors: same
-- delete `add_compiler_glitch()`
-- delete `lower_compiler_glitch()`
+- remove `impl Glitch for ParseError`
+- remove `impl Glitch for PackageError`
+- remove `impl Glitch for ResolverError`
+- remove `impl Glitch for TypecheckError`
+- remove `impl Glitch for LoweringError`
+- remove `impl Glitch for BuildEvaluationError`
+- remove `impl Glitch for BasicError`
+- if the parser still uses `Box<dyn Glitch>` internally, switch its internal
+  error collection to `Vec<ParseError>`
+- delete the `Glitch` trait from `fol-types`
+- delete `BasicError` if no longer used (or keep as a simple error struct
+  without Glitch)
+- delete `impl Clone for Box<dyn Glitch>`
+- delete the `erriter!`, `noditer!`, `halt!`, `crash!` macros if unused
 
 Exit condition:
 
-- `direct.rs` has no downcast chain
-- `add_compiler_glitch` and `lower_compiler_glitch` are deleted
+- the `Glitch` trait does not exist
+- `grep -r "dyn Glitch" lang/` returns nothing
+- all tests pass
 
-### Slice 3: Frontend workspace mode preserves diagnostic structure
+### Slice 6: Frontend and editor use Diagnostic directly
 
-The `compile/mod.rs` path converts structured compiler errors into flat strings:
-
-```rust
-fn lower_resolver_errors(errors: Vec<ResolverError>) -> FrontendError {
-    FrontendError::new(
-        FrontendErrorKind::CommandFailed,
-        errors.iter().map(|e| e.to_string()).collect::<Vec<_>>().join("\n"),
-    )
-}
-```
-
-This destroys codes, locations, labels, notes, helps — everything.
+With parser returning `Vec<Diagnostic>` and all other stages returning typed
+errors with `.to_diagnostic()`:
 
 Work:
 
-- change `compile_member_workspace()` to collect a `DiagnosticReport` instead
-  of returning `FrontendError` on compilation failure
-- the function can return `Result<LoweredWorkspace, DiagnosticReport>` or
-  accept a `&mut DiagnosticReport` parameter
-- delete `lower_resolver_errors()`, `lower_typecheck_errors()`,
-  `lower_lowering_errors()`
-- update callers in `build_member_workspace()`, `emit_lowered_with_config()`,
-  and the build route execution path
+- `fol-frontend/direct.rs`:
+  - parser errors: iterate `Vec<Diagnostic>`, add to report
+  - typed errors: call `.to_diagnostic()` directly
+  - delete `add_compiler_glitch()`, `lower_compiler_glitch()`
+- `fol-frontend/compile/mod.rs`:
+  - delete `lower_resolver_errors()`, `lower_typecheck_errors()`,
+    `lower_lowering_errors()` — these flatten to strings
+  - use `DiagnosticReport` to collect diagnostics properly
+- `fol-editor/analysis.rs`:
+  - parser returns `Vec<Diagnostic>` — use directly
+  - delete `glitch_to_diagnostic()`
+- `DiagnosticReport::add_error(&dyn Glitch, ...)`:
+  - this method accepted `&dyn Glitch` — replace with
+    `add_diagnostic(Diagnostic)` or a concrete fallback
 
 Exit condition:
 
-- `compile/mod.rs` has no string-flattening error helpers
-- workspace compilation errors preserve full diagnostic structure
+- no downcast chains in frontend or editor
+- no string-flattening error helpers
+- `glitch_to_diagnostic` and `lower_compiler_glitch` are deleted
 
-### Slice 4: Editor drops the downcast chain
+### Slice 7: FrontendError implements ToDiagnostic
 
-After Slice 1, parser output is `Vec<Diagnostic>`. The editor no longer needs
-`glitch_to_diagnostic()`.
-
-Work:
-
-- in `parse_single_file_diagnostics()`: parser now returns `Vec<Diagnostic>`
-  directly — just use it
-- in `parse_directory_diagnostics()`: same
-- delete `glitch_to_diagnostic()`
-
-Exit condition:
-
-- `glitch_to_diagnostic` is deleted
-- editor analysis has zero downcast logic
-
-### Slice 5: FrontendError implements ToDiagnostic
-
-`FrontendError` is the frontend's own error type for workspace, CLI, and I/O
-failures. It carries no diagnostic code and formats as
+`FrontendError` carries no diagnostic code and no location. It formats as
 `"FrontendWorkspaceNotFound: message"`.
 
 Work:
 
-- assign stable diagnostic codes:
-  - F1001: InvalidInput
-  - F1002: WorkspaceNotFound
-  - F1003: PackageFailed
-  - F1004: CommandFailed
-  - F1099: Internal
+- assign stable codes: F1001 (InvalidInput), F1002 (WorkspaceNotFound),
+  F1003 (PackageFailed), F1004 (CommandFailed), F1099 (Internal)
 - implement `ToDiagnostic` for `FrontendError`
 - preserve notes through the diagnostic model
-- route frontend error display through `DiagnosticReport` rendering where
-  it reaches the CLI output path
+- route frontend error display through diagnostic rendering
 
 Exit condition:
 
-- `FrontendError` implements `ToDiagnostic`
-- frontend errors render with `[F1xxx]` codes through the same pipeline
-
-### Slice 6: Consolidate the two frontend compilation paths
-
-After Slices 2-3, both `direct.rs` and `compile/mod.rs` use `DiagnosticReport`
-for error handling. Unify the shared compilation logic.
-
-Work:
-
-- extract a shared compilation function that runs
-  parse → package → resolve → typecheck → lower and collects diagnostics
-- both `direct.rs` and `compile/mod.rs` call this shared function
-- extract shared binary execution helper (currently copy-pasted in 3 places)
-- decide whether `direct.rs` should reuse the workspace compilation path
-  entirely or remain a separate entry point
-
-Exit condition:
-
-- one compilation function, one error handling strategy
-
-### Slice 7: Reduce Glitch trait surface
-
-After Slices 1-4, `Box<dyn Glitch>` is no longer used at any public API
-boundary. It remains used:
-
-- internally in the parser for error collection during recovery
-- in `fol-stream` for I/O errors
-- in `DiagnosticReport::add_error()` which accepts `&dyn Glitch`
-
-Work:
-
-- evaluate whether `DiagnosticReport::add_error(&dyn Glitch)` should be
-  replaced with `add_diagnostic(Diagnostic)` everywhere
-- evaluate whether `fol-stream` should return its own typed error instead of
-  `Box<dyn Glitch>`
-- evaluate whether the parser's internal error collection should use
-  `ParseError` directly instead of `Box<dyn Glitch>`
-- for each remaining `Glitch` usage, decide: keep, replace, or remove
-- remove `Glitch` impls from error types that no longer need them
-
-Exit condition:
-
-- `Glitch` usage is confined to the minimum necessary
-- no public API returns `Box<dyn Glitch>`
+- `FrontendError` has `[F1xxx]` codes
+- frontend errors render through the same pipeline as compiler errors
 
 ### Slice 8: Integration tests for the unified pipeline
 
-Add tests that verify the same diagnostic flows identically through CLI, JSON,
-and LSP output.
+Verify that the same diagnostic flows identically through all output paths.
 
 Work:
 
-- write a fixture that produces each error family (P, K, R, T, L, F)
-- verify CLI human output, CLI JSON output, and LSP diagnostic output all
-  carry the same code, message, location, and labels
-- verify that `DiagnosticReport` dedup and LSP dedup produce consistent results
-- verify that adding a new compiler error type does not require changes to
-  the frontend or editor error handling code
+- fixture that produces each error family (P, K, R, T, L, F)
+- verify CLI human, CLI JSON, and LSP all carry the same code, message,
+  location, and labels
+- verify no `Box<dyn Glitch>` exists in any public API
+- verify no `colored` dependency in any compiler crate
 
 Exit condition:
 
-- a single test suite proves end-to-end diagnostic fidelity
+- one test suite proves end-to-end diagnostic fidelity
+- no regression in existing tests
 
 ## Architecture After
 
 ```
-┌─────────────┐     ┌──────────────┐
-│  fol-parser  │────>│  Diagnostic  │
-│  fol-package │────>│  Diagnostic  │
-│  fol-resolver│────>│  Diagnostic  │
-│  fol-typecheck────>│  Diagnostic  │
-│  fol-lower   │────>│  Diagnostic  │
-│  fol-build   │────>│  Diagnostic  │
-└─────────────┘     └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │DiagnosticReport│
-                    └──────┬───────┘
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-       ┌──────▼──┐  ┌──────▼──┐  ┌─────▼────┐
-       │CLI Human│  │CLI JSON │  │LSP Adapter│
-       └─────────┘  └─────────┘  └──────────┘
+Source → Lexer (LexerError) → Parser → Vec<Diagnostic>
+                                ↓
+Package (PackageError) → .to_diagnostic() → Diagnostic
+Resolver (ResolverError) → .to_diagnostic() → Diagnostic
+Typecheck (TypecheckError) → .to_diagnostic() → Diagnostic
+Lower (LoweringError) → .to_diagnostic() → Diagnostic
+                                ↓
+                        DiagnosticReport
+                                ↓
+                 ┌──────────────┼──────────────┐
+                 │              │              │
+          CLI Plain      CLI Colored      LSP Adapter
+        (fol-diagnostics) (fol-frontend)  (fol-diagnostics)
 ```
 
-Every stage converts its own errors to `Diagnostic` before returning them.
-No downstream code needs to know which error type produced the diagnostic.
-No downcasting. No string flattening. One pipeline.
+No `Glitch` trait. No `Box<dyn Glitch>`. No downcasting. No colors in libraries.
+Every stage owns its concrete error type and converts to `Diagnostic` at its
+own boundary. The frontend decides presentation style.
 
 ## What This Plan Does Not Cover
 
-- `BackendError` and `RuntimeError` — these are execution-layer errors, not
-  compiler diagnostics. They do not implement `Glitch` or `ToDiagnostic` and
-  that is intentional for now.
-- `EditorError` — this is a transport/session error, not a diagnostic. It
-  stays as-is.
-- Tree-sitter maintenance, language facts manifest, feature checklist — these
-  are covered by the completed slices from the previous plan and are not
-  reopened here.
+- `BackendError` and `RuntimeError` — execution-layer errors, not compiler
+  diagnostics. They stay as their own types.
+- `EditorError` — transport/session error, not a diagnostic.
+- Tree-sitter maintenance and language facts — covered by completed work,
+  not reopened.
 
 ## Immediate Next Slice
 
-Start with Slice 1.
-
-Rationale:
-
-- the parser is the only stage that erases type information at its public API
-- fixing it eliminates both downcast chains (frontend and editor) in one move
-- all callers already handle `Vec<_>` — changing the element type is mechanical
+Start with Slice 1 (strip colors). It is the simplest, most independent change
+and immediately improves library hygiene.
