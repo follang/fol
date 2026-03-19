@@ -1,449 +1,626 @@
-# FOL Strict Error Model Plan
+# FOL Tooling Integration Plan
 
 Last updated: 2026-03-19
 
 ## Goal
 
-Move FOL to a strict split between:
+Tighten the connection between:
 
-- `err[...]` as a normal first-class value type
-- `T / E` as a call-site control-flow surface only
+- `fol-diagnostics` and `fol-editor`
+- `fol-{lexer,parser,resolver,typecheck,intrinsics}` and `fol-editor`
+- compiler-owned language facts and Tree-sitter/LSP/editor-facing assets
 
-Under this model:
+The target outcome is:
 
-- `err[...]` values can be stored, passed, returned, and later handled
-- routines declared as `fun[] name(): T / E` do not produce a storable value
-- `var x = name()` is illegal when `name(): T / E`
-- `var x: T = name()` is illegal when `name(): T / E`
-- `check(name())` remains legal if `check(...)` stays in the language
-- `name() || fallback` remains legal
-- plain propagation through ordinary expression contexts is removed
-- captured recoverable-call locals are removed
-- implicit materialization of recoverable results in lowering is removed
+- compiler diagnostics stay the single canonical error model
+- the editor stops re-inventing compiler contracts ad hoc
+- LSP behavior is visibly derived from compiler state, not from fragile local heuristics
+- Tree-sitter stays editor-oriented, but obvious duplicated language facts are generated instead of copied by hand
+- adding a new language feature comes with one explicit update checklist
 
-This is a deliberate breaking change. Per project policy, the old behavior should be deleted rather than preserved behind compatibility paths.
+This plan replaces the previous strict-error-model plan. The language work is done. The next problem is tooling cohesion.
 
-## Language Decision
+## Audit Summary
 
-### Final semantic split
+### Current diagnostics coupling
 
-1. `err[...]` is the only error-shaped thing that is a normal value.
-2. `T / E` is not a value type. It is a routine-call outcome that must be handled at the call site.
-3. A `/ E` result may only appear in dedicated handling surfaces.
+Current shape:
 
-Initial allowed `/ E` handling surfaces:
+- compiler crates produce `fol_diagnostics::Diagnostic`
+- `fol-editor` converts those to LSP in `lang/tooling/fol-editor/src/convert.rs`
+- `fol-editor` also owns its own editor-side dedup policy in `lang/tooling/fol-editor/src/lsp/analysis.rs`
 
-- `expr || fallback`
-- `check(expr)` if we keep it
-- possibly future dedicated syntax like `try`, `catch`, `match_err`, etc.
+What is good:
 
-Initial forbidden `/ E` surfaces:
+- compiler diagnostics already carry stable codes, labels, notes, helps, and locations
+- LSP already uses compiler diagnostics instead of inventing a separate semantic analyzer
 
-- variable binding
-- assignment target initialization
-- record field initialization
-- container elements
-- function arguments to ordinary routines
-- return expressions
-- arithmetic/logical/comparison operands
-- control-flow selectors and conditions
-- method receivers
-- field/index access
-- shell unwrap `!`
+What is weak:
 
-### Consequence
+- the LSP conversion contract lives in `fol-editor`, not in a compiler-owned integration boundary
+- editor dedup policy is separate from `fol-diagnostics` report policy
+- editor message formatting (`[CODE] message`, notes, helps, related info) is reassembled locally
+- no documented rule says when a compiler diagnostic change requires editor updates
 
-This removes the current hybrid model where `/ E` can flow through expression typing and be implicitly propagated by surrounding `... / E` routines.
+### Current semantic LSP coupling
 
-The new language story becomes:
+Current shape:
 
-- use `err[...]` when you want a real value that represents success/error state
-- use `T / E` when you want immediate call-site handling with `||` or `check(...)`
+- `fol-editor` overlays the open document
+- then it runs parse/package/resolve/typecheck in-process
+- hover/definition/completion/document symbols read from resolved or typed compiler workspaces
 
-## Current Compiler Behavior To Remove
+What is good:
 
-The current compiler has a recoverable-effect model:
+- the LSP is already compiler-backed
+- `fol-intrinsics` is already used by the editor completion path
+- typed types are already rendered in hover/completion helpers
 
-- typechecking attaches `recoverable_effect` metadata to typed expressions and typed symbols
-- inferred locals may retain a recoverable effect
-- plain expression contexts call `plain_value_expr(...)`, which currently permits propagation in `ErrorCallMode::Propagate`
-- lowering materializes recoverable values into control flow using `CheckRecoverable`, `UnwrapRecoverable`, and `ExtractRecoverableError`
+What is weak:
 
-Current behaviors that must be deleted:
+- several editor fallback paths still parse text heuristically when semantic data is absent
+- symbol/type rendering is handwritten in `fol-editor`
+- no shared “semantic projection” API exists for editor consumers
+- no feature checklist forces new resolver/typecheck surfaces to update hover/completion/definition behavior
 
-1. Inferred bindings can capture recoverable call results.
-2. Plain expression use of `/ E` inside matching `... / E` routines can implicitly propagate.
-3. `return load()` is legal because lowering converts recoverable values into report-or-unwrap control flow.
-4. Lowered locals may retain `recoverable_error_type`.
+### Current Tree-sitter coupling
 
-## Target Architecture
+Current shape:
 
-### Type system
+- grammar lives in `lang/tooling/fol-editor/tree-sitter/grammar.js`
+- query files live in `lang/tooling/fol-editor/queries/fol/*.scm`
+- corpus files are stored in the editor crate
+- the grammar is handwritten and separate from the compiler parser
 
-Keep both representations distinct:
+What is good:
 
-- `CheckedType::Error { inner }` for `err[...]`
-- `RoutineType { return_type, error_type }` for `T / E`
+- the repo clearly separates compiler parsing from editor parsing
+- the bundle command gives one editor-consumable output root
 
-Do not introduce any coercion or conversion path between them.
+What is weak:
 
-### Typechecking
+- keyword/type/intrinsic/source-kind facts are duplicated manually
+- there is no generated manifest for syntax-visible language facts
+- there is no documented boundary for what should be generated versus handwritten
+- there is no required feature checklist when adding syntax that affects grammar, queries, and corpus coverage
 
-Change the meaning of a recoverable effect:
+### Current tooling health issues discovered during audit
 
-- a recoverable effect becomes evidence that an expression is only valid in dedicated handling surfaces
-- it is no longer something that ordinary value contexts may propagate
+These are not all caused by the strict error work, but they block confidence:
 
-Concretely:
+- `cargo test -p fol-frontend` currently fails due to stale test imports and stale function signatures
+- `cargo test -p fol-editor` currently fails due to stale fixture paths, brittle assertions, and tree-sitter test drift
+- editor/tooling tests are not currently the reliable guardrail they need to be
 
-- any ordinary value context that sees `recoverable_effect.is_some()` must error
-- the old “surrounding routine declares compatible error type” rule is removed for ordinary expressions
-- `ErrorCallMode::Propagate` should be removed
-- the only remaining “observe” contexts should be the dedicated handlers like `||` and `check(...)`
+That means the first phase must stabilize tooling tests before deeper coupling work.
 
-### Lowering
+## Architecture Decision
 
-Lowering should stop supporting generic materialization of recoverable values.
+### Principle 1: Compiler owns truth
+
+These crates own canonical language truth:
+
+- `fol-lexer`
+- `fol-parser`
+- `fol-package`
+- `fol-resolver`
+- `fol-typecheck`
+- `fol-intrinsics`
+- `fol-diagnostics`
+
+`fol-editor` should consume that truth, not mirror it.
+
+### Principle 2: Tree-sitter is not the compiler parser
+
+Tree-sitter remains a separate editor grammar.
+
+Do not try to force direct parser generation from the compiler parser. The parsing models are different and that path will create more fragility than value.
 
 Instead:
 
-- `||` lowers directly from an observed recoverable call result
-- `check(...)` lowers directly from an observed recoverable call result if kept
-- all ordinary expression lowering assumes no recoverable result reaches it
-- generic propagation helpers should be deleted
+- keep the grammar handwritten
+- generate only the syntax facts that are obviously shared
+- keep editor query policy handwritten
 
-### Runtime / IR
+### Principle 3: Shared facts should be exported, not recopied
 
-The recoverable ABI may still exist for routine calls, but only the dedicated handling constructs should touch it.
+The following should become compiler-owned manifests or helper APIs:
 
-That means:
+- diagnostic code and presentation policy
+- implemented intrinsic names and surfaces
+- builtin type names
+- shell/container type families
+- import source kinds
+- keyword families used by syntax tooling
 
-- `CheckRecoverable`, `UnwrapRecoverable`, and `ExtractRecoverableError` may remain as IR instructions
-- generic lowering paths that synthesize propagation from arbitrary expressions should be removed
-- recoverable instructions should appear only under `||`, `check(...)`, or any later explicit handling construct
+### Principle 4: Adding a language feature must update tooling explicitly
+
+Every new feature should answer:
+
+1. Does it change compiler diagnostics?
+2. Does it change semantic editor behavior?
+3. Does it change syntax/highlighting/query behavior?
+4. Can part of that be generated instead of handwritten?
+
+This must be enforced in docs, tests, and review structure.
+
+## Target End State
+
+### Diagnostics target
+
+- compiler diagnostics remain the only canonical structured error object
+- LSP conversion is moved behind a compiler-owned integration boundary
+- editor-side diagnostic formatting policy is documented and testable
+- dedup rules are explicit and intentionally shared or intentionally layered
+
+Preferred design:
+
+- add a small compiler-adjacent adapter crate or module such as `fol-diagnostics-lsp`
+- move `Diagnostic -> LSP diagnostic` conversion there
+- keep pure LSP wire types in `fol-editor` if desired, but remove ad hoc message policy from editor code
+
+Important constraint:
+
+- do not make `fol-diagnostics` depend directly on `fol-editor`
+- dependency direction should stay compiler/core -> adapter -> tooling, not the reverse
+
+### LSP semantic target
+
+- `fol-editor` keeps using parse/package/resolve/typecheck directly
+- hover/definition/document symbols/completion depend on compiler-owned semantic projections where possible
+- text-heuristic fallback behavior is reduced and clearly labeled as fallback
+- symbol/type rendering is shared instead of duplicated
+
+Preferred design:
+
+- add compiler-owned helper APIs for:
+  - symbol display names
+  - type rendering for editor/tooling display
+  - semantic lookup by position where feasible
+- keep transport/session/editor state in `fol-editor`
+- keep only UI-facing policy in `fol-editor`
+
+### Tree-sitter target
+
+- grammar stays handwritten
+- query files stay handwritten
+- generated assets supply shared language facts
+- bundle generation becomes reproducible from compiler-owned manifests plus handwritten editor files
+
+Preferred generated inputs:
+
+- keyword lists
+- builtin type names
+- intrinsic names grouped by surface
+- source kinds
+- maybe shell/container family names
+
+Likely handwritten forever:
+
+- grammar precedence/conflicts
+- query captures and highlight group policy
+- editor-specific movement/textobject queries
 
 ## Implementation Slices
 
-### Slice 1: Freeze the language contract in tests first `[complete]`
+### Slice 1: Stabilize tooling test baselines
 
-Before changing implementation, rewrite and add tests so the strict model is explicit.
+Before changing architecture, make tooling tests trustworthy again.
 
-- Add typecheck tests that reject:
-  - `var x = load()` where `load(): T / E`
-  - `var x: T = load()`
-  - `return load()`
-  - `return load() + 1`
-  - `consume(load())`
-  - `when(load()) { ... }`
-  - `loop(load()) { ... }` if applicable
-  - `load().field`
-  - `load()[0]`
-  - `load().method()`
-- Keep tests that accept:
-  - `load() || fallback`
-  - `load() || report ...`
-  - `load() || panic ...`
-  - `check(load())` if `check(...)` survives
-- Add tests that continue to accept normal `err[...]` value behavior:
-  - `var x: err[int] = ...`
-  - passing `err[...]` to routines
-  - returning `err[...]`
-  - unwrap `value!` on `err[...]`
-- Delete tests that currently assert inferred recoverable locals are valid.
-- Delete tests that currently assert plain propagation through routine bodies is valid.
+Work:
+
+- fix `fol-frontend` crate-local tests so they compile again
+  - current state: 15 compile errors from stale imports (`FrontendOutputArgs`, `FrontendProfileArgs`) and wrong argument counts in `src/dispatch.rs`, `src/compile/mod.rs`, `src/build_route/tests/`
+- fix `fol-editor` crate-local tests so fixture paths and assertions match the current repo
+  - current state: ~28 test failures across lifecycle tests, semantic tests, and tree-sitter corpus tests
+  - categories: stale fixture paths, brittle assertion text, tree-sitter parser load failures in CI-like environments
+- separate environment-dependent tree-sitter tests from deterministic unit tests if needed
+- document what test commands are authoritative for tooling
 
 Exit condition:
 
-- test names and expectations describe the new model before implementation lands
+- `cargo test -p fol-frontend`
+- `cargo test -p fol-editor`
 
-### Slice 2: Replace propagation with hard rejection in typechecking `[complete]`
+both pass in the normal repo environment, or environment-dependent tests are explicitly isolated and labeled
 
-Centralize the strict rule in the typechecker helpers.
+### Slice 2: Define the diagnostics/editor contract
 
-- Remove `ErrorCallMode::Propagate`
-- Keep a single “observed recoverable expression” mode only for explicit handlers
-- Replace `plain_value_expr(...)` behavior:
-  - if `recoverable_effect.is_some()`, ordinary use is always an error
-  - emit a dedicated message like:
-    - `recoverable routine results with '/ ErrorType' cannot be used as plain values; handle them with '||' or check(...)`
-- Audit every call site of `plain_value_expr(...)`
-- Rename helpers if needed so the semantics are obvious:
-  - for example `require_plain_value_expr(...)`
-  - and `observe_recoverable_expr(...)`
+Write down the exact bridge between `fol-diagnostics` and editor consumers.
 
-Exit condition:
+Work:
 
-- no ordinary expression context can silently propagate a `/ E` result
-
-### Slice 3: Ban binding capture completely `[complete]`
-
-Binding capture needs an explicit direct check even after Slice 2, because bindings currently infer and store the recoverable effect.
-
-- In binding initializer typing:
-  - reject any initializer whose typed expression has `recoverable_effect.is_some()`
-  - do this for both explicit and inferred bindings
-- Remove code that stores `symbol.recoverable_effect` for inferred bindings
-- Audit grouped/destructured bindings and record fields for the same issue
-- Ensure diagnostics say the problem is the `/ E` call result itself, not a downstream type mismatch
+- define the stable fields the editor may rely on:
+  - severity
+  - code
+  - primary location
+  - secondary labels
+  - notes
+  - helps
+  - suggestions
+- define what the LSP adapter is allowed to transform
+- define where dedup happens and why
+- define the message-prefix policy (`[CODE] ...`) as a real contract
+- document the `glitch_to_diagnostic()` downcast chain in `analysis.rs:235-249`
+  - current chain: ParseError, PackageError, ResolverError, TypecheckError
+  - missing: LowerError, BuildEvalError
+  - fallback: `E9999` unknown code — fragile, should become a trait-based dispatch
+- document when `parse_single_file_diagnostics()` is used vs `parse_directory_diagnostics()` and why they differ
 
 Exit condition:
 
-- there is no valid path where a local symbol retains a recoverable effect from a routine call
+- one written contract exists and tests assert it
 
-### Slice 4: Ban implicit return propagation `[complete]`
+### Slice 3: Extract a compiler-owned LSP diagnostic adapter
 
-Current `return load()` works because the typechecker and lowerer treat `/ E` as materializable.
+Move `Diagnostic -> editor/LSP-facing diagnostic payload` out of ad hoc editor code.
 
-- In return typing:
-  - reject `recoverable_effect.is_some()` before ordinary assignability
-  - replace the old compatibility-based propagation rule with an explicit handling requirement
-- Update diagnostics accordingly
+Work:
 
-Exit condition:
+- choose one of:
+  - extend `fol-diagnostics` with optional adapter helpers
+  - add a new crate such as `fol-diagnostics-lsp`
+- move location conversion and message assembly there
+- keep the adapter dependency one-way from compiler/core toward tooling
+- add focused adapter tests
+- replace `glitch_to_diagnostic()` downcast chain with trait-based dispatch
+  - all error types already implement `ToDiagnostic` — the downcast chain is redundant
+  - parser error flow currently returns `Vec<Box<dyn Glitch>>` which forces downcasting
+  - preferred: either convert at production site or add a `Glitch::to_diagnostic()` default
+- eliminate `parse_single_file_diagnostics()` temp-dir-write pattern
+  - current code (`analysis.rs:154-191`) creates temp dirs, writes files to disk, then parses
+  - should use in-memory source/stream construction instead
 
-- `return load()` is illegal unless wrapped in a future explicit handler form
+Preferred result:
 
-### Slice 5: Ban `/ E` in all ordinary expression surfaces `[complete]`
-
-Do a full audit of typechecking sites that currently accept plain values.
-
-Surfaces to cover:
-
-- binary operators
-- unary operators other than dedicated handlers
-- function and method arguments
-- field access
-- index access
-- record initializers
-- container literals
-- `when` selectors and branch conditions
-- loop conditions and iterables
-- intrinsic operands except dedicated handlers
-- dot-root intrinsics
-
-Expected result:
-
-- every one of these surfaces rejects `/ E` values directly and consistently
-- the old “requires a surrounding routine with a declared error type” diagnostics disappear from strict-mode paths
+- `fol-editor` stops hand-formatting diagnostic messages and related info
 
 Exit condition:
 
-- the only surviving legal `/ E` consumer surfaces are explicit handlers
+- `fol-editor` consumes the shared adapter instead of rebuilding the mapping locally
 
-### Slice 6: Simplify typed metadata `[complete]`
+### Slice 4: Unify diagnostic suppression policy deliberately
 
-Once bindings and plain expressions can no longer carry recoverable results, simplify the typed model.
+Current CLI and LSP suppression logic are separate.
 
-- Re-evaluate whether `TypedSymbol.recoverable_effect` is still needed
-- Re-evaluate whether `TypedReference.recoverable_effect` is still needed for ordinary references
-- Likely keep `TypedExpr.recoverable_effect` only as transient expression metadata for explicit handlers
-- Remove any typed metadata that exists only to support captured recoverable locals
+Work:
 
-Preferred end state:
-
-- recoverable metadata exists only on expression nodes/references required by `||` and `check(...)`
-- local symbols do not carry recoverable-effect state
-
-### Slice 7: Remove generic recoverable materialization from lowering `[complete]`
-
-This is the core strictness change in lowering.
-
-- Delete or rewrite `materialize_recoverable_value(...)`
-- Delete the idea that ordinary `lower_expression_expected(...)` may convert a recoverable value into report-or-unwrap control flow
-- Ensure ordinary lowering errors if a recoverable result leaks into it
-- Keep direct lowering for:
-  - `||`
-  - `check(...)` if retained
-
-This will likely simplify:
-
-- `lower_expression_expected(...)`
-- local binding lowering
-- return lowering
-- any call sites that currently choose between observed vs expected lowering based on recoverable local state
+- decide which layers own dedup:
+  - report-level suppression in `fol-diagnostics`
+  - view-level suppression in LSP
+- if both remain, document why they differ
+- if possible, centralize common suppression helpers in compiler-owned code
+- test parser cascades through both CLI and LSP outputs
 
 Exit condition:
 
-- lowering no longer implements implicit propagation
+- duplicate suppression is intentional, documented, and tested across CLI and LSP
 
-### Slice 8: Remove recoverable local storage from lowered IR `[complete]`
+### Slice 5: Export compiler-owned semantic display helpers
 
-The current lowered local model can store `recoverable_error_type` on locals.
+Reduce duplicated semantic presentation logic in `fol-editor`.
 
-Under the strict model, that should disappear for ordinary locals.
+Work:
 
-- Audit `RoutineCursor`, local allocation helpers, and verifier logic
-- Remove `recoverable_error_type` from locals if no longer necessary
-- If some recoverable operand metadata is still needed for direct `||`/`check(...)` lowering, keep it only as temporary expression lowering state, not as persistent general-purpose local storage
-- Update verifier assumptions and tests
-
-Preferred end state:
-
-- routine call recoverable metadata is attached only to the specific call-result lowering path, not stored as a general local capability
-
-### Slice 9: Keep `err[...]` as the real value-based error surface `[complete]`
-
-After removing `/ E` capture and propagation, strengthen `err[...]` as the first-class error container.
-
-Short-term work:
-
-- keep existing `err[...]` type behavior intact
-- keep postfix `!` behavior for `err[...]`
-- ensure docs clearly state `err[...]` is the storable form
-
-Follow-up design work:
-
-- design `err[...]` methods or operators such as:
-  - `.unbox()`
-  - `.is_err()`
-  - `.if_err(...)`
-  - `.map(...)`
-  - `.map_err(...)`
-- decide whether those methods belong to dot-method syntax, intrinsic lowering, or library methods
-
-This method design is separate from the strict `/ E` cleanup and should not block it.
-
-### Slice 10: Rewrite diagnostics `[complete]`
-
-Current diagnostics are phrased around the propagation model. They need to be rewritten to teach the strict model.
-
-Messages to remove or replace:
-
-- `requires a surrounding routine with a declared error type in V1`
-- any wording that implies plain value contexts may propagate
-
-Messages to add:
-
-- `/ ErrorType` results are not plain values
-- `/ ErrorType` results cannot be assigned to variables
-- `/ ErrorType` results cannot be returned directly
-- `/ ErrorType` results must be handled with `||` or `check(...)`
-- `err[...]` is the value form if you need storage and later handling
+- identify display logic currently handwritten in `fol-editor`:
+  - `render_checked_type()` in `completion_helpers.rs:214-281` — hand-written match over `CheckedType` variants with hardcoded type spellings (`"int"`, `"flt"`, `"bol"`, `"chr"`, `"str"`, `"never"`, `"opt[...]"`, `"err[...]"`, `"vec[...]"`, `"seq[...]"`, `"set[...]"`, `"map[...]"`)
+  - `render_symbol_kind()` in `completion_helpers.rs:175-194` — hand-written match over `SymbolKind`
+  - `symbol_kind_code()` in `completion_helpers.rs:196-212` — maps `SymbolKind` to LSP kind numbers
+  - `completion_symbol_detail()` in `completion_helpers.rs:358-378` — duplicate of `render_symbol_kind` with minor differences
+  - hardcoded builtin type list `["int", "flt", "bol", "chr", "str", "never"]` in `semantic.rs:99`
+- move the stable parts into compiler-owned helpers or an editor-facing semantic adapter layer
+  - `render_checked_type` belongs in `fol-typecheck` (it only uses `TypeTable` and `CheckedType`)
+  - `render_symbol_kind` belongs in `fol-resolver` (it only uses `SymbolKind`)
+  - builtin type list belongs in `fol-typecheck` or `fol-lexer`
+- keep only UI phrasing and protocol shape in `fol-editor`
 
 Exit condition:
 
-- diagnostics explain the language rule directly instead of exposing internal propagation machinery
+- semantic display strings used by hover/completion are derived from compiler-owned helpers
 
-### Slice 11: Rewrite docs to match the strict model `[complete]`
+### Slice 6: Tighten LSP semantic lookups around compiler state
 
-The docs currently describe propagation as part of the V1 contract. That must be removed.
+Reduce fallback heuristics where semantic data should exist.
 
-Files already known to need updates:
+Work:
 
-- `book/src/650_errors/200_recover.md`
-- `book/src/400_type/400_special.md`
-- `book/src/500_items/200_routines/_index.md`
-- `book/src/500_items/200_routines/200_functions.md`
-- any examples that show `return load()` or captured recoverable locals
-
-Required doc changes:
-
-- remove propagation as supported behavior
-- state that `/ E` is immediate handling only
-- show `||` and `check(...)` examples
-- state clearly that `err[...]` is the value-based alternative
-
-Exit condition:
-
-- docs no longer teach or imply implicit propagation
-
-### Slice 12: Remove outdated integration fixtures and examples `[complete]`
-
-Audit tests and examples for old behavior.
-
-- Replace propagation fixtures with strict-handling fixtures
-- delete or rewrite fixtures that rely on:
-  - `return load()`
-  - `var attempt = load()`
-  - `return load() + 1`
-- keep fixtures that demonstrate:
-  - `||` defaulting
-  - `|| report`
-  - `|| panic`
-  - `check(load())`
-  - `err[...]` shell/value use
+- audit:
+  - hover — compiler-backed via `reference_at()` + `hover_for_reference()`, no text fallback (good)
+  - definition — compiler-backed via `reference_at()` + `definition_for_reference()`, no text fallback (good)
+  - document symbols — compiler-backed via `document_symbols_for_current_path()`, no text fallback (good)
+  - completion — mixed: compiler-backed paths exist but extensive text-heuristic fallbacks run alongside them
+- classify each fallback path in completion:
+  - `fallback_local_scope_items()` — text-scans for `var ` and `fun` parameters, should be covered by resolver
+  - `fallback_current_package_top_level_items()` — text-matches `fun[`, `pro[`, `typ[`, `ali[`, `def[` prefixes
+  - `fallback_import_alias_items()` — text-matches `use ` prefix
+  - `fallback_imported_package_items()` — reads files from disk and text-scans them
+  - `fallback_imported_named_type_items()` — combines alias + package fallbacks
+  - `fallback_qualified_completion_items()` — combines namespace + imported fallbacks
+  - `fallback_local_namespace_items()` — reads filesystem directories
+  - `current_routine_name()` — text-matches nearest `fun` keyword before cursor
+  - `fallback_decl_name()` — generic text prefix matcher used by multiple fallbacks
+- decide for each: keep as emergency fallback, replace with compiler-backed, or remove
+- label remaining fallbacks explicitly (e.g. `// FALLBACK: ...` comments)
 
 Exit condition:
 
-- no fixture in the repo demonstrates the removed propagation model
+- the semantic feature matrix clearly distinguishes canonical compiler-backed behavior from emergency fallback behavior
 
-## Specific Code Areas To Audit
+### Slice 7: Create a language facts manifest for editor tooling
 
-### Typecheck
+Introduce a compiler-owned export of syntax-visible facts.
 
-- `lang/compiler/fol-typecheck/src/exprs/helpers.rs`
-- `lang/compiler/fol-typecheck/src/exprs/bindings.rs`
-- `lang/compiler/fol-typecheck/src/exprs/controlflow.rs`
-- `lang/compiler/fol-typecheck/src/exprs/operators.rs`
-- `lang/compiler/fol-typecheck/src/exprs/calls.rs`
-- `lang/compiler/fol-typecheck/src/exprs/access.rs`
-- `lang/compiler/fol-typecheck/src/exprs/literals.rs`
-- `lang/compiler/fol-typecheck/src/exprs/mod.rs`
-- `lang/compiler/fol-typecheck/src/model.rs`
+Candidate contents:
 
-### Lowering
+- builtin types
+- keyword families
+- source kinds
+- shell/container families
+- intrinsic names and surfaces
 
-- `lang/compiler/fol-lower/src/exprs/expressions.rs`
-- `lang/compiler/fol-lower/src/exprs/calls.rs`
-- `lang/compiler/fol-lower/src/exprs/bindings.rs`
-- `lang/compiler/fol-lower/src/exprs/body.rs`
-- `lang/compiler/fol-lower/src/exprs/cursor.rs`
-- `lang/compiler/fol-lower/src/verify/instruction.rs`
-- `lang/compiler/fol-lower/src/verify/mod.rs`
+Current duplication audit (exact locations):
 
-### Docs and tests
+- **primitive types** (`int|bol|str|flt|chr|never`): duplicated in `highlights.scm:57-66`, `semantic.rs:99`, `completion_helpers.rs:220-225`; canonical source is `fol-typecheck/src/types.rs` `BuiltinType` enum
+- **container types** (`arr|vec|seq|set|map`): duplicated in `grammar.js:63`, `highlights.scm:48-52`, `completion_helpers.rs:238-254`; canonical source is `fol-parser/src/ast/parser_parts/special_type_parsers.rs`
+- **shell types** (`opt|err`): duplicated in `grammar.js:64`, `highlights.scm:53-54`, `completion_helpers.rs:229-232`; canonical source is `fol-parser/src/ast/parser_parts/special_type_parsers.rs`
+- **source kinds** (`loc|std|pkg`): duplicated in `grammar.js:41`, `highlights.scm:17-19`; canonical source is `fol-parser/src/ast/parser_parts/source_kind_type_parsers.rs`
+- **intrinsics** (`len|echo|eq|nq|lt|gt|le|ge|not`): duplicated in `highlights.scm:85-86`; canonical source is `fol-intrinsics/src/catalog.rs`
 
-- `test/typecheck/test_typecheck_foundation.rs`
-- `test/typecheck/test_typecheck_error_typing.rs`
-- `test/integration_tests/integration_cli_lowering.rs`
-- `test/apps/fixtures/recoverable_propagation/main.fol`
-- `test/apps/fixtures/recoverable_fallback/main.fol`
-- `book/src/650_errors/200_recover.md`
-- `book/src/400_type/400_special.md`
-- `book/src/500_items/200_routines/_index.md`
-- `book/src/500_items/200_routines/200_functions.md`
+Implementation options:
 
-## Ordered Execution Plan
+- checked-in generated JSON/TOML manifest
+- Rust API plus small generator command
+- frontend command such as `fol tool dump language-facts`
 
-1. Rewrite tests to define the strict contract.
-2. Change typechecker helpers so `/ E` is rejected in all ordinary value contexts.
-3. Ban binding capture explicitly and remove symbol-level recoverable locals.
-4. Ban direct return propagation.
-5. Audit all expression surfaces for consistent rejection.
-6. Simplify typed metadata.
-7. Remove generic recoverable materialization from lowering.
-8. Remove lowered local recoverable storage if no longer needed.
-9. Rewrite diagnostics.
-10. Rewrite docs and examples.
-11. Run full test suite and remove any remaining propagation-era behavior.
+Exit condition:
+
+- one canonical source exists for syntax-visible facts currently duplicated across compiler/editor assets
+
+### Slice 8: Generate the easy Tree-sitter inputs
+
+Use the manifest to remove manual duplication where generation is low-risk.
+
+Generate:
+
+- keyword lists used by tests/docs
+- intrinsic lists consumed by tree-sitter query validation
+- maybe type/source-kind query fragments
+- maybe generated snapshot files embedded into the tree bundle
+
+Do not generate:
+
+- full grammar structure
+- precedence/conflict declarations
+- most query capture design
+
+Exit condition:
+
+- obvious duplicated token/name lists are no longer edited in multiple places
+
+### Slice 9: Put Tree-sitter maintenance on explicit rails
+
+Once generation covers the easy facts, define the remaining handwritten contract.
+
+Work:
+
+- document which files are intentionally handwritten:
+  - grammar.js
+  - highlights.scm
+  - locals.scm
+  - symbols.scm
+- document exactly when a new syntax feature must update them
+- add corpus expectations for each syntax family
+
+Exit condition:
+
+- tree-sitter changes stop being guesswork
+
+### Slice 10: Add a compiler-feature update checklist to docs and tests
+
+Every language feature should go through the same maintenance checklist.
+
+Checklist categories:
+
+- lexer/token changes
+- parser/AST changes
+- resolver/typecheck/lowering changes
+- diagnostics changes
+- LSP semantic changes
+- tree-sitter grammar/query/corpus changes
+- docs/examples changes
+
+Exit condition:
+
+- a contributor can follow one document and know exactly what to inspect when adding a feature
+
+### Slice 11: Add generated or shared tooling smoke tests
+
+Add integration tests that fail when compiler/editor contracts drift.
+
+Examples:
+
+- diagnostic adapter output matches expected LSP shape
+- intrinsic registry and editor dot-completion remain in sync
+- language-facts manifest matches tree-sitter generated fragments
+- strict error diagnostics appear identically through CLI JSON and LSP adaptation
+
+Exit condition:
+
+- future drift between compiler and tooling is caught automatically
+
+### Slice 12: Align FrontendError with the diagnostics pipeline
+
+`fol-frontend` has its own `FrontendError`/`FrontendErrorKind` that bypasses `fol-diagnostics`.
+
+Current state:
+
+- `FrontendError` lives in `lang/tooling/fol-frontend/src/errors.rs`
+- `Display` formats as `"FrontendWorkspaceNotFound: message"` — not the `[CODE] message` contract
+- no `ToDiagnostic` impl exists
+- `From<PackageError>` loses the original diagnostic structure
+- notes are carried but not formatted through the diagnostic pipeline
+
+Work:
+
+- implement `ToDiagnostic` for `FrontendError`
+- assign stable diagnostic codes (e.g. `F1xxx` family)
+- route frontend error display through `fol-diagnostics` rendering
+- preserve notes through the diagnostic model
+- remove the `FrontendErrorKind::as_str()` prefix pattern from Display
+
+Exit condition:
+
+- frontend errors render through the same diagnostic pipeline as compiler errors
+
+### Slice 13: Consolidate frontend compiler pipelines
+
+`fol-frontend` has two parallel compiler pipeline implementations with different error handling.
+
+Current state:
+
+- **direct mode** (`direct.rs:456-535`): creates FileStream, parses, resolves, typechecks, lowers — uses `DiagnosticReport` with structured JSON output via `add_compiler_glitch()` downcast chain
+- **workspace mode** (`compile/mod.rs:500-530`): uses `parse_directory_package_syntax()`, resolves, typechecks, lowers — converts errors to `FrontendError` strings via `lower_resolver_errors()`, `lower_typecheck_errors()`, `lower_lowering_errors()`
+- binary execution logic is copy-pasted in 3 places (`compile/mod.rs:205-223`, `compile/mod.rs:268-286`, `direct.rs:297-315`)
+
+Work:
+
+- unify error handling: both modes should produce structured diagnostics, not embed error strings
+- extract shared binary execution helper
+- decide whether direct mode should reuse the workspace compilation path
+
+Exit condition:
+
+- one error handling strategy across both frontend modes
+
+### Slice 14: Revisit command and crate boundaries
+
+After the shared contracts exist, simplify public ownership.
+
+Questions to settle:
+
+- should `fol tool tree generate` become a consumer of generated manifests plus handwritten assets only?
+- should LSP-facing diagnostics/types live in a dedicated adapter crate?
+- should editor-facing semantic projections live in `fol-editor` or a compiler-owned helper crate?
+- should `EditorError`/`EditorErrorKind` in `fol-editor` also route through `fol-diagnostics`?
+- should `RuntimeError` and `BackendError` implement `ToDiagnostic`? (currently separate error domains without diagnostic codes)
+
+Exit condition:
+
+- crate boundaries reflect actual ownership instead of historical accidents
+
+## Workstreams By Area
+
+### A. `fol-diagnostics` <-> `fol-editor`
+
+Needed improvements:
+
+- shared adapter for diagnostic conversion
+- shared or explicitly layered dedup policy
+- stable message-prefix and related-info rules
+- tests that lock the compiler-to-editor diagnostic shape
+
+### B. Compiler semantics <-> LSP
+
+Needed improvements:
+
+- compiler-owned display helpers for types/symbols
+- less heuristic fallback logic
+- stronger compiler-backed hover/definition/completion paths
+- explicit rules for behavior under broken/incomplete documents
+
+### C. Compiler facts <-> Tree-sitter
+
+Needed improvements:
+
+- canonical export of syntax-visible facts
+- generated fragments for easy duplicated lists
+- handwritten grammar/query policy documented
+- corpus coverage tied to language-feature surfaces
+
+### D. Frontend/editor error alignment
+
+Needed improvements:
+
+- `FrontendError` should implement `ToDiagnostic`
+- `EditorError` should either implement `ToDiagnostic` or be documented as transport-only
+- frontend error display should use `[CODE] message` format
+- frontend notes should flow through the diagnostic model
+
+## Generation Policy
+
+### Should be generated when practical
+
+- intrinsic names and surfaces
+- builtin type names
+- source kinds
+- keyword manifests used by tests/docs/tooling validation
+- maybe small query fragments tied directly to generated name lists
+
+### Should remain handwritten
+
+- full Tree-sitter grammar
+- query capture group policy
+- LSP transport and session logic
+- semantic UX wording beyond compiler-owned display helpers
+
+### Must never be silently duplicated
+
+- diagnostic code meanings
+- intrinsic availability/surface classification
+- builtin type spellings
+- import source-kind spellings
+
+## Risks
+
+### Risk 1: Over-coupling compiler crates to editor protocols
+
+Mitigation:
+
+- keep protocol-specific wire types out of core compiler crates where possible
+- use adapters or companion crates rather than reverse dependencies
+
+### Risk 2: Trying to generate too much Tree-sitter state
+
+Mitigation:
+
+- generate facts, not the whole grammar
+- keep grammar/query structure human-owned
+
+### Risk 3: Preserving weak fallback semantics forever
+
+Mitigation:
+
+- classify all editor fallbacks as either temporary, required, or removable
+- prefer compiler-backed behavior by default
+
+### Risk 4: Docs drifting again
+
+Mitigation:
+
+- tie the checklist to tests
+- require feature PRs to touch docs when syntax/diagnostics/editor behavior changes
 
 ## Acceptance Criteria
 
-The strict model is complete when all of the following are true:
+This plan is complete when:
 
-- `err[...]` remains a normal value type.
-- `/ E` results cannot be assigned to locals.
-- `/ E` results cannot be returned directly.
-- `/ E` results cannot appear in ordinary expressions.
-- only explicit handler surfaces can consume `/ E`.
-- no typed local symbol stores recoverable-call state.
-- lowering no longer performs implicit propagation.
-- docs and tests consistently teach the strict split.
+- tooling crate tests are reliable again
+- LSP diagnostic conversion is compiler-owned or compiler-adjacent, not ad hoc editor code
+- `glitch_to_diagnostic()` downcast chain is replaced with trait-based dispatch
+- `parse_single_file_diagnostics()` no longer writes temp files to disk
+- semantic display helpers no longer duplicate compiler logic in `fol-editor`
+- a language-facts manifest exists for shared syntax-visible facts
+- tree-sitter uses generated data for low-risk duplicated facts
+- completion fallback paths are explicitly classified and labeled
+- frontend errors route through the diagnostics pipeline
+- docs clearly explain what must be updated when adding a feature
+- compiler/tooling drift is caught by dedicated integration tests
 
-## Non-Goals
+## Immediate Next Slice
 
-- preserving backward compatibility with propagation-based `/ E` code
-- introducing migration warnings
-- adding fallback behavior
-- merging `/ E` and `err[...]` into one representation
+Start with Slice 1.
 
-## Follow-Up After This Plan
+Rationale:
 
-After the strict split lands, do a separate design pass for `err[...]` ergonomics:
-
-- value methods
-- library helpers
-- pattern/match support
-- naming of `unbox`, `unwrap`, `if_err`, `map_err`, etc.
-
-That work should start only after the `/ E` propagation model has been fully removed.
+- the current tooling test baseline is already broken
+- deeper integration work is hard to verify until tooling tests become trustworthy
