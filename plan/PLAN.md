@@ -188,7 +188,7 @@ Exit condition:
 - parser public API returns `Vec<Diagnostic>`
 - no downstream code downcasts parser output
 
-### Slice 5: Remove Glitch implementations from compiler error types
+### Slice 5: Remove Glitch implementations from compiler error types ✅
 
 After Slices 3-4, the only remaining `Glitch` users are `BasicError` (used by
 `fol-stream` before Slice 3) and the parser's internal error collection.
@@ -216,7 +216,7 @@ Exit condition:
 - `grep -r "dyn Glitch" lang/` returns nothing
 - all tests pass
 
-### Slice 6: Frontend and editor use Diagnostic directly
+### Slice 6: Frontend and editor use Diagnostic directly ✅
 
 With parser returning `Vec<Diagnostic>` and all other stages returning typed
 errors with `.to_diagnostic()`:
@@ -244,7 +244,7 @@ Exit condition:
 - no string-flattening error helpers
 - `glitch_to_diagnostic` and `lower_compiler_glitch` are deleted
 
-### Slice 7: FrontendError implements ToDiagnostic
+### Slice 7: FrontendError implements ToDiagnostic ✅
 
 `FrontendError` carries no diagnostic code and no location. It formats as
 `"FrontendWorkspaceNotFound: message"`.
@@ -262,7 +262,7 @@ Exit condition:
 - `FrontendError` has `[F1xxx]` codes
 - frontend errors render through the same pipeline as compiler errors
 
-### Slice 8: Integration tests for the unified pipeline
+### Slice 8: Integration tests for the unified pipeline ✅
 
 Verify that the same diagnostic flows identically through all output paths.
 
