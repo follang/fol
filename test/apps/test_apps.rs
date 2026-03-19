@@ -349,7 +349,7 @@ fn app_harness_assertion_helpers_cover_artifacts_and_status() {
     assert_exit_code(&run_output, 0);
 
     let failure_output = compile_app_expect_failure(&bad_root);
-    assert_output_contains(&failure_output, "ResolverUnresolvedName");
+    assert_output_contains(&failure_output, "could not resolve");
 
     fs::remove_dir_all(&temp_root).ok();
 }
@@ -414,7 +414,7 @@ fn same_folder_hidden_visibility_fixture_fails_cleanly() {
     let fixture = fixture_root("same_folder_hidden_visibility");
     let output = compile_app_expect_failure(&fixture);
 
-    assert_output_contains(&output, "ResolverUnresolvedName");
+    assert_output_contains(&output, "could not resolve");
 }
 
 #[test]
@@ -836,7 +836,7 @@ fn fail_hidden_cross_file_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_hidden_cross_file");
 
     let output = compile_app_expect_failure(&fixture);
-    assert_output_contains(&output, "ResolverUnresolvedName");
+    assert_output_contains(&output, "could not resolve");
 }
 
 #[test]
@@ -853,7 +853,6 @@ fn fail_type_mismatch_real_app_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_type_mismatch_real_app");
 
     let output = compile_app_expect_failure(&fixture);
-    assert_output_contains(&output, "TypecheckIncompatibleType");
     assert_output_contains(&output, "record field 'score'");
 }
 

@@ -133,7 +133,7 @@ pub(super) fn evaluation_error(
 
 impl std::fmt::Display for BuildEvaluationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "BuildEvaluation{:?}: {}", self.kind, self.message)
+        write!(f, "{}", self.message)
     }
 }
 

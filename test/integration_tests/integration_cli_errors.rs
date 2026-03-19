@@ -335,7 +335,6 @@ use super::*;
         let message = diagnostic["message"]
             .as_str()
             .expect("Resolver diagnostic message should stay a string");
-        assert!(message.contains("ResolverAmbiguousReference"));
         assert!(message.contains("name 'answer' is ambiguous in lexical scope"));
         assert!(message.contains("candidates:"));
 
@@ -444,7 +443,7 @@ use super::*;
             !output.status.success(),
             "Ambiguous resolver fixture should fail"
         );
-        assert!(stdout.contains("error: ResolverAmbiguousReference"));
+        assert!(stdout.contains("error[R1005]:"));
         assert!(stdout.contains("note:"));
         assert!(stdout.contains("candidate value binding declaration"));
         assert!(stdout.contains("alpha/values.fol"));
@@ -482,7 +481,7 @@ use super::*;
             !output.status.success(),
             "Formal package loc misuse should fail"
         );
-        assert!(stdout.contains("error: ResolverInvalidInput"));
+        assert!(stdout.contains("error[R1001]:"));
         assert!(stdout.contains("pkg instead of loc"));
         assert!(
             stdout.contains("help: replace the import source kind with pkg for formal packages")

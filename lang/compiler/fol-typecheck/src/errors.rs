@@ -17,19 +17,6 @@ pub enum TypecheckErrorKind {
 }
 
 impl TypecheckErrorKind {
-    fn label(self) -> &'static str {
-        match self {
-            Self::InvalidInput => "TypecheckInvalidInput",
-            Self::Unsupported => "TypecheckUnsupported",
-            Self::IncompatibleType => "TypecheckIncompatibleType",
-            Self::Internal => "TypecheckInternal",
-            Self::ScopeResolutionFailed => "TypecheckScopeResolutionFailed",
-            Self::TypeImportFailed => "TypecheckTypeImportFailed",
-            Self::SymbolTableCorrupted => "TypecheckSymbolTableCorrupted",
-            Self::UnsupportedSyntax => "TypecheckUnsupportedSyntax",
-        }
-    }
-
     pub fn diagnostic_code(self) -> DiagnosticCode {
         match self {
             Self::InvalidInput => DiagnosticCode::new("T1001"),
@@ -111,7 +98,7 @@ impl TypecheckError {
 
 impl std::fmt::Display for TypecheckError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.kind.label(), self.message)
+        write!(f, "{}", self.message)
     }
 }
 

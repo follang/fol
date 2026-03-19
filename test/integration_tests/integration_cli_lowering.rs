@@ -53,7 +53,6 @@ use super::*;
             output.status.code(),
             stdout
         );
-        assert!(stdout.contains("LoweringUnsupported"));
         assert!(stdout.contains("binary operator lowering for 'add'"));
 
         fs::remove_dir_all(&temp_root).ok();
