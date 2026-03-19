@@ -49,7 +49,7 @@ impl AstParser {
                 }
                 KEYWORD::Symbol(SYMBOL::Dot) => {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
 
                     let member_token = tokens.curr(false)?;
                     let member = Self::expect_named_label(
@@ -57,7 +57,7 @@ impl AstParser {
                         "Expected field or method name after '.'",
                     )?;
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
 
                     let is_method_call = matches!(
                         tokens.curr(false).map(|token| token.key()),

@@ -275,7 +275,7 @@ impl AstParser {
             if is_open_start_range {
                 let operator_token = token.clone();
                 let _ = tokens.bump();
-                self.skip_layout(tokens);
+                self.skip_layout(tokens)?;
 
                 let next = tokens.curr(false)?;
                 if next.key().is_terminal()
@@ -329,7 +329,7 @@ impl AstParser {
             && op_token.con().trim() != "...";
 
         let _ = tokens.bump();
-        self.skip_layout(tokens);
+        self.skip_layout(tokens)?;
 
         let next = tokens.curr(false)?;
         if matches!(

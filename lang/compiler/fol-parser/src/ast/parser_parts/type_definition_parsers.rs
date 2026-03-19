@@ -20,7 +20,7 @@ impl AstParser {
         let mut seen_variant_names = HashSet::new();
         let mut seen_members = HashSet::new();
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
@@ -38,7 +38,7 @@ impl AstParser {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                     || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -67,7 +67,7 @@ impl AstParser {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                     || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -96,7 +96,7 @@ impl AstParser {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                     || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -126,7 +126,7 @@ impl AstParser {
                     }
                     members.push(member);
                 }
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                     || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -154,9 +154,9 @@ impl AstParser {
                 match keyword {
                     "var" | "con" => {
                         let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
+                        self.skip_ignorable(tokens)?;
                         let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
+                        self.skip_ignorable(tokens)?;
                         options
                     }
                     _ => {
@@ -198,17 +198,17 @@ impl AstParser {
                 }
             };
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let mut names = Vec::new();
             for _ in 0..64 {
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let name_token = tokens.curr(false)?;
                 let name = Self::expect_named_label(&name_token, "Expected entry variant name")?;
                 names.push((name, name_token));
                 let _ = tokens.bump();
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                     let _ = tokens.bump();
@@ -217,22 +217,22 @@ impl AstParser {
                 break;
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut variant_type = None;
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     variant_type = Some(self.parse_type_reference_tokens(tokens)?);
                 }
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut default = None;
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     default = Some(self.parse_logical_expression(tokens)?);
                 }
             }
@@ -257,7 +257,7 @@ impl AstParser {
                 );
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                 || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -314,7 +314,7 @@ impl AstParser {
         let mut seen_field_names = HashSet::new();
         let mut seen_members = HashSet::new();
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
@@ -339,7 +339,7 @@ impl AstParser {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                     || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -368,7 +368,7 @@ impl AstParser {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                     || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -397,7 +397,7 @@ impl AstParser {
                     return Err(self.duplicate_type_member_error(&token, &key));
                 }
                 members.push(member);
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                     || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -427,7 +427,7 @@ impl AstParser {
                     }
                     members.push(member);
                 }
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                     || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -454,9 +454,9 @@ impl AstParser {
                     match keyword {
                         "var" | "con" => {
                             let _ = tokens.bump();
-                            self.skip_ignorable(tokens);
+                            self.skip_ignorable(tokens)?;
                             let _ = tokens.bump();
-                            self.skip_ignorable(tokens);
+                            self.skip_ignorable(tokens)?;
                             options
                         }
                         _ => Vec::new(),
@@ -465,7 +465,7 @@ impl AstParser {
                     match token.key() {
                         KEYWORD::Keyword(BUILDIN::Var) => {
                             let _ = tokens.bump();
-                            self.skip_ignorable(tokens);
+                            self.skip_ignorable(tokens)?;
                             self.parse_binding_options(
                                 tokens,
                                 vec![VarOption::Mutable, VarOption::Normal],
@@ -473,7 +473,7 @@ impl AstParser {
                         }
                         KEYWORD::Keyword(BUILDIN::Lab) => {
                             let _ = tokens.bump();
-                            self.skip_ignorable(tokens);
+                            self.skip_ignorable(tokens)?;
                             self.parse_binding_options(
                                 tokens,
                                 vec![VarOption::Immutable, VarOption::Normal],
@@ -481,7 +481,7 @@ impl AstParser {
                         }
                         KEYWORD::Keyword(BUILDIN::Con) => {
                             let _ = tokens.bump();
-                            self.skip_ignorable(tokens);
+                            self.skip_ignorable(tokens)?;
                             self.parse_binding_options(
                                 tokens,
                                 vec![VarOption::Immutable, VarOption::Normal],
@@ -491,7 +491,7 @@ impl AstParser {
                     }
                 };
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let mut field_names = Vec::new();
             loop {
@@ -503,16 +503,16 @@ impl AstParser {
                 field_names.push((field_name, name_token));
                 let _ = tokens.bump();
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     continue;
                 }
                 break;
             }
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let colon = tokens.curr(false)?;
             if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
@@ -523,16 +523,16 @@ impl AstParser {
             }
             let _ = tokens.bump();
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let field_type = self.parse_type_reference_tokens(tokens)?;
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut default = None;
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
                     default = Some(self.parse_logical_expression(tokens)?);
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                 }
             }
 
@@ -556,7 +556,7 @@ impl AstParser {
                 );
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                 || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -642,7 +642,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut member = self.parse_standard_routine_signature(tokens)?;
         match &mut member {
             AstNode::FunDecl { options, .. }

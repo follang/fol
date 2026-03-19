@@ -160,16 +160,24 @@ impl Default for AstParser {
 }
 
 impl AstParser {
-    fn enter_depth<'a>(&'a self, depth: &'a Cell<usize>) -> ParseDepthGuard<'a> {
+    fn enter_depth<'a>(&'a self, depth: &'a Cell<usize>) -> Result<ParseDepthGuard<'a>, Box<dyn Glitch>> {
         let new_depth = depth
             .get()
             .checked_add(1)
-            .expect("parser: depth guard overflow; possible infinite recursion in parser");
+            .ok_or_else(|| {
+                Box::new(ParseError {
+                    message: "Depth guard overflow; possible infinite recursion in parser".to_string(),
+                    file: None,
+                    line: 0,
+                    column: 0,
+                    length: 0,
+                }) as Box<dyn Glitch>
+            })?;
         depth.set(new_depth);
-        ParseDepthGuard { depth }
+        Ok(ParseDepthGuard { depth })
     }
 
-    pub(super) fn enter_routine_context(&self) -> ParseDepthGuard<'_> {
+    pub(super) fn enter_routine_context(&self) -> Result<ParseDepthGuard<'_>, Box<dyn Glitch>> {
         self.enter_depth(&self.routine_depth)
     }
 
@@ -177,7 +185,7 @@ impl AstParser {
         self.routine_depth.get() > 0
     }
 
-    pub(super) fn enter_loop_context(&self) -> ParseDepthGuard<'_> {
+    pub(super) fn enter_loop_context(&self) -> Result<ParseDepthGuard<'_>, Box<dyn Glitch>> {
         self.enter_depth(&self.loop_depth)
     }
 

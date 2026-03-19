@@ -25,7 +25,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<String>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(Vec::new()),
@@ -38,7 +38,7 @@ impl AstParser {
 
         let mut captures = Vec::new();
         for _ in 0..128 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
@@ -51,14 +51,14 @@ impl AstParser {
             captures.push(name);
             let _ = tokens.bump();
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if matches!(
                 sep.key(),
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::SquarC))

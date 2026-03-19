@@ -17,12 +17,12 @@ impl AstParser {
 
         let mut nodes = Vec::new();
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 
@@ -32,7 +32,7 @@ impl AstParser {
                 false,
             )?);
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if matches!(
                 sep.key(),
@@ -43,7 +43,7 @@ impl AstParser {
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 

@@ -144,7 +144,7 @@ impl AstParser {
                 if tokens.bump().is_none() {
                     break;
                 }
-                self.skip_layout(tokens);
+                self.skip_layout(tokens).map_err(|e| vec![e])?;
                 continue;
             }
 
@@ -472,7 +472,7 @@ impl AstParser {
                     &mut errors,
                     |parser, tokens| {
                         parser.parse_dot_builtin_call_expr(tokens)?;
-                        parser.consume_optional_semicolon(tokens);
+                        parser.consume_optional_semicolon(tokens)?;
                         Ok(())
                     },
                 ) {
@@ -666,7 +666,7 @@ impl AstParser {
                 if tokens.bump().is_none() {
                     break;
                 }
-                self.skip_layout(tokens);
+                self.skip_layout(tokens).map_err(|e| vec![e])?;
                 continue;
             }
 
@@ -730,7 +730,7 @@ impl AstParser {
                 match self.parse_dot_builtin_call_expr(tokens) {
                     Ok(node) => {
                         self.push_top_level_entry(&mut entries, &token, node);
-                        self.consume_optional_semicolon(tokens);
+                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
                     }
                     Err(error) => errors.push(error),
                 }

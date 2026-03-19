@@ -49,7 +49,7 @@ impl AstParser {
         })?;
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         self.parse_binding_decl(tokens, keyword, options)
     }
 

@@ -14,7 +14,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -24,10 +24,10 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let channel = self.parse_range_expression(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let mut binding = None;
         if matches!(
@@ -35,7 +35,7 @@ impl AstParser {
             Ok(KEYWORD::Keyword(BUILDIN::As))
         ) {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let binding_token = tokens.curr(false)?;
             binding = Some(Self::expect_named_label(
@@ -43,7 +43,7 @@ impl AstParser {
                 "Expected binding name after 'as' in select statement",
             )?);
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
         }
 
         let close = tokens.curr(false)?;
@@ -54,7 +54,7 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let body = self.parse_branch_body(tokens)?;
         Ok(AstNode::Select {
@@ -85,7 +85,7 @@ impl AstParser {
         .to_string();
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let mut args = Vec::new();
         if let Ok(token) = tokens.curr(false) {
@@ -94,7 +94,7 @@ impl AstParser {
                 args.push(expr);
 
                 loop {
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     let comma = match tokens.curr(false) {
                         Ok(token) => token,
                         Err(_) => break,
@@ -105,7 +105,7 @@ impl AstParser {
                     }
 
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
 
                     let next = tokens.curr(false)?;
                     if next.key().is_terminal() {
@@ -122,7 +122,7 @@ impl AstParser {
             }
         }
 
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::FunctionCall {
             syntax_id,
@@ -145,7 +145,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let open_expr = tokens.curr(false)?;
         if !matches!(open_expr.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -157,7 +157,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let expr = self.parse_logical_expression(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let close_expr = tokens.curr(false)?;
         if !matches!(close_expr.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -168,7 +168,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open_cases = tokens.curr(false)?;
         if !matches!(open_cases.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
@@ -182,7 +182,7 @@ impl AstParser {
         let mut default = None;
 
         for _ in 0..1024 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
@@ -192,7 +192,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Case)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let open_cond = tokens.curr(false)?;
                 if !matches!(open_cond.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -204,7 +204,7 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 let condition = self.parse_logical_expression(tokens)?;
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let close_cond = tokens.curr(false)?;
                 if !matches!(close_cond.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                     return Err(Box::new(ParseError::from_token(
@@ -214,7 +214,7 @@ impl AstParser {
                 }
                 let _ = tokens.bump();
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::Case { condition, body });
                 continue;
@@ -222,7 +222,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Of)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let open_type = tokens.curr(false)?;
                 if !matches!(open_type.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -232,10 +232,10 @@ impl AstParser {
                     )));
                 }
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let type_match = self.parse_type_reference_tokens(tokens)?;
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let close_type = tokens.curr(false)?;
                 if !matches!(close_type.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -246,7 +246,7 @@ impl AstParser {
                 }
                 let _ = tokens.bump();
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::Of { type_match, body });
                 continue;
@@ -254,7 +254,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Is)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let open_value = tokens.curr(false)?;
                 if !matches!(open_value.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -266,7 +266,7 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 let value = self.parse_logical_expression(tokens)?;
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let close_value = tokens.curr(false)?;
                 if !matches!(close_value.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                     return Err(Box::new(ParseError::from_token(
@@ -276,7 +276,7 @@ impl AstParser {
                 }
                 let _ = tokens.bump();
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::Is { value, body });
                 continue;
@@ -284,7 +284,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::In)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let open_range = tokens.curr(false)?;
                 if !matches!(open_range.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -296,7 +296,7 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 let range = self.parse_logical_expression(tokens)?;
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let close_range = tokens.curr(false)?;
                 if !matches!(close_range.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                     return Err(Box::new(ParseError::from_token(
@@ -306,7 +306,7 @@ impl AstParser {
                 }
                 let _ = tokens.bump();
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::In { range, body });
                 continue;
@@ -314,7 +314,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Has)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let open_member = tokens.curr(false)?;
                 if !matches!(open_member.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -326,7 +326,7 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 let member = self.parse_logical_expression(tokens)?;
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let close_member = tokens.curr(false)?;
                 if !matches!(close_member.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                     return Err(Box::new(ParseError::from_token(
@@ -336,7 +336,7 @@ impl AstParser {
                 }
                 let _ = tokens.bump();
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::Has { member, body });
                 continue;
@@ -344,7 +344,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::On)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let open_channel = tokens.curr(false)?;
                 if !matches!(open_channel.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -356,7 +356,7 @@ impl AstParser {
                 let _ = tokens.bump();
 
                 let channel = self.parse_logical_expression(tokens)?;
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let close_channel = tokens.curr(false)?;
                 if !matches!(close_channel.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                     return Err(Box::new(ParseError::from_token(
@@ -366,7 +366,7 @@ impl AstParser {
                 }
                 let _ = tokens.bump();
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let body = self.parse_branch_body(tokens)?;
                 cases.push(WhenCase::On { channel, body });
                 continue;
@@ -380,7 +380,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let next = tokens.curr(false)?;
                 if !matches!(
                     next.key(),
@@ -398,7 +398,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Dollar)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let body = self.parse_branch_body(tokens)?;
                 default = Some(body);
                 continue;
@@ -427,7 +427,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let open_cond = tokens.curr(false)?;
         if !matches!(open_cond.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -439,7 +439,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let condition = self.parse_logical_expression(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let close_cond = tokens.curr(false)?;
         if !matches!(close_cond.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -450,14 +450,14 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let then_body = self.parse_branch_body(tokens)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let else_body = if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Else)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let else_target = tokens.curr(false)?;
                 if matches!(else_target.key(), KEYWORD::Keyword(BUILDIN::If)) {
@@ -501,7 +501,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let token = tokens.curr(false)?;
         if matches!(token.key(), KEYWORD::Operator(OPERATOR::Flow)) {
             return self.parse_flow_body_nodes(tokens);
@@ -537,7 +537,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let open_cond = tokens.curr(false)?;
         if !matches!(open_cond.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -549,7 +549,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let condition = self.parse_loop_condition(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let close_cond = tokens.curr(false)?;
         if !matches!(close_cond.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -560,8 +560,8 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
-        let _loop_context = self.enter_loop_context();
+        self.skip_ignorable(tokens)?;
+        let _loop_context = self.enter_loop_context()?;
         let body = if matches!(
             loop_token.key(),
             KEYWORD::Keyword(BUILDIN::While | BUILDIN::Loop | BUILDIN::For | BUILDIN::Each)
@@ -589,7 +589,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<LoopCondition, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let current = tokens.curr(false)?;
         if matches!(current.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -602,7 +602,7 @@ impl AstParser {
 
         if matches!(current.key(), KEYWORD::Keyword(BUILDIN::Var)) {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             current_var_token = tokens.curr(false)?;
             let declared_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under))
@@ -615,7 +615,7 @@ impl AstParser {
                 )?
             };
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let colon = tokens.curr(false)?;
             if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
@@ -625,10 +625,10 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             type_hint = Some(self.parse_type_reference_tokens(tokens)?);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let semi = tokens.curr(false)?;
             if !matches!(semi.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
@@ -638,7 +638,7 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             current_var_token = tokens.curr(false)?;
             let iteration_var = if matches!(current_var_token.key(), KEYWORD::Symbol(SYMBOL::Under))
@@ -679,7 +679,7 @@ impl AstParser {
                 )?
             };
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let in_token = tokens.curr(false)?;
             if !matches!(in_token.key(), KEYWORD::Keyword(BUILDIN::In)) {
@@ -689,15 +689,15 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let iterable = self.parse_logical_expression(tokens)?;
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let condition = if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Keyword(BUILDIN::When)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     Some(Box::new(self.parse_logical_expression(tokens)?))
                 } else {
                     None
@@ -723,7 +723,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let target = self.parse_assignment_target(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let assign_token = tokens.curr(false)?;
         let mut compound_op = self.compound_assignment_op(&assign_token.key());
@@ -731,7 +731,7 @@ impl AstParser {
 
         if let Some(symbol_op) = self.compound_assignment_symbol_op(&assign_token.key()) {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let eq_token = tokens.curr(false)?;
             if matches!(eq_token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                 compound_op = Some(symbol_op);
@@ -752,7 +752,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let parsed_value = self.parse_logical_expression(tokens)?;
         let value = if let Some(op) = compound_op {
             AstNode::BinaryOp {
@@ -809,7 +809,7 @@ impl AstParser {
         };
 
         for _ in 0..128 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => return Ok(target),
@@ -824,7 +824,7 @@ impl AstParser {
                 }
                 KEYWORD::Symbol(SYMBOL::Dot) => {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
 
                     let field_token = tokens.curr(false)?;
                     let field = Self::expect_named_label(
@@ -832,7 +832,7 @@ impl AstParser {
                         "Expected field name after '.' in assignment target",
                     )?;
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
 
                     if matches!(
                         tokens.curr(false).map(|token| token.key()),
@@ -869,7 +869,7 @@ impl AstParser {
             self.parse_call_expr(tokens)?
         };
 
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
 
         Ok(call)
     }
@@ -893,7 +893,7 @@ impl AstParser {
             )));
         }
 
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
         Ok(expr)
     }
 
@@ -938,7 +938,7 @@ impl AstParser {
                 name: path.joined(),
             }
         };
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let dot = tokens.curr(false)?;
         if !matches!(dot.key(), KEYWORD::Symbol(SYMBOL::Dot)) {
@@ -948,7 +948,7 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let method_token = tokens.curr(false)?;
         let method = Self::expect_named_label(&method_token, "Expected method name after '.'")?;
@@ -967,7 +967,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         expected_open_error: &str,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {

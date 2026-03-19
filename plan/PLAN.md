@@ -24,10 +24,10 @@ Last updated: 2026-03-18
 - [x] 2e. Remove "Slash comments remain a compatibility surface" comment (`stage1/element.rs:95`)
 
 ### Slice 3 — Parser panics → errors
-- [ ] 3a. `skip_layout` panic → return parser error (`expression_atoms_and_literal_lowering.rs:50`)
-- [ ] 3b. `skip_ignorable` panic → return parser error (`expression_atoms_and_literal_lowering.rs:106`)
-- [ ] 3c. Depth guard `.expect()` → return parser error (`parser.rs:167`)
-- [ ] 3d. Fix locationless errors (`line: 0, column: 0, file: None`) in `pipe_expression_parsers.rs:7-13`, `binding_declaration_parsers.rs:341-350`, `routine_header_parsers.rs:667-673,480-486`
+- [x] 3a. `skip_layout` panic → return parser error (`expression_atoms_and_literal_lowering.rs:50`)
+- [x] 3b. `skip_ignorable` panic → return parser error (`expression_atoms_and_literal_lowering.rs:106`)
+- [x] 3c. Depth guard `.expect()` → return parser error (`parser.rs:167`)
+- [x] 3d. Fix locationless errors (`line: 0, column: 0, file: None`) in `pipe_expression_parsers.rs:7-13`, `binding_declaration_parsers.rs:341-350`, `routine_header_parsers.rs:667-673,480-486`
 
 ### Slice 4 — Resolver + typecheck + lower panics → errors
 - [ ] 4a. Resolver: `panic!` in qualified-path scope matching → error (`traverse/resolve.rs:391`)

@@ -65,15 +65,15 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_decl_visibility_options(tokens, "standard")?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let name_token = tokens.curr(false)?;
         let name = Self::expect_named_label(&name_token, "Expected standard name after 'std'")?;
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
             return Err(Box::new(ParseError::from_token(
@@ -83,7 +83,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let kind_token = tokens.curr(false)?;
         let kind = match kind_token.con().trim() {
             "pro" => StandardKind::Protocol,
@@ -109,7 +109,7 @@ impl AstParser {
             }
         };
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
             return Err(Box::new(ParseError::from_token(
@@ -119,7 +119,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
@@ -134,7 +134,7 @@ impl AstParser {
             StandardKind::Blueprint => self.parse_standard_blueprint_body(tokens)?,
             StandardKind::Extended => self.parse_standard_extended_body(tokens)?,
         };
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::StdDecl {
             options,
@@ -154,7 +154,7 @@ impl AstParser {
         let mut anchor_token = None;
 
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             if anchor_token.is_none() {
                 anchor_token = Some(token.clone());
@@ -259,7 +259,7 @@ impl AstParser {
         let mut anchor_token = None;
 
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             if anchor_token.is_none() {
                 anchor_token = Some(token.clone());
@@ -480,7 +480,7 @@ impl AstParser {
         let mut anchor_token = None;
 
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             if anchor_token.is_none() {
                 anchor_token = Some(token.clone());
@@ -634,9 +634,9 @@ impl AstParser {
         let routine_token = tokens.curr(false)?;
         let routine_kind = routine_token.key().clone();
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_routine_options(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
@@ -644,24 +644,24 @@ impl AstParser {
         )?;
         let (generics, params) =
             self.parse_routine_generics_and_params(tokens, "Expected '(' after routine name")?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let captures = self.parse_optional_routine_capture_list(tokens)?;
         self.ensure_unique_capture_names(&captures)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut return_type = None;
         let mut error_type = None;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
                 error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut body = Vec::new();
         let mut inquiries = Vec::new();
         let next = tokens.curr(false)?;

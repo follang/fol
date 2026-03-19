@@ -5,7 +5,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Option<FolType>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let Ok(separator) = tokens.curr(false) else {
             return Ok(None);
         };
@@ -13,7 +13,7 @@ impl AstParser {
         match separator.key() {
             KEYWORD::Symbol(SYMBOL::Root) | KEYWORD::Operator(OPERATOR::Divide) => {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 Ok(Some(self.parse_type_reference_tokens(tokens)?))
             }
             KEYWORD::Symbol(SYMBOL::Colon) => Err(Box::new(ParseError::from_token(
@@ -37,16 +37,16 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_routine_options(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
             "Expected function name after 'fun'",
         )?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let alt_generics = if self.lookahead_parenthesized_generic_header_before_colon(tokens) {
             let open = tokens.curr(false)?;
             if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -59,17 +59,17 @@ impl AstParser {
             Vec::new()
         };
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         if matches!(
             tokens.curr(false).map(|token| token.key().clone()),
             Ok(KEYWORD::Symbol(SYMBOL::Colon))
         ) {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let return_type = Some(self.parse_type_reference_tokens(tokens)?);
             let error_type = self.parse_optional_error_type_after_return_type(tokens)?;
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let assign = tokens.curr(false)?;
             if !matches!(
                 assign.key(),
@@ -84,7 +84,7 @@ impl AstParser {
                 let _ = tokens.bump();
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut params = Vec::new();
             if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
                 let _ = tokens.bump();
@@ -99,7 +99,7 @@ impl AstParser {
                 params = parsed_params;
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let captures = self.parse_optional_routine_capture_list(tokens)?;
             self.ensure_unique_capture_names(&captures)?;
 
@@ -126,24 +126,24 @@ impl AstParser {
 
         let (generics, params) =
             self.parse_routine_generics_and_params(tokens, "Expected '(' after function name")?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let captures = self.parse_optional_routine_capture_list(tokens)?;
         self.ensure_unique_capture_names(&captures)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut return_type = None;
         let mut error_type = None;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
                 error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(
             assign.key(),
@@ -192,16 +192,16 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_routine_options(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
             "Expected logical name after 'log'",
         )?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let alt_generics = if self.lookahead_parenthesized_generic_header_before_colon(tokens) {
             let open = tokens.curr(false)?;
             if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -214,17 +214,17 @@ impl AstParser {
             Vec::new()
         };
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         if matches!(
             tokens.curr(false).map(|token| token.key().clone()),
             Ok(KEYWORD::Symbol(SYMBOL::Colon))
         ) {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let return_type = Some(self.parse_type_reference_tokens(tokens)?);
             let error_type = self.parse_optional_error_type_after_return_type(tokens)?;
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let assign = tokens.curr(false)?;
             if !matches!(
                 assign.key(),
@@ -239,7 +239,7 @@ impl AstParser {
                 let _ = tokens.bump();
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut params = Vec::new();
             if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
                 let _ = tokens.bump();
@@ -254,7 +254,7 @@ impl AstParser {
                 params = parsed_params;
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let captures = self.parse_optional_routine_capture_list(tokens)?;
             self.ensure_unique_capture_names(&captures)?;
 
@@ -281,24 +281,24 @@ impl AstParser {
 
         let (generics, params) =
             self.parse_routine_generics_and_params(tokens, "Expected '(' after logical name")?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let captures = self.parse_optional_routine_capture_list(tokens)?;
         self.ensure_unique_capture_names(&captures)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut return_type = None;
         let mut error_type = None;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
                 error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(
             assign.key(),
@@ -347,16 +347,16 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_routine_options(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
             "Expected procedure name after 'pro'",
         )?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let alt_generics = if self.lookahead_parenthesized_generic_header_before_colon(tokens) {
             let open = tokens.curr(false)?;
             if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -369,17 +369,17 @@ impl AstParser {
             Vec::new()
         };
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         if matches!(
             tokens.curr(false).map(|token| token.key().clone()),
             Ok(KEYWORD::Symbol(SYMBOL::Colon))
         ) {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let return_type = Some(self.parse_type_reference_tokens(tokens)?);
             let error_type = self.parse_optional_error_type_after_return_type(tokens)?;
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let assign = tokens.curr(false)?;
             if !matches!(
                 assign.key(),
@@ -394,7 +394,7 @@ impl AstParser {
                 let _ = tokens.bump();
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut params = Vec::new();
             if matches!(tokens.curr(false)?.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
                 let _ = tokens.bump();
@@ -409,7 +409,7 @@ impl AstParser {
                 params = parsed_params;
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let captures = self.parse_optional_routine_capture_list(tokens)?;
             self.ensure_unique_capture_names(&captures)?;
 
@@ -436,24 +436,24 @@ impl AstParser {
 
         let (generics, params) =
             self.parse_routine_generics_and_params(tokens, "Expected '(' after procedure name")?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let captures = self.parse_optional_routine_capture_list(tokens)?;
         self.ensure_unique_capture_names(&captures)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut return_type = None;
         let mut error_type = None;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
                 error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(
             assign.key(),
@@ -494,7 +494,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         missing_open_message: &str,
     ) -> Result<(Vec<Generic>, Vec<Parameter>), Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open_paren = tokens.curr(false)?;
         if !matches!(open_paren.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             return Err(Box::new(ParseError::from_token(
@@ -505,7 +505,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let (first_list, first_untyped) = self.parse_routine_header_list(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let next = match tokens.curr(false) {
             Ok(token) => token,

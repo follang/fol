@@ -36,7 +36,7 @@ impl AstParser {
         Self::key_is_layout_ignorable(key) || key.is_comment()
     }
 
-    pub(super) fn skip_layout(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+    pub(super) fn skip_layout(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) -> Result<(), Box<dyn Glitch>> {
         let mut count = 0u32;
         loop {
             let token = match tokens.curr(false) {
@@ -47,7 +47,10 @@ impl AstParser {
             if Self::key_is_layout_ignorable(&token.key()) {
                 count += 1;
                 if count > 128 {
-                    panic!("parser: skip_layout exceeded 128-token limit; possible infinite layout loop");
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "skip_layout exceeded 128-token limit; possible infinite layout loop".to_string(),
+                    )));
                 }
                 if tokens.bump().is_none() {
                     break;
@@ -57,6 +60,7 @@ impl AstParser {
 
             break;
         }
+        Ok(())
     }
 
     pub(super) fn parse_primary(
@@ -92,7 +96,7 @@ impl AstParser {
         )))
     }
 
-    pub(super) fn skip_ignorable(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) {
+    pub(super) fn skip_ignorable(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) -> Result<(), Box<dyn Glitch>> {
         let mut count = 0u32;
         loop {
             let token = match tokens.curr(false) {
@@ -103,7 +107,10 @@ impl AstParser {
             if Self::key_is_soft_ignorable(&token.key()) {
                 count += 1;
                 if count > 128 {
-                    panic!("parser: skip_ignorable exceeded 128-token limit; possible infinite ignorable loop");
+                    return Err(Box::new(ParseError::from_token(
+                        &token,
+                        "skip_ignorable exceeded 128-token limit; possible infinite ignorable loop".to_string(),
+                    )));
                 }
                 if tokens.bump().is_none() {
                     break;
@@ -113,6 +120,7 @@ impl AstParser {
 
             break;
         }
+        Ok(())
     }
 
     pub(super) fn token_can_be_logical_name(key: &KEYWORD) -> bool {
@@ -192,7 +200,7 @@ impl AstParser {
         let mut comments = Vec::new();
 
         loop {
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
 
             let token = match tokens.curr(false) {
                 Ok(token) => token,
@@ -207,7 +215,7 @@ impl AstParser {
             let _ = tokens.bump();
         }
 
-        self.skip_layout(tokens);
+        self.skip_layout(tokens)?;
         Ok(comments)
     }
 
@@ -219,7 +227,7 @@ impl AstParser {
     where
         F: Fn(&KEYWORD) -> bool,
     {
-        self.skip_layout(tokens);
+        self.skip_layout(tokens)?;
 
         let Ok(token) = tokens.curr(false) else {
             return Ok(Vec::new());
@@ -356,7 +364,7 @@ impl AstParser {
         operator_token: &fol_lexer::lexer::stage3::element::Element,
         message: &str,
     ) -> Result<(), Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         match tokens.curr(false) {
             Ok(next) => {
@@ -384,13 +392,14 @@ impl AstParser {
     pub(super) fn consume_optional_semicolon(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) {
-        self.skip_layout(tokens);
+    ) -> Result<(), Box<dyn Glitch>> {
+        self.skip_layout(tokens)?;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
                 let _ = tokens.bump();
             }
         }
+        Ok(())
     }
 
     /// Parse a simple literal for testing

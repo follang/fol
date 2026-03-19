@@ -90,7 +90,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let flow = tokens.curr(false)?;
         if !matches!(
             flow.key(),
@@ -102,10 +102,10 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let expr = self.parse_logical_expression(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         if matches!(
             tokens.curr(false).map(|token| token.key()),
             Ok(KEYWORD::Symbol(SYMBOL::Semi))
@@ -123,7 +123,7 @@ impl AstParser {
         let mut members = Vec::new();
         for _ in 0..64 {
             members.push(self.parse_logical_expression(tokens)?);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let next = tokens.curr(false)?;
             if matches!(
@@ -137,7 +137,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 continue;
             }
 
@@ -172,7 +172,7 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -184,7 +184,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let expr = self.parse_logical_expression(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
             return Err(Box::new(ParseError::from_token(
@@ -193,7 +193,7 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let open_cases = tokens.curr(false)?;
         if !matches!(open_cases.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
@@ -208,7 +208,7 @@ impl AstParser {
         let mut default = None;
 
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
@@ -218,7 +218,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::In)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let range = self.parse_logical_expression(tokens)?;
                 let body = self.parse_match_arrow_body(tokens)?;
                 cases.push(WhenCase::In { range, body });
@@ -227,7 +227,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Is)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let value = self.parse_logical_expression(tokens)?;
                 let body = self.parse_match_arrow_body(tokens)?;
                 cases.push(WhenCase::Is { value, body });
@@ -236,7 +236,7 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Has)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let member = self.parse_match_expression_has_members(tokens)?;
                 let body = self.parse_match_arrow_body(tokens)?;
                 cases.push(WhenCase::Has { member, body });
@@ -447,9 +447,9 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         kind: AnonymousRoutineKind,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_routine_options(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let open_params = tokens.curr(false)?;
         if !matches!(open_params.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -472,20 +472,20 @@ impl AstParser {
         let captures = self.parse_optional_routine_capture_list(tokens)?;
         self.ensure_unique_capture_names(&captures)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut return_type = None;
         let mut error_type = None;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
                 error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(
             assign.key(),
@@ -565,13 +565,13 @@ impl AstParser {
         let captures = self.parse_optional_routine_capture_list(tokens)?;
         self.ensure_unique_capture_names(&captures)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut return_type = None;
         let mut error_type = None;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
                 error_type = self.parse_optional_error_type_after_return_type(tokens)?;

@@ -98,9 +98,9 @@ impl AstParser {
                 length: 1,
             }));
         }
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_binding_options(tokens, default_options)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         if let Ok(open_group) = tokens.curr(false) {
             if matches!(open_group.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -112,23 +112,23 @@ impl AstParser {
         for _ in 0..256 {
             let patterns = self.parse_binding_pattern_list(tokens, keyword)?;
             let is_destructuring = patterns.iter().any(BindingPattern::is_destructuring);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let mut type_hint = None;
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     type_hint = Some(self.parse_type_reference_tokens(tokens)?);
                 }
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut values = Vec::new();
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     values = self
                         .parse_binding_values(tokens, !is_destructuring && patterns.len() == 1)?;
                 }
@@ -140,6 +140,7 @@ impl AstParser {
                     patterns,
                     type_hint,
                     values,
+                    tokens,
                 )?);
             } else {
                 let names = patterns
@@ -160,10 +161,11 @@ impl AstParser {
                     names,
                     type_hint,
                     values,
+                    tokens,
                 )?);
             }
 
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
             let next = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,
@@ -177,14 +179,14 @@ impl AstParser {
                 && self.lookahead_starts_binding_segment(tokens)
             {
                 let _ = tokens.bump();
-                self.skip_layout(tokens);
+                self.skip_layout(tokens)?;
                 continue;
             }
 
             break;
         }
 
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
         Ok(nodes)
     }
 
@@ -197,7 +199,7 @@ impl AstParser {
 
         for _ in 0..256 {
             patterns.push(self.parse_binding_pattern(tokens, keyword)?);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let next = match tokens.curr(false) {
                 Ok(token) => token,
@@ -206,7 +208,7 @@ impl AstParser {
 
             if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 continue;
             }
 
@@ -227,7 +229,7 @@ impl AstParser {
             let _ = tokens.bump();
             let mut parts = Vec::new();
             for _ in 0..256 {
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let current = tokens.curr(false)?;
                 if matches!(current.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                     let _ = tokens.bump();
@@ -235,7 +237,7 @@ impl AstParser {
                 }
 
                 parts.push(self.parse_binding_pattern(tokens, keyword)?);
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let separator = tokens.curr(false)?;
                 if matches!(separator.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
@@ -262,7 +264,7 @@ impl AstParser {
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
             let star = token.clone();
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let name_token = tokens.curr(false)?;
             let name = if matches!(name_token.key(), KEYWORD::Symbol(SYMBOL::Under)) {
                 "_".to_string()
@@ -296,20 +298,29 @@ impl AstParser {
         names: Vec<String>,
         type_hint: Option<FolType>,
         values: Vec<AstNode>,
+        tokens: &fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let assigned_values = match values.len() {
             0 => vec![None; names.len()],
             1 => vec![Some(values[0].clone()); names.len()],
             n if n == names.len() => values.into_iter().map(Some).collect(),
-            _ => return Err(Box::new(ParseError {
-                message:
-                    "Binding value count must match declared names or provide a single shared value"
-                        .to_string(),
-                file: None,
-                line: 0,
-                column: 0,
-                length: 0,
-            })),
+            _ => {
+                let error = if let Ok(token) = tokens.curr(false) {
+                    ParseError::from_token(
+                        &token,
+                        "Binding value count must match declared names or provide a single shared value".to_string(),
+                    )
+                } else {
+                    ParseError {
+                        message: "Binding value count must match declared names or provide a single shared value".to_string(),
+                        file: None,
+                        line: 0,
+                        column: 0,
+                        length: 0,
+                    }
+                };
+                return Err(Box::new(error));
+            }
         };
 
         Ok(names
@@ -330,15 +341,24 @@ impl AstParser {
         patterns: Vec<BindingPattern>,
         type_hint: Option<FolType>,
         values: Vec<AstNode>,
+        tokens: &fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         if values.len() != 1 {
-            return Err(Box::new(ParseError {
-                message: "Destructuring bindings require exactly one source value".to_string(),
-                file: None,
-                line: 0,
-                column: 0,
-                length: 0,
-            }));
+            let error = if let Ok(token) = tokens.curr(false) {
+                ParseError::from_token(
+                    &token,
+                    "Destructuring bindings require exactly one source value".to_string(),
+                )
+            } else {
+                ParseError {
+                    message: "Destructuring bindings require exactly one source value".to_string(),
+                    file: None,
+                    line: 0,
+                    column: 0,
+                    length: 0,
+                }
+            };
+            return Err(Box::new(error));
         }
 
         Ok(AstNode::DestructureDecl {

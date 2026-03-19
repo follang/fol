@@ -24,7 +24,7 @@ impl AstParser {
         let mut fields = Vec::new();
         let mut closed = false;
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
                 let _ = tokens.bump();
@@ -35,7 +35,7 @@ impl AstParser {
             let name =
                 Self::expect_named_label(&token, "Expected field name in record initializer")?;
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let equal = tokens.curr(false)?;
             if !matches!(equal.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
@@ -45,11 +45,11 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let value = self.parse_logical_expression(tokens)?;
             fields.push(crate::ast::RecordInitField { name, value });
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let sep = tokens.curr(false)?;
             if matches!(
@@ -57,7 +57,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::CurlyC))
@@ -160,7 +160,7 @@ impl AstParser {
                 )));
             }
             self.consume_significant_token(tokens);
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
 
             let task = self.parse_primary_expression(tokens)?;
             return Ok(self.attach_leading_comments(
@@ -224,7 +224,7 @@ impl AstParser {
                     matches!(key, KEYWORD::Symbol(SYMBOL::RoundC))
                 })?,
             );
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -290,7 +290,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_layout(tokens);
+        self.skip_layout(tokens)?;
         if matches!(
             tokens.curr(false).map(|token| token.key()),
             Ok(KEYWORD::Symbol(SYMBOL::CurlyC))
@@ -308,7 +308,7 @@ impl AstParser {
 
         let mut elements = Vec::new();
         for _ in 0..256 {
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
             let pending_comments = self.collect_comment_nodes(tokens)?;
             let token = tokens.curr(false)?;
 
@@ -345,7 +345,7 @@ impl AstParser {
                     )
                 })?,
             );
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
 
             if let Ok(next) = tokens.curr(false) {
                 if matches!(next.key(), KEYWORD::Keyword(BUILDIN::For)) {
@@ -368,7 +368,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_layout(tokens);
+                self.skip_layout(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::CurlyC))

@@ -14,15 +14,15 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_decl_visibility_options(tokens, "segment")?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let name_token = tokens.curr(false)?;
         let name = Self::expect_named_label(&name_token, "Expected segment name after 'seg'")?;
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
             return Err(Box::new(ParseError::from_token(
@@ -31,7 +31,7 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let def_type = self.parse_type_reference_tokens(tokens)?;
         if !matches!(def_type, FolType::Module { .. }) {
@@ -44,10 +44,10 @@ impl AstParser {
             )));
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(AstNode::SegDecl {
                 options,
                 name,
@@ -57,7 +57,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
@@ -68,7 +68,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let body = self.parse_block_body(tokens, "Expected '}' to close segment body")?;
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::SegDecl {
             options,

@@ -55,7 +55,7 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let name_token = tokens.curr(false)?;
         let name = Self::expect_named_label(&name_token, "Expected builtin call name after '.'")?;
@@ -103,7 +103,7 @@ impl AstParser {
         let current = tokens.curr(false)?;
         if current.con().trim() == "..." {
             let _ = tokens.bump();
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
 
             let value_token = tokens.curr(false)?;
             if matches!(
@@ -128,7 +128,7 @@ impl AstParser {
             let name_token = tokens.curr(false)?;
             let name = Self::expect_named_label(&name_token, "Expected argument name before '='")?;
             let _ = tokens.bump();
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
 
             let equal = tokens.curr(false)?;
             if !matches!(equal.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
@@ -138,7 +138,7 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
 
             let value = self.parse_logical_expression(tokens)?;
             return Ok(AstNode::NamedArgument {
@@ -165,7 +165,7 @@ impl AstParser {
         let mut args = Vec::new();
         let mut seen_named_arg = false;
         for _ in 0..256 {
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
             let pending_comments = self.collect_comment_nodes(tokens)?;
             let token = tokens.curr(false)?;
 
@@ -211,7 +211,7 @@ impl AstParser {
             }
             seen_named_arg |= is_named;
             args.push(arg);
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
 
             let sep = tokens.curr(false)?;
             if matches!(
@@ -219,7 +219,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_layout(tokens);
+                self.skip_layout(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::RoundC))

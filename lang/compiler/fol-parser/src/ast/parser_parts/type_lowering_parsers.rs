@@ -143,7 +143,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<FolType, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let token = tokens.curr(false)?;
 
         if token.key().is_illegal() {
@@ -183,7 +183,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         for _ in 0..64 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let separator = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,
@@ -207,7 +207,7 @@ impl AstParser {
                 self.consume_significant_token(tokens);
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let segment = tokens.curr(false)?;
             let segment_name =
                 Self::expect_named_label(&segment, "Expected type segment after '::'")?;
@@ -227,7 +227,7 @@ impl AstParser {
 
         let mut has_suffix = false;
         for _ in 0..32 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let open = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,

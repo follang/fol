@@ -1,16 +1,13 @@
 use super::*;
 
 impl AstParser {
-    fn pipe_stage_from_nodes(&self, nodes: Vec<AstNode>) -> Result<AstNode, Box<dyn Glitch>> {
+    fn pipe_stage_from_nodes(&self, nodes: Vec<AstNode>, anchor: &fol_lexer::lexer::stage3::element::Element) -> Result<AstNode, Box<dyn Glitch>> {
         let mut iter = nodes.into_iter();
         let Some(first) = iter.next() else {
-            return Err(Box::new(ParseError {
-                message: "Pipe stage produced no AST nodes".to_string(),
-                file: None,
-                line: 0,
-                column: 0,
-                length: 0,
-            }));
+            return Err(Box::new(ParseError::from_token(
+                anchor,
+                "Pipe stage produced no AST nodes".to_string(),
+            )));
         };
 
         let mut statements = vec![first];
@@ -72,7 +69,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let token = tokens.curr(false)?;
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::If))
@@ -131,27 +128,27 @@ impl AstParser {
         }
 
         if self.lookahead_binding_alternative(tokens).is_some() {
-            return self.pipe_stage_from_nodes(self.parse_binding_alternative_decl(tokens)?);
+            return self.pipe_stage_from_nodes(self.parse_binding_alternative_decl(tokens)?, &token);
         }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
-            return self.pipe_stage_from_nodes(self.parse_var_decl(tokens)?);
+            return self.pipe_stage_from_nodes(self.parse_var_decl(tokens)?, &token);
         }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Let)) {
-            return self.pipe_stage_from_nodes(self.parse_let_decl(tokens)?);
+            return self.pipe_stage_from_nodes(self.parse_let_decl(tokens)?, &token);
         }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
-            return self.pipe_stage_from_nodes(self.parse_con_decl(tokens)?);
+            return self.pipe_stage_from_nodes(self.parse_con_decl(tokens)?, &token);
         }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Lab)) {
-            return self.pipe_stage_from_nodes(self.parse_lab_decl(tokens)?);
+            return self.pipe_stage_from_nodes(self.parse_lab_decl(tokens)?, &token);
         }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Use)) {
-            return self.pipe_stage_from_nodes(self.parse_use_decl(tokens)?);
+            return self.pipe_stage_from_nodes(self.parse_use_decl(tokens)?, &token);
         }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
@@ -159,7 +156,7 @@ impl AstParser {
         }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
-            return self.pipe_stage_from_nodes(self.parse_type_decl(tokens)?);
+            return self.pipe_stage_from_nodes(self.parse_type_decl(tokens)?, &token);
         }
 
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Def)) {
@@ -208,7 +205,7 @@ impl AstParser {
         if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) && self.lookahead_is_dot_builtin_call(tokens)
         {
             let node = self.parse_dot_builtin_call_expr(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(node);
         }
 
@@ -274,7 +271,7 @@ impl AstParser {
                 self.consume_significant_token(tokens);
             }
 
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
             let next = tokens.curr(false)?;
             if next.key().is_terminal() || next.key().is_eof() {
                 return Err(Box::new(ParseError::from_token(

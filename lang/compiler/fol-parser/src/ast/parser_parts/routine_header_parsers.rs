@@ -17,7 +17,7 @@ impl AstParser {
             )
         {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let second_open = tokens.curr(false)?;
             if !matches!(second_open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -27,12 +27,12 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let name_token = tokens.curr(false)?;
             let name = Self::expect_named_label(&name_token, missing_name_error)?;
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let close_inner = tokens.curr(false)?;
             if !matches!(close_inner.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -42,7 +42,7 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let close_outer = tokens.curr(false)?;
             if !matches!(close_outer.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -60,7 +60,7 @@ impl AstParser {
         let mut names = vec![first_name];
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         loop {
             let next = tokens.curr(false)?;
             if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
@@ -68,12 +68,12 @@ impl AstParser {
             }
             if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let name_token = tokens.curr(false)?;
                 let grouped_name = Self::expect_named_label(&name_token, missing_group_name_error)?;
                 names.push(grouped_name);
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 continue;
             }
             break;
@@ -96,7 +96,7 @@ impl AstParser {
         let mut first_untyped = None;
 
         for _ in 0..128 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -123,7 +123,7 @@ impl AstParser {
                     default: None,
                 });
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                     || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -153,14 +153,14 @@ impl AstParser {
             let param_type = if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     if let Ok(token) = tokens.curr(false) {
                         if matches!(token.key(), KEYWORD::Operator(OPERATOR::Dotdotdot))
                             || token.con().trim() == "..."
                         {
                             is_variadic = true;
                             let _ = tokens.bump();
-                            self.skip_ignorable(tokens);
+                            self.skip_ignorable(tokens)?;
                         }
                     }
                     let base_type = self.parse_type_reference_tokens(tokens)?;
@@ -187,11 +187,11 @@ impl AstParser {
                 }
             };
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let default = if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
 
                     let next = tokens.curr(false)?;
                     if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma))
@@ -232,7 +232,7 @@ impl AstParser {
                 });
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                 || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -347,7 +347,7 @@ impl AstParser {
         let mut seen_names = HashSet::new();
 
         for _ in 0..128 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(symbol) if symbol == close_symbol) {
@@ -364,19 +364,19 @@ impl AstParser {
             }
             let _ = tokens.bump();
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut constraints = Vec::new();
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     constraints.push(self.parse_type_reference_tokens(tokens)?);
                 }
             }
 
             generics.push(Generic { name, constraints });
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                 || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -411,7 +411,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<FunOption>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(vec![FunOption::Mutable]),
@@ -424,7 +424,7 @@ impl AstParser {
 
         let mut options = Vec::new();
         for _ in 0..16 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             Self::reject_illegal_token(&token)?;
 
@@ -448,7 +448,7 @@ impl AstParser {
             options.push(option);
             let _ = tokens.bump();
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             Self::reject_illegal_token(&sep)?;
             if matches!(
@@ -456,7 +456,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::SquarC))
@@ -477,13 +477,21 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            message: "Routine options exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Routine options exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                message: "Routine options exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_parameter_list(
@@ -494,7 +502,7 @@ impl AstParser {
         let mut seen_names = HashSet::new();
 
         for _ in 0..512 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
@@ -527,7 +535,7 @@ impl AstParser {
                     default: None,
                 });
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let sep = tokens.curr(false)?;
                 if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                     || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -571,7 +579,7 @@ impl AstParser {
 
             let _colon = tokens.curr(false)?;
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let mut is_variadic = false;
             if let Ok(token) = tokens.curr(false) {
@@ -580,7 +588,7 @@ impl AstParser {
                 {
                     is_variadic = true;
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                 }
             }
 
@@ -592,12 +600,12 @@ impl AstParser {
             } else {
                 base_type
             };
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let default = if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
 
                     let next = tokens.curr(false)?;
                     if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma))
@@ -639,7 +647,7 @@ impl AstParser {
                 });
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma))
                 || matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Semi))
@@ -664,13 +672,21 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            message: "Parameter parsing exceeded safety bound".to_string(),
-            file: None,
-            line: 1,
-            column: 1,
-            length: 1,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Parameter parsing exceeded safety bound".to_string(),
+            )
+        } else {
+            ParseError {
+                message: "Parameter parsing exceeded safety bound".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_routine_name_with_optional_receiver(
@@ -683,7 +699,7 @@ impl AstParser {
 
         if matches!(current.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let receiver_token = tokens.curr(false)?;
             receiver_type = Some(self.parse_type_reference_tokens(tokens)?);
@@ -710,7 +726,7 @@ impl AstParser {
                 None => unreachable!("receiver_type is set above"),
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 return Err(Box::new(ParseError::from_token(
@@ -719,7 +735,7 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
         }
 
         let name_token = tokens.curr(false)?;

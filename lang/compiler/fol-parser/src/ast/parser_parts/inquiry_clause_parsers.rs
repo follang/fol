@@ -12,7 +12,7 @@ impl AstParser {
         let mut anchor_token = None;
 
         for _ in 0..1024 {
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
             let token = tokens.curr(false)?;
             if anchor_token.is_none() {
                 anchor_token = Some(token.clone());
@@ -94,7 +94,7 @@ impl AstParser {
                 && self.lookahead_is_dot_builtin_call(tokens)
             {
                 body.push(self.parse_dot_builtin_call_expr(tokens)?);
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 continue;
             }
 
@@ -286,7 +286,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let where_token = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(Vec::new()),
@@ -297,7 +297,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             return Err(Box::new(ParseError::from_token(
@@ -310,7 +310,7 @@ impl AstParser {
         let mut targets = Vec::new();
         let mut seen_targets = HashSet::new();
         loop {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let target_token = tokens.curr(false)?;
             let target = self.parse_inquiry_target(tokens)?;
             let duplicate_key = target.duplicate_key();
@@ -322,9 +322,9 @@ impl AstParser {
             }
             targets.push(target);
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let close = tokens.curr(false)?;
             if matches!(
                 close.key(),
@@ -343,7 +343,7 @@ impl AstParser {
             break;
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open_body = tokens.curr(false)?;
         if matches!(open_body.key(), KEYWORD::Operator(OPERATOR::Flow)) {
             let expr = self.flow_nodes_to_expr(self.parse_flow_body_nodes(tokens)?);
@@ -378,7 +378,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<InquiryTarget, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let token = tokens.curr(false)?;
 
         if token.key().is_textual_literal() {
@@ -392,7 +392,7 @@ impl AstParser {
 
         let mut segments = vec![first];
         for _ in 0..64 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let separator = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,
@@ -416,7 +416,7 @@ impl AstParser {
                 self.consume_significant_token(tokens);
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let segment = tokens.curr(false)?;
             let segment_name =
                 Self::expect_named_label(&segment, "Expected name after '::' in inquiry target")?;
@@ -443,7 +443,7 @@ impl AstParser {
         let mut anchor_token = None;
 
         for _ in 0..512 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             if anchor_token.is_none() {
                 anchor_token = Some(token.clone());
@@ -558,7 +558,7 @@ impl AstParser {
                 && self.lookahead_is_dot_builtin_call(tokens)
             {
                 body.push(self.parse_dot_builtin_call_expr(tokens)?);
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 continue;
             }
 
@@ -611,7 +611,7 @@ impl AstParser {
             }
 
             body.push(self.parse_logical_expression(tokens)?);
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
         }
 
         let anchor = match anchor_token {

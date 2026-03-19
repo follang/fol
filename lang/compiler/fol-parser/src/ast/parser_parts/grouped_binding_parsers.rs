@@ -18,34 +18,34 @@ impl AstParser {
 
         let mut nodes = Vec::new();
         for _ in 0..512 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 
             let patterns = self.parse_binding_pattern_list(tokens, "grouped binding")?;
             let is_destructuring = patterns.iter().any(BindingPattern::is_destructuring);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let mut type_hint = None;
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     type_hint = Some(self.parse_type_reference_tokens(tokens)?);
                 }
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut values = Vec::new();
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     values = self.parse_binding_values(tokens, !is_destructuring)?;
                 }
             }
@@ -56,6 +56,7 @@ impl AstParser {
                     patterns,
                     type_hint,
                     values,
+                    tokens,
                 )?);
             } else {
                 let names = patterns
@@ -76,10 +77,11 @@ impl AstParser {
                     names,
                     type_hint,
                     values,
+                    tokens,
                 )?);
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                 let _ = tokens.bump();
@@ -87,7 +89,7 @@ impl AstParser {
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 

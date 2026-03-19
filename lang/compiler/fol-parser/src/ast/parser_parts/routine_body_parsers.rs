@@ -9,7 +9,7 @@ impl AstParser {
         let mut inquiry_targets = HashSet::new();
 
         loop {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let parsed = self.parse_optional_inquiry_clause(tokens)?;
             if parsed.is_empty() {
                 break;
@@ -40,12 +40,12 @@ impl AstParser {
         open_body_message: &str,
         missing_close_message: &str,
     ) -> Result<(Vec<AstNode>, Vec<AstNode>), Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open_body = tokens.curr(false)?;
 
         if matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             let _ = tokens.bump();
-            let _routine_context = self.enter_routine_context();
+            let _routine_context = self.enter_routine_context()?;
             let (body, mut inquiries) =
                 self.parse_routine_body_with_inquiries(tokens, missing_close_message)?;
             inquiries.extend(self.parse_trailing_inquiries(tokens)?);
@@ -53,7 +53,7 @@ impl AstParser {
         }
 
         if matches!(open_body.key(), KEYWORD::Operator(OPERATOR::Flow)) {
-            let _routine_context = self.enter_routine_context();
+            let _routine_context = self.enter_routine_context()?;
             let body = self.parse_flow_body_nodes(tokens)?;
             let inquiries = self.parse_trailing_inquiries(tokens)?;
             return Ok((body, inquiries));

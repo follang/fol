@@ -7,7 +7,7 @@ impl AstParser {
     ) -> Result<Vec<Parameter>, Box<dyn Glitch>> {
         let mut params = Vec::new();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if matches!(close.key(), KEYWORD::Symbol(SYMBOL::Pipe)) {
             return Ok(params);
@@ -21,7 +21,7 @@ impl AstParser {
                 names.push(name);
                 let _ = tokens.bump();
 
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let token = tokens.curr(false)?;
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                     let Some(next_key) = self.next_significant_key_from_window(tokens) else {
@@ -39,25 +39,25 @@ impl AstParser {
                     }
 
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     continue;
                 }
                 break;
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut param_type = FolType::Any;
             let mut is_variadic = false;
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     if matches!(
                         tokens.curr(false)?.key(),
                         KEYWORD::Operator(OPERATOR::Dotdotdot)
                     ) {
                         let _ = tokens.bump();
-                        self.skip_ignorable(tokens);
+                        self.skip_ignorable(tokens)?;
                         is_variadic = true;
                         param_type = FolType::Sequence {
                             element_type: Box::new(self.parse_type_reference_tokens(tokens)?),
@@ -68,12 +68,12 @@ impl AstParser {
                 }
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut default = None;
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     default = Some(self.parse_logical_or_expression(tokens)?);
                 }
             }
@@ -98,7 +98,7 @@ impl AstParser {
                 });
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             if matches!(
                 token.key(),
@@ -111,7 +111,7 @@ impl AstParser {
                     )));
                 }
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::Pipe))
@@ -148,7 +148,7 @@ impl AstParser {
 
         self.ensure_unique_parameter_names(&params, "parameter")?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::Pipe)) {
             return Err(Box::new(ParseError::from_token(
@@ -158,24 +158,24 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let captures = self.parse_optional_routine_capture_list(tokens)?;
         self.ensure_unique_capture_names(&captures)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut return_type = None;
         let mut error_type = None;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 return_type = Some(self.parse_type_reference_tokens(tokens)?);
 
                 error_type = self.parse_optional_error_type_after_return_type(tokens)?;
             }
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let (body, inquiries) = if matches!(
             tokens.curr(false)?.key(),
             KEYWORD::Symbol(SYMBOL::CurlyO) | KEYWORD::Operator(OPERATOR::Flow)
@@ -192,7 +192,7 @@ impl AstParser {
             let mut inquiries = Vec::new();
             let mut inquiry_targets = HashSet::new();
             loop {
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 let parsed = self.parse_optional_inquiry_clause(tokens)?;
                 if parsed.is_empty() {
                     break;
