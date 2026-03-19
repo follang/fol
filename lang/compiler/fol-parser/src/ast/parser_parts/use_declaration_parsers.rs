@@ -35,22 +35,22 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_use_options(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let names = self.parse_use_names(tokens)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
             }
         }
         let path_type = self.parse_type_reference_tokens(tokens)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
             return Err(Box::new(ParseError::from_token(
@@ -61,7 +61,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let paths = self.parse_use_paths(tokens)?;
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
         self.build_use_nodes(options, names, path_type, paths, &use_token)
     }
 
@@ -72,7 +72,7 @@ impl AstParser {
         let mut paths = Vec::new();
 
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 let _ = tokens.bump();
@@ -89,7 +89,7 @@ impl AstParser {
                 let segments = self.parse_use_path_segments(&raw, &token)?;
                 paths.push(ParsedUsePath { segments });
             }
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let next = match tokens.curr(false) {
                 Ok(token) => token,
@@ -98,7 +98,7 @@ impl AstParser {
 
             if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 continue;
             }
 
@@ -160,7 +160,7 @@ impl AstParser {
 
             names.push(name);
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let next = match tokens.curr(false) {
                 Ok(token) => token,
@@ -169,7 +169,7 @@ impl AstParser {
 
             if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 continue;
             }
 
@@ -186,7 +186,7 @@ impl AstParser {
         let mut path = String::new();
 
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             Self::reject_illegal_token(&token)?;
 

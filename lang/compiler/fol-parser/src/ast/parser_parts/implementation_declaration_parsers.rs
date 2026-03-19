@@ -14,18 +14,18 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_decl_visibility_options(tokens, "implementation")?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let generics = self.parse_type_generic_header(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let name_token = tokens.curr(false)?;
         let name =
             Self::expect_named_label(&name_token, "Expected implementation name after 'imp'")?;
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
             return Err(Box::new(ParseError::from_token(
@@ -34,14 +34,14 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let target = self.parse_type_reference_tokens(tokens)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(AstNode::ImpDecl {
                 options,
                 generics,
@@ -52,7 +52,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
             return Err(Box::new(ParseError::from_token(
@@ -63,7 +63,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         let body = self.parse_block_body(tokens, "Expected '}' to close implementation body")?;
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::ImpDecl {
             options,

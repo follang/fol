@@ -25,7 +25,8 @@ Current `V1` note:
 - a function declared as `fun[] read(...): T / E` does not return an `err[E]`
   shell value
 - it returns through a recoverable routine error path
-- handle that path with propagation, `check(...)`, or `expr || fallback`
+- handle that path immediately with `check(...)` or `expr || fallback`
+- plain assignment, return, and ordinary expression use are rejected
 - postfix `!` stays reserved for `opt[...]` and `err[...]` shell values
 {{% notice warn %}}
 
@@ -161,12 +162,12 @@ fun[] add2(): {fun (x: int): int} = {
 ### Generators
 A generator is very similar to a function that returns an array, in that a generator has parameters, can be called, and generates a sequence of values. However, instead of building an array containing all the values and returning them all at once, a generator yields the values one at a time, which requires less memory and allows the caller to get started processing the first few values immediately. In short, a generator looks like a function but behaves like an iterator.
 
-For a function to be a generator (thus to make the keyword `yeild` accesable), it needs to return a type of container: `arr, vec, seq, mat` but not `set, any`.
+For a function to be a generator (thus to make the keyword `yield` accesable), it needs to return a type of container: `arr, vec, seq, mat` but not `set, any`.
 ```
 fun someIter: vec[int] = {
     var curInt = 0;
     loop(){
-        yeild curInt.inc(1)
+        yield curInt.inc(1)
     }
 }
 ```

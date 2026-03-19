@@ -1,0 +1,366 @@
+use crate::{BackendError, BackendErrorKind, BackendResult};
+use fol_intrinsics::intrinsic_by_id;
+use fol_lower::{
+    control::LoweredLinearKind, LoweredInstr, LoweredInstrKind, LoweredRoutine, LoweredType,
+    LoweredTypeTable, LoweredWorkspace,
+};
+use fol_resolver::PackageIdentity;
+
+use super::helpers::{
+    render_clone_expr, render_global_load, render_local_list, render_local_name,
+    render_native_intrinsic_expression, render_namespace_module_path, render_operand,
+    render_routine_path, render_type_path, rendered_result_local, resolve_global_decl,
+    resolve_routine_decl, resolve_type_decl,
+};
+
+pub fn render_core_instruction(
+    package_identity: &PackageIdentity,
+    type_table: &LoweredTypeTable,
+    routine: &LoweredRoutine,
+    instruction: &LoweredInstr,
+) -> BackendResult<String> {
+    render_core_instruction_in_workspace(None, package_identity, type_table, routine, instruction)
+}
+
+pub fn render_core_instruction_in_workspace(
+    workspace: Option<&LoweredWorkspace>,
+    package_identity: &PackageIdentity,
+    type_table: &LoweredTypeTable,
+    routine: &LoweredRoutine,
+    instruction: &LoweredInstr,
+) -> BackendResult<String> {
+    match &instruction.kind {
+        LoweredInstrKind::Const(operand) => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            Ok(format!("let {result} = {};", render_operand(operand)?))
+        }
+        LoweredInstrKind::LoadLocal { local } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let source = render_local_name(package_identity, routine, *local)?;
+            Ok(format!("let {result} = {source}.clone();"))
+        }
+        LoweredInstrKind::StoreLocal { local, value } => {
+            let target = render_local_name(package_identity, routine, *local)?;
+            let value = render_local_name(package_identity, routine, *value)?;
+            Ok(format!("{target} = {value}.clone();"))
+        }
+        LoweredInstrKind::LoadGlobal { global } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let (global_identity, global_decl) = resolve_global_decl(workspace, *global)?;
+            Ok(format!(
+                "let {result} = {};",
+                render_global_load(workspace, global_identity, global_decl)?
+            ))
+        }
+        LoweredInstrKind::StoreGlobal { global, value } => {
+            let (global_identity, global_decl) = resolve_global_decl(workspace, *global)?;
+            let value = render_local_name(package_identity, routine, *value)?;
+            if !global_decl.mutable {
+                return Err(BackendError::new(
+                    BackendErrorKind::Unsupported,
+                    format!(
+                        "store emission is not implemented for immutable global '{}'",
+                        global_decl.name
+                    ),
+                ));
+            }
+            let global_path = format!(
+                "{}::{}",
+                render_namespace_module_path(
+                    workspace,
+                    global_identity,
+                    global_decl.source_unit_id
+                )?,
+                crate::mangle_global_name(global_identity, *global, &global_decl.name)
+            );
+            Ok(format!(
+                "*{global_path}.get_or_init(|| std::sync::Mutex::new(Default::default())).lock().expect(\"global lock\") = {value}.clone();",
+            ))
+        }
+        LoweredInstrKind::Call {
+            callee,
+            args,
+            error_type: None,
+        } => {
+            let rendered_args = args
+                .iter()
+                .map(|local_id| render_local_name(package_identity, routine, *local_id))
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            let (callee_identity, callee_decl) = resolve_routine_decl(workspace, *callee)?;
+            let callee_name = render_routine_path(workspace, callee_identity, callee_decl)?;
+            match instruction.result {
+                Some(_) => {
+                    let result = rendered_result_local(package_identity, routine, instruction)?;
+                    Ok(format!("let {result} = {callee_name}({rendered_args});"))
+                }
+                None => Ok(format!("{callee_name}({rendered_args});")),
+            }
+        }
+        LoweredInstrKind::Call {
+            callee,
+            args,
+            error_type: Some(_),
+        } => {
+            let rendered_args = args
+                .iter()
+                .map(|local_id| render_local_name(package_identity, routine, *local_id))
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            let (callee_identity, callee_decl) = resolve_routine_decl(workspace, *callee)?;
+            let callee_name = render_routine_path(workspace, callee_identity, callee_decl)?;
+            match instruction.result {
+                Some(_) => {
+                    let result = rendered_result_local(package_identity, routine, instruction)?;
+                    Ok(format!("let {result} = {callee_name}({rendered_args});"))
+                }
+                None => Ok(format!("{callee_name}({rendered_args});")),
+            }
+        }
+        LoweredInstrKind::FieldAccess { base, field } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let base = render_local_name(package_identity, routine, *base)?;
+            Ok(format!("let {result} = {base}.{field}.clone();"))
+        }
+        LoweredInstrKind::IntrinsicCall { intrinsic, args } => {
+            let entry = intrinsic_by_id(*intrinsic).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("intrinsic id {:?} is not registered", intrinsic),
+                )
+            })?;
+            let rendered_args = args
+                .iter()
+                .map(|local_id| render_local_name(package_identity, routine, *local_id))
+                .collect::<BackendResult<Vec<_>>>()?;
+            let expression = render_native_intrinsic_expression(entry.name, &rendered_args)?;
+            match instruction.result {
+                Some(_) => {
+                    let result = rendered_result_local(package_identity, routine, instruction)?;
+                    Ok(format!("let {result} = {expression};"))
+                }
+                None => Ok(format!("{expression};")),
+            }
+        }
+        LoweredInstrKind::LengthOf { operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            Ok(format!("let {result} = rt::len(&{operand});"))
+        }
+        LoweredInstrKind::RuntimeHook { intrinsic, args } => {
+            let entry = intrinsic_by_id(*intrinsic).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("intrinsic id {:?} is not registered", intrinsic),
+                )
+            })?;
+            match (entry.name, args.as_slice()) {
+                ("echo", [value]) => {
+                    let value = render_local_name(package_identity, routine, *value)?;
+                    let rendered = format!("rt::echo({value})");
+                    match instruction.result {
+                        Some(_) => {
+                            let result =
+                                rendered_result_local(package_identity, routine, instruction)?;
+                            Ok(format!("let {result} = {rendered};"))
+                        }
+                        None => Ok(format!("{rendered};")),
+                    }
+                }
+                (other, _) => Err(BackendError::new(
+                    BackendErrorKind::Unsupported,
+                    format!("runtime hook emission is not implemented yet for '.{other}(...)'"),
+                )),
+            }
+        }
+        LoweredInstrKind::CheckRecoverable { operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            Ok(format!("let {result} = rt::check_recoverable(&{operand});"))
+        }
+        LoweredInstrKind::UnwrapRecoverable { operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            Ok(format!(
+                "let {result} = {operand}.clone().into_value().expect(\"recoverable success\");"
+            ))
+        }
+        LoweredInstrKind::ExtractRecoverableError { operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            Ok(format!(
+                "let {result} = {operand}.clone().into_error().expect(\"recoverable error\");"
+            ))
+        }
+        LoweredInstrKind::ConstructOptional { value, .. } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let expression = match value {
+                Some(value) => {
+                    let value = render_local_name(package_identity, routine, *value)?;
+                    format!("rt::FolOption::some({value}.clone())")
+                }
+                None => "rt::FolOption::nil()".to_string(),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::ConstructError { value, .. } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let expression = match value {
+                Some(value) => {
+                    let value = render_local_name(package_identity, routine, *value)?;
+                    format!("rt::FolError::new({value}.clone())")
+                }
+                None => "rt::FolError::new(())".to_string(),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::UnwrapShell { operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand_name = render_local_name(package_identity, routine, *operand)?;
+            let operand_local = routine.locals.get(*operand).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("lowered local {:?} is missing", operand),
+                )
+            })?;
+            let Some(type_id) = operand_local.type_id else {
+                return Err(BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!(
+                        "shell operand local {:?} does not have a lowered type",
+                        operand
+                    ),
+                ));
+            };
+            let expression = match type_table.get(type_id) {
+                Some(LoweredType::Optional { .. }) => format!(
+                    "rt::unwrap_optional_shell({operand_name}.clone()).expect(\"optional shell\")"
+                ),
+                Some(LoweredType::Error { .. }) => {
+                    format!("rt::unwrap_error_shell({operand_name}.clone())")
+                }
+                other => return Err(BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!(
+                        "shell unwrap emission expected optional/error local but found {other:?}"
+                    ),
+                )),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::ConstructLinear { kind, elements, .. } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let elements = render_local_list(package_identity, routine, elements)?;
+            let expression = match kind {
+                LoweredLinearKind::Array => format!("[{elements}]"),
+                LoweredLinearKind::Vector => format!("rt::FolVec::from_items(vec![{elements}])"),
+                LoweredLinearKind::Sequence => format!("rt::FolSeq::from_items(vec![{elements}])"),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::ConstructSet { members, .. } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let members = render_local_list(package_identity, routine, members)?;
+            Ok(format!(
+                "let {result} = rt::FolSet::from_items(vec![{members}]);"
+            ))
+        }
+        LoweredInstrKind::ConstructMap { entries, .. } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let entries = entries
+                .iter()
+                .map(|(key, value)| {
+                    Ok(format!(
+                        "({}, {})",
+                        render_clone_expr(package_identity, routine, *key)?,
+                        render_clone_expr(package_identity, routine, *value)?
+                    ))
+                })
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            Ok(format!(
+                "let {result} = rt::FolMap::from_pairs(vec![{entries}]);"
+            ))
+        }
+        LoweredInstrKind::IndexAccess { container, index } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let container_name = render_local_name(package_identity, routine, *container)?;
+            let index_name = render_local_name(package_identity, routine, *index)?;
+            let container_local = routine.locals.get(*container).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("lowered local {:?} is missing", container),
+                )
+            })?;
+            let Some(type_id) = container_local.type_id else {
+                return Err(BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!(
+                        "index container local {:?} does not have a lowered type",
+                        container
+                    ),
+                ));
+            };
+            let expression = match type_table.get(type_id) {
+                Some(LoweredType::Array { .. }) => format!(
+                    "rt::index_array(&{container_name}, {index_name}.clone()).expect(\"array index\").clone()"
+                ),
+                Some(LoweredType::Vector { .. }) => format!(
+                    "rt::index_vec(&{container_name}, {index_name}.clone()).expect(\"vector index\").clone()"
+                ),
+                Some(LoweredType::Sequence { .. }) => format!(
+                    "rt::index_seq(&{container_name}, {index_name}.clone()).expect(\"sequence index\").clone()"
+                ),
+                Some(LoweredType::Map { .. }) => format!(
+                    "rt::lookup_map(&{container_name}, &{index_name}).expect(\"map key\").clone()"
+                ),
+                other => {
+                    return Err(BackendError::new(
+                        BackendErrorKind::InvalidInput,
+                        format!("index emission expected array/vector/sequence/map local but found {other:?}"),
+                    ))
+                }
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::ConstructRecord { type_id, fields } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let (type_identity, type_decl) = resolve_type_decl(workspace, *type_id)?;
+            let type_name = render_type_path(workspace, type_identity, type_decl)?;
+            let rendered_fields = fields
+                .iter()
+                .map(|(field, local)| {
+                    Ok(format!(
+                        "{field}: {}",
+                        render_clone_expr(package_identity, routine, *local)?
+                    ))
+                })
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            Ok(format!(
+                "let {result} = {type_name} {{ {rendered_fields} }};"
+            ))
+        }
+        LoweredInstrKind::ConstructEntry {
+            type_id,
+            variant,
+            payload,
+        } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let (type_identity, type_decl) = resolve_type_decl(workspace, *type_id)?;
+            let type_name = render_type_path(workspace, type_identity, type_decl)?;
+            let expression = match payload {
+                Some(payload) => format!(
+                    "{type_name}::{variant}({})",
+                    render_clone_expr(package_identity, routine, *payload)?
+                ),
+                None => format!("{type_name}::{variant}"),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        other => Err(BackendError::new(
+            BackendErrorKind::Unsupported,
+            format!("core instruction emission is not implemented yet for {other:?}"),
+        )),
+    }
+}

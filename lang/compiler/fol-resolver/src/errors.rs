@@ -18,18 +18,6 @@ pub enum ResolverErrorKind {
 }
 
 impl ResolverErrorKind {
-    fn label(self) -> &'static str {
-        match self {
-            Self::InvalidInput => "ResolverInvalidInput",
-            Self::Unsupported => "ResolverUnsupported",
-            Self::UnresolvedName => "ResolverUnresolvedName",
-            Self::DuplicateSymbol => "ResolverDuplicateSymbol",
-            Self::AmbiguousReference => "ResolverAmbiguousReference",
-            Self::ImportCycle => "ResolverImportCycle",
-            Self::Internal => "ResolverInternal",
-        }
-    }
-
     pub fn diagnostic_code(self) -> DiagnosticCode {
         match self {
             Self::InvalidInput => DiagnosticCode::new("R1001"),
@@ -103,7 +91,7 @@ impl ResolverError {
 
 impl std::fmt::Display for ResolverError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.kind.label(), self.message)
+        write!(f, "{}", self.message)
     }
 }
 
@@ -251,7 +239,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
-    fn resolver_error_formats_with_kind_prefix() {
+    fn resolver_error_formats_without_kind_prefix() {
         let error = ResolverError::new(
             ResolverErrorKind::Unsupported,
             "import source kind is not implemented yet",
@@ -259,7 +247,7 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "ResolverUnsupported: import source kind is not implemented yet"
+            "import source kind is not implemented yet"
         );
     }
 
@@ -304,7 +292,7 @@ mod tests {
 
         assert!(report.has_errors());
         let rendered = report.output(fol_diagnostics::OutputFormat::Json);
-        assert!(rendered.contains("ResolverDuplicateSymbol"));
+        assert!(rendered.contains("duplicate symbol `value`"));
         assert!(rendered.contains("pkg/main.fol"));
         assert!(rendered.contains("\"line\": 7"));
     }
@@ -381,7 +369,7 @@ mod tests {
         let rendered = report.output(fol_diagnostics::OutputFormat::Human);
         let _ = std::fs::remove_file(&path);
 
-        assert!(rendered.contains("error: ResolverUnresolvedName: could not resolve `answer`"));
+        assert!(rendered.contains("error: could not resolve `answer`"));
         assert!(rendered.contains("| return answer;"));
         assert!(rendered.contains("|        ^^^^^^"));
     }
@@ -404,7 +392,7 @@ mod tests {
 
         let rendered = report.output(fol_diagnostics::OutputFormat::Json);
         assert!(rendered.contains("\"code\": \"R1003\""));
-        assert!(rendered.contains("ResolverUnresolvedName: could not resolve `answer`"));
+        assert!(rendered.contains("could not resolve `answer`"));
     }
 
     #[test]

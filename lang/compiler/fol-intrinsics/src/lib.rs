@@ -35,17 +35,13 @@ pub use validate::{
     validate_intrinsic_registry, RegistryValidationError, RegistryValidationErrorKind,
 };
 
-pub fn crate_name() -> &'static str {
-    CRATE_NAME
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn crate_name_matches_expected_foundation_identity() {
-        assert_eq!(crate_name(), "fol-intrinsics");
+        assert_eq!(CRATE_NAME, "fol-intrinsics");
     }
 
     #[test]

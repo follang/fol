@@ -7,7 +7,7 @@ impl AstParser {
         mut base: FolType,
     ) -> Result<FolType, Box<dyn Glitch>> {
         for _ in 0..32 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let open = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,
@@ -47,7 +47,7 @@ impl AstParser {
 
         let mut limits = Vec::new();
         for _ in 0..128 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
                 let _ = tokens.bump();
@@ -55,7 +55,7 @@ impl AstParser {
             }
 
             limits.push(self.parse_logical_expression(tokens)?);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let separator = tokens.curr(false)?;
             if matches!(
@@ -63,7 +63,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::SquarC))
@@ -429,7 +429,7 @@ impl AstParser {
 
         let mut args = Vec::new();
         for _ in 0..16 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             Self::reject_illegal_token(&token)?;
 
@@ -450,7 +450,7 @@ impl AstParser {
             args.push(option);
             let _ = tokens.bump();
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             Self::reject_illegal_token(&sep)?;
             if matches!(
@@ -458,7 +458,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::SquarC))
@@ -486,13 +486,22 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            message: "Scalar type option list exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Scalar type option list exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Scalar type option list exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_type_argument_list(
@@ -510,7 +519,7 @@ impl AstParser {
 
         let mut args = Vec::new();
         for _ in 0..64 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
@@ -526,7 +535,7 @@ impl AstParser {
             }
 
             args.push(self.parse_type_reference_tokens(tokens)?);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let sep = tokens.curr(false)?;
             Self::reject_illegal_token(&sep)?;
@@ -535,7 +544,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::SquarC))
@@ -562,13 +571,22 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            message: "Type argument list exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Type argument list exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Type argument list exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_array_type_arguments(
@@ -584,9 +602,9 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let element_type = self.parse_type_reference_tokens(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let comma = tokens.curr(false)?;
         if !matches!(
@@ -605,7 +623,7 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         if matches!(
             tokens.curr(false).map(|token| token.key()),
             Ok(KEYWORD::Symbol(SYMBOL::SquarC))
@@ -625,13 +643,13 @@ impl AstParser {
         })?;
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         if matches!(
             tokens.curr(false).map(|token| token.key()),
             Ok(KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi))
         ) {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
         }
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
@@ -658,12 +676,12 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let element_type = self.parse_type_reference_tokens(tokens)?;
         let mut dimensions = Vec::new();
 
         for _ in 0..8 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let comma = tokens.curr(false)?;
             if matches!(comma.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
                 break;
@@ -685,7 +703,7 @@ impl AstParser {
             }
             let _ = tokens.bump();
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             if matches!(
                 tokens.curr(false).map(|token| token.key()),
                 Ok(KEYWORD::Symbol(SYMBOL::SquarC))
@@ -711,7 +729,7 @@ impl AstParser {
             )));
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
             return Err(Box::new(ParseError::from_token(

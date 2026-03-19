@@ -3,7 +3,6 @@ use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum SYMBOL {
-    ANY,
     RoundO,
     RoundC,
     SquarO,
@@ -19,8 +18,6 @@ pub enum SYMBOL {
     Escape,
     Pipe,
     Equal,
-    Greater,
-    Less,
     Plus,
     Minus,
     Under,
@@ -37,59 +34,50 @@ pub enum SYMBOL {
     Dollar,
     Degree,
     Sign,
-    Tik,
 }
 
 impl fmt::Display for SYMBOL {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let t = match self {
-            SYMBOL::CurlyC => Some("}"),
-            SYMBOL::CurlyO => Some("{"),
-            SYMBOL::SquarC => Some("]"),
-            SYMBOL::SquarO => Some("["),
-            SYMBOL::RoundC => Some(")"),
-            SYMBOL::RoundO => Some("("),
-            SYMBOL::AngleC => Some(">"),
-            SYMBOL::AngleO => Some("<"),
-            SYMBOL::Dot => Some("."),
-            SYMBOL::Comma => Some(","),
-            SYMBOL::Colon => Some(":"),
-            SYMBOL::Semi => Some(";"),
-            SYMBOL::Escape => Some("\\"),
-            SYMBOL::Pipe => Some("|"),
-            SYMBOL::Equal => Some("="),
-            SYMBOL::Plus => Some("+"),
-            SYMBOL::Minus => Some("-"),
-            SYMBOL::Under => Some("_"),
-            SYMBOL::Star => Some("*"),
-            SYMBOL::Home => Some("~"),
-            SYMBOL::Root => Some("/"),
-            SYMBOL::Percent => Some("%"),
-            SYMBOL::Carret => Some("^"),
-            SYMBOL::Query => Some("?"),
-            SYMBOL::Bang => Some("!"),
-            SYMBOL::And => Some("&"),
-            SYMBOL::At => Some("@"),
-            SYMBOL::Hash => Some("#"),
-            SYMBOL::Dollar => Some("$"),
-            SYMBOL::Degree => Some("°"),
-            SYMBOL::Sign => Some("§"),
-            SYMBOL::Tik => Some("`"),
-            _ => None,
+            SYMBOL::CurlyC => "}",
+            SYMBOL::CurlyO => "{",
+            SYMBOL::SquarC => "]",
+            SYMBOL::SquarO => "[",
+            SYMBOL::RoundC => ")",
+            SYMBOL::RoundO => "(",
+            SYMBOL::AngleC => ">",
+            SYMBOL::AngleO => "<",
+            SYMBOL::Dot => ".",
+            SYMBOL::Comma => ",",
+            SYMBOL::Colon => ":",
+            SYMBOL::Semi => ";",
+            SYMBOL::Escape => "\\",
+            SYMBOL::Pipe => "|",
+            SYMBOL::Equal => "=",
+            SYMBOL::Plus => "+",
+            SYMBOL::Minus => "-",
+            SYMBOL::Under => "_",
+            SYMBOL::Star => "*",
+            SYMBOL::Home => "~",
+            SYMBOL::Root => "/",
+            SYMBOL::Percent => "%",
+            SYMBOL::Carret => "^",
+            SYMBOL::Query => "?",
+            SYMBOL::Bang => "!",
+            SYMBOL::And => "&",
+            SYMBOL::At => "@",
+            SYMBOL::Hash => "#",
+            SYMBOL::Dollar => "$",
+            SYMBOL::Degree => "°",
+            SYMBOL::Sign => "§",
         };
         write!(
             f,
             "{}{}",
             " SYMBOL   ".black().on_red(),
-            match t {
-                Some(val) => {
-                    (":".to_string().white().on_black().to_string() + &format!(" {} ", val))
-                        .black()
-                        .on_red()
-                        .to_string()
-                }
-                None => "".to_string(),
-            },
+            (":".to_string().white().on_black().to_string() + &format!(" {} ", t))
+                .black()
+                .on_red()
         )
     }
 }

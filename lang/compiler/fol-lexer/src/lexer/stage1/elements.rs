@@ -2,7 +2,7 @@ use crate::lexer::stage0;
 use crate::lexer::stage1::Element;
 use crate::token::{help, KEYWORD::*, VOID};
 use fol_stream::FileStream;
-use fol_types::{Con, Vod, Win, SLIDER};
+use fol_types::{Con, Win, SLIDER};
 
 pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,
@@ -66,18 +66,6 @@ impl Elements {
                 }
             }
         }
-    }
-    pub fn debug(&self) -> Vod {
-        println!(
-            "{}\t{}\t{}",
-            self.curr()?.loc(),
-            self.curr()?.key(),
-            self.curr()?.con()
-        );
-        Ok(())
-    }
-    pub fn echo(&self) {
-        println!(">>>>>>>>>>>>>>>>>>>>>")
     }
 }
 

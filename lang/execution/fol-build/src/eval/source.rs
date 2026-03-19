@@ -1,0 +1,137 @@
+use super::plan::evaluate_build_plan;
+use super::types::{
+    BuildEvaluationRequest, BuildEvaluationResult, EvaluatedBuildProgram, EvaluatedBuildSource,
+};
+use super::error::BuildEvaluationError;
+use crate::executor::{BuildBodyExecutor, ExecutionOutput};
+use crate::runtime::{
+    BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
+    BuildRuntimeDependency, BuildRuntimeProgram, BuildRuntimeStepBinding,
+    BuildRuntimeStepBindingKind,
+};
+use std::path::Path;
+
+pub fn evaluate_build_source(
+    request: &BuildEvaluationRequest,
+    build_path: &Path,
+    _source: &str,
+) -> Result<Option<EvaluatedBuildSource>, BuildEvaluationError> {
+    let Some((executor, body)) = BuildBodyExecutor::from_file(build_path)? else {
+        return Ok(None);
+    };
+    let mut resolved_inputs = std::collections::BTreeMap::new();
+    if let Some(target) = &request.inputs.target {
+        resolved_inputs.insert("target".to_string(), target.render());
+    }
+    if let Some(optimize) = request.inputs.optimize {
+        resolved_inputs.insert("optimize".to_string(), optimize.as_str().to_string());
+    }
+    let executor = executor.with_resolved_inputs(resolved_inputs);
+    let exec_output = executor.execute(&body)?;
+    if exec_output.operations.is_empty() {
+        return Ok(None);
+    }
+    let result = evaluate_build_plan(&BuildEvaluationRequest {
+        package_root: request.package_root.clone(),
+        inputs: request.inputs.clone(),
+        operations: exec_output.operations.clone(),
+    })?;
+    let evaluated = build_evaluated_program(&exec_output, &result);
+    Ok(Some(EvaluatedBuildSource { evaluated, result }))
+}
+
+pub(super) fn build_evaluated_program(
+    exec_output: &ExecutionOutput,
+    result: &BuildEvaluationResult,
+) -> EvaluatedBuildProgram {
+    let mut step_bindings = exec_output
+        .run_steps
+        .iter()
+        .map(|(step_name, artifact_name)| {
+            let kind = if step_name == "run" {
+                BuildRuntimeStepBindingKind::DefaultRun
+            } else {
+                BuildRuntimeStepBindingKind::NamedRun
+            };
+            BuildRuntimeStepBinding::new(step_name.clone(), kind, Some(artifact_name.clone()))
+        })
+        .collect::<Vec<_>>();
+    if exec_output.executable_artifacts.len() == 1
+        && !step_bindings
+            .iter()
+            .any(|binding| binding.step_name == "build")
+    {
+        step_bindings.push(BuildRuntimeStepBinding::new(
+            "build",
+            BuildRuntimeStepBindingKind::DefaultBuild,
+            Some(exec_output.executable_artifacts[0].name.clone()),
+        ));
+    }
+    if exec_output.test_artifacts.len() == 1
+        && !step_bindings
+            .iter()
+            .any(|binding| binding.step_name == "test")
+    {
+        step_bindings.push(BuildRuntimeStepBinding::new(
+            "test",
+            BuildRuntimeStepBindingKind::DefaultTest,
+            Some(exec_output.test_artifacts[0].name.clone()),
+        ));
+    }
+    let artifacts = exec_output
+        .executable_artifacts
+        .iter()
+        .map(|artifact| {
+            BuildRuntimeArtifact::new(
+                artifact.name.clone(),
+                BuildRuntimeArtifactKind::Executable,
+                artifact.root_module.resolve(&result.resolved_options),
+            )
+            .with_target_config(
+                artifact
+                    .target
+                    .as_ref()
+                    .map(|v| v.resolve(&result.resolved_options)),
+                artifact
+                    .optimize
+                    .as_ref()
+                    .map(|v| v.resolve(&result.resolved_options)),
+            )
+        })
+        .chain(exec_output.test_artifacts.iter().map(|artifact| {
+            BuildRuntimeArtifact::new(
+                artifact.name.clone(),
+                BuildRuntimeArtifactKind::Test,
+                artifact.root_module.resolve(&result.resolved_options),
+            )
+            .with_target_config(
+                artifact
+                    .target
+                    .as_ref()
+                    .map(|v| v.resolve(&result.resolved_options)),
+                artifact
+                    .optimize
+                    .as_ref()
+                    .map(|v| v.resolve(&result.resolved_options)),
+            )
+        }))
+        .collect::<Vec<_>>();
+    let dependencies = result
+        .dependency_requests
+        .iter()
+        .map(|request| BuildRuntimeDependency {
+            alias: request.alias.clone(),
+            package: request.package.clone(),
+            evaluation_mode: request.evaluation_mode,
+        })
+        .collect::<Vec<_>>();
+    EvaluatedBuildProgram {
+        program: BuildRuntimeProgram::new(BuildExecutionRepresentation::RestrictedRuntimeIr),
+        artifacts,
+        generated_files: exec_output.generated_files.clone(),
+        dependencies,
+        dependency_queries: exec_output.dependency_queries.clone(),
+        step_bindings,
+        result: result.clone(),
+    }
+}

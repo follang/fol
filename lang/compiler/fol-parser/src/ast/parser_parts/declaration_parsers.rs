@@ -75,17 +75,17 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_decl_visibility_options(tokens, "definition")?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let name_token = tokens.curr(false)?;
         let name = Self::expect_named_label(&name_token, "Expected definition name")?;
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let params = self.parse_definition_parameter_header(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
             return Err(Box::new(ParseError::from_token(
@@ -95,7 +95,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let def_type_token = tokens.curr(false)?;
         let def_type = self.parse_type_reference_tokens(tokens)?;
         if !self.is_supported_definition_type(&def_type) {
@@ -115,11 +115,11 @@ impl AstParser {
             )));
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let next = tokens.curr(false)?;
         if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
             if matches!(def_type, FolType::Block { .. }) {
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 return Ok(AstNode::DefDecl {
                     options,
                     name,
@@ -136,7 +136,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let body = if self.definition_uses_block_body(&def_type) {
             let open_body = tokens.curr(false)?;
             if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
@@ -150,7 +150,7 @@ impl AstParser {
         } else {
             vec![self.parse_logical_expression(tokens)?]
         };
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::DefDecl {
             options,
@@ -174,13 +174,13 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let name_token = tokens.curr(false)?;
         let name = Self::expect_named_label(&name_token, "Expected alias declaration name")?;
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
             return Err(Box::new(ParseError::from_token(
@@ -190,10 +190,10 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let target = self.parse_type_reference_tokens(tokens)?;
 
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::AliasDecl { name, target })
     }
@@ -211,9 +211,9 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let options = self.parse_type_options(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         if matches!(
             tokens.curr(false).map(|token| token.key()),
@@ -237,7 +237,7 @@ impl AstParser {
 
         let mut names = vec![name];
         loop {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,
@@ -246,7 +246,7 @@ impl AstParser {
                 break;
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let next_name = tokens.curr(false)?;
             let next_name =
                 Self::expect_named_label(&next_name, "Expected type declaration name after ','")?;
@@ -254,11 +254,11 @@ impl AstParser {
             let _ = tokens.bump();
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let generics = self.parse_type_generic_header(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let explicit_contracts = self.parse_type_contract_header(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
             return Err(Box::new(ParseError::from_token(
@@ -268,16 +268,16 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut type_defs = vec![self.parse_type_definition(tokens)?];
         while type_defs.len() < names.len() {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if !matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                 break;
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             type_defs.push(self.parse_type_definition(tokens)?);
         }
 
@@ -290,7 +290,7 @@ impl AstParser {
         }
 
         if consume_terminator {
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
         }
 
         let assigned_type_defs = match type_defs.len() {
@@ -328,9 +328,9 @@ impl AstParser {
         let marker = tokens.curr(false)?.con().trim().to_string();
         if marker == "ent" {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             self.parse_empty_type_marker_brackets(tokens, "entry")?;
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let assign = tokens.curr(false)?;
             if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
@@ -340,18 +340,18 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             return self.parse_entry_type_definition(tokens);
         }
 
         if marker == "rec" || marker == "obj" {
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             self.parse_empty_type_marker_brackets(
                 tokens,
                 if marker == "obj" { "object" } else { "record" },
             )?;
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let assign = tokens.curr(false)?;
             if marker == "obj" && !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
@@ -371,7 +371,7 @@ impl AstParser {
                 )));
             }
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             return self.parse_record_type_definition(tokens);
         }
 
@@ -393,7 +393,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         marker_name: &str,
     ) -> Result<(), Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(()),
@@ -404,7 +404,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let token = tokens.curr(false)?;
         Self::reject_illegal_token(&token)?;
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
@@ -422,7 +422,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<Generic>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(Vec::new()),
@@ -453,7 +453,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<FolType>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(Vec::new()),
@@ -466,7 +466,7 @@ impl AstParser {
 
         let mut contracts = Vec::new();
         for _ in 0..64 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
@@ -474,7 +474,7 @@ impl AstParser {
             }
 
             contracts.push(self.parse_type_reference_tokens(tokens)?);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let sep = tokens.curr(false)?;
             if matches!(
@@ -482,7 +482,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::RoundC))
@@ -503,20 +503,29 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            message: "Type contracts exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Type contracts exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Type contracts exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_type_options(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<TypeOption>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(Vec::new()),
@@ -529,7 +538,7 @@ impl AstParser {
 
         let mut options = Vec::new();
         for _ in 0..16 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             Self::reject_illegal_token(&token)?;
 
@@ -554,7 +563,7 @@ impl AstParser {
             options.push(option);
             let _ = tokens.bump();
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             Self::reject_illegal_token(&sep)?;
             if matches!(
@@ -562,7 +571,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::SquarC))
@@ -583,13 +592,22 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            message: "Type options exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Type options exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Type options exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     pub(super) fn parse_use_path(
@@ -599,7 +617,7 @@ impl AstParser {
         let mut path = String::new();
 
         for _ in 0..512 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
@@ -632,13 +650,22 @@ impl AstParser {
             }
         }
 
-        Err(Box::new(ParseError {
-            message: "Use path parsing exceeded safety bound".to_string(),
-            file: None,
-            line: 1,
-            column: 1,
-            length: 1,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Use path parsing exceeded safety bound".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Use path parsing exceeded safety bound".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 
     fn type_contracts_from_generics(
@@ -667,7 +694,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Vec<Parameter>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let current = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(Vec::new()),

@@ -48,11 +48,10 @@ pub fn render_terminator(
             None => Ok("return rt::FolRecover::err(());".to_string()),
         },
         LoweredTerminator::Panic { value } => match value {
-            Some(value) => Ok(format!(
-                "panic!(\"{}\", rt::render_echo(&{}));",
-                "{}",
-                render_local_name(package_identity, routine, *value)?
-            )),
+            Some(value) => {
+                let name = render_local_name(package_identity, routine, *value)?;
+                Ok(format!("panic!(\"{{}}\", rt::render_echo(&{name}));"))
+            }
             None => Ok("panic!(\"panic\");".to_string()),
         },
         LoweredTerminator::Unreachable => Ok("unreachable!();".to_string()),
@@ -111,7 +110,7 @@ mod tests {
     #[test]
     fn terminator_rendering_emits_jump_shells() {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
-        let _table = LoweredTypeTable::new();
+        let table = LoweredTypeTable::new();
         let routine = LoweredRoutine::new(LoweredRoutineId(0), "main", LoweredBlockId(0));
 
         let rendered = render_terminator(
@@ -136,7 +135,6 @@ mod tests {
         let condition = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(bool_id),
-            recoverable_error_type: None,
             name: Some("flag".to_string()),
         });
 
@@ -167,7 +165,6 @@ mod tests {
         let value = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(int_id),
-            recoverable_error_type: None,
             name: Some("value".to_string()),
         });
 
@@ -199,7 +196,6 @@ mod tests {
         let value = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(str_id),
-            recoverable_error_type: None,
             name: Some("message".to_string()),
         });
 
@@ -231,6 +227,7 @@ mod tests {
     #[test]
     fn terminator_rendering_emits_unreachable_shells() {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let table = LoweredTypeTable::new();
         let routine = LoweredRoutine::new(LoweredRoutineId(4), "main", LoweredBlockId(0));
 
         let rendered = render_terminator(
@@ -262,19 +259,16 @@ mod tests {
         let flag = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(bool_id),
-            recoverable_error_type: None,
             name: Some("flag".to_string()),
         });
         let value = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(1),
             type_id: Some(int_id),
-            recoverable_error_type: None,
             name: Some("value".to_string()),
         });
         let message = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(2),
             type_id: Some(str_id),
-            recoverable_error_type: None,
             name: Some("message".to_string()),
         });
 
@@ -331,7 +325,6 @@ mod tests {
         let value = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(int_id),
-            recoverable_error_type: None,
             name: Some("value".to_string()),
         });
 

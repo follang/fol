@@ -1,7 +1,9 @@
 /target
 /vendor
-.dirnev
 .direnv
 .devbox
-.direnv
-docs
+docs/
+*.swp
+.idea/
+*.log
+.fol/build/

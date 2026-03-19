@@ -294,16 +294,23 @@ pub fn run_direct_compile(
                         binary_path,
                     },
                 ) => {
-                    let status = std::process::Command::new(&binary_path)
+                    let output = std::process::Command::new(&binary_path)
                         .args(args)
-                        .status()
+                        .output()
                         .map_err(|error| {
                             FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string())
                         })?;
-                    if !status.success() {
+                    if !output.status.success() {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        if !stderr.is_empty() {
+                            eprint!("{stderr}");
+                        }
                         return Err(FrontendError::new(
                             FrontendErrorKind::CommandFailed,
-                            format!("run command failed for '{}': status {status}", binary_path),
+                            format!(
+                                "run command failed for '{}': status {}",
+                                binary_path, output.status
+                            ),
                         ));
                     }
                     let mut result =

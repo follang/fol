@@ -10,7 +10,7 @@ impl DiagnosticCode {
     }
 
     pub fn unknown() -> Self {
-        Self::new("E0000")
+        Self::new("EUNKNOWN")
     }
 
     pub fn as_str(&self) -> &str {

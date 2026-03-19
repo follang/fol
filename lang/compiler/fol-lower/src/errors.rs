@@ -12,14 +12,6 @@ pub enum LoweringErrorKind {
 }
 
 impl LoweringErrorKind {
-    fn label(self) -> &'static str {
-        match self {
-            Self::Unsupported => "LoweringUnsupported",
-            Self::InvalidInput => "LoweringInvalidInput",
-            Self::Internal => "LoweringInternal",
-        }
-    }
-
     pub fn diagnostic_code(self) -> DiagnosticCode {
         match self {
             Self::Unsupported => DiagnosticCode::new("L1001"),
@@ -89,7 +81,7 @@ impl LoweringError {
 
 impl std::fmt::Display for LoweringError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.kind.label(), self.message)
+        write!(f, "{}", self.message)
     }
 }
 
@@ -164,7 +156,7 @@ mod tests {
         );
         assert_eq!(
             error.to_string(),
-            "LoweringInvalidInput: typed lowering input was incomplete"
+            "typed lowering input was incomplete"
         );
     }
 

@@ -92,7 +92,6 @@ impl Element {
 
     //checking
     pub fn slash_comment(&mut self, code: &mut stage0::Elements) -> Vod {
-        // Slash comments remain a compatibility surface for now.
         self.con.push_str(&code.curr()?.0.to_string());
         self.bump(code)?;
         if code.curr()?.0 == '/' {
@@ -108,7 +107,12 @@ impl Element {
         }
         if code.curr()?.0 == '*' {
             while !(code.curr()?.0 == '*' && code.peek(0)?.0 == '/') {
-                if is_eof(&code.peek(0)?.0) || code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR {
+                if is_eof(&code.peek(0)?.0) {
+                    return Err(catch!(Flaw::ReadingBadContent {
+                        msg: Some("unterminated block comment: '/*' has no matching '*/'".to_string())
+                    }));
+                };
+                if code.peek(0)?.0 == stage0::SOURCE_BOUNDARY_CHAR {
                     self.set_key(Illegal);
                     return Ok(());
                 };
@@ -447,7 +451,7 @@ impl Element {
             "self" => self.set_key(Keyword(BUILDIN::Selfi)),
             "break" => self.set_key(Keyword(BUILDIN::Break)),
             "return" => self.set_key(Keyword(BUILDIN::Return)),
-            "yeild" => self.set_key(Keyword(BUILDIN::Yeild)),
+            "yield" => self.set_key(Keyword(BUILDIN::Yield)),
             "panic" => self.set_key(Keyword(BUILDIN::Panic)),
             "report" => self.set_key(Keyword(BUILDIN::Report)),
             "check" => self.set_key(Keyword(BUILDIN::Check)),
@@ -463,6 +467,9 @@ impl Element {
             "async" => self.set_key(Keyword(BUILDIN::Async)),
             "await" => self.set_key(Keyword(BUILDIN::Await)),
             "select" => self.set_key(Keyword(BUILDIN::Select)),
+            "get" => self.set_key(Keyword(BUILDIN::Get)),
+            "nor" => self.set_key(Keyword(BUILDIN::Nor)),
+            "at" => self.set_key(Keyword(BUILDIN::At)),
             _ => self.set_key(Identifier),
         }
         Ok(())

@@ -17,12 +17,12 @@ impl AstParser {
 
         let mut nodes = Vec::new();
         for _ in 0..256 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 
@@ -32,7 +32,7 @@ impl AstParser {
                 false,
             )?);
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if matches!(
                 sep.key(),
@@ -43,7 +43,7 @@ impl AstParser {
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 
@@ -53,12 +53,21 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            message: "Grouped type declarations exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Grouped type declarations exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Grouped type declarations exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 }

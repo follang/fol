@@ -1,0 +1,582 @@
+use crate::{FrontendError, FrontendErrorKind, FrontendProfile, FrontendResult, FrontendWorkspace};
+use std::path::PathBuf;
+
+#[cfg(test)]
+mod tests;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrontendBuildWorkflowMode {
+    Modern,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FrontendBuildStep {
+    Build,
+    Run,
+    Test,
+    Check,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FrontendMemberBuildRoute {
+    pub member_root: PathBuf,
+    pub package_name: String,
+    pub mode: FrontendBuildWorkflowMode,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FrontendWorkspaceBuildRoute {
+    pub requested_step: String,
+    pub members: Vec<FrontendMemberBuildRoute>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FrontendWorkspaceBuildRequest {
+    pub requested_step: String,
+    pub profile: FrontendProfile,
+    pub run_args: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct FrontendMemberExecutionPlan {
+    steps: Vec<FrontendMemberPlannedStep>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FrontendMemberPlannedStep {
+    name: String,
+    execution: Option<FrontendStepExecutionKind>,
+    selection: Option<crate::compile::FrontendArtifactExecutionSelection>,
+    ambiguous_selection: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FrontendStepExecutionKind {
+    Build,
+    Run,
+    Test,
+    Check,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ResolvedWorkspaceStepExecution {
+    execution: FrontendStepExecutionKind,
+    selections: Vec<crate::compile::FrontendArtifactExecutionSelection>,
+}
+
+impl FrontendBuildWorkflowMode {
+    pub fn from_package_build_mode(mode: fol_package::PackageBuildMode) -> Option<Self> {
+        match mode {
+            fol_package::PackageBuildMode::ModernOnly => Some(FrontendBuildWorkflowMode::Modern),
+            _ => None,
+        }
+    }
+}
+
+impl FrontendBuildStep {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            FrontendBuildStep::Build => "build",
+            FrontendBuildStep::Run => "run",
+            FrontendBuildStep::Test => "test",
+            FrontendBuildStep::Check => "check",
+        }
+    }
+
+    pub fn default_for_code_subcommand(command: &crate::CodeSubcommand) -> Self {
+        match command {
+            crate::CodeSubcommand::Build(_) => FrontendBuildStep::Build,
+            crate::CodeSubcommand::Run(_) => FrontendBuildStep::Run,
+            crate::CodeSubcommand::Test(_) => FrontendBuildStep::Test,
+            crate::CodeSubcommand::Check(_) => FrontendBuildStep::Check,
+            crate::CodeSubcommand::Emit(_) => FrontendBuildStep::Build,
+        }
+    }
+}
+
+pub fn requested_workspace_step(
+    command: &crate::CodeSubcommand,
+    override_step: Option<&str>,
+) -> String {
+    override_step.map(str::to_string).unwrap_or_else(|| {
+        FrontendBuildStep::default_for_code_subcommand(command)
+            .as_str()
+            .to_string()
+    })
+}
+
+pub fn plan_workspace_build_route(
+    workspace: &FrontendWorkspace,
+    requested_step: impl Into<String>,
+) -> FrontendResult<FrontendWorkspaceBuildRoute> {
+    let members = workspace
+        .members
+        .iter()
+        .map(|member| {
+            let metadata = fol_package::parse_package_metadata(&member.manifest_file)?;
+            let mode = load_member_build_mode(&member.root.join("build.fol"))?;
+            Ok(FrontendMemberBuildRoute {
+                member_root: member.root.clone(),
+                package_name: metadata.name,
+                mode,
+            })
+        })
+        .collect::<FrontendResult<Vec<_>>>()?;
+
+    Ok(FrontendWorkspaceBuildRoute {
+        requested_step: requested_step.into(),
+        members,
+    })
+}
+
+fn load_member_build_mode(
+    build_path: &std::path::Path,
+) -> FrontendResult<FrontendBuildWorkflowMode> {
+    let mode = fol_package::parse_package_build_mode(build_path)?;
+    FrontendBuildWorkflowMode::from_package_build_mode(mode).ok_or_else(|| {
+        FrontendError::new(
+            FrontendErrorKind::Internal,
+            format!(
+                "workspace member build '{}' has an unmappable build mode",
+                build_path.display()
+            ),
+        )
+    })
+}
+
+pub fn execute_workspace_build_route(
+    workspace: &FrontendWorkspace,
+    config: &crate::FrontendConfig,
+    request: &FrontendWorkspaceBuildRequest,
+) -> FrontendResult<crate::FrontendCommandResult> {
+    let route = plan_workspace_build_route(workspace, request.requested_step.clone())?;
+    let member_plans = route
+        .members
+        .iter()
+        .map(|member| plan_member_execution(member, config))
+        .collect::<FrontendResult<Vec<_>>>()?;
+    let requested_step = request.requested_step.as_str();
+    if !member_plans
+        .iter()
+        .any(|plan| plan.steps.iter().any(|step| step.name == requested_step))
+    {
+        return Err(unknown_workspace_build_step_error(requested_step, &route));
+    }
+
+    let resolved = resolve_requested_step_execution(requested_step, &member_plans)?;
+
+    match resolved.execution {
+        FrontendStepExecutionKind::Build => {
+            if resolved.selections.is_empty() {
+                crate::build_workspace_for_profile_with_config(workspace, config, request.profile)
+            } else {
+                crate::compile::build_selected_artifacts_for_profile_with_config(
+                    workspace,
+                    config,
+                    request.profile,
+                    &resolved.selections,
+                )
+            }
+        }
+        FrontendStepExecutionKind::Check => crate::check_workspace_with_config(workspace, config),
+        FrontendStepExecutionKind::Run => match resolved.selections.as_slice() {
+            [] => crate::run_workspace_with_args_and_config(workspace, config, &request.run_args),
+            [selection] => crate::compile::run_selected_artifact_with_args_and_config(
+                workspace,
+                config,
+                request.profile,
+                selection,
+                &request.run_args,
+            ),
+            selections => Err(FrontendError::new(
+                FrontendErrorKind::InvalidInput,
+                format!(
+                    "workspace build execution step '{}' resolved to {} runnable artifacts",
+                    requested_step,
+                    selections.len()
+                ),
+            )),
+        },
+        FrontendStepExecutionKind::Test => {
+            if resolved.selections.is_empty() {
+                crate::test_workspace_with_config(workspace, config)
+            } else {
+                crate::compile::test_selected_artifacts_with_config(
+                    workspace,
+                    config,
+                    request.profile,
+                    &resolved.selections,
+                )
+            }
+        }
+    }
+}
+
+pub(crate) fn plan_member_execution(
+    member: &FrontendMemberBuildRoute,
+    config: &crate::FrontendConfig,
+) -> FrontendResult<FrontendMemberExecutionPlan> {
+    plan_member_execution_from_build_source(member, config)
+}
+
+fn plan_member_execution_from_build_source(
+    member: &FrontendMemberBuildRoute,
+    config: &crate::FrontendConfig,
+) -> FrontendResult<FrontendMemberExecutionPlan> {
+    let build_path = member.member_root.join("build.fol");
+    let source = std::fs::read_to_string(&build_path).map_err(|error| {
+        FrontendError::new(
+            FrontendErrorKind::CommandFailed,
+            format!(
+                "failed to read build file '{}': {error}",
+                build_path.display()
+            ),
+        )
+    })?;
+    let mut inputs = fol_package::BuildEvaluationInputs {
+        working_directory: member.member_root.display().to_string(),
+        ..fol_package::BuildEvaluationInputs::default()
+    };
+    if let Some(target_str) = &config.build_target_override {
+        inputs.target = fol_package::BuildTargetTriple::parse(target_str);
+    }
+    if let Some(optimize_str) = &config.build_optimize_override {
+        inputs.optimize = fol_package::BuildOptimizeMode::parse(optimize_str);
+    }
+    for override_str in &config.build_option_overrides {
+        if let Some((key, value)) = override_str.split_once('=') {
+            inputs.options.insert(key.to_string(), value.to_string());
+        }
+    }
+    let evaluated = fol_package::evaluate_build_source(
+        &fol_package::BuildEvaluationRequest {
+            package_root: member.member_root.display().to_string(),
+            inputs,
+            operations: Vec::new(),
+        },
+        &build_path,
+        &source,
+    )
+    .map_err(|error| FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string()))?;
+    let Some(evaluated) = evaluated else {
+        return Err(FrontendError::new(
+            FrontendErrorKind::InvalidInput,
+            format!(
+                "workspace member '{}' must declare a semantic `pro[] build(graph: Graph): non` entry",
+                member.package_name
+            ),
+        ));
+    };
+
+    plan_member_execution_from_graph(
+        member,
+        &evaluated.result.graph,
+        &evaluated.evaluated,
+        true,
+    )
+}
+
+pub(crate) fn plan_member_execution_from_graph(
+    member: &FrontendMemberBuildRoute,
+    graph: &fol_package::BuildGraph,
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
+    synthesize_defaults: bool,
+) -> FrontendResult<FrontendMemberExecutionPlan> {
+    let mut steps = fol_package::project_graph_steps(graph)
+        .into_iter()
+        .map(|step| FrontendMemberPlannedStep {
+            selection: selection_for_step(member, evaluated, &step.name, step.default_kind),
+            ambiguous_selection: step_has_ambiguous_default_selection(evaluated, step.default_kind),
+            name: step.name,
+            execution: step.default_kind.and_then(step_execution_kind_from_default),
+        })
+        .collect::<Vec<_>>();
+    if synthesize_defaults {
+        for step in synthesized_default_steps(member, evaluated) {
+            if !steps.iter().any(|existing| existing.name == step.name) {
+                steps.push(step);
+            }
+        }
+    }
+    if !steps.iter().any(|step| step.name == "check") {
+        steps.push(FrontendMemberPlannedStep {
+            name: "check".to_string(),
+            execution: Some(FrontendStepExecutionKind::Check),
+            selection: None,
+            ambiguous_selection: false,
+        });
+    }
+    if steps.is_empty() {
+        return Err(FrontendError::new(
+            FrontendErrorKind::Internal,
+            format!(
+                "workspace member '{}' produced an empty graph-driven step plan",
+                member.package_name
+            ),
+        ));
+    }
+    steps.sort_by(|left, right| left.name.cmp(&right.name));
+    steps.dedup_by(|left, right| {
+        left.name == right.name
+            && left.execution == right.execution
+            && left.selection == right.selection
+    });
+    Ok(FrontendMemberExecutionPlan { steps })
+}
+
+fn selection_for_step(
+    member: &FrontendMemberBuildRoute,
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
+    step_name: &str,
+    default_kind: Option<fol_package::BuildDefaultStepKind>,
+) -> Option<crate::compile::FrontendArtifactExecutionSelection> {
+    if let Some(binding) = evaluated
+        .step_bindings
+        .iter()
+        .find(|binding| binding.step_name == step_name)
+    {
+        if let Some(artifact_name) = &binding.artifact_name {
+            return evaluated
+                .artifacts
+                .iter()
+                .find(|artifact| artifact.name == *artifact_name)
+                .map(|artifact| artifact_selection(member, artifact));
+        }
+    }
+    if let Some(artifact) = evaluated
+        .artifacts
+        .iter()
+        .find(|artifact| artifact.name == step_name)
+    {
+        return Some(artifact_selection(member, artifact));
+    }
+    match default_kind {
+        Some(fol_package::BuildDefaultStepKind::Build)
+        | Some(fol_package::BuildDefaultStepKind::Run) => single_selection(
+            member,
+            evaluated,
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+        ),
+        Some(fol_package::BuildDefaultStepKind::Test) => single_selection(
+            member,
+            evaluated,
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Test,
+        ),
+        _ => None,
+    }
+}
+
+fn synthesized_default_steps(
+    member: &FrontendMemberBuildRoute,
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
+) -> Vec<FrontendMemberPlannedStep> {
+    let mut steps = Vec::new();
+    let executable_count = artifact_count(
+        evaluated,
+        fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+    );
+    if executable_count > 0 {
+        let selection = single_selection(
+            member,
+            evaluated,
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+        );
+        steps.push(FrontendMemberPlannedStep {
+            name: "build".to_string(),
+            execution: Some(FrontendStepExecutionKind::Build),
+            selection: selection.clone(),
+            ambiguous_selection: executable_count > 1,
+        });
+        steps.push(FrontendMemberPlannedStep {
+            name: "run".to_string(),
+            execution: Some(FrontendStepExecutionKind::Run),
+            selection,
+            ambiguous_selection: executable_count > 1,
+        });
+    }
+    let test_count = artifact_count(
+        evaluated,
+        fol_package::build_runtime::BuildRuntimeArtifactKind::Test,
+    );
+    if test_count > 0 {
+        let selection = single_selection(
+            member,
+            evaluated,
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Test,
+        );
+        steps.push(FrontendMemberPlannedStep {
+            name: "test".to_string(),
+            execution: Some(FrontendStepExecutionKind::Test),
+            selection,
+            ambiguous_selection: test_count > 1,
+        });
+    }
+    steps
+}
+
+fn step_has_ambiguous_default_selection(
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
+    default_kind: Option<fol_package::BuildDefaultStepKind>,
+) -> bool {
+    match default_kind {
+        Some(fol_package::BuildDefaultStepKind::Build)
+        | Some(fol_package::BuildDefaultStepKind::Run) => {
+            artifact_count(
+                evaluated,
+                fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+            ) > 1
+        }
+        Some(fol_package::BuildDefaultStepKind::Test) => {
+            artifact_count(
+                evaluated,
+                fol_package::build_runtime::BuildRuntimeArtifactKind::Test,
+            ) > 1
+        }
+        _ => false,
+    }
+}
+
+fn artifact_count(
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
+    kind: fol_package::build_runtime::BuildRuntimeArtifactKind,
+) -> usize {
+    evaluated
+        .artifacts
+        .iter()
+        .filter(|artifact| artifact.kind == kind)
+        .count()
+}
+
+fn single_selection(
+    member: &FrontendMemberBuildRoute,
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
+    kind: fol_package::build_runtime::BuildRuntimeArtifactKind,
+) -> Option<crate::compile::FrontendArtifactExecutionSelection> {
+    let artifacts = evaluated
+        .artifacts
+        .iter()
+        .filter(|artifact| artifact.kind == kind)
+        .collect::<Vec<_>>();
+    (artifacts.len() == 1).then(|| artifact_selection(member, artifacts[0]))
+}
+
+fn artifact_selection(
+    member: &FrontendMemberBuildRoute,
+    artifact: &fol_package::build_runtime::BuildRuntimeArtifact,
+) -> crate::compile::FrontendArtifactExecutionSelection {
+    crate::compile::FrontendArtifactExecutionSelection {
+        package_root: member.member_root.clone(),
+        label: artifact.name.clone(),
+        root_module: Some(artifact.root_module.clone()),
+    }
+}
+
+fn step_execution_kind_from_default(
+    kind: fol_package::BuildDefaultStepKind,
+) -> Option<FrontendStepExecutionKind> {
+    match kind {
+        fol_package::BuildDefaultStepKind::Build => Some(FrontendStepExecutionKind::Build),
+        fol_package::BuildDefaultStepKind::Run => Some(FrontendStepExecutionKind::Run),
+        fol_package::BuildDefaultStepKind::Test => Some(FrontendStepExecutionKind::Test),
+        fol_package::BuildDefaultStepKind::Check => Some(FrontendStepExecutionKind::Check),
+        fol_package::BuildDefaultStepKind::Install => None,
+    }
+}
+
+fn resolve_requested_step_execution(
+    requested_step: &str,
+    member_plans: &[FrontendMemberExecutionPlan],
+) -> FrontendResult<ResolvedWorkspaceStepExecution> {
+    let mut resolved = None;
+    let mut selections = Vec::new();
+    let mut saw_untargeted = false;
+    for step in member_plans
+        .iter()
+        .flat_map(|plan| plan.steps.iter())
+        .filter(|step| step.name == requested_step)
+    {
+        let Some(execution_kind) = step.execution else {
+            continue;
+        };
+        if step.ambiguous_selection {
+            return Err(FrontendError::new(
+                FrontendErrorKind::InvalidInput,
+                format!(
+                    "workspace build execution step '{}' matches multiple artifacts and requires an explicit named step",
+                    requested_step
+                ),
+            ));
+        }
+        match &step.selection {
+            Some(selection) => {
+                if saw_untargeted {
+                    return Err(FrontendError::new(
+                        FrontendErrorKind::InvalidInput,
+                        format!(
+                            "workspace build execution step '{}' mixes targeted and untargeted members",
+                            requested_step
+                        ),
+                    ));
+                }
+                if !selections.contains(selection) {
+                    selections.push(selection.clone());
+                }
+            }
+            None => {
+                if !selections.is_empty() {
+                    return Err(FrontendError::new(
+                        FrontendErrorKind::InvalidInput,
+                        format!(
+                            "workspace build execution step '{}' mixes targeted and untargeted members",
+                            requested_step
+                        ),
+                    ));
+                }
+                saw_untargeted = true;
+            }
+        }
+        match resolved {
+            None => resolved = Some(execution_kind),
+            Some(current) if current == execution_kind => {}
+            Some(current) => {
+                return Err(FrontendError::new(
+                    FrontendErrorKind::InvalidInput,
+                    format!(
+                        "workspace build execution step '{}' resolves to incompatible execution kinds: {:?} and {:?}",
+                        requested_step, current, execution_kind
+                    ),
+                ))
+            }
+        }
+    }
+
+    resolved
+        .map(|execution| ResolvedWorkspaceStepExecution {
+            execution,
+            selections,
+        })
+        .ok_or_else(|| {
+            FrontendError::new(
+                FrontendErrorKind::InvalidInput,
+                format!("workspace build execution does not support step '{requested_step}'"),
+            )
+        })
+}
+
+fn unknown_workspace_build_step_error(
+    requested_step: &str,
+    route: &FrontendWorkspaceBuildRoute,
+) -> FrontendError {
+    let members = route
+        .members
+        .iter()
+        .map(|member| member.package_name.as_str())
+        .collect::<Vec<_>>();
+    FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "workspace build execution does not define step '{requested_step}' for workspace members: {}",
+            members.join(", ")
+        ),
+    )
+}

@@ -67,7 +67,7 @@ impl Elements {
     }
     pub fn peek(&self, index: usize, ignore: bool) -> Con<Element> {
         let mut u = if index > SLIDER { SLIDER } else { index };
-        if ignore && self.next_vec()[u].clone()?.key().is_space() && u < SLIDER {
+        if ignore && self.next_vec()[u].clone()?.key().is_space() && u + 1 < SLIDER {
             u += 1
         };
         self.next_vec()[u].clone()
@@ -79,7 +79,7 @@ impl Elements {
     }
     pub fn seek(&self, index: usize, ignore: bool) -> Con<Element> {
         let mut u = if index > SLIDER { SLIDER } else { index };
-        if ignore && self.prev_vec()[u].clone()?.key().is_space() && u < SLIDER {
+        if ignore && self.prev_vec()[u].clone()?.key().is_space() && u + 1 < SLIDER {
             u += 1
         };
         self.prev_vec()[u].clone()
@@ -143,28 +143,6 @@ impl Elements {
         Ok(())
     }
 
-    pub fn debug(&self, bol: bool, ln: usize) -> Vod {
-        if self.curr(bol)?.loc().row() == ln || ln == 0 {
-            println!(
-                "{}\t{}\t{}",
-                self.curr(bol)?.loc(),
-                self.curr(bol)?.key(),
-                self.curr(bol)?.con()
-            );
-        }
-        Ok(())
-    }
-    pub fn window(&self, bol: bool, ln: usize) -> Vod {
-        if self.curr(bol)?.loc().row() == ln || ln == 0 {
-            println!(
-                "----\nseek: {}\ncurr: {}\npeek: {}",
-                self.seek(0, bol)?,
-                self.curr(bol)?,
-                self.peek(0, bol)?
-            );
-        }
-        Ok(())
-    }
 }
 
 impl Iterator for Elements {

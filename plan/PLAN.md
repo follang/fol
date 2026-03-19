@@ -1,504 +1,449 @@
-# FOL Build System Plan: `lang/execution/fol-build`
+# FOL Strict Error Model Plan
 
-Last updated: 2026-03-18
+Last updated: 2026-03-19
 
-## No Backwards Compatibility
-
-This is a new project. There is no installed user base. There are no external consumers.
-When something is replaced, the old thing is deleted. No shims, no fallbacks, no parallel
-implementations, no deprecation periods, no migration warnings. If the new way is chosen,
-the old way does not exist.
-
-## Status
-
-Round 1 (build reset) is complete. All legacy `def root`/`def build` paths are deleted.
-The canonical build entry is `pro[] build(graph: Graph): non` and it is enforced.
-
-Round 2 (fol-build execution crate) is the current work.
-
-Round 2 slices:
-
-- [x] Slice 1. Create `lang/execution/fol-build` and move graph/api/semantic code out of `fol-package`
-- [x] Slice 2. Move runtime types and evaluator into `fol-build`
-- [x] Slice 3. Add `BuildStdlibScope` — resolver/typechecker injection surface
-- [x] Slice 4. Wire the build stdlib into the resolver (file-bound isolation)
-- [x] Slice 5. Wire the build stdlib into the typechecker
-- [x] Slice 6. Replace AST-walking evaluator with real lowered-IR executor
-- [x] Slice 7. Expand build API to Zig parity (modules, artifact.link, run args, path utils)
-- [x] Slice 8. Full control flow in `build.fol` (when, loop, helper routines)
-- [x] Slice 9. Frontend integration (full pipeline, -D options, named step selection)
-- [x] Slice 10. New example fixtures and regression coverage
-
----
-
-## Core Decision
-
-FOL uses a Zig-style build model. `build.fol` is a normal FOL program. It goes through
-the full compiler pipeline: stream → lexer → parser → resolver → typecheck → lower.
-The only difference from a regular FOL program is at the final step — instead of emitting
-Rust code via `fol-backend`, it is executed against a `BuildGraph` via `fol-build`.
-
-The build system lives in `lang/execution/fol-build`. All build execution code belongs
-there. `fol-package` keeps only entry validation and package metadata loading.
-
-## Zig Reference
-
-Zig's build entry:
-
-```zig
-pub fn build(b: *std.Build) void {
-    const exe = b.addExecutable(.{ .name = "app", .root_source_file = .{ .path = "src/main.zig" } });
-    b.installArtifact(exe);
-}
-```
-
-FOL equivalent:
-
-```fol
-pro[] build(graph: Graph): non = {
-    var target   = graph.standard_target();
-    var optimize = graph.standard_optimize();
-
-    var app = graph.add_exe({
-        name     = "app",
-        root     = "src/main.fol",
-        target   = target,
-        optimize = optimize,
-    });
-
-    graph.install(app);
-}
-```
-
-FOL copies the architecture, not the syntax.
-
-## What `build.fol` Is
-
-`build.fol` is a **file-bound** FOL program. Regular FOL code is folder-bound: a folder
-is a package, all `.fol` files in that folder share one package scope. `build.fol` is the
-one exception: it is a single file that is its own complete compilation unit. It does not
-share a namespace with sibling `.fol` files in the package folder.
-
-Rules for `build.fol`:
-
-- Goes through the full FOL pipeline (lex → parse → resolve → typecheck → lower → build executor)
-- Does NOT include sibling `.fol` files in its scope
-- Has one implicit import: the build stdlib (`fol/build`), providing `Graph` and all handle types
-- CAN define helper `fun[]`/`pro[]`/`typ` declarations local to itself
-- Those helpers are NOT exported to the package — they exist only during build evaluation
-- Must declare exactly one `pro[] build(graph: Graph): non` as the entry point
-- Additional `use` imports are allowed for FOL stdlib utilities
-
-## Pipeline
-
-```
-build.fol
-   │
-   ▼ (same as any .fol file)
-fol-stream → fol-lexer → fol-parser → fol-package (entry validation only)
-                                            │
-                                            ▼ (same as regular code)
-                                      fol-resolver → fol-typecheck → fol-lower
-                                                                          │
-                                                                          ▼ (different backend)
-                                                                      fol-build (executor)
-                                                                          │
-                                                                          ▼
-                                                                      BuildGraph
-                                                                          │
-                                                                          ▼
-                                                                    fol-frontend
-                                                               (build/run/test/check)
-```
-
-## `lang/execution/fol-build` File Structure
-
-```
-lang/execution/fol-build/
-├── Cargo.toml
-└── src/
-    ├── lib.rs          re-exports: BuildSession, BuildGraph, BuildExecutionError
-    ├── session.rs      BuildSession — top-level entry point for fol-frontend
-    ├── executor.rs     BuildIrExecutor — executes lowered FOL IR against BuildApi
-    ├── dispatch.rs     method call dispatch table (method name → BuildApi call)
-    ├── context.rs      BuildExecutionContext — graph, package root, options, cli args
-    ├── graph.rs        BuildGraph, all ID types, all edge types
-    ├── api.rs          BuildApi — Rust-level graph mutation interface
-    ├── stdlib.rs       BuildStdlibScope — resolver/typechecker injection surface
-    ├── semantic.rs     BuildSemanticType, BuildSemanticMethodSignature, etc.
-    ├── runtime.rs      BuildRuntimeValue, BuildRuntimeFrame, BuildRuntimeStmt
-    ├── artifact.rs     BuildArtifactKind, artifact-level edges (link, import, add_generated)
-    ├── step.rs         BuildStepKind, step planning, step attachments
-    ├── dependency.rs   DependencyBuildHandle, DependencyBuildSurface
-    ├── codegen.rs      CodegenRequest, SystemToolRequest
-    ├── option.rs       BuildOptionKind, ResolvedBuildOptionSet, -D CLI parsing
-    ├── native.rs       native artifact types
-    └── error.rs        BuildExecutionError
-```
-
-## What Moves Out of `fol-package`
-
-| Source (`fol-package`) | Destination (`fol-build`) |
-|---|---|
-| `build_graph.rs` | `graph.rs` |
-| `build_api.rs` | `api.rs` |
-| `build_semantic.rs` | `semantic.rs` |
-| `build_runtime.rs` | `runtime.rs` |
-| `build_eval.rs` | `eval.rs` → replaced by `executor.rs` |
-| `build_step.rs` | `step.rs` |
-| `build_artifact.rs` | `artifact.rs` |
-| `build_dependency.rs` | `dependency.rs` |
-| `build_codegen.rs` | `codegen.rs` |
-| `build_option.rs` | `option.rs` |
-| `build_native.rs` | `native.rs` |
-
-`fol-package` keeps only:
-
-- `build.rs` — `parse_package_build`, `PackageBuildDefinition`, `PackageBuildMode`
-- `build_entry.rs` — `validate_parsed_build_entry`, `BuildEntrySignatureExpectation`
-- `metadata.rs`, `session.rs`, `model.rs` — package metadata (unchanged)
-
-## The Executor
-
-The current `build_eval.rs` is an AST pattern matcher. It inspects the parsed AST of
-`build.fol` and dispatches to `BuildApi` by recognizing statement shapes. It does not
-execute FOL code — it reads FOL syntax.
-
-The new executor in `executor.rs` receives **lowered FOL IR** from `fol-lower` and
-executes it. It handles:
-
-- `var` bindings — store result in a local frame
-- method calls on `Graph` handle — dispatch to `BuildApi`
-- method calls on artifact/step/run/install/dependency/generated-file handles — dispatch to handle methods
-- `when` / `else` — conditional artifact and step registration
-- `loop` — iterate to add multiple artifacts or steps
-- helper `fun[]`/`pro[]` calls — execute helper bodies in a new frame
-- method chaining — `.add_arg().add_file_arg().set_env()`
-
-Capability model stays: arbitrary filesystem writes, network access, wall clock, and
-uncontrolled process execution are forbidden during build evaluation.
-
-## The Build Stdlib Scope
-
-`stdlib.rs` produces a `BuildStdlibScope` that the resolver injects into `build.fol`
-compilation. This is what makes `Graph`, `Artifact`, `Step`, etc. visible to the resolver
-and typechecker as real types with real method signatures.
-
-### Graph methods
-
-```
-standard_target(config?)    → Target
-standard_optimize(config?)  → Optimize
-option(config)              → UserOption
-add_exe(config)             → Artifact
-add_static_lib(config)      → Artifact
-add_shared_lib(config)      → Artifact
-add_test(config)            → Artifact
-add_module(config)          → Module          ← new
-step(name, description?)    → Step
-add_run(artifact)           → Run
-install(artifact)           → Install
-install_file(path)          → Install
-install_dir(path)           → Install
-write_file(config)          → GeneratedFile
-copy_file(config)           → GeneratedFile
-add_system_tool(config)     → GeneratedFile
-add_codegen(config)         → GeneratedFile
-dependency(alias, package)  → Dependency
-path_from_root(subpath)     → str             ← new
-build_root()                → str             ← new
-install_prefix()            → str             ← new
-```
-
-### Artifact methods
-
-```
-link(dep_artifact)          → non             ← new (Zig: artifact.linkLibrary)
-import(dep_module)          → non             ← new (Zig: artifact.root_module.addImport)
-add_generated(gen_file)     → non             ← new
-```
-
-### Run methods
-
-```
-add_arg(value)              → Run             ← new, chainable (Zig: run.addArg)
-add_file_arg(gen_file)      → Run             ← new, chainable (Zig: run.addFileArg)
-add_dir_arg(path)           → Run             ← new, chainable
-capture_stdout()            → GeneratedFile   ← new (Zig: run.captureStdOut)
-set_env(key, value)         → Run             ← new, chainable (Zig: run.setEnvironmentVariable)
-depend_on(step)             → Run             existing, chainable
-```
-
-### Step methods
-
-```
-depend_on(step)             → Step            existing, chainable
-attach(gen_file)            → Step            ← new (attach generated file production to step)
-```
-
-### Install methods
-
-```
-depend_on(step)             → Install         existing, chainable
-```
-
-### Dependency methods
-
-```
-module(name)                → DependencyModule
-artifact(name)              → DependencyArtifact
-step(name)                  → DependencyStep
-generated(name)             → DependencyGeneratedOutput
-```
-
-## -D CLI Options
-
-Zig: `zig build -Dtarget=x86_64-linux-gnu -Doptimize=ReleaseFast -Denable-logs=true`
-
-FOL: `fol code build -Dtarget=x86_64-linux-gnu -Doptimize=release-fast -Denable-logs=true`
-
-`graph.standard_target()` reads `-Dtarget`. `graph.standard_optimize()` reads `-Doptimize`.
-`graph.option({ name = "enable-logs", kind = bool, default = false })` reads `-Denable-logs`.
-
-Option kinds: `bool`, `int`, `str`, `enum`, `path`, `target`, `optimize`.
-
-## Step Selection
-
-```sh
-fol code build              # runs install steps (default)
-fol code build docs         # runs the "docs" step
-fol code run                # runs the default run step
-fol code run --step serve   # runs the "serve" step
-fol code test               # runs test steps
-fol code check              # runs check steps
-```
-
-## Example: Full-Featured `build.fol`
-
-```fol
-fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
-    return graph.add_static_lib({ name = name, root = root });
-}
-
-pro[] build(graph: Graph): non = {
-    var target   = graph.standard_target();
-    var optimize = graph.standard_optimize();
-    var strip    = graph.option({ name = "strip", kind = bool, default = false });
-
-    var core = make_lib(graph, "core", "src/core/lib.fol");
-    var io   = make_lib(graph, "io",   "src/io/lib.fol");
-
-    var app = graph.add_exe({
-        name     = "app",
-        root     = "src/main.fol",
-        target   = target,
-        optimize = optimize,
-    });
-    app.link(core);
-    app.link(io);
-    graph.install(app);
-
-    var run = graph.add_run(app);
-    run.add_arg("--config").add_file_arg(graph.path_from_root("config/default.toml"));
-
-    when(target == "wasm32") {
-        var wasm_step = graph.step("wasm-pack", "Package WASM output");
-        var pack = graph.add_system_tool({
-            tool    = "wasm-pack",
-            args    = ["build", "--target", "web"],
-            outputs = ["pkg/app.wasm"],
-        });
-        wasm_step.attach(pack);
-    };
-
-    var docs_step = graph.step("docs", "Generate documentation");
-    var docs = graph.add_system_tool({
-        tool    = "doc-gen",
-        args    = ["src/", "--out", "docs/"],
-        outputs = ["docs/index.html"],
-    });
-    docs_step.attach(docs);
-}
-```
-
-## Example Fixtures to Add
-
-| Fixture | Demonstrates |
-|---|---|
-| `examples/exe_with_options/` | target + optimize + boolean option |
-| `examples/multi_lib/` | multiple libs, helper function, `artifact.link` |
-| `examples/codegen/` | `add_codegen` + `artifact.add_generated` |
-| `examples/workspace/` | multi-package, `dependency` + `artifact.import` |
-| `examples/custom_steps/` | named steps + `step.attach` |
-| `examples/run_args/` | `run.add_arg`, `run.add_file_arg`, `run.capture_stdout` |
-| `examples/conditional/` | `when` selecting platform-specific artifacts |
-
-## Slices
-
-### Slice 1 — Create `fol-build`, move graph/api/semantic
-
-Create `lang/execution/fol-build/Cargo.toml` and `src/lib.rs`.
-Move `build_graph.rs`, `build_api.rs`, `build_semantic.rs` into the new crate unchanged.
-Update `fol-package` to depend on `fol-build`.
-
-Exit criteria: `cargo build` passes, all tests pass.
-
-### Slice 2 — Move runtime types and evaluator
-
-Move `build_runtime.rs`, `build_eval.rs`, `build_step.rs`, `build_artifact.rs`,
-`build_dependency.rs`, `build_codegen.rs`, `build_option.rs`, `build_native.rs`.
-Create `error.rs`, `context.rs`, `session.rs` with stub implementations.
-
-`BuildExecutionContext`:
-```rust
-pub struct BuildExecutionContext {
-    pub graph: BuildGraph,
-    pub package_root: PathBuf,
-    pub install_prefix: Option<PathBuf>,
-    pub resolved_options: ResolvedBuildOptionSet,
-    pub cli_args: Vec<(String, String)>,
-}
-```
-
-`BuildSession`:
-```rust
-pub struct BuildSession { context: BuildExecutionContext }
-impl BuildSession {
-    pub fn new(package_root: PathBuf, cli_args: Vec<(String, String)>) -> Self
-    pub fn execute(&mut self, lowered: &LoweredBuildProgram) -> Result<BuildGraph, BuildExecutionError>
-    pub fn run_step(&self, step_name: &str) -> Result<(), BuildExecutionError>
-}
-```
-
-Exit criteria: `fol-package` contains only entry validation and metadata. `cargo build` passes.
-
-### Slice 3 — `BuildStdlibScope`
-
-Create `stdlib.rs`. Produce `BuildStdlibScope::canonical()` covering all Graph methods,
-all handle methods, all new methods listed above. Every entry has: receiver type, method
-name, parameter list (required/optional/variadic), return type.
-
-Unit tests: every method signature has correct receiver, return type, required params.
-
-Exit criteria: `BuildStdlibScope::canonical()` is complete and tested.
-
-### Slice 4 — Wire stdlib into resolver (file-bound)
-
-When the resolver encounters a file flagged as `ParsedSourceUnitKind::Build`:
-- Do not walk sibling `.fol` files
-- Inject `BuildStdlibScope::canonical()` as the ambient scope
-- `Graph` resolves to `BuildSemanticType::graph()`
-- Method calls on build handles resolve via `BuildSemanticMethodSignature` dispatch
-
-Exit criteria:
-- `build.fol` with wrong method name produces a resolver error listing available methods
-- Sibling `.fol` files are not visible to `build.fol`
-- Helper `fun[]` declarations in `build.fol` are visible to the build entry
-
-### Slice 5 — Wire stdlib into typechecker
-
-All build types are recognized. Method call argument types are validated. Record literals
-passed to build API calls are structurally validated (required fields present, unknown
-fields rejected). Return types of method calls match what the stdlib scope declares.
-
-Exit criteria:
-- `var target = graph.standard_target()` typechecks
-- `graph.add_exe({ name = "app", root = "src/main.fol", target = target })` typechecks
-- Missing required field `root` in `add_exe` → typecheck error
-- Passing `Artifact` where `Step` is expected → typecheck error
-
-### Slice 6 — Real lowered-IR executor
-
-Replace the AST-walking evaluator in `build_eval.rs` with `executor.rs`. The executor
-receives lowered FOL IR from `fol-lower` and executes it. Delete `build_eval.rs`.
-
-Supported in executor:
-- `var` bindings
-- method calls on `Graph` and all handle types
-- `when` / `else`
-- `loop`
-- helper `fun[]`/`pro[]` calls (recursive frame execution)
-- method chaining
-
-Exit criteria:
-- All current build fixtures produce the same `BuildGraph` as before
-- `build.fol` with `when` executes conditionally
-- `build.fol` with a helper `fun[]` executes the helper correctly
-- The old AST evaluator is deleted
-
-### Slice 7 — Expand build API (Zig parity)
-
-Add all new methods listed in the stdlib section. Each new method needs:
-- Graph IR representation (new edge type if needed)
-- `BuildApi` method in `api.rs`
-- Entry in `BuildStdlibScope` (resolver + typechecker sees it)
-- Dispatch case in `dispatch.rs` (executor routes to it)
-- Unit test in `fol-build`
-- At least one fixture using it
-
-New graph IR additions:
-- `BuildRunConfig` — stores args, env vars, capture target for run steps
-- `ArtifactLinkEdge` — artifact depends on another artifact
-- `ModuleImportEdge` — artifact imports a module
-- `StepAttachment` — step owns a generated file production
-
-### Slice 8 — Full control flow in `build.fol`
-
-`when`, `else`, `loop` work in `build.fol`. Helper routines defined in `build.fol` can
-be called from the build entry and from other helpers.
-
-Exit criteria:
-- Fixture `examples/conditional/` conditionally adds a wasm artifact via `when`
-- Fixture `examples/multi_lib/` uses a helper `fun[] make_lib(...)` called from `build`
-- A loop over a sequence in `build.fol` adds multiple artifacts correctly
-
-### Slice 9 — Frontend integration
-
-`fol-frontend` uses `BuildSession` from `fol-build` instead of calling `fol-package`'s
-evaluator. `build.fol` is compiled through the full pipeline before execution.
-
-CLI option parsing: `-Dname=value` pairs are passed to `BuildSession::new` as `cli_args`.
-Named step selection: `fol code build <step>` selects the named step from the graph.
-
-Exit criteria:
-- `fol code build` works end-to-end with the new pipeline
-- `fol code run` works
-- `fol code test` works
-- `fol code build -Dtarget=x86_64-linux-gnu` passes the option into `standard_target()`
-- `fol code build docs` executes the "docs" step
-
-### Slice 10 — Fixtures and regression coverage
-
-Add all fixtures listed in the fixtures table. Add integration tests in `test/app/build/`:
-- `test_conditional_artifact` — `when` selects different artifacts
-- `test_helper_routine` — helper function used from `build`
-- `test_run_args` — `add_arg`, `add_file_arg`, `capture_stdout`
-- `test_artifact_link` — `artifact.link(dep.artifact(...))`
-- `test_module_import` — `artifact.import(dep.module(...))`
-- `test_codegen_artifact` — `add_codegen` + `artifact.add_generated`
-- `test_custom_step` — named step + `step.attach`
-- `test_d_options` — `graph.option(...)` + CLI `-D` flags
-- `test_path_utils` — `path_from_root`, `build_root`
-
-Negative tests:
-- Wrong method name on `Artifact` → resolver error
-- `artifact.link` with wrong handle type → typecheck error
-- `when` condition is non-bool → typecheck error
-- `build.fol` with no canonical entry → clear error
-- `build.fol` with two canonical entries → clear error
-
-Exit criteria: all fixtures pass, all negative tests produce correct errors.
-
-## Success Definition
-
-Done when all of this is true:
-
-- `lang/execution/fol-build` contains all build execution code
-- `fol-package` contains only entry validation and package metadata
-- `build.fol` goes through the full compiler pipeline before execution
-- `when`, `loop`, and helper routines work in `build.fol`
-- All new API methods (link, import, run args, path utils) are implemented and tested
-- `-D` CLI options work end-to-end
-- Named step selection works
-- All fixtures in `examples/` demonstrate a distinct build capability
-- All integration tests pass
+## Goal
+
+Move FOL to a strict split between:
+
+- `err[...]` as a normal first-class value type
+- `T / E` as a call-site control-flow surface only
+
+Under this model:
+
+- `err[...]` values can be stored, passed, returned, and later handled
+- routines declared as `fun[] name(): T / E` do not produce a storable value
+- `var x = name()` is illegal when `name(): T / E`
+- `var x: T = name()` is illegal when `name(): T / E`
+- `check(name())` remains legal if `check(...)` stays in the language
+- `name() || fallback` remains legal
+- plain propagation through ordinary expression contexts is removed
+- captured recoverable-call locals are removed
+- implicit materialization of recoverable results in lowering is removed
+
+This is a deliberate breaking change. Per project policy, the old behavior should be deleted rather than preserved behind compatibility paths.
+
+## Language Decision
+
+### Final semantic split
+
+1. `err[...]` is the only error-shaped thing that is a normal value.
+2. `T / E` is not a value type. It is a routine-call outcome that must be handled at the call site.
+3. A `/ E` result may only appear in dedicated handling surfaces.
+
+Initial allowed `/ E` handling surfaces:
+
+- `expr || fallback`
+- `check(expr)` if we keep it
+- possibly future dedicated syntax like `try`, `catch`, `match_err`, etc.
+
+Initial forbidden `/ E` surfaces:
+
+- variable binding
+- assignment target initialization
+- record field initialization
+- container elements
+- function arguments to ordinary routines
+- return expressions
+- arithmetic/logical/comparison operands
+- control-flow selectors and conditions
+- method receivers
+- field/index access
+- shell unwrap `!`
+
+### Consequence
+
+This removes the current hybrid model where `/ E` can flow through expression typing and be implicitly propagated by surrounding `... / E` routines.
+
+The new language story becomes:
+
+- use `err[...]` when you want a real value that represents success/error state
+- use `T / E` when you want immediate call-site handling with `||` or `check(...)`
+
+## Current Compiler Behavior To Remove
+
+The current compiler has a recoverable-effect model:
+
+- typechecking attaches `recoverable_effect` metadata to typed expressions and typed symbols
+- inferred locals may retain a recoverable effect
+- plain expression contexts call `plain_value_expr(...)`, which currently permits propagation in `ErrorCallMode::Propagate`
+- lowering materializes recoverable values into control flow using `CheckRecoverable`, `UnwrapRecoverable`, and `ExtractRecoverableError`
+
+Current behaviors that must be deleted:
+
+1. Inferred bindings can capture recoverable call results.
+2. Plain expression use of `/ E` inside matching `... / E` routines can implicitly propagate.
+3. `return load()` is legal because lowering converts recoverable values into report-or-unwrap control flow.
+4. Lowered locals may retain `recoverable_error_type`.
+
+## Target Architecture
+
+### Type system
+
+Keep both representations distinct:
+
+- `CheckedType::Error { inner }` for `err[...]`
+- `RoutineType { return_type, error_type }` for `T / E`
+
+Do not introduce any coercion or conversion path between them.
+
+### Typechecking
+
+Change the meaning of a recoverable effect:
+
+- a recoverable effect becomes evidence that an expression is only valid in dedicated handling surfaces
+- it is no longer something that ordinary value contexts may propagate
+
+Concretely:
+
+- any ordinary value context that sees `recoverable_effect.is_some()` must error
+- the old “surrounding routine declares compatible error type” rule is removed for ordinary expressions
+- `ErrorCallMode::Propagate` should be removed
+- the only remaining “observe” contexts should be the dedicated handlers like `||` and `check(...)`
+
+### Lowering
+
+Lowering should stop supporting generic materialization of recoverable values.
+
+Instead:
+
+- `||` lowers directly from an observed recoverable call result
+- `check(...)` lowers directly from an observed recoverable call result if kept
+- all ordinary expression lowering assumes no recoverable result reaches it
+- generic propagation helpers should be deleted
+
+### Runtime / IR
+
+The recoverable ABI may still exist for routine calls, but only the dedicated handling constructs should touch it.
+
+That means:
+
+- `CheckRecoverable`, `UnwrapRecoverable`, and `ExtractRecoverableError` may remain as IR instructions
+- generic lowering paths that synthesize propagation from arbitrary expressions should be removed
+- recoverable instructions should appear only under `||`, `check(...)`, or any later explicit handling construct
+
+## Implementation Slices
+
+### Slice 1: Freeze the language contract in tests first `[complete]`
+
+Before changing implementation, rewrite and add tests so the strict model is explicit.
+
+- Add typecheck tests that reject:
+  - `var x = load()` where `load(): T / E`
+  - `var x: T = load()`
+  - `return load()`
+  - `return load() + 1`
+  - `consume(load())`
+  - `when(load()) { ... }`
+  - `loop(load()) { ... }` if applicable
+  - `load().field`
+  - `load()[0]`
+  - `load().method()`
+- Keep tests that accept:
+  - `load() || fallback`
+  - `load() || report ...`
+  - `load() || panic ...`
+  - `check(load())` if `check(...)` survives
+- Add tests that continue to accept normal `err[...]` value behavior:
+  - `var x: err[int] = ...`
+  - passing `err[...]` to routines
+  - returning `err[...]`
+  - unwrap `value!` on `err[...]`
+- Delete tests that currently assert inferred recoverable locals are valid.
+- Delete tests that currently assert plain propagation through routine bodies is valid.
+
+Exit condition:
+
+- test names and expectations describe the new model before implementation lands
+
+### Slice 2: Replace propagation with hard rejection in typechecking `[complete]`
+
+Centralize the strict rule in the typechecker helpers.
+
+- Remove `ErrorCallMode::Propagate`
+- Keep a single “observed recoverable expression” mode only for explicit handlers
+- Replace `plain_value_expr(...)` behavior:
+  - if `recoverable_effect.is_some()`, ordinary use is always an error
+  - emit a dedicated message like:
+    - `recoverable routine results with '/ ErrorType' cannot be used as plain values; handle them with '||' or check(...)`
+- Audit every call site of `plain_value_expr(...)`
+- Rename helpers if needed so the semantics are obvious:
+  - for example `require_plain_value_expr(...)`
+  - and `observe_recoverable_expr(...)`
+
+Exit condition:
+
+- no ordinary expression context can silently propagate a `/ E` result
+
+### Slice 3: Ban binding capture completely `[complete]`
+
+Binding capture needs an explicit direct check even after Slice 2, because bindings currently infer and store the recoverable effect.
+
+- In binding initializer typing:
+  - reject any initializer whose typed expression has `recoverable_effect.is_some()`
+  - do this for both explicit and inferred bindings
+- Remove code that stores `symbol.recoverable_effect` for inferred bindings
+- Audit grouped/destructured bindings and record fields for the same issue
+- Ensure diagnostics say the problem is the `/ E` call result itself, not a downstream type mismatch
+
+Exit condition:
+
+- there is no valid path where a local symbol retains a recoverable effect from a routine call
+
+### Slice 4: Ban implicit return propagation `[complete]`
+
+Current `return load()` works because the typechecker and lowerer treat `/ E` as materializable.
+
+- In return typing:
+  - reject `recoverable_effect.is_some()` before ordinary assignability
+  - replace the old compatibility-based propagation rule with an explicit handling requirement
+- Update diagnostics accordingly
+
+Exit condition:
+
+- `return load()` is illegal unless wrapped in a future explicit handler form
+
+### Slice 5: Ban `/ E` in all ordinary expression surfaces `[complete]`
+
+Do a full audit of typechecking sites that currently accept plain values.
+
+Surfaces to cover:
+
+- binary operators
+- unary operators other than dedicated handlers
+- function and method arguments
+- field access
+- index access
+- record initializers
+- container literals
+- `when` selectors and branch conditions
+- loop conditions and iterables
+- intrinsic operands except dedicated handlers
+- dot-root intrinsics
+
+Expected result:
+
+- every one of these surfaces rejects `/ E` values directly and consistently
+- the old “requires a surrounding routine with a declared error type” diagnostics disappear from strict-mode paths
+
+Exit condition:
+
+- the only surviving legal `/ E` consumer surfaces are explicit handlers
+
+### Slice 6: Simplify typed metadata `[complete]`
+
+Once bindings and plain expressions can no longer carry recoverable results, simplify the typed model.
+
+- Re-evaluate whether `TypedSymbol.recoverable_effect` is still needed
+- Re-evaluate whether `TypedReference.recoverable_effect` is still needed for ordinary references
+- Likely keep `TypedExpr.recoverable_effect` only as transient expression metadata for explicit handlers
+- Remove any typed metadata that exists only to support captured recoverable locals
+
+Preferred end state:
+
+- recoverable metadata exists only on expression nodes/references required by `||` and `check(...)`
+- local symbols do not carry recoverable-effect state
+
+### Slice 7: Remove generic recoverable materialization from lowering `[complete]`
+
+This is the core strictness change in lowering.
+
+- Delete or rewrite `materialize_recoverable_value(...)`
+- Delete the idea that ordinary `lower_expression_expected(...)` may convert a recoverable value into report-or-unwrap control flow
+- Ensure ordinary lowering errors if a recoverable result leaks into it
+- Keep direct lowering for:
+  - `||`
+  - `check(...)` if retained
+
+This will likely simplify:
+
+- `lower_expression_expected(...)`
+- local binding lowering
+- return lowering
+- any call sites that currently choose between observed vs expected lowering based on recoverable local state
+
+Exit condition:
+
+- lowering no longer implements implicit propagation
+
+### Slice 8: Remove recoverable local storage from lowered IR `[complete]`
+
+The current lowered local model can store `recoverable_error_type` on locals.
+
+Under the strict model, that should disappear for ordinary locals.
+
+- Audit `RoutineCursor`, local allocation helpers, and verifier logic
+- Remove `recoverable_error_type` from locals if no longer necessary
+- If some recoverable operand metadata is still needed for direct `||`/`check(...)` lowering, keep it only as temporary expression lowering state, not as persistent general-purpose local storage
+- Update verifier assumptions and tests
+
+Preferred end state:
+
+- routine call recoverable metadata is attached only to the specific call-result lowering path, not stored as a general local capability
+
+### Slice 9: Keep `err[...]` as the real value-based error surface `[complete]`
+
+After removing `/ E` capture and propagation, strengthen `err[...]` as the first-class error container.
+
+Short-term work:
+
+- keep existing `err[...]` type behavior intact
+- keep postfix `!` behavior for `err[...]`
+- ensure docs clearly state `err[...]` is the storable form
+
+Follow-up design work:
+
+- design `err[...]` methods or operators such as:
+  - `.unbox()`
+  - `.is_err()`
+  - `.if_err(...)`
+  - `.map(...)`
+  - `.map_err(...)`
+- decide whether those methods belong to dot-method syntax, intrinsic lowering, or library methods
+
+This method design is separate from the strict `/ E` cleanup and should not block it.
+
+### Slice 10: Rewrite diagnostics `[complete]`
+
+Current diagnostics are phrased around the propagation model. They need to be rewritten to teach the strict model.
+
+Messages to remove or replace:
+
+- `requires a surrounding routine with a declared error type in V1`
+- any wording that implies plain value contexts may propagate
+
+Messages to add:
+
+- `/ ErrorType` results are not plain values
+- `/ ErrorType` results cannot be assigned to variables
+- `/ ErrorType` results cannot be returned directly
+- `/ ErrorType` results must be handled with `||` or `check(...)`
+- `err[...]` is the value form if you need storage and later handling
+
+Exit condition:
+
+- diagnostics explain the language rule directly instead of exposing internal propagation machinery
+
+### Slice 11: Rewrite docs to match the strict model `[complete]`
+
+The docs currently describe propagation as part of the V1 contract. That must be removed.
+
+Files already known to need updates:
+
+- `book/src/650_errors/200_recover.md`
+- `book/src/400_type/400_special.md`
+- `book/src/500_items/200_routines/_index.md`
+- `book/src/500_items/200_routines/200_functions.md`
+- any examples that show `return load()` or captured recoverable locals
+
+Required doc changes:
+
+- remove propagation as supported behavior
+- state that `/ E` is immediate handling only
+- show `||` and `check(...)` examples
+- state clearly that `err[...]` is the value-based alternative
+
+Exit condition:
+
+- docs no longer teach or imply implicit propagation
+
+### Slice 12: Remove outdated integration fixtures and examples `[complete]`
+
+Audit tests and examples for old behavior.
+
+- Replace propagation fixtures with strict-handling fixtures
+- delete or rewrite fixtures that rely on:
+  - `return load()`
+  - `var attempt = load()`
+  - `return load() + 1`
+- keep fixtures that demonstrate:
+  - `||` defaulting
+  - `|| report`
+  - `|| panic`
+  - `check(load())`
+  - `err[...]` shell/value use
+
+Exit condition:
+
+- no fixture in the repo demonstrates the removed propagation model
+
+## Specific Code Areas To Audit
+
+### Typecheck
+
+- `lang/compiler/fol-typecheck/src/exprs/helpers.rs`
+- `lang/compiler/fol-typecheck/src/exprs/bindings.rs`
+- `lang/compiler/fol-typecheck/src/exprs/controlflow.rs`
+- `lang/compiler/fol-typecheck/src/exprs/operators.rs`
+- `lang/compiler/fol-typecheck/src/exprs/calls.rs`
+- `lang/compiler/fol-typecheck/src/exprs/access.rs`
+- `lang/compiler/fol-typecheck/src/exprs/literals.rs`
+- `lang/compiler/fol-typecheck/src/exprs/mod.rs`
+- `lang/compiler/fol-typecheck/src/model.rs`
+
+### Lowering
+
+- `lang/compiler/fol-lower/src/exprs/expressions.rs`
+- `lang/compiler/fol-lower/src/exprs/calls.rs`
+- `lang/compiler/fol-lower/src/exprs/bindings.rs`
+- `lang/compiler/fol-lower/src/exprs/body.rs`
+- `lang/compiler/fol-lower/src/exprs/cursor.rs`
+- `lang/compiler/fol-lower/src/verify/instruction.rs`
+- `lang/compiler/fol-lower/src/verify/mod.rs`
+
+### Docs and tests
+
+- `test/typecheck/test_typecheck_foundation.rs`
+- `test/typecheck/test_typecheck_error_typing.rs`
+- `test/integration_tests/integration_cli_lowering.rs`
+- `test/apps/fixtures/recoverable_propagation/main.fol`
+- `test/apps/fixtures/recoverable_fallback/main.fol`
+- `book/src/650_errors/200_recover.md`
+- `book/src/400_type/400_special.md`
+- `book/src/500_items/200_routines/_index.md`
+- `book/src/500_items/200_routines/200_functions.md`
+
+## Ordered Execution Plan
+
+1. Rewrite tests to define the strict contract.
+2. Change typechecker helpers so `/ E` is rejected in all ordinary value contexts.
+3. Ban binding capture explicitly and remove symbol-level recoverable locals.
+4. Ban direct return propagation.
+5. Audit all expression surfaces for consistent rejection.
+6. Simplify typed metadata.
+7. Remove generic recoverable materialization from lowering.
+8. Remove lowered local recoverable storage if no longer needed.
+9. Rewrite diagnostics.
+10. Rewrite docs and examples.
+11. Run full test suite and remove any remaining propagation-era behavior.
+
+## Acceptance Criteria
+
+The strict model is complete when all of the following are true:
+
+- `err[...]` remains a normal value type.
+- `/ E` results cannot be assigned to locals.
+- `/ E` results cannot be returned directly.
+- `/ E` results cannot appear in ordinary expressions.
+- only explicit handler surfaces can consume `/ E`.
+- no typed local symbol stores recoverable-call state.
+- lowering no longer performs implicit propagation.
+- docs and tests consistently teach the strict split.
+
+## Non-Goals
+
+- preserving backward compatibility with propagation-based `/ E` code
+- introducing migration warnings
+- adding fallback behavior
+- merging `/ E` and `err[...]` into one representation
+
+## Follow-Up After This Plan
+
+After the strict split lands, do a separate design pass for `err[...]` ergonomics:
+
+- value methods
+- library helpers
+- pattern/match support
+- naming of `unbox`, `unwrap`, `if_err`, `map_err`, etc.
+
+That work should start only after the `/ E` propagation model has been fully removed.

@@ -9,6 +9,30 @@ use fol_parser::ast::{
 };
 use fol_stream::FileStream;
 
+/// Test-only helper: wraps `parse_script_package()` into `AstNode::Program`.
+trait TestParse {
+    fn parse(
+        &mut self,
+        lexer: &mut Elements,
+    ) -> Result<AstNode, Vec<Box<dyn fol_types::Glitch>>>;
+}
+
+impl TestParse for AstParser {
+    fn parse(
+        &mut self,
+        lexer: &mut Elements,
+    ) -> Result<AstNode, Vec<Box<dyn fol_types::Glitch>>> {
+        let parsed = self.parse_script_package(lexer)?;
+        Ok(AstNode::Program {
+            declarations: parsed
+                .source_units
+                .into_iter()
+                .flat_map(|unit| unit.items.into_iter().map(|item| item.node))
+                .collect(),
+        })
+    }
+}
+
 fn inquiry_target_key(target: &InquiryTarget) -> String {
     target.duplicate_key()
 }
@@ -78,6 +102,20 @@ fn use_decl_path_text(node: &AstNode) -> Option<String> {
 fn use_decl_matches_path(node: &AstNode, expected_name: &str, expected_path: &str) -> bool {
     matches!(node, AstNode::UseDecl { name, .. } if name == expected_name)
         && use_decl_path_text(node).as_deref() == Some(expected_path)
+}
+
+fn parse_script_as_program(
+    parser: &mut AstParser,
+    lexer: &mut Elements,
+) -> Result<AstNode, Vec<Box<dyn fol_types::Glitch>>> {
+    let parsed = parser.parse_script_package(lexer)?;
+    Ok(AstNode::Program {
+        declarations: parsed
+            .source_units
+            .into_iter()
+            .flat_map(|unit| unit.items.into_iter().map(|item| item.node))
+            .collect(),
+    })
 }
 
 fn parse_package_from_file(path: &str) -> ParsedPackage {
@@ -181,8 +219,11 @@ mod anonymous_capture_separators;
 #[path = "test_parser_parts/anonymous_capture_lists.rs"]
 mod anonymous_capture_lists;
 #[cfg(test)]
-#[path = "test_parser_parts/basic_declarations.rs"]
-mod basic_declarations;
+#[path = "test_parser_parts/basic_declarations_core.rs"]
+mod basic_declarations_core;
+#[cfg(test)]
+#[path = "test_parser_parts/basic_declarations_types.rs"]
+mod basic_declarations_types;
 #[cfg(test)]
 #[path = "test_parser_parts/book_spec_examples.rs"]
 mod book_spec_examples;
@@ -289,8 +330,11 @@ mod quoted_iteration_binders;
 #[path = "test_parser_parts/implementation_declarations.rs"]
 mod implementation_declarations;
 #[cfg(test)]
-#[path = "test_parser_parts/illegal_token_contexts.rs"]
-mod illegal_token_contexts;
+#[path = "test_parser_parts/illegal_token_contexts_expressions.rs"]
+mod illegal_token_contexts_expressions;
+#[cfg(test)]
+#[path = "test_parser_parts/illegal_token_contexts_declarations.rs"]
+mod illegal_token_contexts_declarations;
 #[cfg(test)]
 #[path = "test_parser_parts/inquiry_clauses.rs"]
 mod inquiry_clauses;
@@ -439,8 +483,11 @@ mod slice_access_expressions;
 #[path = "test_parser_parts/slice_assignment_targets.rs"]
 mod slice_assignment_targets;
 #[cfg(test)]
-#[path = "test_parser_parts/standard_declarations.rs"]
-mod standard_declarations;
+#[path = "test_parser_parts/standard_declarations_core.rs"]
+mod standard_declarations_core;
+#[cfg(test)]
+#[path = "test_parser_parts/standard_declarations_options.rs"]
+mod standard_declarations_options;
 #[cfg(test)]
 #[path = "test_parser_parts/source_kind_types.rs"]
 mod source_kind_types;
@@ -499,8 +546,11 @@ mod statement_expression_boundaries;
 #[path = "test_parser_parts/parser_diagnostic_consistency.rs"]
 mod parser_diagnostic_consistency;
 #[cfg(test)]
-#[path = "test_parser_parts/type_definition_validation.rs"]
-mod type_definition_validation;
+#[path = "test_parser_parts/type_definition_errors.rs"]
+mod type_definition_errors;
+#[cfg(test)]
+#[path = "test_parser_parts/type_alias_forms.rs"]
+mod type_alias_forms;
 #[cfg(test)]
 #[path = "test_parser_parts/type_option_separators.rs"]
 mod type_option_separators;

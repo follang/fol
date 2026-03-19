@@ -1,6 +1,6 @@
 [package]
 name = "fol-backend"
-version = "0.1.0"
+version = "0.1.4"
 edition = "2021"
 description = "Backend code generation crate for executable FOL V1 programs"
 

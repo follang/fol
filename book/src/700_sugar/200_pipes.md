@@ -48,7 +48,6 @@ main error-handling tool.
 
 Instead, the implemented recoverable-call surfaces are:
 
-- propagation through a compatible surrounding routine
 - `check(expr)`
 - `expr || fallback`
 
@@ -123,11 +122,6 @@ the success value and the error to the next stage.
 
 That older description is too broad for the current implementation.
 
-For recoverable calls in `V1`, use:
-
-- propagation
-- `check(expr)`
-- `expr || fallback`
-
-and treat ordinary `|` as value piping rather than the main recoverable-error
+For recoverable calls in `V1`, use `check(expr)` or `expr || fallback`, and
+treat ordinary `|` as value piping rather than the main recoverable-error
 mechanism.

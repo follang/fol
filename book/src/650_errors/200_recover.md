@@ -1,118 +1,81 @@
 # Recoverable errors
 
-Recoverable errors are part of the current `V1` compiler contract.
+Recoverable errors are part of the current `V1` language contract, but they are
+split into two different surfaces:
 
-FOL routines may declare both:
+- `T / E` for routine-call handling
+- `err[...]` for normal storable values
 
-- a success type
-- an error type
+Those are intentionally not the same thing.
 
-The current signature form is:
-
-```fol
-fun load(path: str): int / str = { ... }
-```
-
-This means:
-
-- successful execution yields `int`
-- failure yields `str`
-- `report expr` exits through the routine's error path
-
-## Declaring error-aware routines
+## `T / E` is immediate call-site handling
 
 Use `/ ErrorType` after the success type:
 
 ```fol
-fun load(path: str): int / str = {
+fun read_code(path: str): int / str = {
     when(path == "") {
-        case(true) { report "empty path" }
-        * { return 1 }
+        case(true) { report "missing path" }
+        * { return 7 }
     }
 }
 ```
 
-`report expr` must produce a value compatible with the declared `ErrorType`.
+This means:
 
-This is checked by the current compiler. The following is invalid:
+- success yields `int`
+- `report expr` exits through the routine error path with `str`
+- the call result is not a storable plain value
+
+`report expr` must match the declared error type:
 
 ```fol
-fun load(path: str): int / str = {
+fun read_code(path: str): int / str = {
+    report "missing path"
+}
+```
+
+The following is invalid because the reported value is the wrong type:
+
+```fol
+fun read_code(path: str): int / str = {
     report 1
 }
 ```
 
-because `1` is `int`, while the routine declares `str` as its error type.
+## No plain propagation
 
-The same rule applies to methods:
+In current `V1`, `/ ErrorType` routine results do not flow through ordinary
+expressions.
 
-```fol
-typ Parser: rec = {
-    name: str
-}
-
-fun (Parser)parse_err(code: int): str = {
-    return "bad-input"
-}
-
-fun run(tool: Parser, code: int): int / str = {
-    report tool.parse_err(code)
-}
-```
-
-## Propagation
-
-Calling an error-aware routine in a plain value position propagates the error
-upward, but only inside another error-aware routine with a compatible error
-type.
+These are rejected:
 
 ```fol
-fun read_code(path: str): int / str = {
-    when(path == "") {
-        case(true) { report "missing path" }
-        * { return 7 }
-    }
-}
-
-fun main(path: str): int / str = {
-    return read_code(path)
-}
+var value = read_code(path)
+return read_code(path)
+consume(read_code(path))
+read_code(path) + 1
 ```
 
-This works because `main` also declares `/ str`.
+`/ ErrorType` must be handled immediately at the call site.
 
-If the surrounding routine does not declare a compatible error type, the call is
-rejected during type checking.
+## `check(...)`
 
-## Inspecting a recoverable call
-
-`check(expr)` is the `V1` surface for asking whether an error-aware routine call
-failed.
+`check(expr)` asks whether a `/ ErrorType` routine call failed.
 
 It returns `bol`.
 
 ```fol
-fun read_code(path: str): int / str = {
-    when(path == "") {
-        case(true) { report "missing path" }
-        * { return 7 }
-    }
-}
-
-fun main(path: str): int / str = {
-    var value: int = read_code(path) || 0
-
-    when(check(read_code(path))) {
-        case(true) { report "read failed" }
-        * { return value }
-    }
+fun main(path: str): bol = {
+    return check(read_code(path))
 }
 ```
 
-## Recovering with `||`
+`check(...)` works on recoverable routine calls, not on `err[...]` shell values.
 
-`expr || fallback` is the `V1` shorthand for recovering from an error-aware
-routine call.
+## `||`
+
+`expr || fallback` handles a `/ ErrorType` routine call immediately.
 
 Rules:
 
@@ -126,18 +89,11 @@ Rules:
 Examples:
 
 ```fol
-fun read_code(path: str): int / str = {
-    when(path == "") {
-        case(true) { report "missing path" }
-        * { return 7 }
-    }
-}
-
 fun with_default(path: str): int = {
     return read_code(path) || 0
 }
 
-fun propagate_with_context(path: str): int / str = {
+fun with_context(path: str): int / str = {
     return read_code(path) || report "read failed"
 }
 
@@ -146,34 +102,33 @@ fun must_succeed(path: str): int = {
 }
 ```
 
-## Routine errors are not `err[...]` shells
+## `err[...]` is the storable error form
 
-Routine call results with `/ ErrorType` are not the same thing as `err[...]`
-shell values.
+`err[...]` is a normal value type.
 
-That distinction is important in the current compiler:
-
-- `check(expr)` and `expr || fallback` work on error-aware routine calls
-- postfix `!` works on shell values such as `opt[...]` and `err[...]`
-- postfix `!` does not unwrap routine call results declared with `/ ErrorType`
-
-Examples:
+You may store it, pass it, return it, and unwrap it later:
 
 ```fol
-var failure: err[str] = "broken"
-var value: str = failure!
+ali Failure: err[str]
+
+fun keep(value: Failure): Failure = {
+    return value
+}
+
+fun unwrap(value: Failure): str = {
+    return value!
+}
 ```
 
-This is a shell unwrap.
-
-The following is a different surface:
+This is different from:
 
 ```fol
 fun read_code(path: str): int / str = { ... }
 ```
 
-Here the call result is a recoverable routine result, not an `err[...]` shell.
-Use propagation, `check(...)`, or `||` with it.
+A call to `read_code(...)` is not an `err[str]` value. If you need a storable
+error container, use `err[...]`. If you use `/ ErrorType`, handle it with
+`check(...)` or `||`.
 
 ## Current V1 boundary
 
@@ -181,27 +136,20 @@ The current compiler supports:
 
 - declared routine error types with `/`
 - `report expr`
-- propagation through compatible routine contexts
 - `check(expr)`
 - `expr || fallback`
-- lowering of these surfaces into explicit recoverable-error IR
+- `err[...]` shell/value behavior
 
-For backend work, the important current `V1` runtime distinction is:
+The current compiler rejects:
 
-- routine recoverable results map to the `fol-runtime` recoverable ABI
-- shell values such as `opt[...]` and `err[...]` map to separate shell runtime
-  types
-- those two categories are intentionally not merged
+- plain assignment of `/ ErrorType` call results
+- direct returns of `/ ErrorType` call results
+- implicit conversion from `/ ErrorType` into `err[...]`
+- postfix `!` on `/ ErrorType` routine calls
 
-So a future backend should treat a lowered recoverable routine result as the
-runtime recoverable object, not as an `err[...]` shell and not as a tuple-like
-user value.
+For backend work:
 
-The current compiler does not yet claim:
+- `/ ErrorType` routine calls lower through the recoverable runtime ABI
+- `err[...]` remains a separate shell/value runtime type
 
-- advanced Zig-style success/error capture syntax
-- cleanup constructs like `errdefer`
-- backend-specific calling conventions beyond the stable `fol-runtime`
-  recoverable boundary
-
-Those belong to later milestones.
+Those two categories are intentionally not merged.

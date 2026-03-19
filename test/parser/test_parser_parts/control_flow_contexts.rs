@@ -125,42 +125,42 @@ fn test_routine_break_is_rejected_without_loop_context() {
 }
 
 #[test]
-fn test_top_level_yeild_is_rejected_without_routine_or_loop_context() {
-    let error = parse_first_error_from_source("top_level_yeild", "yeild 1;\n");
+fn test_top_level_yield_is_rejected_without_routine_or_loop_context() {
+    let error = parse_first_error_from_source("top_level_yield", "yield 1;\n");
 
     assert!(
         error
             .to_string()
-            .contains("'yeild' is only allowed inside routines or loops"),
-        "Top-level yeild should fail with routine-or-loop wording, got: {}",
+            .contains("'yield' is only allowed inside routines or loops"),
+        "Top-level yield should fail with routine-or-loop wording, got: {}",
         error
     );
-    assert_eq!(error.line(), 1, "Top-level yeild should point at its own line");
+    assert_eq!(error.line(), 1, "Top-level yield should point at its own line");
     assert_eq!(
         error.column(),
         1,
-        "Top-level yeild should point at the yeild keyword itself"
+        "Top-level yield should point at the yield keyword itself"
     );
 }
 
 #[test]
-fn test_branch_body_yeild_is_rejected_without_routine_or_loop_context() {
+fn test_branch_body_yield_is_rejected_without_routine_or_loop_context() {
     let error = parse_first_error_from_source(
-        "branch_body_yeild",
-        "when(value) {\n    case(ready) {\n        yeild 1;\n    }\n}\n",
+        "branch_body_yield",
+        "when(value) {\n    case(ready) {\n        yield 1;\n    }\n}\n",
     );
 
     assert!(
         error
             .to_string()
-            .contains("'yeild' is only allowed inside routines or loops"),
-        "Branch-body yeild should fail with routine-or-loop wording, got: {}",
+            .contains("'yield' is only allowed inside routines or loops"),
+        "Branch-body yield should fail with routine-or-loop wording, got: {}",
         error
     );
-    assert_eq!(error.line(), 3, "Branch-body yeild should report the yeild line");
+    assert_eq!(error.line(), 3, "Branch-body yield should report the yield line");
     assert_eq!(
         error.column(),
         9,
-        "Branch-body yeild should point at the nested yeild keyword"
+        "Branch-body yield should point at the nested yield keyword"
     );
 }

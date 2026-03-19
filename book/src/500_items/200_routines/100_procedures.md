@@ -36,7 +36,7 @@ Current `V1` note:
 - a procedure declared as `pro[] write(...): T / E` does not produce an
   `err[E]` shell value that can be unwrapped with `!`
 - it produces a recoverable routine result with a success path and an error path
-- use propagation, `check(...)`, or `expr || fallback` at the call site
+- use `check(...)` or `expr || fallback` at the call site
 - keep postfix `!` for `opt[...]` and `err[...]` shell values only
 
 ### Passing values

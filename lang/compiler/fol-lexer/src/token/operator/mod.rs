@@ -3,7 +3,6 @@ use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum OPERATOR {
-    ANY,
     Dotdot,
     Dotdotdot,
     Path,
@@ -29,41 +28,34 @@ pub enum OPERATOR {
 impl fmt::Display for OPERATOR {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let t = match self {
-            OPERATOR::Dotdotdot => Some("..."),
-            OPERATOR::Dotdot => Some(".."),
-            OPERATOR::Path => Some("::"),
-            OPERATOR::Assign => Some(":="),
-            OPERATOR::Flow => Some("=>"),
-            OPERATOR::Flow2 => Some("->"),
-            OPERATOR::Add => Some("+"),
-            OPERATOR::Abstract => Some("-"),
-            OPERATOR::Multiply => Some("*"),
-            OPERATOR::Divide => Some("/"),
-            OPERATOR::Equal => Some("=="),
-            OPERATOR::Noteq => Some("!="),
-            OPERATOR::Greateq => Some(">="),
-            OPERATOR::Lesseq => Some("<="),
-            OPERATOR::Addeq => Some("+="),
-            OPERATOR::Subeq => Some("-="),
-            OPERATOR::Multeq => Some("*="),
-            OPERATOR::Diveq => Some("/="),
-            OPERATOR::Lesser => Some("<<"),
-            OPERATOR::Greater => Some(">>"),
-            _ => None,
+            OPERATOR::Dotdotdot => "...",
+            OPERATOR::Dotdot => "..",
+            OPERATOR::Path => "::",
+            OPERATOR::Assign => ":=",
+            OPERATOR::Flow => "=>",
+            OPERATOR::Flow2 => "->",
+            OPERATOR::Add => "+",
+            OPERATOR::Abstract => "-",
+            OPERATOR::Multiply => "*",
+            OPERATOR::Divide => "/",
+            OPERATOR::Equal => "==",
+            OPERATOR::Noteq => "!=",
+            OPERATOR::Greateq => ">=",
+            OPERATOR::Lesseq => "<=",
+            OPERATOR::Addeq => "+=",
+            OPERATOR::Subeq => "-=",
+            OPERATOR::Multeq => "*=",
+            OPERATOR::Diveq => "/=",
+            OPERATOR::Lesser => "<<",
+            OPERATOR::Greater => ">>",
         };
         write!(
             f,
             "{}{}",
             " OPERATOR ".black().on_red(),
-            match t {
-                Some(val) => {
-                    (":".to_string().white().on_black().to_string() + &format!(" {} ", val))
-                        .black()
-                        .on_red()
-                        .to_string()
-                }
-                None => "".to_string(),
-            },
+            (":".to_string().white().on_black().to_string() + &format!(" {} ", t))
+                .black()
+                .on_red()
         )
     }
 }

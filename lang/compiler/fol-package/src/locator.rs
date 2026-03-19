@@ -134,6 +134,15 @@ fn parse_https_git_locator(raw: &str) -> Result<PackageLocator, PackageError> {
             format!("git package locator '{}' is missing a host", raw),
         ));
     }
+    if !is_valid_hostname(host) {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "git package locator '{}' has invalid hostname '{}'; hostnames may only contain alphanumeric characters, dots, and hyphens",
+                raw, host
+            ),
+        ));
+    }
 
     Ok(PackageLocator::git(
         raw.to_string(),
@@ -174,6 +183,15 @@ fn parse_ssh_git_locator(raw: &str) -> Result<PackageLocator, PackageError> {
             format!(
                 "git package locator '{}' must include a host, owner, and repository path",
                 raw
+            ),
+        ));
+    }
+    if !is_valid_hostname(host.trim()) {
+        return Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "git package locator '{}' has invalid hostname '{}'; hostnames may only contain alphanumeric characters, dots, and hyphens",
+                raw, host.trim()
             ),
         ));
     }
@@ -293,6 +311,14 @@ fn set_selector_value(
     }
     *slot = Some(value.to_string());
     Ok(())
+}
+
+fn is_valid_hostname(host: &str) -> bool {
+    if host.is_empty() {
+        return false;
+    }
+    host.chars()
+        .all(|ch| ch.is_ascii_alphanumeric() || ch == '.' || ch == '-')
 }
 
 fn looks_like_future_git_locator(raw: &str) -> bool {
@@ -550,6 +576,30 @@ mod tests {
         assert_eq!(
             git.normalized_git_identity().as_deref(),
             Some("github.com/follang/json")
+        );
+    }
+
+    #[test]
+    fn package_locator_rejects_invalid_https_hostname() {
+        let error = parse_package_locator("https://git hub.com/follang/json.git")
+            .expect_err("HTTPS locators with invalid hostnames should be rejected");
+
+        assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
+        assert!(
+            error.to_string().contains("invalid hostname"),
+            "invalid hostname errors should mention 'invalid hostname', got: {error}",
+        );
+    }
+
+    #[test]
+    fn package_locator_rejects_invalid_ssh_hostname() {
+        let error = parse_package_locator("git@git_hub.com:follang/json.git")
+            .expect_err("SSH locators with invalid hostnames should be rejected");
+
+        assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
+        assert!(
+            error.to_string().contains("invalid hostname"),
+            "invalid hostname errors should mention 'invalid hostname', got: {error}",
         );
     }
 

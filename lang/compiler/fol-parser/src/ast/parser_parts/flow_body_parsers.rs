@@ -21,114 +21,114 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let key = tokens.curr(false)?.key();
         if self.lookahead_binding_alternative(tokens).is_some() {
             let nodes = self.parse_binding_alternative_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(nodes);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
             let nodes = self.parse_var_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(nodes);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
             let nodes = self.parse_let_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(nodes);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
             let nodes = self.parse_con_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(nodes);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Lab)) {
             let nodes = self.parse_lab_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(nodes);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
             let nodes = self.parse_use_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(nodes);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
             let node = self.parse_alias_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Typ)) {
             let nodes = self.parse_type_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(nodes);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Def)) {
             let node = self.parse_def_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Seg)) {
             let node = self.parse_seg_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Imp)) {
             let node = self.parse_imp_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Std)) && self.lookahead_is_std_decl(tokens) {
             let node = self.parse_std_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Fun)) {
             let node = self.parse_fun_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Log)) {
             let node = self.parse_log_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Pro)) {
             let node = self.parse_pro_decl(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::If)) {
             let node = self.parse_if_stmt(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::When)) {
             let node = self.parse_when_stmt(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Keyword(BUILDIN::Select)) {
             let node = self.parse_select_stmt(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
@@ -140,13 +140,13 @@ impl AstParser {
                 | KEYWORD::Keyword(BUILDIN::Each)
         ) {
             let node = self.parse_loop_stmt(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Symbol(SYMBOL::CurlyO)) {
             let node = self.parse_block_stmt(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
@@ -158,14 +158,14 @@ impl AstParser {
                 | KEYWORD::Keyword(BUILDIN::Assert)
         ) {
             let node = self.parse_builtin_call_stmt(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
         if matches!(key, KEYWORD::Symbol(SYMBOL::Dot)) && self.lookahead_is_dot_builtin_call(tokens)
         {
             let node = self.parse_dot_builtin_call_expr(tokens)?;
-            self.consume_optional_semicolon(tokens);
+            self.consume_optional_semicolon(tokens)?;
             return Ok(vec![node]);
         }
 
@@ -179,7 +179,7 @@ impl AstParser {
             return Ok(vec![node]);
         }
 
-        if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
             let node = self.parse_yield_stmt(tokens)?;
             return Ok(vec![node]);
         }
@@ -207,7 +207,7 @@ impl AstParser {
             self.parse_logical_expression(tokens)?
         };
 
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
         Ok(vec![node])
     }
 }

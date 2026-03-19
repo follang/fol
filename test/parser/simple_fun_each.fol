@@ -1,6 +1,6 @@
 fun iterate(items: int): int = {
     each (item in items) {
-        yeild item;
+        yield item;
         break;
     }
     return items;

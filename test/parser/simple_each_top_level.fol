@@ -1,4 +1,4 @@
 each (entry in entries when ready) {
-    yeild entry;
+    yield entry;
     break;
 }

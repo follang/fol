@@ -9,6 +9,20 @@ use fol_lower::{
 };
 use fol_resolver::PackageIdentity;
 
+fn recoverable_error_type_for_local(
+    routine: &LoweredRoutine,
+    local_id: fol_lower::LoweredLocalId,
+) -> Option<LoweredTypeId> {
+    routine.instructions.iter().find_map(|instruction| match &instruction.kind {
+        fol_lower::LoweredInstrKind::Call { error_type, .. }
+            if instruction.result == Some(local_id) =>
+        {
+            *error_type
+        }
+        _ => None,
+    })
+}
+
 pub fn render_global_declaration(
     workspace: &LoweredWorkspace,
     package_identity: &PackageIdentity,
@@ -226,7 +240,7 @@ fn render_local_declaration(
     local: &fol_lower::LoweredLocal,
     type_table: &LoweredTypeTable,
 ) -> BackendResult<String> {
-    let rendered_type = match (local.type_id, local.recoverable_error_type) {
+    let rendered_type = match (local.type_id, recoverable_error_type_for_local(routine, local_id)) {
         (Some(type_id), Some(error_type)) => format!(
             "rt::FolRecover<{}, {}>",
             render_rust_type_in_workspace(Some(workspace), type_table, type_id)?,
@@ -346,7 +360,6 @@ mod tests {
             source_unit_id: SourceUnitId(0),
             name: "answer".to_string(),
             type_id: int_id,
-            recoverable_error_type: None,
             mutable: false,
         };
         let mutable = LoweredGlobal {
@@ -355,7 +368,6 @@ mod tests {
             source_unit_id: SourceUnitId(0),
             name: "counter".to_string(),
             type_id: int_id,
-            recoverable_error_type: None,
             mutable: true,
         };
         let workspace = sample_lowered_workspace();
@@ -390,7 +402,6 @@ mod tests {
         let local_id = plain.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(bool_id),
-            recoverable_error_type: None,
             name: Some("flag".to_string()),
         });
         plain.params.push(local_id);
@@ -401,7 +412,6 @@ mod tests {
         let method_param = method.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(bool_id),
-            recoverable_error_type: None,
             name: Some("flag".to_string()),
         });
         method.params.push(method_param);
@@ -459,13 +469,11 @@ mod tests {
         let param_id = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(bool_id),
-            recoverable_error_type: None,
             name: Some("flag".to_string()),
         });
         let temp_id = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(1),
             type_id: Some(int_id),
-            recoverable_error_type: None,
             name: Some("temp".to_string()),
         });
         routine.params.push(param_id);
@@ -501,7 +509,6 @@ mod tests {
             source_unit_id: SourceUnitId(0),
             name: "answer".to_string(),
             type_id: int_id,
-            recoverable_error_type: None,
             mutable: false,
         };
         let mut routine = LoweredRoutine::new(LoweredRoutineId(4), "load", LoweredBlockId(0));
@@ -509,13 +516,11 @@ mod tests {
         let param_id = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
             type_id: Some(bool_id),
-            recoverable_error_type: None,
             name: Some("flag".to_string()),
         });
         let local_id = routine.locals.push(LoweredLocal {
             id: LoweredLocalId(1),
             type_id: Some(int_id),
-            recoverable_error_type: None,
             name: Some("value".to_string()),
         });
         routine.params.push(param_id);

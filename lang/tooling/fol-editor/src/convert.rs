@@ -76,7 +76,7 @@ pub fn diagnostic_to_lsp(diagnostic: &Diagnostic) -> LspDiagnostic {
             length: Some(1),
         });
 
-    let mut message = diagnostic.message.clone();
+    let mut message = format!("[{}] {}", diagnostic.code.as_str(), diagnostic.message);
     if !diagnostic.notes.is_empty() {
         message.push_str("\nnotes:");
         for note in &diagnostic.notes {
@@ -175,6 +175,8 @@ mod tests {
 
         assert_eq!(lsp.severity, LspDiagnosticSeverity::Error);
         assert_eq!(lsp.code, "R1003");
+        assert!(lsp.message.starts_with("[R1003] "));
+        assert!(lsp.message.contains("unresolved value"));
         assert!(lsp.message.contains("check imports"));
         assert!(lsp.message.contains("add a matching binding"));
         assert_eq!(lsp.related_information.len(), 1);

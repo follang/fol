@@ -14,12 +14,21 @@ pub fn render_report(report: &DiagnosticReport) -> String {
         output.push('\n');
         if report.error_count > 0 {
             let label = if report.error_count == 1 { "" } else { "s" };
-            output.push_str(&format!(
-                "{} found {} error{}",
-                "error:".red().bold(),
-                report.error_count,
-                label
-            ));
+            if report.diagnostics.len() >= 50 {
+                output.push_str(&format!(
+                    "{} found {}+ error{} (output truncated)",
+                    "error:".red().bold(),
+                    report.error_count,
+                    label,
+                ));
+            } else {
+                output.push_str(&format!(
+                    "{} found {} error{}",
+                    "error:".red().bold(),
+                    report.error_count,
+                    label
+                ));
+            }
         }
         if report.warning_count > 0 {
             if report.error_count > 0 {
@@ -48,7 +57,11 @@ pub fn render_diagnostic(diagnostic: &Diagnostic) -> String {
         Severity::Info => "info".blue().bold(),
     };
 
-    output.push_str(&format!("{}: {}", prefix, diagnostic.message));
+    if diagnostic.code.as_str() != "EUNKNOWN" {
+        output.push_str(&format!("{}[{}]: {}", prefix, diagnostic.code.as_str(), diagnostic.message));
+    } else {
+        output.push_str(&format!("{}: {}", prefix, diagnostic.message));
+    }
 
     if let Some(loc) = diagnostic.primary_location() {
         output.push('\n');
@@ -282,8 +295,8 @@ mod tests {
 
         let rendered = super::render_report(&report);
 
-        assert!(rendered.contains("warning: warning renderer"));
-        assert!(rendered.contains("info: info renderer"));
+        assert!(rendered.contains("warning[W4005]: warning renderer"));
+        assert!(rendered.contains("info[I4006]: info renderer"));
         assert!(rendered.contains("warning: 1 warning"));
     }
 }

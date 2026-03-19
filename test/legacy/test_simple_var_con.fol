@@ -1,8 +1,0 @@
-// Simple variable and constant test
-
-var x: int = 42;
-var name: str = "FOL";
-var pi: flt = 3.14;
-
-con MAX: int = 100;
-con TITLE: str = "Test";

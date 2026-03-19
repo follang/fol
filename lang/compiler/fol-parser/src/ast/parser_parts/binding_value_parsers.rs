@@ -10,7 +10,7 @@ impl AstParser {
 
         for _ in 0..256 {
             values.push(self.parse_logical_expression(tokens)?);
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
 
             let next = match tokens.curr(false) {
                 Ok(token) => token,
@@ -25,7 +25,7 @@ impl AstParser {
                     break;
                 }
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 continue;
             }
 

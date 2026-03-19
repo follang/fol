@@ -12,8 +12,6 @@ pub mod session;
 pub mod types;
 mod verify;
 
-use fol_resolver::{PackageIdentity, PackageSourceKind};
-
 pub use boundaries::{v1_lowering_boundaries, UnsupportedLoweringSurface};
 pub use control::{
     LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredOperand, LoweredRoutine,
@@ -50,36 +48,13 @@ impl Lowerer {
     ) -> LoweringResult<LoweredWorkspace> {
         LoweringSession::new(typed).lower_workspace()
     }
-
-    pub fn lower_typed_program(
-        &mut self,
-        typed: fol_typecheck::TypedProgram,
-    ) -> LoweringResult<LoweredWorkspace> {
-        let identity = compatibility_identity_for_program(&typed);
-        self.lower_typed_workspace(fol_typecheck::TypedWorkspace::single(identity, typed))
-    }
-}
-
-fn compatibility_identity_for_program(typed: &fol_typecheck::TypedProgram) -> PackageIdentity {
-    let canonical_root = typed
-        .ordinary_source_units()
-        .next()
-        .or_else(|| typed.source_units().first())
-        .map(|source_unit| source_unit.path.clone())
-        .unwrap_or_else(|| typed.package_name().to_string());
-
-    PackageIdentity {
-        source_kind: PackageSourceKind::Entry,
-        canonical_root,
-        display_name: typed.package_name().to_string(),
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{LoweredWorkspace, Lowerer, LoweringError, LoweringErrorKind, LoweringResult};
     use fol_parser::ast::AstParser;
-    use fol_resolver::{resolve_package, resolve_workspace};
+    use fol_resolver::resolve_workspace;
     use fol_stream::FileStream;
     use fol_typecheck::Typechecker;
 
@@ -100,7 +75,7 @@ mod tests {
         assert_eq!(error.message(), "lowering shell is not implemented yet");
         assert_eq!(
             error.to_string(),
-            "LoweringUnsupported: lowering shell is not implemented yet"
+            "lowering shell is not implemented yet"
         );
     }
 
@@ -126,31 +101,6 @@ mod tests {
             .expect("Lowering shell should accept typed workspaces");
 
         assert_eq!(lowered.package_count(), 1);
-    }
-
-    #[test]
-    fn lowering_compatibility_shim_wraps_typed_programs_as_single_entry_workspaces() {
-        let fixture_path = concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../../test/parser/simple_var.fol"
-        );
-        let mut stream = FileStream::from_file(fixture_path).expect("Should open lowering fixture");
-        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
-        let mut parser = AstParser::new();
-        let syntax = parser
-            .parse_package(&mut lexer)
-            .expect("Lowering fixture should parse");
-        let resolved = resolve_package(syntax).expect("Lowering fixture should resolve");
-        let typed = Typechecker::new()
-            .check_resolved_program(resolved)
-            .expect("Lowering fixture should typecheck");
-
-        let lowered = Lowerer::new()
-            .lower_typed_program(typed)
-            .expect("Compatibility shim should lower through workspace lowering");
-
-        assert_eq!(lowered.package_count(), 1);
-        assert_eq!(lowered.entry_identity().display_name, "parser");
     }
 
     #[test]

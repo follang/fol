@@ -693,10 +693,15 @@ impl ResolvedProgram {
             inserted.id = symbol_id;
         }
 
-        let scope = self
-            .scopes
-            .get_mut(scope_id)
-            .expect("mounted symbol target scope should exist");
+        let Some(scope) = self.scopes.get_mut(scope_id) else {
+            return Err(ResolverError::new(
+                ResolverErrorKind::Internal,
+                format!(
+                    "mounted symbol target scope {:?} does not exist",
+                    scope_id
+                ),
+            ));
+        };
         scope.symbols.push(symbol_id);
         scope
             .symbol_keys

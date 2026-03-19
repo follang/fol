@@ -41,15 +41,47 @@ At the current compiler stage, a diagnostic can carry:
 
 - severity
 - main message
+- a stable diagnostic code (e.g. `P1001`, `R1003`, `T1003`)
 - one primary location
 - zero or more related locations
 - notes
 - helps
 - suggestions
-- a stable producer-owned code in the structured model
 
 The current compiler mostly emits `Error`, but the reporting layer also supports
 `Warning` and `Info`.
+
+## Diagnostic codes
+
+Every diagnostic carries a stable producer-owned code. The code identifies the
+error family and specific failure without relying on message text.
+
+Current code families:
+
+| Prefix | Producer        | Examples                        |
+|--------|-----------------|---------------------------------|
+| `P1xxx`| parser          | `P1001` syntax, `P1002` file root |
+| `K1xxx`| package loading | `K1001` metadata, `K1002` layout  |
+| `R1xxx`| resolver        | `R1003` unresolved, `R1005` ambiguous |
+| `T1xxx`| type checker    | `T1003` type mismatch           |
+| `L1xxx`| lowering        | `L1001` unsupported surface     |
+| `K11xx`| build evaluator | `K1101` build failure           |
+
+Codes are structurally assigned. The parser carries an explicit `ParseErrorKind`
+field on each error rather than deriving the code from message text. This means
+message wording can change without breaking code identity.
+
+Human output shows codes in brackets:
+
+```text
+error[R1003]: could not resolve name 'answer'
+```
+
+JSON output includes the code as a top-level field:
+
+```json
+{ "code": "R1003", "message": "could not resolve name 'answer'" }
+```
 
 ## Primary location
 
@@ -64,6 +96,10 @@ That location is currently expressed as:
 
 This is what allows the compiler to point at the exact token or source span that
 caused the failure.
+
+Every diagnostic now carries a real location. Parser errors that previously
+lacked locations (safety-bound overflows, constraint violations like duplicate
+parameter names) now extract file/line/column from the current token position.
 
 Typical examples:
 
@@ -108,13 +144,40 @@ The current contract is:
 This split matters because tooling and tests can preserve structure instead of
 trying to parse intent back out of prose.
 
+## Error recovery
+
+The parser implements error recovery so that a single syntax mistake does not
+cascade into dozens of unrelated errors.
+
+When a declaration parse fails, the parser calls `sync_to_next_declaration` to
+skip forward to the next declaration-start keyword (`fun`, `var`, `def`, `typ`,
+`pro`, `log`, `seg`, `ali`, `imp`, `lab`, `con`, `use`) or EOF. This means:
+
+- `fun[exp] emit(...) = { ... }` produces exactly 1 error, not 20+
+- two broken declarations separated by a good one produce 2 errors, and the
+  good declaration still parses correctly
+
+## Cascade suppression
+
+Even with parser recovery, edge cases in any pipeline stage can cascade.
+
+The diagnostic report layer applies two safety nets:
+
+- **same-code, same-line dedup**: if the most recently added diagnostic has the
+  same code and same line as a new one, the new one is suppressed
+- **hard cap**: the report accepts at most 50 diagnostics total and shows
+  "(output truncated)" when the limit is reached
+
+These limits prevent walls of identical errors without hiding genuinely distinct
+failures.
+
 ## Human-readable diagnostics
 
 By default the CLI prints human-readable diagnostics.
 
 The current renderer is designed around:
 
-- a severity-prefixed message
+- a severity prefix with a diagnostic code bracket (e.g. `error[R1003]:`)
 - an arrow line with `file:line:column`
 - a source snippet when the file and line can be loaded
 - an underline for the primary span
@@ -124,7 +187,7 @@ The current renderer is designed around:
 Illustrative shape:
 
 ```text
-error: could not resolve name `answer`
+error[R1003]: could not resolve name 'answer'
   --> app/main.fol:3:12
     |
   3 |     return answer
@@ -133,15 +196,9 @@ error: could not resolve name `answer`
   help: check imports or declare the name before use
 ```
 
-This example is intentionally illustrative.
-
-The current contract is about the information that survives:
-
-- exact primary location
-- snippet-oriented rendering when source is available
-- related labels, notes, and helps
-
-The exact wording and final formatting details can still evolve.
+Messages are clean human-readable text. The compiler does not prepend internal
+kind labels like `ResolverUnresolvedName:` to messages. The diagnostic code in
+brackets is the stable identifier.
 
 ## Source fallbacks
 
@@ -194,8 +251,8 @@ Illustrative shape:
 ```json
 {
   "severity": "Error",
-  "code": "R2001",
-  "message": "could not resolve name `answer`",
+  "code": "R1003",
+  "message": "could not resolve name 'answer'",
   "location": {
     "file": "app/main.fol",
     "line": 3,
@@ -236,10 +293,12 @@ At head, the main producers that lower into the shared diagnostics layer are:
 - resolver
 - type checking
 - lowering
+- build evaluator
+- backend
 
 That means diagnostics are already strong across:
 
-- syntax errors
+- syntax errors (with error recovery so cascades are contained)
 - package metadata and package-root errors
 - import-loading failures
 - unresolved names
@@ -249,6 +308,7 @@ That means diagnostics are already strong across:
 - unsupported lowered `V1` surfaces before target emission
 - backend emission and build failures when lowered `V1` workspaces cannot become
   runnable artifacts
+- build graph evaluation failures
 
 This is the important boundary for the current compiler stage:
 
@@ -259,21 +319,6 @@ This is the important boundary for the current compiler stage:
 - the project now does promise a finished first backend for the current `V1`
   subset, while later targets, optimizations, and C ABI work remain outside
   this chapter
-
-## Stable codes
-
-The current diagnostics model carries stable producer-owned codes.
-
-The important idea is not the exact prefix letters.
-The important idea is ownership and stability:
-
-- parser owns parser-family codes
-- package loading owns package-family codes
-- resolver owns resolver-family codes
-- future semantic phases will own their own families as well
-
-This is better than deriving codes from free-form message text, because message
-wording can change without breaking code identity.
 
 ## What diagnostics do not guarantee
 
@@ -290,8 +335,8 @@ Current limits still matter:
 
 So the current guarantee is:
 
-- if stream, lexer, parser, package loading, or resolver can identify the
-  problem now, diagnostics should be structured and exact
+- if stream, lexer, parser, package loading, resolver, typechecker, or lowering
+  can identify the problem now, diagnostics should be structured and exact
 
 But not:
 
@@ -301,9 +346,10 @@ But not:
 
 When reading compiler output, think in this order:
 
-1. trust the primary location first
-2. use related labels to understand competing or earlier sites
-3. read notes for technical context
-4. read helps for the most actionable next step
+1. look at the diagnostic code in brackets to identify the error family
+2. trust the primary location
+3. use related labels to understand competing or earlier sites
+4. read notes for technical context
+5. read helps for the most actionable next step
 
 That mental model matches how the compiler currently structures reporting.

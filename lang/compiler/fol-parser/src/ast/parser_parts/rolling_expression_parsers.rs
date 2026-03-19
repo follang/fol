@@ -14,10 +14,10 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let bindings = self.parse_rolling_bindings(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let condition = if let Ok(token) = tokens.curr(false) {
             if matches!(
@@ -25,7 +25,7 @@ impl AstParser {
                 KEYWORD::Keyword(BUILDIN::If) | KEYWORD::Keyword(BUILDIN::When)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 Some(Box::new(self.parse_logical_expression(tokens)?))
             } else {
                 None
@@ -34,7 +34,7 @@ impl AstParser {
             None
         };
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
             return Err(Box::new(ParseError::from_token(
@@ -62,7 +62,7 @@ impl AstParser {
                 let mut seen_names = HashSet::new();
 
                 for _ in 0..64 {
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     let token = tokens.curr(false)?;
                     if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                         let _ = tokens.bump();
@@ -78,7 +78,7 @@ impl AstParser {
                         )));
                     }
                     bindings.push(binding);
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
 
                     let sep = tokens.curr(false)?;
                     if matches!(
@@ -99,13 +99,22 @@ impl AstParser {
                     )));
                 }
 
-                return Err(Box::new(ParseError {
-                    message: "Rolling binding list exceeded parser limit".to_string(),
-                    file: None,
-                    line: 0,
-                    column: 0,
-                    length: 0,
-                }));
+                let error = if let Ok(token) = tokens.curr(false) {
+                    ParseError::from_token(
+                        &token,
+                        "Rolling binding list exceeded parser limit".to_string(),
+                    )
+                } else {
+                    ParseError {
+                        kind: ParseErrorKind::Syntax,
+                        message: "Rolling binding list exceeded parser limit".to_string(),
+                        file: None,
+                        line: 0,
+                        column: 0,
+                        length: 0,
+                    }
+                };
+                return Err(Box::new(error));
             }
         }
 
@@ -121,7 +130,7 @@ impl AstParser {
                 )));
             }
             bindings.push(binding);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let Ok(sep) = tokens.curr(false) else {
                 break;
@@ -131,7 +140,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 continue;
             }
             break;
@@ -147,19 +156,19 @@ impl AstParser {
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
             }
         }
 
         let name_token = tokens.curr(false)?;
         let name = Self::expect_named_label(&name_token, "Expected rolling binding name")?;
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let type_hint = if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 Some(self.parse_type_reference_tokens(tokens)?)
             } else {
                 None
@@ -168,7 +177,7 @@ impl AstParser {
             None
         };
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let in_token = tokens.curr(false)?;
         if !matches!(in_token.key(), KEYWORD::Keyword(BUILDIN::In)) {
             return Err(Box::new(ParseError::from_token(
@@ -177,7 +186,7 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let iterable = self.parse_logical_expression(tokens)?;
         Ok(RollingBinding {

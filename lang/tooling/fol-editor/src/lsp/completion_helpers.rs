@@ -1,0 +1,436 @@
+use crate::{EditorDocument, LspPosition};
+use fol_intrinsics::IntrinsicEntry;
+
+use super::types::EditorCompletionItem;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum CompletionContext {
+    Plain,
+    TypePosition,
+    QualifiedPath { qualifier: String },
+    DotTrigger,
+}
+
+pub(crate) fn completion_context(
+    document: &EditorDocument,
+    position: LspPosition,
+) -> CompletionContext {
+    let Some(offset) = position_to_offset(&document.text, position) else {
+        return CompletionContext::Plain;
+    };
+    let prefix = &document.text[..offset];
+    let line_prefix = prefix
+        .rsplit_once('\n')
+        .map(|(_, tail)| tail)
+        .unwrap_or(prefix);
+    let trimmed = line_prefix.trim_end();
+
+    if trimmed.ends_with('.') {
+        return CompletionContext::DotTrigger;
+    }
+
+    if let Some((qualifier, _)) = trimmed.rsplit_once("::") {
+        let qualifier = qualifier
+            .rsplit(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == ':'))
+            .next()
+            .unwrap_or("")
+            .trim_matches(':')
+            .to_string();
+        if !qualifier.is_empty() {
+            return CompletionContext::QualifiedPath { qualifier };
+        }
+    }
+
+    if line_prefix
+        .rsplit_once(':')
+        .map(|(_, tail)| tail.trim())
+        .is_some_and(|tail| {
+            tail.chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || ch == '_' || ch == ':')
+        })
+    {
+        return CompletionContext::TypePosition;
+    }
+
+    CompletionContext::Plain
+}
+
+pub(super) fn position_to_offset(text: &str, position: LspPosition) -> Option<usize> {
+    let mut line = 0u32;
+    let mut character = 0u32;
+    for (offset, ch) in text.char_indices() {
+        if line == position.line && character == position.character {
+            return Some(offset);
+        }
+        if ch == '\n' {
+            line += 1;
+            character = 0;
+            if line == position.line && position.character == 0 {
+                return Some(offset + ch.len_utf8());
+            }
+        } else if line == position.line {
+            character += 1;
+        }
+    }
+
+    (line == position.line && character == position.character).then_some(text.len())
+}
+
+pub(super) fn fallback_decl_name(line: &str, prefixes: &[&str]) -> Option<String> {
+    for prefix in prefixes {
+        if let Some(rest) = line.strip_prefix(prefix) {
+            let name = rest
+                .split(|ch: char| ch == ':' || ch == '=' || ch == '(' || ch.is_whitespace())
+                .next()
+                .unwrap_or("")
+                .trim_matches(|ch: char| ch == '[' || ch == ']');
+            if !name.is_empty() {
+                return Some(name.to_string());
+            }
+        }
+    }
+    None
+}
+
+pub(super) fn current_routine_name(text: &str, position: LspPosition) -> Option<String> {
+    let offset = position_to_offset(text, position).unwrap_or(text.len());
+    let before_cursor = &text[..offset];
+    let header = before_cursor
+        .rmatch_indices("fun")
+        .next()
+        .map(|(index, _)| &before_cursor[index..])?;
+    let rest = header.strip_prefix("fun").unwrap_or(header);
+    let rest =
+        rest.trim_start_matches(|ch: char| ch == '[' || ch == ']' || !ch.is_ascii_alphanumeric());
+    let open = rest.find('(')?;
+    let name = rest[..open]
+        .trim()
+        .trim_matches(|ch: char| ch == '[' || ch == ']');
+    (!name.is_empty()).then(|| name.to_string())
+}
+
+pub(super) fn fallback_items_from_package_dir(root: &std::path::Path) -> Vec<EditorCompletionItem> {
+    let mut items = Vec::new();
+    collect_fallback_items_from_dir(root, &mut items);
+    items
+}
+
+pub(super) fn collect_fallback_items_from_dir(
+    root: &std::path::Path,
+    items: &mut Vec<EditorCompletionItem>,
+) {
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return;
+    };
+    for entry in entries.filter_map(Result::ok) {
+        let path = entry.path();
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if file_type.is_dir() {
+            collect_fallback_items_from_dir(&path, items);
+            continue;
+        }
+        if !file_type.is_file() || path.extension().and_then(|ext| ext.to_str()) != Some("fol") {
+            continue;
+        }
+        let Ok(text) = std::fs::read_to_string(&path) else {
+            continue;
+        };
+        for line in text.lines() {
+            let trimmed = line.trim();
+            if let Some(name) = fallback_decl_name(trimmed, &["fun[exp] ", "fun["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 3,
+                    detail: Some("routine".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["def[exp] ", "def["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 12,
+                    detail: Some("definition".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["typ[exp] ", "typ["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 22,
+                    detail: Some("type".to_string()),
+                    insert_text: None,
+                });
+            } else if let Some(name) = fallback_decl_name(trimmed, &["ali[exp] ", "ali["]) {
+                items.push(EditorCompletionItem {
+                    label: name,
+                    kind: 22,
+                    detail: Some("type alias".to_string()),
+                    insert_text: None,
+                });
+            }
+        }
+    }
+}
+
+pub(super) fn render_symbol_kind(kind: fol_resolver::SymbolKind) -> &'static str {
+    match kind {
+        fol_resolver::SymbolKind::Type => "type",
+        fol_resolver::SymbolKind::Alias => "alias",
+        fol_resolver::SymbolKind::Routine => "routine",
+        fol_resolver::SymbolKind::Definition => "definition",
+        fol_resolver::SymbolKind::ValueBinding
+        | fol_resolver::SymbolKind::LabelBinding
+        | fol_resolver::SymbolKind::DestructureBinding => "binding",
+        fol_resolver::SymbolKind::Parameter => "parameter",
+        fol_resolver::SymbolKind::Capture => "capture",
+        fol_resolver::SymbolKind::ImportAlias => "namespace",
+        fol_resolver::SymbolKind::Segment => "segment",
+        fol_resolver::SymbolKind::Implementation => "implementation",
+        fol_resolver::SymbolKind::Standard => "standard",
+        fol_resolver::SymbolKind::GenericParameter => "parameter",
+        fol_resolver::SymbolKind::LoopBinder => "binding",
+        fol_resolver::SymbolKind::RollingBinder => "binding",
+    }
+}
+
+pub(super) fn symbol_kind_code(kind: fol_resolver::SymbolKind) -> u8 {
+    match kind {
+        fol_resolver::SymbolKind::Routine | fol_resolver::SymbolKind::Definition => 12,
+        fol_resolver::SymbolKind::Type | fol_resolver::SymbolKind::Alias => 5,
+        fol_resolver::SymbolKind::ImportAlias => 3,
+        fol_resolver::SymbolKind::ValueBinding
+        | fol_resolver::SymbolKind::LabelBinding
+        | fol_resolver::SymbolKind::DestructureBinding
+        | fol_resolver::SymbolKind::Parameter
+        | fol_resolver::SymbolKind::Capture
+        | fol_resolver::SymbolKind::GenericParameter
+        | fol_resolver::SymbolKind::LoopBinder
+        | fol_resolver::SymbolKind::RollingBinder => 13,
+        fol_resolver::SymbolKind::Segment => 2,
+        fol_resolver::SymbolKind::Implementation | fol_resolver::SymbolKind::Standard => 6,
+    }
+}
+
+pub(super) fn render_checked_type(
+    table: &fol_typecheck::TypeTable,
+    type_id: fol_typecheck::CheckedTypeId,
+) -> String {
+    match table.get(type_id) {
+        Some(fol_typecheck::CheckedType::Builtin(builtin)) => match builtin {
+            fol_typecheck::BuiltinType::Int => "int".to_string(),
+            fol_typecheck::BuiltinType::Float => "flt".to_string(),
+            fol_typecheck::BuiltinType::Bool => "bol".to_string(),
+            fol_typecheck::BuiltinType::Char => "chr".to_string(),
+            fol_typecheck::BuiltinType::Str => "str".to_string(),
+            fol_typecheck::BuiltinType::Never => "never".to_string(),
+        },
+        Some(fol_typecheck::CheckedType::Declared { name, .. }) => name.clone(),
+        Some(fol_typecheck::CheckedType::Optional { inner }) => {
+            format!("opt[{}]", render_checked_type(table, *inner))
+        }
+        Some(fol_typecheck::CheckedType::Error { inner }) => inner
+            .map(|inner| format!("err[{}]", render_checked_type(table, inner)))
+            .unwrap_or_else(|| "err[]".to_string()),
+        Some(fol_typecheck::CheckedType::Array { element_type, .. }) => {
+            format!("[{}]", render_checked_type(table, *element_type))
+        }
+        Some(fol_typecheck::CheckedType::Vector { element_type }) => {
+            format!("vec[{}]", render_checked_type(table, *element_type))
+        }
+        Some(fol_typecheck::CheckedType::Sequence { element_type }) => {
+            format!("seq[{}]", render_checked_type(table, *element_type))
+        }
+        Some(fol_typecheck::CheckedType::Set { member_types }) => format!(
+            "set[{}]",
+            member_types
+                .iter()
+                .map(|member| render_checked_type(table, *member))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Some(fol_typecheck::CheckedType::Map {
+            key_type,
+            value_type,
+        }) => format!(
+            "map[{}, {}]",
+            render_checked_type(table, *key_type),
+            render_checked_type(table, *value_type)
+        ),
+        Some(fol_typecheck::CheckedType::Routine(routine)) => {
+            let params = routine
+                .params
+                .iter()
+                .map(|param| render_checked_type(table, *param))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let returns = routine
+                .return_type
+                .map(|return_type| render_checked_type(table, return_type))
+                .unwrap_or_else(|| "void".to_string());
+            match routine.error_type {
+                Some(error_type) => format!(
+                    "fun({params}): {returns} / {}",
+                    render_checked_type(table, error_type)
+                ),
+                None => format!("fun({params}): {returns}"),
+            }
+        }
+        Some(other) => format!("{other:?}"),
+        None => "unknown".to_string(),
+    }
+}
+
+pub(super) fn dedupe_completion_items(items: Vec<EditorCompletionItem>) -> Vec<EditorCompletionItem> {
+    let mut seen = std::collections::BTreeSet::new();
+    let mut filtered = Vec::new();
+    for item in items {
+        if item.label.is_empty() {
+            continue;
+        }
+        if seen.insert(item.label.clone()) {
+            filtered.push(item);
+        }
+    }
+    filtered.sort_by(completion_item_cmp);
+    filtered
+}
+
+fn completion_item_cmp(
+    left: &EditorCompletionItem,
+    right: &EditorCompletionItem,
+) -> std::cmp::Ordering {
+    completion_item_priority(left)
+        .cmp(&completion_item_priority(right))
+        .then(left.label.cmp(&right.label))
+        .then(left.detail.cmp(&right.detail))
+        .then(left.insert_text.cmp(&right.insert_text))
+}
+
+fn completion_item_priority(item: &EditorCompletionItem) -> u8 {
+    match item.kind {
+        6 => 0,
+        3 | 12 => 1,
+        22 => 2,
+        9 => 3,
+        2 => 4,
+        _ => 5,
+    }
+}
+
+pub(super) fn completion_builtin_type_item(label: &str) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label: label.to_string(),
+        kind: 22,
+        detail: Some("builtin type".to_string()),
+        insert_text: None,
+    }
+}
+
+pub(super) fn completion_namespace_item(label: String) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label,
+        kind: 9,
+        detail: Some("namespace".to_string()),
+        insert_text: None,
+    }
+}
+
+pub(super) fn completion_intrinsic_item(entry: &IntrinsicEntry) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label: entry.name.to_string(),
+        kind: 2,
+        detail: Some(format!("intrinsic {}", entry.category.as_str())),
+        insert_text: Some(entry.name.to_string()),
+    }
+}
+
+pub(super) fn completion_item_from_symbol(
+    symbol: &fol_resolver::ResolvedSymbol,
+) -> EditorCompletionItem {
+    EditorCompletionItem {
+        label: symbol.name.clone(),
+        kind: completion_symbol_kind(symbol.kind),
+        detail: Some(completion_symbol_detail(symbol.kind).to_string()),
+        insert_text: None,
+    }
+}
+
+pub(super) fn completion_symbol_detail(kind: fol_resolver::SymbolKind) -> &'static str {
+    match kind {
+        fol_resolver::SymbolKind::Type => "type",
+        fol_resolver::SymbolKind::Alias => "type alias",
+        fol_resolver::SymbolKind::Routine => "routine",
+        fol_resolver::SymbolKind::Definition => "definition",
+        fol_resolver::SymbolKind::ValueBinding
+        | fol_resolver::SymbolKind::LabelBinding
+        | fol_resolver::SymbolKind::DestructureBinding
+        | fol_resolver::SymbolKind::LoopBinder
+        | fol_resolver::SymbolKind::RollingBinder => "binding",
+        fol_resolver::SymbolKind::Parameter | fol_resolver::SymbolKind::GenericParameter => {
+            "parameter"
+        }
+        fol_resolver::SymbolKind::Capture => "capture",
+        fol_resolver::SymbolKind::ImportAlias => "namespace",
+        fol_resolver::SymbolKind::Segment => "namespace segment",
+        fol_resolver::SymbolKind::Implementation => "implementation",
+        fol_resolver::SymbolKind::Standard => "standard",
+    }
+}
+
+pub(super) fn completion_symbol_kind(kind: fol_resolver::SymbolKind) -> u8 {
+    match kind {
+        fol_resolver::SymbolKind::Routine => 3,
+        fol_resolver::SymbolKind::Definition => 12,
+        fol_resolver::SymbolKind::Type | fol_resolver::SymbolKind::Alias => 22,
+        fol_resolver::SymbolKind::ImportAlias | fol_resolver::SymbolKind::Segment => 9,
+        fol_resolver::SymbolKind::Implementation | fol_resolver::SymbolKind::Standard => 12,
+        fol_resolver::SymbolKind::ValueBinding
+        | fol_resolver::SymbolKind::LabelBinding
+        | fol_resolver::SymbolKind::DestructureBinding
+        | fol_resolver::SymbolKind::Parameter
+        | fol_resolver::SymbolKind::Capture
+        | fol_resolver::SymbolKind::GenericParameter
+        | fol_resolver::SymbolKind::LoopBinder
+        | fol_resolver::SymbolKind::RollingBinder => 6,
+    }
+}
+
+pub(super) fn completion_symbol_is_root_visible(
+    program: &fol_resolver::ResolvedProgram,
+    symbol: &fol_resolver::ResolvedSymbol,
+) -> bool {
+    matches!(
+        program.scope(symbol.scope).map(|scope| &scope.kind),
+        Some(
+            fol_resolver::ScopeKind::ProgramRoot { .. }
+                | fol_resolver::ScopeKind::NamespaceRoot { .. }
+                | fol_resolver::ScopeKind::SourceUnitRoot { .. }
+        )
+    )
+}
+
+pub(super) fn completion_symbol_is_plain_top_level_candidate(
+    program: &fol_resolver::ResolvedProgram,
+    symbol: &fol_resolver::ResolvedSymbol,
+) -> bool {
+    completion_symbol_is_root_visible(program, symbol)
+        && matches!(
+            symbol.kind,
+            fol_resolver::SymbolKind::Routine
+                | fol_resolver::SymbolKind::Type
+                | fol_resolver::SymbolKind::Alias
+                | fol_resolver::SymbolKind::Definition
+                | fol_resolver::SymbolKind::ValueBinding
+        )
+}
+
+pub(super) fn symbol_visibility_matches_namespace_root(
+    symbol: &fol_resolver::ResolvedSymbol,
+    imported_root: bool,
+) -> bool {
+    if imported_root {
+        symbol.mounted_from.is_some()
+    } else {
+        symbol.mounted_from.is_none()
+    }
+}

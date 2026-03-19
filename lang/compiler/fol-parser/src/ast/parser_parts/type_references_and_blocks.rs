@@ -14,7 +14,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let fun_token = tokens.curr(false)?;
         if !matches!(fun_token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
             return Err(Box::new(ParseError::from_token(
@@ -24,7 +24,7 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let mut function_name = None;
         if let Ok(token) = tokens.curr(false) {
             if token.key().is_illegal() || Self::token_to_named_label(&token).is_some() {
@@ -36,7 +36,7 @@ impl AstParser {
             }
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let open_params = tokens.curr(false)?;
         if !matches!(open_params.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
             return Err(Box::new(ParseError::from_token(
@@ -54,7 +54,7 @@ impl AstParser {
             )));
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
             return Err(Box::new(ParseError::from_token(
@@ -64,10 +64,10 @@ impl AstParser {
         }
         let _ = tokens.bump();
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let return_type = self.parse_type_reference_tokens(tokens)?;
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
             return Err(Box::new(ParseError::from_token(
@@ -106,7 +106,7 @@ impl AstParser {
         let mut anchor_token = None;
 
         for _ in 0..512 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
             let key = token.key();
 
@@ -162,7 +162,7 @@ impl AstParser {
         let mut anchor_token = None;
 
         for _ in 0..8_192 {
-            self.skip_layout(tokens);
+            self.skip_layout(tokens)?;
 
             let token = tokens.curr(false)?;
             if anchor_token.is_none() {
@@ -206,7 +206,7 @@ impl AstParser {
                 continue;
             }
 
-            if matches!(key, KEYWORD::Keyword(BUILDIN::Yeild)) {
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
                 body.push(self.parse_yield_stmt(tokens)?);
                 continue;
             }
@@ -226,7 +226,7 @@ impl AstParser {
                 && self.lookahead_is_dot_builtin_call(tokens)
             {
                 body.push(self.parse_dot_builtin_call_expr(tokens)?);
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 continue;
             }
 
@@ -455,7 +455,7 @@ impl AstParser {
             return Ok(AstNode::Return { value: None });
         }
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let value = match tokens.curr(false) {
             Ok(token) if token.key().is_terminal() => None,
@@ -463,7 +463,7 @@ impl AstParser {
             Err(_) => None,
         };
 
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::Return { value })
     }
@@ -488,7 +488,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::Break)
     }
@@ -498,7 +498,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let yield_token = tokens.curr(false)?;
-        if !matches!(yield_token.key(), KEYWORD::Keyword(BUILDIN::Yeild)) {
+        if !matches!(yield_token.key(), KEYWORD::Keyword(BUILDIN::Yield)) {
             return Err(Box::new(ParseError::from_token(
                 &yield_token,
                 "Expected 'yield' statement".to_string(),
@@ -508,15 +508,15 @@ impl AstParser {
         if !(self.is_inside_routine() || self.is_inside_loop()) {
             return Err(Box::new(ParseError::from_token(
                 &yield_token,
-                "'yeild' is only allowed inside routines or loops".to_string(),
+                "'yield' is only allowed inside routines or loops".to_string(),
             )));
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let value = self.parse_logical_expression(tokens)?;
 
-        self.consume_optional_semicolon(tokens);
+        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::Yield {
             value: Box::new(value),

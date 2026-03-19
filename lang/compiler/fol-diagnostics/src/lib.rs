@@ -32,6 +32,24 @@ impl DiagnosticReport {
     }
 
     pub fn add_diagnostic(&mut self, diagnostic: Diagnostic) {
+        // Hard cap at 50 diagnostics
+        if self.diagnostics.len() >= 50 {
+            return;
+        }
+
+        // Suppress cascade: skip if same code and same line as last diagnostic
+        if let Some(last) = self.diagnostics.last() {
+            if last.code == diagnostic.code {
+                if let (Some(last_loc), Some(new_loc)) =
+                    (last.primary_location(), diagnostic.primary_location())
+                {
+                    if last_loc.line == new_loc.line {
+                        return; // suppress cascade duplicate
+                    }
+                }
+            }
+        }
+
         match diagnostic.severity {
             Severity::Error => self.error_count += 1,
             Severity::Warning => self.warning_count += 1,
@@ -305,7 +323,7 @@ mod tests {
     #[test]
     fn test_glitch_fallback_no_longer_guesses_codes_from_messages() {
         let error = BasicError {
-            message: "ParserMissmatch: legacy text should not drive modern codes".to_string(),
+            message: "ParserMismatch: legacy text should not drive modern codes".to_string(),
         };
         let diagnostic = Diagnostic::from_glitch(&error, Severity::Error, None);
 
@@ -485,6 +503,76 @@ mod tests {
                 .primary_label()
                 .and_then(|label| label.message.as_deref()),
             Some("offending expression")
+        );
+    }
+
+    #[test]
+    fn cascade_suppression_skips_same_code_and_line() {
+        let mut report = DiagnosticReport::new();
+        let loc = DiagnosticLocation {
+            file: Some("test.fol".to_string()),
+            line: 5,
+            column: 1,
+            length: Some(3),
+        };
+
+        report.add_diagnostic(Diagnostic::error("P1002", "first").with_primary_label(loc.clone()));
+        report
+            .add_diagnostic(Diagnostic::error("P1002", "second").with_primary_label(loc.clone()));
+        report.add_diagnostic(Diagnostic::error("P1002", "third").with_primary_label(loc.clone()));
+
+        assert_eq!(
+            report.diagnostics.len(),
+            1,
+            "same code + same line should deduplicate"
+        );
+        assert_eq!(report.error_count, 1);
+    }
+
+    #[test]
+    fn different_lines_are_not_suppressed() {
+        let mut report = DiagnosticReport::new();
+        let loc1 = DiagnosticLocation {
+            file: Some("test.fol".to_string()),
+            line: 5,
+            column: 1,
+            length: Some(3),
+        };
+        let loc2 = DiagnosticLocation {
+            file: Some("test.fol".to_string()),
+            line: 10,
+            column: 1,
+            length: Some(3),
+        };
+
+        report.add_diagnostic(Diagnostic::error("P1002", "first").with_primary_label(loc1));
+        report.add_diagnostic(Diagnostic::error("P1002", "second").with_primary_label(loc2));
+
+        assert_eq!(
+            report.diagnostics.len(),
+            2,
+            "different lines should not be suppressed"
+        );
+    }
+
+    #[test]
+    fn error_cap_limits_total_diagnostics() {
+        let mut report = DiagnosticReport::new();
+        for i in 0..100 {
+            let loc = DiagnosticLocation {
+                file: Some("test.fol".to_string()),
+                line: i + 1,
+                column: 1,
+                length: Some(1),
+            };
+            report.add_diagnostic(
+                Diagnostic::error("P1001", format!("error {}", i)).with_primary_label(loc),
+            );
+        }
+        assert!(
+            report.diagnostics.len() <= 50,
+            "should cap at 50, got {}",
+            report.diagnostics.len()
         );
     }
 }

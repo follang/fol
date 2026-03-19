@@ -349,7 +349,7 @@ fn app_harness_assertion_helpers_cover_artifacts_and_status() {
     assert_exit_code(&run_output, 0);
 
     let failure_output = compile_app_expect_failure(&bad_root);
-    assert_output_contains(&failure_output, "ResolverUnresolvedName");
+    assert_output_contains(&failure_output, "could not resolve");
 
     fs::remove_dir_all(&temp_root).ok();
 }
@@ -414,7 +414,7 @@ fn same_folder_hidden_visibility_fixture_fails_cleanly() {
     let fixture = fixture_root("same_folder_hidden_visibility");
     let output = compile_app_expect_failure(&fixture);
 
-    assert_output_contains(&output, "ResolverUnresolvedName");
+    assert_output_contains(&output, "could not resolve");
 }
 
 #[test]
@@ -694,8 +694,8 @@ fn intrinsics_panic_check_fixture_compiles_and_runs() {
 }
 
 #[test]
-fn recoverable_propagation_fixture_compiles_and_runs() {
-    let fixture = fixture_root("recoverable_propagation");
+fn recoverable_explicit_report_fixture_compiles_and_runs() {
+    let fixture = fixture_root("recoverable_report");
 
     let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
     assert_artifact_paths_exist(&compile_output);
@@ -703,11 +703,11 @@ fn recoverable_propagation_fixture_compiles_and_runs() {
     let run_output = compile_and_run_app(&fixture);
     assert!(
         !run_output.status.success(),
-        "propagated recoverable error should fail at process boundary\nstdout=\n{}\nstderr=\n{}",
+        "explicitly reported recoverable error should fail at process boundary\nstdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&run_output.stdout),
         String::from_utf8_lossy(&run_output.stderr)
     );
-    assert_output_contains(&run_output, "recoverable error");
+    assert_output_contains(&run_output, "main-bad-input");
 }
 
 #[test]
@@ -836,7 +836,7 @@ fn fail_hidden_cross_file_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_hidden_cross_file");
 
     let output = compile_app_expect_failure(&fixture);
-    assert_output_contains(&output, "ResolverUnresolvedName");
+    assert_output_contains(&output, "could not resolve");
 }
 
 #[test]
@@ -853,7 +853,6 @@ fn fail_type_mismatch_real_app_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_type_mismatch_real_app");
 
     let output = compile_app_expect_failure(&fixture);
-    assert_output_contains(&output, "TypecheckIncompatibleType");
     assert_output_contains(&output, "record field 'score'");
 }
 
@@ -862,7 +861,7 @@ fn fail_recoverable_plain_context_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_recoverable_plain_context");
 
     let output = compile_app_expect_failure(&fixture);
-    assert_output_contains(&output, "declared error type");
+    assert_output_contains(&output, "cannot use '/ ErrorType' routine results as plain values");
 }
 
 #[test]

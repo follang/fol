@@ -100,7 +100,6 @@ pub(crate) fn sample_lowered_workspace_named(entry_name: &str) -> LoweredWorkspa
             source_unit_id: SourceUnitId(0),
             name: "default_name".to_string(),
             type_id: str_type,
-            recoverable_error_type: None,
             mutable: false,
         },
     );
@@ -161,7 +160,6 @@ pub(crate) fn sample_lowered_workspace_named(entry_name: &str) -> LoweredWorkspa
             source_unit_id: SourceUnitId(2),
             name: "answer".to_string(),
             type_id: int_type,
-            recoverable_error_type: None,
             mutable: false,
         },
     );

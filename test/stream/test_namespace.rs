@@ -19,7 +19,7 @@ mod namespace_tests {
     #[test]
     fn test_package_name_detection() {
         // Test that package name comes from the explicit folder entry root.
-        let sources = Source::init("test/legacy/main", SourceType::Folder)
+        let sources = Source::init("test/stream/fixture/main", SourceType::Folder)
             .expect("Should create sources with namespace");
 
         assert!(!sources.is_empty(), "Should have sources");
@@ -44,7 +44,7 @@ mod namespace_tests {
     #[test]
     fn test_root_namespace() {
         // Test files in root directory get root namespace (package name)
-        let sources = Source::init("test/legacy/main/main.fol", SourceType::File)
+        let sources = Source::init("test/stream/fixture/main/main.fol", SourceType::File)
             .expect("Should create source");
 
         assert_eq!(sources.len(), 1, "Should have one source");
@@ -63,7 +63,7 @@ mod namespace_tests {
     fn test_subdirectory_namespace() {
         // Test files in subdirectories get proper namespace
         let sources =
-            Source::init("test/legacy/main", SourceType::Folder).expect("Should create sources");
+            Source::init("test/stream/fixture/main", SourceType::Folder).expect("Should create sources");
 
         // Find sources in subdirectories
         let subdir_sources: Vec<_> = sources
@@ -181,7 +181,7 @@ mod namespace_tests {
     fn test_mod_directories_excluded_from_namespace() {
         // Test that .mod directories don't appear in namespaces
         let sources =
-            Source::init("test/legacy/main", SourceType::Folder).expect("Should create sources");
+            Source::init("test/stream/fixture/main", SourceType::Folder).expect("Should create sources");
 
         // No namespace should contain ".mod"
         for source in &sources {
@@ -206,7 +206,7 @@ mod namespace_tests {
     fn test_namespace_consistency() {
         // Test that all files in the same directory have the same namespace
         let sources =
-            Source::init("test/legacy/main", SourceType::Folder).expect("Should create sources");
+            Source::init("test/stream/fixture/main", SourceType::Folder).expect("Should create sources");
 
         use std::collections::HashMap;
         let mut dir_to_namespace: HashMap<String, String> = HashMap::new();
@@ -240,7 +240,7 @@ mod namespace_tests {
         // Test using explicit package name
         let sources =
             Source::init_with_package(
-                "test/legacy/main/main.fol",
+                "test/stream/fixture/main/main.fol",
                 SourceType::File,
                 "custom_package",
             )
@@ -375,22 +375,22 @@ mod namespace_tests {
 
     #[test]
     fn test_source_identity_uses_canonical_path_and_preserves_call_site() {
-        let file_sources = Source::init("test/legacy/main/main.fol", SourceType::File)
+        let file_sources = Source::init("test/stream/fixture/main/main.fol", SourceType::File)
             .expect("Should create file-backed source");
-        let folder_sources = Source::init("test/legacy/main", SourceType::Folder)
+        let folder_sources = Source::init("test/stream/fixture/main", SourceType::Folder)
             .expect("Should create folder-backed sources");
         let folder_main = folder_sources
             .iter()
-            .find(|source| source.path.ends_with("test/legacy/main/main.fol"))
+            .find(|source| source.path.ends_with("test/stream/fixture/main/main.fol"))
             .expect("Folder-backed sources should include main.fol");
         let file_main = &file_sources[0];
-        let canonical = std::fs::canonicalize("test/legacy/main/main.fol")
+        let canonical = std::fs::canonicalize("test/stream/fixture/main/main.fol")
             .expect("Should canonicalize main.fol")
             .to_string_lossy()
             .to_string();
 
-        assert_eq!(file_main.call, "test/legacy/main/main.fol");
-        assert_eq!(folder_main.call, "test/legacy/main");
+        assert_eq!(file_main.call, "test/stream/fixture/main/main.fol");
+        assert_eq!(folder_main.call, "test/stream/fixture/main");
         assert_eq!(file_main.path, canonical, "File source path should be canonical");
         assert_eq!(
             folder_main.path, canonical,
@@ -408,13 +408,13 @@ mod namespace_tests {
 
     #[test]
     fn test_source_identity_excludes_call_site_and_matches_stream_contract() {
-        let file_sources = Source::init("test/legacy/main/main.fol", SourceType::File)
+        let file_sources = Source::init("test/stream/fixture/main/main.fol", SourceType::File)
             .expect("Should create file-backed source");
-        let folder_sources = Source::init("test/legacy/main", SourceType::Folder)
+        let folder_sources = Source::init("test/stream/fixture/main", SourceType::Folder)
             .expect("Should create folder-backed sources");
         let folder_main = folder_sources
             .iter()
-            .find(|source| source.path.ends_with("test/legacy/main/main.fol"))
+            .find(|source| source.path.ends_with("test/stream/fixture/main/main.fol"))
             .expect("Folder-backed sources should include main.fol");
         let file_main = &file_sources[0];
 
@@ -431,9 +431,9 @@ mod namespace_tests {
 
     #[test]
     fn test_source_identity_keeps_raw_call_spelling_separate_from_canonical_identity() {
-        let direct = Source::init("test/legacy/main/main.fol", SourceType::File)
+        let direct = Source::init("test/stream/fixture/main/main.fol", SourceType::File)
             .expect("Should create direct file-backed source");
-        let dotted = Source::init("./test/legacy/main/main.fol", SourceType::File)
+        let dotted = Source::init("./test/stream/fixture/main/main.fol", SourceType::File)
             .expect("Should create dotted file-backed source");
 
         assert_eq!(direct.len(), 1);
@@ -632,13 +632,13 @@ mod namespace_tests {
     #[test]
     fn test_explicit_package_override_changes_logical_identity_without_changing_path() {
         let pkg_a = Source::init_with_package(
-            "test/legacy/main/main.fol",
+            "test/stream/fixture/main/main.fol",
             SourceType::File,
             "alpha_pkg",
         )
         .expect("Should create source for alpha package");
         let pkg_b = Source::init_with_package(
-            "test/legacy/main/main.fol",
+            "test/stream/fixture/main/main.fol",
             SourceType::File,
             "beta_pkg",
         )
@@ -654,7 +654,7 @@ mod namespace_tests {
     #[test]
     fn test_invalid_explicit_package_override_is_rejected() {
         let result =
-            Source::init_with_package("test/legacy/main/main.fol", SourceType::File, "bad-dir");
+            Source::init_with_package("test/stream/fixture/main/main.fol", SourceType::File, "bad-dir");
 
         assert!(result.is_err(), "Invalid explicit package overrides should be rejected");
         let error = format!(
@@ -730,7 +730,7 @@ mod namespace_tests {
 
     #[test]
     fn test_single_file_input_keeps_root_namespace_even_in_nested_folders() {
-        let sources = Source::init("test/legacy/main/single/subpak/input1.fol", SourceType::File)
+        let sources = Source::init("test/stream/fixture/main/single/subpak/input1.fol", SourceType::File)
             .expect("Should create single nested file source");
 
         assert_eq!(sources.len(), 1);
@@ -743,10 +743,10 @@ mod namespace_tests {
     #[test]
     fn test_folder_input_uses_nested_namespace_segments_for_nested_files() {
         let sources =
-            Source::init("test/legacy/main", SourceType::Folder).expect("Should create sources");
+            Source::init("test/stream/fixture/main", SourceType::Folder).expect("Should create sources");
         let nested = sources
             .iter()
-            .find(|source| source.path.ends_with("test/legacy/main/single/subpak/input1.fol"))
+            .find(|source| source.path.ends_with("test/stream/fixture/main/single/subpak/input1.fol"))
             .expect("Folder input should include nested file");
 
         assert_eq!(
@@ -759,7 +759,7 @@ mod namespace_tests {
     fn test_namespace_output_integration() {
         // Test that the namespace information is properly integrated
         let sources =
-            Source::init("test/legacy/main", SourceType::Folder).expect("Should create sources");
+            Source::init("test/stream/fixture/main", SourceType::Folder).expect("Should create sources");
 
         // Verify all expected properties are present
         for source in &sources {
