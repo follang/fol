@@ -376,7 +376,7 @@ Exit condition:
 
 - one canonical source exists for syntax-visible facts currently duplicated across compiler/editor assets
 
-### Slice 8: Generate the easy Tree-sitter inputs
+### Slice 8: Generate the easy Tree-sitter inputs ✓ COMPLETE
 
 Use the manifest to remove manual duplication where generation is low-risk.
 

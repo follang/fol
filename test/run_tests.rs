@@ -419,4 +419,124 @@ mod integration_tests {
             }
         }
     }
+
+    #[cfg(test)]
+    mod treesitter_sync {
+        use super::*;
+        use std::collections::BTreeSet;
+
+        fn highlights_scm() -> String {
+            let path = repo_root()
+                .join("lang/tooling/fol-editor/queries/fol/highlights.scm");
+            std::fs::read_to_string(&path)
+                .unwrap_or_else(|e| panic!("should read highlights.scm: {e}"))
+        }
+
+        fn extract_match_regex_names(text: &str, pattern: &str) -> BTreeSet<String> {
+            let mut names = BTreeSet::new();
+            for line in text.lines() {
+                if line.contains(pattern) {
+                    if let Some(start) = line.find("^(") {
+                        if let Some(end) = line[start..].find(")$") {
+                            let inner = &line[start + 2..start + end];
+                            for name in inner.split('|') {
+                                names.insert(name.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+            names
+        }
+
+        fn extract_node_label_names(text: &str, node_type: &str, capture: &str) -> BTreeSet<String> {
+            let mut names = BTreeSet::new();
+            for line in text.lines() {
+                let trimmed = line.trim();
+                if trimmed.contains(node_type) && trimmed.contains(capture) {
+                    if let Some(start) = trimmed.find('"') {
+                        let rest = &trimmed[start + 1..];
+                        if let Some(end) = rest.find('"') {
+                            names.insert(rest[..end].to_string());
+                        }
+                    }
+                }
+            }
+            names
+        }
+
+        #[test]
+        fn highlights_builtin_types_match_compiler_constants() {
+            let scm = highlights_scm();
+            let scm_types = extract_match_regex_names(&scm, "@type.builtin");
+            let compiler_types: BTreeSet<String> = fol_typecheck::BuiltinType::ALL_NAMES
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
+            assert_eq!(
+                scm_types, compiler_types,
+                "highlights.scm builtin type regex must match BuiltinType::ALL_NAMES"
+            );
+        }
+
+        #[test]
+        fn highlights_dot_intrinsics_match_implemented_registry() {
+            let scm = highlights_scm();
+            let scm_intrinsics = extract_match_regex_names(&scm, "@function.builtin");
+            let compiler_intrinsics: BTreeSet<String> = fol_intrinsics::intrinsic_registry()
+                .iter()
+                .filter(|e| {
+                    e.surface == fol_intrinsics::IntrinsicSurface::DotRootCall
+                        && e.status == fol_intrinsics::IntrinsicStatus::Implemented
+                })
+                .map(|e| e.name.to_string())
+                .collect();
+            assert_eq!(
+                scm_intrinsics, compiler_intrinsics,
+                "highlights.scm dot-intrinsic regex must match implemented DotRootCall intrinsics"
+            );
+        }
+
+        #[test]
+        fn highlights_container_types_match_compiler_constants() {
+            let scm = highlights_scm();
+            let scm_containers = extract_node_label_names(&scm, "container_type", "@type.builtin");
+            let compiler_containers: BTreeSet<String> = fol_parser::CONTAINER_TYPE_NAMES
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
+            assert_eq!(
+                scm_containers, compiler_containers,
+                "highlights.scm container types must match CONTAINER_TYPE_NAMES"
+            );
+        }
+
+        #[test]
+        fn highlights_shell_types_match_compiler_constants() {
+            let scm = highlights_scm();
+            let scm_shells = extract_node_label_names(&scm, "shell_type", "@type.builtin");
+            let compiler_shells: BTreeSet<String> = fol_parser::SHELL_TYPE_NAMES
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
+            assert_eq!(
+                scm_shells, compiler_shells,
+                "highlights.scm shell types must match SHELL_TYPE_NAMES"
+            );
+        }
+
+        #[test]
+        fn highlights_source_kinds_match_compiler_constants() {
+            let scm = highlights_scm();
+            let scm_kinds = extract_node_label_names(&scm, "source_kind", "@keyword.import");
+            let compiler_kinds: BTreeSet<String> = fol_parser::SOURCE_KIND_NAMES
+                .iter()
+                .map(|s| s.to_string())
+                .collect();
+            assert_eq!(
+                scm_kinds, compiler_kinds,
+                "highlights.scm source kinds must match SOURCE_KIND_NAMES"
+            );
+        }
+    }
 }
