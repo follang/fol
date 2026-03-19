@@ -57,3 +57,7 @@ Use the Tree-sitter layer for:
 Do not use it as a substitute for typechecking or resolution.
 
 Those remain compiler tasks.
+
+When a language feature changes syntax, use the
+[Feature Update Checklist](./450_feature_checklist.md) to decide whether the
+grammar, queries, corpus, or generated language facts also need updates.

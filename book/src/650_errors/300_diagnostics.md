@@ -235,6 +235,10 @@ Important rule:
 Instead, both human and JSON outputs are generated from the same structured
 diagnostic model.
 
+The editor/LSP layer should follow that same rule too: editor diagnostics should
+be adapted from the shared structured diagnostic model rather than rebuilt from
+free-form strings.
+
 That means JSON can preserve:
 
 - severity
