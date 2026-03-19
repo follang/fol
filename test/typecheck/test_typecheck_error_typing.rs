@@ -276,6 +276,31 @@ fn recoverable_calls_reject_field_access_receivers() {
 }
 
 #[test]
+fn recoverable_calls_reject_index_access_receivers() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): seq[int] / str = {\n\
+             report \"bad\";\n\
+             return { 1, 2 };\n\
+         }\n\
+         fun[] main(): int = {\n\
+             return load()[0];\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("index access receiver")
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        "Expected the strict index-access diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn recoverable_calls_reject_method_receivers() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
@@ -301,6 +326,62 @@ fn recoverable_calls_reject_method_receivers() {
                     .contains("cannot use a routine result with '/ ErrorType' as a plain value")
         }),
         "Expected the strict method-receiver diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_reject_when_selectors() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): bol / str = {\n\
+             report \"bad\";\n\
+             return true;\n\
+         }\n\
+         fun[] main(): int = {\n\
+             when(load()) {\n\
+                 case(true) { return 1; }\n\
+                 * { return 0; }\n\
+             }\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("when selector")
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        "Expected the strict when-selector diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn recoverable_calls_reject_loop_conditions() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] load(): bol / str = {\n\
+             report \"bad\";\n\
+             return true;\n\
+         }\n\
+         fun[] main(): int = {\n\
+             loop(load()) {\n\
+                 break;\n\
+             }\n\
+             return 0;\n\
+         }\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("loop condition")
+                && error
+                    .message()
+                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+        }),
+        "Expected the strict loop-condition diagnostic, got: {errors:?}"
     );
 }
 

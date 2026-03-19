@@ -203,7 +203,7 @@ Exit condition:
 
 - `return load()` is illegal unless wrapped in a future explicit handler form
 
-### Slice 5: Ban `/ E` in all ordinary expression surfaces
+### Slice 5: Ban `/ E` in all ordinary expression surfaces `[complete]`
 
 Do a full audit of typechecking sites that currently accept plain values.
 
