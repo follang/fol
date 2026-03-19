@@ -15,6 +15,7 @@ impl AstParser {
                 DeclOption::Export => {
                     if saw_export {
                         return Err(Box::new(ParseError {
+                            kind: ParseErrorKind::Syntax,
                             message: format!("Duplicate {} option 'export'", context),
                             file: None,
                             line: 1,
@@ -27,6 +28,7 @@ impl AstParser {
                 DeclOption::Hidden => {
                     if saw_hidden {
                         return Err(Box::new(ParseError {
+                            kind: ParseErrorKind::Syntax,
                             message: format!("Duplicate {} option 'hidden'", context),
                             file: None,
                             line: 1,
@@ -39,6 +41,7 @@ impl AstParser {
                 DeclOption::Normal => {
                     if saw_normal {
                         return Err(Box::new(ParseError {
+                            kind: ParseErrorKind::Syntax,
                             message: format!("Duplicate {} option 'normal'", context),
                             file: None,
                             line: 1,
@@ -53,6 +56,7 @@ impl AstParser {
 
         if (saw_export as u8 + saw_hidden as u8 + saw_normal as u8) > 1 {
             return Err(Box::new(ParseError {
+                kind: ParseErrorKind::Syntax,
                 message: format!("Conflicting {} visibility options", context),
                 file: None,
                 line: 1,
@@ -137,6 +141,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Declaration options exceeded parser limit".to_string(),
             file: None,
             line: 1,

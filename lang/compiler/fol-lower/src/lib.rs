@@ -75,7 +75,7 @@ mod tests {
         assert_eq!(error.message(), "lowering shell is not implemented yet");
         assert_eq!(
             error.to_string(),
-            "LoweringUnsupported: lowering shell is not implemented yet"
+            "lowering shell is not implemented yet"
         );
     }
 

@@ -90,8 +90,9 @@ impl AstParser {
             });
         }
 
-        Err(Box::new(ParseError::from_token(
+        Err(Box::new(ParseError::from_token_with_kind(
             token,
+            ParseErrorKind::Unsupported,
             format!("Unsupported expression token '{}'", token.con()),
         )))
     }
@@ -419,6 +420,7 @@ impl AstParser {
         let normalized = value.replace('_', "");
         let numeric_error = |message: String| {
             Box::new(ParseError {
+                kind: ParseErrorKind::Literal,
                 message,
                 file: None,
                 line: 0,

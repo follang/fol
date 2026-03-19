@@ -258,6 +258,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Generic parsing exceeded safety bound".to_string(),
             file: None,
             line: 1,
@@ -275,6 +276,7 @@ impl AstParser {
             .map(|param| {
                 if param.default.is_some() {
                     return Err(Box::new(ParseError {
+                        kind: ParseErrorKind::Syntax,
                         message: "Default values are not allowed in routine generic headers"
                             .to_string(),
                         file: None,
@@ -286,6 +288,7 @@ impl AstParser {
 
                 if matches!(param.param_type, FolType::Sequence { .. }) {
                     return Err(Box::new(ParseError {
+                        kind: ParseErrorKind::Syntax,
                         message: "Variadic parameters are not allowed in routine generic headers"
                             .to_string(),
                         file: None,
@@ -319,6 +322,7 @@ impl AstParser {
         for param in params {
             if !seen_names.insert(canonical_identifier_key(&param.name)) {
                 return Err(Box::new(ParseError {
+                    kind: ParseErrorKind::Syntax,
                     message: format!("Duplicate {} name '{}'", kind, param.name),
                     file: None,
                     line: 1,
@@ -399,6 +403,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Generic parsing exceeded safety bound".to_string(),
             file: None,
             line: 1,
@@ -484,6 +489,7 @@ impl AstParser {
             )
         } else {
             ParseError {
+                kind: ParseErrorKind::Syntax,
                 message: "Routine options exceeded parser limit".to_string(),
                 file: None,
                 line: 0,
@@ -679,6 +685,7 @@ impl AstParser {
             )
         } else {
             ParseError {
+                kind: ParseErrorKind::Syntax,
                 message: "Parameter parsing exceeded safety bound".to_string(),
                 file: None,
                 line: 0,

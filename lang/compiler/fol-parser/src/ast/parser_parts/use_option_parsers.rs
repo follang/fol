@@ -115,6 +115,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Use options exceeded parser limit".to_string(),
             file: None,
             line: 0,

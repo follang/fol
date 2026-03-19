@@ -287,6 +287,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Type entry definition exceeded parser limit".to_string(),
             file: None,
             line: 0,
@@ -586,6 +587,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Type record definition exceeded parser limit".to_string(),
             file: None,
             line: 0,

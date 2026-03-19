@@ -54,6 +54,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Grouped type declarations exceeded parser limit".to_string(),
             file: None,
             line: 0,

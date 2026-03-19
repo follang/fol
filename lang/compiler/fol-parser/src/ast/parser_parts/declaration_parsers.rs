@@ -504,6 +504,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Type contracts exceeded parser limit".to_string(),
             file: None,
             line: 0,
@@ -584,6 +585,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Type options exceeded parser limit".to_string(),
             file: None,
             line: 0,
@@ -633,6 +635,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Use path parsing exceeded safety bound".to_string(),
             file: None,
             line: 1,

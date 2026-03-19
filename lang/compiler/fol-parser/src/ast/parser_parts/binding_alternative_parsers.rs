@@ -40,6 +40,7 @@ impl AstParser {
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         let (keyword, options) = self.lookahead_binding_alternative(tokens).ok_or_else(|| {
             Box::new(ParseError {
+                kind: ParseErrorKind::Syntax,
                 message: "Expected binding alternative".to_string(),
                 file: None,
                 line: 0,

@@ -91,6 +91,7 @@ impl AstParser {
     ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
         if tokens.bump().is_none() {
             return Err(Box::new(ParseError {
+                kind: ParseErrorKind::Syntax,
                 message: format!("Unexpected EOF after '{}' declaration", keyword),
                 file: None,
                 line: 1,
@@ -148,6 +149,7 @@ impl AstParser {
                     .map(|pattern| match pattern {
                         BindingPattern::Name(name) => Ok(name),
                         other => Err(Box::new(ParseError {
+                            kind: ParseErrorKind::Unsupported,
                             message: format!("Unsupported plain binding pattern: {other:?}"),
                             file: None,
                             line: 0,
@@ -312,6 +314,7 @@ impl AstParser {
                     )
                 } else {
                     ParseError {
+                        kind: ParseErrorKind::Syntax,
                         message: "Binding value count must match declared names or provide a single shared value".to_string(),
                         file: None,
                         line: 0,
@@ -351,6 +354,7 @@ impl AstParser {
                 )
             } else {
                 ParseError {
+                    kind: ParseErrorKind::Syntax,
                     message: "Destructuring bindings require exactly one source value".to_string(),
                     file: None,
                     line: 0,

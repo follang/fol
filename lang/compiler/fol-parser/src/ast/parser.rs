@@ -15,6 +15,7 @@ use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct ParseError {
+    pub(super) kind: ParseErrorKind,
     message: String,
     file: Option<String>,
     line: usize,
@@ -35,6 +36,23 @@ impl ParseError {
     pub fn from_token(token: &fol_lexer::lexer::stage3::element::Element, message: String) -> Self {
         let loc = token.loc();
         Self {
+            kind: ParseErrorKind::Syntax,
+            message,
+            file: loc.source().map(|src| src.path(true)),
+            line: loc.row(),
+            column: loc.col(),
+            length: loc.len(),
+        }
+    }
+
+    pub fn from_token_with_kind(
+        token: &fol_lexer::lexer::stage3::element::Element,
+        kind: ParseErrorKind,
+        message: String,
+    ) -> Self {
+        let loc = token.loc();
+        Self {
+            kind,
             message,
             file: loc.source().map(|src| src.path(true)),
             line: loc.row(),
@@ -44,11 +62,11 @@ impl ParseError {
     }
 
     pub fn kind(&self) -> ParseErrorKind {
-        ParseErrorKind::classify(&self.message)
+        self.kind
     }
 
     pub fn diagnostic_code(&self) -> &'static str {
-        self.kind().diagnostic_code()
+        self.kind.diagnostic_code()
     }
 
     pub fn file(&self) -> Option<String> {
@@ -69,29 +87,6 @@ impl ParseError {
 }
 
 impl ParseErrorKind {
-    fn classify(message: &str) -> Self {
-        if message.contains("at file root") {
-            Self::FileRoot
-        } else if message.contains("outside routines")
-            || message.contains("outside routine bodies")
-            || message.contains("outside loops")
-        {
-            Self::Context
-        } else if message.contains("numeric literal")
-            || message.contains("decimal literal")
-            || message.contains("literal is out of range")
-        {
-            Self::Literal
-        } else if message.contains("not implemented")
-            || message.contains("unsupported")
-            || message.contains("out of scope")
-        {
-            Self::Unsupported
-        } else {
-            Self::Syntax
-        }
-    }
-
     pub fn diagnostic_code(self) -> &'static str {
         match self {
             Self::Syntax => "P1001",
@@ -166,6 +161,7 @@ impl AstParser {
             .checked_add(1)
             .ok_or_else(|| {
                 Box::new(ParseError {
+                    kind: ParseErrorKind::Syntax,
                     message: "Depth guard overflow; possible infinite recursion in parser".to_string(),
                     file: None,
                     line: 0,
@@ -302,37 +298,81 @@ mod tests {
     }
 
     #[test]
-    fn parse_error_kind_classifies_file_root_messages() {
-        assert_eq!(
-            ParseErrorKind::classify("Executable calls are not allowed at file root"),
-            ParseErrorKind::FileRoot
-        );
-        assert_eq!(ParseErrorKind::FileRoot.diagnostic_code(), "P1002");
+    fn parse_error_kind_structural_assignment() {
+        let error = ParseError {
+            kind: ParseErrorKind::FileRoot,
+            message: "Executable calls are not allowed at file root".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::FileRoot);
+        assert_eq!(error.diagnostic_code(), "P1002");
+
+        let error = ParseError {
+            kind: ParseErrorKind::Context,
+            message: "break is not allowed outside loops".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::Context);
+        assert_eq!(error.diagnostic_code(), "P1003");
+
+        let error = ParseError {
+            kind: ParseErrorKind::Literal,
+            message: "decimal literal is out of range for i64".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::Literal);
+        assert_eq!(error.diagnostic_code(), "P1004");
+
+        let error = ParseError {
+            kind: ParseErrorKind::Unsupported,
+            message: "this parser surface is not implemented yet".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::Unsupported);
+        assert_eq!(error.diagnostic_code(), "P1005");
+
+        let error = ParseError {
+            kind: ParseErrorKind::Syntax,
+            message: "Expected ')' after tuple element".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::Syntax);
+        assert_eq!(error.diagnostic_code(), "P1001");
     }
 
     #[test]
-    fn parse_error_kind_classifies_context_literal_and_fallback_messages() {
-        assert_eq!(
-            ParseErrorKind::classify("break is not allowed outside loops"),
-            ParseErrorKind::Context
-        );
-        assert_eq!(
-            ParseErrorKind::classify("decimal literal is out of range for i64"),
-            ParseErrorKind::Literal
-        );
-        assert_eq!(
-            ParseErrorKind::classify("this parser surface is not implemented yet"),
-            ParseErrorKind::Unsupported
-        );
-        assert_eq!(
-            ParseErrorKind::classify("Expected ')' after tuple element"),
-            ParseErrorKind::Syntax
-        );
+    fn parse_error_from_token_defaults_to_syntax_kind() {
+        // Verify that from_token defaults to Syntax kind
+        let error = ParseError {
+            kind: ParseErrorKind::Syntax,
+            message: "any message".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::Syntax);
     }
 
     #[test]
     fn parse_error_to_diagnostic_preserves_parser_codes() {
         let error = ParseError {
+            kind: ParseErrorKind::FileRoot,
             message: "Executable calls are not allowed at file root".to_string(),
             file: Some("pkg/main.fol".to_string()),
             line: 1,
@@ -355,6 +395,15 @@ mod tests {
                 length: Some(3),
             })
         );
+    }
+
+    #[test]
+    fn parse_error_kind_diagnostic_codes() {
+        assert_eq!(ParseErrorKind::Syntax.diagnostic_code(), "P1001");
+        assert_eq!(ParseErrorKind::FileRoot.diagnostic_code(), "P1002");
+        assert_eq!(ParseErrorKind::Context.diagnostic_code(), "P1003");
+        assert_eq!(ParseErrorKind::Literal.diagnostic_code(), "P1004");
+        assert_eq!(ParseErrorKind::Unsupported.diagnostic_code(), "P1005");
     }
 }
 

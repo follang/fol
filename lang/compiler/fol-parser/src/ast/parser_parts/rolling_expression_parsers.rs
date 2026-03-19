@@ -100,6 +100,7 @@ impl AstParser {
                 }
 
                 return Err(Box::new(ParseError {
+                    kind: ParseErrorKind::Syntax,
                     message: "Rolling binding list exceeded parser limit".to_string(),
                     file: None,
                     line: 0,

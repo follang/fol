@@ -83,7 +83,7 @@ impl AstParser {
         ) -> Result<(), Box<dyn Glitch>>,
     {
         match parse(self, tokens) {
-            Ok(()) => errors.push(Box::new(ParseError::from_token(token, message.to_string()))),
+            Ok(()) => errors.push(Box::new(ParseError::from_token_with_kind(token, ParseErrorKind::FileRoot, message.to_string()))),
             Err(error) => errors.push(error),
         }
         self.bump_if_no_progress(tokens, before);
@@ -713,8 +713,9 @@ impl AstParser {
                     )
                     || (key.is_ident() && token.con().trim() == "nil"))
             {
-                errors.push(Box::new(ParseError::from_token(
+                errors.push(Box::new(ParseError::from_token_with_kind(
                     &token,
+                    ParseErrorKind::FileRoot,
                     "Literal expressions are not allowed at file root".to_string(),
                 )));
                 if tokens.bump().is_none() {
@@ -725,8 +726,9 @@ impl AstParser {
             }
 
             if matches!(surface, RootSurface::DeclarationOnly) {
-                errors.push(Box::new(ParseError::from_token(
+                errors.push(Box::new(ParseError::from_token_with_kind(
                     &token,
+                    ParseErrorKind::FileRoot,
                     "Expected declaration or standalone comment at file root".to_string(),
                 )));
                 if tokens.bump().is_none() {

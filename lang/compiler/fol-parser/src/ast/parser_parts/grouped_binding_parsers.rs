@@ -64,6 +64,7 @@ impl AstParser {
                     .map(|pattern| match pattern {
                         BindingPattern::Name(name) => Ok(name),
                         other => Err(Box::new(ParseError {
+                            kind: ParseErrorKind::Unsupported,
                             message: format!("Unsupported grouped binding pattern: {other:?}"),
                             file: None,
                             line: 0,
@@ -100,6 +101,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Grouped bindings exceeded parser limit".to_string(),
             file: None,
             line: 0,

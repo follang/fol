@@ -9,6 +9,7 @@ impl AstParser {
         for capture in captures {
             if !seen.insert(canonical_identifier_key(capture)) {
                 return Err(Box::new(ParseError {
+                    kind: ParseErrorKind::Syntax,
                     message: format!("Duplicate capture name '{}'", capture),
                     file: None,
                     line: 1,
@@ -80,6 +81,7 @@ impl AstParser {
         }
 
         Err(Box::new(ParseError {
+            kind: ParseErrorKind::Syntax,
             message: "Routine capture parsing exceeded safety bound".to_string(),
             file: None,
             line: 1,
