@@ -397,7 +397,7 @@ Exit condition:
 
 - obvious duplicated token/name lists are no longer edited in multiple places
 
-### Slice 9: Put Tree-sitter maintenance on explicit rails
+### Slice 9: Put Tree-sitter maintenance on explicit rails ✓ COMPLETE
 
 Once generation covers the easy facts, define the remaining handwritten contract.
 
