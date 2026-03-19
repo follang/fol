@@ -511,14 +511,14 @@ fn test_standard_declaration_rejects_conflicting_visibility_options() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Conflicting standard visibility options"),
         "Conflicting std options should report a targeted error, got: {}",
-        parse_error
+        parse_error.message
     );
 }

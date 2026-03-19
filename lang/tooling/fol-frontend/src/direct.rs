@@ -530,9 +530,9 @@ fn compile_file(
                 }
             }
         }
-        Err(errors) => {
-            for error in errors {
-                add_compiler_glitch(diagnostics, error.as_ref());
+        Err(parser_diagnostics) => {
+            for diagnostic in parser_diagnostics {
+                diagnostics.add_diagnostic(diagnostic);
             }
             Err(())
         }

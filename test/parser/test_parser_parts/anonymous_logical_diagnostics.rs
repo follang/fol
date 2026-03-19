@@ -15,7 +15,7 @@ fn unique_temp_root(label: &str) -> std::path::PathBuf {
     ))
 }
 
-fn parse_first_error_from_source(source: &str) -> ParseError {
+fn parse_first_error_from_source(source: &str) -> fol_diagnostics::Diagnostic {
     let temp_root = unique_temp_root("diag");
     fs::create_dir_all(&temp_root).expect("Should create temporary diagnostic fixture folder");
     let fixture = temp_root.join("anon_log_diag.fol");
@@ -36,10 +36,9 @@ fn parse_first_error_from_source(source: &str) -> ParseError {
     fs::remove_dir_all(&temp_root).ok();
 
     errors
-        .first()
-        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
-        .cloned()
-        .expect("First parser error should be ParseError")
+        .into_iter()
+        .next()
+        .expect("First parser error should exist")
 }
 
 #[test]
@@ -49,10 +48,10 @@ fn test_anonymous_logical_missing_open_paren_uses_logical_wording() {
 
     assert!(
         error
-            .to_string()
+            .message
             .contains("Expected '(' after anonymous logical"),
         "Anonymous logical diagnostics should no longer inherit function wording, got: {}",
-        error
+        error.message
     );
 }
 
@@ -64,10 +63,10 @@ fn test_anonymous_logical_untyped_parameter_uses_logical_wording() {
 
     assert!(
         error
-            .to_string()
+            .message
             .contains("Expected ':' after logical parameter name"),
         "Anonymous logical parameter diagnostics should use logical wording, got: {}",
-        error
+        error.message
     );
 }
 
@@ -79,9 +78,9 @@ fn test_anonymous_logical_missing_body_separator_uses_logical_wording() {
 
     assert!(
         error
-            .to_string()
+            .message
             .contains("Expected '=' or '=>' before anonymous logical body"),
         "Anonymous logical body diagnostics should use logical wording, got: {}",
-        error
+        error.message
     );
 }

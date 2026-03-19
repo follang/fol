@@ -15,7 +15,7 @@ fn unique_temp_root(label: &str) -> std::path::PathBuf {
     ))
 }
 
-fn parse_first_error_from_source(label: &str, source: &str) -> ParseError {
+fn parse_first_error_from_source(label: &str, source: &str) -> fol_diagnostics::Diagnostic {
     let temp_root = unique_temp_root(label);
     fs::create_dir_all(&temp_root).expect("Should create temporary control-flow fixture dir");
     let fixture = temp_root.join("control_flow_context.fol");
@@ -36,10 +36,9 @@ fn parse_first_error_from_source(label: &str, source: &str) -> ParseError {
     fs::remove_dir_all(&temp_root).ok();
 
     errors
-        .first()
-        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
-        .cloned()
-        .expect("First parser error should be ParseError")
+        .into_iter()
+        .next()
+        .expect("First parser error should exist")
 }
 
 #[test]
@@ -48,14 +47,14 @@ fn test_top_level_return_is_rejected_outside_routine_context() {
 
     assert!(
         error
-            .to_string()
+            .message
             .contains("'return' is only allowed inside routines"),
         "Top-level return should fail with routine-context wording, got: {}",
-        error
+        error.message
     );
-    assert_eq!(error.line(), 1, "Top-level return should point at its own line");
+    assert_eq!(error.primary_location().unwrap().line, 1, "Top-level return should point at its own line");
     assert_eq!(
-        error.column(),
+        error.primary_location().unwrap().column,
         1,
         "Top-level return should point at the return keyword itself"
     );
@@ -70,14 +69,14 @@ fn test_branch_body_return_is_rejected_without_routine_context() {
 
     assert!(
         error
-            .to_string()
+            .message
             .contains("'return' is only allowed inside routines"),
         "Branch-body return should fail with routine-context wording, got: {}",
-        error
+        error.message
     );
-    assert_eq!(error.line(), 3, "Branch-body return should report the return line");
+    assert_eq!(error.primary_location().unwrap().line, 3, "Branch-body return should report the return line");
     assert_eq!(
-        error.column(),
+        error.primary_location().unwrap().column,
         9,
         "Branch-body return should point at the nested return keyword"
     );
@@ -89,14 +88,14 @@ fn test_top_level_break_is_rejected_outside_loop_context() {
 
     assert!(
         error
-            .to_string()
+            .message
             .contains("'break' is only allowed inside loops"),
         "Top-level break should fail with loop-context wording, got: {}",
-        error
+        error.message
     );
-    assert_eq!(error.line(), 1, "Top-level break should point at its own line");
+    assert_eq!(error.primary_location().unwrap().line, 1, "Top-level break should point at its own line");
     assert_eq!(
-        error.column(),
+        error.primary_location().unwrap().column,
         1,
         "Top-level break should point at the break keyword itself"
     );
@@ -111,14 +110,14 @@ fn test_routine_break_is_rejected_without_loop_context() {
 
     assert!(
         error
-            .to_string()
+            .message
             .contains("'break' is only allowed inside loops"),
         "Routine break should fail with loop-context wording, got: {}",
-        error
+        error.message
     );
-    assert_eq!(error.line(), 2, "Routine break should report the break line");
+    assert_eq!(error.primary_location().unwrap().line, 2, "Routine break should report the break line");
     assert_eq!(
-        error.column(),
+        error.primary_location().unwrap().column,
         5,
         "Routine break should point at the nested break keyword"
     );
@@ -130,14 +129,14 @@ fn test_top_level_yield_is_rejected_without_routine_or_loop_context() {
 
     assert!(
         error
-            .to_string()
+            .message
             .contains("'yield' is only allowed inside routines or loops"),
         "Top-level yield should fail with routine-or-loop wording, got: {}",
-        error
+        error.message
     );
-    assert_eq!(error.line(), 1, "Top-level yield should point at its own line");
+    assert_eq!(error.primary_location().unwrap().line, 1, "Top-level yield should point at its own line");
     assert_eq!(
-        error.column(),
+        error.primary_location().unwrap().column,
         1,
         "Top-level yield should point at the yield keyword itself"
     );
@@ -152,14 +151,14 @@ fn test_branch_body_yield_is_rejected_without_routine_or_loop_context() {
 
     assert!(
         error
-            .to_string()
+            .message
             .contains("'yield' is only allowed inside routines or loops"),
         "Branch-body yield should fail with routine-or-loop wording, got: {}",
-        error
+        error.message
     );
-    assert_eq!(error.line(), 3, "Branch-body yield should report the yield line");
+    assert_eq!(error.primary_location().unwrap().line, 3, "Branch-body yield should report the yield line");
     assert_eq!(
-        error.column(),
+        error.primary_location().unwrap().column,
         9,
         "Branch-body yield should point at the nested yield keyword"
     );

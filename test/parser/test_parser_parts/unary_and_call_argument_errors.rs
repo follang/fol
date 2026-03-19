@@ -14,10 +14,10 @@ fn test_unary_minus_missing_operand_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
         first_message.contains("Expected expression after unary '-'"),
@@ -25,7 +25,7 @@ fn test_unary_minus_missing_operand_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Unary minus missing-operand parse error should point to return line"
     );
@@ -45,10 +45,10 @@ fn test_unary_not_missing_operand_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
         first_message.contains("Expected expression after unary 'not'"),
@@ -56,7 +56,7 @@ fn test_unary_not_missing_operand_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Unary not missing-operand parse error should point to return line"
     );
@@ -76,10 +76,10 @@ fn test_unary_ref_missing_operand_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
         first_message.contains("Expected expression after unary '&'"),
@@ -87,7 +87,7 @@ fn test_unary_ref_missing_operand_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Unary ref missing-operand parse error should point to return line"
     );
@@ -107,10 +107,10 @@ fn test_unary_deref_missing_operand_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
         first_message.contains("Expected expression after unary '*'"),
@@ -118,7 +118,7 @@ fn test_unary_deref_missing_operand_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Unary deref missing-operand parse error should point to return line"
     );
@@ -138,10 +138,10 @@ fn test_call_argument_unary_ref_missing_operand_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
             first_message.contains("Expected expression after unary '&'"),
@@ -149,7 +149,7 @@ fn test_call_argument_unary_ref_missing_operand_reports_parse_error() {
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Call-arg unary ref missing-operand parse error should point to call line"
     );
@@ -169,10 +169,10 @@ fn test_call_argument_unary_deref_missing_operand_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
             first_message.contains("Expected expression after unary '*'"),
@@ -180,7 +180,7 @@ fn test_call_argument_unary_deref_missing_operand_reports_parse_error() {
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Call-arg unary deref missing-operand parse error should point to call line"
     );
@@ -200,10 +200,10 @@ fn test_top_level_call_argument_unary_ref_missing_operand_reports_parse_error() 
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
             first_message.contains("Expected expression after unary '&'"),
@@ -211,7 +211,7 @@ fn test_top_level_call_argument_unary_ref_missing_operand_reports_parse_error() 
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Top-level call-arg unary ref missing-operand parse error should point to call line"
     );
@@ -231,10 +231,10 @@ fn test_top_level_call_argument_unary_deref_missing_operand_reports_parse_error(
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
             first_message.contains("Expected expression after unary '*'"),
@@ -242,7 +242,7 @@ fn test_top_level_call_argument_unary_deref_missing_operand_reports_parse_error(
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Top-level call-arg unary deref missing-operand parse error should point to call line"
     );
@@ -262,10 +262,10 @@ fn test_top_level_call_argument_unary_minus_missing_operand_reports_parse_error(
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
             first_message.contains("Expected expression after unary '-'"),
@@ -273,7 +273,7 @@ fn test_top_level_call_argument_unary_minus_missing_operand_reports_parse_error(
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Top-level call-arg unary minus missing-operand parse error should point to call line"
     );
@@ -293,10 +293,10 @@ fn test_top_level_call_argument_unary_not_missing_operand_reports_parse_error() 
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
             first_message.contains("Expected expression after unary 'not'"),
@@ -304,7 +304,7 @@ fn test_top_level_call_argument_unary_not_missing_operand_reports_parse_error() 
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Top-level call-arg unary not missing-operand parse error should point to call line"
     );
@@ -324,10 +324,10 @@ fn test_top_level_call_argument_unary_plus_missing_operand_reports_parse_error()
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
             first_message.contains("Expected expression after unary '+'"),
@@ -335,7 +335,7 @@ fn test_top_level_call_argument_unary_plus_missing_operand_reports_parse_error()
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Top-level call-arg unary plus missing-operand parse error should point to call line"
     );
@@ -378,10 +378,10 @@ fn test_unary_missing_operand_at_eof_reports_explicit_errors() {
 
         let parse_error = errors
             .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            
             .expect("First parser error should be ParseError");
 
-        let first_message = parse_error.to_string();
+        let first_message = parse_error.message.clone();
         assert!(
             first_message.contains(expected_message),
             "Fixture {} should report '{}', got: {}",
@@ -390,7 +390,7 @@ fn test_unary_missing_operand_at_eof_reports_explicit_errors() {
             first_message
         );
         assert_eq!(
-            parse_error.line(),
+            parse_error.primary_location().unwrap().line,
             2,
             "Fixture {} should report unary EOF error on second line",
             path
@@ -411,7 +411,7 @@ fn test_missing_call_closing_paren_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     assert!(
@@ -435,12 +435,12 @@ fn test_missing_call_argument_separator_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -449,7 +449,7 @@ fn test_missing_call_argument_separator_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         4,
         "Missing call separator parse error should point to the next argument token line"
     );
@@ -469,12 +469,12 @@ fn test_top_level_call_with_leading_comma_argument_reports_location() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     assert!(
@@ -483,12 +483,12 @@ fn test_top_level_call_with_leading_comma_argument_reports_location() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Leading comma parse error should point to the comma line"
     );
     assert!(
-        parse_error.column() > 0,
+        parse_error.primary_location().unwrap().column > 0,
         "Leading comma parse error should include a non-zero column"
     );
 }
@@ -507,12 +507,12 @@ fn test_method_call_missing_argument_separator_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -521,7 +521,7 @@ fn test_method_call_missing_argument_separator_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         4,
         "Method missing-separator parse error should point to the next argument token line"
     );
@@ -541,7 +541,7 @@ fn test_nested_call_missing_argument_separator_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     assert!(
@@ -565,12 +565,12 @@ fn test_top_level_call_with_double_comma_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -579,7 +579,7 @@ fn test_top_level_call_with_double_comma_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Top-level double-comma parse error should point to empty argument slot line"
     );
@@ -599,12 +599,12 @@ fn test_method_call_with_empty_argument_slot_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -613,7 +613,7 @@ fn test_method_call_with_empty_argument_slot_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Method empty-slot parse error should point to the comma line"
     );
@@ -633,12 +633,12 @@ fn test_nested_call_with_empty_argument_slot_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -647,7 +647,7 @@ fn test_nested_call_with_empty_argument_slot_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         5,
         "Nested empty-slot parse error should point to the comma line"
     );
@@ -667,12 +667,12 @@ fn test_method_call_with_nested_empty_argument_slot_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -681,7 +681,7 @@ fn test_method_call_with_nested_empty_argument_slot_reports_parse_error() {
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         5,
         "Method nested empty-slot parse error should point to the comma line"
     );
@@ -701,12 +701,12 @@ fn test_call_argument_with_dangling_operator_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -715,7 +715,7 @@ fn test_call_argument_with_dangling_operator_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Dangling operator parse error should point to the expression line"
     );
@@ -735,12 +735,12 @@ fn test_method_call_argument_with_dangling_operator_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -749,7 +749,7 @@ fn test_method_call_argument_with_dangling_operator_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Method dangling-operator parse error should point to the expression line"
     );
@@ -769,12 +769,12 @@ fn test_method_call_nested_dangling_operator_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -783,7 +783,7 @@ fn test_method_call_nested_dangling_operator_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         4,
         "Nested method dangling-operator parse error should point to inner expression line"
     );
@@ -803,12 +803,12 @@ fn test_function_call_nested_dangling_operator_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -817,7 +817,7 @@ fn test_function_call_nested_dangling_operator_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         4,
         "Nested function dangling-operator parse error should point to inner expression line"
     );
@@ -837,12 +837,12 @@ fn test_top_level_nested_call_with_empty_argument_slot_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -851,7 +851,7 @@ fn test_top_level_nested_call_with_empty_argument_slot_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         4,
         "Top-level nested empty-slot parse error should point to inner empty-slot comma line"
     );

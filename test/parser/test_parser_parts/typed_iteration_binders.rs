@@ -60,10 +60,10 @@ fn test_top_level_each_typed_binder_requires_matching_iteration_name() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains(
             "Typed iteration binder 'line' must match the iteration variable before 'in'"
@@ -278,10 +278,10 @@ fn test_top_level_loop_typed_binder_requires_matching_iteration_name() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains(
             "Typed iteration binder 'line' must match the iteration variable before 'in'"
@@ -371,10 +371,10 @@ fn test_top_level_for_keyword_typed_binder_requires_matching_iteration_name() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message
             .contains("Typed iteration binder 'get' must match the iteration variable before 'in'"),

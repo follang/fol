@@ -83,13 +83,13 @@ fn test_duplicate_function_inquiry_clause_rejected() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Duplicate inquiry clause for 'self'"),
+        parse_error.message.clone().contains("Duplicate inquiry clause for 'self'"),
         "Expected duplicate inquiry error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -107,13 +107,13 @@ fn test_duplicate_procedure_inquiry_clause_rejected() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Duplicate inquiry clause for 'self'"),
+        parse_error.message.clone().contains("Duplicate inquiry clause for 'self'"),
         "Expected duplicate inquiry error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -132,15 +132,15 @@ fn test_duplicate_trailing_function_inquiry_clause_rejected_canonically() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate inquiry clause for 'CacheName'"),
         "Expected canonical duplicate inquiry error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -288,13 +288,13 @@ fn test_duplicate_inquiry_target_in_single_clause_rejected() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Duplicate inquiry clause for 'self'"),
+        parse_error.message.clone().contains("Duplicate inquiry clause for 'self'"),
         "Expected duplicate inquiry target error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 

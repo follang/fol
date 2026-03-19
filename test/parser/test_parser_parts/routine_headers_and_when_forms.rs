@@ -62,17 +62,17 @@ fn test_routine_generic_headers_reject_duplicate_names() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Duplicate generic name 'T'"),
         "Duplicate routine generic should report the repeated name, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Duplicate routine generic parse error should point to the declaration line"
     );
@@ -92,17 +92,17 @@ fn test_routine_generic_headers_reject_canonical_duplicate_names() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Duplicate generic name 'tvalue'"),
         "Canonical duplicate routine generic should report the later spelling, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Canonical duplicate routine generic parse error should point to the declaration line"
     );
@@ -122,17 +122,17 @@ fn test_routine_generic_headers_reject_default_values() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Default values are not allowed in routine generic headers"),
         "Routine generic defaults should report the dedicated diagnostic, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Routine generic default parse error should point to the declaration line"
     );
@@ -288,17 +288,17 @@ fn test_grouped_parameters_missing_colon_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected ':' after parameter name"),
         "Malformed grouped parameters should report the missing type separator, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Grouped parameter parse error should point to the signature line"
     );
@@ -317,17 +317,17 @@ fn test_duplicate_routine_parameter_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Duplicate parameter name 'a'"),
         "Duplicate routine parameter should report the repeated name, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Duplicate routine parameter parse error should point to the signature line"
     );
@@ -347,17 +347,17 @@ fn test_duplicate_routine_parameter_reports_canonical_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Duplicate parameter name 'AA'"),
         "Canonical duplicate routine parameter should report the later spelling, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Canonical duplicate routine parameter parse error should point to the signature line"
     );
@@ -377,17 +377,17 @@ fn test_duplicate_function_type_parameter_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Duplicate parameter name 'x'"),
         "Duplicate function-type parameter should report the repeated name, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Duplicate function-type parameter parse error should point to the signature line"
     );
@@ -407,17 +407,17 @@ fn test_parameter_default_missing_value_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected default value expression after '=' in parameter"),
         "Malformed parameter default should report missing value, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Parameter default parse error should point to the signature line"
     );
@@ -436,17 +436,17 @@ fn test_unknown_routine_option_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Unknown routine option"),
         "Malformed routine option should report unknown option, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Routine option parse error should point to the signature line"
     );
@@ -466,17 +466,17 @@ fn test_routine_generic_header_missing_separator_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected ',', ';', or ')' after generic parameter"),
         "Malformed generic header should report missing separator, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Generic header parse error should point to the signature line"
     );
@@ -877,17 +877,17 @@ fn test_when_of_case_missing_bracket_close_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected closing ']' in type reference"),
         "Malformed when-of type should report missing close bracket, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Malformed when-of type parse error should point to the case line"
     );
@@ -907,17 +907,17 @@ fn test_when_star_default_missing_body_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected '{' after when default '*'"),
         "Malformed when '*' default should report missing body, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         4,
         "Malformed when '*' default parse error should point to the default line"
     );
@@ -936,17 +936,17 @@ fn test_when_on_case_missing_close_paren_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected ')' after on channel"),
         "Malformed when-on case should report missing close paren, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Malformed when-on case parse error should point to the case line"
     );

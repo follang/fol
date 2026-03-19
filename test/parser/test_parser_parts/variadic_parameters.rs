@@ -46,15 +46,15 @@ fn test_variadic_parameter_must_be_last() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Variadic parameter must be the last parameter"),
         "Non-final variadic parameter should report placement error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -72,15 +72,15 @@ fn test_variadic_parameter_cannot_have_default_value() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Variadic parameters cannot have default values"),
         "Variadic default value should report explicit error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -98,14 +98,14 @@ fn test_variadic_parameter_is_rejected_in_generic_headers() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Variadic parameters are not allowed in routine generic headers"),
         "Variadic generic header should report explicit error, got: {}",
-        parse_error
+        parse_error.message
     );
 }

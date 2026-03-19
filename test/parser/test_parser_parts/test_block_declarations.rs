@@ -179,15 +179,15 @@ fn test_test_block_rejects_quoted_access_argument() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Quoted tst[...] arguments are only allowed for the optional test label"),
         "Expected quoted tst access diagnostic, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 

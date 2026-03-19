@@ -101,40 +101,19 @@ pub fn parse_package_build_mode(path: &Path) -> Result<PackageBuildMode, Package
     parse_package_build(path).map(|build| build.mode())
 }
 
-fn build_parse_error(path: &Path, errors: Vec<Box<dyn fol_types::Glitch>>) -> PackageError {
-    let first = errors
+fn build_parse_error(path: &Path, diagnostics: Vec<fol_diagnostics::Diagnostic>) -> PackageError {
+    let first = diagnostics
         .into_iter()
         .next()
         .expect("build parser should produce at least one error");
-    if let Some(parse_error) = first
-        .as_ref()
-        .as_any()
-        .downcast_ref::<fol_parser::ast::ParseError>()
-    {
-        PackageError::with_origin(
-            PackageErrorKind::InvalidInput,
-            format!(
-                "package loader could not parse package build file '{}': {}",
-                path.display(),
-                parse_error
-            ),
-            SyntaxOrigin {
-                file: parse_error.file(),
-                line: parse_error.line(),
-                column: parse_error.column(),
-                length: parse_error.length(),
-            },
-        )
-    } else {
-        PackageError::new(
-            PackageErrorKind::InvalidInput,
-            format!(
-                "package loader could not parse package build file '{}': {}",
-                path.display(),
-                first
-            ),
-        )
-    }
+    PackageError::new(
+        PackageErrorKind::InvalidInput,
+        format!(
+            "package loader could not parse package build file '{}': {}",
+            path.display(),
+            first.message
+        ),
+    )
 }
 
 pub fn extract_package_build_definition(

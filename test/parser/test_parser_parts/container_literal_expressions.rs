@@ -259,17 +259,17 @@ fn test_container_literal_bad_separator_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected ',', ';', or '}' in container expression"),
         "Malformed container literal should report missing separator, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Malformed container literal should report the assignment line"
     );

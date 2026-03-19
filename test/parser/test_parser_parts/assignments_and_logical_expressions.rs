@@ -128,17 +128,17 @@ fn test_field_assignment_target_missing_name_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected field name after '.' in assignment target"),
         "Malformed field assignment target should report missing field name, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Malformed field assignment target should report the assignment line"
     );
@@ -158,17 +158,17 @@ fn test_method_call_assignment_target_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Method call cannot be used as an assignment target"),
         "Method-call assignment target should report explicit target diagnostic, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Method-call assignment target should report the assignment line"
     );
@@ -188,17 +188,17 @@ fn test_function_call_assignment_target_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Function call cannot be used as an assignment target"),
         "Function-call assignment target should report explicit target diagnostic, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Function-call assignment target should report the assignment line"
     );
@@ -889,13 +889,13 @@ fn test_parse_error_has_location_for_illegal_token() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    assert!(parse_error.line() > 0, "Line should be non-zero");
-    assert!(parse_error.column() > 0, "Column should be non-zero");
+    assert!(parse_error.primary_location().unwrap().line > 0, "Line should be non-zero");
+    assert!(parse_error.primary_location().unwrap().column > 0, "Column should be non-zero");
     assert!(
-        parse_error.length() > 0,
+        parse_error.primary_location().unwrap().length.unwrap_or(0) > 0,
         "Token length should be non-zero for diagnostics"
     );
 }
@@ -914,10 +914,10 @@ fn test_unary_plus_missing_operand_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
         first_message.contains("Expected expression after unary '+'"),
@@ -925,7 +925,7 @@ fn test_unary_plus_missing_operand_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Unary plus missing-operand parse error should point to return line"
     );
@@ -945,10 +945,10 @@ fn test_call_argument_unary_plus_missing_operand_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
 
     assert!(
             first_message.contains("Expected expression after unary '+'"),
@@ -956,7 +956,7 @@ fn test_call_argument_unary_plus_missing_operand_reports_parse_error() {
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Call-arg unary plus missing-operand parse error should point to call line"
     );

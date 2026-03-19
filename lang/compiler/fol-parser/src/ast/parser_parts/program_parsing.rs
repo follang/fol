@@ -19,10 +19,11 @@ impl AstParser {
     pub fn parse_package(
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
+    ) -> Result<ParsedPackage, Vec<fol_diagnostics::Diagnostic>> {
         let sources = tokens.sources().to_vec();
-        let (entries, syntax_index) =
-            self.parse_top_level_entries_with_surface(tokens, RootSurface::DeclarationOnly)?;
+        let (entries, syntax_index) = self
+            .parse_top_level_entries_with_surface(tokens, RootSurface::DeclarationOnly)
+            .map_err(Self::glitch_vec_to_diagnostics)?;
         Ok(ParsedPackage::from_sources_and_entries(
             &sources,
             entries,
@@ -33,10 +34,11 @@ impl AstParser {
     pub fn parse_script_package(
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
+    ) -> Result<ParsedPackage, Vec<fol_diagnostics::Diagnostic>> {
         let sources = tokens.sources().to_vec();
-        let (entries, syntax_index) =
-            self.parse_top_level_entries_with_surface(tokens, RootSurface::MixedProgram)?;
+        let (entries, syntax_index) = self
+            .parse_top_level_entries_with_surface(tokens, RootSurface::MixedProgram)
+            .map_err(Self::glitch_vec_to_diagnostics)?;
         Ok(ParsedPackage::from_sources_and_entries(
             &sources,
             entries,
@@ -47,8 +49,19 @@ impl AstParser {
     pub fn parse_decl_package(
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
+    ) -> Result<ParsedPackage, Vec<fol_diagnostics::Diagnostic>> {
         self.parse_package(tokens)
+    }
+
+    fn glitch_vec_to_diagnostics(errors: Vec<Box<dyn Glitch>>) -> Vec<fol_diagnostics::Diagnostic> {
+        errors.into_iter().map(|error| {
+            if let Some(parse_error) = error.as_any().downcast_ref::<ParseError>() {
+                use fol_diagnostics::ToDiagnostic;
+                parse_error.to_diagnostic()
+            } else {
+                fol_diagnostics::Diagnostic::from_glitch(error.as_ref(), fol_diagnostics::Severity::Error, None)
+            }
+        }).collect()
     }
 
     fn push_top_level_entry(

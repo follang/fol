@@ -550,10 +550,10 @@ use super::*;
 
     #[test]
     fn test_parser_error_locations_reach_diagnostics_outputs() {
-        use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+        use fol_diagnostics::{DiagnosticReport, OutputFormat};
         use fol_lexer::lexer::stage3::Elements;
         use fol_lexer::token::KEYWORD;
-        use fol_parser::ast::{AstParser, ParseError};
+        use fol_parser::ast::AstParser;
         use fol_stream::FileStream;
 
         let mut file_stream =
@@ -571,18 +571,8 @@ use super::*;
             .parse_script_package(&mut lexer)
             .expect_err("Parser should fail on illegal token");
 
-        for error in parse_errors {
-            let location = error
-                .as_any()
-                .downcast_ref::<ParseError>()
-                .map(|parse_error| DiagnosticLocation {
-                    file: parse_error.file(),
-                    line: parse_error.line(),
-                    column: parse_error.column(),
-                    length: Some(parse_error.length()),
-                });
-
-            diagnostics.add_error(error.as_ref(), location);
+        for diagnostic in parse_errors {
+            diagnostics.add_diagnostic(diagnostic);
         }
 
         let human = diagnostics.output(OutputFormat::Human);
@@ -608,10 +598,10 @@ use super::*;
 
     #[test]
     fn test_parser_human_diagnostics_keep_snippet_shape() {
-        use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+        use fol_diagnostics::{DiagnosticReport, OutputFormat};
         use fol_lexer::lexer::stage3::Elements;
         use fol_lexer::token::KEYWORD;
-        use fol_parser::ast::{AstParser, ParseError};
+        use fol_parser::ast::AstParser;
         use fol_stream::FileStream;
 
         let mut file_stream =
@@ -628,17 +618,8 @@ use super::*;
             .parse_script_package(&mut lexer)
             .expect_err("Parser should fail on illegal token");
 
-        for error in parse_errors {
-            let location = error
-                .as_any()
-                .downcast_ref::<ParseError>()
-                .map(|parse_error| DiagnosticLocation {
-                    file: parse_error.file(),
-                    line: parse_error.line(),
-                    column: parse_error.column(),
-                    length: Some(parse_error.length()),
-                });
-            diagnostics.add_error(error.as_ref(), location);
+        for diagnostic in parse_errors {
+            diagnostics.add_diagnostic(diagnostic);
         }
 
         let human = diagnostics.output(OutputFormat::Human);
@@ -649,9 +630,9 @@ use super::*;
 
     #[test]
     fn test_multi_file_parser_errors_keep_second_file_locations() {
-        use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+        use fol_diagnostics::{DiagnosticReport, OutputFormat};
         use fol_lexer::lexer::stage3::Elements;
-        use fol_parser::ast::{AstParser, ParseError};
+        use fol_parser::ast::AstParser;
         use fol_stream::FileStream;
         use std::fs;
 
@@ -674,38 +655,29 @@ use super::*;
             .parse_script_package(&mut lexer)
             .expect_err("Second source should surface a parser-visible error");
 
-        let parse_error = errors
+        let diagnostic = errors
             .iter()
-            .filter_map(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
-            .find(|error| {
-                error
-                    .file()
-                    .as_deref()
+            .find(|d| {
+                d.primary_location()
+                    .and_then(|loc| loc.file.as_deref())
                     .is_some_and(|path| path.ends_with("10_bad.fol"))
             })
             .expect("A parse error should point at the malformed second file");
 
+        let loc = diagnostic.primary_location().expect("diagnostic should have primary location");
         assert_eq!(
-            parse_error.line(),
+            loc.line,
             1,
             "Second file should restart at line 1"
         );
         assert_eq!(
-            parse_error.column(),
+            loc.column,
             1,
             "Second file should restart at column 1 for its first token"
         );
 
         let mut diagnostics = DiagnosticReport::new();
-        diagnostics.add_error(
-            parse_error,
-            Some(DiagnosticLocation {
-                file: parse_error.file(),
-                line: parse_error.line(),
-                column: parse_error.column(),
-                length: Some(parse_error.length()),
-            }),
-        );
+        diagnostics.add_diagnostic(diagnostic.clone());
         let human = diagnostics.output(OutputFormat::Human);
         assert!(
             human.contains("10_bad.fol"),

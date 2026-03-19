@@ -131,9 +131,9 @@ fn test_named_and_quoted_duplicate_inquiry_targets_are_rejected() {
 
         errors
             .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            
             .expect("First parser error should be ParseError")
-            .to_string()
+            .message.clone()
     };
 
     assert!(
@@ -158,9 +158,9 @@ fn test_named_and_quoted_canonical_duplicate_inquiry_targets_are_rejected() {
 
         errors
             .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            
             .expect("First parser error should be ParseError")
-            .to_string()
+            .message.clone()
     };
 
     assert!(
@@ -184,9 +184,9 @@ fn test_qualified_duplicate_inquiry_targets_are_rejected() {
 
         errors
             .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            
             .expect("First parser error should be ParseError")
-            .to_string()
+            .message.clone()
     };
 
     assert!(
@@ -211,9 +211,9 @@ fn test_qualified_canonical_duplicate_inquiry_targets_are_rejected() {
 
         errors
             .first()
-            .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+            
             .expect("First parser error should be ParseError")
-            .to_string()
+            .message.clone()
     };
 
     assert!(
