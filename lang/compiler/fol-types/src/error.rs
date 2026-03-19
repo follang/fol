@@ -12,7 +12,7 @@ pub enum Flaw {
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Typo {
     LexerSpaceAdd { msg: Option<String> },
-    ParserMissmatch { msg: Option<String> },
+    ParserMismatch { msg: Option<String> },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -88,10 +88,10 @@ impl fmt::Display for Typo {
                     msg.as_ref().unwrap_or(&"".to_string())
                 )
             }
-            Typo::ParserMissmatch { msg } => {
+            Typo::ParserMismatch { msg } => {
                 write!(
                     f,
-                    "ParserMissmatch: {}",
+                    "ParserMismatch: {}",
                     msg.as_ref().unwrap_or(&"".to_string())
                 )
             }

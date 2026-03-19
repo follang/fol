@@ -1,0 +1,228 @@
+use crate::eval::{BuildEvaluationError, BuildEvaluationErrorKind};
+use fol_parser::ast::{AstNode, BinaryOperator, CallSurface, Literal};
+use std::collections::BTreeMap;
+
+use super::core::{BuildBodyExecutor, MAX_EVAL_DEPTH};
+use super::types::ExecValue;
+
+impl BuildBodyExecutor {
+    pub(super) fn eval_iterable(&self, node: &AstNode) -> Result<Vec<ExecValue>, BuildEvaluationError> {
+        match node {
+            AstNode::ContainerLiteral { elements, .. } => {
+                let mut result = Vec::with_capacity(elements.len());
+                for elem in elements {
+                    match elem {
+                        AstNode::Literal(Literal::String(s)) => {
+                            result.push(ExecValue::Str(s.clone()));
+                        }
+                        AstNode::Literal(Literal::Boolean(b)) => {
+                            result.push(ExecValue::Bool(*b));
+                        }
+                        AstNode::Identifier { name, .. } => {
+                            if let Some(v) = self.scope.get(name.as_str()) {
+                                result.push(v.clone());
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                Ok(result)
+            }
+            AstNode::Identifier { name, .. } => {
+                match self.scope.get(name.as_str()) {
+                    Some(ExecValue::List(items)) => Ok(items.clone()),
+                    _ => Ok(Vec::new()),
+                }
+            }
+            _ => Ok(Vec::new()),
+        }
+    }
+
+    pub(super) fn eval_condition(&self, cond: &AstNode) -> Result<bool, BuildEvaluationError> {
+        match cond {
+            AstNode::Literal(Literal::Boolean(b)) => Ok(*b),
+            AstNode::Identifier { name, .. } => {
+                if let Some(v) = self.scope.get(name.as_str()) {
+                    match v {
+                        ExecValue::Bool(b) => Ok(*b),
+                        _ => Ok(true),
+                    }
+                } else {
+                    Ok(false)
+                }
+            }
+            AstNode::BinaryOp { op: BinaryOperator::Eq, left, right } => {
+                let lhs = self.eval_value_str(left);
+                let rhs = self.eval_value_str(right);
+                match (lhs, rhs) {
+                    (Some(l), Some(r)) => Ok(l == r),
+                    _ => Ok(false),
+                }
+            }
+            AstNode::BinaryOp { op: BinaryOperator::Ne, left, right } => {
+                let lhs = self.eval_value_str(left);
+                let rhs = self.eval_value_str(right);
+                match (lhs, rhs) {
+                    (Some(l), Some(r)) => Ok(l != r),
+                    _ => Ok(false),
+                }
+            }
+            AstNode::BinaryOp { op: BinaryOperator::And, left, right } => {
+                Ok(self.eval_condition(left)? && self.eval_condition(right)?)
+            }
+            AstNode::BinaryOp { op: BinaryOperator::Or, left, right } => {
+                Ok(self.eval_condition(left)? || self.eval_condition(right)?)
+            }
+            AstNode::UnaryOp { op: fol_parser::ast::UnaryOperator::Not, operand } => {
+                Ok(!self.eval_condition(operand)?)
+            }
+            _ => Ok(false),
+        }
+    }
+
+    pub(super) fn eval_value_str(&self, node: &AstNode) -> Option<String> {
+        match node {
+            AstNode::Literal(Literal::String(s)) => Some(s.clone()),
+            AstNode::Literal(Literal::Boolean(b)) => Some(b.to_string()),
+            AstNode::Identifier { name, .. } => {
+                match self.scope.get(name.as_str()) {
+                    Some(ExecValue::Target(option_name)) => {
+                        // Resolve actual target value from inputs if available
+                        self.resolved_inputs
+                            .get(option_name.as_str())
+                            .cloned()
+                            .or_else(|| Some(option_name.clone()))
+                    }
+                    Some(ExecValue::Optimize(option_name)) => {
+                        self.resolved_inputs
+                            .get(option_name.as_str())
+                            .cloned()
+                            .or_else(|| Some(option_name.clone()))
+                    }
+                    Some(ExecValue::OptionRef(option_name)) => {
+                        self.resolved_inputs
+                            .get(option_name.as_str())
+                            .cloned()
+                    }
+                    Some(ExecValue::Str(s)) => Some(s.clone()),
+                    Some(ExecValue::Bool(b)) => Some(b.to_string()),
+                    _ => None,
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub(super) fn eval_expr(&mut self, expr: &AstNode) -> Result<Option<ExecValue>, BuildEvaluationError> {
+        self.recursion_depth += 1;
+        if self.recursion_depth > MAX_EVAL_DEPTH {
+            self.recursion_depth -= 1;
+            return Err(BuildEvaluationError::new(
+                BuildEvaluationErrorKind::InvalidInput,
+                format!("build script exceeded maximum recursion depth ({MAX_EVAL_DEPTH})"),
+            ));
+        }
+        let result = self.eval_expr_inner(expr);
+        self.recursion_depth -= 1;
+        result
+    }
+
+    fn eval_expr_inner(&mut self, expr: &AstNode) -> Result<Option<ExecValue>, BuildEvaluationError> {
+        match expr {
+            AstNode::Identifier { name, .. } if name == &self.graph_param => Ok(None),
+            AstNode::Identifier { name, .. } => Ok(self.scope.get(name.as_str()).cloned()),
+
+            AstNode::MethodCall { object, method, args } => {
+                if let AstNode::Identifier { name, .. } = object.as_ref() {
+                    if name == &self.graph_param {
+                        return self.eval_graph_method(method, args);
+                    }
+                }
+                let Some(receiver) = self.eval_expr(object)? else {
+                    return Ok(None);
+                };
+                self.eval_handle_method(receiver, method, args)
+            }
+
+            AstNode::FunctionCall { surface: CallSurface::Plain, name, args, .. } => {
+                // Could be a helper routine call
+                if self.helpers.contains_key(name.as_str()) {
+                    self.eval_helper_call(name, args)
+                } else {
+                    Ok(None)
+                }
+            }
+
+            AstNode::ContainerLiteral { elements, .. } => {
+                let items = self.eval_iterable(&AstNode::ContainerLiteral {
+                    container_type: fol_parser::ast::ContainerType::Array,
+                    elements: elements.clone(),
+                })?;
+                Ok(Some(ExecValue::List(items)))
+            }
+
+            AstNode::Literal(Literal::String(s)) => Ok(Some(ExecValue::Str(s.clone()))),
+            AstNode::Literal(Literal::Boolean(b)) => Ok(Some(ExecValue::Bool(*b))),
+
+            _ => Ok(None),
+        }
+    }
+
+    pub(super) fn eval_helper_call(
+        &mut self,
+        name: &str,
+        args: &[AstNode],
+    ) -> Result<Option<ExecValue>, BuildEvaluationError> {
+        // Evaluate args in current scope
+        let evaluated_args: Vec<Option<ExecValue>> = args
+            .iter()
+            .map(|arg| self.eval_expr(arg))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let Some(helper) = self.helpers.get(name) else {
+            return Ok(None);
+        };
+
+        // Build a child scope with parameter bindings
+        let mut child_scope: BTreeMap<String, ExecValue> = BTreeMap::new();
+
+        // Add the graph parameter (first param) if present
+        // For helpers that take `graph: Graph` as first param, bind it to a sentinel
+        for (param_name, value) in helper.params.iter().zip(evaluated_args.iter()) {
+            if let Some(v) = value {
+                child_scope.insert(param_name.clone(), v.clone());
+            }
+        }
+
+        // We need the graph_param name to be accessible in helper execution
+        let helper_body = helper.body.clone();
+        let helper_params = helper.params.clone();
+
+        // Save current scope and last_value, install helper scope
+        let saved_scope = std::mem::replace(&mut self.scope, child_scope);
+        let saved_last = self.last_value.take();
+
+        // If helper takes a graph param, wire it up
+        if let Some(first_param) = helper_params.first() {
+            let saved_graph_param = self.graph_param.clone();
+            // Check if any arg was None (the graph arg)
+            for (param_name, value) in helper_params.iter().zip(evaluated_args.iter()) {
+                if value.is_none() && param_name == first_param {
+                    // This is the graph parameter — update the executor's graph_param
+                    // so method calls inside the helper know what the graph is named
+                    self.graph_param = param_name.clone();
+                }
+            }
+            let result = self.exec_body_with_return(&helper_body);
+            self.graph_param = saved_graph_param;
+            self.scope = saved_scope;
+            self.last_value = saved_last;
+            result
+        } else {
+            let result = self.exec_body_with_return(&helper_body);
+            self.scope = saved_scope;
+            self.last_value = saved_last;
+            result
+        }
+    }
+}

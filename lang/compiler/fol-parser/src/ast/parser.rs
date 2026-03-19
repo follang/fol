@@ -15,6 +15,7 @@ use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct ParseError {
+    pub(super) kind: ParseErrorKind,
     message: String,
     file: Option<String>,
     line: usize,
@@ -35,6 +36,23 @@ impl ParseError {
     pub fn from_token(token: &fol_lexer::lexer::stage3::element::Element, message: String) -> Self {
         let loc = token.loc();
         Self {
+            kind: ParseErrorKind::Syntax,
+            message,
+            file: loc.source().map(|src| src.path(true)),
+            line: loc.row(),
+            column: loc.col(),
+            length: loc.len(),
+        }
+    }
+
+    pub fn from_token_with_kind(
+        token: &fol_lexer::lexer::stage3::element::Element,
+        kind: ParseErrorKind,
+        message: String,
+    ) -> Self {
+        let loc = token.loc();
+        Self {
+            kind,
             message,
             file: loc.source().map(|src| src.path(true)),
             line: loc.row(),
@@ -44,11 +62,11 @@ impl ParseError {
     }
 
     pub fn kind(&self) -> ParseErrorKind {
-        ParseErrorKind::classify(&self.message)
+        self.kind
     }
 
     pub fn diagnostic_code(&self) -> &'static str {
-        self.kind().diagnostic_code()
+        self.kind.diagnostic_code()
     }
 
     pub fn file(&self) -> Option<String> {
@@ -69,29 +87,6 @@ impl ParseError {
 }
 
 impl ParseErrorKind {
-    fn classify(message: &str) -> Self {
-        if message.contains("at file root") {
-            Self::FileRoot
-        } else if message.contains("outside routines")
-            || message.contains("outside routine bodies")
-            || message.contains("outside loops")
-        {
-            Self::Context
-        } else if message.contains("numeric literal")
-            || message.contains("decimal literal")
-            || message.contains("literal is out of range")
-        {
-            Self::Literal
-        } else if message.contains("not implemented")
-            || message.contains("unsupported")
-            || message.contains("out of scope")
-        {
-            Self::Unsupported
-        } else {
-            Self::Syntax
-        }
-    }
-
     pub fn diagnostic_code(self) -> &'static str {
         match self {
             Self::Syntax => "P1001",
@@ -160,21 +155,52 @@ impl Default for AstParser {
 }
 
 impl AstParser {
-    fn enter_depth<'a>(&'a self, depth: &'a Cell<usize>) -> ParseDepthGuard<'a> {
-        depth.set(depth.get() + 1);
-        ParseDepthGuard { depth }
+    fn enter_depth<'a>(
+        &'a self,
+        depth: &'a Cell<usize>,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Result<ParseDepthGuard<'a>, Box<dyn Glitch>> {
+        let new_depth = depth
+            .get()
+            .checked_add(1)
+            .ok_or_else(|| {
+                let error = if let Ok(token) = tokens.curr(false) {
+                    ParseError::from_token(
+                        &token,
+                        "Depth guard overflow; possible infinite recursion in parser".to_string(),
+                    )
+                } else {
+                    ParseError {
+                        kind: ParseErrorKind::Syntax,
+                        message: "Depth guard overflow; possible infinite recursion in parser".to_string(),
+                        file: None,
+                        line: 0,
+                        column: 0,
+                        length: 0,
+                    }
+                };
+                Box::new(error) as Box<dyn Glitch>
+            })?;
+        depth.set(new_depth);
+        Ok(ParseDepthGuard { depth })
     }
 
-    pub(super) fn enter_routine_context(&self) -> ParseDepthGuard<'_> {
-        self.enter_depth(&self.routine_depth)
+    pub(super) fn enter_routine_context(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Result<ParseDepthGuard<'_>, Box<dyn Glitch>> {
+        self.enter_depth(&self.routine_depth, tokens)
     }
 
     pub(super) fn is_inside_routine(&self) -> bool {
         self.routine_depth.get() > 0
     }
 
-    pub(super) fn enter_loop_context(&self) -> ParseDepthGuard<'_> {
-        self.enter_depth(&self.loop_depth)
+    pub(super) fn enter_loop_context(
+        &self,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+    ) -> Result<ParseDepthGuard<'_>, Box<dyn Glitch>> {
+        self.enter_depth(&self.loop_depth, tokens)
     }
 
     pub(super) fn is_inside_loop(&self) -> bool {
@@ -213,6 +239,69 @@ mod tests {
     use super::{ParseErrorKind, *};
     use fol_types::canonical_identifier_key;
 
+    fn parse_string(input: &str) -> Result<crate::ParsedPackage, Vec<Box<dyn Glitch>>> {
+        let dir = std::env::temp_dir().join(format!(
+            "fol_parser_recovery_test_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("test.fol"), input).unwrap();
+        let mut stream = fol_stream::FileStream::from_file(
+            dir.join("test.fol").to_str().unwrap(),
+        )
+        .unwrap();
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let result = parser.parse_package(&mut lexer);
+        let _ = std::fs::remove_dir_all(&dir);
+        result
+    }
+
+    #[test]
+    fn single_parse_error_does_not_cascade_into_many() {
+        // Use square brackets for params (should be parens) to force a parse error.
+        let input = concat!(
+            "fun[] broken[x: int]: int = {\n",
+            "    return 1\n",
+            "}\n",
+            "\n",
+            "fun[] valid(): int = {\n",
+            "    return 2\n",
+            "}\n",
+        );
+        let result = parse_string(input);
+        match result {
+            Ok(_) => panic!("expected parse errors for malformed fun declaration"),
+            Err(errors) => {
+                assert!(
+                    errors.len() <= 3,
+                    "should not cascade: got {} errors",
+                    errors.len()
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn two_broken_declarations_produce_bounded_errors() {
+        let input = concat!(
+            "fun[bad1](): int = { return 1 }\n",
+            "fun[bad2](): int = { return 2 }\n",
+        );
+        let result = parse_string(input);
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(
+            errors.len() <= 4,
+            "two bad decls should produce bounded errors, got {}",
+            errors.len()
+        );
+    }
+
     #[test]
     fn canonical_identifier_key_normalizes_ascii_case_and_underscores() {
         assert_eq!(canonical_identifier_key("Foo_Bar"), "foobar");
@@ -227,37 +316,81 @@ mod tests {
     }
 
     #[test]
-    fn parse_error_kind_classifies_file_root_messages() {
-        assert_eq!(
-            ParseErrorKind::classify("Executable calls are not allowed at file root"),
-            ParseErrorKind::FileRoot
-        );
-        assert_eq!(ParseErrorKind::FileRoot.diagnostic_code(), "P1002");
+    fn parse_error_kind_structural_assignment() {
+        let error = ParseError {
+            kind: ParseErrorKind::FileRoot,
+            message: "Executable calls are not allowed at file root".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::FileRoot);
+        assert_eq!(error.diagnostic_code(), "P1002");
+
+        let error = ParseError {
+            kind: ParseErrorKind::Context,
+            message: "break is not allowed outside loops".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::Context);
+        assert_eq!(error.diagnostic_code(), "P1003");
+
+        let error = ParseError {
+            kind: ParseErrorKind::Literal,
+            message: "decimal literal is out of range for i64".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::Literal);
+        assert_eq!(error.diagnostic_code(), "P1004");
+
+        let error = ParseError {
+            kind: ParseErrorKind::Unsupported,
+            message: "this parser surface is not implemented yet".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::Unsupported);
+        assert_eq!(error.diagnostic_code(), "P1005");
+
+        let error = ParseError {
+            kind: ParseErrorKind::Syntax,
+            message: "Expected ')' after tuple element".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::Syntax);
+        assert_eq!(error.diagnostic_code(), "P1001");
     }
 
     #[test]
-    fn parse_error_kind_classifies_context_literal_and_fallback_messages() {
-        assert_eq!(
-            ParseErrorKind::classify("break is not allowed outside loops"),
-            ParseErrorKind::Context
-        );
-        assert_eq!(
-            ParseErrorKind::classify("decimal literal is out of range for i64"),
-            ParseErrorKind::Literal
-        );
-        assert_eq!(
-            ParseErrorKind::classify("this parser surface is not implemented yet"),
-            ParseErrorKind::Unsupported
-        );
-        assert_eq!(
-            ParseErrorKind::classify("Expected ')' after tuple element"),
-            ParseErrorKind::Syntax
-        );
+    fn parse_error_from_token_defaults_to_syntax_kind() {
+        // Verify that from_token defaults to Syntax kind
+        let error = ParseError {
+            kind: ParseErrorKind::Syntax,
+            message: "any message".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        };
+        assert_eq!(error.kind(), ParseErrorKind::Syntax);
     }
 
     #[test]
     fn parse_error_to_diagnostic_preserves_parser_codes() {
         let error = ParseError {
+            kind: ParseErrorKind::FileRoot,
             message: "Executable calls are not allowed at file root".to_string(),
             file: Some("pkg/main.fol".to_string()),
             line: 1,
@@ -281,6 +414,15 @@ mod tests {
             })
         );
     }
+
+    #[test]
+    fn parse_error_kind_diagnostic_codes() {
+        assert_eq!(ParseErrorKind::Syntax.diagnostic_code(), "P1001");
+        assert_eq!(ParseErrorKind::FileRoot.diagnostic_code(), "P1002");
+        assert_eq!(ParseErrorKind::Context.diagnostic_code(), "P1003");
+        assert_eq!(ParseErrorKind::Literal.diagnostic_code(), "P1004");
+        assert_eq!(ParseErrorKind::Unsupported.diagnostic_code(), "P1005");
+    }
 }
 
 #[path = "parser_parts/access_expression_parsers.rs"]
@@ -297,8 +439,12 @@ mod declaration_option_parsers;
 mod declaration_parsers;
 #[path = "parser_parts/expression_atoms_and_literal_lowering.rs"]
 mod expression_atoms_and_literal_lowering;
-#[path = "parser_parts/expression_parsers.rs"]
-mod expression_parsers;
+#[path = "parser_parts/binary_expression_parsers.rs"]
+mod binary_expression_parsers;
+#[path = "parser_parts/binding_declaration_parsers.rs"]
+mod binding_declaration_parsers;
+#[path = "parser_parts/call_expression_parsers.rs"]
+mod call_expression_parsers;
 #[path = "parser_parts/flow_body_parsers.rs"]
 mod flow_body_parsers;
 #[path = "parser_parts/grouped_binding_parsers.rs"]
@@ -317,8 +463,12 @@ mod pipe_lambda_parsers;
 mod postfix_expression_parsers;
 #[path = "parser_parts/primary_expression_parsers.rs"]
 mod primary_expression_parsers;
-#[path = "parser_parts/program_and_bindings.rs"]
-mod program_and_bindings;
+#[path = "parser_parts/match_and_anonymous_parsers.rs"]
+mod match_and_anonymous_parsers;
+#[path = "parser_parts/lookahead_and_assignment_helpers.rs"]
+mod lookahead_and_assignment_helpers;
+#[path = "parser_parts/program_parsing.rs"]
+mod program_parsing;
 #[path = "parser_parts/rolling_expression_parsers.rs"]
 mod rolling_expression_parsers;
 #[path = "parser_parts/routine_body_parsers.rs"]
@@ -327,8 +477,10 @@ mod routine_body_parsers;
 mod routine_capture_parsers;
 #[path = "parser_parts/routine_declaration_parsers.rs"]
 mod routine_declaration_parsers;
-#[path = "parser_parts/routine_headers_and_type_lowering.rs"]
-mod routine_headers_and_type_lowering;
+#[path = "parser_parts/routine_header_parsers.rs"]
+mod routine_header_parsers;
+#[path = "parser_parts/type_lowering_parsers.rs"]
+mod type_lowering_parsers;
 #[path = "parser_parts/segment_declaration_parsers.rs"]
 mod segment_declaration_parsers;
 #[path = "parser_parts/source_kind_type_parsers.rs"]

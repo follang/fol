@@ -18,34 +18,34 @@ impl AstParser {
 
         let mut nodes = Vec::new();
         for _ in 0..512 {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = tokens.curr(false)?;
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 
             let patterns = self.parse_binding_pattern_list(tokens, "grouped binding")?;
             let is_destructuring = patterns.iter().any(BindingPattern::is_destructuring);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let mut type_hint = None;
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     type_hint = Some(self.parse_type_reference_tokens(tokens)?);
                 }
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let mut values = Vec::new();
             if let Ok(token) = tokens.curr(false) {
                 if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
                     let _ = tokens.bump();
-                    self.skip_ignorable(tokens);
+                    self.skip_ignorable(tokens)?;
                     values = self.parse_binding_values(tokens, !is_destructuring)?;
                 }
             }
@@ -56,19 +56,32 @@ impl AstParser {
                     patterns,
                     type_hint,
                     values,
+                    tokens,
                 )?);
             } else {
                 let names = patterns
                     .into_iter()
                     .map(|pattern| match pattern {
                         BindingPattern::Name(name) => Ok(name),
-                        other => Err(Box::new(ParseError {
-                            message: format!("Unsupported grouped binding pattern: {other:?}"),
-                            file: None,
-                            line: 0,
-                            column: 0,
-                            length: 0,
-                        }) as Box<dyn Glitch>),
+                        other => {
+                            let error = if let Ok(token) = tokens.curr(false) {
+                                ParseError::from_token_with_kind(
+                                    &token,
+                                    ParseErrorKind::Unsupported,
+                                    format!("Unsupported grouped binding pattern: {other:?}"),
+                                )
+                            } else {
+                                ParseError {
+                                    kind: ParseErrorKind::Unsupported,
+                                    message: format!("Unsupported grouped binding pattern: {other:?}"),
+                                    file: None,
+                                    line: 0,
+                                    column: 0,
+                                    length: 0,
+                                }
+                            };
+                            Err(Box::new(error) as Box<dyn Glitch>)
+                        }
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 nodes.extend(self.build_binding_nodes(
@@ -76,10 +89,11 @@ impl AstParser {
                     names,
                     type_hint,
                     values,
+                    tokens,
                 )?);
             }
 
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let sep = tokens.curr(false)?;
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::Comma)) {
                 let _ = tokens.bump();
@@ -87,7 +101,7 @@ impl AstParser {
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens);
+                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 
@@ -97,12 +111,21 @@ impl AstParser {
             )));
         }
 
-        Err(Box::new(ParseError {
-            message: "Grouped bindings exceeded parser limit".to_string(),
-            file: None,
-            line: 0,
-            column: 0,
-            length: 0,
-        }))
+        let error = if let Ok(token) = tokens.curr(false) {
+            ParseError::from_token(
+                &token,
+                "Grouped bindings exceeded parser limit".to_string(),
+            )
+        } else {
+            ParseError {
+                kind: ParseErrorKind::Syntax,
+                message: "Grouped bindings exceeded parser limit".to_string(),
+                file: None,
+                line: 0,
+                column: 0,
+                length: 0,
+            }
+        };
+        Err(Box::new(error))
     }
 }

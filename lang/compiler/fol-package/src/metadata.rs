@@ -293,9 +293,14 @@ fn parse_yaml_scalar(
 fn strip_inline_comment(raw: &str) -> &str {
     let mut in_single = false;
     let mut in_double = false;
+    let mut chars = raw.char_indices().peekable();
 
-    for (index, ch) in raw.char_indices() {
+    while let Some((index, ch)) = chars.next() {
         match ch {
+            '\\' if in_double || in_single => {
+                // skip the next character (escaped quote or backslash)
+                chars.next();
+            }
             '\'' if !in_double => in_single = !in_single,
             '"' if !in_single => in_double = !in_double,
             '#' if !in_single && !in_double => return &raw[..index],
@@ -356,6 +361,9 @@ fn non_empty_optional_field(
 }
 
 fn is_valid_package_name(package_name: &str) -> bool {
+    if package_name.len() > 256 {
+        return false;
+    }
     let mut chars = package_name.chars();
     let Some(first) = chars.next() else {
         return false;
@@ -674,6 +682,28 @@ mod tests {
             fs::remove_dir_all(&temp_root)
                 .expect("Temporary metadata fixture root should be removable after the test");
         }
+    }
+
+    #[test]
+    fn inline_comment_stripping_handles_escaped_quotes_in_double_quoted_strings() {
+        use super::strip_inline_comment;
+
+        // backslash-escaped quote inside double-quoted string must not end the string
+        assert_eq!(strip_inline_comment(r#""foo\"bar" # comment"#), r#""foo\"bar" "#);
+        // backslash-escaped backslash followed by a closing quote
+        assert_eq!(strip_inline_comment(r#""foo\\" # comment"#), r#""foo\\" "#);
+        // unquoted value with a comment
+        assert_eq!(strip_inline_comment("hello # comment"), "hello ");
+    }
+
+    #[test]
+    fn package_name_validation_rejects_names_longer_than_256_characters() {
+        use super::is_valid_package_name;
+
+        let long_name = "a".repeat(257);
+        assert!(!is_valid_package_name(&long_name));
+        let max_name = "a".repeat(256);
+        assert!(is_valid_package_name(&max_name));
     }
 
     #[test]

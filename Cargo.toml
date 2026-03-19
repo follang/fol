@@ -28,6 +28,13 @@ name = "fol"
 path = "lang/tooling/fol-frontend/src/main.rs"
 
 [dependencies]
+fol-frontend = { path = "lang/tooling/fol-frontend" }
+
+[[test]]
+name = "integration"
+path = "test/run_tests.rs"
+
+[dev-dependencies]
 fol-types = { path = "lang/compiler/fol-types" }
 fol-stream = { path = "lang/compiler/fol-stream" }
 fol-lexer = { path = "lang/compiler/fol-lexer" }
@@ -36,21 +43,5 @@ fol-package = { path = "lang/compiler/fol-package" }
 fol-diagnostics = { path = "lang/compiler/fol-diagnostics" }
 fol-resolver = { path = "lang/compiler/fol-resolver" }
 fol-typecheck = { path = "lang/compiler/fol-typecheck" }
-fol-lower = { path = "lang/compiler/fol-lower" }
-fol-intrinsics = { path = "lang/compiler/fol-intrinsics" }
-fol-frontend = { path = "lang/tooling/fol-frontend" }
 fol-editor = { path = "lang/tooling/fol-editor" }
-fol-backend = { path = "lang/execution/fol-backend" }
-regex = "1"
-colored = "1"
-dyn-clone = "1"
-terminal_size = "0.1.16"
-lazy_static = "1.4.0"
-clap = { version = "4.0", features = ["derive"] }
-
-[[test]]
-name = "integration"
-path = "test/run_tests.rs"
-
-[dev-dependencies]
 serde_json = "1"

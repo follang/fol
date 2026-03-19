@@ -10,24 +10,23 @@ pub enum TypecheckErrorKind {
     Unsupported,
     IncompatibleType,
     Internal,
+    ScopeResolutionFailed,
+    TypeImportFailed,
+    SymbolTableCorrupted,
+    UnsupportedSyntax,
 }
 
 impl TypecheckErrorKind {
-    fn label(self) -> &'static str {
-        match self {
-            Self::InvalidInput => "TypecheckInvalidInput",
-            Self::Unsupported => "TypecheckUnsupported",
-            Self::IncompatibleType => "TypecheckIncompatibleType",
-            Self::Internal => "TypecheckInternal",
-        }
-    }
-
     pub fn diagnostic_code(self) -> DiagnosticCode {
         match self {
             Self::InvalidInput => DiagnosticCode::new("T1001"),
             Self::Unsupported => DiagnosticCode::new("T1002"),
             Self::IncompatibleType => DiagnosticCode::new("T1003"),
             Self::Internal => DiagnosticCode::new("T1099"),
+            Self::ScopeResolutionFailed => DiagnosticCode::new("T1004"),
+            Self::TypeImportFailed => DiagnosticCode::new("T1005"),
+            Self::SymbolTableCorrupted => DiagnosticCode::new("T1006"),
+            Self::UnsupportedSyntax => DiagnosticCode::new("T1007"),
         }
     }
 }
@@ -99,7 +98,7 @@ impl TypecheckError {
 
 impl std::fmt::Display for TypecheckError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.kind.label(), self.message)
+        write!(f, "{}", self.message)
     }
 }
 

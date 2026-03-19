@@ -9,5 +9,5 @@ fol-types = { path = "../fol-types" }
 fol-stream = { path = "../fol-stream" }
 regex = "1"
 lazy_static = "1.4.0"
-colored = "1"
+colored = "2"
 dyn-clone = "1"

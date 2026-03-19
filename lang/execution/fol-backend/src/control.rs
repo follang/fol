@@ -48,11 +48,10 @@ pub fn render_terminator(
             None => Ok("return rt::FolRecover::err(());".to_string()),
         },
         LoweredTerminator::Panic { value } => match value {
-            Some(value) => Ok(format!(
-                "panic!(\"{}\", rt::render_echo(&{}));",
-                "{}",
-                render_local_name(package_identity, routine, *value)?
-            )),
+            Some(value) => {
+                let name = render_local_name(package_identity, routine, *value)?;
+                Ok(format!("panic!(\"{{}}\", rt::render_echo(&{name}));"))
+            }
             None => Ok("panic!(\"panic\");".to_string()),
         },
         LoweredTerminator::Unreachable => Ok("unreachable!();".to_string()),
@@ -111,7 +110,7 @@ mod tests {
     #[test]
     fn terminator_rendering_emits_jump_shells() {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
-        let _table = LoweredTypeTable::new();
+        let table = LoweredTypeTable::new();
         let routine = LoweredRoutine::new(LoweredRoutineId(0), "main", LoweredBlockId(0));
 
         let rendered = render_terminator(
@@ -231,6 +230,7 @@ mod tests {
     #[test]
     fn terminator_rendering_emits_unreachable_shells() {
         let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let table = LoweredTypeTable::new();
         let routine = LoweredRoutine::new(LoweredRoutineId(4), "main", LoweredBlockId(0));
 
         let rendered = render_terminator(

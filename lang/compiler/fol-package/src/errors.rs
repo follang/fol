@@ -13,15 +13,6 @@ pub enum PackageErrorKind {
 }
 
 impl PackageErrorKind {
-    fn label(self) -> &'static str {
-        match self {
-            Self::InvalidInput => "PackageInvalidInput",
-            Self::Unsupported => "PackageUnsupported",
-            Self::ImportCycle => "PackageImportCycle",
-            Self::Internal => "PackageInternal",
-        }
-    }
-
     pub fn diagnostic_code(self) -> DiagnosticCode {
         match self {
             Self::InvalidInput => DiagnosticCode::new("K1001"),
@@ -92,7 +83,7 @@ impl PackageError {
 
 impl std::fmt::Display for PackageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.kind.label(), self.message)
+        write!(f, "{}", self.message)
     }
 }
 
@@ -161,7 +152,7 @@ mod tests {
     use std::time::{SystemTime, UNIX_EPOCH};
 
     #[test]
-    fn package_error_formats_with_kind_prefix() {
+    fn package_error_formats_without_kind_prefix() {
         let error = PackageError::new(
             PackageErrorKind::Unsupported,
             "package fetching is not implemented yet",
@@ -169,7 +160,7 @@ mod tests {
 
         assert_eq!(
             error.to_string(),
-            "PackageUnsupported: package fetching is not implemented yet"
+            "package fetching is not implemented yet"
         );
     }
 
@@ -214,7 +205,7 @@ mod tests {
 
         assert!(report.has_errors());
         let rendered = report.output(fol_diagnostics::OutputFormat::Json);
-        assert!(rendered.contains("PackageInvalidInput"));
+        assert!(rendered.contains("duplicate package metadata field"));
         assert!(rendered.contains("pkg/package.yaml"));
         assert!(rendered.contains("\"line\": 2"));
     }
@@ -265,7 +256,7 @@ mod tests {
         let rendered = report.output(fol_diagnostics::OutputFormat::Human);
         let _ = std::fs::remove_file(&path);
 
-        assert!(rendered.contains("error: PackageInvalidInput: duplicate package metadata field"));
+        assert!(rendered.contains("error: duplicate package metadata field"));
         assert!(rendered.contains("| name: json"));
         assert!(rendered.contains("| ^^^^"));
     }
@@ -288,7 +279,7 @@ mod tests {
 
         let rendered = report.output(fol_diagnostics::OutputFormat::Json);
         assert!(rendered.contains("\"code\": \"K1001\""));
-        assert!(rendered.contains("PackageInvalidInput: duplicate package metadata field"));
+        assert!(rendered.contains("duplicate package metadata field"));
     }
 
     #[test]

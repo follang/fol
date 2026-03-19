@@ -241,7 +241,7 @@ fn resolve_workspace_fetch(
     let mut repaired_materializations = 0usize;
 
     while let Some(root) = queued_roots.pop() {
-        let canonical_root = std::fs::canonicalize(&root).unwrap_or(root.clone());
+        let canonical_root = std::fs::canonicalize(&root).unwrap_or_else(|_| root.clone());
         let canonical_key = canonical_root.to_string_lossy().to_string();
         if !seen_roots.insert(canonical_key) {
             continue;

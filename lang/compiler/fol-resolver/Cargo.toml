@@ -15,5 +15,3 @@ fol-lexer = { path = "../fol-lexer" }
 fol-stream = { path = "../fol-stream" }
 
 [dev-dependencies]
-fol-lexer = { path = "../fol-lexer" }
-fol-stream = { path = "../fol-stream" }

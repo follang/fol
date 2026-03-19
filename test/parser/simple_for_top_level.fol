@@ -1,4 +1,4 @@
 for (item in items when ready) {
-    yeild item;
+    yield item;
     break;
 }

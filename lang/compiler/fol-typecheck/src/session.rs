@@ -217,10 +217,13 @@ impl TypecheckSession {
             .get(&provenance.package_identity)
             .ok_or_else(|| {
                 TypecheckError::new(
-                    TypecheckErrorKind::Internal,
+                    TypecheckErrorKind::TypeImportFailed,
                     format!(
-                        "typed workspace lost loaded package '{}'",
-                        provenance.package_identity.canonical_root
+                        "type import failed: package '{}' not found in typed workspace \
+                         while importing symbol {} for local symbol {}",
+                        provenance.package_identity.canonical_root,
+                        provenance.foreign_symbol.0,
+                        local_symbol_id.0,
                     ),
                 )
             })?;
@@ -229,19 +232,25 @@ impl TypecheckSession {
             .typed_symbol(provenance.foreign_symbol)
             .ok_or_else(|| {
                 TypecheckError::new(
-                    TypecheckErrorKind::Internal,
+                    TypecheckErrorKind::TypeImportFailed,
                     format!(
-                        "mounted imported symbol {} does not retain foreign typed facts",
-                        provenance.foreign_symbol.0
+                        "type import failed: symbol {} in package '{}' has no typed entry \
+                         (local symbol {})",
+                        provenance.foreign_symbol.0,
+                        provenance.package_identity.canonical_root,
+                        local_symbol_id.0,
                     ),
                 )
             })?;
         let foreign_declared_type = foreign_type.declared_type.ok_or_else(|| {
             TypecheckError::new(
-                TypecheckErrorKind::Internal,
+                TypecheckErrorKind::TypeImportFailed,
                 format!(
-                    "mounted imported symbol {} does not retain foreign typed facts",
-                    provenance.foreign_symbol.0
+                    "type import failed: symbol {} in package '{}' has no declared type \
+                     (local symbol {})",
+                    provenance.foreign_symbol.0,
+                    provenance.package_identity.canonical_root,
+                    local_symbol_id.0,
                 ),
             )
         })?;
@@ -268,8 +277,14 @@ impl TypecheckSession {
             .transpose()?;
         let typed_symbol = typed.typed_symbol_mut(local_symbol_id).ok_or_else(|| {
             TypecheckError::new(
-                TypecheckErrorKind::Internal,
-                "typed symbol table lost a mounted imported symbol",
+                TypecheckErrorKind::SymbolTableCorrupted,
+                format!(
+                    "symbol table corrupted: local symbol {} (imported from package '{}' symbol {}) \
+                     is missing from the typed program",
+                    local_symbol_id.0,
+                    provenance.package_identity.canonical_root,
+                    provenance.foreign_symbol.0,
+                ),
             )
         })?;
         typed_symbol.declared_type = Some(translated);
@@ -296,8 +311,12 @@ impl TypecheckSession {
             .cloned()
             .ok_or_else(|| {
                 TypecheckError::new(
-                    TypecheckErrorKind::Internal,
-                    format!("foreign typed package lost type {}", source_type_id.0),
+                    TypecheckErrorKind::TypeImportFailed,
+                    format!(
+                        "type import failed: type {} is missing from package '{}' type table",
+                        source_type_id.0,
+                        source_identity.canonical_root,
+                    ),
                 )
             })?;
 

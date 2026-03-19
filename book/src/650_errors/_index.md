@@ -16,20 +16,23 @@ The detailed chapters explain:
 
 ## Current compiler diagnostics
 
-The current compiler surface already guarantees a few reporting behaviors across
+The current compiler surface guarantees the following reporting behaviors across
 the active parser/package/resolver/typecheck/lower/backend chain:
 
-- parser, package-loading, resolver, typecheck, and lowering failures keep exact primary
-  `file:line:column` locations
+- every diagnostic carries a stable code shown in brackets (e.g. `error[R1003]:`)
+- all failures keep exact primary `file:line:column` locations
 - human-readable diagnostics render source snippets and underline the primary span
-- related sites such as duplicate declarations or ambiguity candidates can appear
+- related sites such as duplicate declarations or ambiguity candidates appear
   as secondary labels
 - JSON diagnostics preserve the same structured information with labels, notes,
   helps, and stable producer-owned diagnostic codes
+- the parser recovers after failed declarations instead of cascading errors
+- duplicate diagnostics on the same line are suppressed, with a hard cap at 50
+- LSP diagnostics are deduplicated by line and code before reaching the editor
 
 The exact wording of messages is still implementation detail, but the current
-compiler contract is that locations and structured diagnostic shape are stable
-enough to build tests and tooling around them.
+compiler contract is that locations, codes, and structured diagnostic shape are
+stable enough to build tests and tooling around them.
 
 For the detailed compiler-facing reporting model, see
 [Compiler Diagnostics](/docs/spec/errors/300_diagnostics).

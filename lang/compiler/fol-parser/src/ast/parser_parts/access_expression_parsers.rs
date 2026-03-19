@@ -20,7 +20,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<AstNode, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let pattern = if matches!(
             tokens.curr(false).map(|token| token.key()),
@@ -32,7 +32,7 @@ impl AstParser {
             self.parse_logical_expression(tokens)?
         };
 
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let token = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(pattern),
@@ -43,7 +43,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let binding_token = tokens.curr(false)?;
         let binding = Self::expect_named_label(
@@ -107,7 +107,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Option<bool>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         let token = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(None),
@@ -123,7 +123,7 @@ impl AstParser {
         }
 
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         if matches!(
             tokens.curr(false).map(|token| token.key()),
@@ -140,7 +140,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
     ) -> Result<Option<Box<AstNode>>, Box<dyn Glitch>> {
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
         if matches!(
             tokens.curr(false).map(|token| token.key()),
             Ok(KEYWORD::Symbol(SYMBOL::SquarC))
@@ -163,7 +163,7 @@ impl AstParser {
         let _ = tokens.bump();
 
         loop {
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
             let token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(_) => break,
@@ -174,7 +174,7 @@ impl AstParser {
             }
 
             let _ = tokens.bump();
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let segment = tokens.curr(false)?;
             let segment_name = Self::expect_named_label(&segment, expected_segment_error)?;
@@ -191,11 +191,11 @@ impl AstParser {
         node: AstNode,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         if let Some(reverse) = self.consume_slice_separator(tokens)? {
             let end = self.parse_optional_slice_end(tokens)?;
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
@@ -226,7 +226,7 @@ impl AstParser {
         }
 
         let start = self.parse_access_pattern(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         if matches!(
             tokens.curr(false).map(|token| token.key()),
@@ -235,7 +235,7 @@ impl AstParser {
             let mut patterns = vec![start.clone()];
             for _ in 0..64 {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::SquarC))
@@ -247,7 +247,7 @@ impl AstParser {
                     });
                 }
                 patterns.push(self.parse_access_pattern(tokens)?);
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let token = tokens.curr(false)?;
                 if matches!(
@@ -273,7 +273,7 @@ impl AstParser {
 
         if let Some(reverse) = self.consume_slice_separator(tokens)? {
             let end = self.parse_optional_slice_end(tokens)?;
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
@@ -310,11 +310,11 @@ impl AstParser {
         node: AstNode,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         if let Some(reverse) = self.consume_slice_separator(tokens)? {
             let end = self.parse_optional_slice_end(tokens)?;
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
@@ -345,7 +345,7 @@ impl AstParser {
         }
 
         let start = self.parse_access_pattern(tokens)?;
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         if matches!(
             tokens.curr(false).map(|token| token.key()),
@@ -354,7 +354,7 @@ impl AstParser {
             let mut patterns = vec![start.clone()];
             for _ in 0..64 {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 if matches!(
                     tokens.curr(false).map(|token| token.key()),
                     Ok(KEYWORD::Symbol(SYMBOL::SquarC))
@@ -366,7 +366,7 @@ impl AstParser {
                     });
                 }
                 patterns.push(self.parse_access_pattern(tokens)?);
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
 
                 let token = tokens.curr(false)?;
                 if matches!(
@@ -392,7 +392,7 @@ impl AstParser {
 
         if let Some(reverse) = self.consume_slice_separator(tokens)? {
             let end = self.parse_optional_slice_end(tokens)?;
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
@@ -429,7 +429,7 @@ impl AstParser {
         node: AstNode,
     ) -> Result<AstNode, Box<dyn Glitch>> {
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
@@ -439,7 +439,7 @@ impl AstParser {
             )));
         }
         let _ = tokens.bump();
-        self.skip_ignorable(tokens);
+        self.skip_ignorable(tokens)?;
 
         let mut patterns = Vec::new();
         for _ in 0..64 {
@@ -451,7 +451,7 @@ impl AstParser {
                 break;
             }
             patterns.push(self.parse_access_pattern(tokens)?);
-            self.skip_ignorable(tokens);
+            self.skip_ignorable(tokens)?;
 
             let token = tokens.curr(false)?;
             if matches!(
@@ -459,7 +459,7 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 let _ = tokens.bump();
-                self.skip_ignorable(tokens);
+                self.skip_ignorable(tokens)?;
                 continue;
             }
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {

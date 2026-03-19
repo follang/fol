@@ -1,0 +1,379 @@
+use crate::{
+    mangle_package_module_name, plan_generated_crate_layout, plan_namespace_layouts,
+    plan_package_layouts, render_entry_definition, render_entry_trait_impl,
+    render_global_declaration, render_record_definition, render_record_trait_impl,
+    render_routine_definition, render_routine_shell, BackendArtifact,
+    BackendResult, BackendSession, EmittedRustFile,
+};
+use fol_lower::LoweredType;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+pub fn emit_cargo_toml(session: &BackendSession) -> EmittedRustFile {
+    let layout = plan_generated_crate_layout(session);
+    let package_name = session.workspace_identity().crate_dir_name.clone();
+    let runtime_path = runtime_dependency_path();
+
+    EmittedRustFile {
+        path: layout.cargo_toml_path,
+        module_name: "cargo".to_string(),
+        contents: format!(
+            "[package]\nname = \"{package_name}\"\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[workspace]\n\n[dependencies]\nfol-runtime = {{ path = \"{}\" }}\n",
+            runtime_path.display()
+        ),
+    }
+}
+
+pub fn emit_main_rs(session: &BackendSession) -> BackendResult<EmittedRustFile> {
+    let layout = plan_generated_crate_layout(session);
+    let entry_candidate = session.select_buildable_entry_candidate()?;
+    let entry_name = &session.entry_identity().display_name;
+    let entry_wrapper = match resolve_entry_callable(session, entry_candidate) {
+        Some(EntryCallable {
+            rust_path,
+            recoverable: false,
+        }) => format!("    let _ = {rust_path}();"),
+        Some(EntryCallable {
+            rust_path,
+            recoverable: true,
+        }) => format!(
+            "    let __fol_outcome = rt::outcome_from_recoverable({rust_path}());\n    if let Some(__fol_message) = rt::printable_outcome_message(&__fol_outcome) {{\n        eprintln!(\"{{}}\", __fol_message);\n    }}\n    std::process::exit(__fol_outcome.exit_code());"
+        ),
+        None => "    let _entry_name = \"placeholder\";".to_string(),
+    };
+
+    Ok(EmittedRustFile {
+        path: layout.main_rs_path,
+        module_name: "main".to_string(),
+        contents: format!(
+            "use fol_runtime::prelude as rt;\n\nmod packages;\n\nfn main() {{\n    let _runtime = rt::crate_name();\n    let _entry_package = \"{entry_name}\";\n    let _entry_name = \"{}\";\n    let _ = (&_runtime, &_entry_package, &_entry_name);\n{entry_wrapper}\n}}\n",
+            entry_candidate.name
+        ),
+    })
+}
+
+pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFile> {
+    let package_plans = plan_package_layouts(session);
+    let namespace_plans = plan_namespace_layouts(session);
+    let mut direct_modules_by_path: BTreeMap<String, Vec<String>> = BTreeMap::new();
+
+    for namespace_plan in &namespace_plans {
+        let package_module = mangle_package_module_name(&namespace_plan.package_identity);
+        let relative_parts = namespace_plan
+            .relative_file
+            .split('/')
+            .map(str::to_string)
+            .collect::<Vec<_>>();
+        if relative_parts.is_empty() {
+            continue;
+        }
+        let root_child = module_name_from_relative_part(&relative_parts[0]);
+        direct_modules_by_path
+            .entry(format!("src/packages/{package_module}/mod.rs"))
+            .or_default()
+            .push(root_child);
+
+        if relative_parts.len() <= 1 {
+            continue;
+        }
+
+        for index in 0..(relative_parts.len() - 1) {
+            let parent_dir = if index == 0 {
+                format!("src/packages/{package_module}/{}", relative_parts[0])
+            } else {
+                format!(
+                    "src/packages/{package_module}/{}",
+                    relative_parts[..=index].join("/")
+                )
+            };
+            let child = module_name_from_relative_part(&relative_parts[index + 1]);
+            direct_modules_by_path
+                .entry(format!("{parent_dir}/mod.rs"))
+                .or_default()
+                .push(child);
+        }
+    }
+
+    let mut files = vec![EmittedRustFile {
+        path: "src/packages/mod.rs".to_string(),
+        module_name: "packages".to_string(),
+        contents: package_plans
+            .iter()
+            .map(|plan| format!("pub mod {};", plan.module_name))
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n",
+    }];
+
+    for package_plan in package_plans {
+        let mut namespace_modules = direct_modules_by_path
+            .remove(&format!("{}/mod.rs", package_plan.relative_dir))
+            .unwrap_or_default();
+        namespace_modules.sort();
+        namespace_modules.dedup();
+
+        files.push(EmittedRustFile {
+            path: format!("{}/mod.rs", package_plan.relative_dir),
+            module_name: package_plan.module_name.clone(),
+            contents: namespace_modules
+                .iter()
+                .map(|module_name| format!("pub mod {module_name};"))
+                .collect::<Vec<_>>()
+                .join("\n")
+                + "\n",
+        });
+    }
+
+    let mut nested_mod_paths = direct_modules_by_path.into_iter().collect::<Vec<_>>();
+    nested_mod_paths.sort_by(|left, right| left.0.cmp(&right.0));
+    for (path, mut module_names) in nested_mod_paths {
+        module_names.sort();
+        module_names.dedup();
+        files.push(EmittedRustFile {
+            module_name: "mod".to_string(),
+            path,
+            contents: module_names
+                .iter()
+                .map(|module_name| format!("pub mod {module_name};"))
+                .collect::<Vec<_>>()
+                .join("\n")
+                + "\n",
+        });
+    }
+
+    files.sort_by(|left, right| left.path.cmp(&right.path));
+
+    files
+}
+
+pub fn emit_namespace_module_shells(
+    session: &BackendSession,
+) -> BackendResult<Vec<EmittedRustFile>> {
+    let mut files = Vec::new();
+    for namespace_plan in plan_namespace_layouts(session) {
+        let emitted_items = render_namespace_items(session, &namespace_plan)?;
+        let mut contents = format!(
+                "use fol_runtime::prelude as rt;\n\npub(crate) const NAMESPACE_NAME: &str = \"{}\";\npub(crate) const SOURCE_UNIT_IDS: &[usize] = &[{}];\n\npub(crate) fn namespace_runtime_marker() -> &'static str {{\n    let _ = rt::crate_name();\n    NAMESPACE_NAME\n}}\n",
+                namespace_plan.full_namespace,
+                namespace_plan
+                    .source_unit_ids
+                    .iter()
+                    .map(|source_unit_id| source_unit_id.0.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        if !emitted_items.is_empty() {
+            contents.push('\n');
+            contents.push_str(&emitted_items);
+        }
+        files.push(EmittedRustFile {
+            path: format!(
+                "src/packages/{}/{}",
+                mangle_package_module_name(&namespace_plan.package_identity),
+                namespace_plan.relative_file
+            ),
+            module_name: namespace_plan.module_name.clone(),
+            contents,
+        });
+    }
+    Ok(files)
+}
+
+pub fn emit_generated_crate_skeleton(session: &BackendSession) -> BackendResult<BackendArtifact> {
+    let layout = plan_generated_crate_layout(session);
+    let mut files = Vec::new();
+    files.push(emit_cargo_toml(session));
+    files.push(emit_main_rs(session)?);
+    files.extend(emit_package_module_shells(session));
+    files.extend(emit_namespace_module_shells(session)?);
+    files.sort_by(|left, right| left.path.cmp(&right.path));
+
+    Ok(BackendArtifact::RustSourceCrate {
+        root: layout.crate_dir_name,
+        files,
+    })
+}
+
+fn module_name_from_relative_part(relative_part: &str) -> String {
+    relative_part
+        .strip_suffix(".rs")
+        .map(str::to_string)
+        .unwrap_or_else(|| relative_part.to_string())
+}
+
+pub(super) fn runtime_dependency_path() -> PathBuf {
+    if let Some(path) = std::env::var_os("FOL_BACKEND_RUNTIME_PATH") {
+        return PathBuf::from(path);
+    }
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("workspace root")
+        .join("fol-runtime")
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct EntryCallable {
+    rust_path: String,
+    recoverable: bool,
+}
+
+fn resolve_entry_callable(
+    session: &BackendSession,
+    entry_candidate: &fol_lower::LoweredEntryCandidate,
+) -> Option<EntryCallable> {
+    let package = session
+        .workspace()
+        .package(&entry_candidate.package_identity)?;
+    let routine = package.routine_decls.get(&entry_candidate.routine_id)?;
+    if routine.receiver_type.is_some() || !routine.params.is_empty() {
+        return None;
+    }
+    let signature_id = routine.signature?;
+    let signature = match session.workspace().type_table().get(signature_id) {
+        Some(LoweredType::Routine(signature)) => signature,
+        _ => return None,
+    };
+    let source_unit_id = routine.source_unit_id?;
+    let namespace_plan = plan_namespace_layouts(session).into_iter().find(|plan| {
+        plan.package_identity == entry_candidate.package_identity
+            && plan.source_unit_ids.contains(&source_unit_id)
+    })?;
+    if render_routine_definition(
+        session.workspace(),
+        &entry_candidate.package_identity,
+        routine,
+        session.workspace().type_table(),
+    )
+    .is_err()
+    {
+        return None;
+    }
+    let namespace_path = namespace_plan
+        .relative_file
+        .trim_end_matches(".rs")
+        .replace('/', "::");
+    Some(EntryCallable {
+        rust_path: format!(
+            "packages::{}::{}::{}",
+            mangle_package_module_name(&entry_candidate.package_identity),
+            namespace_path,
+            crate::mangle_routine_name(
+                &entry_candidate.package_identity,
+                entry_candidate.routine_id,
+                &entry_candidate.name
+            )
+        ),
+        recoverable: signature.error_type.is_some(),
+    })
+}
+
+fn render_namespace_items(
+    session: &BackendSession,
+    namespace_plan: &crate::NamespaceLayoutPlan,
+) -> BackendResult<String> {
+    let Some(package) = session
+        .workspace()
+        .package(&namespace_plan.package_identity)
+    else {
+        return Ok(String::new());
+    };
+    let mut items = Vec::new();
+
+    let mut types = package
+        .type_decls
+        .values()
+        .filter(|type_decl| {
+            namespace_plan
+                .source_unit_ids
+                .contains(&type_decl.source_unit_id)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    types.sort_by_key(|type_decl| type_decl.runtime_type.0);
+    for type_decl in &types {
+        let rendered = match &type_decl.kind {
+            fol_lower::LoweredTypeDeclKind::Record { .. } => render_record_definition(
+                session.workspace(),
+                &namespace_plan.package_identity,
+                type_decl,
+                session.workspace().type_table(),
+            )
+            .and_then(|definition| {
+                Ok(format!(
+                    "{definition}\n{}",
+                    render_record_trait_impl(&namespace_plan.package_identity, type_decl)?
+                ))
+            }),
+            fol_lower::LoweredTypeDeclKind::Entry { .. } => render_entry_definition(
+                session.workspace(),
+                &namespace_plan.package_identity,
+                type_decl,
+                session.workspace().type_table(),
+            )
+            .and_then(|definition| {
+                Ok(format!(
+                    "{definition}\n{}",
+                    render_entry_trait_impl(&namespace_plan.package_identity, type_decl)?
+                ))
+            }),
+            fol_lower::LoweredTypeDeclKind::Alias { .. } => Ok(String::new()),
+        };
+        let rendered = rendered?;
+        if !rendered.is_empty() {
+            items.push(rendered);
+        }
+    }
+
+    let mut globals = package
+        .global_decls
+        .values()
+        .filter(|global| {
+            namespace_plan
+                .source_unit_ids
+                .contains(&global.source_unit_id)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    globals.sort_by_key(|global| global.id.0);
+    for global in &globals {
+        let rendered = render_global_declaration(
+            session.workspace(),
+            &namespace_plan.package_identity,
+            global,
+            session.workspace().type_table(),
+        )?;
+        items.push(rendered);
+    }
+
+    let mut routines = package
+        .routine_decls
+        .values()
+        .filter(|routine| {
+            routine.source_unit_id.is_some_and(|source_unit_id| {
+                namespace_plan.source_unit_ids.contains(&source_unit_id)
+            })
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    routines.sort_by_key(|routine| routine.id.0);
+
+    for routine in &routines {
+        let rendered = render_routine_definition(
+            session.workspace(),
+            &namespace_plan.package_identity,
+            routine,
+            session.workspace().type_table(),
+        )
+        .or_else(|_| {
+            render_routine_shell(
+                session.workspace(),
+                &namespace_plan.package_identity,
+                routine,
+                session.workspace().type_table(),
+            )
+        })?;
+        items.push(rendered);
+    }
+
+    Ok(items.join("\n"))
+}

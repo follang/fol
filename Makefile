@@ -35,11 +35,6 @@ run:
 
 r: run
 
-# Run the built binary directly (like run.sh does)
-run-binary:
-	@./target/release/fol
-
-rb: run-binary
 
 test:
 	@cargo test

@@ -1,6 +1,6 @@
 fun iterate_in(items: int): int = {
     loop (i in items) {
-        yeild i;
+        yield i;
         break;
     }
     return items;

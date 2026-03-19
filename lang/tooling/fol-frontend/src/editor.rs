@@ -43,37 +43,25 @@ pub fn editor_lsp_stdio(config: &FrontendConfig) -> FrontendResult<()> {
     fol_editor::run_lsp_stdio(fol_editor::EditorConfig::default()).map_err(lower_editor_error)
 }
 
-pub fn editor_parse_command(
-    path: &str,
-    _config: &FrontendConfig,
-) -> FrontendResult<FrontendCommandResult> {
+pub fn editor_parse_command(path: &str) -> FrontendResult<FrontendCommandResult> {
     fol_editor::editor_parse_file(Path::new(path))
         .map(editor_summary_to_result)
         .map_err(lower_editor_error)
 }
 
-pub fn editor_highlight_command(
-    path: &str,
-    _config: &FrontendConfig,
-) -> FrontendResult<FrontendCommandResult> {
+pub fn editor_highlight_command(path: &str) -> FrontendResult<FrontendCommandResult> {
     fol_editor::editor_highlight_file(Path::new(path))
         .map(editor_summary_to_result)
         .map_err(lower_editor_error)
 }
 
-pub fn editor_symbols_command(
-    path: &str,
-    _config: &FrontendConfig,
-) -> FrontendResult<FrontendCommandResult> {
+pub fn editor_symbols_command(path: &str) -> FrontendResult<FrontendCommandResult> {
     fol_editor::editor_symbols_file(Path::new(path))
         .map(editor_summary_to_result)
         .map_err(lower_editor_error)
 }
 
-pub fn editor_tree_generate_command(
-    path: &str,
-    _config: &FrontendConfig,
-) -> FrontendResult<FrontendCommandResult> {
+pub fn editor_tree_generate_command(path: &str) -> FrontendResult<FrontendCommandResult> {
     fol_editor::editor_tree_generate_bundle(Path::new(path))
         .map(editor_summary_to_result)
         .map_err(lower_editor_error)
@@ -93,13 +81,13 @@ mod tests {
         let path = "test/apps/fixtures/record_flow/main.fol";
 
         let lsp = editor_lsp_command(&config).expect("lsp command should succeed");
-        let parse = editor_parse_command(path, &config).expect("parse command should succeed");
+        let parse = editor_parse_command(path).expect("parse command should succeed");
         let highlight =
-            editor_highlight_command(path, &config).expect("highlight command should succeed");
+            editor_highlight_command(path).expect("highlight command should succeed");
         let symbols =
-            editor_symbols_command(path, &config).expect("symbols command should succeed");
+            editor_symbols_command(path).expect("symbols command should succeed");
         let tree_root = std::env::temp_dir().join("fol_frontend_editor_tree_command_smoke");
-        let tree = editor_tree_generate_command(tree_root.to_str().unwrap(), &config)
+        let tree = editor_tree_generate_command(tree_root.to_str().unwrap())
             .expect("tree generate command should succeed");
 
         assert_eq!(lsp.command, "lsp");
@@ -122,7 +110,6 @@ mod tests {
     fn editor_file_commands_wrap_missing_path_failures_as_frontend_errors() {
         let error = editor_parse_command(
             "test/apps/fixtures/record_flow/missing.fol",
-            &FrontendConfig::default(),
         )
         .expect_err("missing files should fail");
 

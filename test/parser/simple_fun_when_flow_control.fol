@@ -2,7 +2,7 @@ fun classify(value: int): int = {
     loop(value) {
         when(value) {
             is(0) => break;
-            has(value) => yeild value;
+            has(value) => yield value;
         }
     }
     return value;

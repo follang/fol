@@ -29,7 +29,7 @@ pub fn render_rust_type_in_workspace(
 
     match ty {
         LoweredType::Builtin(LoweredBuiltinType::Str) => Ok("rt::FolStr".to_string()),
-        LoweredType::Builtin(builtin) => Ok(render_builtin_type(*builtin).to_string()),
+        LoweredType::Builtin(builtin) => Ok(render_builtin_type(*builtin)?.to_string()),
         LoweredType::Array {
             element_type,
             size: Some(size),
@@ -348,14 +348,17 @@ fn render_entry_field_match_arm(variant: &LoweredVariantLayout) -> String {
     }
 }
 
-fn render_builtin_type(builtin: LoweredBuiltinType) -> &'static str {
+fn render_builtin_type(builtin: LoweredBuiltinType) -> BackendResult<&'static str> {
     match builtin {
-        LoweredBuiltinType::Int => "rt::FolInt",
-        LoweredBuiltinType::Float => "rt::FolFloat",
-        LoweredBuiltinType::Bool => "rt::FolBool",
-        LoweredBuiltinType::Char => "rt::FolChar",
-        LoweredBuiltinType::Never => "rt::FolNever",
-        LoweredBuiltinType::Str => unreachable!("string mapping lands in the runtime-backed phase"),
+        LoweredBuiltinType::Int => Ok("rt::FolInt"),
+        LoweredBuiltinType::Float => Ok("rt::FolFloat"),
+        LoweredBuiltinType::Bool => Ok("rt::FolBool"),
+        LoweredBuiltinType::Char => Ok("rt::FolChar"),
+        LoweredBuiltinType::Never => Ok("rt::FolNever"),
+        LoweredBuiltinType::Str => Err(BackendError::new(
+            BackendErrorKind::Internal,
+            "string builtin type reached render_builtin_type; should have been handled before dispatch",
+        )),
     }
 }
 

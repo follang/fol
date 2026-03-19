@@ -118,17 +118,6 @@ checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
 
 [[package]]
 name = "colored"
-version = "1.9.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5a5f741c91823341bebf717d4c71bda820630ce065443b58bd1b7451af008355"
-dependencies = [
- "is-terminal",
- "lazy_static",
- "winapi",
-]
-
-[[package]]
-name = "colored"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "117725a109d387c937a1533ce01b450cbde6b88abceea8473c4d7a85853cda3c"
@@ -147,31 +136,22 @@ checksum = "1c7a8fb8a9fbf66c1f703fe16184d10ca0ee9d23be5b4436400408ba54a95005"
 name = "fol"
 version = "0.1.4"
 dependencies = [
- "clap",
- "colored 1.9.4",
- "dyn-clone",
- "fol-backend",
  "fol-diagnostics",
  "fol-editor",
  "fol-frontend",
- "fol-intrinsics",
  "fol-lexer",
- "fol-lower",
  "fol-package",
  "fol-parser",
  "fol-resolver",
  "fol-stream",
  "fol-typecheck",
  "fol-types",
- "lazy_static",
- "regex",
  "serde_json",
- "terminal_size",
 ]
 
 [[package]]
 name = "fol-backend"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "fol-intrinsics",
  "fol-lower",
@@ -195,7 +175,7 @@ dependencies = [
 name = "fol-diagnostics"
 version = "0.1.4"
 dependencies = [
- "colored 1.9.4",
+ "colored",
  "fol-types",
  "serde",
  "serde_json",
@@ -203,7 +183,7 @@ dependencies = [
 
 [[package]]
 name = "fol-editor"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "fol-diagnostics",
  "fol-intrinsics",
@@ -220,11 +200,11 @@ dependencies = [
 
 [[package]]
 name = "fol-frontend"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "clap",
  "clap_complete",
- "colored 2.2.0",
+ "colored",
  "fol-backend",
  "fol-diagnostics",
  "fol-editor",
@@ -241,13 +221,13 @@ dependencies = [
 
 [[package]]
 name = "fol-intrinsics"
-version = "0.1.0"
+version = "0.1.4"
 
 [[package]]
 name = "fol-lexer"
 version = "0.1.4"
 dependencies = [
- "colored 1.9.4",
+ "colored",
  "dyn-clone",
  "fol-stream",
  "fol-types",
@@ -257,7 +237,7 @@ dependencies = [
 
 [[package]]
 name = "fol-lower"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "fol-diagnostics",
  "fol-intrinsics",
@@ -286,7 +266,7 @@ dependencies = [
 name = "fol-parser"
 version = "0.1.4"
 dependencies = [
- "colored 1.9.4",
+ "colored",
  "dyn-clone",
  "fol-diagnostics",
  "fol-lexer",
@@ -309,19 +289,19 @@ dependencies = [
 
 [[package]]
 name = "fol-runtime"
-version = "0.1.0"
+version = "0.1.4"
 
 [[package]]
 name = "fol-stream"
 version = "0.1.4"
 dependencies = [
- "colored 1.9.4",
+ "colored",
  "fol-types",
 ]
 
 [[package]]
 name = "fol-typecheck"
-version = "0.1.0"
+version = "0.1.4"
 dependencies = [
  "fol-diagnostics",
  "fol-intrinsics",
@@ -334,7 +314,7 @@ dependencies = [
 name = "fol-types"
 version = "0.1.4"
 dependencies = [
- "colored 1.9.4",
+ "colored",
  "dyn-clone",
  "terminal_size",
 ]
@@ -344,23 +324,6 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
-
-[[package]]
-name = "hermit-abi"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
-
-[[package]]
-name = "is-terminal"
-version = "0.4.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e04d7f318608d35d4b61ddd75cbdaee86b023ebe2bd5a66ee0915f0bf93095a9"
-dependencies = [
- "hermit-abi",
- "libc",
- "windows-sys",
-]
 
 [[package]]
 name = "is_terminal_polyfill"

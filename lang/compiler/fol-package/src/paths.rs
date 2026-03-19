@@ -90,4 +90,18 @@ mod tests {
             )
         );
     }
+
+    #[test]
+    fn sanitize_revision_segment_blocks_path_traversal_vectors() {
+        use super::sanitize_revision_segment;
+
+        // forward-slash traversal
+        assert_eq!(sanitize_revision_segment("../evil"), "__evil");
+        // backslash traversal
+        assert_eq!(sanitize_revision_segment("..\\evil"), "__evil");
+        // null byte
+        assert_eq!(sanitize_revision_segment("abc\x00def"), "abc_def");
+        // combined traversal
+        assert_eq!(sanitize_revision_segment("../../etc/passwd"), "______etc_passwd");
+    }
 }

@@ -1,5 +1,4 @@
 use colored::Colorize;
-use std::collections::HashMap;
 use std::fmt;
 
 pub mod help;
@@ -183,12 +182,6 @@ impl fmt::Display for KEYWORD {
             KEYWORD::Illegal => write!(f, "{}", " ILLEGAL  ".black().on_green()),
         }
     }
-}
-
-pub fn get_keyword() -> HashMap<String, KEYWORD> {
-    let mut keywords: HashMap<String, KEYWORD> = HashMap::new();
-    keywords.insert(String::from("use"), KEYWORD::Keyword(BUILDIN::Use));
-    keywords
 }
 
 #[cfg(test)]

@@ -1,3 +1,5 @@
+const MAX_GRAPH_DEPTH: usize = 256;
+
 macro_rules! define_graph_id {
     ($name:ident, $label:literal) => {
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -583,6 +585,15 @@ impl BuildGraph {
     ) {
         let index = step.index();
         if index >= self.steps.len() || visited[index] {
+            return;
+        }
+        if stack.len() >= MAX_GRAPH_DEPTH {
+            errors.push(BuildGraphValidationError {
+                kind: BuildGraphValidationErrorKind::StepDependencyCycle,
+                message: format!(
+                    "step dependency graph exceeded maximum depth ({MAX_GRAPH_DEPTH})"
+                ),
+            });
             return;
         }
         if visiting[index] {
