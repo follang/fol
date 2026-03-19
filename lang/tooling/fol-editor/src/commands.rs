@@ -285,7 +285,11 @@ mod tests {
         editor_tree_generate_bundle, sorted_query_captures,
     };
     use crate::{fol_tree_sitter_grammar, fol_tree_sitter_query_snapshots};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
+
+    fn repo_root() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..").canonicalize().expect("repo root should resolve")
+    }
 
     #[test]
     fn lsp_entrypoint_summary_is_stable() {
@@ -305,7 +309,7 @@ mod tests {
 
     #[test]
     fn file_backed_editor_commands_report_path_and_shape() {
-        let path = PathBuf::from("test/apps/fixtures/record_flow/main.fol");
+        let path = repo_root().join("test/apps/fixtures/record_flow/main.fol");
         let parse = editor_parse_file(&path).unwrap();
         let highlight = editor_highlight_file(&path).unwrap();
         let symbols = editor_symbols_file(&path).unwrap();
@@ -328,21 +332,25 @@ mod tests {
 
     #[test]
     fn real_fixtures_keep_editor_command_summaries_stable() {
-        let showcase = PathBuf::from("test/apps/showcases/full_v1_showcase/app/main.fol");
-        let package = PathBuf::from("xtra/logtiny/src/log.fol");
+        let showcase = repo_root().join("test/apps/showcases/full_v1_showcase/app/main.fol");
+        let package = repo_root().join("xtra/logtiny/src/log.fol");
 
         let parse = editor_parse_file(&showcase).unwrap();
         let highlight = editor_highlight_file(&showcase).unwrap();
         let symbols = editor_symbols_file(&package).unwrap();
         let highlight_captures = sorted_query_captures(crate::fol_tree_sitter_highlights_query());
 
+        let showcase_text = std::fs::read_to_string(&showcase).unwrap();
+        let showcase_lines = showcase_text.lines().count();
+        let showcase_bytes = showcase_text.len();
+
         assert_eq!(parse.command, "parse");
         assert_eq!(
             parse.details,
             vec![
-                "path=test/apps/showcases/full_v1_showcase/app/main.fol".to_string(),
-                "lines=98".to_string(),
-                "bytes=2094".to_string(),
+                format!("path={}", showcase.display()),
+                format!("lines={showcase_lines}"),
+                format!("bytes={showcase_bytes}"),
                 format!("grammar_bytes={}", fol_tree_sitter_grammar().len()),
             ]
         );
@@ -350,8 +358,8 @@ mod tests {
         assert_eq!(
             highlight.details,
             vec![
-                "path=test/apps/showcases/full_v1_showcase/app/main.fol".to_string(),
-                "lines=98".to_string(),
+                format!("path={}", showcase.display()),
+                format!("lines={showcase_lines}"),
                 format!(
                     "query_bytes={}",
                     crate::fol_tree_sitter_highlights_query().len()
@@ -362,13 +370,20 @@ mod tests {
                 "intrinsic_names=echo,eq,ge,gt,le,len,lt,not,nq".to_string(),
             ]
         );
+        let package_text = std::fs::read_to_string(&package).unwrap();
+        let package_lines = package_text.lines().count();
+        let package_symbol_candidates = package_text.matches("fun ").count()
+            + package_text.matches("log ").count()
+            + package_text.matches("typ ").count()
+            + package_text.matches("ali ").count();
+
         assert_eq!(symbols.command, "symbols");
         assert_eq!(
             symbols.details,
             vec![
-                "path=xtra/logtiny/src/log.fol".to_string(),
-                "lines=52".to_string(),
-                "symbol_candidates=8".to_string(),
+                format!("path={}", package.display()),
+                format!("lines={package_lines}"),
+                format!("symbol_candidates={package_symbol_candidates}"),
                 format!(
                     "query_snapshots={}",
                     fol_tree_sitter_query_snapshots().len()

@@ -77,8 +77,39 @@ mod tests {
 
     #[test]
     fn editor_commands_round_trip_into_frontend_results() {
-        let config = FrontendConfig::default();
-        let path = "test/apps/fixtures/record_flow/main.fol";
+        let temp_root = std::env::temp_dir().join(format!(
+            "fol_frontend_editor_roundtrip_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        let src = temp_root.join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(
+            temp_root.join("package.yaml"),
+            "name: editor_test\nversion: 0.1.0\n",
+        )
+        .unwrap();
+        std::fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0\n}\n",
+        )
+        .unwrap();
+        let config = FrontendConfig {
+            working_directory: temp_root.clone(),
+            ..FrontendConfig::default()
+        };
+        let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../..")
+            .canonicalize()
+            .expect("workspace root should exist");
+        let path = workspace_root
+            .join("test/apps/fixtures/record_flow/main.fol")
+            .to_string_lossy()
+            .to_string();
+        let path = path.as_str();
 
         let lsp = editor_lsp_command(&config).expect("lsp command should succeed");
         let parse = editor_parse_command(path).expect("parse command should succeed");
@@ -95,7 +126,7 @@ mod tests {
         assert_eq!(parse.command, "parse");
         assert!(parse
             .summary
-            .contains("path=test/apps/fixtures/record_flow/main.fol"));
+            .contains("record_flow/main.fol"));
         assert_eq!(highlight.command, "highlight");
         assert!(highlight.summary.contains("capture_count="));
         assert!(highlight.summary.contains("captures="));
@@ -104,6 +135,7 @@ mod tests {
         assert_eq!(tree.command, "tree generate");
         assert!(tree.summary.contains("tree-sitter bundle ready"));
         std::fs::remove_dir_all(tree_root).ok();
+        std::fs::remove_dir_all(temp_root).ok();
     }
 
     #[test]

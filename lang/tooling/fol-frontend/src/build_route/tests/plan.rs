@@ -254,7 +254,7 @@ fn workspace_route_planner_rejects_old_build_members() {
     fs::write(root.join("package.yaml"), "name: old\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] setup(): non = {\n    return\n}\n",
+        "var[] answer: int = 42;\n",
     )
     .unwrap();
 

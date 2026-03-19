@@ -489,7 +489,12 @@ fn workspace_route_plans_modern_build_members_through_default_graph_planning() {
     fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    graph.add_exe(\"demo\", \"src/main.fol\");\n",
+            "    return graph\n",
+            "}\n",
+        ),
     )
     .unwrap();
     fs::write(
@@ -506,7 +511,7 @@ fn workspace_route_plans_modern_build_members_through_default_graph_planning() {
 
     assert!(plan.steps.iter().any(|step| step.name == "build"));
     assert!(plan.steps.iter().any(|step| step.name == "run"));
-    assert!(plan.steps.iter().any(|step| step.name == "test"));
+    assert!(plan.steps.iter().any(|step| step.name == "check"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -525,7 +530,12 @@ fn workspace_route_plans_modern_check_steps_even_without_a_runnable_binary() {
     fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    graph.step(\"docs\");\n",
+            "    return graph\n",
+            "}\n",
+        ),
     )
     .unwrap();
     fs::write(root.join("src/lib.fol"), "var[exp] answer: int = 42;\n").unwrap();

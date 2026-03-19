@@ -140,10 +140,10 @@ mod tests {
 
     #[test]
     fn internal_complete_command_has_a_stable_placeholder_surface() {
-        let result = internal_complete_command_with_tokens(&["bu".to_string()]).unwrap();
+        let result = internal_complete_command_with_tokens(&["co".to_string()]).unwrap();
 
         assert_eq!(result.command, "_complete");
-        assert!(result.summary.contains("build"));
+        assert!(result.summary.contains("code"));
     }
 
     #[test]
@@ -172,18 +172,19 @@ mod tests {
 
     #[test]
     fn internal_complete_matches_filter_visible_commands_and_aliases() {
-        let matches = internal_complete_matches(&["b".to_string()]);
+        let matches = internal_complete_matches(&["c".to_string()]);
 
-        assert!(matches.contains(&"build".to_string()));
-        assert!(matches.contains(&"b".to_string()));
+        assert!(matches.contains(&"code".to_string()));
+        assert!(matches.contains(&"c".to_string()));
     }
 
     #[test]
     fn internal_complete_matches_follow_subcommand_context() {
-        let emit = internal_complete_matches(&["emit".to_string(), "r".to_string()]);
+        let code_emit =
+            internal_complete_matches(&["code".to_string(), "emit".to_string(), "r".to_string()]);
         let work = internal_complete_matches(&["work".to_string(), "i".to_string()]);
 
-        assert!(emit.contains(&"rust".to_string()));
+        assert!(code_emit.contains(&"rust".to_string()));
         assert!(work.contains(&"info".to_string()));
     }
 }

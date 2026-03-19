@@ -139,6 +139,7 @@ dependencies = [
  "fol-diagnostics",
  "fol-editor",
  "fol-frontend",
+ "fol-intrinsics",
  "fol-lexer",
  "fol-package",
  "fol-parser",

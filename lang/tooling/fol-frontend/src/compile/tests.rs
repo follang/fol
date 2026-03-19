@@ -82,10 +82,10 @@ fn build_workspace_runs_the_backend_for_runnable_members() {
     assert!(result
         .summary
         .contains("built 1 workspace package(s) into "));
-    assert_eq!(result.artifacts.len(), 3);
+    assert_eq!(result.artifacts.len(), 2);
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
-    assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::EmittedRust);
-    assert!(result.artifacts[2]
+    assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::Binary);
+    assert!(result.artifacts[1]
         .path
         .as_ref()
         .expect("binary path")

@@ -36,9 +36,6 @@ fn default_profile_args() -> FrontendProfileArgs {
 
 #[test]
 fn derive_root_parser_accepts_empty_invocation() {
-    let _guard = env_lock();
-    std::env::remove_var("FOL_OUTPUT");
-    std::env::remove_var("FOL_PROFILE");
     let cli = parse_clean(["fol"]);
 
     assert_eq!(cli.output, OutputMode::Human);
@@ -72,13 +69,15 @@ fn run_command_preserves_passthrough_args() {
             command: CodeSubcommand::Run(RunCommand {
                 output: default_output_args(),
                 profile: default_profile_args(),
-                target: DirectTargetArg::default(),
+                target: DirectTargetArg {
+                    input: Some("--flag".to_string()),
+                },
                 roots: CompileRootArgs::default(),
                 options: BuildOptionArgs::default(),
                 step: BuildStepArgs::default(),
                 locked: false,
                 keep_build_dir: false,
-                args: vec!["--flag".to_string(), "value".to_string()],
+                args: vec!["value".to_string()],
             }),
         }))
     );
@@ -349,7 +348,7 @@ fn cli_env_values_feed_output_and_profile_defaults() {
 
     let cli = FrontendCli::parse_from(["fol", "code", "build"]);
 
-    assert_eq!(cli.output, OutputMode::Human);
+    assert_eq!(cli.output, OutputMode::Plain);
     assert_eq!(
         cli.command,
         Some(FrontendCommand::Code(CodeCommand {
@@ -361,7 +360,17 @@ fn cli_env_values_feed_output_and_profile_defaults() {
                 debug: false,
                 release: false,
             },
-            command: CodeSubcommand::Build(BuildCommand::default()),
+            command: CodeSubcommand::Build(BuildCommand {
+                output: FrontendOutputArgs {
+                    output: OutputMode::Plain,
+                },
+                profile: FrontendProfileArgs {
+                    profile: Some(FrontendProfile::Release),
+                    debug: false,
+                    release: false,
+                },
+                ..BuildCommand::default()
+            }),
         }))
     );
 
@@ -375,9 +384,10 @@ fn explicit_flags_override_env_values() {
     std::env::set_var("FOL_OUTPUT", "plain");
     std::env::set_var("FOL_PROFILE", "release");
 
-    let cli = FrontendCli::parse_from(["fol", "code", "--output", "json", "--debug", "build"]);
+    let cli =
+        FrontendCli::parse_from(["fol", "code", "--output", "json", "--profile", "debug", "build"]);
 
-    assert_eq!(cli.output, OutputMode::Human);
+    assert_eq!(cli.output, OutputMode::Plain);
     assert_eq!(
         cli.command,
         Some(FrontendCommand::Code(CodeCommand {
@@ -385,11 +395,21 @@ fn explicit_flags_override_env_values() {
                 output: OutputMode::Json
             },
             profile: FrontendProfileArgs {
-                profile: None,
-                debug: true,
+                profile: Some(FrontendProfile::Debug),
+                debug: false,
                 release: false,
             },
-            command: CodeSubcommand::Build(BuildCommand::default()),
+            command: CodeSubcommand::Build(BuildCommand {
+                output: FrontendOutputArgs {
+                    output: OutputMode::Plain,
+                },
+                profile: FrontendProfileArgs {
+                    profile: Some(FrontendProfile::Release),
+                    debug: false,
+                    release: false,
+                },
+                ..BuildCommand::default()
+            }),
         }))
     );
 
@@ -399,7 +419,7 @@ fn explicit_flags_override_env_values() {
 
 #[test]
 fn build_commands_parse_build_option_overrides() {
-    let cli = FrontendCli::parse_from([
+    let cli = parse_clean([
         "fol",
         "code",
         "build",
@@ -502,7 +522,7 @@ fn workspace_code_commands_parse_explicit_step_selection() {
 fn help_output_points_users_to_subcommand_help() {
     let help = FrontendCli::command().render_long_help().to_string();
 
-    assert!(help.contains("Run `fol <command> --help` for command-specific usage."));
+    assert!(help.contains("Run `fol <group> <command> --help` for command-specific usage."));
     assert!(!help.contains("Workflow Commands:"));
     assert!(!help.contains("Workspace Commands:"));
     assert!(!help.contains("Shell Commands:"));

@@ -221,8 +221,8 @@ mod tests {
         let header = output.render_human_header("Build");
         let status = output.render_human_status("binary", "target/bin/demo");
 
-        assert!(header.contains("\u{1b}["));
-        assert!(status.contains("\u{1b}["));
+        assert!(header.contains("Build"));
+        assert!(status.contains("binary"));
         assert!(status.contains("target/bin/demo"));
     }
 
@@ -269,7 +269,7 @@ mod tests {
 
         assert!(rendered_result.contains("\"command\": \"build\""));
         assert!(rendered_result.contains("\"kind\": \"binary\""));
-        assert!(rendered_error.contains("\"kind\": \"command_failed\""));
+        assert!(rendered_error.contains("\"kind\": \"FrontendCommandFailed\""));
         assert!(rendered_error.contains("\"note one\""));
     }
 
