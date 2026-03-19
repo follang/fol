@@ -41,7 +41,7 @@ fn cli_selected_custom_graph_steps_flow_into_the_routed_member_plan() {
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("member planning should surface the custom docs step");
 
     assert_eq!(requested_step, "docs");
@@ -82,7 +82,7 @@ fn custom_run_steps_plan_as_run_execution() {
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("custom run step should plan successfully");
 
     let serve = plan
@@ -141,7 +141,7 @@ fn explicit_named_run_steps_select_the_requested_artifact_when_multiple_runnable
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("member planning should keep named run step selections");
 
     let admin = plan
@@ -201,7 +201,7 @@ fn named_build_steps_can_target_matching_artifacts_when_multiple_builds_exist() 
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("member planning should keep named build step selections");
 
     let admin = plan
@@ -259,7 +259,7 @@ fn default_build_step_is_marked_ambiguous_when_multiple_executables_exist() {
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("member planning should succeed");
 
     let build = plan
@@ -367,7 +367,7 @@ fn configured_executable_roots_drive_default_build_and_run_step_planning() {
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("configured add_exe root should drive routed planning");
 
     let build = plan
@@ -442,7 +442,7 @@ fn object_style_artifact_build_bodies_drive_default_build_and_run_step_planning(
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("object style add_exe should drive routed planning");
 
     let build = plan
@@ -489,7 +489,7 @@ fn workspace_route_plans_modern_build_members_through_default_graph_planning() {
     fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = graph;\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
     )
     .unwrap();
     fs::write(
@@ -501,7 +501,7 @@ fn workspace_route_plans_modern_build_members_through_default_graph_planning() {
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("modern member should plan through the default graph");
 
     assert!(plan.steps.iter().any(|step| step.name == "build"));
@@ -525,7 +525,7 @@ fn workspace_route_plans_modern_check_steps_even_without_a_runnable_binary() {
     fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = graph;\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
     )
     .unwrap();
     fs::write(root.join("src/lib.fol"), "var[exp] answer: int = 42;\n").unwrap();
@@ -533,7 +533,7 @@ fn workspace_route_plans_modern_check_steps_even_without_a_runnable_binary() {
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("modern member without an executable should still plan check");
 
     let check = plan

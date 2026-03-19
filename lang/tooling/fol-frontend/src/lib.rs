@@ -282,7 +282,7 @@ fn command_profile(cli: &FrontendCli) -> Option<FrontendProfile> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::{FrontendOutputArgs, FrontendProfileArgs};
+    use crate::cli::args::{FrontendOutputArgs, FrontendProfileArgs};
 
     fn absorbed_build_dispatch_fixture(label: &str) -> FrontendWorkspace {
         let root = std::env::temp_dir().join(format!(
