@@ -143,6 +143,72 @@ fn semantic_type_table_covers_declared_and_structural_shapes() {
 }
 
 #[test]
+fn builtin_type_as_str_matches_language_spelling() {
+    assert_eq!(BuiltinType::Int.as_str(), "int");
+    assert_eq!(BuiltinType::Float.as_str(), "flt");
+    assert_eq!(BuiltinType::Bool.as_str(), "bol");
+    assert_eq!(BuiltinType::Char.as_str(), "chr");
+    assert_eq!(BuiltinType::Str.as_str(), "str");
+    assert_eq!(BuiltinType::Never.as_str(), "never");
+}
+
+#[test]
+fn builtin_type_all_names_covers_every_variant() {
+    assert_eq!(BuiltinType::ALL_NAMES.len(), 6);
+    for name in BuiltinType::ALL_NAMES {
+        assert!(!name.is_empty());
+    }
+}
+
+#[test]
+fn render_type_handles_builtins_and_containers() {
+    let mut table = TypeTable::new();
+    let int_id = table.intern_builtin(BuiltinType::Int);
+    let str_id = table.intern_builtin(BuiltinType::Str);
+    let opt_id = table.intern(CheckedType::Optional { inner: int_id });
+    let vec_id = table.intern(CheckedType::Vector {
+        element_type: str_id,
+    });
+    let map_id = table.intern(CheckedType::Map {
+        key_type: str_id,
+        value_type: int_id,
+    });
+
+    assert_eq!(table.render_type(int_id), "int");
+    assert_eq!(table.render_type(opt_id), "opt[int]");
+    assert_eq!(table.render_type(vec_id), "vec[str]");
+    assert_eq!(table.render_type(map_id), "map[str, int]");
+}
+
+#[test]
+fn render_type_handles_routines() {
+    let mut table = TypeTable::new();
+    let int_id = table.intern_builtin(BuiltinType::Int);
+    let str_id = table.intern_builtin(BuiltinType::Str);
+    let routine_id = table.intern(CheckedType::Routine(RoutineType {
+        params: vec![int_id, str_id],
+        return_type: Some(int_id),
+        error_type: None,
+    }));
+    assert_eq!(table.render_type(routine_id), "fun(int, str): int");
+}
+
+#[test]
+fn symbol_kind_display_name_covers_all_variants() {
+    assert_eq!(SymbolKind::Routine.display_name(), "routine");
+    assert_eq!(SymbolKind::Type.display_name(), "type");
+    assert_eq!(SymbolKind::Alias.display_name(), "alias");
+    assert_eq!(SymbolKind::Definition.display_name(), "definition");
+    assert_eq!(SymbolKind::ValueBinding.display_name(), "binding");
+    assert_eq!(SymbolKind::Parameter.display_name(), "parameter");
+    assert_eq!(SymbolKind::Capture.display_name(), "capture");
+    assert_eq!(SymbolKind::ImportAlias.display_name(), "namespace");
+    assert_eq!(SymbolKind::Segment.display_name(), "segment");
+    assert_eq!(SymbolKind::Implementation.display_name(), "implementation");
+    assert_eq!(SymbolKind::Standard.display_name(), "standard");
+}
+
+#[test]
 fn declaration_signature_lowering_records_top_level_type_facts() {
     let typed = typecheck_fixture_folder(&[
         (

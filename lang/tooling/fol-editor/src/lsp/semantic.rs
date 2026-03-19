@@ -96,9 +96,9 @@ impl SemanticSnapshot {
     }
 
     fn builtin_type_completion_items(&self) -> Vec<EditorCompletionItem> {
-        ["int", "flt", "bol", "chr", "str", "never"]
-            .into_iter()
-            .map(completion_builtin_type_item)
+        fol_typecheck::BuiltinType::ALL_NAMES
+            .iter()
+            .map(|name| completion_builtin_type_item(name))
             .collect()
     }
 

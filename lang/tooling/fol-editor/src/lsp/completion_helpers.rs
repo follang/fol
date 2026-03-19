@@ -173,24 +173,7 @@ pub(super) fn collect_fallback_items_from_dir(
 }
 
 pub(super) fn render_symbol_kind(kind: fol_resolver::SymbolKind) -> &'static str {
-    match kind {
-        fol_resolver::SymbolKind::Type => "type",
-        fol_resolver::SymbolKind::Alias => "alias",
-        fol_resolver::SymbolKind::Routine => "routine",
-        fol_resolver::SymbolKind::Definition => "definition",
-        fol_resolver::SymbolKind::ValueBinding
-        | fol_resolver::SymbolKind::LabelBinding
-        | fol_resolver::SymbolKind::DestructureBinding => "binding",
-        fol_resolver::SymbolKind::Parameter => "parameter",
-        fol_resolver::SymbolKind::Capture => "capture",
-        fol_resolver::SymbolKind::ImportAlias => "namespace",
-        fol_resolver::SymbolKind::Segment => "segment",
-        fol_resolver::SymbolKind::Implementation => "implementation",
-        fol_resolver::SymbolKind::Standard => "standard",
-        fol_resolver::SymbolKind::GenericParameter => "parameter",
-        fol_resolver::SymbolKind::LoopBinder => "binding",
-        fol_resolver::SymbolKind::RollingBinder => "binding",
-    }
+    kind.display_name()
 }
 
 pub(super) fn symbol_kind_code(kind: fol_resolver::SymbolKind) -> u8 {
@@ -215,69 +198,7 @@ pub(super) fn render_checked_type(
     table: &fol_typecheck::TypeTable,
     type_id: fol_typecheck::CheckedTypeId,
 ) -> String {
-    match table.get(type_id) {
-        Some(fol_typecheck::CheckedType::Builtin(builtin)) => match builtin {
-            fol_typecheck::BuiltinType::Int => "int".to_string(),
-            fol_typecheck::BuiltinType::Float => "flt".to_string(),
-            fol_typecheck::BuiltinType::Bool => "bol".to_string(),
-            fol_typecheck::BuiltinType::Char => "chr".to_string(),
-            fol_typecheck::BuiltinType::Str => "str".to_string(),
-            fol_typecheck::BuiltinType::Never => "never".to_string(),
-        },
-        Some(fol_typecheck::CheckedType::Declared { name, .. }) => name.clone(),
-        Some(fol_typecheck::CheckedType::Optional { inner }) => {
-            format!("opt[{}]", render_checked_type(table, *inner))
-        }
-        Some(fol_typecheck::CheckedType::Error { inner }) => inner
-            .map(|inner| format!("err[{}]", render_checked_type(table, inner)))
-            .unwrap_or_else(|| "err[]".to_string()),
-        Some(fol_typecheck::CheckedType::Array { element_type, .. }) => {
-            format!("[{}]", render_checked_type(table, *element_type))
-        }
-        Some(fol_typecheck::CheckedType::Vector { element_type }) => {
-            format!("vec[{}]", render_checked_type(table, *element_type))
-        }
-        Some(fol_typecheck::CheckedType::Sequence { element_type }) => {
-            format!("seq[{}]", render_checked_type(table, *element_type))
-        }
-        Some(fol_typecheck::CheckedType::Set { member_types }) => format!(
-            "set[{}]",
-            member_types
-                .iter()
-                .map(|member| render_checked_type(table, *member))
-                .collect::<Vec<_>>()
-                .join(", ")
-        ),
-        Some(fol_typecheck::CheckedType::Map {
-            key_type,
-            value_type,
-        }) => format!(
-            "map[{}, {}]",
-            render_checked_type(table, *key_type),
-            render_checked_type(table, *value_type)
-        ),
-        Some(fol_typecheck::CheckedType::Routine(routine)) => {
-            let params = routine
-                .params
-                .iter()
-                .map(|param| render_checked_type(table, *param))
-                .collect::<Vec<_>>()
-                .join(", ");
-            let returns = routine
-                .return_type
-                .map(|return_type| render_checked_type(table, return_type))
-                .unwrap_or_else(|| "void".to_string());
-            match routine.error_type {
-                Some(error_type) => format!(
-                    "fun({params}): {returns} / {}",
-                    render_checked_type(table, error_type)
-                ),
-                None => format!("fun({params}): {returns}"),
-            }
-        }
-        Some(other) => format!("{other:?}"),
-        None => "unknown".to_string(),
-    }
+    table.render_type(type_id)
 }
 
 pub(super) fn dedupe_completion_items(items: Vec<EditorCompletionItem>) -> Vec<EditorCompletionItem> {

@@ -65,6 +65,27 @@ pub enum SymbolKind {
     RollingBinder,
 }
 
+impl SymbolKind {
+    /// Human-readable display name for editor tooling.
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::Type => "type",
+            Self::Alias => "alias",
+            Self::Routine => "routine",
+            Self::Definition => "definition",
+            Self::ValueBinding | Self::LabelBinding | Self::DestructureBinding => "binding",
+            Self::Parameter => "parameter",
+            Self::Capture => "capture",
+            Self::ImportAlias => "namespace",
+            Self::Segment => "segment",
+            Self::Implementation => "implementation",
+            Self::Standard => "standard",
+            Self::GenericParameter => "parameter",
+            Self::LoopBinder | Self::RollingBinder => "binding",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ReferenceKind {
     Identifier,
