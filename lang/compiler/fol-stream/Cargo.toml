@@ -6,4 +6,3 @@ edition = "2021"
 
 [dependencies]
 fol-types = { path = "../fol-types" }
-colored = "2"

@@ -1,4 +1,3 @@
-use colored::Colorize;
 use std::fmt;
 
 /// Declaration keyword names used by syntax tooling and tree-sitter.
@@ -143,13 +142,6 @@ impl fmt::Display for BUILDIN {
             BUILDIN::Await => "await",
             BUILDIN::Select => "select",
         };
-        write!(
-            f,
-            "{}{}",
-            " BUILDIN  ".black().on_red(),
-            (":".to_string().white().on_black().to_string() + &format!(" {} ", t))
-                .black()
-                .on_red()
-        )
+        write!(f, "BUILDIN:{}", t)
     }
 }

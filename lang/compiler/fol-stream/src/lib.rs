@@ -1,7 +1,6 @@
 // FOL Stream - Sophisticated file/folder to character stream conversion
 // Handles .mod directories specially and creates unified character streams
 
-use colored::Colorize;
 use fol_types::*;
 use std::ffi::OsStr;
 use std::path::Path;
@@ -288,7 +287,7 @@ fn source(
         SourceType::Folder => {
             let discovered_files = from_dir(&validated_path)?;
             if discovered_files.is_empty() {
-                let msg = format!("{}", "No .fol files found".red());
+                let msg = "No .fol files found".to_string();
                 return Err(Box::new(BasicError { message: msg }));
             }
 
@@ -366,7 +365,7 @@ fn check_validity(input: &str, source_type: SourceType) -> Result<String, Box<dy
     let path = Path::new(input);
 
     if !path.exists() {
-        let msg = format!("Path {} does not exist", input.red());
+        let msg = format!("Path {} does not exist", input);
         return Err(Box::new(BasicError { message: msg }));
     }
 
@@ -395,12 +394,12 @@ fn check_validity(input: &str, source_type: SourceType) -> Result<String, Box<dy
                     .to_string();
                 Ok(parent_canonical)
             } else {
-                let msg = format!("Invalid path for folder source: {}", input.red());
+                let msg = format!("Invalid path for folder source: {}", input);
                 Err(Box::new(BasicError { message: msg }))
             }
         }
         (true, SourceType::File) => {
-            let msg = format!("Expected file but got directory: {}", input.red());
+            let msg = format!("Expected file but got directory: {}", input);
             Err(Box::new(BasicError { message: msg }))
         }
     }

@@ -2,7 +2,6 @@ use crate::lexer::stage2;
 use crate::point;
 use crate::token::{literal::LITERAL, void::VOID};
 use crate::token::{KEYWORD, KEYWORD::*};
-use colored::Colorize;
 use fol_types::*;
 use std::fmt;
 
@@ -43,7 +42,7 @@ impl fmt::Display for Element {
         } else {
             "".to_string()
         };
-        write!(f, "{}\t{}{}", self.loc, self.key, con.black().on_red())
+        write!(f, "{}\t{}{}", self.loc, self.key, con)
     }
 }
 

@@ -1,4 +1,3 @@
-use colored::Colorize;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -23,13 +22,6 @@ impl fmt::Display for LITERAL {
             LITERAL::Octal => "octal",
             LITERAL::Binary => "binary",
         };
-        write!(
-            f,
-            "{}{}:",
-            " LITERAL  ".black().on_red(),
-            (":".to_string().white().on_black().to_string() + &format!(" {} ", t))
-                .black()
-                .on_red()
-        )
+        write!(f, "LITERAL:{}", t)
     }
 }
