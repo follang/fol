@@ -1,5 +1,5 @@
 use crate::{
-    diagnostic_to_lsp, materialize_analysis_overlay, EditorDocument,
+    dedup_lsp_diagnostics, diagnostic_to_lsp, materialize_analysis_overlay, EditorDocument,
     EditorError, EditorErrorKind, EditorResult, EditorWorkspaceMapping, LspDiagnostic,
 };
 use fol_diagnostics::Diagnostic;
@@ -9,7 +9,6 @@ use fol_parser::ast::{AstParser, ParseError};
 use fol_resolver::{Resolver, ResolverError};
 use fol_stream::{FileStream, Source, SourceType};
 use fol_typecheck::{TypecheckError, Typechecker};
-use std::collections::HashSet;
 use std::path::Path;
 
 use super::semantic::SemanticSnapshot;
@@ -19,24 +18,7 @@ pub(super) fn analyze_document(
     mapping: &EditorWorkspaceMapping,
 ) -> EditorResult<Vec<LspDiagnostic>> {
     let snapshot = analyze_document_semantics(document, mapping)?;
-    Ok(dedup_diagnostics(snapshot.diagnostics))
-}
-
-/// Deduplicate LSP diagnostics by (line, code), keeping only the first
-/// diagnostic for each unique pair. This prevents cascade errors from
-/// flooding the editor with redundant markers on the same line.
-///
-/// This is the editor-layer dedup. The compiler-layer dedup in
-/// `DiagnosticReport::add_diagnostic` handles consecutive same-code +
-/// same-line suppression and a hard cap at 50. Both layers are intentional:
-/// the compiler catches cascades at production time, the editor catches
-/// cross-stage duplicates after conversion.
-pub(crate) fn dedup_diagnostics(diagnostics: Vec<LspDiagnostic>) -> Vec<LspDiagnostic> {
-    let mut seen = HashSet::new();
-    diagnostics
-        .into_iter()
-        .filter(|d| seen.insert((d.range.start.line, d.code.clone())))
-        .collect()
+    Ok(dedup_lsp_diagnostics(snapshot.diagnostics))
 }
 
 pub(super) fn analyze_document_semantics(
@@ -159,46 +141,38 @@ pub(super) fn diagnostic_targets_path(diagnostic: &Diagnostic, path: &Path) -> b
 
 /// Parse a single file for diagnostics when no package root is available.
 ///
-/// Current implementation writes the file to a temp directory on disk and
-/// parses via `parse_directory_diagnostics`. This is a known weakness: future
-/// work (Slice 3) should replace this with in-memory source/stream construction.
+/// Uses an in-memory source/stream so no temp files are written to disk.
 pub(super) fn parse_single_file_diagnostics(
     path: &Path,
     text: &str,
 ) -> EditorResult<Vec<Diagnostic>> {
-    let root = std::env::temp_dir().join(format!(
-        "fol_editor_parse_{}_{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time should be after epoch")
-            .as_nanos()
-    ));
-    std::fs::create_dir_all(&root).map_err(|error| {
+    let path_str = path.to_string_lossy().to_string();
+    let package_name = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("main");
+    let source = Source {
+        call: path_str.clone(),
+        path: path_str,
+        data: text.to_string(),
+        namespace: String::new(),
+        package: package_name.to_string(),
+    };
+    let mut stream = FileStream::from_preloaded(vec![source]).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!(
-                "failed to create parser temp root '{}': {error}",
-                root.display()
-            ),
+            format!("failed to create in-memory stream for '{}': {error}", path.display()),
         )
     })?;
-    let file = root.join(
-        path.file_name()
-            .unwrap_or_else(|| std::ffi::OsStr::new("main.fol")),
-    );
-    std::fs::write(&file, text).map_err(|error| {
-        EditorError::new(
-            EditorErrorKind::Internal,
-            format!(
-                "failed to write parser temp file '{}': {error}",
-                file.display()
-            ),
-        )
-    })?;
-    let diagnostics = parse_directory_diagnostics(&root)?;
-    let _ = std::fs::remove_dir_all(&root);
-    Ok(diagnostics)
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = AstParser::new();
+    match parser.parse_package(&mut lexer) {
+        Ok(_) => Ok(Vec::new()),
+        Err(errors) => Ok(errors
+            .into_iter()
+            .map(|error| glitch_to_diagnostic(error.as_ref()))
+            .collect()),
+    }
 }
 
 pub(super) fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagnostic>> {
@@ -243,15 +217,12 @@ pub(super) fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagn
     }
 }
 
-/// Convert a `dyn Glitch` to a `Diagnostic` via manual downcast chain.
+/// Convert a `dyn Glitch` to a `Diagnostic` via downcast chain.
 ///
-/// This is a known weakness: the chain currently handles ParseError,
-/// PackageError, ResolverError, and TypecheckError. Missing: LoweringError
-/// and BuildEvaluationError. Unknown types fall back to `E9999`.
-///
-/// Future work (Slice 3) should replace this with trait-based dispatch
-/// so that all `Glitch` implementors produce diagnostics at their
-/// production site instead of requiring a central downcast.
+/// In practice, only `ParseError` flows through this path (from
+/// `parse_package`). The other branches exist as a safety net for any
+/// future error types that might be boxed as `Glitch`. Unknown types
+/// fall back to `EUNKNOWN`.
 pub(super) fn glitch_to_diagnostic(error: &dyn fol_types::Glitch) -> Diagnostic {
     if let Some(parse_error) = error.as_any().downcast_ref::<ParseError>() {
         return parse_error.to_diagnostic();
@@ -265,7 +236,7 @@ pub(super) fn glitch_to_diagnostic(error: &dyn fol_types::Glitch) -> Diagnostic 
     if let Some(typecheck_error) = error.as_any().downcast_ref::<TypecheckError>() {
         return typecheck_error.to_diagnostic();
     }
-    fol_diagnostics::Diagnostic::error("E9999", error.to_string())
+    Diagnostic::from_glitch(error, fol_diagnostics::Severity::Error, None)
 }
 
 pub(super) fn syntax_at_position(

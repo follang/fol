@@ -1,5 +1,6 @@
 // FOL Diagnostics - Error formatting and output
 mod codes;
+pub mod lsp;
 mod model;
 mod render_human;
 mod render_json;

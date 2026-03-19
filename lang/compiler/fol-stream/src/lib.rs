@@ -187,6 +187,34 @@ impl FileStream {
         })
     }
 
+    /// Create from pre-loaded sources without reading from disk.
+    ///
+    /// Each source must have its `data` field already populated. The `path`
+    /// field is used for location reporting but the file is never read.
+    pub fn from_preloaded(sources: Vec<Source>) -> Result<Self, Box<dyn Glitch>> {
+        if sources.is_empty() {
+            return Err(Box::new(BasicError {
+                message: "No sources provided".to_string(),
+            }));
+        }
+        let char_buffers = sources
+            .iter()
+            .map(|source| source.data.chars().collect::<Vec<_>>().into_boxed_slice())
+            .collect::<Vec<_>>();
+        let first_file = sources[0].path.clone();
+        Ok(Self {
+            sources,
+            char_buffers,
+            current_source: 0,
+            position: 0,
+            location: Location {
+                row: 1,
+                col: 1,
+                file: Some(first_file),
+            },
+        })
+    }
+
     /// Get current source being processed
     pub fn current_source(&self) -> Option<&Source> {
         self.sources.get(self.current_source)
