@@ -386,6 +386,28 @@ impl AstParser {
     }
 
     /// Skip tokens until we find a declaration-start keyword or EOF.
+    /// Guard against skip_ignorable jumping into a different declaration.
+    /// If the current token is on a later line than the declaration start
+    /// and is a declaration keyword, bail with an error pointing at the
+    /// original declaration keyword.
+    pub(super) fn guard_decl_boundary(
+        &self,
+        decl_token: &fol_lexer::lexer::stage3::element::Element,
+        tokens: &fol_lexer::lexer::stage3::Elements,
+        decl_line: usize,
+        message: &str,
+    ) -> Result<(), Box<dyn Glitch>> {
+        if let Ok(next) = tokens.curr(false) {
+            if next.loc().row() > decl_line && next.key().is_assign() {
+                return Err(Box::new(ParseError::from_token(
+                    decl_token,
+                    message.to_string(),
+                )));
+            }
+        }
+        Ok(())
+    }
+
     /// Used for error recovery: after a failed declaration parse, advance
     /// past the junk so the main loop can re-enter on the next declaration.
     pub(super) fn sync_to_next_declaration(

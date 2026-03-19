@@ -35,11 +35,16 @@ impl AstParser {
                 "Expected 'fun' declaration".to_string(),
             )));
         }
+        let decl_line = fun_token.loc().row();
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens)?;
+
+        // Guard: if skip_ignorable jumped past the declaration into a
+        // different declaration, bail early pointing at the original keyword.
+        self.guard_decl_boundary(&fun_token, tokens, decl_line, "Incomplete function declaration")?;
 
         let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
@@ -47,6 +52,8 @@ impl AstParser {
         )?;
 
         self.skip_ignorable(tokens)?;
+        self.guard_decl_boundary(&fun_token, tokens, decl_line, "Incomplete function declaration")?;
+
         let alt_generics = if self.lookahead_parenthesized_generic_header_before_colon(tokens) {
             let open = tokens.curr(false)?;
             if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -191,10 +198,14 @@ impl AstParser {
             )));
         }
 
+        let decl_line = log_token.loc().row();
+
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens)?;
+
+        self.guard_decl_boundary(&log_token, tokens, decl_line, "Incomplete logical declaration")?;
 
         let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
@@ -202,6 +213,8 @@ impl AstParser {
         )?;
 
         self.skip_ignorable(tokens)?;
+        self.guard_decl_boundary(&log_token, tokens, decl_line, "Incomplete logical declaration")?;
+
         let alt_generics = if self.lookahead_parenthesized_generic_header_before_colon(tokens) {
             let open = tokens.curr(false)?;
             if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -346,10 +359,14 @@ impl AstParser {
             )));
         }
 
+        let decl_line = pro_token.loc().row();
+
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens)?;
+
+        self.guard_decl_boundary(&pro_token, tokens, decl_line, "Incomplete procedure declaration")?;
 
         let (receiver_type, name) = self.parse_routine_name_with_optional_receiver(
             tokens,
@@ -357,6 +374,8 @@ impl AstParser {
         )?;
 
         self.skip_ignorable(tokens)?;
+        self.guard_decl_boundary(&pro_token, tokens, decl_line, "Incomplete procedure declaration")?;
+
         let alt_generics = if self.lookahead_parenthesized_generic_header_before_colon(tokens) {
             let open = tokens.curr(false)?;
             if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
