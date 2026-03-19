@@ -35,10 +35,10 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-479cd81c.js";
+            window.path_to_searchindex_js = "../searchindex-fb379c09.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-e2f4f3cc.js"></script>
+        <script src="../toc-5bc359b7.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -204,10 +204,115 @@ directory.</p>
 <li>point the editor’s Tree-sitter parser configuration at that bundle</li>
 <li>let the editor compile/use the parser from there</li>
 </ul>
-<h2 id="why-use-fol-tool-tree-generate"><a class="header" href="#why-use-fol-tool-tree-generate">Why Use <code>fol tool tree generate</code></a></h2>
-<p>This command exists so editor integration can consume a generated FOL parser
-bundle without forcing you to manually copy query files around.</p>
-<p>It also gives one stable place to inspect what the editor will actually use.</p>
+<h2 id="file-ownership"><a class="header" href="#file-ownership">File Ownership</a></h2>
+<h3 id="intentionally-handwritten"><a class="header" href="#intentionally-handwritten">Intentionally Handwritten</a></h3>
+<p>These files are human-authored and should remain so:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>File</th><th>Purpose</th><th>Owner</th></tr>
+</thead>
+<tbody>
+<tr><td><code>tree-sitter/grammar.js</code></td><td>Grammar rules, precedence, conflicts</td><td>Editor/syntax maintainer</td></tr>
+<tr><td><code>queries/fol/highlights.scm</code></td><td>Highlight capture groups and query patterns</td><td>Editor/syntax maintainer</td></tr>
+<tr><td><code>queries/fol/locals.scm</code></td><td>Scope and definition tracking</td><td>Editor/syntax maintainer</td></tr>
+<tr><td><code>queries/fol/symbols.scm</code></td><td>Symbol navigation captures</td><td>Editor/syntax maintainer</td></tr>
+<tr><td><code>test/corpus/*.txt</code></td><td>Corpus fixtures for grammar validation</td><td>Editor/syntax maintainer</td></tr>
+</tbody>
+</table>
+</div>
+<p>Do not attempt to generate these from the compiler parser. The parsing models
+are different and auto-generation creates more fragility than value.</p>
+<h3 id="validated-against-compiler-constants"><a class="header" href="#validated-against-compiler-constants">Validated Against Compiler Constants</a></h3>
+<p>These facts appear in handwritten files but are validated by integration tests
+to stay in sync with compiler-owned constants:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Fact</th><th>Handwritten Location</th><th>Compiler Source</th></tr>
+</thead>
+<tbody>
+<tr><td>Builtin type names</td><td><code>highlights.scm</code> regex <code>^(int|bol|...)$</code></td><td><code>BuiltinType::ALL_NAMES</code> in <code>fol-typecheck</code></td></tr>
+<tr><td>Dot-call intrinsic names</td><td><code>highlights.scm</code> regex <code>^(len|echo|...)$</code></td><td>Implemented <code>DotRootCall</code> entries in <code>fol-intrinsics</code></td></tr>
+<tr><td>Container type names</td><td><code>highlights.scm</code> node labels + <code>grammar.js</code> choice</td><td><code>CONTAINER_TYPE_NAMES</code> in <code>fol-parser</code></td></tr>
+<tr><td>Shell type names</td><td><code>highlights.scm</code> node labels + <code>grammar.js</code> choice</td><td><code>SHELL_TYPE_NAMES</code> in <code>fol-parser</code></td></tr>
+<tr><td>Source kind names</td><td><code>highlights.scm</code> node labels + <code>grammar.js</code> choice</td><td><code>SOURCE_KIND_NAMES</code> in <code>fol-parser</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>The sync tests live in <code>test/run_tests.rs</code> under <code>treesitter_sync</code>. If you add
+a new builtin type, intrinsic, container, shell, or source kind to the compiler,
+these tests fail until the tree-sitter files are updated to match.</p>
+<h2 id="when-to-update-tree-sitter-files"><a class="header" href="#when-to-update-tree-sitter-files">When To Update Tree-sitter Files</a></h2>
+<h3 id="grammarjs"><a class="header" href="#grammarjs">grammar.js</a></h3>
+<p>Update when:</p>
+<ul>
+<li>A new declaration form is added (e.g. a new <code>seg</code> or <code>lab</code> declaration)</li>
+<li>A new expression or statement form is added</li>
+<li>A new type syntax is added (e.g. a new container or shell family)</li>
+<li>A new source kind is added</li>
+<li>Operator precedence or conflict rules change</li>
+</ul>
+<p>Do not update for:</p>
+<ul>
+<li>New diagnostic codes or error messages</li>
+<li>New resolver/typecheck rules that don’t change syntax</li>
+<li>New intrinsics (these use existing <code>dot_intrinsic</code> grammar rule)</li>
+</ul>
+<h3 id="highlightsscm"><a class="header" href="#highlightsscm">highlights.scm</a></h3>
+<p>Update when:</p>
+<ul>
+<li>A new keyword needs highlighting</li>
+<li>A new builtin type is added to the compiler</li>
+<li>A new implemented dot-call intrinsic is added</li>
+<li>A new container or shell type family is added</li>
+<li>A new source kind is added</li>
+<li>Highlight group policy changes (e.g. moving a keyword from <code>@keyword</code> to <code>@keyword.function</code>)</li>
+</ul>
+<h3 id="localsscm"><a class="header" href="#localsscm">locals.scm</a></h3>
+<p>Update when:</p>
+<ul>
+<li>Scope rules change (e.g. new block forms that introduce scopes)</li>
+<li>Definition capture patterns change</li>
+</ul>
+<h3 id="symbolsscm"><a class="header" href="#symbolsscm">symbols.scm</a></h3>
+<p>Update when:</p>
+<ul>
+<li>New declaration forms should appear in document symbol navigation</li>
+</ul>
+<h3 id="corpus-fixtures"><a class="header" href="#corpus-fixtures">Corpus fixtures</a></h3>
+<p>Update when:</p>
+<ul>
+<li>Any grammar rule is added or modified</li>
+<li>A new syntax family needs parse-tree validation</li>
+</ul>
+<h2 id="corpus-coverage-expectations"><a class="header" href="#corpus-coverage-expectations">Corpus Coverage Expectations</a></h2>
+<p>Corpus fixtures live in <code>tree-sitter/test/corpus/</code> and cover syntax families:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Corpus File</th><th>Covers</th></tr>
+</thead>
+<tbody>
+<tr><td><code>declarations.txt</code></td><td><code>use</code>, <code>ali</code>, <code>typ</code>, <code>fun</code>, <code>log</code>, <code>var</code> declarations</td></tr>
+<tr><td><code>expressions.txt</code></td><td>Intrinsic calls, <code>when</code>/<code>loop</code> control flow, <code>break</code>/<code>return</code></td></tr>
+<tr><td><code>recoverable.txt</code></td><td>Error propagation (<code>/</code>), <code>report</code>, pipe-or (<code>||</code>)</td></tr>
+</tbody>
+</table>
+</div>
+<p>When a new syntax family is added, it should have corpus coverage. The expected
+families that should each have at least one corpus example:</p>
+<ul>
+<li>Import declarations (<code>use</code>)</li>
+<li>Type declarations (<code>typ</code>, <code>ali</code>)</li>
+<li>Routine declarations (<code>fun</code>, <code>log</code>)</li>
+<li>Variable declarations (<code>var</code>)</li>
+<li>Control flow (<code>when</code>, <code>loop</code>, <code>case</code>, <code>break</code>, <code>return</code>)</li>
+<li>Expressions (binary, call, field access, dot intrinsic)</li>
+<li>Container and shell types</li>
+<li>Record and entry types</li>
+<li>Error handling (<code>report</code>, pipe-or, <code>check</code>)</li>
+</ul>
 <h2 id="what-tree-sitter-is-for"><a class="header" href="#what-tree-sitter-is-for">What Tree-sitter Is For</a></h2>
 <p>Use the Tree-sitter layer for:</p>
 <ul>
@@ -218,16 +323,19 @@ bundle without forcing you to manually copy query files around.</p>
 </ul>
 <p>Do not use it as a substitute for typechecking or resolution.</p>
 <p>Those remain compiler tasks.</p>
+<p>When a language feature changes syntax, use the
+<a href="./450_feature_checklist.html">Feature Update Checklist</a> to decide whether the
+grammar, queries, corpus, or generated language facts also need updates.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../050_tooling/300_editor.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../050_tooling/350_compiler_integration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../050_tooling/500_lsp.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../050_tooling/450_feature_checklist.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -237,11 +345,11 @@ bundle without forcing you to manually copy query files around.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../050_tooling/300_editor.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../050_tooling/350_compiler_integration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../050_tooling/500_lsp.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../050_tooling/450_feature_checklist.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

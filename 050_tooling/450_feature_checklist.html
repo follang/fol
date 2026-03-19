@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Frontend Workflow - FOL Language Specification</title>
+        <title>Feature Update Checklist - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,67 +174,185 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="frontend-workflow"><a class="header" href="#frontend-workflow">Frontend Workflow</a></h1>
-<p>FOL now has a dedicated frontend layer above the compiler pipeline.</p>
-<p>That layer is the <code>fol</code> tool itself.</p>
-<p>The frontend is implemented in <code>fol-frontend</code>, and it is the user-facing
-workflow shell for:</p>
+                        <h1 id="feature-update-checklist"><a class="header" href="#feature-update-checklist">Feature Update Checklist</a></h1>
+<p>Use this checklist whenever a new language feature, syntax form, intrinsic, or
+error surface is added.</p>
+<p>This chapter is about maintenance discipline, not just implementation order.</p>
+<h2 id="quick-reference"><a class="header" href="#quick-reference">Quick Reference</a></h2>
+<p>When adding a feature, touch these layers in order:</p>
+<ol>
+<li><strong>Lexer</strong> — new keywords, operators, tokens</li>
+<li><strong>Parser</strong> — new AST nodes, syntax rules</li>
+<li><strong>Semantics</strong> — resolver, typecheck, lowering, intrinsics</li>
+<li><strong>Diagnostics</strong> — new error/warning cases</li>
+<li><strong>LSP</strong> — hover, completion, definition, symbols</li>
+<li><strong>Tree-sitter</strong> — grammar, queries, corpus</li>
+<li><strong>Generated facts</strong> — compiler-owned constants</li>
+<li><strong>Docs</strong> — language chapters, tooling pages</li>
+<li><strong>Tests</strong> — unit, integration, editor, corpus</li>
+</ol>
+<p>Automated guards exist for some of these. The <code>treesitter_sync</code> integration
+tests verify that <code>highlights.scm</code> matches compiler-owned constants for builtin
+types, intrinsic names, container/shell types, and source kinds. Adding a new
+constant to the compiler without updating Tree-sitter will fail those tests.</p>
+<h2 id="1-lexical-surface"><a class="header" href="#1-lexical-surface">1. Lexical Surface</a></h2>
+<p>Check:</p>
 <ul>
-<li>project/workspace setup</li>
-<li>fetch/update flows</li>
-<li>build/run/test/emit flows</li>
-<li>editor tooling dispatch under <code>fol tool</code></li>
+<li>new keywords</li>
+<li>new operators or punctuation</li>
+<li>new literal/token families</li>
+<li>comment or whitespace effects</li>
 </ul>
-<p>The detailed reference has moved to the Tooling section:</p>
+<p>Update:</p>
 <ul>
-<li><a href="../050_tooling/_index.html">Tooling</a></li>
-<li><a href="../050_tooling/100_frontend.html">Frontend Workflow</a></li>
-<li><a href="../050_tooling/200_tool_commands.html">Tool Commands</a></li>
+<li><code>fol-lexer</code></li>
+<li>lexical docs under <a href="../100_lexical/_index.html"><code>100_lexical</code></a></li>
+<li>any generated keyword/facts manifest if one exists</li>
 </ul>
-<p>Use this overview page only as the entrypoint pointer.</p>
+<h2 id="2-parser-surface"><a class="header" href="#2-parser-surface">2. Parser Surface</a></h2>
+<p>Check:</p>
 <ul>
-<li>workflow commands</li>
-<li>direct compile dispatch</li>
-<li>root help</li>
-<li>output rendering</li>
-<li>frontend diagnostics</li>
+<li>new declarations</li>
+<li>new expressions</li>
+<li>new statement forms</li>
+<li>new type forms</li>
+<li>new precedence or ambiguity rules</li>
 </ul>
-<p>So the root binary is no longer its own separate CLI implementation.</p>
-<h2 id="current-boundary"><a class="header" href="#current-boundary">Current Boundary</a></h2>
-<p>The current frontend milestone is about local workflows and the first backend.</p>
-<p>It already covers:</p>
+<p>Update:</p>
 <ul>
-<li>project and workspace scaffolding</li>
-<li>documented <code>build.fol</code> package entry files for new projects</li>
-<li>root discovery</li>
-<li>package preparation through <code>fol-package</code></li>
-<li>git-backed dependency fetching and materialization</li>
-<li><code>fol.lock</code> writing, locked fetches, offline warm-cache fetches, and update flows</li>
-<li>workspace dependency/status reporting</li>
-<li>full <code>V1</code> build/run/test orchestration</li>
-<li>routed workspace <code>build/run/test/check</code> entry through <code>build.fol</code></li>
-<li>emitted Rust and lowered IR output</li>
-<li>editor-tooling entrypoints for parse, highlight, symbols, and LSP startup</li>
-<li>shell completions</li>
-<li>safe cleanup of build/cache/git/package-store roots</li>
-<li>frontend-owned direct compile routing</li>
+<li><code>fol-parser</code></li>
+<li>parser tests</li>
+<li>Tree-sitter grammar if the syntax is editor-visible</li>
+<li>Tree-sitter corpus fixtures for the new syntax family</li>
 </ul>
-<p>Future work is still expected around:</p>
+<h2 id="3-semantic-surface"><a class="header" href="#3-semantic-surface">3. Semantic Surface</a></h2>
+<p>Check:</p>
 <ul>
-<li>richer package-store policy beyond the first git/store workflow</li>
-<li>lockfile/version solving beyond the current pinned git contract</li>
-<li>additional backend targets</li>
+<li>name resolution</li>
+<li>type checking</li>
+<li>lowering</li>
+<li>intrinsic availability</li>
+<li>runtime/backend impact</li>
 </ul>
+<p>Update:</p>
+<ul>
+<li><code>fol-resolver</code></li>
+<li><code>fol-typecheck</code></li>
+<li><code>fol-lower</code></li>
+<li><code>fol-intrinsics</code></li>
+<li>runtime/backend crates if needed</li>
+</ul>
+<h2 id="4-diagnostics-surface"><a class="header" href="#4-diagnostics-surface">4. Diagnostics Surface</a></h2>
+<p>Check:</p>
+<ul>
+<li>new error cases</li>
+<li>new warning/info cases</li>
+<li>changed wording for existing rules</li>
+<li>changed labels, notes, helps, or suggestions</li>
+</ul>
+<p>Update:</p>
+<ul>
+<li>compiler producer diagnostics</li>
+<li><code>fol-diagnostics</code> contract tests</li>
+<li>editor/LSP diagnostic adapter tests if the visible shape changes</li>
+<li>docs under <a href="../650_errors/_index.html"><code>650_errors</code></a> if behavior changed materially</li>
+</ul>
+<h2 id="5-lsp-surface"><a class="header" href="#5-lsp-surface">5. LSP Surface</a></h2>
+<p>Check:</p>
+<ul>
+<li>hover content</li>
+<li>go-to-definition behavior</li>
+<li>document symbols</li>
+<li>completion</li>
+<li>open-document analysis behavior under broken code</li>
+</ul>
+<p>Update:</p>
+<ul>
+<li><code>fol-editor</code> semantic analysis</li>
+<li><code>fol-editor</code> semantic display helpers or compiler-owned helpers they consume</li>
+<li>LSP tests</li>
+</ul>
+<p>Important rule:</p>
+<ul>
+<li>prefer compiler-backed meaning</li>
+<li>use fallback heuristics only when the compiler cannot supply semantic data yet</li>
+</ul>
+<h2 id="6-tree-sitter-surface"><a class="header" href="#6-tree-sitter-surface">6. Tree-sitter Surface</a></h2>
+<p>Check:</p>
+<ul>
+<li>syntax shape visible while typing</li>
+<li>highlight groups</li>
+<li>locals captures</li>
+<li>symbols captures</li>
+<li>corpus examples</li>
+</ul>
+<p>Update:</p>
+<ul>
+<li><code>tree-sitter/grammar.js</code></li>
+<li><code>queries/fol/highlights.scm</code></li>
+<li><code>queries/fol/locals.scm</code></li>
+<li><code>queries/fol/symbols.scm</code></li>
+<li><code>tree-sitter/test/corpus/*.txt</code></li>
+</ul>
+<p>Important rule:</p>
+<ul>
+<li>Tree-sitter is for syntax-facing editor behavior</li>
+<li>it does not replace compiler semantics</li>
+</ul>
+<h2 id="7-generated-facts"><a class="header" href="#7-generated-facts">7. Generated Facts</a></h2>
+<p>Check whether the feature adds a new fact that should be exported once instead
+of copied by hand.</p>
+<p>Examples:</p>
+<ul>
+<li>intrinsic names</li>
+<li>builtin type names</li>
+<li>source kinds</li>
+<li>keyword groups</li>
+<li>shell/container family names</li>
+</ul>
+<p>If yes:</p>
+<ul>
+<li>update the compiler-owned source</li>
+<li>regenerate editor-facing artifacts from that source</li>
+<li>do not patch multiple copies manually</li>
+</ul>
+<h2 id="8-documentation"><a class="header" href="#8-documentation">8. Documentation</a></h2>
+<p>Update:</p>
+<ul>
+<li>the language chapter for the feature</li>
+<li>tooling docs if editor behavior changes</li>
+<li>diagnostics docs if compiler reporting changes</li>
+<li>examples/fixtures that demonstrate the preferred form</li>
+</ul>
+<h2 id="9-tests"><a class="header" href="#9-tests">9. Tests</a></h2>
+<p>Add or update:</p>
+<ul>
+<li>compiler unit tests</li>
+<li>integration tests</li>
+<li>editor/LSP tests if semantic editor behavior changes</li>
+<li>Tree-sitter tests/corpus if syntax-facing behavior changes</li>
+</ul>
+<p>Keep the feature test in the same change as the feature.</p>
+<h2 id="10-final-review-questions"><a class="header" href="#10-final-review-questions">10. Final Review Questions</a></h2>
+<p>Before considering the feature complete, answer:</p>
+<ol>
+<li>Is compiler meaning implemented?</li>
+<li>Are diagnostics correct and structured?</li>
+<li>Does the LSP reflect the new meaning where needed?</li>
+<li>Does Tree-sitter reflect the new syntax where needed?</li>
+<li>Did we generate shared facts instead of duplicating them?</li>
+<li>Did docs explain the intended user-facing behavior?</li>
+</ol>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../000_overview/100_conventions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../050_tooling/400_treesitter.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../000_overview/300_editor.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../050_tooling/500_lsp.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -244,11 +362,11 @@ workflow shell for:</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../000_overview/100_conventions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../050_tooling/400_treesitter.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../000_overview/300_editor.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../050_tooling/500_lsp.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>

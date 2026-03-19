@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Frontend Workflow - FOL Language Specification</title>
+        <title>Compiler Integration - FOL Language Specification</title>
 
 
         <!-- Custom HTML head -->
@@ -174,67 +174,148 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="frontend-workflow"><a class="header" href="#frontend-workflow">Frontend Workflow</a></h1>
-<p>FOL now has a dedicated frontend layer above the compiler pipeline.</p>
-<p>That layer is the <code>fol</code> tool itself.</p>
-<p>The frontend is implemented in <code>fol-frontend</code>, and it is the user-facing
-workflow shell for:</p>
+                        <h1 id="compiler-integration"><a class="header" href="#compiler-integration">Compiler Integration</a></h1>
+<p>This chapter explains how the compiler and editor tooling are connected today,
+and what should remain the source of truth as FOL grows.</p>
+<h2 id="the-three-layers"><a class="header" href="#the-three-layers">The Three Layers</a></h2>
+<p>FOL editor tooling is split into three layers:</p>
+<ol>
+<li>compiler truth</li>
+<li>semantic editor services</li>
+<li>syntax editor services</li>
+</ol>
+<p>Compiler truth lives in crates such as:</p>
 <ul>
-<li>project/workspace setup</li>
-<li>fetch/update flows</li>
-<li>build/run/test/emit flows</li>
-<li>editor tooling dispatch under <code>fol tool</code></li>
+<li><code>fol-lexer</code></li>
+<li><code>fol-parser</code></li>
+<li><code>fol-package</code></li>
+<li><code>fol-resolver</code></li>
+<li><code>fol-typecheck</code></li>
+<li><code>fol-intrinsics</code></li>
+<li><code>fol-diagnostics</code></li>
 </ul>
-<p>The detailed reference has moved to the Tooling section:</p>
+<p>Semantic editor services live in:</p>
 <ul>
-<li><a href="../050_tooling/_index.html">Tooling</a></li>
-<li><a href="../050_tooling/100_frontend.html">Frontend Workflow</a></li>
-<li><a href="../050_tooling/200_tool_commands.html">Tool Commands</a></li>
+<li><code>fol-editor</code> LSP analysis and semantic code</li>
 </ul>
-<p>Use this overview page only as the entrypoint pointer.</p>
+<p>Syntax editor services live in:</p>
 <ul>
-<li>workflow commands</li>
-<li>direct compile dispatch</li>
-<li>root help</li>
-<li>output rendering</li>
-<li>frontend diagnostics</li>
+<li>the Tree-sitter grammar</li>
+<li>Tree-sitter query files</li>
+<li>editor bundle generation</li>
 </ul>
-<p>So the root binary is no longer its own separate CLI implementation.</p>
-<h2 id="current-boundary"><a class="header" href="#current-boundary">Current Boundary</a></h2>
-<p>The current frontend milestone is about local workflows and the first backend.</p>
-<p>It already covers:</p>
+<p>That split matters because not every editor feature should be solved in the
+same way.</p>
+<h2 id="what-the-lsp-should-trust"><a class="header" href="#what-the-lsp-should-trust">What The LSP Should Trust</a></h2>
+<p>For semantic meaning, the LSP should trust the compiler pipeline.</p>
+<p>That means:</p>
 <ul>
-<li>project and workspace scaffolding</li>
-<li>documented <code>build.fol</code> package entry files for new projects</li>
-<li>root discovery</li>
-<li>package preparation through <code>fol-package</code></li>
-<li>git-backed dependency fetching and materialization</li>
-<li><code>fol.lock</code> writing, locked fetches, offline warm-cache fetches, and update flows</li>
-<li>workspace dependency/status reporting</li>
-<li>full <code>V1</code> build/run/test orchestration</li>
-<li>routed workspace <code>build/run/test/check</code> entry through <code>build.fol</code></li>
-<li>emitted Rust and lowered IR output</li>
-<li>editor-tooling entrypoints for parse, highlight, symbols, and LSP startup</li>
-<li>shell completions</li>
-<li>safe cleanup of build/cache/git/package-store roots</li>
-<li>frontend-owned direct compile routing</li>
+<li>diagnostics come from compiler diagnostics</li>
+<li>hover should be derived from resolved or typed compiler state</li>
+<li>definition should be derived from resolved symbol data</li>
+<li>document symbols should prefer compiler symbol ownership where practical</li>
+<li>completion should prefer compiler facts over text heuristics</li>
 </ul>
-<p>Future work is still expected around:</p>
+<p>The LSP should not invent a parallel semantic model.</p>
+<p>If a feature needs semantic meaning, the first question should be:</p>
 <ul>
-<li>richer package-store policy beyond the first git/store workflow</li>
-<li>lockfile/version solving beyond the current pinned git contract</li>
-<li>additional backend targets</li>
+<li>can this come from <code>fol-parser</code> / <code>fol-resolver</code> / <code>fol-typecheck</code> instead of editor-only code?</li>
+</ul>
+<h2 id="what-tree-sitter-should-trust"><a class="header" href="#what-tree-sitter-should-trust">What Tree-sitter Should Trust</a></h2>
+<p>Tree-sitter is not the compiler parser.</p>
+<p>It exists for:</p>
+<ul>
+<li>syntax trees while typing</li>
+<li>highlighting</li>
+<li>locals queries</li>
+<li>symbol-style structural captures</li>
+<li>future textobjects and editor movement</li>
+</ul>
+<p>So Tree-sitter should stay editor-oriented.</p>
+<p>That means:</p>
+<ul>
+<li>the grammar can remain handwritten</li>
+<li>query files can remain handwritten</li>
+<li>but duplicated language facts should not be copied manually forever</li>
+</ul>
+<p>Examples of facts that should come from compiler-owned truth:</p>
+<ul>
+<li>builtin type spellings</li>
+<li>implemented intrinsic names</li>
+<li>import source kinds</li>
+<li>keyword families used by syntax tooling</li>
+</ul>
+<h2 id="how-diagnostics-flow"><a class="header" href="#how-diagnostics-flow">How Diagnostics Flow</a></h2>
+<p>Today the intended direction is:</p>
+<ol>
+<li>compiler stage creates a structured <code>fol_diagnostics::Diagnostic</code></li>
+<li>editor tooling adapts that diagnostic for the active editor protocol</li>
+<li>the editor displays the adapted result</li>
+</ol>
+<p>The important rule is:</p>
+<ul>
+<li>the compiler diagnostic object is canonical</li>
+</ul>
+<p>So when diagnostic wording, labels, helps, or codes change, the editor should
+adapt that same structure. It should not create its own free-form diagnosis
+logic.</p>
+<h2 id="what-can-be-generated"><a class="header" href="#what-can-be-generated">What Can Be Generated</a></h2>
+<p>Generation is useful when the same language fact appears in multiple places.</p>
+<p>Good generation targets:</p>
+<ul>
+<li>keyword manifests</li>
+<li>builtin type manifests</li>
+<li>intrinsic name/surface manifests</li>
+<li>source-kind manifests</li>
+<li>small generated query fragments or validation snapshots</li>
+</ul>
+<p>Bad generation targets:</p>
+<ul>
+<li>the entire Tree-sitter grammar</li>
+<li>Tree-sitter precedence/conflict structure</li>
+<li>most highlight policy</li>
+<li>LSP transport behavior</li>
+</ul>
+<p>The rule of thumb is:</p>
+<ul>
+<li>generate shared facts</li>
+<li>handwrite editor behavior</li>
+</ul>
+<h2 id="what-to-update-for-a-new-feature"><a class="header" href="#what-to-update-for-a-new-feature">What To Update For A New Feature</a></h2>
+<p>When you add a new language feature, ask these questions in order:</p>
+<ol>
+<li>Does the lexer need new tokens or token families?</li>
+<li>Does the parser need new syntax or AST nodes?</li>
+<li>Does resolver or typechecker logic need new meaning?</li>
+<li>Does the feature introduce or change diagnostics?</li>
+<li>Does the LSP need hover, completion, definition, or symbol updates?</li>
+<li>Does Tree-sitter need grammar, query, or corpus updates?</li>
+<li>Can any new editor-visible facts be generated from compiler-owned sources?</li>
+</ol>
+<p>If the answer to any of those is yes, update that layer in the same change set.</p>
+<h2 id="current-practical-rule"><a class="header" href="#current-practical-rule">Current Practical Rule</a></h2>
+<p>In FOL today:</p>
+<ul>
+<li>compiler crates own meaning</li>
+<li><code>fol-editor</code> owns editor protocol behavior</li>
+<li>Tree-sitter owns syntax-oriented editor structure</li>
+</ul>
+<p>The safer future direction is:</p>
+<ul>
+<li>move shared contracts closer to compiler-owned crates</li>
+<li>keep protocol/UI code in tooling crates</li>
+<li>generate duplicated facts instead of hand-copying them</li>
 </ul>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../000_overview/100_conventions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../050_tooling/300_editor.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="../000_overview/300_editor.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../050_tooling/400_treesitter.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -244,11 +325,11 @@ workflow shell for:</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../000_overview/100_conventions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../050_tooling/300_editor.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="../000_overview/300_editor.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../050_tooling/400_treesitter.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
