@@ -562,7 +562,7 @@ fn type_check_call(
         {
             "check(...) inspects routine call results with '/ ErrorType', not err[...] shell values in V1"
         } else {
-            "check requires an errorful routine result in V1"
+            "check(...) requires a routine call result with '/ ErrorType' in V1"
         };
         return Err(node_origin(resolved, &args[0]).map_or_else(
             || TypecheckError::new(TypecheckErrorKind::InvalidInput, message),

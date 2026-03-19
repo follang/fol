@@ -21,7 +21,7 @@ pub(crate) fn reject_recoverable_plain_use(
 ) -> Result<(), TypecheckError> {
     let usage = usage.into();
     let message = format!(
-        "{usage} cannot use a routine result with '/ ErrorType' as a plain value in V1; handle it with '||' or check(...)"
+        "{usage} cannot use '/ ErrorType' routine results as plain values in V1; handle them immediately with '||' or check(...), or use err[...] when you need a storable value"
     );
     Err(match origin {
         Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::InvalidInput, message, origin),
@@ -155,7 +155,7 @@ pub(crate) fn reject_recoverable_error_shell_conversion(
     }
 
     let message = format!(
-        "{} cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1; use propagation, check(...), or '||' instead",
+        "{} cannot turn a '/ ErrorType' routine result into err[...] in V1; err[...] is the storable error form, so handle the call with '||' or check(...)",
         surface.into()
     );
     Err(match origin {

@@ -37,7 +37,7 @@ fn check_typing_rejects_plain_values() {
             error.kind() == TypecheckErrorKind::InvalidInput
                 && error
                     .message()
-                    .contains("check requires an errorful routine result in V1")
+                    .contains("check(...) requires a routine call result with '/ ErrorType' in V1")
         }),
         "Expected an invalid check diagnostic, got: {errors:?}"
     );
@@ -199,7 +199,7 @@ fn recoverable_calls_reject_inferred_plain_bindings() {
                 && error.message().contains("initializer for 'captured'")
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected the strict inferred-binding diagnostic, got: {errors:?}"
     );
@@ -225,7 +225,7 @@ fn recoverable_calls_reject_typed_plain_bindings() {
                 && error.message().contains("initializer for 'captured'")
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected the strict typed-binding diagnostic, got: {errors:?}"
     );
@@ -250,7 +250,7 @@ fn recoverable_calls_reject_direct_plain_returns() {
                 && error.message().contains("return expression")
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected the strict return diagnostic, got: {errors:?}"
     );
@@ -278,7 +278,7 @@ fn recoverable_calls_reject_plain_arguments_even_in_error_aware_routines() {
                 && error.message().contains("call to 'consume'")
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected the strict argument diagnostic, got: {errors:?}"
     );
@@ -304,7 +304,7 @@ fn recoverable_calls_reject_field_access_receivers() {
                 && error.message().contains("field access '.name' receiver")
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected the strict field-access diagnostic, got: {errors:?}"
     );
@@ -329,7 +329,7 @@ fn recoverable_calls_reject_index_access_receivers() {
                 && error.message().contains("index access receiver")
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected the strict index-access diagnostic, got: {errors:?}"
     );
@@ -358,7 +358,7 @@ fn recoverable_calls_reject_method_receivers() {
                 && error.message().contains("method receiver for 'label'")
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected the strict method-receiver diagnostic, got: {errors:?}"
     );
@@ -386,7 +386,7 @@ fn recoverable_calls_reject_when_selectors() {
                 && error.message().contains("when selector")
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected the strict when-selector diagnostic, got: {errors:?}"
     );
@@ -414,7 +414,7 @@ fn recoverable_calls_reject_loop_conditions() {
                 && error.message().contains("loop condition")
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected the strict loop-condition diagnostic, got: {errors:?}"
     );
@@ -437,7 +437,7 @@ fn recoverable_calls_do_not_implicitly_convert_into_err_shell_bindings() {
     assert!(
         errors.iter().any(|error| {
             error.kind() == TypecheckErrorKind::Unsupported
-                && error.message().contains("cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1")
+                && error.message().contains("cannot turn a '/ ErrorType' routine result into err[...] in V1")
                 && error.message().contains("initializer for 'captured'")
         }),
         "Expected the err-shell binding boundary diagnostic, got: {errors:?}"
@@ -460,8 +460,8 @@ fn recoverable_calls_do_not_implicitly_convert_into_err_shell_returns() {
     assert!(
         errors.iter().any(|error| {
             error.kind() == TypecheckErrorKind::Unsupported
-                && error.message().contains("cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1")
-                && error.message().contains("return cannot implicitly convert")
+                && error.message().contains("cannot turn a '/ ErrorType' routine result into err[...] in V1")
+                && error.message().contains("return cannot turn")
         }),
         "Expected the err-shell return boundary diagnostic, got: {errors:?}"
     );
@@ -486,7 +486,7 @@ fn recoverable_calls_do_not_implicitly_convert_into_err_shell_arguments() {
     assert!(
         errors.iter().any(|error| {
             error.kind() == TypecheckErrorKind::Unsupported
-                && error.message().contains("cannot implicitly convert a routine result with '/ ErrorType' into an err[...] shell in V1")
+                && error.message().contains("cannot turn a '/ ErrorType' routine result into err[...] in V1")
                 && error.message().contains("call to 'consume'")
         }),
         "Expected the err-shell call-argument boundary diagnostic, got: {errors:?}"

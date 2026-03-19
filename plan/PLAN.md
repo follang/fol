@@ -303,7 +303,7 @@ Follow-up design work:
 
 This method design is separate from the strict `/ E` cleanup and should not block it.
 
-### Slice 10: Rewrite diagnostics
+### Slice 10: Rewrite diagnostics `[complete]`
 
 Current diagnostics are phrased around the propagation model. They need to be rewritten to teach the strict model.
 

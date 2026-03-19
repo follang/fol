@@ -197,7 +197,7 @@ use super::*;
             "CLI should fail when check(...) is used on a plain value"
         );
         assert!(
-            stdout.contains("check requires an errorful routine result in V1"),
+            stdout.contains("check(...) requires a routine call result with '/ ErrorType' in V1"),
             "CLI diagnostics should preserve the invalid check wording"
         );
         assert!(
@@ -969,4 +969,3 @@ use super::*;
 
         std::fs::remove_dir_all(&temp_root).ok();
     }
-

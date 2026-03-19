@@ -786,7 +786,7 @@ fn inferred_bindings_reject_recoverable_call_results() {
                 && error.message().contains("initializer for 'current'")
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         true,
         "Expected a strict binding diagnostic, got: {errors:?}"
@@ -812,7 +812,7 @@ fn plain_use_of_errorful_calls_rejects_plain_value_contexts() {
             error.kind() == TypecheckErrorKind::InvalidInput
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected a plain-use errorful-call diagnostic, got: {errors:?}"
     );
@@ -836,7 +836,7 @@ fn propagation_typing_rejects_matching_error_types_in_plain_value_contexts() {
             error.kind() == TypecheckErrorKind::InvalidInput
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected a strict no-propagation diagnostic, got: {errors:?}"
     );
@@ -860,7 +860,7 @@ fn propagation_typing_rejects_incompatible_error_types_in_plain_value_contexts()
             error.kind() == TypecheckErrorKind::InvalidInput
                 && error
                     .message()
-                    .contains("cannot use a routine result with '/ ErrorType' as a plain value")
+                    .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected a strict no-propagation diagnostic, got: {errors:?}"
     );

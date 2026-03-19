@@ -861,7 +861,7 @@ fn fail_recoverable_plain_context_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_recoverable_plain_context");
 
     let output = compile_app_expect_failure(&fixture);
-    assert_output_contains(&output, "cannot use a routine result with '/ ErrorType' as a plain value");
+    assert_output_contains(&output, "cannot use '/ ErrorType' routine results as plain values");
 }
 
 #[test]

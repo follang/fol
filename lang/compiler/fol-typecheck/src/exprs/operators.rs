@@ -207,7 +207,7 @@ pub(crate) fn type_pipe_or(
         {
             "'||' handles routine call results with '/ ErrorType', not err[...] shell values in V1"
         } else {
-            "'||' requires an errorful expression on the left in V1"
+            "'||' requires a routine call result with '/ ErrorType' on the left in V1"
         };
         return Err(node_origin(resolved, left).map_or_else(
             || TypecheckError::new(TypecheckErrorKind::InvalidInput, message),
@@ -327,4 +327,3 @@ pub(crate) fn type_unary_op(
         UnaryOperator::Unwrap => unreachable!("unwrap is handled before plain unary typing"),
     }
 }
-
