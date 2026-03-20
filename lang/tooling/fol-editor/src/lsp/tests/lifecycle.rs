@@ -8,8 +8,9 @@ use super::super::{
     EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCompletionList,
     LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
     LspDidCloseTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
-    LspInitializeResult, LspLocation, LspPosition, LspTextDocumentContentChangeEvent,
-    LspTextDocumentIdentifier, LspVersionedTextDocumentIdentifier,
+    LspInitializeResult, LspLocation, LspPosition, LspSignatureHelpParams,
+    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier,
+    LspVersionedTextDocumentIdentifier,
 };
 use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
 use std::fs;
@@ -779,6 +780,47 @@ fn lsp_server_package_load_failures_stop_before_resolution_and_typecheck() {
             typecheck_workspace: 0,
         }
     );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_reuses_snapshots_for_repeated_signature_help() {
+    let (root, uri) = sample_package_root("signature_help_cache");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] helper(left: int, right: str): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return helper(1, \"ok\")\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    open_document(&mut server, uri.clone(), &text);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let request = || JsonRpcRequest {
+        jsonrpc: "2.0".to_string(),
+        id: JsonRpcId::Number(700),
+        method: "textDocument/signatureHelp".to_string(),
+        params: Some(
+            serde_json::to_value(LspSignatureHelpParams {
+                text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                position: LspPosition {
+                    line: 4,
+                    character: 22,
+                },
+            })
+            .unwrap(),
+        ),
+    };
+
+    let first = server.handle_request(request()).unwrap().unwrap();
+    let second = server.handle_request(request()).unwrap().unwrap();
+
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert!(first.result.is_some());
+    assert_eq!(first.result, second.result);
 
     fs::remove_dir_all(root).ok();
 }
