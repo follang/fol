@@ -1,284 +1,305 @@
-# FOL Editor Plan
+# FOL Editor Polish Plan
 
 Last updated: 2026-03-20
 
 ## Goal
 
-Make `fol-editor` good enough to use as the default day-to-day editor path for
-FOL:
+Take `fol-editor` from "usable and shipped" to "boring, trustworthy, and hard
+to regress":
 
-- completion must work reliably
-- hover/definition/symbols must stay correct while editing
-- diagnostics must stay fast enough for normal typing
-- the public `fol tool` editor surface must match what is actually implemented
-- editor features must have locked behavior with focused tests
+- formatting should feel intentional, not just minimally stable
+- editor responses should stay predictable under ugly real editing flows
+- the public `fol tool` surface should have stronger behavior guarantees
+- more of the semantic contract should be locked with focused tests
+- performance regressions should become easier to detect before they land
 
-This plan replaces the deleted `plan/PLAN.md`.
+This is a follow-up plan after the first editor delivery plan reached 100%.
 
 It is based on:
 
-- `plan/future-work/fol-editor.md`
-- current `fol-editor` implementation and tests
-- current `fol tool` docs
-- an observed failing completion test in-tree
+- the now-shipped `fol-editor` feature set
+- remaining future-work in `plan/future-work/fol-editor.md`
+- the current editor/LSP/frontend tests in-tree
+- the need for much heavier regression coverage around editing behavior
 
 ## Current State
 
-Already present:
+Already shipped:
 
-- Tree-sitter grammar, queries, bundle generation, and parser/query debug commands
-- LSP transport with `initialize`, `didOpen`, `didChange`, `didClose`, `hover`,
-  `definition`, `references`, `rename`, `documentSymbol`, and `completion`
-- compiler-backed diagnostics through package/workspace overlay analysis
-- completion tests covering plain, qualified, type-position, and dot-trigger
-  cases
+- diagnostics, hover, definition, completion, references, rename
+- semantic tokens, signature help, code actions
+- whole-document formatting
+- public `fol tool` exposure for the shipped editor features
+- compiler-backed LSP behavior with per-version semantic caching
 
-Observed gaps and risks:
+Remaining quality gaps:
 
-- completion is not stable yet:
-  `cargo test -p fol-editor completion -- --nocapture` currently fails in
-  `lsp_server_prefers_nearer_symbols_when_completion_names_conflict`
-- `textDocument/completion` currently ignores the incoming LSP completion
-  context and only calls `plain_completion_items(document, position)`
-- every analysis request materializes a full temp overlay copy and rebuilds
-  semantic state from scratch
-- only full-document sync is supported
-- docs still describe completion as a growing feature while the code/test matrix
-  is already broader
-- future-work still lists features that are partly implemented or already
-  exposed internally
+- formatting is real, but still shallow and line-oriented
+- range formatting is still unsupported
+- rename safety is intentionally narrow
+- code actions are intentionally narrow
+- there is still not enough test density around malformed edits, cache
+  invalidation, cross-feature interactions, and CLI/LSP parity
 
 ## Product Direction
 
-The editor should move in this order:
+The next editor phase should move in this order:
 
-1. Make existing features correct.
-2. Make existing features fast enough.
-3. Expose missing but already-supported surfaces cleanly.
-4. Add new editor features only after the core loop is trustworthy.
+1. Lock the shipped behavior much harder.
+2. Improve formatting quality and correctness.
+3. Expand safe semantic features only where the safety boundary is explicit.
+4. Add more performance and regression probes before adding broad new surface.
 
-Do not keep placeholder or parallel editor paths once the real path exists.
+Do not add speculative features just because the LSP supports a method name.
 
 ## Workstreams
 
-### Slice 1: Stabilize Completion Now
+### Slice 1: Formatter Quality Pass
 
-Completion is the highest priority because it is directly broken and blocks
-basic editor usability.
-
-Work:
-
-- [x] fix symbol shadowing so nearer locals beat outer/top-level symbols
-- [x] thread `LspCompletionParams.context` through the server and use it instead of
-  silently discarding trigger metadata
-- [x] make completion ordering deterministic across:
-  local bindings, parameters, imports, top-level items, namespaces, intrinsics,
-  and types
-- [x] separate plain completion, qualified-path completion, type-position
-  completion, and dot-trigger completion at the LSP request boundary instead of
-  hiding all branching inside a single plain path
-- [x] remove stale or misleading fallback behavior where compiler-backed data should
-  be authoritative
-- [x] trim the current completion test files so each one proves one thing instead
-  of carrying large unused-import noise
-
-Exit condition:
-
-- `cargo test -p fol-editor completion -- --nocapture` passes
-- local shadowing is covered by at least one focused regression test
-- LSP completion behavior is driven by request context, not ignored
-
-### Slice 2: Lock The Core LSP Contract
-
-The current server already does more than the plan doc says. That contract
-needs to be explicit and tested.
+The current formatter is a valid first subsystem, but it still needs to become
+less fragile and more language-aware.
 
 Work:
 
-- define the supported v1 LSP feature set:
-  diagnostics, hover, definition, references, rename, document symbols,
-  completion
-- [x] remove any unsupported advertised capability if the implementation is not
-  real enough yet
-- [x] add capability-level tests for `initialize`
-- [x] add lifecycle tests proving open/change/close/update behavior across multiple
-  files in one session
-- [x] verify `build.fol` works through the same mapping, parse, highlight, symbol,
-  and diagnostic paths as source files where intended
+- [x] decide and document the intended formatting style per major surface:
+  declarations, records, calls, `when`, imports, and build files
+- [x] tighten indentation and brace-depth handling around nested literals,
+  `when` bodies, and mixed inline/block constructs
+- [x] normalize trailing whitespace, blank-line behavior, and final newline rules
+- [x] ensure formatting does not drift across repeated runs on already-formatted
+  files
+- [x] add formatter fixtures for:
+  records, entries, `when`, nested literals, imports, aliases, build files,
+  and representative error-tolerant input
 
 Exit condition:
 
-- one test suite locks the exact advertised LSP capabilities
-- docs and implementation agree on the shipped v1 feature set
+- formatting output is stable across a representative fixture corpus
+- formatter fixtures cover both source files and `build.fol`
+- formatter idempotence is locked explicitly
 
-### Slice 3: Stop Rebuilding The World On Every Edit
+### Slice 2: Range Formatting Decision
 
-Correct but slow editor behavior will feel broken in practice.
+Range formatting should only exist if it can be correct enough to trust.
 
 Work:
 
-- [x] profile the current analysis path around overlay creation, package loading,
-  resolver runs, and typecheck runs
-- [x] cache workspace/package discovery in-session instead of rediscovering roots
-  on each request
-- [x] stop copying entire analysis roots into a temp overlay for every request if a
-  narrower overlay or in-memory path can be used
-- [x] reuse semantic artifacts across requests when the document version has not
-  changed
-- separate fast-path requests from full diagnostic refresh where possible
+- [x] evaluate whether range formatting can be implemented without corrupting
+  surrounding structure
+- [x] if yes, ship a safe first range-formatting boundary and lock it with tests
+- [x] if no, keep it explicitly unsupported and document the reason
+- [x] add tests proving the chosen behavior through LSP request handling
 
 Exit condition:
 
-- repeated hover/definition/completion requests on an unchanged document do not
-  rebuild the entire workspace every time
-- [x] the implementation has a documented invalidation model
+- there is one explicit range-formatting policy:
+  supported with constraints, or rejected intentionally
 
-### Slice 4: Incremental Document Model
+### Slice 3: Formatting Surface Parity
 
-The server currently assumes full-document sync only. That is acceptable for a
-bootstrap but not as the long-term editor model.
+Formatting now exists in LSP and CLI, but parity needs stronger guarantees.
 
 Work:
 
-- [x] add incremental text sync support in the document store and LSP types
-- [x] keep full sync only if the client requests it; otherwise use incremental
-  changes
-- [x] make completion/hover/definition operate against the current in-memory
-  document version without hidden resync assumptions
-- [x] add tests for multiple edits in one session, including incomplete text and
-  parse/type errors
+- [x] add tests proving `fol tool format` and `textDocument/formatting` produce the
+  same output for the same file
+- [x] lock CLI summary/detail shapes for formatted vs already-formatted files
+- [x] add tests for formatting on files outside a discovered workspace
+- [x] verify formatting behavior against `build.fol`
+- [x] add integration tests proving formatting does not mutate unrelated files
 
 Exit condition:
 
-- [x] `textDocument/didChange` supports incremental edits
-- [x] document state stays correct through a multi-edit lifecycle test matrix
+- public CLI formatting and LSP formatting stay behaviorally aligned
 
-### Slice 5: Finish The Public Editor Surface
+### Slice 4: Rename Safety Expansion
 
-The internal implementation is ahead of the public CLI/docs surface.
+Rename should grow only where correctness is explicit.
 
 Work:
 
-- [x] define whether the public entry remains `fol tool ...` or moves to
-  `fol editor ...`; choose one and delete the other path instead of keeping both
-- [x] if keeping `fol tool`, expose only real commands
-- add public commands once the underlying features are real:
-  [x] semantic tokens
-  [x] references
-  [x] rename
-  format
-- [x] document editor startup requirements, workspace discovery rules, and failure
-  modes clearly
-- [x] add an integration test for the chosen public entry surface
+- [x] define the next safe rename boundary beyond same-file locals, if one exists
+- [x] evaluate same-package rename safety for unambiguous top-level items
+- [x] reject cross-package and ambiguous cases explicitly
+- [x] add regression tests for:
+  locals, parameters, same-file top-levels, imported names, same-package
+  namespaces, and refusal paths
+- [x] lock exact failure messages/notes where the refusal contract matters
 
 Exit condition:
 
-- [x] one public editor command surface exists
-- [x] the docs no longer describe internal/editor behavior that users cannot reach
+- rename support is broader only where full edit sets are proven correct
+- unsafe cases still fail before partial edits are produced
 
-### Slice 6: Semantic Tokens
+### Slice 5: Code Action Depth Without Guessing
 
-Semantic tokens are the most natural next feature after completion and
-navigation because the semantic snapshot already exists.
+Code actions should grow from compiler truth, not editor-side heuristics.
 
 Work:
 
-- [x] define a small stable token taxonomy for FOL instead of mirroring every
-  internal symbol kind
-- [x] implement `textDocument/semanticTokens/full`
-- [x] reuse resolver/typecheck facts where useful; do not invent a second semantic
-  classifier
-- [x] add snapshot tests over representative FOL files and `build.fol`
-- [x] expose the matching public command only after the LSP feature is real
+- [x] inventory compiler diagnostics that already carry structurally obvious fixes
+- [x] add one narrow code-action slice at a time from real diagnostic suggestions
+- [x] avoid speculative actions that require semantic guessing
+- [x] add tests that prove code actions only appear for matching diagnostics and
+  produce deterministic edits
+- [x] add refusal/empty-result tests for nearby but unsupported diagnostic shapes
 
 Exit condition:
 
-- [x] semantic token output is stable enough for editor integration tests
+- every shipped code action is compiler-backed, exact, and test-locked
 
-### Slice 7: References And Rename
+### Slice 6: Workspace Symbols
 
-These should come before code actions because they build directly on symbol
-identity.
+Workspace symbols are a natural next semantic query if they can reuse existing
+compiler facts safely.
 
 Work:
 
-- [x] implement `textDocument/references`
-- [x] implement `textDocument/rename`
-- [x] make rename refuse unsafe multi-file cases until cross-file correctness is
-  solid
-- [x] cover locals, parameters, top-level items, imported namespaces, and
-  same-package namespaced references
-- [x] define the first safe rename boundary explicitly
+- [x] define the first supported workspace-symbol scope:
+  current package only, or current workspace members only
+- [x] implement `workspace/symbol` without introducing a parallel semantic engine
+- [x] sort and rank results deterministically
+- [x] add tests for symbol visibility, namespace qualification, and ordering
+- [x] document the scope boundary clearly
 
 Exit condition:
 
-- references and rename are correct for the supported symbol classes
-- unsupported rename cases fail explicitly instead of doing partial work
+- `workspace/symbol` is real, scoped, and deterministic
 
-### Slice 8: Formatting
+### Slice 7: Cache And Invalidation Hardening
 
-Formatting should be a real subsystem, not a placeholder command.
+The current split between diagnostics and semantic snapshots is better, but
+there are still many invalidation edges to lock down.
 
 Work:
 
-- decide whether formatting is AST-driven, CST-driven, or hybrid
-- implement whole-document formatting first
-- add range formatting only if the formatter can preserve stable structure
-- wire formatting through LSP and CLI only after the formatter itself is stable
-- delete any placeholder formatting exposure until the real formatter exists
+- [x] add tests for repeated mixed request sequences:
+  diagnose -> hover -> complete -> format -> rename -> close -> reopen
+- [x] add tests for stale snapshot invalidation after ranged edits near symbol
+  boundaries
+- [x] add tests for multi-file sessions where only one file changes
+- [x] add tests that differentiate diagnostic cache reuse from semantic cache reuse
+- [x] add more stage-counter assertions around unchanged formatting and navigation
+  requests
 
 Exit condition:
 
-- formatting is deterministic
-- formatter output has fixture-based regression coverage
+- cache invalidation behavior is locked across mixed real-editor flows
 
-### Slice 9: Code Actions And Signature Help
+### Slice 8: Error-Tolerant Editing Matrix
 
-These are useful, but they are downstream of stable diagnostics, completion,
-and formatting.
+The editor needs stronger behavior guarantees while users are in broken states.
 
 Work:
 
-- signature help for routine calls
-- diagnostic-driven quick fixes only where the fix is structurally obvious
-- no speculative or weak code actions
-- add focused tests for each supported action
+- [x] add completion, hover, signature-help, formatting, and code-action tests on
+  parse-broken input
+- [x] add tests for partially typed declarations, broken `when` blocks, and
+  incomplete calls
+- [x] add tests proving the server returns safe empty/null responses where needed
+  instead of crashing or leaking stale data
+- [x] add tests for recovery after broken text becomes valid again
 
 Exit condition:
 
-- each code action has a precise trigger and deterministic rewrite
+- broken intermediate text is a locked, ordinary case for the server
+
+### Slice 9: Build File And Non-Standard File Coverage
+
+`build.fol` already works in important paths. The test matrix should treat that
+as a first-class contract.
+
+Work:
+
+- [x] add formatting fixtures and LSP formatting tests for `build.fol`
+- [x] add signature-help, code-action, and rename refusal tests where relevant on
+  `build.fol`
+- [x] add CLI integration coverage for editor commands against build-entry files
+- [x] ensure docs stay aligned if behavior differs intentionally from ordinary
+  source files
+
+Exit condition:
+
+- build-file behavior is covered across more than diagnostics/navigation only
+
+### Slice 10: Public Surface Contract Tests
+
+The frontend/editor boundary now deserves stronger contract locking.
+
+Work:
+
+- [x] add CLI parsing tests for every shipped editor subcommand variant and edge
+  flag combination
+- [x] add summary-shape tests for every public editor command
+- [x] add tests proving unsupported future commands stay rejected
+- [x] add JSON/plain output snapshot-style assertions for representative editor
+  commands and failures
+- [x] lock `initialize` capability exposure against the shipped public docs
+
+Exit condition:
+
+- the public `fol tool` editor surface is hard to accidentally drift
+
+### Slice 11: Test Structure Cleanup
+
+The next wave of tests should make the suite easier to maintain, not noisier.
+
+Work:
+
+- [x] split giant mixed-purpose editor tests when they start covering unrelated
+  behavior
+- [x] introduce shared fixture/setup helpers only where they reduce repetition
+  without hiding intent
+- [x] keep one behavior per regression test where practical
+- [x] add naming discipline so failures immediately describe the broken contract
+
+Exit condition:
+
+- editor tests stay denser without turning into unreadable mixed suites
 
 ## Testing Strategy
 
-Add and keep these test layers:
+Add and keep these layers:
 
-- focused unit tests for completion context, scope lookup, and ranking
-- LSP request/response tests for each supported method
-- lifecycle tests covering open, edit, diagnose, complete, hover, close
-- integration tests through the public `fol` entrypoint
-- [x] performance smoke tests for repeated requests on unchanged documents
+- formatter fixture snapshots
+- LSP request/response tests per method
+- mixed lifecycle tests covering cache invalidation and recovery
+- frontend integration tests through `fol tool`
+- parity tests between CLI and LSP for overlapping features
+- performance smoke tests using the existing stage counters
+- refusal-path tests for unsupported or intentionally unsafe behavior
 
-Avoid giant mixed-purpose test modules. Split tests by behavior and remove
-unused imports and setup noise as the suite is touched.
+Priority testing gaps to close first:
+
+- formatting fixture depth
+- malformed incremental edit sequences
+- cache invalidation after mixed requests
+- CLI/LSP formatting parity
+- rename refusal coverage
+- code-action diagnostic matching coverage
 
 ## Documentation Work
 
-Update these docs as slices land:
+Update these docs as polish slices land:
 
-- [x] `book/src/000_overview/300_editor.md`
-- [x] `book/src/050_tooling/300_editor.md`
-- [x] `plan/future-work/fol-editor.md`
+- `book/src/050_tooling/200_tool_commands.md`
+- `book/src/050_tooling/300_editor.md`
+- `book/src/050_tooling/500_lsp.md`
+- `plan/future-work/fol-editor.md`
 
 Specifically:
 
-- [x] move shipped features out of future-work
-- [x] keep future-work limited to features that are actually still future work
-- [x] document the chosen public command surface and editor capability set
+- keep docs aligned with the real public surface
+- move newly shipped items out of future-work immediately
+- document explicit refusal boundaries, not just success cases
+- document formatter scope and any intentional range-formatting limitation
 
 ## Immediate Next Slice
 
-Start with Slice 1.
+Start with Slice 1 and Slice 3 together:
 
-Completion is already failing in-tree and is the clearest usability issue.
-Until completion is correct and stable, adding rename, references, formatting,
-or semantic tokens is the wrong priority.
+- deepen formatter fixtures and idempotence coverage
+- lock CLI/LSP formatting parity
+
+That is the highest-signal polish work because formatting is newly shipped and
+still the easiest place for visible regressions to slip in.
