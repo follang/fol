@@ -63,6 +63,10 @@ pub struct LspServerCapabilities {
     pub definition_provider: bool,
     pub document_symbol_provider: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub references_provider: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rename_provider: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completion_provider: Option<LspCompletionOptions>,
 }
 

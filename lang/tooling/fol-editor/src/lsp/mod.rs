@@ -63,6 +63,8 @@ impl EditorLspServer {
                             hover_provider: true,
                             definition_provider: true,
                             document_symbol_provider: true,
+                            references_provider: Some(true),
+                            rename_provider: Some(true),
                             completion_provider: Some(LspCompletionOptions {
                                 trigger_characters: vec![".".to_string()],
                             }),

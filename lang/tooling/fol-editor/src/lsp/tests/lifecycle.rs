@@ -32,6 +32,8 @@ fn lsp_server_handles_initialize_shutdown_and_exit() {
     assert!(result.capabilities.hover_provider);
     assert!(result.capabilities.definition_provider);
     assert!(result.capabilities.document_symbol_provider);
+    assert_eq!(result.capabilities.references_provider, Some(true));
+    assert_eq!(result.capabilities.rename_provider, Some(true));
     let completion_provider = result
         .capabilities
         .completion_provider
@@ -95,14 +97,16 @@ fn lsp_server_rejects_unimplemented_v1_methods_explicitly() {
         .handle_request(JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             id: JsonRpcId::Number(99),
-            method: "textDocument/rename".to_string(),
-            params: Some(serde_json::json!({})),
+            method: "textDocument/semanticTokens/full".to_string(),
+            params: Some(serde_json::json!({
+                "textDocument": { "uri": "file:///tmp/sample.fol" }
+            })),
         })
         .expect_err("unimplemented requests should fail explicitly");
 
     assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
     assert!(error.message.contains("unsupported LSP request"));
-    assert!(error.message.contains("textDocument/rename"));
+    assert!(error.message.contains("textDocument/semanticTokens/full"));
 }
 
 #[test]
