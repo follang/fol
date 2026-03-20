@@ -438,6 +438,55 @@ fn editor_rename_command_surfaces_safe_boundary_failures() {
 }
 
 #[test]
+fn editor_rename_command_refuses_same_package_namespaced_symbols() {
+    let root = temp_root("rename_same_package_namespace_cli");
+    fs::create_dir_all(root.join("src/api")).expect("should create api root");
+    fs::write(&root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+        .expect("should write package manifest");
+    fs::write(
+        root.join("build.fol"),
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+    )
+    .expect("should write build source");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return api::helper()\n}\n",
+    )
+    .expect("should write main source");
+    fs::write(
+        root.join("src/api/lib.fol"),
+        "fun[exp] helper(): int = {\n    return 7\n}\n",
+    )
+    .expect("should write namespaced helper");
+
+    let error = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "rename",
+            root.join("src/main.fol").to_string_lossy().as_ref(),
+            "--line",
+            "1",
+            "--character",
+            "16",
+            "assist",
+        ],
+        &root,
+    )
+    .expect_err("same-package namespace rename should stay outside the safe boundary");
+    let json = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig {
+        mode: fol_frontend::OutputMode::Json,
+    })
+    .render_error(&error)
+    .expect("json render should succeed");
+
+    assert!(json.contains("\"kind\": \"FrontendCommandFailed\""));
+    assert!(json.contains("same-file local symbols only"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn editor_commands_respect_requested_output_mode() {
     let root = repo_root();
     let fixture = "test/apps/fixtures/record_flow/main.fol";
