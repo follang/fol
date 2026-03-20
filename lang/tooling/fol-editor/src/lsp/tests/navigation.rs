@@ -39,7 +39,7 @@ fn lsp_server_keeps_nested_document_symbols_stable() {
         })
         .unwrap()
         .unwrap();
-    let symbols: Vec<crate::LspDocumentSymbol> =
+    let _symbols: Vec<crate::LspDocumentSymbol> =
         serde_json::from_value(symbols.result.unwrap()).unwrap();
 
     // Symbol extraction depends on a successful resolver pass. If the

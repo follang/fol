@@ -1,17 +1,10 @@
 use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root};
 use super::super::{
-    completion_helpers::completion_context, completion_helpers::CompletionContext,
-    EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCompletionContext,
-    LspCompletionList, LspCompletionParams, LspDefinitionParams,
-    LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
-    LspDidOpenTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
-    LspInitializeResult, LspLocation, LspPosition, LspPublishDiagnosticsParams,
-    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
-    LspVersionedTextDocumentIdentifier,
+    EditorLspServer, JsonRpcId, JsonRpcRequest, LspCompletionList, LspCompletionParams,
+    LspPosition, LspTextDocumentIdentifier,
 };
-use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
+use crate::EditorConfig;
 use std::fs;
-use std::path::PathBuf;
 
 #[test]
 fn lsp_server_handles_completion_requests() {

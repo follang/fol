@@ -336,7 +336,7 @@ fn lsp_server_handles_hover_definition_and_document_symbols() {
         })
         .unwrap()
         .unwrap();
-    let hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+    let _hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
     // Hover may return None if the resolver doesn't produce a resolved
     // workspace for the current fixture syntax. The test verifies the
     // hover request completes without panicking.
@@ -481,4 +481,3 @@ fn lsp_parse_cascade_yields_at_most_one_diagnostic_per_line_per_code() {
 
     fs::remove_dir_all(root).ok();
 }
-
