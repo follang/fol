@@ -1,17 +1,21 @@
 use super::*;
 use std::fs;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("System time should be after unix epoch")
         .as_nanos();
+    let sequence = NEXT_TEMP_ID.fetch_add(1, Ordering::Relaxed);
     std::env::temp_dir().join(format!(
-        "fol_parser_anon_log_{}_{}_{}",
+        "fol_parser_anon_log_{}_{}_{}_{}",
         label,
         std::process::id(),
-        stamp
+        stamp,
+        sequence
     ))
 }
 
@@ -83,4 +87,12 @@ fn test_anonymous_logical_missing_body_separator_uses_logical_wording() {
         "Anonymous logical body diagnostics should use logical wording, got: {}",
         error.message
     );
+}
+
+#[test]
+fn unique_temp_root_produces_distinct_paths_for_rapid_calls() {
+    let first = unique_temp_root("collision_check");
+    let second = unique_temp_root("collision_check");
+
+    assert_ne!(first, second);
 }
