@@ -14,9 +14,13 @@ That crate owns two related subsystems:
 The public entrypoints are exposed through `fol tool`:
 
 - `fol tool lsp`
+- `fol tool format <PATH>`
 - `fol tool parse <PATH>`
 - `fol tool highlight <PATH>`
 - `fol tool symbols <PATH>`
+- `fol tool references <PATH> --line <LINE> --character <CHARACTER>`
+- `fol tool rename <PATH> --line <LINE> --character <CHARACTER> <NEW_NAME>`
+- `fol tool semantic-tokens <PATH>`
 - `fol tool tree generate <PATH>`
 
 This keeps editor workflows under the same `fol` binary rather than introducing
@@ -42,8 +46,56 @@ It is responsible for:
 - compiler-backed diagnostics
 - hover
 - go-to-definition
+- whole-document formatting
+- code actions for exact compiler suggestions
+  The current shipped inventory is intentionally one diagnostic family:
+  unresolved-name replacements where the compiler attached an exact replacement.
+- signature help for plain and qualified routine calls
+- references
+- rename for same-file local and current-package top-level symbols
+- semantic tokens
 - document symbols
-- completion, as that feature grows
+- workspace symbols for current open workspace members
+- completion
+
+The currently supported v1 LSP surface is:
+
+- diagnostics
+- hover
+- definition
+- formatting
+- code actions for exact compiler suggestions
+- signature help for plain and qualified routine calls
+- references
+- rename for same-file local and current-package top-level symbols
+- semantic tokens
+- document symbols
+- workspace symbols for current open workspace members
+- completion
+
+The server keeps diagnostics and semantic snapshots separately.
+
+Formatting is intentionally whole-document only right now.
+`textDocument/rangeFormatting` stays unsupported until there is a safe
+structure-preserving boundary instead of a partial line-rewriter.
+
+The current formatter contract is intentionally narrow but explicit:
+
+- indentation is four spaces per brace depth
+- lines are trimmed before indentation is re-applied
+- leading blank lines are removed and repeated blank lines collapse to one
+- trailing blank lines are removed
+- output always ends with one final newline when the document is non-empty
+- line endings are normalized to `\n`
+- `build.fol` follows the same formatter entrypoint and indentation rules as
+  ordinary source files
+
+Diagnostics refresh on `didOpen` and `didChange`.
+
+Semantic requests keep one semantic snapshot per open document version and
+reuse it for hover, definition, signature help, references, rename, semantic
+tokens, document symbols, workspace symbols, and completion until the document
+changes or closes.
 
 ## Compiler Truth
 
@@ -73,9 +125,13 @@ Use:
 
 ```text
 fol tool lsp
+fol tool format path/to/file.fol
 ```
 
 as the language server entrypoint.
+
+Launch it from inside a discovered package or workspace root. The frontend
+looks upward for `package.yaml` or `fol.work.yaml` before starting the server.
 
 Use:
 
@@ -83,6 +139,10 @@ Use:
 fol tool parse path/to/file.fol
 fol tool highlight path/to/file.fol
 fol tool symbols path/to/file.fol
+fol tool format path/to/file.fol
+fol tool references path/to/file.fol --line 12 --character 8
+fol tool rename path/to/file.fol --line 12 --character 8 total
+fol tool semantic-tokens path/to/file.fol
 ```
 
 for parser/query debugging and validation.

@@ -9,21 +9,31 @@ pub use transport::run_lsp_stdio;
 pub(crate) use transport::run_lsp_stdio_with_io;
 pub use types::{
     EditorCompletionItem, JsonRpcError, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
-    JsonRpcResponse, LspCompletionContext, LspCompletionItem, LspCompletionList,
-    LspCompletionOptions, LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
-    LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams, LspDocumentSymbol,
-    LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams, LspInitializeResult,
-    LspPublishDiagnosticsParams, LspServerCapabilities, LspServerInfo,
+    JsonRpcResponse, LspCodeAction, LspCodeActionContext, LspCodeActionParams,
+    LspCompletionContext, LspCompletionItem, LspCompletionList, LspCompletionOptions,
+    LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
+    LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams, LspDocumentFormattingParams,
+    LspDocumentSymbol, LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams,
+    LspInitializeResult, LspParameterInformation, LspPublishDiagnosticsParams,
+    LspReferenceContext, LspReferenceParams, LspRenameParams, LspSemanticTokens,
+    LspSemanticTokensLegend, LspSemanticTokensOptions, LspSemanticTokensParams,
+    LspServerCapabilities, LspServerInfo, LspSignatureHelp,
+    LspSignatureHelpOptions, LspSignatureHelpParams, LspSignatureInformation,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
-    LspTextDocumentSyncOptions, LspVersionedTextDocumentIdentifier,
+    LspTextDocumentSyncOptions, LspTextEdit, LspVersionedTextDocumentIdentifier,
+    LspWorkspaceEdit, LspWorkspaceSymbol, LspWorkspaceSymbolParams,
 };
 
 use crate::{
-    map_document_workspace, EditorConfig, EditorDocument, EditorDocumentUri, EditorError,
-    EditorErrorKind, EditorResult, EditorSession, EditorWorkspaceMapping, LspLocation, LspPosition,
+    dedup_lsp_diagnostics, EditorConfig, EditorDocument, EditorDocumentUri, EditorError,
+    EditorErrorKind, EditorResult, EditorSession, EditorWorkspaceMapping, EditorWorkspaceRoots,
+    LspLocation, LspPosition, LspRange, formatting_edit,
 };
-use analysis::{analyze_document, analyze_document_semantics};
+use analysis::{analyze_document_diagnostics, analyze_document_semantics};
+use completion_helpers::completion_context_with_lsp;
+use std::sync::Arc;
 use transport::from_params;
+use crate::workspace::{canonical_document_path, discover_workspace_roots};
 
 pub struct EditorLspServer {
     pub session: EditorSession,
@@ -49,11 +59,33 @@ impl EditorLspServer {
                         capabilities: LspServerCapabilities {
                             text_document_sync: LspTextDocumentSyncOptions {
                                 open_close: true,
-                                change: 1,
+                                change: if self.session.config.full_document_sync {
+                                    1
+                                } else {
+                                    2
+                                },
                             },
                             hover_provider: true,
                             definition_provider: true,
                             document_symbol_provider: true,
+                            workspace_symbol_provider: Some(true),
+                            formatting_provider: Some(true),
+                            code_action_provider: Some(true),
+                            signature_help_provider: Some(LspSignatureHelpOptions {
+                                trigger_characters: vec!["(".to_string(), ",".to_string()],
+                            }),
+                            references_provider: Some(true),
+                            rename_provider: Some(true),
+                            semantic_tokens_provider: Some(LspSemanticTokensOptions {
+                                legend: LspSemanticTokensLegend {
+                                    token_types: semantic::semantic_token_types()
+                                        .iter()
+                                        .map(|kind| kind.to_string())
+                                        .collect(),
+                                    token_modifiers: Vec::new(),
+                                },
+                                full: true,
+                            }),
                             completion_provider: Some(LspCompletionOptions {
                                 trigger_characters: vec![".".to_string()],
                             }),
@@ -104,6 +136,94 @@ impl EditorLspServer {
                     error: None,
                 }))
             }
+            "textDocument/codeAction" => {
+                let params: LspCodeActionParams = from_params(request.params)?;
+                let result = self.code_actions(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                    params.range,
+                    &params.context.diagnostics,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("code actions should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "textDocument/formatting" => {
+                let params: LspDocumentFormattingParams = from_params(request.params)?;
+                let result = self.format_document(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("formatting edits should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "textDocument/signatureHelp" => {
+                let params: LspSignatureHelpParams = from_params(request.params)?;
+                let result = self.signature_help(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                    params.position,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("signature help should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "textDocument/references" => {
+                let params: LspReferenceParams = from_params(request.params)?;
+                let result = self.references(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                    params.position,
+                    params.context.include_declaration,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("references should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "textDocument/rename" => {
+                let params: LspRenameParams = from_params(request.params)?;
+                let result = self.rename(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                    params.position,
+                    &params.new_name,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(serde_json::to_value(result).expect("rename should serialize")),
+                    error: None,
+                }))
+            }
+            "textDocument/semanticTokens/full" => {
+                let params: LspSemanticTokensParams = from_params(request.params)?;
+                let result =
+                    self.semantic_tokens(&EditorDocumentUri::parse(&params.text_document.uri)?)?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("semantic tokens should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
             "textDocument/documentSymbol" => {
                 let params: LspDocumentSymbolParams = from_params(request.params)?;
                 let result =
@@ -117,11 +237,24 @@ impl EditorLspServer {
                     error: None,
                 }))
             }
+            "workspace/symbol" => {
+                let params: LspWorkspaceSymbolParams = from_params(request.params)?;
+                let result = self.workspace_symbols(&params.query)?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("workspace symbols should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
             "textDocument/completion" => {
                 let params: LspCompletionParams = from_params(request.params)?;
                 let result = self.completion(
                     &EditorDocumentUri::parse(&params.text_document.uri)?,
                     params.position,
+                    params.context.as_ref(),
                 )?;
                 Ok(Some(JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
@@ -158,33 +291,43 @@ impl EditorLspServer {
                     params.text_document.version,
                     params.text_document.text,
                 )?;
-                let mapping =
-                    map_document_workspace(document.path.as_path(), &self.session.config)?;
+                let mapping = self.cached_document_mapping(document.path.as_path())?;
                 self.session
                     .mappings
                     .insert(uri.as_str().to_string(), mapping);
                 self.session.documents.open(document);
+                self.session.diagnostic_snapshots.remove(uri.as_str());
+                self.session.semantic_snapshots.remove(uri.as_str());
                 let diagnostics = self.publish_diagnostics(&uri)?;
                 Ok(vec![diagnostics])
             }
             "textDocument/didChange" => {
                 let params: LspDidChangeTextDocumentParams = from_params(notification.params)?;
                 let uri = EditorDocumentUri::parse(&params.text_document.uri)?;
-                let text = params
-                    .content_changes
-                    .last()
-                    .map(|change| change.text.clone())
-                    .ok_or_else(|| {
-                        EditorError::new(
-                            EditorErrorKind::InvalidInput,
-                            "didChange requires at least one content change",
-                        )
-                    })?;
-                self.session.documents.apply_full_change(
-                    &uri,
-                    params.text_document.version,
-                    text,
-                )?;
+                if params.content_changes.is_empty() {
+                    return Err(EditorError::new(
+                        EditorErrorKind::InvalidInput,
+                        "didChange requires at least one content change",
+                    ));
+                }
+                for change in params.content_changes {
+                    if let Some(range) = change.range {
+                        self.session.documents.apply_incremental_change(
+                            &uri,
+                            params.text_document.version,
+                            range,
+                            change.text,
+                        )?;
+                    } else {
+                        self.session.documents.apply_full_change(
+                            &uri,
+                            params.text_document.version,
+                            change.text,
+                        )?;
+                    }
+                }
+                self.session.diagnostic_snapshots.remove(uri.as_str());
+                self.session.semantic_snapshots.remove(uri.as_str());
                 let diagnostics = self.publish_diagnostics(&uri)?;
                 Ok(vec![diagnostics])
             }
@@ -193,6 +336,8 @@ impl EditorLspServer {
                 let uri = EditorDocumentUri::parse(&params.text_document.uri)?;
                 self.session.documents.close(&uri);
                 self.session.mappings.remove(uri.as_str());
+                self.session.diagnostic_snapshots.remove(uri.as_str());
+                self.session.semantic_snapshots.remove(uri.as_str());
                 Ok(vec![LspPublishDiagnosticsParams {
                     uri: uri.as_str().to_string(),
                     diagnostics: Vec::new(),
@@ -206,12 +351,11 @@ impl EditorLspServer {
     }
 
     pub fn publish_diagnostics(
-        &self,
+        &mut self,
         uri: &EditorDocumentUri,
     ) -> EditorResult<LspPublishDiagnosticsParams> {
-        let document = self.open_document(uri)?;
-        let mapping = self.document_mapping(document, uri)?;
-        let diagnostics = analyze_document(document, &mapping)?;
+        let document = self.open_document(uri)?.clone();
+        let diagnostics = dedup_lsp_diagnostics(self.diagnostic_snapshot(uri, &document)?);
         Ok(LspPublishDiagnosticsParams {
             uri: uri.as_str().to_string(),
             diagnostics,
@@ -219,13 +363,12 @@ impl EditorLspServer {
     }
 
     pub fn hover(
-        &self,
+        &mut self,
         uri: &EditorDocumentUri,
         position: LspPosition,
     ) -> EditorResult<Option<LspHover>> {
-        let document = self.open_document(uri)?;
-        let mapping = self.document_mapping(document, uri)?;
-        let snapshot = analyze_document_semantics(document, &mapping)?;
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
         let hit = snapshot
             .reference_at(position)
             .and_then(|reference| snapshot.hover_for_reference(reference));
@@ -233,40 +376,147 @@ impl EditorLspServer {
     }
 
     pub fn definition(
-        &self,
+        &mut self,
         uri: &EditorDocumentUri,
         position: LspPosition,
     ) -> EditorResult<Option<LspLocation>> {
-        let document = self.open_document(uri)?;
-        let mapping = self.document_mapping(document, uri)?;
-        let snapshot = analyze_document_semantics(document, &mapping)?;
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(snapshot
             .reference_at(position)
             .and_then(|reference| snapshot.definition_for_reference(reference)))
     }
 
+    pub fn signature_help(
+        &mut self,
+        uri: &EditorDocumentUri,
+        position: LspPosition,
+    ) -> EditorResult<Option<LspSignatureHelp>> {
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        Ok(snapshot.signature_help(&document, position))
+    }
+
+    pub fn code_actions(
+        &mut self,
+        uri: &EditorDocumentUri,
+        range: LspRange,
+        diagnostics: &[crate::LspDiagnostic],
+    ) -> EditorResult<Vec<LspCodeAction>> {
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        Ok(snapshot.code_actions(uri.as_str(), range, diagnostics))
+    }
+
+    pub fn format_document(
+        &mut self,
+        uri: &EditorDocumentUri,
+    ) -> EditorResult<Vec<crate::LspTextEdit>> {
+        let document = self.open_document(uri)?.clone();
+        Ok(formatting_edit(&document.text).into_iter().collect())
+    }
+
     pub fn document_symbols(
-        &self,
+        &mut self,
         uri: &EditorDocumentUri,
     ) -> EditorResult<Vec<LspDocumentSymbol>> {
-        let document = self.open_document(uri)?;
-        let mapping = self.document_mapping(document, uri)?;
-        let snapshot = analyze_document_semantics(document, &mapping)?;
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(snapshot.document_symbols_for_current_path())
     }
 
-    pub fn completion(
-        &self,
+    pub fn references(
+        &mut self,
         uri: &EditorDocumentUri,
         position: LspPosition,
+        include_declaration: bool,
+    ) -> EditorResult<Vec<LspLocation>> {
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        Ok(snapshot
+            .reference_at(position)
+            .map(|reference| snapshot.references_for_reference(reference, include_declaration))
+            .unwrap_or_default())
+    }
+
+    pub fn rename(
+        &mut self,
+        uri: &EditorDocumentUri,
+        position: LspPosition,
+        new_name: &str,
+    ) -> EditorResult<LspWorkspaceEdit> {
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        let reference = snapshot.reference_at(position).ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::InvalidInput,
+                format!("no rename target at {}:{}", position.line, position.character),
+            )
+        })?;
+        snapshot.rename_for_reference(reference, new_name)
+    }
+
+    pub fn workspace_symbols(
+        &mut self,
+        query: &str,
+    ) -> EditorResult<Vec<LspWorkspaceSymbol>> {
+        let open_documents = self
+            .session
+            .documents
+            .iter()
+            .map(|(uri, document)| (EditorDocumentUri::parse(uri), document.clone()))
+            .collect::<Vec<_>>();
+        let mut symbols = Vec::new();
+        let mut seen = std::collections::BTreeSet::new();
+
+        for (uri, document) in open_documents {
+            let uri = uri?;
+            let snapshot = self.semantic_snapshot(&uri, &document)?;
+            for symbol in snapshot.workspace_symbols(query) {
+                let key = (
+                    symbol.name.clone(),
+                    symbol.kind,
+                    symbol.location.uri.clone(),
+                    symbol.location.range.start.line,
+                    symbol.location.range.start.character,
+                    symbol.container_name.clone(),
+                );
+                if seen.insert(key) {
+                    symbols.push(symbol);
+                }
+            }
+        }
+
+        symbols.sort_by(|left, right| {
+            left.name
+                .cmp(&right.name)
+                .then(left.container_name.cmp(&right.container_name))
+                .then(left.location.uri.cmp(&right.location.uri))
+                .then(left.location.range.start.line.cmp(&right.location.range.start.line))
+                .then(
+                    left.location
+                        .range
+                        .start
+                        .character
+                        .cmp(&right.location.range.start.character),
+                )
+        });
+        Ok(symbols)
+    }
+
+    pub fn completion(
+        &mut self,
+        uri: &EditorDocumentUri,
+        position: LspPosition,
+        context: Option<&LspCompletionContext>,
     ) -> EditorResult<LspCompletionList> {
-        let document = self.open_document(uri)?;
-        let mapping = self.document_mapping(document, uri)?;
-        let snapshot = analyze_document_semantics(document, &mapping)?;
+        let document = self.open_document(uri)?.clone();
+        let completion_context = completion_context_with_lsp(&document, position, context);
+        let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(LspCompletionList {
             is_incomplete: false,
             items: snapshot
-                .plain_completion_items(document, position)
+                .completion_items(&document, position, completion_context)
                 .into_iter()
                 .map(|item| LspCompletionItem {
                     label: item.label,
@@ -275,6 +525,17 @@ impl EditorLspServer {
                     insert_text: item.insert_text,
                 })
                 .collect(),
+        })
+    }
+
+    pub fn semantic_tokens(
+        &mut self,
+        uri: &EditorDocumentUri,
+    ) -> EditorResult<LspSemanticTokens> {
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        Ok(LspSemanticTokens {
+            data: snapshot.semantic_tokens_for_current_path(),
         })
     }
 
@@ -288,19 +549,91 @@ impl EditorLspServer {
     }
 
     fn document_mapping(
-        &self,
+        &mut self,
         document: &EditorDocument,
         uri: &EditorDocumentUri,
     ) -> EditorResult<EditorWorkspaceMapping> {
-        Ok(self
-            .session
-            .mappings
-            .get(uri.as_str())
-            .cloned()
-            .unwrap_or(map_document_workspace(
-                document.path.as_path(),
-                &self.session.config,
-            )?))
+        if let Some(mapping) = self.session.mappings.get(uri.as_str()) {
+            return Ok(mapping.clone());
+        }
+        self.cached_document_mapping(document.path.as_path())
+    }
+
+    fn cached_document_mapping(&mut self, path: &std::path::Path) -> EditorResult<EditorWorkspaceMapping> {
+        let absolute = canonical_document_path(path)?;
+        let directory = absolute.parent().ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::InvalidDocumentPath,
+                format!("document '{}' has no parent directory", absolute.display()),
+            )
+        })?;
+        let roots = self.cached_workspace_roots(directory);
+        Ok(EditorWorkspaceMapping {
+            document_path: absolute,
+            package_root: roots.package_root,
+            workspace_root: roots.workspace_root,
+            analysis_root: roots.analysis_root,
+        })
+    }
+
+    fn cached_workspace_roots(
+        &mut self,
+        directory: &std::path::Path,
+    ) -> EditorWorkspaceRoots {
+        if let Some(roots) = self.session.workspace_roots.get(directory) {
+            return roots.clone();
+        }
+        let roots = discover_workspace_roots(directory, &self.session.config);
+        self.session
+            .workspace_roots
+            .insert(directory.to_path_buf(), roots.clone());
+        roots
+    }
+
+    fn semantic_snapshot(
+        &mut self,
+        uri: &EditorDocumentUri,
+        document: &EditorDocument,
+    ) -> EditorResult<Arc<semantic::SemanticSnapshot>> {
+        if let Some(cached) = self.session.semantic_snapshots.get(uri.as_str()) {
+            if cached.document_version == document.version {
+                return Ok(Arc::clone(&cached.snapshot));
+            }
+        }
+
+        let mapping = self.document_mapping(document, uri)?;
+        let snapshot = Arc::new(analyze_document_semantics(document, &mapping)?);
+        self.session.semantic_snapshots.insert(
+            uri.as_str().to_string(),
+            analysis::CachedSemanticSnapshot {
+                document_version: document.version,
+                snapshot: Arc::clone(&snapshot),
+            },
+        );
+        Ok(snapshot)
+    }
+
+    fn diagnostic_snapshot(
+        &mut self,
+        uri: &EditorDocumentUri,
+        document: &EditorDocument,
+    ) -> EditorResult<Vec<crate::LspDiagnostic>> {
+        if let Some(cached) = self.session.diagnostic_snapshots.get(uri.as_str()) {
+            if cached.document_version == document.version {
+                return Ok(cached.diagnostics.clone());
+            }
+        }
+
+        let mapping = self.document_mapping(document, uri)?;
+        let diagnostics = analyze_document_diagnostics(document, &mapping)?;
+        self.session.diagnostic_snapshots.insert(
+            uri.as_str().to_string(),
+            analysis::CachedDiagnosticSnapshot {
+                document_version: document.version,
+                diagnostics: diagnostics.clone(),
+            },
+        );
+        Ok(diagnostics)
     }
 }
 

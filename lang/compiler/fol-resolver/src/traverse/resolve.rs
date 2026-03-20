@@ -3,6 +3,7 @@ use crate::{
     model::{ResolvedProgram, ResolvedSymbol, ScopeKind, SymbolKind},
     ResolverError, ResolverErrorKind, ScopeId, SymbolId,
 };
+use fol_diagnostics::{DiagnosticLocation, DiagnosticSuggestion};
 use fol_parser::ast::ParsedDeclVisibility;
 use fol_parser::ast::QualifiedPath;
 
@@ -64,28 +65,42 @@ pub fn resolve_lexical_symbol_of_kinds(
                 ));
             }
 
-            return Err(error_with_optional_origin(
-                ResolverErrorKind::UnresolvedName,
-                format!(
-                    "could not resolve {} '{}'",
-                    missing_role.unwrap_or("name"),
-                    name
+            return Err(with_unresolved_name_suggestion(
+                error_with_optional_origin(
+                    ResolverErrorKind::UnresolvedName,
+                    format!(
+                        "could not resolve {} '{}'",
+                        missing_role.unwrap_or("name"),
+                        name
+                    ),
+                    origin.clone(),
                 ),
-                origin,
+                program,
+                starting_scope,
+                name,
+                allowed_kinds,
+                origin.as_ref(),
             ));
         }
 
         current_scope = program.scope(scope_id).and_then(|scope| scope.parent);
     }
 
-    Err(error_with_optional_origin(
-        ResolverErrorKind::UnresolvedName,
-        format!(
-            "could not resolve {} '{}'",
-            missing_role.unwrap_or("name"),
-            name
+    Err(with_unresolved_name_suggestion(
+        error_with_optional_origin(
+            ResolverErrorKind::UnresolvedName,
+            format!(
+                "could not resolve {} '{}'",
+                missing_role.unwrap_or("name"),
+                name
+            ),
+            origin.clone(),
         ),
-        origin,
+        program,
+        starting_scope,
+        name,
+        allowed_kinds,
+        origin.as_ref(),
     ))
 }
 
@@ -128,14 +143,21 @@ pub fn resolve_imported_symbol_of_kinds(
 
     match matches.as_slice() {
         [symbol] => Ok(symbol.id),
-        [] => Err(error_with_optional_origin(
-            ResolverErrorKind::UnresolvedName,
-            format!(
-                "could not resolve {} '{}'",
-                missing_role.unwrap_or("name"),
-                name
+        [] => Err(with_unresolved_name_suggestion(
+            error_with_optional_origin(
+                ResolverErrorKind::UnresolvedName,
+                format!(
+                    "could not resolve {} '{}'",
+                    missing_role.unwrap_or("name"),
+                    name
+                ),
+                origin.clone(),
             ),
-            origin,
+            program,
+            starting_scope,
+            name,
+            allowed_kinds,
+            origin.as_ref(),
         )),
         _ => Err(ambiguity_error_with_optional_origin(
             lexical_ambiguity_message(name, missing_role, &matches),
@@ -312,10 +334,17 @@ fn resolve_symbol_in_scope(
 
     match matching_symbols.as_slice() {
         [symbol] => Ok(symbol.id),
-        [] => Err(error_with_optional_origin(
-            ResolverErrorKind::UnresolvedName,
-            format!("could not resolve {} '{}'", missing_role, full_path),
-            origin.clone(),
+        [] => Err(with_unresolved_name_suggestion(
+            error_with_optional_origin(
+                ResolverErrorKind::UnresolvedName,
+                format!("could not resolve {} '{}'", missing_role, full_path),
+                origin.clone(),
+            ),
+            program,
+            scope_id,
+            name,
+            allowed_kinds,
+            origin.as_ref(),
         )),
         _ => Err(ambiguity_error_with_optional_origin(
             format!(
@@ -339,6 +368,34 @@ pub fn error_with_optional_origin(
         Some(origin) => ResolverError::with_origin(kind, message, origin),
         None => ResolverError::new(kind, message),
     }
+}
+
+fn with_unresolved_name_suggestion(
+    error: ResolverError,
+    program: &ResolvedProgram,
+    starting_scope: ScopeId,
+    name: &str,
+    allowed_kinds: &[SymbolKind],
+    origin: Option<&fol_parser::ast::SyntaxOrigin>,
+) -> ResolverError {
+    let Some(origin) = origin else {
+        return error;
+    };
+    let Some(replacement) =
+        closest_visible_symbol_name(program, starting_scope, name, allowed_kinds)
+    else {
+        return error;
+    };
+    error.with_suggestion(DiagnosticSuggestion {
+        message: format!("replace with '{replacement}'"),
+        replacement: Some(replacement),
+        location: Some(DiagnosticLocation {
+            file: origin.file.clone(),
+            line: origin.line,
+            column: origin.column,
+            length: Some(origin.length),
+        }),
+    })
 }
 
 pub fn ambiguity_error_with_optional_origin(
@@ -438,4 +495,87 @@ fn lexical_ambiguity_message(
         "{subject} is ambiguous in lexical scope; candidates: {}",
         describe_symbol_candidates(symbols)
     )
+}
+
+fn closest_visible_symbol_name(
+    program: &ResolvedProgram,
+    starting_scope: ScopeId,
+    name: &str,
+    allowed_kinds: &[SymbolKind],
+) -> Option<String> {
+    let needle = fol_types::canonical_identifier_key(name);
+    let mut candidates = std::collections::BTreeSet::new();
+    let mut current_scope = Some(starting_scope);
+
+    while let Some(scope_id) = current_scope {
+        for symbol in program.symbols_in_scope(scope_id) {
+            if !allowed_kinds.is_empty() && !allowed_kinds.contains(&symbol.kind) {
+                continue;
+            }
+            candidates.insert(symbol.name.clone());
+        }
+        for import in program.imports_in_scope(scope_id) {
+            let Some(target_scope) = import.target_scope else {
+                continue;
+            };
+            for symbol in program
+                .symbols_in_scope(target_scope)
+                .into_iter()
+                .filter(|symbol| import_visible_symbol(symbol))
+            {
+                if !allowed_kinds.is_empty() && !allowed_kinds.contains(&symbol.kind) {
+                    continue;
+                }
+                candidates.insert(symbol.name.clone());
+            }
+        }
+        current_scope = program.scope(scope_id).and_then(|scope| scope.parent);
+    }
+
+    candidates
+        .into_iter()
+        .filter(|candidate| fol_types::canonical_identifier_key(candidate) != needle)
+        .filter_map(|candidate| {
+            let canonical = fol_types::canonical_identifier_key(&candidate);
+            let score = bounded_edit_distance(&needle, &canonical, 3)?;
+            Some((score, candidate))
+        })
+        .min_by(|(left_score, left_name), (right_score, right_name)| {
+            left_score.cmp(right_score).then(left_name.cmp(right_name))
+        })
+        .and_then(|(score, candidate)| {
+            let max_distance = if needle.len() <= 4 { 1 } else { 2 };
+            (score <= max_distance).then_some(candidate)
+        })
+}
+
+fn bounded_edit_distance(left: &str, right: &str, limit: usize) -> Option<usize> {
+    if left == right {
+        return Some(0);
+    }
+    if left.len().abs_diff(right.len()) > limit {
+        return None;
+    }
+    let right_chars = right.chars().collect::<Vec<_>>();
+    let mut previous = (0..=right_chars.len()).collect::<Vec<_>>();
+    let mut current = vec![0; right_chars.len() + 1];
+
+    for (left_index, left_char) in left.chars().enumerate() {
+        current[0] = left_index + 1;
+        let mut row_min = current[0];
+        for (right_index, right_char) in right_chars.iter().enumerate() {
+            let cost = usize::from(left_char != *right_char);
+            current[right_index + 1] = std::cmp::min(
+                std::cmp::min(previous[right_index + 1] + 1, current[right_index] + 1),
+                previous[right_index] + cost,
+            );
+            row_min = row_min.min(current[right_index + 1]);
+        }
+        if row_min > limit {
+            return None;
+        }
+        std::mem::swap(&mut previous, &mut current);
+    }
+
+    (previous[right_chars.len()] <= limit).then_some(previous[right_chars.len()])
 }

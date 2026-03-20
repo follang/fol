@@ -7,6 +7,7 @@ mod commands;
 mod convert;
 mod documents;
 mod error;
+mod format;
 mod lsp;
 mod paths;
 mod session;
@@ -14,8 +15,9 @@ mod tree_sitter;
 mod workspace;
 
 pub use commands::{
-    editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
-    editor_tree_generate_bundle, EditorCommandSummary,
+    editor_format_file, editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
+    editor_references_file, editor_rename_file, editor_semantic_tokens_file,
+    editor_symbols_file, editor_tree_generate_bundle, EditorCommandSummary,
 };
 pub use convert::{
     dedup_lsp_diagnostics, diagnostic_to_lsp, location_to_range, LspDiagnostic,
@@ -23,15 +25,24 @@ pub use convert::{
 };
 pub use documents::{EditorDocument, EditorDocumentStore};
 pub use error::{EditorError, EditorErrorKind, EditorResult};
+pub use format::{format_document, format_document_in_place};
+pub(crate) use format::formatting_edit;
 pub use lsp::{
     run_lsp_stdio, EditorCompletionItem, EditorLspServer, JsonRpcError, JsonRpcId,
-    JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, LspCompletionContext, LspCompletionItem,
+    JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, LspCodeAction,
+    LspCodeActionContext, LspCodeActionParams, LspCompletionContext, LspCompletionItem,
     LspCompletionList, LspCompletionOptions, LspCompletionParams, LspDefinitionParams,
+    LspDocumentFormattingParams,
     LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams,
     LspDocumentSymbol, LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams,
-    LspInitializeResult, LspPublishDiagnosticsParams, LspServerCapabilities, LspServerInfo,
+    LspInitializeResult, LspParameterInformation, LspPublishDiagnosticsParams,
+    LspReferenceContext, LspReferenceParams, LspRenameParams, LspSemanticTokens,
+    LspSemanticTokensLegend, LspSemanticTokensOptions, LspSemanticTokensParams,
+    LspServerCapabilities, LspServerInfo, LspSignatureHelp, LspSignatureHelpOptions,
+    LspSignatureHelpParams, LspSignatureInformation,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
-    LspTextDocumentSyncOptions, LspVersionedTextDocumentIdentifier,
+    LspTextDocumentSyncOptions, LspTextEdit, LspVersionedTextDocumentIdentifier,
+    LspWorkspaceEdit, LspWorkspaceSymbol, LspWorkspaceSymbolParams,
 };
 pub use paths::{EditorDocumentPath, EditorDocumentUri};
 pub use session::{EditorConfig, EditorSession};
@@ -43,6 +54,7 @@ pub use tree_sitter::{
 };
 pub use workspace::{
     map_document_workspace, materialize_analysis_overlay, EditorAnalysisOverlay,
+    EditorWorkspaceRoots,
     EditorWorkspaceMapping,
 };
 
@@ -64,8 +76,8 @@ pub fn crate_name() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{
-        crate_name, diagnostic_to_lsp, editor_highlight_file, editor_lsp_entrypoint,
-        editor_parse_file, editor_symbols_file, editor_tree_generate_bundle,
+        crate_name, diagnostic_to_lsp, editor_format_file, editor_highlight_file,
+        editor_lsp_entrypoint, editor_parse_file, editor_symbols_file, editor_tree_generate_bundle,
         fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
         fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
         fol_tree_sitter_symbols_query, map_document_workspace, materialize_analysis_overlay,
@@ -138,14 +150,50 @@ mod tests {
         let path = repo_root().join("test/apps/fixtures/record_flow/main.fol");
 
         assert_eq!(editor_lsp_entrypoint().unwrap().command, "lsp");
+        let format_root = std::env::temp_dir().join("fol_editor_public_format_smoke");
+        std::fs::create_dir_all(&format_root).unwrap();
+        let format_path = format_root.join("sample.fol");
+        std::fs::write(&format_path, "fun[] main(): int = {\nreturn 0;\n};\n").unwrap();
+        assert_eq!(editor_format_file(&format_path).unwrap().command, "format");
         assert_eq!(editor_parse_file(&path).unwrap().command, "parse");
         assert_eq!(editor_highlight_file(&path).unwrap().command, "highlight");
         assert_eq!(editor_symbols_file(&path).unwrap().command, "symbols");
+        assert_eq!(
+            editor_references_file(
+                &path,
+                LspPosition {
+                    line: 5,
+                    character: 11,
+                },
+                true,
+            )
+            .unwrap()
+            .command,
+            "references"
+        );
+        assert_eq!(
+            editor_rename_file(
+                &path,
+                LspPosition {
+                    line: 5,
+                    character: 11,
+                },
+                "count",
+            )
+            .unwrap()
+            .command,
+            "rename"
+        );
+        assert_eq!(
+            editor_semantic_tokens_file(&path).unwrap().command,
+            "semantic-tokens"
+        );
         let root = std::env::temp_dir().join("fol_editor_public_tree_bundle_smoke");
         assert_eq!(
             editor_tree_generate_bundle(&root).unwrap().command,
             "tree generate"
         );
+        std::fs::remove_dir_all(format_root).ok();
         std::fs::remove_dir_all(root).ok();
     }
 
@@ -200,6 +248,11 @@ mod tests {
         assert!(rendered.contains("Content-Length:"));
         assert!(!rendered.contains("\"method\":\"initialize\""));
         assert!(rendered.contains("\"hoverProvider\":true"));
+        assert!(rendered.contains("\"formattingProvider\":true"));
+        assert!(!rendered.contains("\"rangeFormattingProvider\":true"));
+        assert!(rendered.contains("\"codeActionProvider\":true"));
+        assert!(rendered.contains("\"workspaceSymbolProvider\":true"));
+        assert!(rendered.contains("\"signatureHelpProvider\""));
         assert!(
             rendered.contains("\"completion_provider\"")
                 || rendered.contains("\"completionProvider\"")
@@ -275,6 +328,11 @@ mod tests {
         )
         .unwrap();
         let rendered = String::from_utf8(output).unwrap();
+        assert!(rendered.contains("\"formattingProvider\":true"));
+        assert!(!rendered.contains("\"rangeFormattingProvider\":true"));
+        assert!(rendered.contains("\"codeActionProvider\":true"));
+        assert!(rendered.contains("\"workspaceSymbolProvider\":true"));
+        assert!(rendered.contains("\"signatureHelpProvider\""));
         assert!(rendered.contains("\"completionProvider\""));
         assert!(rendered.contains("\"isIncomplete\":false"));
         assert!(rendered.contains("\"label\":\"value\""));

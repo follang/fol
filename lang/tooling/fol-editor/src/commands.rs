@@ -1,7 +1,13 @@
 use crate::{
+    format_document_in_place,
     fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
     fol_tree_sitter_highlights_query, fol_tree_sitter_query_snapshots,
-    fol_tree_sitter_symbols_query, EditorError, EditorErrorKind, EditorResult,
+    fol_tree_sitter_symbols_query, EditorConfig, EditorDocumentUri, EditorError,
+    EditorErrorKind, EditorLspServer, EditorResult, JsonRpcId, JsonRpcNotification,
+    JsonRpcRequest, LspDidOpenTextDocumentParams, LspLocation, LspPosition,
+    LspReferenceContext, LspReferenceParams, LspRenameParams, LspSemanticTokens,
+    LspSemanticTokensParams, LspTextDocumentIdentifier, LspTextDocumentItem,
+    LspWorkspaceEdit,
 };
 use std::path::Path;
 
@@ -30,10 +36,10 @@ impl EditorCommandSummary {
 pub fn editor_lsp_entrypoint() -> EditorResult<EditorCommandSummary> {
     Ok(EditorCommandSummary::new(
         "lsp",
-        "ready to serve diagnostics, hover, definition, symbols, and completion through `fol tool lsp`",
+        "ready to serve diagnostics, hover, definition, formatting, code actions, signature help, references, rename, semantic tokens, symbols, and completion through `fol tool lsp`",
     )
     .with_detail("transport=stdio")
-    .with_detail("features=diagnostics,hover,definition,symbols,completion"))
+    .with_detail("features=diagnostics,hover,definition,formatting,codeAction,signatureHelp,references,rename,semanticTokens,symbols,completion"))
 }
 
 fn source_line_count(source: &str) -> usize {
@@ -68,6 +74,23 @@ pub fn editor_parse_file(path: &Path) -> EditorResult<EditorCommandSummary> {
     .with_detail(format!("lines={}", source_line_count(&source)))
     .with_detail(format!("bytes={}", source.len()))
     .with_detail(format!("grammar_bytes={}", fol_tree_sitter_grammar().len())))
+}
+
+pub fn editor_format_file(path: &Path) -> EditorResult<EditorCommandSummary> {
+    let result = format_document_in_place(path)?;
+    Ok(EditorCommandSummary::new(
+        "format",
+        if result.changed {
+            format!("formatted {}", result.canonical_path.display())
+        } else {
+            format!("already formatted {}", result.canonical_path.display())
+        },
+    )
+    .with_detail(format!("path={}", result.canonical_path.display()))
+    .with_detail(format!("lines={}", result.line_count()))
+    .with_detail(format!("changed={}", result.changed))
+    .with_detail(format!("changed_lines={}", result.changed_line_count()))
+    .with_detail("style=hybrid-line"))
 }
 
 pub fn editor_highlight_file(path: &Path) -> EditorResult<EditorCommandSummary> {
@@ -117,6 +140,210 @@ pub fn editor_symbols_file(path: &Path) -> EditorResult<EditorCommandSummary> {
         "query_snapshots={}",
         fol_tree_sitter_query_snapshots().len()
     )))
+}
+
+pub fn editor_semantic_tokens_file(path: &Path) -> EditorResult<EditorCommandSummary> {
+    let canonical = path.canonicalize().map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to resolve '{}': {error}", path.display()),
+        )
+    })?;
+    let source = std::fs::read_to_string(&canonical).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to read '{}': {error}", canonical.display()),
+        )
+    })?;
+    let uri = EditorDocumentUri::from_file_path(canonical.clone())?;
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    server.handle_notification(JsonRpcNotification {
+        jsonrpc: "2.0".to_string(),
+        method: "textDocument/didOpen".to_string(),
+        params: Some(
+            serde_json::to_value(LspDidOpenTextDocumentParams {
+                text_document: LspTextDocumentItem {
+                    uri: uri.as_str().to_string(),
+                    language_id: "fol".to_string(),
+                    version: 1,
+                    text: source.clone(),
+                },
+            })
+            .expect("didOpen params should serialize"),
+        ),
+    })?;
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(1),
+            method: "textDocument/semanticTokens/full".to_string(),
+            params: Some(
+                serde_json::to_value(LspSemanticTokensParams {
+                    text_document: LspTextDocumentIdentifier {
+                        uri: uri.as_str().to_string(),
+                    },
+                })
+                .expect("semantic token params should serialize"),
+            ),
+        })?
+        .expect("semantic token request should return a response");
+    let tokens: LspSemanticTokens =
+        serde_json::from_value(response.result.expect("semantic tokens result should exist"))
+            .expect("semantic tokens should deserialize");
+    let encoded_entries = tokens.data.len();
+    let token_count = encoded_entries / 5;
+
+    Ok(EditorCommandSummary::new(
+        "semantic-tokens",
+        format!("semantic token snapshot ready with {token_count} tokens"),
+    )
+    .with_detail(format!("path={}", canonical.display()))
+    .with_detail(format!("lines={}", source_line_count(&source)))
+    .with_detail(format!("token_count={token_count}"))
+    .with_detail(format!("encoded_entries={encoded_entries}"))
+    .with_detail("legend=namespace,type,function,parameter,variable"))
+}
+
+pub fn editor_references_file(
+    path: &Path,
+    position: LspPosition,
+    include_declaration: bool,
+) -> EditorResult<EditorCommandSummary> {
+    let canonical = path.canonicalize().map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to resolve '{}': {error}", path.display()),
+        )
+    })?;
+    let source = std::fs::read_to_string(&canonical).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to read '{}': {error}", canonical.display()),
+        )
+    })?;
+    let uri = EditorDocumentUri::from_file_path(canonical.clone())?;
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    server.handle_notification(JsonRpcNotification {
+        jsonrpc: "2.0".to_string(),
+        method: "textDocument/didOpen".to_string(),
+        params: Some(
+            serde_json::to_value(LspDidOpenTextDocumentParams {
+                text_document: LspTextDocumentItem {
+                    uri: uri.as_str().to_string(),
+                    language_id: "fol".to_string(),
+                    version: 1,
+                    text: source.clone(),
+                },
+            })
+            .expect("didOpen params should serialize"),
+        ),
+    })?;
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(2),
+            method: "textDocument/references".to_string(),
+            params: Some(
+                serde_json::to_value(LspReferenceParams {
+                    text_document: LspTextDocumentIdentifier {
+                        uri: uri.as_str().to_string(),
+                    },
+                    position,
+                    context: LspReferenceContext {
+                        include_declaration,
+                    },
+                })
+                .expect("reference params should serialize"),
+            ),
+        })?
+        .expect("references request should return a response");
+    let references: Vec<LspLocation> =
+        serde_json::from_value(response.result.expect("references result should exist"))
+            .expect("references should deserialize");
+    let cross_file_count = references
+        .iter()
+        .filter(|location| location.uri != uri.as_str())
+        .count();
+
+    Ok(EditorCommandSummary::new(
+        "references",
+        format!("resolved {} references at the requested position", references.len()),
+    )
+    .with_detail(format!("path={}", canonical.display()))
+    .with_detail(format!("line={}", position.line))
+    .with_detail(format!("character={}", position.character))
+    .with_detail(format!("include_declaration={include_declaration}"))
+    .with_detail(format!("reference_count={}", references.len()))
+    .with_detail(format!("cross_file_count={cross_file_count}")))
+}
+
+pub fn editor_rename_file(
+    path: &Path,
+    position: LspPosition,
+    new_name: &str,
+) -> EditorResult<EditorCommandSummary> {
+    let canonical = path.canonicalize().map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to resolve '{}': {error}", path.display()),
+        )
+    })?;
+    let source = std::fs::read_to_string(&canonical).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to read '{}': {error}", canonical.display()),
+        )
+    })?;
+    let uri = EditorDocumentUri::from_file_path(canonical.clone())?;
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    server.handle_notification(JsonRpcNotification {
+        jsonrpc: "2.0".to_string(),
+        method: "textDocument/didOpen".to_string(),
+        params: Some(
+            serde_json::to_value(LspDidOpenTextDocumentParams {
+                text_document: LspTextDocumentItem {
+                    uri: uri.as_str().to_string(),
+                    language_id: "fol".to_string(),
+                    version: 1,
+                    text: source.clone(),
+                },
+            })
+            .expect("didOpen params should serialize"),
+        ),
+    })?;
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(3),
+            method: "textDocument/rename".to_string(),
+            params: Some(
+                serde_json::to_value(LspRenameParams {
+                    text_document: LspTextDocumentIdentifier {
+                        uri: uri.as_str().to_string(),
+                    },
+                    position,
+                    new_name: new_name.to_string(),
+                })
+                .expect("rename params should serialize"),
+            ),
+        })?
+        .expect("rename request should return a response");
+    let edit: LspWorkspaceEdit =
+        serde_json::from_value(response.result.expect("rename result should exist"))
+            .expect("rename edit should deserialize");
+    let change_count = edit.changes.values().map(Vec::len).sum::<usize>();
+    let touched_files = edit.changes.len();
+
+    Ok(EditorCommandSummary::new(
+        "rename",
+        format!("prepared {change_count} rename edits for '{new_name}'"),
+    )
+    .with_detail(format!("path={}", canonical.display()))
+    .with_detail(format!("line={}", position.line))
+    .with_detail(format!("character={}", position.character))
+    .with_detail(format!("new_name={new_name}"))
+    .with_detail(format!("edit_count={change_count}"))
+    .with_detail(format!("touched_files={touched_files}")))
 }
 
 pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSummary> {
@@ -281,10 +508,11 @@ fn write_bundle_file(path: &Path, contents: &str) -> EditorResult<()> {
 #[cfg(test)]
 mod tests {
     use super::{
-        editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
-        editor_tree_generate_bundle, sorted_query_captures,
+        editor_format_file, editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
+        editor_references_file, editor_rename_file, editor_semantic_tokens_file,
+        editor_symbols_file, editor_tree_generate_bundle, sorted_query_captures,
     };
-    use crate::{fol_tree_sitter_grammar, fol_tree_sitter_query_snapshots};
+    use crate::{fol_tree_sitter_grammar, fol_tree_sitter_query_snapshots, LspPosition};
     use std::path::{Path, PathBuf};
 
     fn repo_root() -> PathBuf {
@@ -297,6 +525,10 @@ mod tests {
         assert_eq!(summary.command, "lsp");
         assert!(summary.summary.contains("fol tool lsp"));
         assert!(summary.summary.contains("completion"));
+        assert!(summary.summary.contains("formatting"));
+        assert!(summary.summary.contains("references"));
+        assert!(summary.summary.contains("rename"));
+        assert!(summary.summary.contains("semantic tokens"));
         assert!(summary
             .details
             .iter()
@@ -304,16 +536,58 @@ mod tests {
         assert!(summary
             .details
             .iter()
-            .any(|detail| detail == "features=diagnostics,hover,definition,symbols,completion"));
+            .any(|detail| detail
+                == "features=diagnostics,hover,definition,formatting,codeAction,signatureHelp,references,rename,semanticTokens,symbols,completion"));
     }
 
     #[test]
     fn file_backed_editor_commands_report_path_and_shape() {
         let path = repo_root().join("test/apps/fixtures/record_flow/main.fol");
+        let format_root = std::env::temp_dir().join(format!(
+            "fol_editor_format_command_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&format_root).unwrap();
+        let format_path = format_root.join("sample.fol");
+        std::fs::write(&format_path, "fun[] main(): int = {\nreturn 0;\n};\n").unwrap();
+        let format = editor_format_file(&format_path).unwrap();
         let parse = editor_parse_file(&path).unwrap();
         let highlight = editor_highlight_file(&path).unwrap();
         let symbols = editor_symbols_file(&path).unwrap();
+        let semantic_tokens = editor_semantic_tokens_file(&path).unwrap();
+        let references = editor_references_file(
+            &path,
+            LspPosition {
+                line: 5,
+                character: 11,
+            },
+            true,
+        )
+        .unwrap();
+        let rename = editor_rename_file(
+            &path,
+            LspPosition {
+                line: 5,
+                character: 11,
+            },
+            "count",
+        )
+        .unwrap();
 
+        assert!(format.details.iter().any(|detail| detail.contains("path=")));
+        assert!(format.details.iter().any(|detail| detail == "changed=true"));
+        assert!(format
+            .details
+            .iter()
+            .any(|detail| detail.starts_with("changed_lines=")));
+        assert!(format
+            .details
+            .iter()
+            .any(|detail| detail == "style=hybrid-line"));
         assert!(parse.details.iter().any(|detail| detail.contains("path=")));
         assert!(parse.details.iter().any(|detail| detail.contains("lines=")));
         assert!(highlight
@@ -328,22 +602,82 @@ mod tests {
             .details
             .iter()
             .any(|detail| detail.contains("symbol_candidates=")));
+        assert!(semantic_tokens
+            .details
+            .iter()
+            .any(|detail| detail.contains("token_count=")));
+        assert!(semantic_tokens
+            .details
+            .iter()
+            .any(|detail| detail == "legend=namespace,type,function,parameter,variable"));
+        assert!(references
+            .details
+            .iter()
+            .any(|detail| detail.contains("reference_count=")));
+        assert!(rename
+            .details
+            .iter()
+            .any(|detail| detail.contains("edit_count=")));
+
+        std::fs::remove_dir_all(format_root).ok();
     }
 
     #[test]
     fn real_fixtures_keep_editor_command_summaries_stable() {
         let showcase = repo_root().join("test/apps/showcases/full_v1_showcase/app/main.fol");
         let package = repo_root().join("xtra/logtiny/src/log.fol");
+        let format_root = std::env::temp_dir().join(format!(
+            "fol_editor_format_stable_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&format_root).unwrap();
+        let format_path = format_root.join("sample.fol");
+        std::fs::write(&format_path, "fun[] main(): int = {\nreturn 0;\n};\n").unwrap();
 
+        let format = editor_format_file(&format_path).unwrap();
         let parse = editor_parse_file(&showcase).unwrap();
         let highlight = editor_highlight_file(&showcase).unwrap();
         let symbols = editor_symbols_file(&package).unwrap();
+        let semantic_tokens = editor_semantic_tokens_file(&showcase).unwrap();
+        let references = editor_references_file(
+            &package,
+            LspPosition {
+                line: 44,
+                character: 11,
+            },
+            true,
+        )
+        .unwrap();
+        let rename = editor_rename_file(
+            &showcase,
+            LspPosition {
+                line: 5,
+                character: 11,
+            },
+            "count",
+        )
+        .unwrap();
         let highlight_captures = sorted_query_captures(crate::fol_tree_sitter_highlights_query());
 
         let showcase_text = std::fs::read_to_string(&showcase).unwrap();
         let showcase_lines = showcase_text.lines().count();
         let showcase_bytes = showcase_text.len();
 
+        assert_eq!(format.command, "format");
+        assert_eq!(
+            format.details,
+            vec![
+                format!("path={}", format_path.display()),
+                "lines=3".to_string(),
+                "changed=true".to_string(),
+                "changed_lines=2".to_string(),
+                "style=hybrid-line".to_string(),
+            ]
+        );
         assert_eq!(parse.command, "parse");
         assert_eq!(
             parse.details,
@@ -390,6 +724,58 @@ mod tests {
                 ),
             ]
         );
+        assert_eq!(semantic_tokens.command, "semantic-tokens");
+        assert_eq!(semantic_tokens.details[0], format!("path={}", showcase.display()));
+        assert_eq!(semantic_tokens.details[1], format!("lines={showcase_lines}"));
+        let token_count = semantic_tokens.details[2]
+            .strip_prefix("token_count=")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        let encoded_entries = semantic_tokens.details[3]
+            .strip_prefix("encoded_entries=")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        assert_eq!(encoded_entries, token_count * 5);
+        assert_eq!(
+            semantic_tokens.details[4],
+            "legend=namespace,type,function,parameter,variable"
+        );
+        assert_eq!(references.command, "references");
+        assert_eq!(references.details[0], format!("path={}", package.display()));
+        assert_eq!(references.details[1], "line=44");
+        assert_eq!(references.details[2], "character=11");
+        assert_eq!(references.details[3], "include_declaration=true");
+        let reference_count = references.details[4]
+            .strip_prefix("reference_count=")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        let cross_file_count = references.details[5]
+            .strip_prefix("cross_file_count=")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        assert!(reference_count >= cross_file_count);
+        assert_eq!(rename.command, "rename");
+        assert_eq!(rename.details[0], format!("path={}", showcase.display()));
+        assert_eq!(rename.details[1], "line=5");
+        assert_eq!(rename.details[2], "character=11");
+        assert_eq!(rename.details[3], "new_name=count");
+        let edit_count = rename.details[4]
+            .strip_prefix("edit_count=")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        let touched_files = rename.details[5]
+            .strip_prefix("touched_files=")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        assert!(edit_count >= touched_files);
+
+        std::fs::remove_dir_all(format_root).ok();
     }
 
     #[test]

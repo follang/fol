@@ -1,17 +1,10 @@
 use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root};
 use super::super::{
-    completion_helpers::completion_context, completion_helpers::CompletionContext,
-    EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCompletionContext,
-    LspCompletionList, LspCompletionParams, LspDefinitionParams,
-    LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
-    LspDidOpenTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
-    LspInitializeResult, LspLocation, LspPosition, LspPublishDiagnosticsParams,
-    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
-    LspVersionedTextDocumentIdentifier,
+    EditorLspServer, JsonRpcId, JsonRpcRequest, LspCompletionList, LspCompletionParams,
+    LspPosition, LspTextDocumentIdentifier,
 };
-use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
+use crate::EditorConfig;
 use std::fs;
-use std::path::PathBuf;
 
 #[test]
 fn lsp_server_handles_completion_requests() {
@@ -271,7 +264,7 @@ fn lsp_server_locks_type_completion_matrix() {
                 serde_json::to_value(LspCompletionParams {
                     text_document: LspTextDocumentIdentifier { uri: uri.clone() },
                     position: LspPosition {
-                        line: 6,
+                        line: 7,
                         character: 16,
                     },
                     context: None,
@@ -294,6 +287,50 @@ fn lsp_server_locks_type_completion_matrix() {
     assert!(labels.contains(&"Local"));
     assert!(labels.contains(&"Status"));
     assert!(labels.contains(&"Report"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_prefers_builtin_types_ahead_of_named_type_items() {
+    let (root, uri) = sample_package_root("completion_type_order");
+    fs::write(
+        root.join("src/main.fol"),
+        "typ[] Aardvark: rec = {\n    value: int\n}\n\nfun[] main(): int = {\n    var target: \n    return 0\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(381),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 4,
+                        character: 16,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+
+    let summary = serde_json::from_value::<LspCompletionList>(completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .filter(|item| matches!(item.label.as_str(), "int" | "Aardvark"))
+        .map(|item| format!("{}:{}", item.label, item.detail.unwrap_or_default()))
+        .collect::<Vec<_>>();
+    assert_eq!(summary, vec!["int:builtin type", "Aardvark:type"]);
 
     fs::remove_dir_all(root).ok();
 }

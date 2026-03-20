@@ -1,0 +1,9 @@
+ali BonusList: [Bonus] = [Bonus];
+
+typ Bonus: rec = {
+amount: int;
+};
+
+fun[] main(): int = {
+return 0;
+};

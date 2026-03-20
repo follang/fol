@@ -1,4 +1,5 @@
 use super::{resolve_package_from_folder, try_resolve_package_from_folder, unique_temp_root};
+use fol_diagnostics::ToDiagnostic;
 use fol_resolver::{ResolverErrorKind, ScopeKind, SymbolKind};
 use std::fs;
 
@@ -111,7 +112,7 @@ fn test_resolver_reports_unresolved_plain_identifier_names() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    return missing;\n};\n",
+        "fun[] main(): int = {\n    var value = 1;\n    return valu;\n};\n",
     )
     .expect("Should write the unresolved-name resolver fixture");
 
@@ -130,7 +131,7 @@ fn test_resolver_reports_unresolved_plain_identifier_names() {
         .origin()
         .expect("Plain unresolved identifiers should keep exact syntax origins");
 
-    assert_eq!(origin.line, 2);
+    assert_eq!(origin.line, 3);
     assert_eq!(origin.column, 12);
     assert_eq!(
         origin.file.as_deref(),
@@ -141,6 +142,12 @@ fn test_resolver_reports_unresolved_plain_identifier_names() {
                 .expect("Temporary resolver fixture path should be valid UTF-8")
         ),
         "Plain unresolved identifiers should retain their exact source file"
+    );
+    let diagnostic = error.to_diagnostic();
+    assert_eq!(diagnostic.suggestions.len(), 1);
+    assert_eq!(
+        diagnostic.suggestions[0].replacement.as_deref(),
+        Some("value")
     );
 
     fs::remove_dir_all(&temp_root)

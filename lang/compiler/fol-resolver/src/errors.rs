@@ -1,6 +1,7 @@
 use crate::model::SymbolKind;
 use fol_diagnostics::{
-    Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
+    Diagnostic, DiagnosticCode, DiagnosticLocation, DiagnosticSuggestion, ToDiagnostic,
+    ToDiagnosticLocation,
 };
 use fol_package::PackageError;
 use fol_parser::ast::SyntaxOrigin;
@@ -36,6 +37,7 @@ pub struct ResolverError {
     message: String,
     origin: Option<SyntaxOrigin>,
     related_origins: Vec<(SyntaxOrigin, String)>,
+    suggestions: Vec<DiagnosticSuggestion>,
 }
 
 impl ResolverError {
@@ -45,6 +47,7 @@ impl ResolverError {
             message: message.into(),
             origin: None,
             related_origins: Vec::new(),
+            suggestions: Vec::new(),
         }
     }
 
@@ -58,6 +61,7 @@ impl ResolverError {
             message: message.into(),
             origin: Some(origin),
             related_origins: Vec::new(),
+            suggestions: Vec::new(),
         }
     }
 
@@ -84,6 +88,11 @@ impl ResolverError {
 
     pub fn with_related_origin(mut self, origin: SyntaxOrigin, message: impl Into<String>) -> Self {
         self.related_origins.push((origin, message.into()));
+        self
+    }
+
+    pub fn with_suggestion(mut self, suggestion: DiagnosticSuggestion) -> Self {
+        self.suggestions.push(suggestion);
         self
     }
 }
@@ -132,6 +141,9 @@ impl ToDiagnostic for ResolverError {
                 },
                 message.clone(),
             );
+        }
+        for suggestion in &self.suggestions {
+            diagnostic = diagnostic.with_suggestion(suggestion.clone());
         }
         if self.kind == ResolverErrorKind::Unsupported && self.message.contains("imports yet") {
             diagnostic =

@@ -359,6 +359,33 @@ pub struct EditorPathCommand {
     pub path: String,
 }
 
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct EditorReferenceCommand {
+    pub path: String,
+
+    #[arg(long, value_name = "LINE")]
+    pub line: u32,
+
+    #[arg(long, value_name = "CHARACTER")]
+    pub character: u32,
+
+    #[arg(long, help = "Exclude the declaration location from the result set")]
+    pub exclude_declaration: bool,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct EditorRenameCommand {
+    pub path: String,
+
+    #[arg(long, value_name = "LINE")]
+    pub line: u32,
+
+    #[arg(long, value_name = "CHARACTER")]
+    pub character: u32,
+
+    pub new_name: String,
+}
+
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum WorkSubcommand {
     Init(InitCommand),
@@ -394,9 +421,13 @@ pub enum CodeSubcommand {
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum ToolSubcommand {
     Lsp(UnitCommand),
+    Format(EditorPathCommand),
     Parse(EditorPathCommand),
     Highlight(EditorPathCommand),
     Symbols(EditorPathCommand),
+    References(EditorReferenceCommand),
+    Rename(EditorRenameCommand),
+    SemanticTokens(EditorPathCommand),
     Tree(TreeCommand),
     #[command(visible_aliases = ["cl", "purge"])]
     Clean(UnitCommand),

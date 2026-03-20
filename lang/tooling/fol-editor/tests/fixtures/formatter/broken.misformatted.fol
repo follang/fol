@@ -1,0 +1,6 @@
+fun[] main(): int = {
+when(true) {
+case(true) {
+return 7;
+}
+}

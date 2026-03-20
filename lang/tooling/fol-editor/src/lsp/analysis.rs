@@ -1,6 +1,6 @@
 use crate::{
-    dedup_lsp_diagnostics, diagnostic_to_lsp, materialize_analysis_overlay, EditorDocument,
-    EditorError, EditorErrorKind, EditorResult, EditorWorkspaceMapping, LspDiagnostic,
+    diagnostic_to_lsp, materialize_analysis_overlay, EditorDocument, EditorError,
+    EditorErrorKind, EditorResult, EditorWorkspaceMapping,
 };
 use fol_diagnostics::Diagnostic;
 use fol_diagnostics::ToDiagnostic;
@@ -10,49 +10,144 @@ use fol_resolver::Resolver;
 use fol_stream::{FileStream, Source, SourceType};
 use fol_typecheck::Typechecker;
 use std::path::Path;
+use std::sync::Arc;
 
 use super::semantic::SemanticSnapshot;
 
-pub(super) fn analyze_document(
-    document: &EditorDocument,
-    mapping: &EditorWorkspaceMapping,
-) -> EditorResult<Vec<LspDiagnostic>> {
-    let snapshot = analyze_document_semantics(document, mapping)?;
-    Ok(dedup_lsp_diagnostics(snapshot.diagnostics))
+#[derive(Debug, Clone)]
+pub(crate) struct CachedSemanticSnapshot {
+    pub(crate) document_version: i32,
+    pub(crate) snapshot: Arc<SemanticSnapshot>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct CachedDiagnosticSnapshot {
+    pub(crate) document_version: i32,
+    pub(crate) diagnostics: Vec<crate::LspDiagnostic>,
+}
+
+#[cfg(test)]
+static ANALYZE_DOCUMENT_SEMANTICS_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static ANALYZE_DOCUMENT_DIAGNOSTICS_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static MATERIALIZE_ANALYSIS_OVERLAY_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static PARSE_DIRECTORY_DIAGNOSTICS_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static LOAD_DIRECTORY_PACKAGE_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static RESOLVE_WORKSPACE_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static TYPECHECK_WORKSPACE_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
+#[cfg(test)]
+pub(crate) fn reset_analyze_document_semantics_call_count() {
+    ANALYZE_DOCUMENT_SEMANTICS_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+}
+
+#[cfg(test)]
+pub(crate) fn analyze_document_semantics_call_count() -> usize {
+    ANALYZE_DOCUMENT_SEMANTICS_CALLS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+#[cfg(test)]
+pub(crate) fn reset_analyze_document_diagnostics_call_count() {
+    ANALYZE_DOCUMENT_DIAGNOSTICS_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+}
+
+#[cfg(test)]
+pub(crate) fn analyze_document_diagnostics_call_count() -> usize {
+    ANALYZE_DOCUMENT_DIAGNOSTICS_CALLS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct AnalysisStageCounts {
+    pub materialize_overlay: usize,
+    pub parse_directory_diagnostics: usize,
+    pub load_directory_package: usize,
+    pub resolve_workspace: usize,
+    pub typecheck_workspace: usize,
+}
+
+#[cfg(test)]
+pub(crate) fn reset_analysis_stage_counts() {
+    MATERIALIZE_ANALYSIS_OVERLAY_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+    PARSE_DIRECTORY_DIAGNOSTICS_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+    LOAD_DIRECTORY_PACKAGE_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+    RESOLVE_WORKSPACE_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+    TYPECHECK_WORKSPACE_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+}
+
+#[cfg(test)]
+pub(crate) fn analysis_stage_counts() -> AnalysisStageCounts {
+    AnalysisStageCounts {
+        materialize_overlay: MATERIALIZE_ANALYSIS_OVERLAY_CALLS
+            .load(std::sync::atomic::Ordering::Relaxed),
+        parse_directory_diagnostics: PARSE_DIRECTORY_DIAGNOSTICS_CALLS
+            .load(std::sync::atomic::Ordering::Relaxed),
+        load_directory_package: LOAD_DIRECTORY_PACKAGE_CALLS
+            .load(std::sync::atomic::Ordering::Relaxed),
+        resolve_workspace: RESOLVE_WORKSPACE_CALLS
+            .load(std::sync::atomic::Ordering::Relaxed),
+        typecheck_workspace: TYPECHECK_WORKSPACE_CALLS
+            .load(std::sync::atomic::Ordering::Relaxed),
+    }
 }
 
 pub(super) fn analyze_document_semantics(
     document: &EditorDocument,
     mapping: &EditorWorkspaceMapping,
 ) -> EditorResult<SemanticSnapshot> {
+    #[cfg(test)]
+    ANALYZE_DOCUMENT_SEMANTICS_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+    #[cfg(test)]
+    MATERIALIZE_ANALYSIS_OVERLAY_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let overlay = materialize_analysis_overlay(mapping, document)?;
     if let Some(package_root) = overlay.package_root() {
         let parser_diags = parse_directory_diagnostics(package_root)?
             .into_iter()
+            .collect::<Vec<_>>();
+        let parser_lsp_diags = parser_diags
+            .iter()
             .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
             .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
             .collect::<Vec<_>>();
-        if !parser_diags.is_empty() {
+        if !parser_lsp_diags.is_empty() {
             return Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
                 source_document_path: mapping.document_path.clone(),
                 source_package_root: mapping.package_root.clone(),
-                diagnostics: parser_diags,
+                compiler_diagnostics: parser_diags,
+                diagnostics: parser_lsp_diags,
                 resolved_workspace: None,
                 typed_workspace: None,
             });
         }
 
         let mut package_session = PackageSession::new();
+        #[cfg(test)]
+        LOAD_DIRECTORY_PACKAGE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let prepared =
             match package_session.load_directory_package(package_root, PackageSourceKind::Entry) {
                 Ok(prepared) => prepared,
                 Err(error) => {
+                    let diagnostic = error.to_diagnostic();
                     return Ok(SemanticSnapshot {
                         analyzed_path: Some(overlay.document_path().to_path_buf()),
                         source_document_path: mapping.document_path.clone(),
                         source_package_root: mapping.package_root.clone(),
-                        diagnostics: vec![diagnostic_to_lsp(&error.to_diagnostic())],
+                        compiler_diagnostics: vec![diagnostic.clone()],
+                        diagnostics: vec![diagnostic_to_lsp(&diagnostic)],
                         resolved_workspace: None,
                         typed_workspace: None,
                     })
@@ -60,20 +155,26 @@ pub(super) fn analyze_document_semantics(
             };
 
         let mut resolver = Resolver::new();
+        #[cfg(test)]
+        RESOLVE_WORKSPACE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let resolved = match resolver.resolve_prepared_workspace(prepared) {
             Ok(resolved) => resolved,
             Err(errors) => {
+                let diagnostics = errors
+                    .iter()
+                    .map(|error| error.to_diagnostic())
+                    .collect::<Vec<_>>();
                 return Ok(SemanticSnapshot {
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
                     source_document_path: mapping.document_path.clone(),
                     source_package_root: mapping.package_root.clone(),
-                    diagnostics: errors
+                    compiler_diagnostics: diagnostics.clone(),
+                    diagnostics: diagnostics
                         .iter()
-                        .map(|error| error.to_diagnostic())
                         .filter(|diagnostic| {
                             diagnostic_targets_path(diagnostic, overlay.document_path())
                         })
-                        .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
+                        .map(diagnostic_to_lsp)
                         .collect(),
                     resolved_workspace: None,
                     typed_workspace: None,
@@ -82,37 +183,48 @@ pub(super) fn analyze_document_semantics(
         };
 
         let mut typechecker = Typechecker::new();
+        #[cfg(test)]
+        TYPECHECK_WORKSPACE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         match typechecker.check_resolved_workspace(resolved.clone()) {
             Ok(typed_workspace) => Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
                 source_document_path: mapping.document_path.clone(),
                 source_package_root: mapping.package_root.clone(),
+                compiler_diagnostics: Vec::new(),
                 diagnostics: Vec::new(),
                 resolved_workspace: Some(resolved),
                 typed_workspace: Some(typed_workspace),
             }),
-            Err(errors) => Ok(SemanticSnapshot {
-                analyzed_path: Some(overlay.document_path().to_path_buf()),
-                source_document_path: mapping.document_path.clone(),
-                source_package_root: mapping.package_root.clone(),
-                diagnostics: errors
+            Err(errors) => {
+                let diagnostics = errors
                     .iter()
                     .map(|error| error.to_diagnostic())
-                    .filter(|diagnostic| {
-                        diagnostic_targets_path(diagnostic, overlay.document_path())
-                    })
-                    .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
-                    .collect(),
-                resolved_workspace: Some(resolved),
-                typed_workspace: None,
-            }),
+                    .collect::<Vec<_>>();
+                Ok(SemanticSnapshot {
+                    analyzed_path: Some(overlay.document_path().to_path_buf()),
+                    source_document_path: mapping.document_path.clone(),
+                    source_package_root: mapping.package_root.clone(),
+                    compiler_diagnostics: diagnostics.clone(),
+                    diagnostics: diagnostics
+                        .iter()
+                        .filter(|diagnostic| {
+                            diagnostic_targets_path(diagnostic, overlay.document_path())
+                        })
+                        .map(diagnostic_to_lsp)
+                        .collect(),
+                    resolved_workspace: Some(resolved),
+                    typed_workspace: None,
+                })
+            }
         }
     } else {
+        let diagnostics = parse_single_file_diagnostics(&mapping.document_path, &document.text)?;
         Ok(SemanticSnapshot {
             analyzed_path: Some(mapping.document_path.clone()),
             source_document_path: mapping.document_path.clone(),
             source_package_root: mapping.package_root.clone(),
-            diagnostics: parse_single_file_diagnostics(&mapping.document_path, &document.text)?
+            compiler_diagnostics: diagnostics.clone(),
+            diagnostics: diagnostics
                 .into_iter()
                 .filter(|diagnostic| diagnostic_targets_path(diagnostic, &mapping.document_path))
                 .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
@@ -121,6 +233,16 @@ pub(super) fn analyze_document_semantics(
             typed_workspace: None,
         })
     }
+}
+
+pub(super) fn analyze_document_diagnostics(
+    document: &EditorDocument,
+    mapping: &EditorWorkspaceMapping,
+) -> EditorResult<Vec<crate::LspDiagnostic>> {
+    #[cfg(test)]
+    ANALYZE_DOCUMENT_DIAGNOSTICS_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let snapshot = analyze_document_semantics(document, mapping)?;
+    Ok(snapshot.diagnostics)
 }
 
 pub(super) fn diagnostic_targets_path(diagnostic: &Diagnostic, path: &Path) -> bool {
@@ -173,6 +295,8 @@ pub(super) fn parse_single_file_diagnostics(
 }
 
 pub(super) fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagnostic>> {
+    #[cfg(test)]
+    PARSE_DIRECTORY_DIAGNOSTICS_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let root_str = root.to_str().ok_or_else(|| {
         EditorError::new(
             EditorErrorKind::InvalidDocumentPath,

@@ -73,12 +73,28 @@ pub fn dispatch_cli(
         }
         Some(FrontendCommand::Tool(command)) => match &command.command {
             ToolSubcommand::Lsp(_) => crate::editor_lsp_command(config),
+            ToolSubcommand::Format(command) => crate::editor_format_command(&command.path),
             ToolSubcommand::Parse(command) => crate::editor_parse_command(&command.path),
             ToolSubcommand::Highlight(command) => {
                 crate::editor_highlight_command(&command.path)
             }
             ToolSubcommand::Symbols(command) => {
                 crate::editor_symbols_command(&command.path)
+            }
+            ToolSubcommand::References(command) => crate::editor_references_command(
+                &command.path,
+                command.line,
+                command.character,
+                !command.exclude_declaration,
+            ),
+            ToolSubcommand::Rename(command) => crate::editor_rename_command(
+                &command.path,
+                command.line,
+                command.character,
+                &command.new_name,
+            ),
+            ToolSubcommand::SemanticTokens(command) => {
+                crate::editor_semantic_tokens_command(&command.path)
             }
             ToolSubcommand::Tree(command) => match &command.command {
                 cli::TreeSubcommand::Generate(command) => {
@@ -258,9 +274,13 @@ pub fn dispatch_workspace_command(
         FrontendCommand::Tool(command) => match &command.command {
             ToolSubcommand::Clean(_) => crate::clean_workspace_with_config(workspace, config),
             ToolSubcommand::Lsp(_)
+            | ToolSubcommand::Format(_)
             | ToolSubcommand::Parse(_)
             | ToolSubcommand::Highlight(_)
             | ToolSubcommand::Symbols(_)
+            | ToolSubcommand::References(_)
+            | ToolSubcommand::Rename(_)
+            | ToolSubcommand::SemanticTokens(_)
             | ToolSubcommand::Tree(_) => Err(FrontendError::new(
                 FrontendErrorKind::Internal,
                 "unexpected editor command reached workspace dispatcher",

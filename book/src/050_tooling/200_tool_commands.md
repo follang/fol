@@ -85,9 +85,13 @@ Use `code` for:
 Tooling commands:
 
 - `fol tool lsp`
+- `fol tool format <PATH>`
 - `fol tool parse <PATH>`
 - `fol tool highlight <PATH>`
 - `fol tool symbols <PATH>`
+- `fol tool references <PATH> --line <LINE> --character <CHARACTER>`
+- `fol tool rename <PATH> --line <LINE> --character <CHARACTER> <NEW_NAME>`
+- `fol tool semantic-tokens <PATH>`
 - `fol tool tree generate <PATH>`
 - `fol tool clean`
 - `fol tool completion`
@@ -96,8 +100,12 @@ Examples:
 
 ```text
 fol tool parse src/main.fol
+fol tool format src/main.fol
 fol tool highlight src/main.fol
 fol tool symbols src/main.fol
+fol tool references src/main.fol --line 12 --character 8
+fol tool rename src/main.fol --line 12 --character 8 total
+fol tool semantic-tokens src/main.fol
 fol tool tree generate /tmp/fol
 fol tool lsp
 fol tool completion bash
@@ -109,6 +117,11 @@ Use `tool` for:
 - Tree-sitter debugging
 - LSP serving
 - generated tool assets
+
+The public editor surface stays under `fol tool ...`.
+There is no parallel `fol editor ...` command group.
+Future editor features are not exposed as placeholder commands.
+Only the shipped `fol tool` subcommands above are public.
 
 ## Artifact Reporting
 

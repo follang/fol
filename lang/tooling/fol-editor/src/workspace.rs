@@ -3,6 +3,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EditorWorkspaceRoots {
+    pub package_root: Option<PathBuf>,
+    pub workspace_root: Option<PathBuf>,
+    pub analysis_root: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EditorWorkspaceMapping {
     pub document_path: PathBuf,
     pub package_root: Option<PathBuf>,
@@ -42,22 +49,41 @@ pub fn map_document_workspace(
     path: &Path,
     config: &EditorConfig,
 ) -> EditorResult<EditorWorkspaceMapping> {
-    let absolute = if path.is_absolute() {
-        path.to_path_buf()
+    let absolute = canonical_document_path(path)?;
+    let roots = discover_workspace_roots(
+        absolute.parent().ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::InvalidDocumentPath,
+                format!("document '{}' has no parent directory", absolute.display()),
+            )
+        })?,
+        config,
+    );
+    Ok(EditorWorkspaceMapping {
+        document_path: absolute,
+        package_root: roots.package_root,
+        workspace_root: roots.workspace_root,
+        analysis_root: roots.analysis_root,
+    })
+}
+
+pub(crate) fn canonical_document_path(path: &Path) -> EditorResult<PathBuf> {
+    if path.is_absolute() {
+        Ok(path.to_path_buf())
     } else {
         std::fs::canonicalize(path).map_err(|error| {
             EditorError::new(
                 EditorErrorKind::InvalidDocumentPath,
                 format!("failed to resolve '{}': {error}", path.display()),
             )
-        })?
-    };
-    let directory = absolute.parent().ok_or_else(|| {
-        EditorError::new(
-            EditorErrorKind::InvalidDocumentPath,
-            format!("document '{}' has no parent directory", absolute.display()),
-        )
-    })?;
+        })
+    }
+}
+
+pub(crate) fn discover_workspace_roots(
+    directory: &Path,
+    config: &EditorConfig,
+) -> EditorWorkspaceRoots {
     let package_root = find_upward_marker(directory, "package.yaml");
     let workspace_root = config
         .root_markers
@@ -68,18 +94,18 @@ pub fn map_document_workspace(
         .clone()
         .or_else(|| package_root.clone())
         .unwrap_or_else(|| directory.to_path_buf());
-    Ok(EditorWorkspaceMapping {
-        document_path: absolute,
+    EditorWorkspaceRoots {
         package_root,
         workspace_root,
         analysis_root,
-    })
+    }
 }
 
 pub fn materialize_analysis_overlay(
     mapping: &EditorWorkspaceMapping,
     document: &EditorDocument,
 ) -> EditorResult<EditorAnalysisOverlay> {
+    let overlay_source_root = mapping.package_root.as_ref().unwrap_or(&mapping.analysis_root);
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("system time should be after epoch")
@@ -104,18 +130,18 @@ pub fn materialize_analysis_overlay(
         )
     })?;
 
-    copy_directory_tree(&mapping.analysis_root, &temp_root)?;
+    copy_directory_tree(overlay_source_root, &temp_root)?;
 
     let relative_document = mapping
         .document_path
-        .strip_prefix(&mapping.analysis_root)
+        .strip_prefix(overlay_source_root)
         .map_err(|_| {
             EditorError::new(
                 EditorErrorKind::Internal,
                 format!(
                     "document '{}' is not inside analysis root '{}'",
                     mapping.document_path.display(),
-                    mapping.analysis_root.display()
+                    overlay_source_root.display()
                 ),
             )
         })?;
@@ -144,7 +170,7 @@ pub fn materialize_analysis_overlay(
     let package_root = mapping
         .package_root
         .as_ref()
-        .and_then(|package_root| package_root.strip_prefix(&mapping.analysis_root).ok())
+        .and_then(|package_root| package_root.strip_prefix(overlay_source_root).ok())
         .map(|relative| temp_root.join(relative));
 
     Ok(EditorAnalysisOverlay {
@@ -297,6 +323,58 @@ mod tests {
             overlay.document_path(),
             overlay.analysis_root().join("src/main.fol")
         );
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_overlay_copies_only_the_current_package_subtree() {
+        let root = temp_root("workspace_overlay");
+        let app_src = root.join("app/src");
+        let shared_src = root.join("shared/src");
+        fs::create_dir_all(&app_src).unwrap();
+        fs::create_dir_all(&shared_src).unwrap();
+        fs::write(root.join("fol.work.yaml"), "members:\n  - app\n  - shared\n").unwrap();
+        fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("app/build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            app_src.join("main.fol"),
+            "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper()\n}\n",
+        )
+        .unwrap();
+        fs::write(root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("shared/build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        )
+        .unwrap();
+        fs::write(
+            shared_src.join("lib.fol"),
+            "fun[exp] helper(): int = {\n    return 7\n}\n",
+        )
+        .unwrap();
+
+        let path = app_src.join("main.fol");
+        let mapping =
+            map_document_workspace(&path, &EditorConfig::default()).expect("mapping should work");
+        let uri = EditorDocumentUri::from_file_path(path.clone()).unwrap();
+        let document = EditorDocument::new(
+            uri,
+            2,
+            fs::read_to_string(&path).unwrap(),
+        )
+        .unwrap();
+        let overlay = materialize_analysis_overlay(&mapping, &document).unwrap();
+
+        assert_eq!(overlay.package_root(), Some(overlay.analysis_root()));
+        assert!(overlay.analysis_root().join("src/main.fol").is_file());
+        assert!(overlay.analysis_root().join("build.fol").is_file());
+        assert!(!overlay.analysis_root().join("shared").exists());
+        assert!(!overlay.analysis_root().join("fol.work.yaml").exists());
 
         fs::remove_dir_all(root).ok();
     }

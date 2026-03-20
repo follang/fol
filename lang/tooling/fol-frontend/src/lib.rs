@@ -31,10 +31,11 @@ pub use build_route::{
 pub use clean::{clean_workspace, clean_workspace_with_config};
 pub use cli::{
     BuildCommand, CheckCommand, CodeCommand, CodeSubcommand, CompleteCommand, CompletionCommand,
-    CompletionShellArg, EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand,
-    EmitSubcommand, FetchCommand, FrontendCli, FrontendCommand, FrontendProfile, InitCommand,
-    NewCommand, PackCommand, PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand,
-    UnitCommand, UpdateCommand,
+    CompletionShellArg, EditorPathCommand, EditorReferenceCommand, EditorRenameCommand,
+    EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand, FetchCommand,
+    FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, PackCommand,
+    PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand,
+    UpdateCommand,
 };
 pub use compile::{
     build_workspace, build_workspace_for_profile_with_config, build_workspace_with_config,
@@ -57,8 +58,9 @@ pub use discovery::{
     DiscoveredRoot, PackageRoot, WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME,
 };
 pub use editor::{
-    editor_highlight_command, editor_lsp_command, editor_lsp_stdio, editor_parse_command,
-    editor_symbols_command, editor_tree_generate_command,
+    editor_format_command, editor_highlight_command, editor_lsp_command, editor_lsp_stdio,
+    editor_parse_command, editor_references_command, editor_rename_command,
+    editor_semantic_tokens_command, editor_symbols_command, editor_tree_generate_command,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
