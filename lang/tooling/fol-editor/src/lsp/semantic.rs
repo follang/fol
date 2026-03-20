@@ -14,7 +14,8 @@ use super::completion_helpers::{
 };
 use super::types::{EditorCompletionItem, LspDocumentSymbol, LspHover};
 
-pub(super) struct SemanticSnapshot {
+#[derive(Debug)]
+pub(crate) struct SemanticSnapshot {
     pub(super) analyzed_path: Option<PathBuf>,
     pub(super) source_document_path: PathBuf,
     pub(super) source_package_root: Option<PathBuf>,

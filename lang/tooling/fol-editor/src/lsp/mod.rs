@@ -19,11 +19,12 @@ pub use types::{
 };
 
 use crate::{
-    map_document_workspace, EditorConfig, EditorDocument, EditorDocumentUri, EditorError,
+    dedup_lsp_diagnostics, map_document_workspace, EditorConfig, EditorDocument, EditorDocumentUri, EditorError,
     EditorErrorKind, EditorResult, EditorSession, EditorWorkspaceMapping, LspLocation, LspPosition,
 };
-use analysis::{analyze_document, analyze_document_semantics};
+use analysis::analyze_document_semantics;
 use completion_helpers::completion_context_with_lsp;
+use std::sync::Arc;
 use transport::from_params;
 
 pub struct EditorLspServer {
@@ -166,6 +167,7 @@ impl EditorLspServer {
                     .mappings
                     .insert(uri.as_str().to_string(), mapping);
                 self.session.documents.open(document);
+                self.session.semantic_snapshots.remove(uri.as_str());
                 let diagnostics = self.publish_diagnostics(&uri)?;
                 Ok(vec![diagnostics])
             }
@@ -187,6 +189,7 @@ impl EditorLspServer {
                     params.text_document.version,
                     text,
                 )?;
+                self.session.semantic_snapshots.remove(uri.as_str());
                 let diagnostics = self.publish_diagnostics(&uri)?;
                 Ok(vec![diagnostics])
             }
@@ -195,6 +198,7 @@ impl EditorLspServer {
                 let uri = EditorDocumentUri::parse(&params.text_document.uri)?;
                 self.session.documents.close(&uri);
                 self.session.mappings.remove(uri.as_str());
+                self.session.semantic_snapshots.remove(uri.as_str());
                 Ok(vec![LspPublishDiagnosticsParams {
                     uri: uri.as_str().to_string(),
                     diagnostics: Vec::new(),
@@ -208,12 +212,12 @@ impl EditorLspServer {
     }
 
     pub fn publish_diagnostics(
-        &self,
+        &mut self,
         uri: &EditorDocumentUri,
     ) -> EditorResult<LspPublishDiagnosticsParams> {
-        let document = self.open_document(uri)?;
-        let mapping = self.document_mapping(document, uri)?;
-        let diagnostics = analyze_document(document, &mapping)?;
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        let diagnostics = dedup_lsp_diagnostics(snapshot.diagnostics.clone());
         Ok(LspPublishDiagnosticsParams {
             uri: uri.as_str().to_string(),
             diagnostics,
@@ -221,13 +225,12 @@ impl EditorLspServer {
     }
 
     pub fn hover(
-        &self,
+        &mut self,
         uri: &EditorDocumentUri,
         position: LspPosition,
     ) -> EditorResult<Option<LspHover>> {
-        let document = self.open_document(uri)?;
-        let mapping = self.document_mapping(document, uri)?;
-        let snapshot = analyze_document_semantics(document, &mapping)?;
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
         let hit = snapshot
             .reference_at(position)
             .and_then(|reference| snapshot.hover_for_reference(reference));
@@ -235,42 +238,39 @@ impl EditorLspServer {
     }
 
     pub fn definition(
-        &self,
+        &mut self,
         uri: &EditorDocumentUri,
         position: LspPosition,
     ) -> EditorResult<Option<LspLocation>> {
-        let document = self.open_document(uri)?;
-        let mapping = self.document_mapping(document, uri)?;
-        let snapshot = analyze_document_semantics(document, &mapping)?;
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(snapshot
             .reference_at(position)
             .and_then(|reference| snapshot.definition_for_reference(reference)))
     }
 
     pub fn document_symbols(
-        &self,
+        &mut self,
         uri: &EditorDocumentUri,
     ) -> EditorResult<Vec<LspDocumentSymbol>> {
-        let document = self.open_document(uri)?;
-        let mapping = self.document_mapping(document, uri)?;
-        let snapshot = analyze_document_semantics(document, &mapping)?;
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(snapshot.document_symbols_for_current_path())
     }
 
     pub fn completion(
-        &self,
+        &mut self,
         uri: &EditorDocumentUri,
         position: LspPosition,
         context: Option<&LspCompletionContext>,
     ) -> EditorResult<LspCompletionList> {
-        let document = self.open_document(uri)?;
-        let mapping = self.document_mapping(document, uri)?;
-        let snapshot = analyze_document_semantics(document, &mapping)?;
-        let completion_context = completion_context_with_lsp(document, position, context);
+        let document = self.open_document(uri)?.clone();
+        let completion_context = completion_context_with_lsp(&document, position, context);
+        let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(LspCompletionList {
             is_incomplete: false,
             items: snapshot
-                .completion_items(document, position, completion_context)
+                .completion_items(&document, position, completion_context)
                 .into_iter()
                 .map(|item| LspCompletionItem {
                     label: item.label,
@@ -305,6 +305,29 @@ impl EditorLspServer {
                 document.path.as_path(),
                 &self.session.config,
             )?))
+    }
+
+    fn semantic_snapshot(
+        &mut self,
+        uri: &EditorDocumentUri,
+        document: &EditorDocument,
+    ) -> EditorResult<Arc<semantic::SemanticSnapshot>> {
+        if let Some(cached) = self.session.semantic_snapshots.get(uri.as_str()) {
+            if cached.document_version == document.version {
+                return Ok(Arc::clone(&cached.snapshot));
+            }
+        }
+
+        let mapping = self.document_mapping(document, uri)?;
+        let snapshot = Arc::new(analyze_document_semantics(document, &mapping)?);
+        self.session.semantic_snapshots.insert(
+            uri.as_str().to_string(),
+            analysis::CachedSemanticSnapshot {
+                document_version: document.version,
+                snapshot: Arc::clone(&snapshot),
+            },
+        );
+        Ok(snapshot)
     }
 }
 

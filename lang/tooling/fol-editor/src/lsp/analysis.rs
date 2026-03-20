@@ -1,6 +1,6 @@
 use crate::{
-    dedup_lsp_diagnostics, diagnostic_to_lsp, materialize_analysis_overlay, EditorDocument,
-    EditorError, EditorErrorKind, EditorResult, EditorWorkspaceMapping, LspDiagnostic,
+    diagnostic_to_lsp, materialize_analysis_overlay, EditorDocument, EditorError,
+    EditorErrorKind, EditorResult, EditorWorkspaceMapping,
 };
 use fol_diagnostics::Diagnostic;
 use fol_diagnostics::ToDiagnostic;
@@ -10,21 +10,37 @@ use fol_resolver::Resolver;
 use fol_stream::{FileStream, Source, SourceType};
 use fol_typecheck::Typechecker;
 use std::path::Path;
+use std::sync::Arc;
 
 use super::semantic::SemanticSnapshot;
 
-pub(super) fn analyze_document(
-    document: &EditorDocument,
-    mapping: &EditorWorkspaceMapping,
-) -> EditorResult<Vec<LspDiagnostic>> {
-    let snapshot = analyze_document_semantics(document, mapping)?;
-    Ok(dedup_lsp_diagnostics(snapshot.diagnostics))
+#[derive(Debug, Clone)]
+pub(crate) struct CachedSemanticSnapshot {
+    pub(crate) document_version: i32,
+    pub(crate) snapshot: Arc<SemanticSnapshot>,
+}
+
+#[cfg(test)]
+static ANALYZE_DOCUMENT_SEMANTICS_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+
+#[cfg(test)]
+pub(crate) fn reset_analyze_document_semantics_call_count() {
+    ANALYZE_DOCUMENT_SEMANTICS_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+}
+
+#[cfg(test)]
+pub(crate) fn analyze_document_semantics_call_count() -> usize {
+    ANALYZE_DOCUMENT_SEMANTICS_CALLS.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 pub(super) fn analyze_document_semantics(
     document: &EditorDocument,
     mapping: &EditorWorkspaceMapping,
 ) -> EditorResult<SemanticSnapshot> {
+    #[cfg(test)]
+    ANALYZE_DOCUMENT_SEMANTICS_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
     let overlay = materialize_analysis_overlay(mapping, document)?;
     if let Some(package_root) = overlay.package_root() {
         let parser_diags = parse_directory_diagnostics(package_root)?

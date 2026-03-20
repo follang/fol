@@ -1,5 +1,6 @@
 use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root, temp_root};
 use super::super::{
+    analysis::{analyze_document_semantics_call_count, reset_analyze_document_semantics_call_count},
     completion_helpers::completion_context, completion_helpers::CompletionContext,
     EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCompletionContext,
     LspCompletionList, LspCompletionParams, LspDefinitionParams,
@@ -12,7 +13,6 @@ use super::super::{
 use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
 use std::fs;
 use std::path::PathBuf;
-
 
 #[test]
 fn lsp_server_handles_initialize_shutdown_and_exit() {
@@ -313,6 +313,108 @@ fn lsp_server_maps_document_roots_and_surfaces_resolver_diagnostics() {
     assert_eq!(server.session.mappings.len(), 1);
     assert_eq!(diagnostics.len(), 1);
     assert_eq!(diagnostics[0].diagnostics[0].code, "R1003");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
+    let (root, uri) = sample_package_root("semantic_cache");
+    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    let _open = open_document(&mut server, uri.clone(), text);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(70),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(71),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _completion: LspCompletionList =
+        serde_json::from_value(completion.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let changed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        text: "fun[] main(): int = {\n    var value: int = 11\n    return value\n}\n"
+                            .to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert_eq!(changed.len(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 2);
+
+    let definition = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(72),
+            method: "textDocument/definition".to_string(),
+            params: Some(
+                serde_json::to_value(LspDefinitionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _definition: Option<LspLocation> =
+        serde_json::from_value(definition.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_semantics_call_count(), 2);
 
     fs::remove_dir_all(root).ok();
 }
