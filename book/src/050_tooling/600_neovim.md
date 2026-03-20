@@ -73,6 +73,8 @@ LSP provides:
 - diagnostics
 - hover
 - definitions
+- references
+- rename for same-file local symbols
 - document symbols
 
 So the normal editor shape is:

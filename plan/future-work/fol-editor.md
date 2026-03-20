@@ -15,8 +15,6 @@ The active implementation work belongs in [`PLAN.md`](../PLAN.md).
 
 ## Future LSP Work
 
-- references
-- rename
 - semantic tokens
 - code actions
 - signature help

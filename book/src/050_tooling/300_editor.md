@@ -42,6 +42,8 @@ It is responsible for:
 - compiler-backed diagnostics
 - hover
 - go-to-definition
+- references
+- rename for same-file local symbols
 - document symbols
 - completion
 
@@ -50,15 +52,14 @@ The currently supported v1 LSP surface is:
 - diagnostics
 - hover
 - definition
+- references
+- rename for same-file local symbols
 - document symbols
 - completion
 
-Requests outside that v1 set are not advertised yet and should be treated as
-future work until they are implemented for real.
-
 The server keeps one semantic snapshot per open document version. It reuses
-that snapshot for hover, definition, document symbols, and completion until the
-document changes or closes.
+that snapshot for hover, definition, references, rename, document symbols, and
+completion until the document changes or closes.
 
 ## Compiler Truth
 
