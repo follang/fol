@@ -262,8 +262,7 @@ fn completion_item_priority(item: &EditorCompletionItem) -> u8 {
 fn completion_item_detail_priority(item: &EditorCompletionItem) -> u8 {
     match item.detail.as_deref() {
         Some("builtin type") => 0,
-        Some("type") => 1,
-        Some("type alias") => 2,
+        Some("type") | Some("type alias") => 1,
         _ => 3,
     }
 }

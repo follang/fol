@@ -264,7 +264,7 @@ fn lsp_server_locks_type_completion_matrix() {
                 serde_json::to_value(LspCompletionParams {
                     text_document: LspTextDocumentIdentifier { uri: uri.clone() },
                     position: LspPosition {
-                        line: 9,
+                        line: 7,
                         character: 16,
                     },
                     context: None,
