@@ -13,9 +13,10 @@ pub use types::{
     LspCompletionOptions, LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
     LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams, LspDocumentSymbol,
     LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams, LspInitializeResult,
-    LspPublishDiagnosticsParams, LspReferenceParams, LspServerCapabilities, LspServerInfo,
-    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
-    LspTextDocumentSyncOptions, LspVersionedTextDocumentIdentifier,
+    LspPublishDiagnosticsParams, LspReferenceContext, LspReferenceParams, LspRenameParams,
+    LspServerCapabilities, LspServerInfo, LspTextDocumentContentChangeEvent,
+    LspTextDocumentIdentifier, LspTextDocumentItem, LspTextDocumentSyncOptions, LspTextEdit,
+    LspVersionedTextDocumentIdentifier, LspWorkspaceEdit,
 };
 
 use crate::{
@@ -125,6 +126,20 @@ impl EditorLspServer {
                     result: Some(
                         serde_json::to_value(result).expect("references should serialize"),
                     ),
+                    error: None,
+                }))
+            }
+            "textDocument/rename" => {
+                let params: LspRenameParams = from_params(request.params)?;
+                let result = self.rename(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                    params.position,
+                    &params.new_name,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(serde_json::to_value(result).expect("rename should serialize")),
                     error: None,
                 }))
             }
@@ -298,6 +313,23 @@ impl EditorLspServer {
             .reference_at(position)
             .map(|reference| snapshot.references_for_reference(reference, include_declaration))
             .unwrap_or_default())
+    }
+
+    pub fn rename(
+        &mut self,
+        uri: &EditorDocumentUri,
+        position: LspPosition,
+        new_name: &str,
+    ) -> EditorResult<LspWorkspaceEdit> {
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        let reference = snapshot.reference_at(position).ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::InvalidInput,
+                format!("no rename target at {}:{}", position.line, position.character),
+            )
+        })?;
+        snapshot.rename_for_reference(reference, new_name)
     }
 
     pub fn completion(

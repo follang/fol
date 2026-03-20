@@ -177,6 +177,14 @@ pub struct LspReferenceParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct LspRenameParams {
+    pub text_document: LspTextDocumentIdentifier,
+    pub position: LspPosition,
+    pub new_name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspDocumentSymbolParams {
     pub text_document: LspTextDocumentIdentifier,
 }
@@ -242,4 +250,17 @@ pub struct LspDocumentSymbol {
     pub selection_range: LspRange,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<LspDocumentSymbol>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspTextEdit {
+    pub range: LspRange,
+    pub new_text: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspWorkspaceEdit {
+    pub changes: std::collections::BTreeMap<String, Vec<LspTextEdit>>,
 }

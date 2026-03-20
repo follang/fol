@@ -29,9 +29,10 @@ pub use lsp::{
     LspCompletionList, LspCompletionOptions, LspCompletionParams, LspDefinitionParams,
     LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams,
     LspDocumentSymbol, LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams,
-    LspInitializeResult, LspPublishDiagnosticsParams, LspServerCapabilities, LspServerInfo,
-    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
-    LspTextDocumentSyncOptions, LspVersionedTextDocumentIdentifier,
+    LspInitializeResult, LspPublishDiagnosticsParams, LspReferenceContext, LspReferenceParams,
+    LspRenameParams, LspServerCapabilities, LspServerInfo, LspTextDocumentContentChangeEvent,
+    LspTextDocumentIdentifier, LspTextDocumentItem, LspTextDocumentSyncOptions, LspTextEdit,
+    LspVersionedTextDocumentIdentifier, LspWorkspaceEdit,
 };
 pub use paths::{EditorDocumentPath, EditorDocumentUri};
 pub use session::{EditorConfig, EditorSession};

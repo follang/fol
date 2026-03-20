@@ -1,4 +1,7 @@
-use crate::{location_to_range, EditorDocument, LspDiagnostic, LspLocation, LspPosition, LspRange};
+use crate::{
+    location_to_range, EditorDocument, EditorError, EditorErrorKind, EditorResult, LspDiagnostic,
+    LspLocation, LspPosition, LspRange, LspTextEdit, LspWorkspaceEdit,
+};
 use fol_intrinsics::{
     intrinsic_registry, IntrinsicAvailability, IntrinsicStatus, IntrinsicSurface,
 };
@@ -699,6 +702,124 @@ impl SemanticSnapshot {
         });
         locations.dedup_by(|left, right| left == right);
         locations
+    }
+
+    pub(super) fn rename_for_reference(
+        &self,
+        reference: &fol_resolver::ResolvedReference,
+        new_name: &str,
+    ) -> EditorResult<LspWorkspaceEdit> {
+        let resolved = self.resolved_workspace.as_ref().ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::InvalidInput,
+                "rename requires a resolved workspace",
+            )
+        })?;
+        let symbol_id = reference.resolved.ok_or_else(|| {
+            EditorError::new(EditorErrorKind::InvalidInput, "rename target is unresolved")
+        })?;
+        let analyzed_path = self.analyzed_path.as_ref().ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::InvalidInput,
+                "rename target has no analyzed document path",
+            )
+        })?;
+        let analyzed_uri = format!("file://{}", analyzed_path.display());
+
+        for package in resolved.packages() {
+            let program = &package.program;
+            let Some(symbol) = program.symbol(symbol_id) else {
+                continue;
+            };
+
+            if !matches!(
+                symbol.kind,
+                fol_resolver::SymbolKind::ValueBinding
+                    | fol_resolver::SymbolKind::LabelBinding
+                    | fol_resolver::SymbolKind::DestructureBinding
+                    | fol_resolver::SymbolKind::Parameter
+                    | fol_resolver::SymbolKind::Capture
+                    | fol_resolver::SymbolKind::LoopBinder
+                    | fol_resolver::SymbolKind::RollingBinder
+            ) {
+                return Err(EditorError::new(
+                    EditorErrorKind::InvalidInput,
+                    format!(
+                        "rename currently supports same-file local symbols only, not {}",
+                        render_symbol_kind(symbol.kind)
+                    ),
+                ));
+            }
+
+            let mut edits = Vec::new();
+            let declaration = symbol.origin.as_ref().ok_or_else(|| {
+                EditorError::new(
+                    EditorErrorKind::InvalidInput,
+                    "rename target is missing a declaration location",
+                )
+            })?;
+            let declaration_file = declaration.file.as_ref().ok_or_else(|| {
+                EditorError::new(
+                    EditorErrorKind::InvalidInput,
+                    "rename target is missing a declaration file",
+                )
+            })?;
+            if declaration_file != &analyzed_path.to_string_lossy() {
+                return Err(EditorError::new(
+                    EditorErrorKind::InvalidInput,
+                    "rename currently refuses multi-file symbols",
+                ));
+            }
+            edits.push(LspTextEdit {
+                range: location_to_range(&fol_diagnostics::DiagnosticLocation {
+                    file: Some(declaration_file.clone()),
+                    line: declaration.line,
+                    column: declaration.column,
+                    length: Some(declaration.length),
+                }),
+                new_text: new_name.to_string(),
+            });
+
+            for hit in program.all_references().filter(|hit| hit.resolved == Some(symbol_id)) {
+                let Some(syntax_id) = hit.syntax_id else { continue };
+                let Some(origin) = program.syntax_index().origin(syntax_id) else {
+                    continue;
+                };
+                let Some(file) = origin.file.as_ref() else { continue };
+                if file != &analyzed_path.to_string_lossy() {
+                    return Err(EditorError::new(
+                        EditorErrorKind::InvalidInput,
+                        "rename currently refuses multi-file symbols",
+                    ));
+                }
+                edits.push(LspTextEdit {
+                    range: location_to_range(&fol_diagnostics::DiagnosticLocation {
+                        file: Some(file.clone()),
+                        line: origin.line,
+                        column: origin.column,
+                        length: Some(origin.length),
+                    }),
+                    new_text: new_name.to_string(),
+                });
+            }
+
+            edits.sort_by(|left, right| {
+                left.range
+                    .start
+                    .line
+                    .cmp(&right.range.start.line)
+                    .then(left.range.start.character.cmp(&right.range.start.character))
+            });
+            edits.dedup_by(|left, right| left == right);
+            let mut changes = std::collections::BTreeMap::new();
+            changes.insert(analyzed_uri, edits);
+            return Ok(LspWorkspaceEdit { changes });
+        }
+
+        Err(EditorError::new(
+            EditorErrorKind::InvalidInput,
+            "rename target symbol was not found in the resolved workspace",
+        ))
     }
 
     // COMPILER-BACKED: resolved symbols by path (no text fallback)
