@@ -1,6 +1,6 @@
 use crate::{
-    lsp::analysis::CachedSemanticSnapshot, EditorDocumentStore, EditorWorkspaceMapping,
-    EditorWorkspaceRoots,
+    lsp::analysis::{CachedDiagnosticSnapshot, CachedSemanticSnapshot},
+    EditorDocumentStore, EditorWorkspaceMapping, EditorWorkspaceRoots,
 };
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -17,6 +17,7 @@ pub struct EditorSession {
     pub documents: EditorDocumentStore,
     pub mappings: BTreeMap<String, EditorWorkspaceMapping>,
     pub(crate) workspace_roots: BTreeMap<PathBuf, EditorWorkspaceRoots>,
+    pub(crate) diagnostic_snapshots: BTreeMap<String, CachedDiagnosticSnapshot>,
     pub(crate) semantic_snapshots: BTreeMap<String, CachedSemanticSnapshot>,
     pub shutdown_requested: bool,
 }
@@ -41,6 +42,7 @@ impl EditorSession {
             documents: EditorDocumentStore::default(),
             mappings: BTreeMap::new(),
             workspace_roots: BTreeMap::new(),
+            diagnostic_snapshots: BTreeMap::new(),
             semantic_snapshots: BTreeMap::new(),
             shutdown_requested: false,
         }
@@ -72,6 +74,7 @@ mod tests {
         assert!(session.documents.is_empty());
         assert!(session.mappings.is_empty());
         assert!(session.workspace_roots.is_empty());
+        assert!(session.diagnostic_snapshots.is_empty());
         assert!(session.semantic_snapshots.is_empty());
         assert!(!session.shutdown_requested);
     }

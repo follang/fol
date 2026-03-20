@@ -28,7 +28,7 @@ use crate::{
     EditorErrorKind, EditorResult, EditorSession, EditorWorkspaceMapping, EditorWorkspaceRoots,
     LspLocation, LspPosition, LspRange,
 };
-use analysis::analyze_document_semantics;
+use analysis::{analyze_document_diagnostics, analyze_document_semantics};
 use completion_helpers::completion_context_with_lsp;
 use std::sync::Arc;
 use transport::from_params;
@@ -267,6 +267,7 @@ impl EditorLspServer {
                     .mappings
                     .insert(uri.as_str().to_string(), mapping);
                 self.session.documents.open(document);
+                self.session.diagnostic_snapshots.remove(uri.as_str());
                 self.session.semantic_snapshots.remove(uri.as_str());
                 let diagnostics = self.publish_diagnostics(&uri)?;
                 Ok(vec![diagnostics])
@@ -296,6 +297,7 @@ impl EditorLspServer {
                         )?;
                     }
                 }
+                self.session.diagnostic_snapshots.remove(uri.as_str());
                 self.session.semantic_snapshots.remove(uri.as_str());
                 let diagnostics = self.publish_diagnostics(&uri)?;
                 Ok(vec![diagnostics])
@@ -305,6 +307,7 @@ impl EditorLspServer {
                 let uri = EditorDocumentUri::parse(&params.text_document.uri)?;
                 self.session.documents.close(&uri);
                 self.session.mappings.remove(uri.as_str());
+                self.session.diagnostic_snapshots.remove(uri.as_str());
                 self.session.semantic_snapshots.remove(uri.as_str());
                 Ok(vec![LspPublishDiagnosticsParams {
                     uri: uri.as_str().to_string(),
@@ -323,8 +326,7 @@ impl EditorLspServer {
         uri: &EditorDocumentUri,
     ) -> EditorResult<LspPublishDiagnosticsParams> {
         let document = self.open_document(uri)?.clone();
-        let snapshot = self.semantic_snapshot(uri, &document)?;
-        let diagnostics = dedup_lsp_diagnostics(snapshot.diagnostics.clone());
+        let diagnostics = dedup_lsp_diagnostics(self.diagnostic_snapshot(uri, &document)?);
         Ok(LspPublishDiagnosticsParams {
             uri: uri.as_str().to_string(),
             diagnostics,
@@ -524,6 +526,29 @@ impl EditorLspServer {
             },
         );
         Ok(snapshot)
+    }
+
+    fn diagnostic_snapshot(
+        &mut self,
+        uri: &EditorDocumentUri,
+        document: &EditorDocument,
+    ) -> EditorResult<Vec<crate::LspDiagnostic>> {
+        if let Some(cached) = self.session.diagnostic_snapshots.get(uri.as_str()) {
+            if cached.document_version == document.version {
+                return Ok(cached.diagnostics.clone());
+            }
+        }
+
+        let mapping = self.document_mapping(document, uri)?;
+        let diagnostics = analyze_document_diagnostics(document, &mapping)?;
+        self.session.diagnostic_snapshots.insert(
+            uri.as_str().to_string(),
+            analysis::CachedDiagnosticSnapshot {
+                document_version: document.version,
+                diagnostics: diagnostics.clone(),
+            },
+        );
+        Ok(diagnostics)
     }
 }
 

@@ -1,8 +1,10 @@
 use super::helpers::{open_document, sample_package_root, temp_root};
 use super::super::{
     analysis::{
-        analysis_stage_counts, analyze_document_semantics_call_count,
-        reset_analysis_stage_counts, reset_analyze_document_semantics_call_count,
+        analysis_stage_counts, analyze_document_diagnostics_call_count,
+        analyze_document_semantics_call_count, reset_analysis_stage_counts,
+        reset_analyze_document_diagnostics_call_count,
+        reset_analyze_document_semantics_call_count,
     },
     completion_helpers::completion_context, completion_helpers::CompletionContext,
     EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCodeActionContext,
@@ -375,8 +377,10 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
     let _open = open_document(&mut server, uri.clone(), text);
-    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
 
     let hover = server
         .handle_request(JsonRpcRequest {
@@ -397,6 +401,7 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
         .unwrap()
         .unwrap();
     let _hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
     assert_eq!(analyze_document_semantics_call_count(), 1);
 
     let completion = server
@@ -420,6 +425,7 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
         .unwrap();
     let _completion: LspCompletionList =
         serde_json::from_value(completion.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
     assert_eq!(analyze_document_semantics_call_count(), 1);
 
     let symbols = server
@@ -438,6 +444,7 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
         .unwrap();
     let _symbols: Vec<super::super::LspDocumentSymbol> =
         serde_json::from_value(symbols.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
     assert_eq!(analyze_document_semantics_call_count(), 1);
 
     let changed = server
@@ -462,7 +469,8 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
         })
         .unwrap();
     assert_eq!(changed.len(), 1);
-    assert_eq!(analyze_document_semantics_call_count(), 2);
+    assert_eq!(analyze_document_diagnostics_call_count(), 2);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
 
     let definition = server
         .handle_request(JsonRpcRequest {
@@ -484,22 +492,27 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
         .unwrap();
     let _definition: Option<LspLocation> =
         serde_json::from_value(definition.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_diagnostics_call_count(), 2);
     assert_eq!(analyze_document_semantics_call_count(), 2);
 
     fs::remove_dir_all(root).ok();
 }
 
 #[test]
-fn lsp_server_reuses_diagnostics_seeded_snapshots_for_fast_requests() {
-    let (root, uri) = sample_package_root("diagnostic_seeded_snapshot");
+fn lsp_server_keeps_diagnostics_and_semantic_caches_separate() {
+    let (root, uri) = sample_package_root("diagnostic_and_semantic_split");
     let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
     reset_analysis_stage_counts();
     let _open = open_document(&mut server, uri.clone(), text);
-    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
+    assert!(server.session.diagnostic_snapshots.contains_key(uri.as_str()));
+    assert!(!server.session.semantic_snapshots.contains_key(uri.as_str()));
     assert_eq!(
         analysis_stage_counts(),
         super::super::analysis::AnalysisStageCounts {
@@ -567,15 +580,17 @@ fn lsp_server_reuses_diagnostics_seeded_snapshots_for_fast_requests() {
         .unwrap()
         .unwrap();
 
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
     assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert!(server.session.semantic_snapshots.contains_key(uri.as_str()));
     assert_eq!(
         analysis_stage_counts(),
         super::super::analysis::AnalysisStageCounts {
-            materialize_overlay: 1,
-            parse_directory_diagnostics: 1,
-            load_directory_package: 1,
-            resolve_workspace: 1,
-            typecheck_workspace: 1,
+            materialize_overlay: 2,
+            parse_directory_diagnostics: 2,
+            load_directory_package: 2,
+            resolve_workspace: 2,
+            typecheck_workspace: 2,
         }
     );
 
@@ -590,6 +605,7 @@ fn lsp_server_reuses_changed_document_snapshot_after_diagnostics_refresh() {
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
     reset_analysis_stage_counts();
     let _open = open_document(&mut server, uri.clone(), text);
 
@@ -623,7 +639,8 @@ fn lsp_server_reuses_changed_document_snapshot_after_diagnostics_refresh() {
         })
         .unwrap();
     assert_eq!(changed.len(), 1);
-    assert_eq!(analyze_document_semantics_call_count(), 2);
+    assert_eq!(analyze_document_diagnostics_call_count(), 2);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
     assert_eq!(
         analysis_stage_counts(),
         super::super::analysis::AnalysisStageCounts {
@@ -669,15 +686,16 @@ fn lsp_server_reuses_changed_document_snapshot_after_diagnostics_refresh() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(analyze_document_semantics_call_count(), 2);
+    assert_eq!(analyze_document_diagnostics_call_count(), 2);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
     assert_eq!(
         analysis_stage_counts(),
         super::super::analysis::AnalysisStageCounts {
-            materialize_overlay: 2,
-            parse_directory_diagnostics: 2,
-            load_directory_package: 2,
-            resolve_workspace: 2,
-            typecheck_workspace: 2,
+            materialize_overlay: 3,
+            parse_directory_diagnostics: 3,
+            load_directory_package: 3,
+            resolve_workspace: 3,
+            typecheck_workspace: 3,
         }
     );
 
@@ -692,9 +710,11 @@ fn lsp_server_did_close_clears_diagnostics_without_reanalysis() {
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
     reset_analysis_stage_counts();
     let _open = open_document(&mut server, uri.clone(), text);
-    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
 
     let closed = server
         .handle_notification(JsonRpcNotification {
@@ -714,7 +734,8 @@ fn lsp_server_did_close_clears_diagnostics_without_reanalysis() {
 
     assert_eq!(closed.len(), 1);
     assert!(closed[0].diagnostics.is_empty());
-    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
     assert_eq!(
         analysis_stage_counts(),
         super::super::analysis::AnalysisStageCounts {
@@ -737,12 +758,14 @@ fn lsp_server_parser_diagnostics_stop_before_package_load_and_resolution() {
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
     reset_analysis_stage_counts();
     let diagnostics = open_document(&mut server, uri, text);
 
     assert_eq!(diagnostics.len(), 1);
     assert!(!diagnostics[0].diagnostics.is_empty());
     assert_eq!(diagnostics[0].diagnostics[0].code, "P1001");
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
     assert_eq!(analyze_document_semantics_call_count(), 1);
     assert_eq!(
         analysis_stage_counts(),
@@ -767,10 +790,12 @@ fn lsp_server_package_load_failures_stop_before_resolution_and_typecheck() {
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
     reset_analysis_stage_counts();
     let diagnostics = open_document(&mut server, uri, text);
 
     assert_eq!(diagnostics.len(), 1);
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
     assert_eq!(analyze_document_semantics_call_count(), 1);
     assert_eq!(
         analysis_stage_counts(),
@@ -798,8 +823,10 @@ fn lsp_server_reuses_snapshots_for_repeated_signature_help() {
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
     open_document(&mut server, uri.clone(), &text);
-    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
 
     let request = || JsonRpcRequest {
         jsonrpc: "2.0".to_string(),
@@ -820,6 +847,7 @@ fn lsp_server_reuses_snapshots_for_repeated_signature_help() {
     let first = server.handle_request(request()).unwrap().unwrap();
     let second = server.handle_request(request()).unwrap().unwrap();
 
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
     assert_eq!(analyze_document_semantics_call_count(), 1);
     assert!(first.result.is_some());
     assert_eq!(first.result, second.result);
@@ -839,8 +867,10 @@ fn lsp_server_reuses_snapshots_for_repeated_code_actions() {
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
     open_document(&mut server, uri.clone(), &text);
-    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
 
     let request = || JsonRpcRequest {
         jsonrpc: "2.0".to_string(),
@@ -870,6 +900,7 @@ fn lsp_server_reuses_snapshots_for_repeated_code_actions() {
     let first = server.handle_request(request()).unwrap().unwrap();
     let second = server.handle_request(request()).unwrap().unwrap();
 
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
     assert_eq!(analyze_document_semantics_call_count(), 1);
     assert!(first.result.is_some());
     assert_eq!(first.result, second.result);
@@ -885,9 +916,12 @@ fn lsp_server_drops_semantic_snapshots_when_documents_close_and_reopen() {
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
     let _open = open_document(&mut server, uri.clone(), text);
-    assert_eq!(analyze_document_semantics_call_count(), 1);
-    assert!(server.session.semantic_snapshots.contains_key(uri.as_str()));
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
+    assert!(server.session.diagnostic_snapshots.contains_key(uri.as_str()));
+    assert!(!server.session.semantic_snapshots.contains_key(uri.as_str()));
 
     let closed = server
         .handle_notification(JsonRpcNotification {
@@ -905,11 +939,14 @@ fn lsp_server_drops_semantic_snapshots_when_documents_close_and_reopen() {
         })
         .unwrap();
     assert_eq!(closed.len(), 1);
+    assert!(!server.session.diagnostic_snapshots.contains_key(uri.as_str()));
     assert!(!server.session.semantic_snapshots.contains_key(uri.as_str()));
 
     let _reopened = open_document(&mut server, uri.clone(), text);
-    assert_eq!(analyze_document_semantics_call_count(), 2);
-    assert!(server.session.semantic_snapshots.contains_key(uri.as_str()));
+    assert_eq!(analyze_document_diagnostics_call_count(), 2);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert!(server.session.diagnostic_snapshots.contains_key(uri.as_str()));
+    assert!(!server.session.semantic_snapshots.contains_key(uri.as_str()));
 
     fs::remove_dir_all(root).ok();
 }
@@ -1520,3 +1557,25 @@ fn lsp_parse_cascade_yields_at_most_one_diagnostic_per_line_per_code() {
 
     fs::remove_dir_all(root).ok();
 }
+    let _hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(745),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier {
+                        uri: uri.as_str().to_string(),
+                    },
+                    position: LspPosition {
+                        line: 1,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert!(server.session.semantic_snapshots.contains_key(uri.as_str()));

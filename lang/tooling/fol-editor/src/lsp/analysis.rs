@@ -20,8 +20,17 @@ pub(crate) struct CachedSemanticSnapshot {
     pub(crate) snapshot: Arc<SemanticSnapshot>,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct CachedDiagnosticSnapshot {
+    pub(crate) document_version: i32,
+    pub(crate) diagnostics: Vec<crate::LspDiagnostic>,
+}
+
 #[cfg(test)]
 static ANALYZE_DOCUMENT_SEMANTICS_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static ANALYZE_DOCUMENT_DIAGNOSTICS_CALLS: std::sync::atomic::AtomicUsize =
     std::sync::atomic::AtomicUsize::new(0);
 #[cfg(test)]
 static MATERIALIZE_ANALYSIS_OVERLAY_CALLS: std::sync::atomic::AtomicUsize =
@@ -47,6 +56,16 @@ pub(crate) fn reset_analyze_document_semantics_call_count() {
 #[cfg(test)]
 pub(crate) fn analyze_document_semantics_call_count() -> usize {
     ANALYZE_DOCUMENT_SEMANTICS_CALLS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+#[cfg(test)]
+pub(crate) fn reset_analyze_document_diagnostics_call_count() {
+    ANALYZE_DOCUMENT_DIAGNOSTICS_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+}
+
+#[cfg(test)]
+pub(crate) fn analyze_document_diagnostics_call_count() -> usize {
+    ANALYZE_DOCUMENT_DIAGNOSTICS_CALLS.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 #[cfg(test)]
@@ -214,6 +233,16 @@ pub(super) fn analyze_document_semantics(
             typed_workspace: None,
         })
     }
+}
+
+pub(super) fn analyze_document_diagnostics(
+    document: &EditorDocument,
+    mapping: &EditorWorkspaceMapping,
+) -> EditorResult<Vec<crate::LspDiagnostic>> {
+    #[cfg(test)]
+    ANALYZE_DOCUMENT_DIAGNOSTICS_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let snapshot = analyze_document_semantics(document, mapping)?;
+    Ok(snapshot.diagnostics)
 }
 
 pub(super) fn diagnostic_targets_path(diagnostic: &Diagnostic, path: &Path) -> bool {
