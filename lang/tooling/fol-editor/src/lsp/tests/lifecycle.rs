@@ -119,6 +119,37 @@ fn lsp_server_can_advertise_full_document_sync_when_config_requests_it() {
 }
 
 #[test]
+fn lsp_server_initialize_surface_stays_aligned_with_shipped_capabilities() {
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    let initialize = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(4),
+            method: "initialize".to_string(),
+            params: Some(serde_json::json!({})),
+        })
+        .unwrap()
+        .unwrap();
+    let rendered = serde_json::to_string(&initialize.result.expect("initialize should return capabilities"))
+        .expect("initialize result should serialize");
+
+    assert!(rendered.contains("\"hoverProvider\":true"));
+    assert!(rendered.contains("\"definitionProvider\":true"));
+    assert!(rendered.contains("\"documentSymbolProvider\":true"));
+    assert!(rendered.contains("\"workspaceSymbolProvider\":true"));
+    assert!(rendered.contains("\"formattingProvider\":true"));
+    assert!(rendered.contains("\"codeActionProvider\":true"));
+    assert!(rendered.contains("\"signatureHelpProvider\""));
+    assert!(rendered.contains("\"referencesProvider\":true"));
+    assert!(rendered.contains("\"renameProvider\":true"));
+    assert!(rendered.contains("\"semanticTokensProvider\""));
+    assert!(rendered.contains("\"completionProvider\""));
+    assert!(!rendered.contains("\"rangeFormattingProvider\":true"));
+    assert!(!rendered.contains("\"executeCommandProvider\""));
+}
+
+#[test]
 fn lsp_server_rejects_unimplemented_v1_methods_explicitly() {
     let mut server = EditorLspServer::new(EditorConfig::default());
 
