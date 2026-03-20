@@ -683,6 +683,103 @@ fn lsp_server_tracks_incremental_edits_through_incomplete_and_recovered_text() {
 }
 
 #[test]
+fn lsp_server_serves_semantic_requests_from_incrementally_updated_text() {
+    let (root, uri) = sample_package_root("incremental_semantic_requests");
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    open_document(
+        &mut server,
+        uri.clone(),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    );
+
+    let changed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: Some(crate::LspRange {
+                            start: LspPosition {
+                                line: 1,
+                                character: 4,
+                            },
+                            end: LspPosition {
+                                line: 1,
+                                character: 12,
+                            },
+                        }),
+                        range_length: Some(8),
+                        text: "var value: int = 7\n    return value".to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert_eq!(changed.len(), 1);
+    assert!(changed[0].diagnostics.is_empty());
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(501),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let completion: LspCompletionList =
+        serde_json::from_value(completion.result.unwrap()).unwrap();
+    assert!(completion.items.iter().any(|item| item.label == "value"));
+
+    let definition = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(502),
+            method: "textDocument/definition".to_string(),
+            params: Some(
+                serde_json::to_value(LspDefinitionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let definition: Option<LspLocation> =
+        serde_json::from_value(definition.result.unwrap()).unwrap();
+    assert_eq!(
+        definition.unwrap().range.start,
+        LspPosition {
+            line: 1,
+            character: 8,
+        }
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_surfaces_parser_diagnostics_from_open_documents() {
     let (root, uri) = sample_package_root("parser_diag");
     let mut server = EditorLspServer::new(EditorConfig::default());
