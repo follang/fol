@@ -282,6 +282,65 @@ fn lsp_server_formats_parse_broken_documents_without_needing_semantic_recovery()
 }
 
 #[test]
+fn lsp_server_formatting_does_not_build_semantic_snapshots() {
+    let (root, uri) = sample_package_root("formatting_fast_path");
+    let text = "fun[] main(): int = {\nreturn 0;\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_diagnostics_call_count();
+    reset_analyze_document_semantics_call_count();
+    reset_analysis_stage_counts();
+    open_document(&mut server, uri.clone(), text);
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 1,
+            parse_directory_diagnostics: 1,
+            load_directory_package: 1,
+            resolve_workspace: 1,
+            typecheck_workspace: 1,
+        }
+    );
+
+    let request = || JsonRpcRequest {
+        jsonrpc: "2.0".to_string(),
+        id: JsonRpcId::Number(204),
+        method: "textDocument/formatting".to_string(),
+        params: Some(
+            serde_json::to_value(LspDocumentFormattingParams {
+                text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+            })
+            .unwrap(),
+        ),
+    };
+
+    let first = server.handle_request(request()).unwrap().unwrap();
+    let second = server.handle_request(request()).unwrap().unwrap();
+    let first_edits: Vec<LspTextEdit> = serde_json::from_value(first.result.unwrap()).unwrap();
+    let second_edits: Vec<LspTextEdit> = serde_json::from_value(second.result.unwrap()).unwrap();
+
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 1,
+            parse_directory_diagnostics: 1,
+            load_directory_package: 1,
+            resolve_workspace: 1,
+            typecheck_workspace: 1,
+        }
+    );
+    assert_eq!(first_edits, second_edits);
+    assert!(!server.session.semantic_snapshots.contains_key(uri.as_str()));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn completion_context_detects_type_positions() {
     let uri =
         EditorDocumentUri::from_file_path(PathBuf::from("/tmp/type_context.fol")).unwrap();
