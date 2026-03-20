@@ -112,6 +112,8 @@ Use `tool` for:
 
 The public editor surface stays under `fol tool ...`.
 There is no parallel `fol editor ...` command group.
+Future editor features are not exposed as placeholder commands.
+Only the shipped `fol tool` subcommands above are public.
 
 ## Artifact Reporting
 

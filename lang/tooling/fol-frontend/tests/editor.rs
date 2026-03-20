@@ -56,6 +56,30 @@ fn editor_surface_stays_under_tool_not_a_parallel_editor_group() {
 }
 
 #[test]
+fn editor_tool_surface_rejects_placeholder_future_commands() {
+    let root = repo_root();
+
+    for command in [
+        ["fol", "tool", "references"],
+        ["fol", "tool", "rename"],
+        ["fol", "tool", "format"],
+        ["fol", "tool", "semanticTokens"],
+    ] {
+        let error = run_command_from_args_in_dir(command, root.join("xtra/logtiny"))
+            .expect_err("unsupported future tool command should stay off the public surface");
+        let json = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig {
+            mode: fol_frontend::OutputMode::Json,
+        })
+        .render_error(&error)
+        .expect("json render should succeed");
+
+        assert!(json.contains("\"kind\": \"FrontendInvalidInput\""));
+        assert!(json.contains("unrecognized subcommand"));
+        assert!(json.contains(command[2]));
+    }
+}
+
+#[test]
 fn editor_file_commands_dispatch_against_real_fol_fixtures() {
     let root = repo_root();
     let fixture = "test/apps/fixtures/record_flow/main.fol";
