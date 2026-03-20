@@ -5,11 +5,12 @@ use super::super::{
         reset_analysis_stage_counts, reset_analyze_document_semantics_call_count,
     },
     completion_helpers::completion_context, completion_helpers::CompletionContext,
-    EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCompletionList,
-    LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
+    EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCodeActionContext,
+    LspCodeActionParams, LspCompletionList, LspCompletionParams, LspDefinitionParams,
+    LspDidChangeTextDocumentParams,
     LspDidCloseTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
     LspInitializeResult, LspLocation, LspPosition, LspSignatureHelpParams,
-    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier,
+    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspRange,
     LspVersionedTextDocumentIdentifier,
 };
 use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
@@ -810,6 +811,56 @@ fn lsp_server_reuses_snapshots_for_repeated_signature_help() {
                 position: LspPosition {
                     line: 4,
                     character: 22,
+                },
+            })
+            .unwrap(),
+        ),
+    };
+
+    let first = server.handle_request(request()).unwrap().unwrap();
+    let second = server.handle_request(request()).unwrap().unwrap();
+
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert!(first.result.is_some());
+    assert_eq!(first.result, second.result);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_reuses_snapshots_for_repeated_code_actions() {
+    let (root, uri) = sample_package_root("code_action_cache");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return mian\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    open_document(&mut server, uri.clone(), &text);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let request = || JsonRpcRequest {
+        jsonrpc: "2.0".to_string(),
+        id: JsonRpcId::Number(701),
+        method: "textDocument/codeAction".to_string(),
+        params: Some(
+            serde_json::to_value(LspCodeActionParams {
+                text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                range: LspRange {
+                    start: LspPosition {
+                        line: 1,
+                        character: 11,
+                    },
+                    end: LspPosition {
+                        line: 1,
+                        character: 15,
+                    },
+                },
+                context: LspCodeActionContext {
+                    diagnostics: Vec::new(),
                 },
             })
             .unwrap(),
