@@ -221,6 +221,81 @@ fn lsp_server_tracks_open_change_and_close_document_lifecycle() {
 }
 
 #[test]
+fn lsp_server_tracks_multiple_open_documents_in_one_session() {
+    let (root, uri) = sample_package_root("multi_lifecycle");
+    let second_path = root.join("src/extra.fol");
+    fs::write(
+        &second_path,
+        "fun[] extra(): int = {\n    return 9\n}\n",
+    )
+    .unwrap();
+    let second_uri = format!("file://{}", second_path.display());
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    let main_open = open_document(
+        &mut server,
+        uri.clone(),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    );
+    let extra_open = open_document(
+        &mut server,
+        second_uri.clone(),
+        "fun[] extra(): int = {\n    return 9\n}\n",
+    );
+    assert_eq!(server.session.documents.len(), 2);
+    assert_eq!(server.session.mappings.len(), 2);
+    assert!(main_open[0].diagnostics.is_empty());
+    assert!(extra_open[0].diagnostics.is_empty());
+
+    let changed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: second_uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        text: "fun[] extra(): int = {\n    return 11\n}\n".to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert!(changed[0].diagnostics.is_empty());
+    assert_eq!(server.session.documents.len(), 2);
+
+    let closed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didClose".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidCloseTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 1,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert!(closed[0].diagnostics.is_empty());
+    assert_eq!(server.session.documents.len(), 1);
+    assert_eq!(server.session.mappings.len(), 1);
+    assert!(server
+        .session
+        .documents
+        .get(&crate::EditorDocumentUri::parse(&second_uri).unwrap())
+        .is_some());
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_maps_document_roots_and_surfaces_resolver_diagnostics() {
     let (root, uri) = sample_package_root("resolver_diag");
     fs::write(
