@@ -397,6 +397,63 @@ fn editor_commands_do_not_require_workspace_discovery() {
 }
 
 #[test]
+fn editor_format_command_does_not_require_workspace_discovery() {
+    let root = temp_root("format_no_workspace");
+    fs::create_dir_all(&root).expect("should create temp root");
+    let file = root.join("sample.fol");
+    fs::write(&file, "fun[] main(): int = {\nreturn 0;\n};\n")
+        .expect("should write sample source");
+
+    let (_, result) = run_command_from_args_in_dir(
+        ["fol", "tool", "format", file.to_string_lossy().as_ref()],
+        &root,
+    )
+    .expect("editor format should not need a workspace root");
+
+    assert_eq!(result.command, "format");
+    assert!(result.summary.contains("changed=true"));
+    assert_eq!(
+        fs::read_to_string(&file).unwrap(),
+        "fun[] main(): int = {\n    return 0;\n};\n"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn editor_format_command_does_not_mutate_unrelated_files() {
+    let root = temp_root("format_isolated_write");
+    fs::create_dir_all(&root).expect("should create temp root");
+    let target = root.join("target.fol");
+    let sibling = root.join("sibling.fol");
+    fs::write(&target, "fun[] main(): int = {\nreturn 0;\n};\n")
+        .expect("should write target source");
+    fs::write(
+        &sibling,
+        "fun[] keep(): int = {\n    return 7\n}\n",
+    )
+    .expect("should write sibling source");
+
+    let (_, result) = run_command_from_args_in_dir(
+        ["fol", "tool", "format", target.to_string_lossy().as_ref()],
+        &root,
+    )
+    .expect("editor format should dispatch");
+
+    assert_eq!(result.command, "format");
+    assert_eq!(
+        fs::read_to_string(&target).unwrap(),
+        "fun[] main(): int = {\n    return 0;\n};\n"
+    );
+    assert_eq!(
+        fs::read_to_string(&sibling).unwrap(),
+        "fun[] keep(): int = {\n    return 7\n}\n"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn editor_command_plain_output_stays_snapshot_stable_for_real_fixtures() {
     let root = repo_root();
     let fixture = "xtra/logtiny/src/log.fol";
