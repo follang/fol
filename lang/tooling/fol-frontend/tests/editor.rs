@@ -305,6 +305,85 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
 }
 
 #[test]
+fn editor_build_file_commands_dispatch_through_public_cli() {
+    let root = temp_root("build_cli_surface");
+    fs::create_dir_all(root.join("src")).expect("should create src root");
+    let build = root.join("build.fol");
+    fs::write(&root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+        .expect("should write package manifest");
+    fs::write(
+        &build,
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+    )
+    .expect("should write build source");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    )
+    .expect("should write entry source");
+
+    let (_, references) = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "references",
+            build.to_string_lossy().as_ref(),
+            "--line",
+            "1",
+            "--character",
+            "11",
+        ],
+        &root,
+    )
+    .expect("editor references should dispatch on build files");
+    let (_, semantic_tokens) = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "semantic-tokens",
+            build.to_string_lossy().as_ref(),
+        ],
+        &root,
+    )
+    .expect("editor semantic-tokens should dispatch on build files");
+
+    assert_eq!(references.command, "references");
+    assert!(references.summary.contains("reference_count=2"));
+    assert_eq!(semantic_tokens.command, "semantic-tokens");
+    assert!(semantic_tokens.summary.contains("token_count="));
+
+    let error = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "rename",
+            build.to_string_lossy().as_ref(),
+            "--line",
+            "0",
+            "--character",
+            "7",
+            "bundle",
+        ],
+        &root,
+    )
+    .expect_err("build entry rename should stay outside the first safe boundary");
+    let rendered = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig {
+        mode: fol_frontend::OutputMode::Json,
+    })
+    .render_error(&error)
+    .expect("json render should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&rendered).expect("stderr should be json");
+
+    assert_eq!(parsed["kind"], "FrontendCommandFailed");
+    assert!(parsed["message"]
+        .as_str()
+        .expect("message should be a string")
+        .contains("same-file local symbols only"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn editor_references_command_can_exclude_declarations() {
     let root = repo_root();
     let fixture = "test/apps/fixtures/record_flow/main.fol";
