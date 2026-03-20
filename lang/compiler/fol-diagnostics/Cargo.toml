@@ -6,7 +6,5 @@ edition = "2021"
 description = "Error formatting and diagnostics for FOL language"
 
 [dependencies]
-fol-types = { path = "../fol-types" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-colored = "2"

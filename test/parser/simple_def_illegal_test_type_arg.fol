@@ -1,1 +1,1 @@
-def suite: tst["smoke", bad__scope] = {}
+def suite: tst["smoke", bad__scope] = {};

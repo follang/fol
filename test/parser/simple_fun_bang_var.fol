@@ -1,4 +1,4 @@
 fun demo(): int = {
     !var cached: int = 1;
     return cached;
-}
+};

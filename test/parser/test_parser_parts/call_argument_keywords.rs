@@ -88,7 +88,7 @@ fn test_function_calls_reject_positional_arguments_after_keyword_arguments() {
 
     let first_message = error
         .first()
-        .map(|problem| problem.to_string())
+        .map(|problem| problem.message.clone())
         .unwrap_or_default();
 
     assert!(

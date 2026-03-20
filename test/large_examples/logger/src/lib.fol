@@ -1,0 +1,1009 @@
+// =============================================================================
+// logger library — structured logging for FOL
+// =============================================================================
+// Provides: Level, Logger, LogEntry, LogFilter, Sink, Formatter, LogBuffer
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Log levels
+// ---------------------------------------------------------------------------
+
+ali Level: int;
+
+var[exp] TRACE: Level = 0;
+var[exp] DEBUG: Level = 1;
+var[exp] INFO: Level = 2;
+var[exp] WARN: Level = 3;
+var[exp] ERROR: Level = 4;
+var[exp] FATAL: Level = 5;
+
+fun[exp] level_name(level: Level): str = {
+    when(level) {
+        case(TRACE) { return "TRACE"; }
+        case(DEBUG) { return "DEBUG"; }
+        case(INFO) { return "INFO"; }
+        case(WARN) { return "WARN"; }
+        case(ERROR) { return "ERROR"; }
+        * { return "FATAL"; }
+    }
+};
+
+fun[exp] level_short(level: Level): str = {
+    when(level) {
+        case(TRACE) { return "T"; }
+        case(DEBUG) { return "D"; }
+        case(INFO) { return "I"; }
+        case(WARN) { return "W"; }
+        case(ERROR) { return "E"; }
+        * { return "F"; }
+    }
+};
+
+fun[exp] level_is_error(level: Level): bol = {
+    return .ge(level, ERROR);
+};
+
+fun[exp] level_is_warn_or_above(level: Level): bol = {
+    return .ge(level, WARN);
+};
+
+fun[exp] level_is_debug(level: Level): bol = {
+    return .le(level, DEBUG);
+};
+
+fun[exp] level_allows(current: Level, min: Level): bol = {
+    return .ge(current, min);
+};
+
+fun[exp] level_describe(level: Level): str = {
+    when(level_is_error(level)) {
+        case(true) { return "severity-high"; }
+        * {
+            when(level_is_warn_or_above(level)) {
+                case(true) { return "severity-medium"; }
+                * {
+                    when(level_is_debug(level)) {
+                        case(true) { return "severity-low"; }
+                        * { return "severity-normal"; }
+                    }
+                }
+            }
+        }
+    }
+};
+
+// ---------------------------------------------------------------------------
+// LogEntry — a single log record
+// ---------------------------------------------------------------------------
+
+typ[exp] LogEntry: rec = {
+    level: Level;
+    message: str;
+    source: str;
+    category: str;
+    sequence: int
+};
+
+fun[exp] entry_new(level: Level, message: str, source: str): LogEntry = {
+    return {
+        level = level,
+        message = message,
+        source = source,
+        category = "general",
+        sequence = 0,
+    };
+};
+
+fun[exp] entry_with_category(level: Level, message: str, source: str, category: str): LogEntry = {
+    return {
+        level = level,
+        message = message,
+        source = source,
+        category = category,
+        sequence = 0,
+    };
+};
+
+fun[exp] entry_with_sequence(level: Level, message: str, source: str, seq_num: int): LogEntry = {
+    return {
+        level = level,
+        message = message,
+        source = source,
+        category = "general",
+        sequence = seq_num,
+    };
+};
+
+fun[exp] entry_level(e: LogEntry): Level = {
+    return e.level;
+};
+
+fun[exp] entry_message(e: LogEntry): str = {
+    return e.message;
+};
+
+fun[exp] entry_source(e: LogEntry): str = {
+    return e.source;
+};
+
+fun[exp] entry_category(e: LogEntry): str = {
+    return e.category;
+};
+
+fun[exp] entry_sequence(e: LogEntry): int = {
+    return e.sequence;
+};
+
+fun[exp] entry_is_error(e: LogEntry): bol = {
+    return level_is_error(e.level);
+};
+
+fun[exp] entry_is_warning(e: LogEntry): bol = {
+    return .eq(e.level, WARN);
+};
+
+fun[exp] entry_message_length(e: LogEntry): int = {
+    return .len(e.message);
+};
+
+fun[exp] entry_matches_source(e: LogEntry, target: str): bol = {
+    return .eq(e.source, target);
+};
+
+fun[exp] entry_matches_category(e: LogEntry, target: str): bol = {
+    return .eq(e.category, target);
+};
+
+fun[exp] entry_describe(e: LogEntry): str = {
+    when(entry_is_error(e)) {
+        case(true) { return "error-entry"; }
+        * {
+            when(entry_is_warning(e)) {
+                case(true) { return "warning-entry"; }
+                * {
+                    when(.eq(e.level, INFO)) {
+                        case(true) { return "info-entry"; }
+                        * { return "debug-entry"; }
+                    }
+                }
+            }
+        }
+    }
+};
+
+// ---------------------------------------------------------------------------
+// LogFilter — controls which entries pass through
+// ---------------------------------------------------------------------------
+
+typ[exp] LogFilter: rec = {
+    min_level: Level;
+    source_filter: str;
+    category_filter: str;
+    enabled: bol;
+    inverted: bol
+};
+
+fun[exp] filter_new(min_level: Level): LogFilter = {
+    return {
+        min_level = min_level,
+        source_filter = "",
+        category_filter = "",
+        enabled = true,
+        inverted = false,
+    };
+};
+
+fun[exp] filter_by_source(min_level: Level, source: str): LogFilter = {
+    return {
+        min_level = min_level,
+        source_filter = source,
+        category_filter = "",
+        enabled = true,
+        inverted = false,
+    };
+};
+
+fun[exp] filter_by_category(min_level: Level, category: str): LogFilter = {
+    return {
+        min_level = min_level,
+        source_filter = "",
+        category_filter = category,
+        enabled = true,
+        inverted = false,
+    };
+};
+
+fun[exp] filter_all(): LogFilter = {
+    return {
+        min_level = TRACE,
+        source_filter = "",
+        category_filter = "",
+        enabled = true,
+        inverted = false,
+    };
+};
+
+fun[exp] filter_none(): LogFilter = {
+    return {
+        min_level = FATAL,
+        source_filter = "",
+        category_filter = "",
+        enabled = false,
+        inverted = false,
+    };
+};
+
+fun[exp] filter_invert(f: LogFilter): LogFilter = {
+    return {
+        min_level = f.min_level,
+        source_filter = f.source_filter,
+        category_filter = f.category_filter,
+        enabled = f.enabled,
+        inverted = .not(f.inverted),
+    };
+};
+
+fun[exp] filter_disable(f: LogFilter): LogFilter = {
+    return {
+        min_level = f.min_level,
+        source_filter = f.source_filter,
+        category_filter = f.category_filter,
+        enabled = false,
+        inverted = f.inverted,
+    };
+};
+
+fun[exp] filter_enable(f: LogFilter): LogFilter = {
+    return {
+        min_level = f.min_level,
+        source_filter = f.source_filter,
+        category_filter = f.category_filter,
+        enabled = true,
+        inverted = f.inverted,
+    };
+};
+
+fun[exp] filter_enabled(f: LogFilter): bol = {
+    return f.enabled;
+};
+
+fun[exp] filter_has_source_filter(f: LogFilter): bol = {
+    return .gt(.len(f.source_filter), 0);
+};
+
+fun[exp] filter_has_category_filter(f: LogFilter): bol = {
+    return .gt(.len(f.category_filter), 0);
+};
+
+fun[exp] filter_accepts_level(f: LogFilter, level: Level): bol = {
+    when(f.enabled) {
+        case(true) {
+            var passes: bol = level_allows(level, f.min_level);
+            when(f.inverted) {
+                case(true) { return .not(passes); }
+                * { return passes; }
+            }
+        }
+        * { return false; }
+    }
+};
+
+fun[exp] filter_accepts_entry(f: LogFilter, entry: LogEntry): bol = {
+    when(.not(f.enabled)) {
+        case(true) { return false; }
+        * {
+            when(.not(filter_accepts_level(f, entry.level))) {
+                case(true) { return false; }
+                * {
+                    when(filter_has_source_filter(f)) {
+                        case(true) {
+                            when(.not(.eq(entry.source, f.source_filter))) {
+                                case(true) { return false; }
+                                * {
+                                    when(filter_has_category_filter(f)) {
+                                        case(true) { return .eq(entry.category, f.category_filter); }
+                                        * { return true; }
+                                    }
+                                }
+                            }
+                        }
+                        * {
+                            when(filter_has_category_filter(f)) {
+                                case(true) { return .eq(entry.category, f.category_filter); }
+                                * { return true; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+fun[exp] filter_describe(f: LogFilter): str = {
+    when(f.enabled) {
+        case(true) {
+            when(f.inverted) {
+                case(true) { return "inverted"; }
+                * {
+                    when(filter_has_source_filter(f)) {
+                        case(true) { return "source-filtered"; }
+                        * {
+                            when(filter_has_category_filter(f)) {
+                                case(true) { return "category-filtered"; }
+                                * { return "level-only"; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        * { return "disabled"; }
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Sink — log output destination
+// ---------------------------------------------------------------------------
+
+ali SinkKind: int;
+
+var[exp] SK_CONSOLE: SinkKind = 0;
+var[exp] SK_FILE: SinkKind = 1;
+var[exp] SK_BUFFER: SinkKind = 2;
+var[exp] SK_NULL: SinkKind = 3;
+
+typ[exp] Sink: rec = {
+    name: str;
+    kind: SinkKind;
+    enabled: bol;
+    filter: LogFilter;
+    entries_written: int
+};
+
+fun[exp] sink_console(name: str): Sink = {
+    return {
+        name = name,
+        kind = SK_CONSOLE,
+        enabled = true,
+        filter = filter_new(INFO),
+        entries_written = 0,
+    };
+};
+
+fun[exp] sink_file(name: str, min_level: Level): Sink = {
+    return {
+        name = name,
+        kind = SK_FILE,
+        enabled = true,
+        filter = filter_new(min_level),
+        entries_written = 0,
+    };
+};
+
+fun[exp] sink_buffer(name: str): Sink = {
+    return {
+        name = name,
+        kind = SK_BUFFER,
+        enabled = true,
+        filter = filter_all(),
+        entries_written = 0,
+    };
+};
+
+fun[exp] sink_null(): Sink = {
+    return {
+        name = "null",
+        kind = SK_NULL,
+        enabled = false,
+        filter = filter_none(),
+        entries_written = 0,
+    };
+};
+
+fun[exp] sink_disable(s: Sink): Sink = {
+    return {
+        name = s.name,
+        kind = s.kind,
+        enabled = false,
+        filter = s.filter,
+        entries_written = s.entries_written,
+    };
+};
+
+fun[exp] sink_enable(s: Sink): Sink = {
+    return {
+        name = s.name,
+        kind = s.kind,
+        enabled = true,
+        filter = s.filter,
+        entries_written = s.entries_written,
+    };
+};
+
+fun[exp] sink_name(s: Sink): str = {
+    return s.name;
+};
+
+fun[exp] sink_enabled(s: Sink): bol = {
+    return s.enabled;
+};
+
+fun[exp] sink_kind_name(s: Sink): str = {
+    when(s.kind) {
+        case(SK_CONSOLE) { return "console"; }
+        case(SK_FILE) { return "file"; }
+        case(SK_BUFFER) { return "buffer"; }
+        * { return "null"; }
+    }
+};
+
+fun[exp] sink_entries_written(s: Sink): int = {
+    return s.entries_written;
+};
+
+fun[exp] sink_accepts(s: Sink, entry: LogEntry): bol = {
+    when(s.enabled) {
+        case(true) { return filter_accepts_entry(s.filter, entry); }
+        * { return false; }
+    }
+};
+
+fun[exp] sink_describe(s: Sink): str = {
+    when(s.enabled) {
+        case(true) {
+            when(.gt(s.entries_written, 1000)) {
+                case(true) { return "active-high-volume"; }
+                * {
+                    when(.gt(s.entries_written, 0)) {
+                        case(true) { return "active-with-entries"; }
+                        * { return "active-empty"; }
+                    }
+                }
+            }
+        }
+        * { return "disabled"; }
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Logger — main logging facade
+// ---------------------------------------------------------------------------
+
+typ[exp] Logger: rec = {
+    name: str;
+    min_level: Level;
+    verbose: bol;
+    context: str;
+    sink_count: int;
+    total_logged: int
+};
+
+fun[exp] logger_new(name: str): Logger = {
+    return {
+        name = name,
+        min_level = INFO,
+        verbose = false,
+        context = "default",
+        sink_count = 1,
+        total_logged = 0,
+    };
+};
+
+fun[exp] logger_debug(name: str): Logger = {
+    return {
+        name = name,
+        min_level = DEBUG,
+        verbose = true,
+        context = "debug",
+        sink_count = 1,
+        total_logged = 0,
+    };
+};
+
+fun[exp] logger_verbose(name: str): Logger = {
+    return {
+        name = name,
+        min_level = TRACE,
+        verbose = true,
+        context = "verbose",
+        sink_count = 1,
+        total_logged = 0,
+    };
+};
+
+fun[exp] logger_production(name: str): Logger = {
+    return {
+        name = name,
+        min_level = WARN,
+        verbose = false,
+        context = "production",
+        sink_count = 2,
+        total_logged = 0,
+    };
+};
+
+fun[exp] logger_silent(): Logger = {
+    return {
+        name = "null",
+        min_level = FATAL,
+        verbose = false,
+        context = "silent",
+        sink_count = 0,
+        total_logged = 0,
+    };
+};
+
+fun[exp] logger_with_context(l: Logger, ctx: str): Logger = {
+    return {
+        name = l.name,
+        min_level = l.min_level,
+        verbose = l.verbose,
+        context = ctx,
+        sink_count = l.sink_count,
+        total_logged = l.total_logged,
+    };
+};
+
+fun[exp] logger_name(l: Logger): str = {
+    return l.name;
+};
+
+fun[exp] logger_min_level(l: Logger): Level = {
+    return l.min_level;
+};
+
+fun[exp] logger_verbose_mode(l: Logger): bol = {
+    return l.verbose;
+};
+
+fun[exp] logger_context(l: Logger): str = {
+    return l.context;
+};
+
+fun[exp] logger_sink_count(l: Logger): int = {
+    return l.sink_count;
+};
+
+fun[exp] logger_total_logged(l: Logger): int = {
+    return l.total_logged;
+};
+
+fun[exp] logger_accepts(l: Logger, level: Level): bol = {
+    return level_allows(level, l.min_level);
+};
+
+fun[exp] logger_log(l: Logger, level: Level, message: str): int / str = {
+    when(logger_accepts(l, level)) {
+        case(true) {
+            .echo(l.name);
+            .echo(level_name(level));
+            .echo(message);
+            return .len(message);
+        }
+        * { report "filtered"; }
+    }
+};
+
+fun[exp] logger_log_safe(l: Logger, level: Level, message: str): int = {
+    return logger_log(l, level, message) || 0;
+};
+
+fun[exp] logger_trace(l: Logger, message: str): int = {
+    return logger_log_safe(l, TRACE, message);
+};
+
+fun[exp] logger_debug_msg(l: Logger, message: str): int = {
+    return logger_log_safe(l, DEBUG, message);
+};
+
+fun[exp] logger_info(l: Logger, message: str): int = {
+    return logger_log_safe(l, INFO, message);
+};
+
+fun[exp] logger_warn(l: Logger, message: str): int = {
+    return logger_log_safe(l, WARN, message);
+};
+
+fun[exp] logger_error(l: Logger, message: str): int = {
+    return logger_log_safe(l, ERROR, message);
+};
+
+fun[exp] logger_fatal(l: Logger, message: str): int = {
+    return logger_log_safe(l, FATAL, message);
+};
+
+fun[exp] logger_describe(l: Logger): str = {
+    when(l.verbose) {
+        case(true) {
+            when(.eq(l.min_level, TRACE)) {
+                case(true) { return "verbose-trace"; }
+                * { return "verbose-debug"; }
+            }
+        }
+        * {
+            when(.ge(l.min_level, WARN)) {
+                case(true) { return "production"; }
+                * {
+                    when(.eq(l.min_level, INFO)) {
+                        case(true) { return "standard"; }
+                        * { return "custom"; }
+                    }
+                }
+            }
+        }
+    }
+};
+
+// ---------------------------------------------------------------------------
+// LogBuffer — collects log descriptions for testing
+// ---------------------------------------------------------------------------
+
+typ[exp] LogBuffer: rec = {
+    descriptions: seq[str];
+    max_size: int;
+    name: str;
+    overflow_count: int
+};
+
+fun[exp] buffer_new(name: str, max_size: int): LogBuffer = {
+    return {
+        descriptions = {},
+        max_size = max_size,
+        name = name,
+        overflow_count = 0,
+    };
+};
+
+fun[exp] buffer_empty(b: LogBuffer): bol = {
+    return .eq(.len(b.descriptions), 0);
+};
+
+fun[exp] buffer_full(b: LogBuffer): bol = {
+    return .ge(.len(b.descriptions), b.max_size);
+};
+
+fun[exp] buffer_size(b: LogBuffer): int = {
+    return .len(b.descriptions);
+};
+
+fun[exp] buffer_name(b: LogBuffer): str = {
+    return b.name;
+};
+
+fun[exp] buffer_overflow_count(b: LogBuffer): int = {
+    return b.overflow_count;
+};
+
+fun[exp] buffer_has_overflow(b: LogBuffer): bol = {
+    return .gt(b.overflow_count, 0);
+};
+
+fun[exp] buffer_describe(b: LogBuffer): str = {
+    when(buffer_empty(b)) {
+        case(true) { return "empty-buffer"; }
+        * {
+            when(buffer_full(b)) {
+                case(true) {
+                    when(buffer_has_overflow(b)) {
+                        case(true) { return "full-overflowed"; }
+                        * { return "full"; }
+                    }
+                }
+                * { return "partial"; }
+            }
+        }
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Formatter — controls log output format
+// ---------------------------------------------------------------------------
+
+ali FormatKind: int;
+
+var[exp] FORMAT_PLAIN: FormatKind = 0;
+var[exp] FORMAT_JSON: FormatKind = 1;
+var[exp] FORMAT_COMPACT: FormatKind = 2;
+var[exp] FORMAT_DETAILED: FormatKind = 3;
+
+typ[exp] Formatter: rec = {
+    kind: FormatKind;
+    include_source: bol;
+    include_category: bol;
+    include_sequence: bol;
+    prefix: str
+};
+
+fun[exp] formatter_plain(): Formatter = {
+    return {
+        kind = FORMAT_PLAIN,
+        include_source = true,
+        include_category = false,
+        include_sequence = false,
+        prefix = "",
+    };
+};
+
+fun[exp] formatter_json(): Formatter = {
+    return {
+        kind = FORMAT_JSON,
+        include_source = true,
+        include_category = true,
+        include_sequence = true,
+        prefix = "",
+    };
+};
+
+fun[exp] formatter_compact(): Formatter = {
+    return {
+        kind = FORMAT_COMPACT,
+        include_source = false,
+        include_category = false,
+        include_sequence = false,
+        prefix = "",
+    };
+};
+
+fun[exp] formatter_detailed(): Formatter = {
+    return {
+        kind = FORMAT_DETAILED,
+        include_source = true,
+        include_category = true,
+        include_sequence = true,
+        prefix = ">>",
+    };
+};
+
+fun[exp] formatter_with_prefix(f: Formatter, prefix: str): Formatter = {
+    return {
+        kind = f.kind,
+        include_source = f.include_source,
+        include_category = f.include_category,
+        include_sequence = f.include_sequence,
+        prefix = prefix,
+    };
+};
+
+fun[exp] formatter_kind_name(f: Formatter): str = {
+    when(f.kind) {
+        case(FORMAT_PLAIN) { return "plain"; }
+        case(FORMAT_JSON) { return "json"; }
+        case(FORMAT_COMPACT) { return "compact"; }
+        * { return "detailed"; }
+    }
+};
+
+fun[exp] formatter_has_prefix(f: Formatter): bol = {
+    return .gt(.len(f.prefix), 0);
+};
+
+fun[exp] formatter_describe(f: Formatter): str = {
+    when(formatter_has_prefix(f)) {
+        case(true) { return "prefixed"; }
+        * { return formatter_kind_name(f); }
+    }
+};
+
+fun[exp] formatter_field_count(f: Formatter): int = {
+    var count: int = 1;
+    when(f.include_source) {
+        case(true) {
+            when(f.include_category) {
+                case(true) {
+                    when(f.include_sequence) {
+                        case(true) { return 4; }
+                        * { return 3; }
+                    }
+                }
+                * {
+                    when(f.include_sequence) {
+                        case(true) { return 3; }
+                        * { return 2; }
+                    }
+                }
+            }
+        }
+        * {
+            when(f.include_category) {
+                case(true) {
+                    when(f.include_sequence) {
+                        case(true) { return 3; }
+                        * { return 2; }
+                    }
+                }
+                * {
+                    when(f.include_sequence) {
+                        case(true) { return 2; }
+                        * { return 1; }
+                    }
+                }
+            }
+        }
+    }
+};
+
+// ---------------------------------------------------------------------------
+// LogConfig — full logger configuration
+// ---------------------------------------------------------------------------
+
+typ[exp] LogConfig: rec = {
+    min_level: Level;
+    formatter: Formatter;
+    buffer_size: int;
+    async_mode: bol;
+    name: str
+};
+
+fun[exp] config_default(): LogConfig = {
+    return {
+        min_level = INFO,
+        formatter = formatter_plain(),
+        buffer_size = 1000,
+        async_mode = false,
+        name = "default",
+    };
+};
+
+fun[exp] config_debug(): LogConfig = {
+    return {
+        min_level = DEBUG,
+        formatter = formatter_detailed(),
+        buffer_size = 5000,
+        async_mode = false,
+        name = "debug",
+    };
+};
+
+fun[exp] config_production(): LogConfig = {
+    return {
+        min_level = WARN,
+        formatter = formatter_json(),
+        buffer_size = 10000,
+        async_mode = true,
+        name = "production",
+    };
+};
+
+fun[exp] config_test(): LogConfig = {
+    return {
+        min_level = TRACE,
+        formatter = formatter_compact(),
+        buffer_size = 100,
+        async_mode = false,
+        name = "test",
+    };
+};
+
+fun[exp] config_name(c: LogConfig): str = {
+    return c.name;
+};
+
+fun[exp] config_min_level(c: LogConfig): Level = {
+    return c.min_level;
+};
+
+fun[exp] config_buffer_size(c: LogConfig): int = {
+    return c.buffer_size;
+};
+
+fun[exp] config_async(c: LogConfig): bol = {
+    return c.async_mode;
+};
+
+fun[exp] config_describe(c: LogConfig): str = {
+    when(c.async_mode) {
+        case(true) { return "async"; }
+        * {
+            when(.ge(c.min_level, WARN)) {
+                case(true) { return "production"; }
+                * {
+                    when(.le(c.min_level, DEBUG)) {
+                        case(true) { return "debug"; }
+                        * { return "standard"; }
+                    }
+                }
+            }
+        }
+    }
+};
+
+// ---------------------------------------------------------------------------
+// Smoke test
+// ---------------------------------------------------------------------------
+
+fun[exp] logger_smoke_test(): int = {
+    var l1: Logger = logger_new("app");
+    var l2: Logger = logger_debug("dev");
+    var l3: Logger = logger_verbose("trace");
+    var l4: Logger = logger_production("prod");
+
+    .echo(logger_describe(l1));
+    .echo(logger_describe(l2));
+    .echo(logger_describe(l3));
+    .echo(logger_describe(l4));
+    .echo(logger_describe(logger_silent()));
+
+    var info_len: int = logger_info(l1, "application started");
+    var warn_len: int = logger_warn(l1, "disk space low");
+    var debug_len: int = logger_debug_msg(l2, "processing request");
+    var trace_len: int = logger_trace(l3, "entering function");
+
+    .echo(info_len);
+    .echo(warn_len);
+    .echo(debug_len);
+    .echo(trace_len);
+
+    var e1: LogEntry = entry_new(INFO, "startup complete", "main");
+    var e2: LogEntry = entry_with_category(ERROR, "connection failed", "db", "network");
+    var e3: LogEntry = entry_with_sequence(WARN, "retry attempt", "http", 42);
+
+    .echo(entry_describe(e1));
+    .echo(entry_describe(e2));
+    .echo(entry_describe(e3));
+
+    var f1: LogFilter = filter_new(INFO);
+    var f2: LogFilter = filter_by_source(WARN, "db");
+    var f3: LogFilter = filter_all();
+    var f4: LogFilter = filter_none();
+    var f5: LogFilter = filter_invert(f1);
+
+    .echo(filter_describe(f1));
+    .echo(filter_describe(f2));
+    .echo(filter_describe(f3));
+    .echo(filter_describe(f4));
+    .echo(filter_describe(f5));
+
+    var accepts_info: bol = filter_accepts_entry(f1, e1);
+    var accepts_error: bol = filter_accepts_entry(f2, e2);
+    .echo(accepts_info);
+    .echo(accepts_error);
+
+    var s1: Sink = sink_console("stdout");
+    var s2: Sink = sink_file("app.log", WARN);
+    var s3: Sink = sink_buffer("test");
+    var s4: Sink = sink_null();
+
+    .echo(sink_describe(s1));
+    .echo(sink_describe(s2));
+    .echo(sink_describe(s3));
+    .echo(sink_describe(s4));
+    .echo(sink_kind_name(s1));
+    .echo(sink_kind_name(s2));
+
+    var fmt1: Formatter = formatter_plain();
+    var fmt2: Formatter = formatter_json();
+    var fmt3: Formatter = formatter_compact();
+    var fmt4: Formatter = formatter_detailed();
+    var fmt5: Formatter = formatter_with_prefix(fmt1, "APP");
+
+    .echo(formatter_describe(fmt1));
+    .echo(formatter_describe(fmt2));
+    .echo(formatter_describe(fmt3));
+    .echo(formatter_describe(fmt4));
+    .echo(formatter_describe(fmt5));
+    .echo(formatter_field_count(fmt2));
+
+    var cfg1: LogConfig = config_default();
+    var cfg2: LogConfig = config_debug();
+    var cfg3: LogConfig = config_production();
+    var cfg4: LogConfig = config_test();
+
+    .echo(config_describe(cfg1));
+    .echo(config_describe(cfg2));
+    .echo(config_describe(cfg3));
+    .echo(config_describe(cfg4));
+
+    var buf: LogBuffer = buffer_new("test-buffer", 100);
+    .echo(buffer_describe(buf));
+
+    when(logger_accepts(l1, INFO)) {
+        case(true) {
+            when(.not(logger_accepts(l4, DEBUG))) {
+                case(true) { return 0; }
+                * { return 1; }
+            }
+        }
+        * { return 1; }
+    }
+};

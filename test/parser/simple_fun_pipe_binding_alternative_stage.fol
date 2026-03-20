@@ -2,4 +2,4 @@ fun[] alt_stage(value: int): int = {
     return value
         | +var public_value: int = value
         | -con hidden_value: int = public_value;
-}
+};

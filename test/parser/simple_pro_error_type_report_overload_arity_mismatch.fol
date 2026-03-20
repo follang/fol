@@ -1,12 +1,12 @@
 pro make_err(code: int): int = {
     return code;
-}
+};
 
 pro make_err(code: int, mode: int): str = {
     return "err";
-}
+};
 
 pro caller_overload_bad(a: int): int / str = {
     report make_err(a);
     return 0;
-}
+};

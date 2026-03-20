@@ -20,7 +20,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         open_token: &fol_lexer::lexer::stage3::element::Element,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let mut fields = Vec::new();
         let mut closed = false;
         for _ in 0..256 {
@@ -39,10 +39,10 @@ impl AstParser {
 
             let equal = tokens.curr(false)?;
             if !matches!(equal.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &equal,
                     "Expected '=' after record initializer field name".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens)?;
@@ -74,17 +74,17 @@ impl AstParser {
                 break;
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or '}' in record initializer".to_string(),
-            )));
+            ));
         }
 
         if !closed {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 open_token,
                 "Record initializer exceeds maximum field count (256)".to_string(),
-            )));
+            ));
         }
 
         Ok(AstNode::RecordInit {
@@ -129,15 +129,15 @@ impl AstParser {
     pub(super) fn parse_primary_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let leading_comments = self.collect_comment_nodes(tokens)?;
         let token = tokens.curr(false)?;
 
         if token.key().is_illegal() {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 format!("Parser encountered illegal token '{}'", token.con()),
-            )));
+            ));
         }
 
         if self.lookahead_is_spawn_expression(tokens) {
@@ -145,19 +145,19 @@ impl AstParser {
 
             let angle = tokens.curr(false)?;
             if !matches!(angle.key(), KEYWORD::Symbol(SYMBOL::AngleC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &angle,
                     "Expected '>' in spawn marker".to_string(),
-                )));
+                ));
             }
             self.consume_significant_token(tokens);
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &close,
                     "Expected closing ']' in spawn marker".to_string(),
-                )));
+                ));
             }
             self.consume_significant_token(tokens);
             self.skip_layout(tokens)?;
@@ -228,10 +228,10 @@ impl AstParser {
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &close,
                     "Expected closing ')' for parenthesized expression".to_string(),
-                )));
+                ));
             }
 
             let _ = tokens.bump();
@@ -243,10 +243,10 @@ impl AstParser {
             )
         {
             let name = Self::token_to_named_label(&token).ok_or_else(|| {
-                Box::new(ParseError::from_token(
+                ParseError::from_token(
                     &token,
                     "Expected quoted callable name".to_string(),
-                )) as Box<dyn Glitch>
+                )
             })?;
             let _ = tokens.bump();
             AstNode::Identifier {
@@ -280,13 +280,13 @@ impl AstParser {
     pub(super) fn parse_container_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '{' to start container expression".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -350,11 +350,11 @@ impl AstParser {
             if let Ok(next) = tokens.curr(false) {
                 if matches!(next.key(), KEYWORD::Keyword(BUILDIN::For)) {
                     if !elements.is_empty() {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &next,
                             "Rolling expressions must contain exactly one output expression"
                                 .to_string(),
-                        )));
+                        ));
                     }
                     return self.parse_rolling_expression(tokens, expr);
                 }
@@ -383,10 +383,10 @@ impl AstParser {
                 break;
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or '}' in container expression".to_string(),
-            )));
+            ));
         }
 
         if elements.len() == 1 {

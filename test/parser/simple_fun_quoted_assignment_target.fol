@@ -1,4 +1,4 @@
 fun demo(box: Box): int = {
     box.'$' = value;
     return 1;
-}
+};

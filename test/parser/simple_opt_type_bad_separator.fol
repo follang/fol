@@ -1,1 +1,1 @@
-typ MaybeText: opt[str @]
+typ MaybeText: opt[str @];

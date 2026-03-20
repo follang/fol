@@ -19,10 +19,11 @@ impl AstParser {
     pub fn parse_package(
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
+    ) -> Result<ParsedPackage, Vec<fol_diagnostics::Diagnostic>> {
         let sources = tokens.sources().to_vec();
-        let (entries, syntax_index) =
-            self.parse_top_level_entries_with_surface(tokens, RootSurface::DeclarationOnly)?;
+        let (entries, syntax_index) = self
+            .parse_top_level_entries_with_surface(tokens, RootSurface::DeclarationOnly)
+            .map_err(Self::glitch_vec_to_diagnostics)?;
         Ok(ParsedPackage::from_sources_and_entries(
             &sources,
             entries,
@@ -33,10 +34,11 @@ impl AstParser {
     pub fn parse_script_package(
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
+    ) -> Result<ParsedPackage, Vec<fol_diagnostics::Diagnostic>> {
         let sources = tokens.sources().to_vec();
-        let (entries, syntax_index) =
-            self.parse_top_level_entries_with_surface(tokens, RootSurface::MixedProgram)?;
+        let (entries, syntax_index) = self
+            .parse_top_level_entries_with_surface(tokens, RootSurface::MixedProgram)
+            .map_err(Self::glitch_vec_to_diagnostics)?;
         Ok(ParsedPackage::from_sources_and_entries(
             &sources,
             entries,
@@ -47,8 +49,15 @@ impl AstParser {
     pub fn parse_decl_package(
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<ParsedPackage, Vec<Box<dyn Glitch>>> {
+    ) -> Result<ParsedPackage, Vec<fol_diagnostics::Diagnostic>> {
         self.parse_package(tokens)
+    }
+
+    fn glitch_vec_to_diagnostics(errors: Vec<ParseError>) -> Vec<fol_diagnostics::Diagnostic> {
+        errors.into_iter().map(|e| {
+            use fol_diagnostics::ToDiagnostic;
+            e.to_diagnostic()
+        }).collect()
     }
 
     fn push_top_level_entry(
@@ -73,17 +82,17 @@ impl AstParser {
         token: &fol_lexer::lexer::stage3::element::Element,
         before: (usize, usize, String),
         message: &str,
-        errors: &mut Vec<Box<dyn Glitch>>,
+        errors: &mut Vec<ParseError>,
         parse: F,
     ) -> bool
     where
         F: FnOnce(
             &mut Self,
             &mut fol_lexer::lexer::stage3::Elements,
-        ) -> Result<(), Box<dyn Glitch>>,
+        ) -> Result<(), ParseError>,
     {
         match parse(self, tokens) {
-            Ok(()) => errors.push(Box::new(ParseError::from_token_with_kind(token, ParseErrorKind::FileRoot, message.to_string()))),
+            Ok(()) => errors.push(ParseError::from_token_with_kind(token, ParseErrorKind::FileRoot, message.to_string())),
             Err(error) => errors.push(error),
         }
         self.bump_if_no_progress(tokens, before);
@@ -105,16 +114,16 @@ impl AstParser {
         &mut self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         surface: RootSurface,
-    ) -> Result<(Vec<ParsedTopLevel>, SyntaxIndex), Vec<Box<dyn Glitch>>> {
+    ) -> Result<(Vec<ParsedTopLevel>, SyntaxIndex), Vec<ParseError>> {
         self.start_syntax_tracking();
         let mut entries = Vec::new();
-        let mut errors: Vec<Box<dyn Glitch>> = Vec::new();
+        let mut errors: Vec<ParseError> = Vec::new();
 
         for _ in 0..8_192 {
             let token = match tokens.curr(false) {
                 Ok(token) => token,
                 Err(error) => {
-                    errors.push(error);
+                    errors.push(error.into());
                     break;
                 }
             };
@@ -126,10 +135,10 @@ impl AstParser {
             }
 
             if key.is_illegal() {
-                errors.push(Box::new(ParseError::from_token(
+                errors.push(ParseError::from_token(
                     &token,
                     format!("Parser encountered illegal token '{}'", token.con()),
-                )));
+                ));
                 if tokens.bump().is_none() {
                     break;
                 }
@@ -163,6 +172,7 @@ impl AstParser {
                 );
                 match self.parse_binding_alternative_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -185,6 +195,7 @@ impl AstParser {
                 );
                 match self.parse_var_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -207,6 +218,7 @@ impl AstParser {
                 );
                 match self.parse_let_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -229,6 +241,7 @@ impl AstParser {
                 );
                 match self.parse_con_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -251,6 +264,7 @@ impl AstParser {
                 );
                 match self.parse_lab_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -273,6 +287,7 @@ impl AstParser {
                 );
                 match self.parse_use_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -295,6 +310,7 @@ impl AstParser {
                 );
                 match self.parse_seg_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -317,6 +333,7 @@ impl AstParser {
                 );
                 match self.parse_imp_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -339,6 +356,7 @@ impl AstParser {
                 );
                 match self.parse_std_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -361,6 +379,7 @@ impl AstParser {
                 );
                 match self.parse_def_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -383,6 +402,7 @@ impl AstParser {
                 );
                 match self.parse_alias_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -405,6 +425,7 @@ impl AstParser {
                 );
                 match self.parse_type_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -427,6 +448,7 @@ impl AstParser {
                 );
                 match self.parse_fun_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -449,6 +471,7 @@ impl AstParser {
                 );
                 match self.parse_log_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -471,6 +494,7 @@ impl AstParser {
                 );
                 match self.parse_pro_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -501,7 +525,11 @@ impl AstParser {
                     before,
                     "Executable calls are not allowed at file root",
                     &mut errors,
-                    |parser, tokens| parser.parse_call_stmt(tokens).map(|_| ()),
+                    |parser, tokens| {
+                        parser.parse_call_stmt(tokens)?;
+                        parser.consume_required_semicolon(tokens)?;
+                        Ok(())
+                    },
                 ) {
                     break;
                 }
@@ -526,7 +554,7 @@ impl AstParser {
                     &mut errors,
                     |parser, tokens| {
                         parser.parse_dot_builtin_call_expr(tokens)?;
-                        parser.consume_optional_semicolon(tokens)?;
+                        parser.consume_required_semicolon(tokens)?;
                         Ok(())
                     },
                 ) {
@@ -558,7 +586,11 @@ impl AstParser {
                     before,
                     "Executable calls are not allowed at file root",
                     &mut errors,
-                    |parser, tokens| parser.parse_invoke_stmt(tokens).map(|_| ()),
+                    |parser, tokens| {
+                        parser.parse_invoke_stmt(tokens)?;
+                        parser.consume_required_semicolon(tokens)?;
+                        Ok(())
+                    },
                 ) {
                     break;
                 }
@@ -585,7 +617,11 @@ impl AstParser {
                     before,
                     "Executable calls are not allowed at file root",
                     &mut errors,
-                    |parser, tokens| parser.parse_builtin_call_stmt(tokens).map(|_| ()),
+                    |parser, tokens| {
+                        parser.parse_builtin_call_stmt(tokens)?;
+                        parser.consume_required_semicolon(tokens)?;
+                        Ok(())
+                    },
                 ) {
                     break;
                 }
@@ -608,7 +644,11 @@ impl AstParser {
                     before,
                     "Assignments are not allowed at file root",
                     &mut errors,
-                    |parser, tokens| parser.parse_assignment_stmt(tokens).map(|_| ()),
+                    |parser, tokens| {
+                        parser.parse_assignment_stmt(tokens)?;
+                        parser.consume_required_semicolon(tokens)?;
+                        Ok(())
+                    },
                 ) {
                     break;
                 }
@@ -713,11 +753,11 @@ impl AstParser {
                     )
                     || (key.is_ident() && token.con().trim() == "nil"))
             {
-                errors.push(Box::new(ParseError::from_token_with_kind(
+                errors.push(ParseError::from_token_with_kind(
                     &token,
                     ParseErrorKind::FileRoot,
                     "Literal expressions are not allowed at file root".to_string(),
-                )));
+                ));
                 if tokens.bump().is_none() {
                     break;
                 }
@@ -726,11 +766,11 @@ impl AstParser {
             }
 
             if matches!(surface, RootSurface::DeclarationOnly) {
-                errors.push(Box::new(ParseError::from_token_with_kind(
+                errors.push(ParseError::from_token_with_kind(
                     &token,
                     ParseErrorKind::FileRoot,
                     "Expected declaration or standalone comment at file root".to_string(),
-                )));
+                ));
                 if tokens.bump().is_none() {
                     break;
                 }
@@ -786,7 +826,7 @@ impl AstParser {
                 match self.parse_dot_builtin_call_expr(tokens) {
                     Ok(node) => {
                         self.push_top_level_entry(&mut entries, &token, node);
-                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                     }
                     Err(error) => errors.push(error),
                 }

@@ -19,7 +19,7 @@ impl AstParser {
     fn parse_access_pattern(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         self.skip_ignorable(tokens)?;
 
         let pattern = if matches!(
@@ -106,7 +106,7 @@ impl AstParser {
     fn consume_slice_separator(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Option<bool>, Box<dyn Glitch>> {
+    ) -> Result<Option<bool>, ParseError> {
         self.skip_ignorable(tokens)?;
         let token = match tokens.curr(false) {
             Ok(token) => token,
@@ -139,7 +139,7 @@ impl AstParser {
     fn parse_optional_slice_end(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Option<Box<AstNode>>, Box<dyn Glitch>> {
+    ) -> Result<Option<Box<AstNode>>, ParseError> {
         self.skip_ignorable(tokens)?;
         if matches!(
             tokens.curr(false).map(|token| token.key()),
@@ -156,7 +156,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         expected_root_error: &str,
         expected_segment_error: &str,
-    ) -> Result<QualifiedPath, Box<dyn Glitch>> {
+    ) -> Result<QualifiedPath, ParseError> {
         let root = tokens.curr(false)?;
         let syntax_id = self.record_syntax_origin(&root);
         let mut segments = vec![Self::expect_named_label(&root, expected_root_error)?];
@@ -189,7 +189,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         node: AstNode,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
 
@@ -199,10 +199,10 @@ impl AstParser {
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &close,
                     "Expected closing ']' for slice expression".to_string(),
-                )));
+                ));
             }
 
             let _ = tokens.bump();
@@ -264,10 +264,10 @@ impl AstParser {
                     });
                 }
 
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Expected ',', ';', or ']' in pattern access".to_string(),
-                )));
+                ));
             }
         }
 
@@ -277,10 +277,10 @@ impl AstParser {
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &close,
                     "Expected closing ']' for slice expression".to_string(),
-                )));
+                ));
             }
 
             let _ = tokens.bump();
@@ -294,10 +294,10 @@ impl AstParser {
 
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close,
                 "Expected closing ']' for index expression".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -308,7 +308,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         node: AstNode,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
 
@@ -318,10 +318,10 @@ impl AstParser {
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &close,
                     "Expected closing ']' for slice assignment target".to_string(),
-                )));
+                ));
             }
 
             let _ = tokens.bump();
@@ -383,10 +383,10 @@ impl AstParser {
                     });
                 }
 
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Expected ',', ';', or ']' in pattern assignment target".to_string(),
-                )));
+                ));
             }
         }
 
@@ -396,10 +396,10 @@ impl AstParser {
 
             let close = tokens.curr(false)?;
             if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &close,
                     "Expected closing ']' for slice assignment target".to_string(),
-                )));
+                ));
             }
 
             let _ = tokens.bump();
@@ -413,10 +413,10 @@ impl AstParser {
 
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close,
                 "Expected closing ']' for index assignment target".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -427,16 +427,16 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         node: AstNode,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
 
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '[' after ':' in availability expression".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
@@ -467,10 +467,10 @@ impl AstParser {
                 break;
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Expected ',', ';', or ']' in availability expression".to_string(),
-            )));
+            ));
         }
 
         let target = self.pattern_access_from_patterns(node, patterns);

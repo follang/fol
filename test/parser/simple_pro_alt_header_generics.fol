@@ -1,3 +1,3 @@
 pro[] wrap(T): T = (value: T){
     return value;
-}
+};

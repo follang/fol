@@ -248,12 +248,12 @@ fn app_harness_compile_only_helper_handles_success_and_failure() {
     fs::create_dir_all(&bad_root).expect("bad root");
     fs::write(
         good_root.join("main.fol"),
-        "fun[] main(): int = {\n    return 7\n}\n",
+        "fun[] main(): int = {\n    return 7;\n};\n",
     )
     .expect("good source");
     fs::write(
         bad_root.join("main.fol"),
-        "fun[] main(): int = {\n    return \"bad\"\n}\n",
+        "fun[] main(): int = {\n    return \"bad\";\n};\n",
     )
     .expect("bad source");
 
@@ -269,7 +269,7 @@ fn app_harness_run_helper_executes_built_binary() {
     fs::create_dir_all(&temp_root).expect("run root");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    return 5\n}\n",
+        "fun[] main(): int = {\n    return 5;\n};\n",
     )
     .expect("run source");
 
@@ -301,21 +301,21 @@ fn app_harness_root_helpers_support_std_and_pkg_layouts() {
             "use fmt: std = {\"fmt\"};\n",
             "use math: pkg = {math};\n",
             "fun[] main(): int = {\n",
-            "    return std_answer\n",
-            "}\n",
+            "    return std_answer;\n",
+            "};\n",
         ),
     )
     .expect("app source");
-    fs::write(std_root.join("fmt").join("lib.fol"), "var[exp] std_answer: int = 3\n")
+    fs::write(std_root.join("fmt").join("lib.fol"), "var[exp] std_answer: int = 3;\n")
         .expect("std source");
     fs::write(math_root.join("package.yaml"), "name: math\nversion: 0.1.0\n")
         .expect("pkg manifest");
     fs::write(
         math_root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
     )
     .expect("pkg build");
-    fs::write(math_root.join("src").join("lib.fol"), "var[exp] pkg_answer: int = 4\n")
+    fs::write(math_root.join("src").join("lib.fol"), "var[exp] pkg_answer: int = 4;\n")
         .expect("pkg source");
 
     compile_app_with_roots_expect_success(&app_root, Some(&std_root), Some(&pkg_root));
@@ -333,12 +333,12 @@ fn app_harness_assertion_helpers_cover_artifacts_and_status() {
     fs::create_dir_all(&bad_root).expect("bad root");
     fs::write(
         ok_root.join("main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("ok source");
     fs::write(
         bad_root.join("main.fol"),
-        "fun[] main(): int = {\n    return unknown_name\n}\n",
+        "fun[] main(): int = {\n    return unknown_name;\n};\n",
     )
     .expect("bad source");
 

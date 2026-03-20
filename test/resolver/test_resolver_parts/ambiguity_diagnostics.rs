@@ -104,12 +104,12 @@ fn test_resolver_ambiguous_plain_calls_include_candidate_sites() {
     let second_file = temp_root.join("10_second.fol");
     fs::write(
         &first_file,
-        "fun[] helper(value: int): int = {\n    return value;\n}\n",
+        "fun[] helper(value: int): int = {\n    return value;\n};\n",
     )
     .expect("Should write the first overload fixture");
     fs::write(
         &second_file,
-        "fun[] helper(value: seq[int]): int = {\n    return 0;\n}\n\nfun[] main(values: seq[int]): int = {\n    return helper(values);\n}\n",
+        "fun[] helper(value: seq[int]): int = {\n    return 0;\n};\n\nfun[] main(values: seq[int]): int = {\n    return helper(values);\n};\n",
     )
     .expect("Should write the second overload fixture");
 
@@ -155,12 +155,12 @@ fn test_resolver_ambiguous_plain_calls_lower_candidate_sites_as_secondary_labels
     let second_file = temp_root.join("10_second.fol");
     fs::write(
         &first_file,
-        "fun[] helper(value: int): int = {\n    return value;\n}\n",
+        "fun[] helper(value: int): int = {\n    return value;\n};\n",
     )
     .expect("Should write the first overload fixture");
     fs::write(
         &second_file,
-        "fun[] helper(value: seq[int]): int = {\n    return 0;\n}\n\nfun[] main(values: seq[int]): int = {\n    return helper(values);\n}\n",
+        "fun[] helper(value: seq[int]): int = {\n    return 0;\n};\n\nfun[] main(values: seq[int]): int = {\n    return helper(values);\n};\n",
     )
     .expect("Should write the second overload fixture");
 
@@ -199,12 +199,12 @@ fn test_resolver_ambiguity_diagnostics_keep_primary_use_site_before_candidate_la
     let second_file = temp_root.join("10_second.fol");
     fs::write(
         &first_file,
-        "fun[] helper(value: int): int = {\n    return value;\n}\n",
+        "fun[] helper(value: int): int = {\n    return value;\n};\n",
     )
     .expect("Should write the first overload fixture");
     fs::write(
         &second_file,
-        "fun[] helper(value: seq[int]): int = {\n    return 0;\n}\n\nfun[] main(values: seq[int]): int = {\n    return helper(values);\n}\n",
+        "fun[] helper(value: seq[int]): int = {\n    return 0;\n};\n\nfun[] main(values: seq[int]): int = {\n    return helper(values);\n};\n",
     )
     .expect("Should write the second overload fixture");
 

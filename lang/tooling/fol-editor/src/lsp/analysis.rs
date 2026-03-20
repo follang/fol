@@ -4,11 +4,11 @@ use crate::{
 };
 use fol_diagnostics::Diagnostic;
 use fol_diagnostics::ToDiagnostic;
-use fol_package::{PackageError, PackageSession, PackageSourceKind};
-use fol_parser::ast::{AstParser, ParseError};
-use fol_resolver::{Resolver, ResolverError};
+use fol_package::{PackageSession, PackageSourceKind};
+use fol_parser::ast::AstParser;
+use fol_resolver::Resolver;
 use fol_stream::{FileStream, Source, SourceType};
-use fol_typecheck::{TypecheckError, Typechecker};
+use fol_typecheck::Typechecker;
 use std::path::Path;
 
 use super::semantic::SemanticSnapshot;
@@ -168,10 +168,7 @@ pub(super) fn parse_single_file_diagnostics(
     let mut parser = AstParser::new();
     match parser.parse_package(&mut lexer) {
         Ok(_) => Ok(Vec::new()),
-        Err(errors) => Ok(errors
-            .into_iter()
-            .map(|error| glitch_to_diagnostic(error.as_ref()))
-            .collect()),
+        Err(diagnostics) => Ok(diagnostics),
     }
 }
 
@@ -210,33 +207,8 @@ pub(super) fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagn
 
     match parser.parse_package(&mut lexer) {
         Ok(_) => Ok(Vec::new()),
-        Err(errors) => Ok(errors
-            .into_iter()
-            .map(|error| glitch_to_diagnostic(error.as_ref()))
-            .collect()),
+        Err(diagnostics) => Ok(diagnostics),
     }
-}
-
-/// Convert a `dyn Glitch` to a `Diagnostic` via downcast chain.
-///
-/// In practice, only `ParseError` flows through this path (from
-/// `parse_package`). The other branches exist as a safety net for any
-/// future error types that might be boxed as `Glitch`. Unknown types
-/// fall back to `EUNKNOWN`.
-pub(super) fn glitch_to_diagnostic(error: &dyn fol_types::Glitch) -> Diagnostic {
-    if let Some(parse_error) = error.as_any().downcast_ref::<ParseError>() {
-        return parse_error.to_diagnostic();
-    }
-    if let Some(package_error) = error.as_any().downcast_ref::<PackageError>() {
-        return package_error.to_diagnostic();
-    }
-    if let Some(resolver_error) = error.as_any().downcast_ref::<ResolverError>() {
-        return resolver_error.to_diagnostic();
-    }
-    if let Some(typecheck_error) = error.as_any().downcast_ref::<TypecheckError>() {
-        return typecheck_error.to_diagnostic();
-    }
-    Diagnostic::from_glitch(error, fol_diagnostics::Severity::Error, None)
 }
 
 pub(super) fn syntax_at_position(

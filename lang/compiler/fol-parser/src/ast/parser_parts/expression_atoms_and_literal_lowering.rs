@@ -12,17 +12,17 @@ impl AstParser {
     pub(super) fn parse_comment_token(
         &self,
         token: &fol_lexer::lexer::stage3::element::Element,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let kind = match token.key() {
             KEYWORD::Comment(fol_lexer::token::COMMENT::Backtick) => CommentKind::Backtick,
             KEYWORD::Comment(fol_lexer::token::COMMENT::Doc) => CommentKind::Doc,
             KEYWORD::Comment(fol_lexer::token::COMMENT::SlashLine) => CommentKind::SlashLine,
             KEYWORD::Comment(fol_lexer::token::COMMENT::SlashBlock) => CommentKind::SlashBlock,
             _ => {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     token,
                     "Expected comment token".to_string(),
-                )));
+                ));
             }
         };
 
@@ -36,7 +36,7 @@ impl AstParser {
         Self::key_is_layout_ignorable(key) || key.is_comment()
     }
 
-    pub(super) fn skip_layout(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) -> Result<(), Box<dyn Glitch>> {
+    pub(super) fn skip_layout(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) -> Result<(), ParseError> {
         let mut count = 0u32;
         loop {
             let token = match tokens.curr(false) {
@@ -47,10 +47,10 @@ impl AstParser {
             if Self::key_is_layout_ignorable(&token.key()) {
                 count += 1;
                 if count > 128 {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "skip_layout exceeded 128-token limit; possible infinite layout loop".to_string(),
-                    )));
+                    ));
                 }
                 if tokens.bump().is_none() {
                     break;
@@ -66,7 +66,7 @@ impl AstParser {
     pub(super) fn parse_primary(
         &self,
         token: &fol_lexer::lexer::stage3::element::Element,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         if matches!(token.key(), KEYWORD::Keyword(BUILDIN::True)) {
             return Ok(AstNode::Literal(Literal::Boolean(true)));
         }
@@ -90,14 +90,14 @@ impl AstParser {
             });
         }
 
-        Err(Box::new(ParseError::from_token_with_kind(
+        Err(ParseError::from_token_with_kind(
             token,
             ParseErrorKind::Unsupported,
             format!("Unsupported expression token '{}'", token.con()),
-        )))
+        ))
     }
 
-    pub(super) fn skip_ignorable(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) -> Result<(), Box<dyn Glitch>> {
+    pub(super) fn skip_ignorable(&self, tokens: &mut fol_lexer::lexer::stage3::Elements) -> Result<(), ParseError> {
         let mut count = 0u32;
         loop {
             let token = match tokens.curr(false) {
@@ -108,10 +108,10 @@ impl AstParser {
             if Self::key_is_soft_ignorable(&token.key()) {
                 count += 1;
                 if count > 128 {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "skip_ignorable exceeded 128-token limit; possible infinite ignorable loop".to_string(),
-                    )));
+                    ));
                 }
                 if tokens.bump().is_none() {
                     break;
@@ -173,22 +173,22 @@ impl AstParser {
     pub(super) fn expect_named_label(
         token: &fol_lexer::lexer::stage3::element::Element,
         message: &str,
-    ) -> Result<String, Box<dyn Glitch>> {
+    ) -> Result<String, ParseError> {
         Self::reject_illegal_token(token)?;
 
         Self::token_to_named_label(token).ok_or_else(|| {
-            Box::new(ParseError::from_token(token, message.to_string())) as Box<dyn Glitch>
+            ParseError::from_token(token, message.to_string())
         })
     }
 
     pub(super) fn reject_illegal_token(
         token: &fol_lexer::lexer::stage3::element::Element,
-    ) -> Result<(), Box<dyn Glitch>> {
+    ) -> Result<(), ParseError> {
         if token.key().is_illegal() {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 token,
                 format!("Parser encountered illegal token '{}'", token.con()),
-            )));
+            ));
         }
 
         Ok(())
@@ -197,7 +197,7 @@ impl AstParser {
     pub(super) fn collect_comment_nodes(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let mut comments = Vec::new();
 
         loop {
@@ -224,7 +224,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         continues_with: F,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>>
+    ) -> Result<Vec<AstNode>, ParseError>
     where
         F: Fn(&KEYWORD) -> bool,
     {
@@ -364,7 +364,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         operator_token: &fol_lexer::lexer::stage3::element::Element,
         message: &str,
-    ) -> Result<(), Box<dyn Glitch>> {
+    ) -> Result<(), ParseError> {
         self.skip_ignorable(tokens)?;
 
         match tokens.curr(false) {
@@ -378,22 +378,22 @@ impl AstParser {
                             | KEYWORD::Symbol(SYMBOL::CurlyC)
                     )
                 {
-                    return Err(Box::new(ParseError::from_token(&next, message.to_string())));
+                    return Err(ParseError::from_token(&next, message.to_string()));
                 }
 
                 Ok(())
             }
-            Err(_) => Err(Box::new(ParseError::from_token(
+            Err(_) => Err(ParseError::from_token(
                 operator_token,
                 message.to_string(),
-            ))),
+            )),
         }
     }
 
     pub(super) fn consume_optional_semicolon(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<(), Box<dyn Glitch>> {
+    ) -> Result<(), ParseError> {
         self.skip_layout(tokens)?;
         if let Ok(token) = tokens.curr(false) {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
@@ -403,8 +403,35 @@ impl AstParser {
         Ok(())
     }
 
+    pub(super) fn consume_required_semicolon(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<(), ParseError> {
+        self.skip_layout(tokens)?;
+        let token = tokens.curr(false).map_err(|_| ParseError {
+            kind: ParseErrorKind::Syntax,
+            message: "Expected ';' to terminate statement but reached end of input".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        })?;
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
+            let _ = tokens.bump();
+            Ok(())
+        } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+            // Allow omitting semicolon before closing brace (last statement in block)
+            Ok(())
+        } else {
+            Err(ParseError::from_token(
+                &token,
+                "Expected ';' to terminate statement".to_string(),
+            ))
+        }
+    }
+
     /// Parse a simple literal for testing
-    pub fn parse_literal(&self, value: &str) -> Result<AstNode, Box<dyn Glitch>> {
+    pub fn parse_literal(&self, value: &str) -> Result<AstNode, ParseError> {
         if value.starts_with('"') && value.ends_with('"') {
             return Ok(Self::lower_width_based_text_literal(
                 Self::decode_cooked_literal(&value[1..value.len() - 1]),
@@ -419,14 +446,14 @@ impl AstParser {
 
         let normalized = value.replace('_', "");
         let numeric_error = |message: String| {
-            Box::new(ParseError {
+            ParseError {
                 kind: ParseErrorKind::Literal,
                 message,
                 file: None,
                 line: 0,
                 column: 0,
                 length: value.trim().len().max(1),
-            }) as Box<dyn Glitch>
+            }
         };
 
         if let Some(hex) = normalized

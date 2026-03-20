@@ -3,4 +3,4 @@ fun demo(): int = {
         +var exported: int = 1;
         return exported;
     }
-}
+};

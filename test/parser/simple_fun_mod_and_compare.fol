@@ -2,4 +2,4 @@ fun mathcmp(a: int, b: int, c: int): int = {
     residue = a % b;
     residue %= c;
     return a == b;
-}
+};

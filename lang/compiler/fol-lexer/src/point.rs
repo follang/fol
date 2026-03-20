@@ -1,4 +1,3 @@
-use colored::Colorize;
 use std::fmt;
 use std::fs::File;
 use std::io::BufRead;
@@ -46,19 +45,19 @@ impl Location {
                         Some(Ok(line)) => format!(
                             "{}\n {:>6}\n {:>6}  {}\n {:>6} {}{}",
                             self.print(source),
-                            " |".red(),
-                            (self.row().to_string() + " |").red(),
-                            line.red(),
-                            " |".red(),
+                            " |",
+                            self.row().to_string() + " |",
+                            line,
+                            " |",
                             " ".repeat(self.col()),
                             "^".repeat(self.len()),
                         ),
                         Some(Err(_)) | None => format!(
                             "{}\n {:>6}\n {:>6}  <source line unavailable>\n {:>6} {}{}",
                             self.print(source),
-                            " |".red(),
-                            (self.row().to_string() + " |").red(),
-                            " |".red(),
+                            " |",
+                            self.row().to_string() + " |",
+                            " |",
                             " ".repeat(self.col()),
                             "^".repeat(self.len()),
                         ),

@@ -27,10 +27,10 @@ fn test_procedure_method_receiver_syntax_rejects_missing_method_name() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected procedure name after 'pro'"),
         "Missing procedure method name should report expected-name parse error, got: {}",
@@ -52,10 +52,10 @@ fn test_function_method_receiver_syntax_rejects_missing_method_name() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected function name after 'fun'"),
         "Missing function method name should report expected-name parse error, got: {}",
@@ -77,10 +77,10 @@ fn test_procedure_method_receiver_syntax_rejects_missing_receiver_close_paren() 
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
             first_message.contains("Expected ')' after method receiver type"),
             "Missing procedure receiver close paren should report explicit receiver syntax error, got: {}",
@@ -102,10 +102,10 @@ fn test_procedure_method_receiver_syntax_rejects_missing_receiver_type() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected type reference"),
         "Missing procedure receiver type should report type-reference parsing error, got: {}",
@@ -227,17 +227,17 @@ fn test_function_method_receiver_missing_bracket_close_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected closing ']' in type reference"),
         "Malformed bracketed receiver type should report missing close bracket, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Malformed receiver type parse error should point to the signature line"
     );
@@ -248,7 +248,7 @@ fn test_invalid_method_receiver_type_reports_receiver_token_span() {
     let temp_root = unique_temp_root("invalid_receiver_span");
     std::fs::create_dir_all(&temp_root).expect("Should create temp receiver diagnostic dir");
     let fixture = temp_root.join("invalid_receiver_span.fol");
-    std::fs::write(&fixture, "fun (any) parse_msg(): int = { return 1; }\n")
+    std::fs::write(&fixture, "fun (any) parse_msg(): int = { return 1; };\n")
         .expect("Should write invalid receiver diagnostic fixture");
 
     let mut file_stream = FileStream::from_file(
@@ -268,28 +268,28 @@ fn test_invalid_method_receiver_type_reports_receiver_token_span() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Method receiver type cannot be any, non, or none"),
         "Invalid method receiver type should report the dedicated receiver diagnostic, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Invalid receiver diagnostic should stay on the method signature line"
     );
     assert_eq!(
-        parse_error.column(),
+        parse_error.primary_location().unwrap().column,
         6,
         "Invalid receiver diagnostic should anchor to the receiver token"
     );
     assert_eq!(
-        parse_error.length(),
+        parse_error.primary_location().unwrap().length.unwrap_or(0),
         3,
         "Invalid receiver diagnostic span should cover the rejected receiver token"
     );
@@ -300,7 +300,7 @@ fn test_none_like_method_receiver_type_reports_dedicated_receiver_diagnostic() {
     let temp_root = unique_temp_root("invalid_none_receiver_span");
     std::fs::create_dir_all(&temp_root).expect("Should create temp receiver diagnostic dir");
     let fixture = temp_root.join("invalid_none_receiver_span.fol");
-    std::fs::write(&fixture, "fun (non) parse_msg(): int = { return 1; }\n")
+    std::fs::write(&fixture, "fun (non) parse_msg(): int = { return 1; };\n")
         .expect("Should write invalid none-like receiver diagnostic fixture");
 
     let mut file_stream = FileStream::from_file(
@@ -320,23 +320,23 @@ fn test_none_like_method_receiver_type_reports_dedicated_receiver_diagnostic() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Method receiver type cannot be any, non, or none"),
         "None-like method receiver types should share the dedicated receiver diagnostic, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.column(),
+        parse_error.primary_location().unwrap().column,
         6,
         "Invalid none-like receiver diagnostic should anchor to the receiver token"
     );
     assert_eq!(
-        parse_error.length(),
+        parse_error.primary_location().unwrap().length.unwrap_or(0),
         3,
         "Invalid none-like receiver diagnostic span should cover the rejected receiver token"
     );
@@ -412,10 +412,10 @@ fn test_function_method_receiver_syntax_rejects_builtin_keyword_receiver_type() 
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected type reference"),
         "Builtin keyword receiver type should report a type-reference diagnostic, got: {}",
@@ -437,10 +437,10 @@ fn test_procedure_method_receiver_syntax_rejects_builtin_keyword_receiver_type()
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
             first_message.contains("Expected type reference"),
             "Procedure builtin keyword receiver type should report a type-reference diagnostic, got: {}",

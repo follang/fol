@@ -1,6 +1,6 @@
-typ Dynamic: any[]
-typ Empty: none[]
+typ Dynamic: any[];
+typ Empty: none[];
 
 fun finish(value: any[]): none[] = {
     return value;
-}
+};

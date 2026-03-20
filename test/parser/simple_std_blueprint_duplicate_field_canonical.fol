@@ -1,4 +1,4 @@
 std geometry: blu = {
     var color_name: rgb;
     var ColorName: str;
-}
+};

@@ -1,1 +1,1 @@
-typ TooManyOptionals: opt[int, str]
+typ TooManyOptionals: opt[int, str];

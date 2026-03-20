@@ -1,25 +1,13 @@
 use super::*;
 
-fn parse_package_errors(path: &str) -> Vec<ParseError> {
+fn parse_package_errors(path: &str) -> Vec<fol_diagnostics::Diagnostic> {
     let mut file_stream =
         FileStream::from_file(path).expect("Should read parser package transition fixture");
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser
+    parser
         .parse_package(&mut lexer)
-        .expect_err("Book-aligned package parsing should reject script-style file roots");
-
-    errors
-        .iter()
-        .map(|error| {
-            error
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ParseError>()
-                .cloned()
-                .expect("Package transition errors should be ParseError values")
-        })
-        .collect()
+        .expect_err("Book-aligned package parsing should reject script-style file roots")
 }
 
 #[test]
@@ -82,9 +70,9 @@ fn test_parse_package_rejects_script_roots_while_parse_accepts_them() {
     );
     assert!(
         errors[0]
-            .to_string()
+            .message
             .contains("Executable calls are not allowed at file root"),
         "Expected explicit file-root call rejection, got: {}",
-        errors[0]
+        errors[0].message
     );
 }

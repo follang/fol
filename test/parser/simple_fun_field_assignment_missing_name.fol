@@ -1,4 +1,4 @@
 fun broken_field_target(obj: int, value: int): int = {
     obj. = value;
     return value;
-}
+};

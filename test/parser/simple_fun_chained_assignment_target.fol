@@ -1,4 +1,4 @@
 fun assign_nested(obj: int, idx: int, value: int): int = {
     obj.items[idx].current = value;
     return obj.items[idx].current;
-}
+};

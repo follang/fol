@@ -2,4 +2,4 @@ fun[] check(): bol = {
     return log (a: str): bol = {
         return a == "ok";
     }("ok");
-}
+};

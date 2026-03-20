@@ -2,4 +2,4 @@ fun decide(value: int): int = {
     return value | while(this) {
         break;
     };
-}
+};

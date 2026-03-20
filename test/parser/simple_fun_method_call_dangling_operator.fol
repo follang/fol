@@ -5,4 +5,4 @@ fun method_dangling_operator(obj: int, a: int, b: int): int = {
     );
 
     return b;
-}
+};

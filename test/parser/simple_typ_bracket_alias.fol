@@ -1,1 +1,1 @@
-typ OutputMap: map[str, vec[pkg::Output]]
+typ OutputMap: map[str, vec[pkg::Output]];

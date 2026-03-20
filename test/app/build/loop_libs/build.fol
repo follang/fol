@@ -4,4 +4,4 @@ pro[] build(graph: Graph): non = {
     };
     var app = graph.add_exe({ name = "app", root = "src/main.fol" });
     graph.install(app);
-}
+};

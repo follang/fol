@@ -1,11 +1,11 @@
 fun[] add: int = (x: int)[n;]{
     return x + n;
-}
+};
 
 pro[] main: int = (value: int)[sink;]{
     return value;
-}
+};
 
 log[] ready: bol = (value: int)[state;]{
     return value > 0;
-}
+};

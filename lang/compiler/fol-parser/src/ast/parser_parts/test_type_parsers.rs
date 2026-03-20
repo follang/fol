@@ -4,13 +4,13 @@ impl AstParser {
     pub(super) fn parse_test_type_arguments(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<(Option<String>, Vec<String>), Box<dyn Glitch>> {
+    ) -> Result<(Option<String>, Vec<String>), ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '[' to start tst[...] arguments".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -26,11 +26,11 @@ impl AstParser {
 
             let is_string = token.key().is_textual_literal();
             if is_string && !values.is_empty() {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Quoted tst[...] arguments are only allowed for the optional test label"
                         .to_string(),
-                )));
+                ));
             }
 
             let value = match token.key() {
@@ -65,16 +65,16 @@ impl AstParser {
             }
 
             if Self::is_missing_type_reference_close_token(&sep.key()) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected closing ']' in type reference".to_string(),
-                )));
+                ));
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ']' in tst[...] arguments".to_string(),
-            )));
+            ));
         }
 
         let (name, access) = match values.first() {

@@ -6,6 +6,7 @@
 mod build_route;
 mod clean;
 mod cli;
+pub(crate) mod colorize;
 mod compile;
 mod completion;
 mod config;

@@ -4,4 +4,4 @@ fun classify(value: int): int = {
         has(value) => fun inner(): int = { return value; }
     }
     return value;
-}
+};

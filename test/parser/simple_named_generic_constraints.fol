@@ -1,13 +1,13 @@
 fun demo(get: "Bound", item: pkg::"Shape")(value: int): int = {
     return value;
-}
+};
 
 typ Box(get: "Bound", item: pkg::"Shape"): rec = {
     value: int;
-}
+};
 
 imp(get: "Bound", item: pkg::"Shape") Self: Pair = {
     fun run(): int = {
         return 1;
     }
-}
+};

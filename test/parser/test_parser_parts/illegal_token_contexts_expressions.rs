@@ -10,13 +10,13 @@ fn parse_error_snapshot(path: &str) -> (String, usize, usize) {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     (
-        parse_error.to_string(),
-        parse_error.line(),
-        parse_error.column(),
+        parse_error.message.clone(),
+        parse_error.primary_location().unwrap().line,
+        parse_error.primary_location().unwrap().column,
     )
 }
 
@@ -93,23 +93,23 @@ fn test_type_reference_illegal_token_reports_offending_token_location() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Parser encountered illegal token"),
         "Illegal type-reference token should report an explicit illegal-token diagnostic, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Illegal type-reference token should report the signature line"
     );
     assert!(
-        parse_error.column() > 0,
+        parse_error.primary_location().unwrap().column > 0,
         "Illegal type-reference token should retain a concrete source column"
     );
 }
@@ -127,23 +127,23 @@ fn test_container_element_illegal_token_reports_offending_token_location() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Parser encountered illegal token"),
         "Illegal container-element token should report an explicit illegal-token diagnostic, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Illegal container-element token should report the container literal line"
     );
     assert!(
-        parse_error.column() > 0,
+        parse_error.primary_location().unwrap().column > 0,
         "Illegal container-element token should retain a concrete source column"
     );
 }
@@ -162,23 +162,23 @@ fn test_record_initializer_value_illegal_token_reports_offending_token_location(
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Parser encountered illegal token"),
         "Illegal record-initializer token should report an explicit illegal-token diagnostic, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Illegal record-initializer token should report the record literal line"
     );
     assert!(
-        parse_error.column() > 0,
+        parse_error.primary_location().unwrap().column > 0,
         "Illegal record-initializer token should retain a concrete source column"
     );
 }
@@ -196,23 +196,23 @@ fn test_return_expression_illegal_token_reports_offending_token_location() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Parser encountered illegal token"),
         "Illegal return-expression token should report an explicit illegal-token diagnostic, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Illegal return-expression token should report the return line"
     );
     assert!(
-        parse_error.column() > 0,
+        parse_error.primary_location().unwrap().column > 0,
         "Illegal return-expression token should retain a concrete source column"
     );
 }
@@ -271,23 +271,23 @@ fn test_parameter_default_illegal_token_reports_offending_token_location() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Parser encountered illegal token"),
         "Illegal parameter-default token should report an explicit illegal-token diagnostic, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Illegal parameter-default token should report the signature line"
     );
     assert!(
-        parse_error.column() > 0,
+        parse_error.primary_location().unwrap().column > 0,
         "Illegal parameter-default token should retain a concrete source column"
     );
 }
@@ -346,23 +346,23 @@ fn test_unterminated_backtick_comment_in_call_reports_offending_token_location()
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Parser encountered illegal token"),
         "Malformed backtick comments should surface as explicit illegal-token diagnostics, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         4,
         "Malformed backtick comments should anchor to the offending comment start line"
     );
     assert!(
-        parse_error.column() > 0,
+        parse_error.primary_location().unwrap().column > 0,
         "Malformed backtick comments should retain a concrete source column"
     );
 }
@@ -400,7 +400,7 @@ fn test_unterminated_slash_block_comment_in_call_reports_offending_token_locatio
         .expect_err("Parser should reject unterminated block comment in fixture");
 
     let first_error = errors.first().expect("Should have at least one error");
-    let message = first_error.to_string();
+    let message = first_error.message.clone();
     assert!(
         message.contains("unterminated block comment"),
         "Unterminated slash block comment should produce a specific lexer diagnostic, got: {}",

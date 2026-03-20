@@ -1,4 +1,4 @@
 fun assign(a: int, b: int, c: int): int = {
     result = a + b * c;
     return result;
-}
+};

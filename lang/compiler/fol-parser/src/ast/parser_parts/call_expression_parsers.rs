@@ -46,13 +46,13 @@ impl AstParser {
     pub(super) fn parse_dot_builtin_call_expr(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let dot = tokens.curr(false)?;
         if !matches!(dot.key(), KEYWORD::Symbol(SYMBOL::Dot)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &dot,
                 "Expected '.' to start builtin root call".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
@@ -99,7 +99,7 @@ impl AstParser {
     fn parse_call_argument(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let current = tokens.curr(false)?;
         if current.con().trim() == "..." {
             let _ = tokens.bump();
@@ -112,10 +112,10 @@ impl AstParser {
                     | KEYWORD::Symbol(SYMBOL::Comma)
                     | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &value_token,
                     "Expected expression after '...' in call arguments".to_string(),
-                )));
+                ));
             }
 
             let value = self.parse_logical_expression(tokens)?;
@@ -132,10 +132,10 @@ impl AstParser {
 
             let equal = tokens.curr(false)?;
             if !matches!(equal.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &equal,
                     "Expected '=' after named call argument".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.skip_layout(tokens)?;
@@ -161,7 +161,7 @@ impl AstParser {
     pub(super) fn parse_call_args(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let mut args = Vec::new();
         let mut seen_named_arg = false;
         for _ in 0..256 {
@@ -204,10 +204,10 @@ impl AstParser {
 
             let is_named = Self::ast_node_is_named_argument(&arg);
             if !is_named && seen_named_arg {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Positional call arguments are not allowed after named arguments".to_string(),
-                )));
+                ));
             }
             seen_named_arg |= is_named;
             args.push(arg);
@@ -234,10 +234,10 @@ impl AstParser {
                 break;
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ')' in call arguments".to_string(),
-            )));
+            ));
         }
 
         Ok(args)

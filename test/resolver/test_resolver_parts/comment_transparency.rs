@@ -8,7 +8,7 @@ fn test_resolver_keeps_inline_comment_wrapped_identifiers_resolvable() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(input: int): int = {\n    var value = input;\n    return\n        `[doc] wrapped value`\n        value;\n}\n",
+        "fun[] main(input: int): int = {\n    var value = input;\n    return;\n        `[doc] wrapped value`\n        value;\n};\n",
     )
     .expect("Should write the commented identifier resolver fixture");
 
@@ -49,7 +49,7 @@ fn test_resolver_keeps_inline_comment_wrapped_initializers_in_scope_order() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(input: int): int = {\n    var outer = input;\n    var alias =\n        `[doc] wrapped initializer`\n        outer;\n    return alias;\n}\n",
+        "fun[] main(input: int): int = {\n    var outer = input;\n    var alias =\n        `[doc] wrapped initializer`\n        outer;\n    return alias;\n};\n",
     )
     .expect("Should write the commented initializer resolver fixture");
 

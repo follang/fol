@@ -33,7 +33,7 @@ fn use_decl_path_segments<'a>(
         .expect("Expected use declaration to expose structured path segments")
 }
 
-fn parse_use_path_fixture_error(source: &str) -> ParseError {
+fn parse_use_path_fixture_error(source: &str) -> fol_diagnostics::Diagnostic {
     let temp_root = unique_temp_root("use_path_error");
     fs::create_dir_all(&temp_root).expect("Should create temp use-path error fixture dir");
     let fixture = temp_root.join("use_path_error.fol");
@@ -57,8 +57,7 @@ fn parse_use_path_fixture_error(source: &str) -> ParseError {
     errors
         .into_iter()
         .next()
-        .and_then(|error| error.as_any().downcast_ref::<ParseError>().cloned())
-        .expect("First use-path failure should be a ParseError")
+        .expect("First use-path failure should exist")
 }
 
 #[test]
@@ -336,10 +335,10 @@ fn test_use_declaration_rejects_dangling_separator_segments() {
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Expected use path segment after separator"),
         "Dangling use-path separators should report an explicit segment diagnostic, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -349,9 +348,9 @@ fn test_use_declaration_rejects_empty_segments_between_separators() {
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Expected use path segment after separator"),
         "Repeated use-path separators should report an explicit empty-segment diagnostic, got: {}",
-        parse_error
+        parse_error.message
     );
 }

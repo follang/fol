@@ -1,4 +1,4 @@
 fun wrap(): int = {
     var f = log(x: int): bol => return 1;
     return 1;
-}
+};

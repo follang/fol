@@ -4,13 +4,13 @@ impl AstParser {
     pub(super) fn parse_entry_type_definition(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<TypeDefinition, Box<dyn Glitch>> {
+    ) -> Result<TypeDefinition, ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '{' to start type entry definition".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -54,10 +54,10 @@ impl AstParser {
                         members,
                     });
                 }
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected ',', ';', or '}' in type entry definition".to_string(),
-                )));
+                ));
             }
 
             if self.looks_like_type_routine_member(tokens)? {
@@ -83,10 +83,10 @@ impl AstParser {
                         members,
                     });
                 }
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected ',', ';', or '}' in type entry definition".to_string(),
-                )));
+                ));
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
@@ -112,10 +112,10 @@ impl AstParser {
                         members,
                     });
                 }
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected ',', ';', or '}' in type entry definition".to_string(),
-                )));
+                ));
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
@@ -142,10 +142,10 @@ impl AstParser {
                         members,
                     });
                 }
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected ',', ';', or '}' in type entry definition".to_string(),
-                )));
+                ));
             }
 
             let default_options = if let Some((keyword, options)) =
@@ -160,10 +160,10 @@ impl AstParser {
                         options
                     }
                     _ => {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             "Expected 'var', 'lab', or 'con' in type entry definition".to_string(),
-                        )))
+                        ))
                     }
                 }
             } else {
@@ -190,10 +190,10 @@ impl AstParser {
                         )?
                     }
                     _ => {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &token,
                             "Expected 'var', 'lab', or 'con' in type entry definition".to_string(),
-                        )))
+                        ))
                     }
                 }
             };
@@ -239,10 +239,10 @@ impl AstParser {
 
             for (name, name_token) in names {
                 if !seen_variant_names.insert(canonical_identifier_key(&name)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &name_token,
                         format!("Duplicate entry variant '{}'", name),
-                    )));
+                    ));
                 }
                 let _ = variants.insert(name.clone(), variant_type.clone());
                 if !seen_members.insert(canonical_identifier_key(&name)) {
@@ -274,16 +274,16 @@ impl AstParser {
                 });
             }
             if sep.key().is_terminal() || matches!(sep.key(), KEYWORD::Void(_)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected '}' to close type entry definition".to_string(),
-                )));
+                ));
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or '}' in type entry definition".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -301,19 +301,19 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     pub(super) fn parse_record_type_definition(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<TypeDefinition, Box<dyn Glitch>> {
+    ) -> Result<TypeDefinition, ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '{' to start type record definition".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -336,10 +336,10 @@ impl AstParser {
             }
 
             if token.key().is_terminal() || matches!(token.key(), KEYWORD::Void(_)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Expected '}' to close type record definition".to_string(),
-                )));
+                ));
             }
 
             if let Some(member) = self.parse_prefixed_type_routine_member(tokens)? {
@@ -364,10 +364,10 @@ impl AstParser {
                         members,
                     });
                 }
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected ',', ';', or '}' in type record definition".to_string(),
-                )));
+                ));
             }
 
             if self.looks_like_type_routine_member(tokens)? {
@@ -393,10 +393,10 @@ impl AstParser {
                         members,
                     });
                 }
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected ',', ';', or '}' in type record definition".to_string(),
-                )));
+                ));
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
@@ -422,10 +422,10 @@ impl AstParser {
                         members,
                     });
                 }
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected ',', ';', or '}' in type record definition".to_string(),
-                )));
+                ));
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
@@ -452,10 +452,10 @@ impl AstParser {
                         members,
                     });
                 }
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected ',', ';', or '}' in type record definition".to_string(),
-                )));
+                ));
             }
 
             let options =
@@ -525,10 +525,10 @@ impl AstParser {
 
             let colon = tokens.curr(false)?;
             if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &colon,
                     "Expected ':' after record field name".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
 
@@ -547,10 +547,10 @@ impl AstParser {
 
             for (field_name, name_token) in field_names {
                 if !seen_field_names.insert(canonical_identifier_key(&field_name)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &name_token,
                         format!("Duplicate record field '{}'", field_name),
-                    )));
+                    ));
                 }
                 let _ = fields.insert(field_name.clone(), field_type.clone());
                 if !seen_members.insert(canonical_identifier_key(&field_name)) {
@@ -582,16 +582,16 @@ impl AstParser {
                 });
             }
             if sep.key().is_terminal() || matches!(sep.key(), KEYWORD::Void(_)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected '}' to close type record definition".to_string(),
-                )));
+                ));
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or '}' in type record definition".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -609,7 +609,7 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     fn type_member_key(&self, node: &AstNode) -> String {
@@ -631,17 +631,17 @@ impl AstParser {
         &self,
         token: &fol_lexer::lexer::stage3::element::Element,
         key: &str,
-    ) -> Box<dyn Glitch> {
-        Box::new(ParseError::from_token(
+    ) -> ParseError {
+        ParseError::from_token(
             token,
             format!("Duplicate type member '{}'", key),
-        ))
+        )
     }
 
     fn parse_prefixed_type_routine_member(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Option<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Option<AstNode>, ParseError> {
         let token = tokens.curr(false)?;
         if !matches!(token.key(), KEYWORD::Symbol(SYMBOL::Plus)) {
             return Ok(None);
@@ -678,7 +678,7 @@ impl AstParser {
     fn looks_like_type_routine_member(
         &self,
         tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> Result<bool, Box<dyn Glitch>> {
+    ) -> Result<bool, ParseError> {
         let token = tokens.curr(false)?;
         if !matches!(
             token.key(),

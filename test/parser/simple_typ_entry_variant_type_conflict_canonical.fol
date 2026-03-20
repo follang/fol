@@ -1,4 +1,4 @@
 typ Status: ent = {
     var ok_value: str = "ok";
     typ OkValue: str;
-}
+};

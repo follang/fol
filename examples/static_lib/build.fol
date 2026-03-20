@@ -1,8 +1,0 @@
-pro[] build(graph: Graph): non = {
-    var lib = graph.add_static_lib({
-        name = "static_lib",
-        root = "src/lib.fol",
-    });
-
-    graph.install(lib);
-}

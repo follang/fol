@@ -259,15 +259,15 @@ fn test_rolling_expression_requires_in_keyword() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Expected 'in' in rolling binding"),
         "Malformed rolling expression should report missing 'in', got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -285,18 +285,18 @@ fn test_rolling_expression_rejects_duplicate_binders() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate rolling binding 'x'"),
         "Duplicate rolling binders should report the repeated name, got: {}",
-        parse_error
+        parse_error.message
     );
     assert!(
-        parse_error.line() > 0 && parse_error.column() > 0,
+        parse_error.primary_location().unwrap().line > 0 && parse_error.primary_location().unwrap().column > 0,
         "Duplicate rolling binders should carry a concrete source location"
     );
 }
@@ -315,18 +315,18 @@ fn test_rolling_expression_rejects_canonical_duplicate_binders() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate rolling binding 'XValue'"),
         "Canonical duplicate rolling binders should report the later spelling, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Canonical duplicate rolling binder parse error should point to the duplicate binding"
     );

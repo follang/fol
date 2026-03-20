@@ -4,4 +4,4 @@ fun inspect(): int = {
         +
         `[doc] rhs docs`
         beta
-}
+};

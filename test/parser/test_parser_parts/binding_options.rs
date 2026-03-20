@@ -263,10 +263,10 @@ fn test_binding_conflicting_options_report_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Conflicting binding option 'mut' with 'imu'"),
         "Conflicting binding options should report the option conflict, got: {}",
@@ -287,10 +287,10 @@ fn test_binding_unknown_option_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Unknown binding option"),
         "Unknown binding option should produce explicit diagnostic, got: {}",

@@ -57,7 +57,7 @@ fn test_resolver_keeps_mounted_symbol_provenance_for_imported_exports() {
         .expect("Should write the imported package fixture");
     fs::write(
         temp_root.join("app/main.fol"),
-        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n};\n",
     )
     .expect("Should write the importing package fixture");
 

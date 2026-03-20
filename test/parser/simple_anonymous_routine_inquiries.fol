@@ -5,7 +5,7 @@ fun make(): any = {
             check(x);
         }
     };
-}
+};
 
 pro build(): int = {
     return pro[](x: int): int = {
@@ -14,4 +14,4 @@ pro build(): int = {
             report(x);
         }
     };
-}
+};

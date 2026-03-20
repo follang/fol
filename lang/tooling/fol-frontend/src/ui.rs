@@ -1,5 +1,6 @@
 use crate::{FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
 use colored::Colorize;
+use fol_diagnostics::{DiagnosticReport, OutputFormat, ToDiagnostic};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FrontendOutput {
@@ -60,21 +61,6 @@ impl FrontendOutput {
         }
     }
 
-    fn styled_error_prefix(&self) -> String {
-        if self.should_use_color() {
-            "Error:".red().bold().to_string()
-        } else {
-            "Error:".to_string()
-        }
-    }
-
-    fn styled_note_prefix(&self) -> String {
-        if self.should_use_color() {
-            "Note:".blue().bold().to_string()
-        } else {
-            "Note:".to_string()
-        }
-    }
 
     pub fn render_human_header(&self, title: &str) -> String {
         self.styled_section(title)
@@ -125,27 +111,31 @@ impl FrontendOutput {
     }
 
     pub fn render_json_error(&self, error: &FrontendError) -> Result<String, serde_json::Error> {
-        serde_json::to_string_pretty(&serde_json::json!({
-            "kind": error.kind().as_str(),
-            "message": error.message(),
-            "notes": error.notes(),
-        }))
+        let mut report = DiagnosticReport::new();
+        report.add_diagnostic(error.to_diagnostic());
+        for d in error.diagnostics() {
+            report.add_diagnostic(d.clone());
+        }
+        Ok(report.output(OutputFormat::Json))
     }
 
     pub fn render_human_error(&self, error: &FrontendError) -> String {
-        let mut lines = vec![format!("{} {}", self.styled_error_prefix(), error)];
-        for note in error.notes() {
-            lines.push(format!("{} {}", self.styled_note_prefix(), note));
+        let mut report = DiagnosticReport::new();
+        report.add_diagnostic(error.to_diagnostic());
+        for d in error.diagnostics() {
+            report.add_diagnostic(d.clone());
         }
-        lines.join("\n")
+        let plain = report.output(OutputFormat::Human);
+        crate::colorize::colorize_diagnostics(&plain)
     }
 
     pub fn render_plain_error(&self, error: &FrontendError) -> String {
-        let mut lines = vec![format!("error: {}", error)];
-        for note in error.notes() {
-            lines.push(format!("note: {note}"));
+        let mut report = DiagnosticReport::new();
+        report.add_diagnostic(error.to_diagnostic());
+        for d in error.diagnostics() {
+            report.add_diagnostic(d.clone());
         }
-        lines.join("\n")
+        report.output(OutputFormat::Human)
     }
 
     pub fn render_command_summary(

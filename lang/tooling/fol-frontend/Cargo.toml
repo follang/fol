@@ -23,4 +23,3 @@ fol-lower = { path = "../../compiler/fol-lower" }
 fol-backend = { path = "../../execution/fol-backend" }
 fol-editor = { path = "../fol-editor" }
 fol-diagnostics = { path = "../../compiler/fol-diagnostics" }
-fol-types = { path = "../../compiler/fol-types" }

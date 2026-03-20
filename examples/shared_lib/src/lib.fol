@@ -1,3 +1,0 @@
-fun[exp] shared_value(): int = {
-    return 11
-}

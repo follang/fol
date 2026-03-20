@@ -12,14 +12,23 @@ use crate::{
 use fol_parser::ast::AstParser;
 use fol_parser::ast::Literal;
 use fol_resolver::{
-    resolve_workspace, PackageIdentity, PackageSourceKind, SourceUnitId, SymbolKind,
+    resolve_package_workspace, PackageIdentity, PackageSourceKind, SourceUnitId, SymbolKind,
 };
 use fol_stream::FileStream;
 use fol_typecheck::Typechecker;
 use std::collections::BTreeMap;
 
+/// Return a temp directory whose leaf name is a valid FOL identifier.
+/// NixOS nix-shell creates temp dirs like `nix-shell.vlxfu8` that contain
+/// dots/dashes — invalid for FOL package name inference.
+pub(super) fn safe_temp_dir() -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join("fol_test");
+    std::fs::create_dir_all(&dir).expect("should create test temp root");
+    dir
+}
+
 pub(super) fn lower_fixture_error(source: &str) -> crate::LoweringError {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = safe_temp_dir().join(format!(
         "fol_lower_negative_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -35,7 +44,7 @@ pub(super) fn lower_fixture_error(source: &str) -> crate::LoweringError {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -48,7 +57,7 @@ pub(super) fn lower_fixture_error(source: &str) -> crate::LoweringError {
 }
 
 pub(super) fn lower_folder_fixture_error(files: &[(&str, &str)]) -> crate::LoweringError {
-    let root = std::env::temp_dir().join(format!(
+    let root = safe_temp_dir().join(format!(
         "fol_lower_negative_folder_{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -73,7 +82,7 @@ pub(super) fn lower_folder_fixture_error(files: &[(&str, &str)]) -> crate::Lower
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering folder fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering folder fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering folder fixture should typecheck");
@@ -86,7 +95,7 @@ pub(super) fn lower_folder_fixture_error(files: &[(&str, &str)]) -> crate::Lower
 }
 
 pub(super) fn lower_folder_fixture_workspace(files: &[(&str, &str)]) -> crate::LoweredWorkspace {
-    let root = std::env::temp_dir().join(format!(
+    let root = safe_temp_dir().join(format!(
         "fol_lower_success_folder_{}",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -111,7 +120,7 @@ pub(super) fn lower_folder_fixture_workspace(files: &[(&str, &str)]) -> crate::L
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering folder fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering folder fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering folder fixture should typecheck");
@@ -121,7 +130,7 @@ pub(super) fn lower_folder_fixture_workspace(files: &[(&str, &str)]) -> crate::L
 }
 
 pub(super) fn lower_fixture_panic_message(source: &str) -> String {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = safe_temp_dir().join(format!(
         "fol_lower_panic_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -138,7 +147,7 @@ pub(super) fn lower_fixture_panic_message(source: &str) -> String {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -156,7 +165,7 @@ pub(super) fn lower_fixture_panic_message(source: &str) -> String {
 }
 
 pub(super) fn lower_fixture_workspace(source: &str) -> crate::LoweredWorkspace {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = safe_temp_dir().join(format!(
         "fol_lower_success_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -172,7 +181,7 @@ pub(super) fn lower_fixture_workspace(source: &str) -> crate::LoweredWorkspace {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");

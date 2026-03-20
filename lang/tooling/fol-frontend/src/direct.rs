@@ -5,14 +5,13 @@ use crate::{
 use fol_backend::{
     emit_backend_artifact, summarize_emitted_artifact, BackendConfig, BackendMode, BackendSession,
 };
-use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat, ToDiagnostic};
-use fol_lower::{render_lowered_workspace, LoweredWorkspace, Lowerer, LoweringError};
-use fol_package::{PackageConfig, PackageError, PackageSession};
-use fol_parser::ast::{AstParser, ParseError};
-use fol_resolver::{ResolverConfig, ResolverError};
+use fol_diagnostics::{DiagnosticLocation, DiagnosticReport, OutputFormat};
+use fol_lower::{render_lowered_workspace, LoweredWorkspace, Lowerer};
+use fol_package::{PackageConfig, PackageSession};
+use fol_parser::ast::AstParser;
+use fol_resolver::ResolverConfig;
 use fol_stream::FileStream;
-use fol_typecheck::{TypecheckError, Typechecker};
-use fol_types::{BasicError, Glitch};
+use fol_typecheck::Typechecker;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -383,12 +382,10 @@ pub fn run_direct_compile_with_io(
                         }
                     } else {
                         diagnostics.add_error(
-                            &BasicError {
-                                message: format!(
-                                    "{} does not contain a runnable entrypoint",
-                                    config.input
-                                ),
-                            },
+                            format!(
+                                "{} does not contain a runnable entrypoint",
+                                config.input
+                            ),
                             None,
                         );
                     }
@@ -427,12 +424,7 @@ pub fn run_direct_compile_with_io(
                             }
                         }
                         Err(error) => {
-                            diagnostics.add_error(
-                                &BasicError {
-                                    message: error.to_string(),
-                                },
-                                None,
-                            );
+                            diagnostics.add_error(error.to_string(), None);
                         }
                     }
                 }
@@ -442,6 +434,11 @@ pub fn run_direct_compile_with_io(
     }
 
     let rendered = diagnostics.output(output_format);
+    let rendered = if frontend_config.output.mode == OutputMode::Human {
+        crate::colorize::colorize_diagnostics(&rendered)
+    } else {
+        rendered
+    };
     if !rendered.trim().is_empty() {
         let _ = writeln!(stdout, "{rendered}");
     }
@@ -460,22 +457,33 @@ fn compile_file(
 ) -> Result<LoweredWorkspace, ()> {
     let path = Path::new(file_path);
     if !path.exists() {
-        diagnostics.add_error(
-            &BasicError {
-                message: format!("File not found: {}", file_path),
-            },
-            None,
-        );
+        diagnostics.add_error(format!("File not found: {}", file_path), None);
         return Err(());
     }
 
     let mut file_stream = if path.is_dir() {
         FileStream::from_folder(file_path).map_err(|e| {
-            report_input_error(diagnostics, e.as_ref(), file_path);
+            diagnostics.add_error(
+                e.to_string(),
+                Some(DiagnosticLocation {
+                    file: Some(file_path.to_string()),
+                    line: 1,
+                    column: 1,
+                    length: None,
+                }),
+            );
         })?
     } else {
         FileStream::from_file(file_path).map_err(|e| {
-            report_input_error(diagnostics, e.as_ref(), file_path);
+            diagnostics.add_error(
+                e.to_string(),
+                Some(DiagnosticLocation {
+                    file: Some(file_path.to_string()),
+                    line: 1,
+                    column: 1,
+                    length: None,
+                }),
+            );
         })?
     };
 
@@ -492,7 +500,7 @@ fn compile_file(
             let prepared = match package_session.prepare_entry_package(package) {
                 Ok(prepared) => prepared,
                 Err(error) => {
-                    add_compiler_glitch(diagnostics, &error);
+                    diagnostics.add_from(&error);
                     return Err(());
                 }
             };
@@ -505,89 +513,43 @@ fn compile_file(
                         Ok(lowered) => Ok(lowered),
                         Err(errors) => {
                             for error in errors {
-                                add_compiler_glitch(diagnostics, &error);
+                                diagnostics.add_from(&error);
                             }
                             Err(())
                         }
                     },
                     Err(errors) => {
                         for error in errors {
-                            add_compiler_glitch(diagnostics, &error);
+                            diagnostics.add_from(&error);
                         }
                         Err(())
                     }
                 },
                 Err(errors) => {
                     for error in errors {
-                        add_compiler_glitch(diagnostics, &error);
+                        diagnostics.add_from(&error);
                     }
                     Err(())
                 }
             }
         }
-        Err(errors) => {
-            for error in errors {
-                add_compiler_glitch(diagnostics, error.as_ref());
+        Err(parser_diagnostics) => {
+            for diagnostic in parser_diagnostics {
+                diagnostics.add_diagnostic(diagnostic);
             }
             Err(())
         }
     }
 }
 
-fn report_input_error(diagnostics: &mut DiagnosticReport, error: &dyn Glitch, file: &str) {
-    diagnostics.add_error(
-        error,
-        Some(DiagnosticLocation {
-            file: Some(file.to_string()),
-            line: 1,
-            column: 1,
-            length: None,
-        }),
-    );
-}
-
-fn add_compiler_glitch(report: &mut DiagnosticReport, error: &dyn Glitch) {
-    if let Some(diagnostic) = lower_compiler_glitch(error) {
-        report.add_diagnostic(diagnostic);
-    } else {
-        report.add_error(error, None);
-    }
-}
-
-fn lower_compiler_glitch(error: &dyn Glitch) -> Option<fol_diagnostics::Diagnostic> {
-    error
-        .as_any()
-        .downcast_ref::<ParseError>()
-        .map(ToDiagnostic::to_diagnostic)
-        .or_else(|| {
-            error
-                .as_any()
-                .downcast_ref::<PackageError>()
-                .map(ToDiagnostic::to_diagnostic)
-        })
-        .or_else(|| {
-            error
-                .as_any()
-                .downcast_ref::<ResolverError>()
-                .map(ToDiagnostic::to_diagnostic)
-        })
-        .or_else(|| {
-            error
-                .as_any()
-                .downcast_ref::<TypecheckError>()
-                .map(ToDiagnostic::to_diagnostic)
-        })
-        .or_else(|| {
-            error
-                .as_any()
-                .downcast_ref::<LoweringError>()
-                .map(ToDiagnostic::to_diagnostic)
-        })
-}
-
 fn render_direct_diagnostics(report: &DiagnosticReport, mode: OutputMode) -> String {
-    report.output(match mode {
+    let rendered = report.output(match mode {
         OutputMode::Json => OutputFormat::Json,
         _ => OutputFormat::Human,
-    })
+    });
+    if mode == OutputMode::Human {
+        crate::colorize::colorize_diagnostics(&rendered)
+    } else {
+        rendered
+    }
 }

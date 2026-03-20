@@ -9,6 +9,8 @@ pro[] build(graph: Graph): non = {
         optimize = optimize,
     });
 
-    graph.add_run(app).depend_on(lint);
-    graph.install(app).depend_on(lint);
-}
+    var run = graph.add_run(app);
+    run.depend_on(lint);
+    var inst = graph.install(app);
+    inst.depend_on(lint);
+};

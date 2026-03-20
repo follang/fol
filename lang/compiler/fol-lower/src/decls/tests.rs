@@ -10,13 +10,19 @@ mod tests {
         LoweredTypeDeclKind, LoweredVariantLayout,
     };
     use fol_parser::ast::{AstNode, AstParser, FolType, Parameter};
-    use fol_resolver::resolve_workspace;
+    use fol_resolver::resolve_package_workspace;
     use fol_stream::FileStream;
     use fol_typecheck::Typechecker;
 
+    fn safe_temp_dir() -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join("fol_test");
+        std::fs::create_dir_all(&dir).expect("should create test temp root");
+        dir
+    }
+
     #[test]
     fn declaration_lowering_maps_top_level_routine_signatures_to_lowered_types() {
-        let fixture = std::env::temp_dir().join(format!(
+        let fixture = safe_temp_dir().join(format!(
             "fol_lower_routine_sig_{}.fol",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -33,7 +39,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -78,7 +84,7 @@ mod tests {
 
     #[test]
     fn declaration_lowering_records_aliases_as_erased_runtime_shapes() {
-        let fixture = std::env::temp_dir().join(format!(
+        let fixture = safe_temp_dir().join(format!(
             "fol_lower_alias_decl_{}.fol",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -98,7 +104,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -134,7 +140,7 @@ mod tests {
 
     #[test]
     fn declaration_lowering_records_explicit_record_field_layouts() {
-        let fixture = std::env::temp_dir().join(format!(
+        let fixture = safe_temp_dir().join(format!(
             "fol_lower_record_decl_{}.fol",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -154,7 +160,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -215,7 +221,7 @@ mod tests {
 
     #[test]
     fn declaration_lowering_records_explicit_entry_variant_layouts() {
-        let fixture = std::env::temp_dir().join(format!(
+        let fixture = safe_temp_dir().join(format!(
             "fol_lower_entry_decl_{}.fol",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -235,7 +241,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -303,7 +309,7 @@ mod tests {
 
     #[test]
     fn declaration_lowering_records_top_level_globals_with_storage_types() {
-        let fixture = std::env::temp_dir().join(format!(
+        let fixture = safe_temp_dir().join(format!(
             "fol_lower_globals_{}.fol",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -320,7 +326,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -364,7 +370,7 @@ mod tests {
 
     #[test]
     fn declaration_lowering_records_routine_shells_with_parameter_locals() {
-        let fixture = std::env::temp_dir().join(format!(
+        let fixture = safe_temp_dir().join(format!(
             "fol_lower_routines_{}.fol",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -384,7 +390,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -426,7 +432,7 @@ mod tests {
 
     #[test]
     fn declaration_lowering_reports_missing_parameter_symbol_matches_explicitly() {
-        let fixture = std::env::temp_dir().join(format!(
+        let fixture = safe_temp_dir().join(format!(
             "fol_lower_missing_param_{}.fol",
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -443,7 +449,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -488,7 +494,7 @@ mod tests {
             *syntax_id,
             &[Parameter {
                 name: "missing".to_string(),
-                param_type: FolType::Simple("int".to_string()),
+                param_type: FolType::Int { size: None, signed: true },
                 is_borrowable: false,
                 is_mutex: false,
                 default: None,
@@ -515,7 +521,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock should be monotonic enough for tmp path")
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("fol_lower_decl_parity_{stamp}"));
+        let root = safe_temp_dir().join(format!("fol_lower_decl_parity_{stamp}"));
         let app_dir = root.join("app");
         let shared_dir = root.join("shared");
         fs::create_dir_all(&app_dir).expect("should create app dir");
@@ -538,7 +544,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering folder fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering folder fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering folder fixture should typecheck");

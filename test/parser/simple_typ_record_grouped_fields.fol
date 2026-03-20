@@ -1,4 +1,4 @@
 typ Pair: rec = {
     left, right: int;
     con label, title: str = "pair";
-}
+};

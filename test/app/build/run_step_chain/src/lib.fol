@@ -1,3 +1,3 @@
 fun[] exit_code(): int = {
-    return 0
-}
+    return 0;
+};

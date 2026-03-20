@@ -4,4 +4,4 @@ fun fallback(value: int): int = {
     }
     else => if(value) => return 0;
     return value;
-}
+};

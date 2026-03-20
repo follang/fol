@@ -405,10 +405,10 @@ fn test_def_rejects_non_empty_option_brackets() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let message = parse_error.to_string();
+    let message = parse_error.message.clone();
     assert!(
         message.contains("Unknown definition option"),
         "Non-empty def option brackets should be rejected, got: {}",
@@ -721,10 +721,10 @@ fn test_def_invalid_type_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains(
             "Definition declarations currently support only mod[...], blk[...], tst[...], pkg, loc, mac, alt, or def[] types, found"
@@ -733,14 +733,14 @@ fn test_def_invalid_type_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Invalid def type parse error should stay on the declaration line"
     );
     assert!(
-        parse_error.column() >= 13,
+        parse_error.primary_location().unwrap().column >= 13,
         "Invalid def type parse error should anchor at the type site, got column {}",
-        parse_error.column()
+        parse_error.primary_location().unwrap().column
     );
 }
 
@@ -757,10 +757,10 @@ fn test_def_module_without_body_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected '=' before definition body"),
         "Module definitions without bodies should keep requiring '=', got: {}",

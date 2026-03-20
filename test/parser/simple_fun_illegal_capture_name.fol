@@ -4,4 +4,4 @@ fun[] add(n: int): int = {
     }
 
     return added(5);
-}
+};

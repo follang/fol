@@ -1,4 +1,4 @@
 while(ready) {
     yield value;
     break;
-}
+};

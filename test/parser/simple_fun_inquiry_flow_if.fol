@@ -1,4 +1,4 @@
 fun[] inspect(value: int): int = {
     return value;
     where(self) => if(value > 0) => value;
-}
+};

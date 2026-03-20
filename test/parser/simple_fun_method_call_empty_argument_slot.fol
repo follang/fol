@@ -4,4 +4,4 @@ fun method_empty_slot(obj: int, a: int): int = {
     );
 
     return a;
-}
+};

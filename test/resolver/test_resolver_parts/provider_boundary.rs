@@ -13,12 +13,12 @@ fn test_resolver_keeps_loc_import_semantics_stable_through_package_provider() {
         .expect("Should write the imported local value fixture");
     fs::write(
         shared_root.join("helpers.fol"),
-        "fun[exp] emit(value: int): int = {\n    return value;\n}\n",
+        "fun[exp] emit(value: int): int = {\n    return value;\n};\n",
     )
     .expect("Should write the imported local routine fixture");
     fs::write(
         app_root.join("main.fol"),
-        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return emit(answer);\n}\n",
+        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return emit(answer);\n};\n",
     )
     .expect("Should write the importing loc fixture");
 
@@ -82,7 +82,7 @@ fn test_resolver_keeps_std_import_semantics_stable_through_package_provider() {
         .expect("Should write the standard-library value fixture");
     fs::write(
         app_root.join("main.fol"),
-        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n};\n",
     )
     .expect("Should write the importing std fixture");
 
@@ -135,7 +135,7 @@ fn test_resolver_keeps_pkg_import_semantics_stable_through_package_provider() {
         .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
     )
     .expect("Should write the installed package build fixture");
     fs::write(store_root.join("json/src/root/value.fol"), "var[exp] answer: int = 42;\n")
@@ -151,7 +151,7 @@ fn test_resolver_keeps_pkg_import_semantics_stable_through_package_provider() {
             "use json: pkg = {json};\n",
             "fun[] main(): int = {\n",
             "    return json::src::root::answer + json::src::fmt::formatted;\n",
-            "}\n",
+            "};\n",
         ),
     )
     .expect("Should write the importing pkg fixture");

@@ -1,7 +1,7 @@
 fun[mut;] pure_add(a: int, b: int): int = {
     return a + b;
-}
+};
 
 pro[+; itr;] publish(item: int): int = {
     return item;
-}
+};

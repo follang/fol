@@ -1,4 +1,3 @@
-use colored::Colorize;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -17,14 +16,6 @@ impl fmt::Display for COMMENT {
             COMMENT::SlashLine => "slash-line",
             COMMENT::SlashBlock => "slash-block",
         };
-
-        write!(
-            f,
-            "{}{}:",
-            " COMMENT  ".black().on_red(),
-            (":".to_string().white().on_black().to_string() + &format!(" {} ", label))
-                .black()
-                .on_red(),
-        )
+        write!(f, "COMMENT:{}", label)
     }
 }

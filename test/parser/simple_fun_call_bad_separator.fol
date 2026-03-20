@@ -4,4 +4,4 @@ fun broken_bad_separator(a: int, b: int): int = {
         b,
     );
     return value;
-}
+};

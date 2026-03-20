@@ -324,15 +324,15 @@ fn test_expression_pipe_lambda_rejects_canonical_duplicate_inquiries() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate inquiry clause for 'CacheName'"),
         "Expected canonical duplicate inquiry error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -350,15 +350,15 @@ fn test_pipe_lambda_rejects_duplicate_parameters() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate parameter name 'x'"),
         "Expected duplicate pipe lambda parameter error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -739,15 +739,15 @@ fn test_pipe_lambda_rejects_non_last_variadic_parameter() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Variadic parameter must be the last parameter"),
         "Expected non-last variadic pipe lambda error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -765,15 +765,15 @@ fn test_pipe_lambda_rejects_variadic_default_values() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Variadic parameters cannot have default values"),
         "Expected variadic-default pipe lambda error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 

@@ -90,7 +90,7 @@ Used in ~30 lexer signatures (`Con<Element>`, `Con<Part<char>>`, `Vod`).
 
 ## Implementation Slices
 
-### Slice 1: Strip colors from compiler library crates
+### Slice 1: Strip colors from compiler library crates ✅
 
 Remove the `colored` and `terminal_size` dependencies from all compiler crates.
 Library code must produce plain text.
@@ -115,7 +115,7 @@ Exit condition:
 - `cargo tree -p fol-diagnostics | grep colored` returns nothing
 - all compiler crate tests pass with plain text output
 
-### Slice 2: Add color support to fol-frontend diagnostic rendering
+### Slice 2: Add color support to fol-frontend diagnostic rendering ✅
 
 After Slice 1, `render_human.rs` in `fol-diagnostics` produces plain text.
 The frontend needs to apply colors at the presentation layer.
@@ -133,7 +133,7 @@ Exit condition:
 - `fol tool lsp` and CLI human output still show colored diagnostics
 - `fol-diagnostics` crate has no color dependency
 
-### Slice 3: Replace lexer error types with a concrete enum
+### Slice 3: Replace lexer error types with a concrete enum ✅
 
 The lexer uses `Flaw`, `Typo`, `Slip` through `Box<dyn Glitch>` via the
 `Con<T>` and `Vod` aliases. Replace with a concrete enum.
@@ -163,7 +163,7 @@ Exit condition:
 - no `Box<dyn Glitch>` in fol-lexer or fol-stream
 - `Con<T>`, `Vod`, `Errors` are deleted
 
-### Slice 4: Parser returns Vec\<Diagnostic\> at the public boundary
+### Slice 4: Parser returns Vec\<Diagnostic\> at the public boundary ✅
 
 The parser internally collects `Vec<Box<dyn Glitch>>` during error recovery.
 These are always `ParseError`. Change the public API to return `Vec<Diagnostic>`.
@@ -188,7 +188,7 @@ Exit condition:
 - parser public API returns `Vec<Diagnostic>`
 - no downstream code downcasts parser output
 
-### Slice 5: Remove Glitch implementations from compiler error types
+### Slice 5: Remove Glitch implementations from compiler error types ✅
 
 After Slices 3-4, the only remaining `Glitch` users are `BasicError` (used by
 `fol-stream` before Slice 3) and the parser's internal error collection.
@@ -216,7 +216,7 @@ Exit condition:
 - `grep -r "dyn Glitch" lang/` returns nothing
 - all tests pass
 
-### Slice 6: Frontend and editor use Diagnostic directly
+### Slice 6: Frontend and editor use Diagnostic directly ✅
 
 With parser returning `Vec<Diagnostic>` and all other stages returning typed
 errors with `.to_diagnostic()`:
@@ -244,7 +244,7 @@ Exit condition:
 - no string-flattening error helpers
 - `glitch_to_diagnostic` and `lower_compiler_glitch` are deleted
 
-### Slice 7: FrontendError implements ToDiagnostic
+### Slice 7: FrontendError implements ToDiagnostic ✅
 
 `FrontendError` carries no diagnostic code and no location. It formats as
 `"FrontendWorkspaceNotFound: message"`.
@@ -262,7 +262,7 @@ Exit condition:
 - `FrontendError` has `[F1xxx]` codes
 - frontend errors render through the same pipeline as compiler errors
 
-### Slice 8: Integration tests for the unified pipeline
+### Slice 8: Integration tests for the unified pipeline ✅
 
 Verify that the same diagnostic flows identically through all output paths.
 

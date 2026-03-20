@@ -140,15 +140,15 @@ fn test_implementation_declaration_rejects_unknown_options() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Unknown implementation option"),
         "Malformed imp option list should report unsupported options, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -219,15 +219,15 @@ fn test_implementation_declaration_rejects_conflicting_visibility_options() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Conflicting implementation visibility options"),
         "Conflicting imp options should report a targeted error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -245,18 +245,18 @@ fn test_implementation_generic_header_missing_separator_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Expected ','; ';', or ')' after generic parameter")
             || parse_error
-                .to_string()
+                .message
                 .contains("Expected ',', ';', or ')' after generic parameter"),
         "Malformed imp generic header should report separator error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 

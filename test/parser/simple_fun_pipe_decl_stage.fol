@@ -3,4 +3,4 @@ fun[] decl_stage(value: int): int = {
         | use helper: mod = {"std/helper"}
         | ali AliasValue: int
         | def tmp: blk[];
-}
+};

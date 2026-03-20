@@ -1,4 +1,4 @@
 std geometry: blu = {
     con theme: str = "light";
     var color: str;
-}
+};

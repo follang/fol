@@ -829,13 +829,12 @@ fn test_if_flow_missing_body_reports_branch_message() {
 
     let parse_error = errors
         .first()
-        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
-        .expect("First parser error should be ParseError");
+        .expect("First parser error should exist");
 
     assert!(
-        parse_error.to_string().contains("Expected '{' or '=>' to start branch body"),
+        parse_error.message.contains("Expected '{' or '=>' to start branch body"),
         "Missing if body should use generic branch-body wording, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -853,13 +852,12 @@ fn test_when_flow_missing_body_reports_branch_message() {
 
     let parse_error = errors
         .first()
-        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
-        .expect("First parser error should be ParseError");
+        .expect("First parser error should exist");
 
     assert!(
-        parse_error.to_string().contains("Expected '{' or '=>' to start branch body"),
+        parse_error.message.contains("Expected '{' or '=>' to start branch body"),
         "Missing when body should use generic branch-body wording, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 

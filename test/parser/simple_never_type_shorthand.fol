@@ -2,4 +2,4 @@ typ ImpossibleNumber: !int;
 
 fun[] crashIfMissing(value: !str): !flt = {
     panic "missing";
-}
+};

@@ -1,3 +1,0 @@
-fun[exp] helper(): int = {
-    return 5
-}

@@ -1,3 +1,3 @@
 log dating(a: str, b: str): bol = {
     return a == b;
-}
+};

@@ -2,4 +2,4 @@ pro maker(): any = {
     return pro[] (a: int): int = {
         return a;
     };
-}
+};

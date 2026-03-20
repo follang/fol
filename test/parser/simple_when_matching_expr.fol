@@ -4,4 +4,4 @@ fun[] someValue(variable: int): str = {
         in {11..20} -> "11-20";
         * -> "0";
     };
-}
+};

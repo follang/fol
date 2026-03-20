@@ -1,8 +1,8 @@
 pro caller_forward_single_quoted_ok(): int / str = {
     report '$make_err'();
     return 0;
-}
+};
 
 fun '$make_err'(): str = {
     return "ok";
-}
+};

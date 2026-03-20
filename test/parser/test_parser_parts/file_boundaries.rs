@@ -17,7 +17,7 @@ fn unique_temp_root(label: &str) -> std::path::PathBuf {
 
 fn parse_program_from_folder(
     root: &std::path::Path,
-) -> Result<AstNode, Vec<Box<dyn fol_types::Glitch>>> {
+) -> Result<AstNode, Vec<fol_diagnostics::Diagnostic>> {
     let mut file_stream = FileStream::from_folder(
         root.to_str()
             .expect("Temporary folder fixture path should be UTF-8"),
@@ -30,7 +30,7 @@ fn parse_program_from_folder(
 
 fn parse_decl_package_from_folder(
     root: &std::path::Path,
-) -> Result<ParsedPackage, Vec<Box<dyn fol_types::Glitch>>> {
+) -> Result<ParsedPackage, Vec<fol_diagnostics::Diagnostic>> {
     let mut file_stream = FileStream::from_folder(
         root.to_str()
             .expect("Temporary folder fixture path should be UTF-8"),
@@ -41,19 +41,9 @@ fn parse_decl_package_from_folder(
     parser.parse_package(&mut lexer)
 }
 
-fn parse_decl_package_errors_from_folder(root: &std::path::Path) -> Vec<ParseError> {
+fn parse_decl_package_errors_from_folder(root: &std::path::Path) -> Vec<fol_diagnostics::Diagnostic> {
     parse_decl_package_from_folder(root)
         .expect_err("Folder fixture should fail declaration-only package parsing")
-        .into_iter()
-        .map(|error| {
-            error
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ParseError>()
-                .cloned()
-                .expect("Cross-file boundary failures should surface as ParseError values")
-        })
-        .collect()
 }
 
 fn write_folder_fixture(root: &std::path::Path, files: &[(&str, &str)]) {
@@ -68,7 +58,7 @@ fn test_complete_top_level_declarations_remain_separate_across_folder_boundaries
     let temp_root = unique_temp_root("complete_top_level");
     write_folder_fixture(
         &temp_root,
-        &[("00_a.fol", "var a = 1\n"), ("10_b.fol", "var b = 2\n")],
+        &[("00_a.fol", "var a = 1;\n"), ("10_b.fol", "var b = 2;\n")],
     );
 
     let ast = parse_program_from_folder(&temp_root)
@@ -112,7 +102,7 @@ fn test_routine_header_cannot_continue_into_next_file() {
     write_folder_fixture(
         &temp_root,
         &[
-            ("00_a.fol", "fun add(value: int)\n"),
+            ("00_a.fol", "fun add(value: int);\n"),
             ("10_b.fol", ": int = { return value }\n"),
         ],
     );
@@ -154,7 +144,7 @@ fn test_block_body_cannot_continue_into_next_file() {
     write_folder_fixture(
         &temp_root,
         &[
-            ("00_a.fol", "fun value(): int = { return 1\n"),
+            ("00_a.fol", "fun value(): int = { return 1;\n"),
             ("10_b.fol", "}\n"),
         ],
     );
@@ -186,19 +176,19 @@ fn test_decl_package_split_binding_reports_boundary_then_second_file_locations()
         "Split bindings should report at least one boundary-token failure"
     );
     assert!(
-        errors[0].to_string().contains("Unsupported expression token"),
+        errors[0].message.contains("Unsupported expression token"),
         "Expected the first error to anchor at the synthetic file-boundary token, got: {}",
-        errors[0]
+        errors[0].message
     );
+    let loc = errors[0].primary_location().expect("diagnostic should have primary location");
     assert!(
-        errors[0]
-            .file()
+        loc.file
             .as_deref()
             .is_some_and(|path| path.ends_with("10_b.fol")),
         "The boundary-token error should identify the incoming second file"
     );
-    assert_eq!(errors[0].line(), 1);
-    assert_eq!(errors[0].column(), 0);
+    assert_eq!(loc.line, 1);
+    assert_eq!(loc.column, 0);
 }
 
 #[test]
@@ -222,20 +212,20 @@ fn test_decl_package_split_use_path_reports_boundary_then_second_file_locations(
     );
     assert!(
         errors[0]
-            .to_string()
+            .message
             .contains("Expected name after '::' in use path"),
         "Expected a use-path boundary diagnostic first, got: {}",
-        errors[0]
+        errors[0].message
     );
+    let loc = errors[0].primary_location().expect("diagnostic should have primary location");
     assert!(
-        errors[0]
-            .file()
+        loc.file
             .as_deref()
             .is_some_and(|path| path.ends_with("10_b.fol")),
         "The boundary-token use-path error should identify the incoming second file"
     );
-    assert_eq!(errors[0].line(), 1);
-    assert_eq!(errors[0].column(), 0);
+    assert_eq!(loc.line, 1);
+    assert_eq!(loc.column, 0);
 }
 
 #[test]
@@ -245,7 +235,7 @@ fn test_decl_package_boundary_tokens_never_become_source_unit_items() {
         &temp_root,
         &[
             ("00_alpha.fol", "var alpha = 1;\n\n"),
-            ("10_beta.fol", "\nvar beta = 2\n"),
+            ("10_beta.fol", "\nvar beta = 2;\n"),
         ],
     );
 

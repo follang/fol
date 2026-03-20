@@ -15,7 +15,7 @@ fn unique_temp_root(label: &str) -> std::path::PathBuf {
     ))
 }
 
-fn parse_first_error_from_source(label: &str, source: &str) -> ParseError {
+fn parse_first_error_from_source(label: &str, source: &str) -> fol_diagnostics::Diagnostic {
     let temp_root = unique_temp_root(label);
     fs::create_dir_all(&temp_root).expect("Should create temporary literal fixture dir");
     let fixture = temp_root.join("literal_lowering.fol");
@@ -36,10 +36,9 @@ fn parse_first_error_from_source(label: &str, source: &str) -> ParseError {
     fs::remove_dir_all(&temp_root).ok();
 
     errors
-        .first()
-        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
-        .cloned()
-        .expect("First parser error should be ParseError")
+        .into_iter()
+        .next()
+        .expect("First parser error should exist")
 }
 
 #[test]
@@ -171,12 +170,12 @@ fn test_parse_literal_rejects_out_of_range_decimal_instead_of_lowering_to_identi
         .parse_literal("9223372036854775808")
         .expect_err("Out-of-range decimal literal should fail instead of becoming an identifier");
 
+    let error_msg = error.to_string();
     assert!(
-        error
-            .to_string()
+        error_msg
             .contains("out of range for current parser literal lowering"),
         "Decimal overflow should report an explicit parse failure, got: {}",
-        error
+        error_msg
     );
 }
 
@@ -189,14 +188,14 @@ fn test_top_level_out_of_range_decimal_reports_parse_error() {
 
     assert!(
         error
-            .to_string()
+            .message
             .contains("out of range for current parser literal lowering"),
         "Out-of-range decimal tokens should report a parse error, got: {}",
-        error
+        error.message
     );
-    assert_eq!(error.line(), 1, "Decimal overflow should report its own line");
+    assert_eq!(error.primary_location().unwrap().line, 1, "Decimal overflow should report its own line");
     assert_eq!(
-        error.column(),
+        error.primary_location().unwrap().column,
         1,
         "Decimal overflow should point at the literal token itself"
     );
@@ -218,12 +217,12 @@ fn test_parse_literal_rejects_out_of_range_prefixed_integers() {
             .parse_literal(literal)
             .expect_err("Out-of-range prefixed literal should fail instead of becoming an identifier");
 
+        let error_msg = error.to_string();
         assert!(
-            error
-                .to_string()
+            error_msg
                 .contains(&format!("{family} literal")),
             "Prefixed overflow should use explicit {family} wording, got: {}",
-            error
+            error_msg
         );
     }
 }
@@ -242,13 +241,13 @@ fn test_top_level_out_of_range_prefixed_literals_report_parse_errors() {
         let error = parse_first_error_from_source(label, source);
 
         assert!(
-            error.to_string().contains(&format!("{family} literal")),
+            error.message.contains(&format!("{family} literal")),
             "Out-of-range {family} tokens should report a parse error, got: {}",
-            error
+            error.message
         );
-        assert_eq!(error.line(), 1, "{family} overflow should report its own line");
+        assert_eq!(error.primary_location().unwrap().line, 1, "{family} overflow should report its own line");
         assert_eq!(
-            error.column(),
+            error.primary_location().unwrap().column,
             1,
             "{family} overflow should point at the literal token itself"
         );

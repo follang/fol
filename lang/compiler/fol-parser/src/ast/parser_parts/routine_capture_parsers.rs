@@ -5,7 +5,7 @@ impl AstParser {
         &self,
         captures: &[String],
         tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> Result<(), Box<dyn Glitch>> {
+    ) -> Result<(), ParseError> {
         let mut seen = HashSet::new();
         for capture in captures {
             if !seen.insert(canonical_identifier_key(capture)) {
@@ -24,7 +24,7 @@ impl AstParser {
                         length: 0,
                     }
                 };
-                return Err(Box::new(error));
+                return Err(error);
             }
         }
 
@@ -34,7 +34,7 @@ impl AstParser {
     pub(super) fn parse_optional_routine_capture_list(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<String>, Box<dyn Glitch>> {
+    ) -> Result<Vec<String>, ParseError> {
         self.skip_ignorable(tokens)?;
         let open = match tokens.curr(false) {
             Ok(token) => token,
@@ -83,10 +83,10 @@ impl AstParser {
                 return Ok(captures);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ']' in routine capture list".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -104,6 +104,6 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 }

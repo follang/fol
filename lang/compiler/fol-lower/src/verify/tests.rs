@@ -137,7 +137,7 @@ fn verifier_rejects_dangling_locals_and_missing_type_ids() {
 
 #[test]
 fn verifier_rejects_impossible_mounted_symbol_ownership() {
-    let identity = identity("app");
+    let app_id = identity("app");
     let foreign = identity("shared");
     let mut routine = LoweredRoutine::new(LoweredRoutineId(0), "main", LoweredBlockId(0));
     routine.blocks.push(LoweredBlock {
@@ -146,7 +146,7 @@ fn verifier_rejects_impossible_mounted_symbol_ownership() {
         terminator: Some(LoweredTerminator::Return { value: None }),
     });
 
-    let mut package = LoweredPackage::new(LoweredPackageId(0), identity.clone());
+    let mut package = LoweredPackage::new(LoweredPackageId(0), app_id.clone());
     package.symbol_ownership.insert(
         SymbolId(7),
         LoweredSymbolOwnership {
@@ -154,13 +154,13 @@ fn verifier_rejects_impossible_mounted_symbol_ownership() {
             source_unit_id: SourceUnitId(0),
             owning_package: foreign.clone(),
             mounted_from: Some(MountedSymbolProvenance {
-                package_identity: identity.clone(),
+                package_identity: app_id.clone(),
                 foreign_symbol: SymbolId(3),
             }),
         },
     );
     package.routine_decls.insert(LoweredRoutineId(0), routine);
-    let workspace = empty_workspace(identity, package);
+    let workspace = empty_workspace(app_id, package);
 
     let errors = verify_workspace(&workspace)
         .expect_err("verifier should reject conflicting mounted symbol ownership");
@@ -229,7 +229,7 @@ fn verifier_rejects_runtime_hooks_with_results_and_helper_without_results() {
     let mut type_table = LoweredTypeTable::new();
     let bool_type = type_table.intern_builtin(LoweredBuiltinType::Bool);
     let int_type = type_table.intern_builtin(LoweredBuiltinType::Int);
-    let seq_type = type_table.intern_sequence(bool_type);
+    let seq_type = type_table.intern(crate::types::LoweredType::Sequence { element_type: bool_type });
     let recoverable_abi = LoweredRecoverableAbi::v1(bool_type);
     let mut routine = LoweredRoutine::new(LoweredRoutineId(0), "main", LoweredBlockId(0));
     routine.locals.push(LoweredLocal {

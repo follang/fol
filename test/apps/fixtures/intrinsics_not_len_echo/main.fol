@@ -1,8 +1,8 @@
 fun[] main(): int = {
-    var parts: seq[int] = {7, 8}
+    var parts: seq[int] = {7, 8};
 
     when(.not(false)) {
-        case(true) { return .echo(.len(parts)) }
-        * { return 0 }
+        case(true) { return .echo(.len(parts)); }
+        * { return 0; }
     }
-}
+};

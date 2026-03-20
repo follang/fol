@@ -1,4 +1,4 @@
 typ Config: rec = {
     get: int;
     get: str;
-}
+};

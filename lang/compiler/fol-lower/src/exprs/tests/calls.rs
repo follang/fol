@@ -2,12 +2,15 @@ use super::{
     lower_fixture_error, lower_fixture_workspace, lower_folder_fixture_error,
     lower_folder_fixture_workspace,
 };
-use crate::{LoweredInstrKind, LoweringErrorKind};
-use fol_resolver::SymbolKind;
+use crate::{LoweredInstrKind, LoweredOperand, LoweredTerminator, LoweringErrorKind};
+use fol_parser::ast::AstParser;
+use fol_resolver::{resolve_package_workspace, SymbolKind};
+use fol_stream::FileStream;
+use fol_typecheck::Typechecker;
 
 #[test]
 fn routine_body_lowering_keeps_local_initializers_and_final_expression_results() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_body_exprs_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -27,7 +30,7 @@ fn routine_body_lowering_keeps_local_initializers_and_final_expression_results()
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -79,7 +82,7 @@ fn routine_body_lowering_keeps_local_initializers_and_final_expression_results()
 
 #[test]
 fn assignment_lowering_emits_local_and_global_store_instructions() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_assignment_exprs_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -99,7 +102,7 @@ fn assignment_lowering_emits_local_and_global_store_instructions() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -139,7 +142,7 @@ fn call_lowering_emits_direct_callee_calls_for_plain_and_qualified_forms() {
         .duration_since(UNIX_EPOCH)
         .expect("clock should be monotonic enough for tmp path")
         .as_nanos();
-    let root = std::env::temp_dir().join(format!("fol_lower_call_exprs_{stamp}"));
+    let root = super::safe_temp_dir().join(format!("fol_lower_call_exprs_{stamp}"));
     let app_dir = root.join("app");
     let math_dir = app_dir.join("math");
     fs::create_dir_all(&math_dir).expect("should create nested namespace dir");
@@ -158,7 +161,7 @@ fn call_lowering_emits_direct_callee_calls_for_plain_and_qualified_forms() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -183,7 +186,7 @@ fn call_lowering_emits_direct_callee_calls_for_plain_and_qualified_forms() {
 
 #[test]
 fn method_call_lowering_rewrites_receivers_into_direct_call_arguments() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_method_exprs_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -203,7 +206,7 @@ fn method_call_lowering_rewrites_receivers_into_direct_call_arguments() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -473,7 +476,7 @@ fn standalone_panic_lowering_uses_keyword_intrinsic_terminators() {
 
 #[test]
 fn field_access_lowering_emits_explicit_extraction_instructions() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_field_exprs_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -493,7 +496,7 @@ fn field_access_lowering_emits_explicit_extraction_instructions() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -519,7 +522,7 @@ fn field_access_lowering_emits_explicit_extraction_instructions() {
 
 #[test]
 fn index_access_lowering_emits_explicit_container_access_instructions() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_index_exprs_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -539,7 +542,7 @@ fn index_access_lowering_emits_explicit_container_access_instructions() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");

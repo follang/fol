@@ -8,7 +8,7 @@ fn test_resolver_resolves_named_types_against_top_level_type_symbols() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "typ Item: int;\nali NamedItem: Item;\nfun[] main(value: Item): NamedItem = {\n    var local: Item = value;\n    return local;\n}\n",
+        "typ Item: int;\nali NamedItem: Item;\nfun[] main(value: Item): NamedItem = {\n    var local: Item = value;\n    return local;\n};\n",
     )
     .expect("Should write the named-type resolver fixture");
 
@@ -85,7 +85,7 @@ fn test_resolver_prefers_generic_parameters_over_outer_type_symbols() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "typ T: int;\nfun identity(T)(value: T): T = {\n    var copy: T = value;\n    return copy;\n}\n",
+        "typ T: int;\nfun identity(T)(value: T): T = {\n    var copy: T = value;\n    return copy;\n};\n",
     )
     .expect("Should write the generic type resolver fixture");
 
@@ -129,7 +129,7 @@ fn test_resolver_reports_unresolved_named_types() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(value: Missing): int = {\n    return 0;\n}\n",
+        "fun[] main(value: Missing): int = {\n    return 0;\n};\n",
     )
     .expect("Should write the unresolved type fixture");
 
@@ -174,7 +174,7 @@ fn test_resolver_treats_str_as_a_builtin_type() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(path: str): str = {\n    var local: str = path;\n    return local;\n}\n",
+        "fun[] main(path: str): str = {\n    var local: str = path;\n    return local;\n};\n",
     )
     .expect("Should write the builtin str resolver fixture");
 
@@ -209,7 +209,7 @@ fn test_resolver_treats_str_as_builtin_across_alias_and_type_definition_surfaces
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "ali Text: str;\ntyp Label: str;\ntyp User: rec = {\n    var name: str;\n};\nfun[] main(value: Text): Label = {\n    var local: str = value;\n    return local;\n}\n",
+        "ali Text: str;\ntyp Label: str;\ntyp User: rec = {\n    var name: str;\n};\nfun[] main(value: Text): Label = {\n    var local: str = value;\n    return local;\n};\n",
     )
     .expect("Should write the builtin str surface coverage fixture");
 

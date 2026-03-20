@@ -319,17 +319,17 @@ fn test_type_alias_missing_bracket_close_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected closing ']' in type reference"),
         "Malformed bracketed typ alias should report missing close bracket, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Bracketed typ alias parse error should point to the declaration line"
     );
@@ -453,17 +453,17 @@ fn test_record_var_field_missing_colon_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected ':' after record field name"),
         "Malformed record field should report missing ':', got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Record field parse error should point to the bad field line"
     );
@@ -483,17 +483,17 @@ fn test_duplicate_record_field_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Duplicate record field 'user'"),
         "Duplicate record field should report the field name, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Duplicate record field parse error should point to the duplicate field line"
     );

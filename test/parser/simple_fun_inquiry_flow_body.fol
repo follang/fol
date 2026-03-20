@@ -1,4 +1,4 @@
 fun show(): int = {
     return 1;
     where(self) => self;
-}
+};

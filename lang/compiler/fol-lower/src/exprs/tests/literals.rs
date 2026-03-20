@@ -11,7 +11,7 @@ use crate::{
 use fol_parser::ast::AstParser;
 use fol_parser::ast::Literal;
 use fol_resolver::{
-    resolve_workspace, PackageIdentity, PackageSourceKind, SourceUnitId, SymbolKind,
+    resolve_package_workspace, PackageIdentity, PackageSourceKind, SourceUnitId, SymbolKind,
 };
 use fol_stream::FileStream;
 use fol_typecheck::Typechecker;
@@ -564,7 +564,7 @@ fn diagnostic_intrinsic_lowering_emits_runtime_hooks_and_forwards_values() {
 fn parser_typecheck_and_lower_keep_same_canonical_intrinsic_identity() {
     use fol_parser::ast::CallSurface;
 
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_intrinsic_identity_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -584,7 +584,7 @@ fn parser_typecheck_and_lower_keep_same_canonical_intrinsic_identity() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("identity fixture should parse");
-    let resolved = resolve_workspace(syntax.clone()).expect("identity fixture should resolve");
+    let resolved = resolve_package_workspace(syntax.clone()).expect("identity fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("identity fixture should typecheck");
@@ -670,7 +670,7 @@ fn nil_literal_lowering_stays_deferred_to_shell_lowering() {
 
 #[test]
 fn identifier_lowering_loads_parameter_locals_and_top_level_globals() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_identifier_exprs_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -690,7 +690,7 @@ fn identifier_lowering_loads_parameter_locals_and_top_level_globals() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -727,7 +727,8 @@ fn identifier_lowering_loads_parameter_locals_and_top_level_globals() {
         .map(|global| global.symbol_id)
         .expect("global symbol should exist");
 
-    let mut cursor = RoutineCursor::new(&mut routine, routine.entry_block);
+    let entry_block = routine.entry_block;
+    let mut cursor = RoutineCursor::new(&mut routine, entry_block);
     let param_value = cursor
         .lower_identifier_reference(
             lowered_workspace.entry_identity(),

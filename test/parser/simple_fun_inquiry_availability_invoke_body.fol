@@ -3,4 +3,4 @@ fun watch(parent: any, value: int): int = {
     where(self) {
         parent:["bob"](value);
     }
-}
+};

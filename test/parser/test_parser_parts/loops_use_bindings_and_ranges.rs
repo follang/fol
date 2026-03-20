@@ -32,10 +32,10 @@ fn test_top_level_for_typed_binder_requires_matching_iteration_name() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains(
             "Typed iteration binder 'item' must match the iteration variable before 'in'"
@@ -368,17 +368,17 @@ fn test_unknown_use_option_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Unknown use option"),
         "Malformed use option should report unknown option, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Use option parse error should point to the declaration line"
     );
@@ -397,17 +397,17 @@ fn test_use_declaration_missing_bracket_close_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected closing ']' in type reference"),
         "Malformed use source-kind type should report missing close bracket, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Malformed use declaration should report the declaration line"
     );
@@ -550,17 +550,17 @@ fn test_var_type_hint_missing_bracket_close_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected closing ']' in type reference"),
         "Malformed var type hint should report missing close bracket, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Malformed var type hint should report the declaration line"
     );
@@ -580,17 +580,17 @@ fn test_let_type_hint_missing_bracket_close_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected closing ']' in type reference"),
         "Malformed let type hint should report missing close bracket, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Malformed let type hint should report the local declaration line"
     );
@@ -804,17 +804,17 @@ fn test_range_expression_missing_rhs_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected expression after '..'"),
         "Malformed range expression should report missing rhs, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Malformed range expression should report the return line"
     );
@@ -893,17 +893,17 @@ fn test_open_start_range_expression_missing_rhs_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected expression after '..'"),
         "Malformed open-start range expression should report missing rhs, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Malformed open-start range expression should report the return line"
     );

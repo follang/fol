@@ -6,4 +6,4 @@ fun classify(value: int): int = {
         }
     }
     return value;
-}
+};

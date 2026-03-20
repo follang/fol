@@ -1,18 +1,18 @@
 typ Counter: rec = {
     total: int
-}
+};
 
 fun (Counter)read(): int = {
-    return 7
-}
+    return 7;
+};
 
 fun[] read_counter(counter: Counter): int = {
-    return counter.read()
-}
+    return counter.read();
+};
 
 fun[] main(): int = {
     var current: Counter = {
         total = 7,
-    }
-    return read_counter(current)
-}
+    };
+    return read_counter(current);
+};

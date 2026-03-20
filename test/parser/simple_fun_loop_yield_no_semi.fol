@@ -3,4 +3,4 @@ fun iterate_yield_nosemi(a: int, b: int): int = {
         yield a
     }
     return a;
-}
+};

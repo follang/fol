@@ -142,15 +142,15 @@ impl AstParser {
     pub(super) fn parse_type_reference_tokens(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<FolType, Box<dyn Glitch>> {
+    ) -> Result<FolType, ParseError> {
         self.skip_ignorable(tokens)?;
         let token = tokens.curr(false)?;
 
         if token.key().is_illegal() {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 format!("Parser encountered illegal token '{}'", token.con()),
-            )));
+            ));
         }
 
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Query)) {
@@ -172,10 +172,10 @@ impl AstParser {
         }
 
         let first_name = Self::token_to_named_label(&token).ok_or_else(|| {
-            Box::new(ParseError::from_token(
+            ParseError::from_token(
                 &token,
                 "Expected type reference".to_string(),
-            )) as Box<dyn Glitch>
+            )
         })?;
         let mut path =
             QualifiedPath::with_syntax_id(vec![first_name], self.record_syntax_origin(&token));
@@ -219,10 +219,10 @@ impl AstParser {
 
         let base_name = name.clone();
         if !path.is_qualified() && base_name == "url" {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Legacy source kind 'url' was removed; use 'pkg' instead".to_string(),
-            )));
+            ));
         }
 
         let mut has_suffix = false;

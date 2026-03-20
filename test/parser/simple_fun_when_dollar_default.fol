@@ -3,4 +3,4 @@ fun keep(value: int): int = {
         is(0) => 0;
         $ => value;
     }
-}
+};

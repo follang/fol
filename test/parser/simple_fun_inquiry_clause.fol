@@ -5,4 +5,4 @@ fun sum(values: seq[int]): int = {
         sum({1}) is 1;
         sum({1, 2, 3}) is 3;
     }
-}
+};

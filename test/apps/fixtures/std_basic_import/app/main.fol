@@ -1,5 +1,5 @@
 use fmt: std = {"fmt"};
 
 fun[] main(): int = {
-    return std_answer
-}
+    return std_answer;
+};

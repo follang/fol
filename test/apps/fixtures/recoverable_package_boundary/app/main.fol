@@ -1,5 +1,5 @@
 use shared: loc = {"../shared"};
 
 fun[] main(flag: bol): int = {
-    return load(flag) || 5
-}
+    return load(flag) || 5;
+};

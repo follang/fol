@@ -148,15 +148,9 @@ fn test_multi_name_type_declarations_reject_generic_headers() {
         .expect_err("Parser should reject generics on multi-name type declarations");
 
     assert!(errors.iter().any(|error| {
-        error
-            .as_any()
-            .downcast_ref::<ParseError>()
-            .map(|parse_error| {
-                parse_error.to_string().contains(
-                    "Type generics and explicit contracts are currently supported only on single-name type declarations",
-                )
-            })
-            .unwrap_or(false)
+        error.message.contains(
+            "Type generics and explicit contracts are currently supported only on single-name type declarations",
+        )
     }));
 }
 
@@ -173,15 +167,9 @@ fn test_multi_name_type_declarations_reject_explicit_contract_headers() {
         .expect_err("Parser should reject explicit contracts on multi-name type declarations");
 
     assert!(errors.iter().any(|error| {
-        error
-            .as_any()
-            .downcast_ref::<ParseError>()
-            .map(|parse_error| {
-                parse_error.to_string().contains(
-                    "Type generics and explicit contracts are currently supported only on single-name type declarations",
-                )
-            })
-            .unwrap_or(false)
+        error.message.contains(
+            "Type generics and explicit contracts are currently supported only on single-name type declarations",
+        )
     }));
 }
 
@@ -198,15 +186,9 @@ fn test_multi_name_type_declarations_reject_mismatched_definition_counts() {
         .expect_err("Parser should reject mismatched multi-name type definitions");
 
     assert!(errors.iter().any(|error| {
-        error
-            .as_any()
-            .downcast_ref::<ParseError>()
-            .map(|parse_error| {
-                parse_error.to_string().contains(
-                    "Type definition count must match declared names or provide a single shared definition",
-                )
-            })
-            .unwrap_or(false)
+        error.message.contains(
+            "Type definition count must match declared names or provide a single shared definition",
+        )
     }));
 }
 

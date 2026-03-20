@@ -2,4 +2,4 @@ fun inspect(): int = {
     return 1;
 } where(pkg::"Bad) {
     pkg::cache;
-}
+};

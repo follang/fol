@@ -13,4 +13,4 @@ fun call_with_doc_comments(a: int, b: int): int = {
     return emit(
         value,
     );
-}
+};

@@ -1,9 +1,9 @@
 typ Data: rec = {
     id: "Item";
     label: pkg::"Label";
-}
+};
 
 typ Result: ent = {
     var ok: "Success",
     var err: errs::"Failure",
-}
+};

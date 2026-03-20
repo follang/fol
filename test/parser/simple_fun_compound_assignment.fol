@@ -4,4 +4,4 @@ fun compound(a: int, b: int): int = {
     factor *= b;
     ratio /= a;
     return result;
-}
+};

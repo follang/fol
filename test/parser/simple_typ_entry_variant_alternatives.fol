@@ -1,4 +1,4 @@
 typ Result: ent = {
     +var Ok: str;
     -con Err: int = 500;
-}
+};

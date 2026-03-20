@@ -2,4 +2,4 @@ pro main(): int = {
     select(channel as bad__binding) {
         return 0;
     }
-}
+};

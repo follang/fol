@@ -4,4 +4,4 @@ answer = 42;
 "done";
 pro main() = {
     return;
-}
+};

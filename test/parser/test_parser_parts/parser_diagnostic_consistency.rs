@@ -10,9 +10,9 @@ fn first_parse_error_message(path: &str) -> String {
 
     errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
         .expect("First parser error should be ParseError")
-        .to_string()
+        .message
+        .clone()
 }
 
 #[test]

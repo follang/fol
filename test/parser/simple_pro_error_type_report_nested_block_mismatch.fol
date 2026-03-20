@@ -3,4 +3,4 @@ pro store(): int / str = {
         let flag = true;
         report(flag);
     }
-}
+};

@@ -1,4 +1,4 @@
 typ Person: {
     name: str,
     age: int
-}
+};

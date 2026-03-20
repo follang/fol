@@ -1,6 +1,6 @@
 fun[exp] load(flag: bol): int / str = {
     when(flag) {
-        case(true) { report "bad-input" }
-        * { return 7 }
+        case(true) { report "bad-input"; }
+        * { return 7; }
     }
-}
+};

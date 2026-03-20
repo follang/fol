@@ -44,15 +44,15 @@ fn test_duplicate_keyword_named_record_field_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate record field 'get'"),
         "Duplicate keyword field should report the duplicate name, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -100,14 +100,14 @@ fn test_duplicate_keyword_named_entry_variant_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate entry variant 'get'"),
         "Duplicate keyword variant should report the duplicate name, got: {}",
-        parse_error
+        parse_error.message
     );
 }
