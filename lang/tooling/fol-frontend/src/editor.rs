@@ -117,9 +117,31 @@ mod tests {
         editor_semantic_tokens_command, editor_tree_generate_command,
     };
     use crate::{FrontendConfig, FrontendErrorKind};
+    use std::path::{Path, PathBuf};
 
-    #[test]
-    fn editor_commands_round_trip_into_frontend_results() {
+    fn temp_root(label: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "fol_frontend_editor_{}_{}_{}",
+            label,
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ))
+    }
+
+    fn editor_fixture_path() -> String {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../..")
+            .canonicalize()
+            .expect("workspace root should exist")
+            .join("test/apps/fixtures/record_flow/main.fol")
+            .to_string_lossy()
+            .to_string()
+    }
+
+    fn editor_config_with_root() -> (PathBuf, FrontendConfig) {
         let temp_root = std::env::temp_dir().join(format!(
             "fol_frontend_editor_roundtrip_{}_{}",
             std::process::id(),
@@ -140,73 +162,126 @@ mod tests {
             "fun[] main(): int = {\n    return 0\n}\n",
         )
         .unwrap();
-        let config = FrontendConfig {
-            working_directory: temp_root.clone(),
-            ..FrontendConfig::default()
-        };
-        let workspace_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../..")
-            .canonicalize()
-            .expect("workspace root should exist");
-        let path = workspace_root
-            .join("test/apps/fixtures/record_flow/main.fol")
-            .to_string_lossy()
-            .to_string();
-        let path = path.as_str();
+        (
+            temp_root.clone(),
+            FrontendConfig {
+                working_directory: temp_root,
+                ..FrontendConfig::default()
+            },
+        )
+    }
 
+    #[test]
+    fn editor_lsp_command_keeps_public_summary_shape() {
+        let (temp_root, config) = editor_config_with_root();
         let lsp = editor_lsp_command(&config).expect("lsp command should succeed");
-        let format_root = std::env::temp_dir().join(format!(
-            "fol_frontend_editor_format_{}_{}",
-            std::process::id(),
-            std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .expect("system time should be after epoch")
-                .as_nanos()
-        ));
+        assert_eq!(lsp.command, "lsp");
+        assert!(lsp.summary.contains("fol tool lsp"));
+        assert!(lsp.summary.contains("transport=stdio"));
+        assert!(lsp.summary.contains("features="));
+
+        std::fs::remove_dir_all(temp_root).ok();
+    }
+
+    #[test]
+    fn editor_format_command_keeps_public_summary_shape() {
+        let format_root = temp_root("format_summary");
         std::fs::create_dir_all(&format_root).unwrap();
         let format_path = format_root.join("sample.fol");
         std::fs::write(&format_path, "fun[] main(): int = {\nreturn 0;\n};\n").unwrap();
         let format = editor_format_command(format_path.to_str().unwrap())
             .expect("format command should succeed");
-        let parse = editor_parse_command(path).expect("parse command should succeed");
-        let highlight =
-            editor_highlight_command(path).expect("highlight command should succeed");
-        let symbols =
-            editor_symbols_command(path).expect("symbols command should succeed");
-        let references = editor_references_command(path, 5, 11, true)
-            .expect("references command should succeed");
-        let rename = editor_rename_command(path, 5, 11, "count")
-            .expect("rename command should succeed");
-        let semantic_tokens = editor_semantic_tokens_command(path)
-            .expect("semantic-tokens command should succeed");
-        let tree_root = std::env::temp_dir().join("fol_frontend_editor_tree_command_smoke");
-        let tree = editor_tree_generate_command(tree_root.to_str().unwrap())
-            .expect("tree generate command should succeed");
 
-        assert_eq!(lsp.command, "lsp");
-        assert!(lsp.summary.contains("fol tool lsp"));
         assert_eq!(format.command, "format");
         assert!(format.summary.contains("changed=true"));
+        assert!(format.summary.contains("path="));
+        assert!(format.summary.contains("changed_lines="));
+        assert!(format.summary.contains("style=hybrid-line"));
+
+        std::fs::remove_dir_all(format_root).ok();
+    }
+
+    #[test]
+    fn editor_parse_command_keeps_public_summary_shape() {
+        let path = editor_fixture_path();
+        let parse = editor_parse_command(&path).expect("parse command should succeed");
+
         assert_eq!(parse.command, "parse");
-        assert!(parse
-            .summary
-            .contains("record_flow/main.fol"));
+        assert!(parse.summary.contains("record_flow/main.fol"));
+        assert!(parse.summary.contains("grammar_bytes="));
+        assert!(parse.summary.contains("lines="));
+    }
+
+    #[test]
+    fn editor_highlight_command_keeps_public_summary_shape() {
+        let path = editor_fixture_path();
+        let highlight =
+            editor_highlight_command(&path).expect("highlight command should succeed");
+
         assert_eq!(highlight.command, "highlight");
         assert!(highlight.summary.contains("capture_count="));
         assert!(highlight.summary.contains("captures="));
+        assert!(highlight.summary.contains("intrinsic_names="));
+    }
+
+    #[test]
+    fn editor_symbols_command_keeps_public_summary_shape() {
+        let path = editor_fixture_path();
+        let symbols = editor_symbols_command(&path).expect("symbols command should succeed");
+
         assert_eq!(symbols.command, "symbols");
         assert!(symbols.summary.contains("symbol_candidates="));
+        assert!(symbols.summary.contains("query_snapshots="));
+    }
+
+    #[test]
+    fn editor_references_command_keeps_public_summary_shape() {
+        let path = editor_fixture_path();
+        let references = editor_references_command(&path, 5, 11, true)
+            .expect("references command should succeed");
+
         assert_eq!(references.command, "references");
         assert!(references.summary.contains("reference_count="));
+        assert!(references.summary.contains("include_declaration=true"));
+        assert!(references.summary.contains("path="));
+    }
+
+    #[test]
+    fn editor_rename_command_keeps_public_summary_shape() {
+        let path = editor_fixture_path();
+        let rename = editor_rename_command(&path, 5, 11, "count")
+            .expect("rename command should succeed");
+
         assert_eq!(rename.command, "rename");
         assert!(rename.summary.contains("edit_count="));
+        assert!(rename.summary.contains("new_name=count"));
+        assert!(rename.summary.contains("path="));
+    }
+
+    #[test]
+    fn editor_semantic_tokens_command_keeps_public_summary_shape() {
+        let path = editor_fixture_path();
+        let semantic_tokens = editor_semantic_tokens_command(&path)
+            .expect("semantic-tokens command should succeed");
+
         assert_eq!(semantic_tokens.command, "semantic-tokens");
         assert!(semantic_tokens.summary.contains("token_count="));
+        assert!(semantic_tokens.summary.contains("legend="));
+        assert!(semantic_tokens.summary.contains("path="));
+    }
+
+    #[test]
+    fn editor_tree_generate_command_keeps_public_summary_shape() {
+        let tree_root = temp_root("tree_summary");
+        let tree = editor_tree_generate_command(tree_root.to_str().unwrap())
+            .expect("tree generate command should succeed");
+
         assert_eq!(tree.command, "tree generate");
         assert!(tree.summary.contains("tree-sitter bundle ready"));
-        std::fs::remove_dir_all(format_root).ok();
+        assert!(tree.summary.contains("captures="));
+        assert!(tree.summary.contains("queries="));
+
         std::fs::remove_dir_all(tree_root).ok();
-        std::fs::remove_dir_all(temp_root).ok();
     }
 
     #[test]
