@@ -1241,6 +1241,65 @@ fn lsp_server_did_close_clears_diagnostics_without_reanalysis() {
 }
 
 #[test]
+fn lsp_server_reuses_diagnostic_and_semantic_caches_independently() {
+    let (root, uri) = sample_package_root("independent_cache_reuse");
+    let text = "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
+    reset_analysis_stage_counts();
+    let _open = open_document(&mut server, uri.clone(), text);
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
+
+    let _hover = server
+        .hover(
+            &uri,
+            LspPosition {
+                line: 4,
+                character: 13,
+            },
+        )
+        .expect("hover should succeed")
+        .expect("hover should resolve helper");
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let _diagnostics = server
+        .publish_diagnostics(&uri)
+        .expect("diagnostics should reuse the cached diagnostic snapshot");
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let _hover = server
+        .hover(
+            &uri,
+            LspPosition {
+                line: 4,
+                character: 13,
+            },
+        )
+        .expect("repeated hover should succeed")
+        .expect("repeated hover should resolve helper");
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 2,
+            parse_directory_diagnostics: 2,
+            load_directory_package: 2,
+            resolve_workspace: 2,
+            typecheck_workspace: 2,
+        }
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_parser_diagnostics_stop_before_package_load_and_resolution() {
     let (root, uri) = sample_package_root("parser_stage_short_circuit");
     let text = "fun[] main(: int = {\n    return 0\n}\n";
