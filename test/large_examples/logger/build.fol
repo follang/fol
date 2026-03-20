@@ -1,0 +1,7 @@
+pro[] build(graph: Graph): non = {
+    var lib = graph.add_static_lib({
+        name = "logger",
+        root = "src/lib.fol",
+    });
+    graph.install(lib);
+}

@@ -1,0 +1,1152 @@
+// =============================================================================
+// pipeline library — data processing pipelines for FOL
+// =============================================================================
+// Provides: Stage, Pipeline, StageResult, Transform, Schedule, Job, Worker
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Stage status
+// ---------------------------------------------------------------------------
+
+ali StageStatus: int
+
+var[exp] STAGE_PENDING: StageStatus = 0
+var[exp] STAGE_RUNNING: StageStatus = 1
+var[exp] STAGE_DONE: StageStatus = 2
+var[exp] STAGE_FAILED: StageStatus = 3
+var[exp] STAGE_SKIPPED: StageStatus = 4
+
+fun[exp] status_name(s: StageStatus): str = {
+    when(s) {
+        case(STAGE_PENDING) { return "pending"; }
+        case(STAGE_RUNNING) { return "running"; }
+        case(STAGE_DONE) { return "done"; }
+        case(STAGE_FAILED) { return "failed"; }
+        * { return "skipped"; }
+    }
+}
+
+fun[exp] status_is_terminal(s: StageStatus): bol = {
+    return .ge(s, STAGE_DONE);
+}
+
+fun[exp] status_is_success(s: StageStatus): bol = {
+    return .eq(s, STAGE_DONE);
+}
+
+fun[exp] status_is_failure(s: StageStatus): bol = {
+    return .eq(s, STAGE_FAILED);
+}
+
+fun[exp] status_is_active(s: StageStatus): bol = {
+    return .le(s, STAGE_RUNNING);
+}
+
+// ---------------------------------------------------------------------------
+// StageResult — outcome of running a single stage
+// ---------------------------------------------------------------------------
+
+typ[exp] StageResult: rec = {
+    stage_name: str;
+    status: StageStatus;
+    output_count: int;
+    error_message: str;
+    duration_ms: int
+}
+
+fun[exp] stage_result_success(name: str, output_count: int, duration: int): StageResult = {
+    return {
+        stage_name = name,
+        status = STAGE_DONE,
+        output_count = output_count,
+        error_message = "",
+        duration_ms = duration,
+    };
+}
+
+fun[exp] stage_result_failure(name: str, error: str, duration: int): StageResult = {
+    return {
+        stage_name = name,
+        status = STAGE_FAILED,
+        output_count = 0,
+        error_message = error,
+        duration_ms = duration,
+    };
+}
+
+fun[exp] stage_result_skipped(name: str): StageResult = {
+    return {
+        stage_name = name,
+        status = STAGE_SKIPPED,
+        output_count = 0,
+        error_message = "",
+        duration_ms = 0,
+    };
+}
+
+fun[exp] result_name(r: StageResult): str = {
+    return r.stage_name;
+}
+
+fun[exp] result_status(r: StageResult): StageStatus = {
+    return r.status;
+}
+
+fun[exp] result_output_count(r: StageResult): int = {
+    return r.output_count;
+}
+
+fun[exp] result_error(r: StageResult): str = {
+    return r.error_message;
+}
+
+fun[exp] result_duration(r: StageResult): int = {
+    return r.duration_ms;
+}
+
+fun[exp] result_succeeded(r: StageResult): bol = {
+    return status_is_success(r.status);
+}
+
+fun[exp] result_failed(r: StageResult): bol = {
+    return status_is_failure(r.status);
+}
+
+fun[exp] result_has_output(r: StageResult): bol = {
+    return .gt(r.output_count, 0);
+}
+
+fun[exp] result_has_error(r: StageResult): bol = {
+    return .gt(.len(r.error_message), 0);
+}
+
+fun[exp] result_is_slow(r: StageResult, threshold: int): bol = {
+    return .gt(r.duration_ms, threshold);
+}
+
+fun[exp] result_describe(r: StageResult): str = {
+    when(result_succeeded(r)) {
+        case(true) {
+            when(result_has_output(r)) {
+                case(true) {
+                    when(result_is_slow(r, 1000)) {
+                        case(true) { return "success-slow"; }
+                        * { return "success-with-output"; }
+                    }
+                }
+                * { return "success-empty"; }
+            }
+        }
+        * {
+            when(result_failed(r)) {
+                case(true) { return "failed"; }
+                * { return "skipped"; }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Stage — a single processing step
+// ---------------------------------------------------------------------------
+
+ali StageKind: int
+
+var[exp] KIND_TRANSFORM: StageKind = 0
+var[exp] KIND_FILTER: StageKind = 1
+var[exp] KIND_AGGREGATE: StageKind = 2
+var[exp] KIND_VALIDATE: StageKind = 3
+var[exp] KIND_OUTPUT: StageKind = 4
+
+typ[exp] Stage: rec = {
+    name: str;
+    kind: StageKind;
+    status: StageStatus;
+    input_count: int;
+    output_count: int;
+    retries: int;
+    max_retries: int;
+    critical: bol
+}
+
+fun[exp] stage_new(name: str, kind: StageKind): Stage = {
+    return {
+        name = name,
+        kind = kind,
+        status = STAGE_PENDING,
+        input_count = 0,
+        output_count = 0,
+        retries = 0,
+        max_retries = 3,
+        critical = false,
+    };
+}
+
+fun[exp] stage_critical(name: str, kind: StageKind): Stage = {
+    return {
+        name = name,
+        kind = kind,
+        status = STAGE_PENDING,
+        input_count = 0,
+        output_count = 0,
+        retries = 0,
+        max_retries = 0,
+        critical = true,
+    };
+}
+
+fun[exp] stage_with_retries(name: str, kind: StageKind, max_retries: int): Stage = {
+    return {
+        name = name,
+        kind = kind,
+        status = STAGE_PENDING,
+        input_count = 0,
+        output_count = 0,
+        retries = 0,
+        max_retries = max_retries,
+        critical = false,
+    };
+}
+
+fun[exp] stage_start(s: Stage, input_count: int): Stage = {
+    return {
+        name = s.name,
+        kind = s.kind,
+        status = STAGE_RUNNING,
+        input_count = input_count,
+        output_count = 0,
+        retries = s.retries,
+        max_retries = s.max_retries,
+        critical = s.critical,
+    };
+}
+
+fun[exp] stage_complete(s: Stage, output_count: int): Stage = {
+    return {
+        name = s.name,
+        kind = s.kind,
+        status = STAGE_DONE,
+        input_count = s.input_count,
+        output_count = output_count,
+        retries = s.retries,
+        max_retries = s.max_retries,
+        critical = s.critical,
+    };
+}
+
+fun[exp] stage_fail(s: Stage): Stage = {
+    return {
+        name = s.name,
+        kind = s.kind,
+        status = STAGE_FAILED,
+        input_count = s.input_count,
+        output_count = 0,
+        retries = s.retries,
+        max_retries = s.max_retries,
+        critical = s.critical,
+    };
+}
+
+fun[exp] stage_skip(s: Stage): Stage = {
+    return {
+        name = s.name,
+        kind = s.kind,
+        status = STAGE_SKIPPED,
+        input_count = 0,
+        output_count = 0,
+        retries = s.retries,
+        max_retries = s.max_retries,
+        critical = s.critical,
+    };
+}
+
+fun[exp] stage_name(s: Stage): str = {
+    return s.name;
+}
+
+fun[exp] stage_kind(s: Stage): StageKind = {
+    return s.kind;
+}
+
+fun[exp] stage_status(s: Stage): StageStatus = {
+    return s.status;
+}
+
+fun[exp] stage_input_count(s: Stage): int = {
+    return s.input_count;
+}
+
+fun[exp] stage_output_count(s: Stage): int = {
+    return s.output_count;
+}
+
+fun[exp] stage_retries(s: Stage): int = {
+    return s.retries;
+}
+
+fun[exp] stage_is_critical(s: Stage): bol = {
+    return s.critical;
+}
+
+fun[exp] stage_is_pending(s: Stage): bol = {
+    return .eq(s.status, STAGE_PENDING);
+}
+
+fun[exp] stage_is_running(s: Stage): bol = {
+    return .eq(s.status, STAGE_RUNNING);
+}
+
+fun[exp] stage_is_done(s: Stage): bol = {
+    return .eq(s.status, STAGE_DONE);
+}
+
+fun[exp] stage_is_failed(s: Stage): bol = {
+    return .eq(s.status, STAGE_FAILED);
+}
+
+fun[exp] stage_can_retry(s: Stage): bol = {
+    return .lt(s.retries, s.max_retries);
+}
+
+fun[exp] stage_kind_name(s: Stage): str = {
+    when(s.kind) {
+        case(KIND_TRANSFORM) { return "transform"; }
+        case(KIND_FILTER) { return "filter"; }
+        case(KIND_AGGREGATE) { return "aggregate"; }
+        case(KIND_VALIDATE) { return "validate"; }
+        * { return "output"; }
+    }
+}
+
+fun[exp] stage_describe(s: Stage): str = {
+    when(stage_is_done(s)) {
+        case(true) {
+            when(.gt(s.output_count, 0)) {
+                case(true) { return "completed-with-output"; }
+                * { return "completed-empty"; }
+            }
+        }
+        * {
+            when(stage_is_failed(s)) {
+                case(true) {
+                    when(stage_can_retry(s)) {
+                        case(true) { return "failed-retryable"; }
+                        * {
+                            when(s.critical) {
+                                case(true) { return "failed-critical"; }
+                                * { return "failed-terminal"; }
+                            }
+                        }
+                    }
+                }
+                * {
+                    when(stage_is_running(s)) {
+                        case(true) { return "running"; }
+                        * {
+                            when(stage_is_pending(s)) {
+                                case(true) { return "pending"; }
+                                * { return "skipped"; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline — orchestrates multiple stages
+// ---------------------------------------------------------------------------
+
+ali PipelineMode: int
+
+var[exp] MODE_SEQUENTIAL: PipelineMode = 0
+var[exp] MODE_PARALLEL: PipelineMode = 1
+var[exp] MODE_CONDITIONAL: PipelineMode = 2
+
+typ[exp] Pipeline: rec = {
+    name: str;
+    mode: PipelineMode;
+    stage_count: int;
+    completed_count: int;
+    failed_count: int;
+    skipped_count: int;
+    active: bol;
+    fail_fast: bol
+}
+
+fun[exp] pipeline_new(name: str, stage_count: int): Pipeline = {
+    return {
+        name = name,
+        mode = MODE_SEQUENTIAL,
+        stage_count = stage_count,
+        completed_count = 0,
+        failed_count = 0,
+        skipped_count = 0,
+        active = false,
+        fail_fast = true,
+    };
+}
+
+fun[exp] pipeline_parallel(name: str, stage_count: int): Pipeline = {
+    return {
+        name = name,
+        mode = MODE_PARALLEL,
+        stage_count = stage_count,
+        completed_count = 0,
+        failed_count = 0,
+        skipped_count = 0,
+        active = false,
+        fail_fast = false,
+    };
+}
+
+fun[exp] pipeline_conditional(name: str, stage_count: int): Pipeline = {
+    return {
+        name = name,
+        mode = MODE_CONDITIONAL,
+        stage_count = stage_count,
+        completed_count = 0,
+        failed_count = 0,
+        skipped_count = 0,
+        active = false,
+        fail_fast = false,
+    };
+}
+
+fun[exp] pipeline_start(p: Pipeline): Pipeline = {
+    return {
+        name = p.name,
+        mode = p.mode,
+        stage_count = p.stage_count,
+        completed_count = 0,
+        failed_count = 0,
+        skipped_count = 0,
+        active = true,
+        fail_fast = p.fail_fast,
+    };
+}
+
+fun[exp] pipeline_record_success(p: Pipeline): Pipeline = {
+    return {
+        name = p.name,
+        mode = p.mode,
+        stage_count = p.stage_count,
+        completed_count = p.completed_count,
+        failed_count = p.failed_count,
+        skipped_count = p.skipped_count,
+        active = p.active,
+        fail_fast = p.fail_fast,
+    };
+}
+
+fun[exp] pipeline_record_failure(p: Pipeline): Pipeline = {
+    return {
+        name = p.name,
+        mode = p.mode,
+        stage_count = p.stage_count,
+        completed_count = p.completed_count,
+        failed_count = p.failed_count,
+        skipped_count = p.skipped_count,
+        active = p.active,
+        fail_fast = p.fail_fast,
+    };
+}
+
+fun[exp] pipeline_stop(p: Pipeline): Pipeline = {
+    return {
+        name = p.name,
+        mode = p.mode,
+        stage_count = p.stage_count,
+        completed_count = p.completed_count,
+        failed_count = p.failed_count,
+        skipped_count = p.skipped_count,
+        active = false,
+        fail_fast = p.fail_fast,
+    };
+}
+
+fun[exp] pipeline_name(p: Pipeline): str = {
+    return p.name;
+}
+
+fun[exp] pipeline_mode(p: Pipeline): PipelineMode = {
+    return p.mode;
+}
+
+fun[exp] pipeline_stage_count(p: Pipeline): int = {
+    return p.stage_count;
+}
+
+fun[exp] pipeline_completed(p: Pipeline): int = {
+    return p.completed_count;
+}
+
+fun[exp] pipeline_failed(p: Pipeline): int = {
+    return p.failed_count;
+}
+
+fun[exp] pipeline_skipped(p: Pipeline): int = {
+    return p.skipped_count;
+}
+
+fun[exp] pipeline_active(p: Pipeline): bol = {
+    return p.active;
+}
+
+fun[exp] pipeline_has_failures(p: Pipeline): bol = {
+    return .gt(p.failed_count, 0);
+}
+
+fun[exp] pipeline_all_done(p: Pipeline): bol = {
+    return .eq(p.stage_count, p.completed_count);
+}
+
+fun[exp] pipeline_should_stop(p: Pipeline): bol = {
+    when(p.fail_fast) {
+        case(true) { return pipeline_has_failures(p); }
+        * { return false; }
+    }
+}
+
+fun[exp] pipeline_mode_name(p: Pipeline): str = {
+    when(p.mode) {
+        case(MODE_SEQUENTIAL) { return "sequential"; }
+        case(MODE_PARALLEL) { return "parallel"; }
+        * { return "conditional"; }
+    }
+}
+
+fun[exp] pipeline_describe(p: Pipeline): str = {
+    when(p.active) {
+        case(true) {
+            when(pipeline_has_failures(p)) {
+                case(true) {
+                    when(p.fail_fast) {
+                        case(true) { return "active-failing-fast"; }
+                        * { return "active-with-failures"; }
+                    }
+                }
+                * {
+                    when(.gt(p.completed_count, 0)) {
+                        case(true) { return "active-progressing"; }
+                        * { return "active-starting"; }
+                    }
+                }
+            }
+        }
+        * {
+            when(pipeline_all_done(p)) {
+                case(true) { return "completed"; }
+                * {
+                    when(pipeline_has_failures(p)) {
+                        case(true) { return "stopped-failures"; }
+                        * { return "idle"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Transform — describes a data transformation
+// ---------------------------------------------------------------------------
+
+ali TransformOp: int
+
+var[exp] OP_MAP: TransformOp = 0
+var[exp] OP_FILTER: TransformOp = 1
+var[exp] OP_REDUCE: TransformOp = 2
+var[exp] OP_FLATTEN: TransformOp = 3
+var[exp] OP_SORT: TransformOp = 4
+var[exp] OP_DEDUPE: TransformOp = 5
+var[exp] OP_LIMIT: TransformOp = 6
+
+typ[exp] Transform: rec = {
+    name: str;
+    op: TransformOp;
+    input_field: str;
+    output_field: str;
+    preserve_order: bol;
+    enabled: bol
+}
+
+fun[exp] transform_map(name: str, input: str, output: str): Transform = {
+    return {
+        name = name,
+        op = OP_MAP,
+        input_field = input,
+        output_field = output,
+        preserve_order = true,
+        enabled = true,
+    };
+}
+
+fun[exp] transform_filter(name: str, field: str): Transform = {
+    return {
+        name = name,
+        op = OP_FILTER,
+        input_field = field,
+        output_field = field,
+        preserve_order = true,
+        enabled = true,
+    };
+}
+
+fun[exp] transform_reduce(name: str, input: str, output: str): Transform = {
+    return {
+        name = name,
+        op = OP_REDUCE,
+        input_field = input,
+        output_field = output,
+        preserve_order = false,
+        enabled = true,
+    };
+}
+
+fun[exp] transform_flatten(name: str, field: str): Transform = {
+    return {
+        name = name,
+        op = OP_FLATTEN,
+        input_field = field,
+        output_field = field,
+        preserve_order = true,
+        enabled = true,
+    };
+}
+
+fun[exp] transform_sort(name: str, field: str): Transform = {
+    return {
+        name = name,
+        op = OP_SORT,
+        input_field = field,
+        output_field = field,
+        preserve_order = false,
+        enabled = true,
+    };
+}
+
+fun[exp] transform_dedupe(name: str, field: str): Transform = {
+    return {
+        name = name,
+        op = OP_DEDUPE,
+        input_field = field,
+        output_field = field,
+        preserve_order = true,
+        enabled = true,
+    };
+}
+
+fun[exp] transform_limit(name: str, field: str): Transform = {
+    return {
+        name = name,
+        op = OP_LIMIT,
+        input_field = field,
+        output_field = field,
+        preserve_order = true,
+        enabled = true,
+    };
+}
+
+fun[exp] transform_disable(t: Transform): Transform = {
+    return {
+        name = t.name,
+        op = t.op,
+        input_field = t.input_field,
+        output_field = t.output_field,
+        preserve_order = t.preserve_order,
+        enabled = false,
+    };
+}
+
+fun[exp] transform_enable(t: Transform): Transform = {
+    return {
+        name = t.name,
+        op = t.op,
+        input_field = t.input_field,
+        output_field = t.output_field,
+        preserve_order = t.preserve_order,
+        enabled = true,
+    };
+}
+
+fun[exp] transform_name(t: Transform): str = {
+    return t.name;
+}
+
+fun[exp] transform_enabled(t: Transform): bol = {
+    return t.enabled;
+}
+
+fun[exp] transform_preserves_order(t: Transform): bol = {
+    return t.preserve_order;
+}
+
+fun[exp] transform_op_name(t: Transform): str = {
+    when(t.op) {
+        case(OP_MAP) { return "map"; }
+        case(OP_FILTER) { return "filter"; }
+        case(OP_REDUCE) { return "reduce"; }
+        case(OP_FLATTEN) { return "flatten"; }
+        case(OP_SORT) { return "sort"; }
+        case(OP_DEDUPE) { return "dedupe"; }
+        * { return "limit"; }
+    }
+}
+
+fun[exp] transform_describe(t: Transform): str = {
+    when(t.enabled) {
+        case(true) { return transform_op_name(t); }
+        * { return "disabled"; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Job — a unit of work submitted to a pipeline
+// ---------------------------------------------------------------------------
+
+ali JobPriority: int
+
+var[exp] JOB_LOW: JobPriority = 0
+var[exp] JOB_NORMAL: JobPriority = 1
+var[exp] JOB_HIGH: JobPriority = 2
+var[exp] JP_URGENT: JobPriority = 3
+
+typ[exp] Job: rec = {
+    job_id: str;
+    name: str;
+    priority: JobPriority;
+    status: StageStatus;
+    attempts: int;
+    max_attempts: int;
+    payload_size: int
+}
+
+fun[exp] job_new(job_id: str, name: str, priority: JobPriority, payload_size: int): Job = {
+    return {
+        job_id = job_id,
+        name = name,
+        priority = priority,
+        status = STAGE_PENDING,
+        attempts = 0,
+        max_attempts = 3,
+        payload_size = payload_size,
+    };
+}
+
+fun[exp] job_urgent(job_id: str, name: str, payload_size: int): Job = {
+    return {
+        job_id = job_id,
+        name = name,
+        priority = JP_URGENT,
+        status = STAGE_PENDING,
+        attempts = 0,
+        max_attempts = 1,
+        payload_size = payload_size,
+    };
+}
+
+fun[exp] job_start(j: Job): Job = {
+    return {
+        job_id = j.job_id,
+        name = j.name,
+        priority = j.priority,
+        status = STAGE_RUNNING,
+        attempts = j.attempts,
+        max_attempts = j.max_attempts,
+        payload_size = j.payload_size,
+    };
+}
+
+fun[exp] job_complete(j: Job): Job = {
+    return {
+        job_id = j.job_id,
+        name = j.name,
+        priority = j.priority,
+        status = STAGE_DONE,
+        attempts = j.attempts,
+        max_attempts = j.max_attempts,
+        payload_size = j.payload_size,
+    };
+}
+
+fun[exp] job_fail(j: Job): Job = {
+    return {
+        job_id = j.job_id,
+        name = j.name,
+        priority = j.priority,
+        status = STAGE_FAILED,
+        attempts = j.attempts,
+        max_attempts = j.max_attempts,
+        payload_size = j.payload_size,
+    };
+}
+
+fun[exp] job_id(j: Job): str = {
+    return j.job_id;
+}
+
+fun[exp] job_name(j: Job): str = {
+    return j.name;
+}
+
+fun[exp] job_priority(j: Job): JobPriority = {
+    return j.priority;
+}
+
+fun[exp] job_status(j: Job): StageStatus = {
+    return j.status;
+}
+
+fun[exp] job_attempts(j: Job): int = {
+    return j.attempts;
+}
+
+fun[exp] job_payload_size(j: Job): int = {
+    return j.payload_size;
+}
+
+fun[exp] job_is_pending(j: Job): bol = {
+    return .eq(j.status, STAGE_PENDING);
+}
+
+fun[exp] job_is_running(j: Job): bol = {
+    return .eq(j.status, STAGE_RUNNING);
+}
+
+fun[exp] job_is_done(j: Job): bol = {
+    return .eq(j.status, STAGE_DONE);
+}
+
+fun[exp] job_is_failed(j: Job): bol = {
+    return .eq(j.status, STAGE_FAILED);
+}
+
+fun[exp] job_is_urgent(j: Job): bol = {
+    return .eq(j.priority, JP_URGENT);
+}
+
+fun[exp] job_can_retry(j: Job): bol = {
+    return .lt(j.attempts, j.max_attempts);
+}
+
+fun[exp] job_is_large(j: Job): bol = {
+    return .gt(j.payload_size, 10000);
+}
+
+fun[exp] job_priority_name(j: Job): str = {
+    when(j.priority) {
+        case(JOB_LOW) { return "low"; }
+        case(JOB_NORMAL) { return "normal"; }
+        case(JOB_HIGH) { return "high"; }
+        * { return "urgent"; }
+    }
+}
+
+fun[exp] job_describe(j: Job): str = {
+    when(job_is_done(j)) {
+        case(true) { return "completed"; }
+        * {
+            when(job_is_failed(j)) {
+                case(true) {
+                    when(job_can_retry(j)) {
+                        case(true) { return "failed-retryable"; }
+                        * { return "failed-terminal"; }
+                    }
+                }
+                * {
+                    when(job_is_running(j)) {
+                        case(true) {
+                            when(job_is_urgent(j)) {
+                                case(true) { return "running-urgent"; }
+                                * { return "running"; }
+                            }
+                        }
+                        * {
+                            when(job_is_urgent(j)) {
+                                case(true) { return "pending-urgent"; }
+                                * {
+                                    when(job_is_large(j)) {
+                                        case(true) { return "pending-large"; }
+                                        * { return "pending"; }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Worker — processes jobs from a pipeline
+// ---------------------------------------------------------------------------
+
+ali WorkerState: int
+
+var[exp] WORKER_IDLE: WorkerState = 0
+var[exp] WORKER_BUSY: WorkerState = 1
+var[exp] WORKER_PAUSED: WorkerState = 2
+var[exp] WORKER_STOPPED: WorkerState = 3
+
+typ[exp] Worker: rec = {
+    worker_id: str;
+    name: str;
+    state: WorkerState;
+    jobs_processed: int;
+    jobs_failed: int;
+    current_job: str;
+    max_concurrent: int
+}
+
+fun[exp] worker_new(worker_id: str, name: str): Worker = {
+    return {
+        worker_id = worker_id,
+        name = name,
+        state = WORKER_IDLE,
+        jobs_processed = 0,
+        jobs_failed = 0,
+        current_job = "",
+        max_concurrent = 1,
+    };
+}
+
+fun[exp] worker_concurrent(worker_id: str, name: str, max: int): Worker = {
+    return {
+        worker_id = worker_id,
+        name = name,
+        state = WORKER_IDLE,
+        jobs_processed = 0,
+        jobs_failed = 0,
+        current_job = "",
+        max_concurrent = max,
+    };
+}
+
+fun[exp] worker_assign(w: Worker, job_name: str): Worker = {
+    return {
+        worker_id = w.worker_id,
+        name = w.name,
+        state = WORKER_BUSY,
+        jobs_processed = w.jobs_processed,
+        jobs_failed = w.jobs_failed,
+        current_job = job_name,
+        max_concurrent = w.max_concurrent,
+    };
+}
+
+fun[exp] worker_release(w: Worker): Worker = {
+    return {
+        worker_id = w.worker_id,
+        name = w.name,
+        state = WORKER_IDLE,
+        jobs_processed = w.jobs_processed,
+        jobs_failed = w.jobs_failed,
+        current_job = "",
+        max_concurrent = w.max_concurrent,
+    };
+}
+
+fun[exp] worker_pause(w: Worker): Worker = {
+    return {
+        worker_id = w.worker_id,
+        name = w.name,
+        state = WORKER_PAUSED,
+        jobs_processed = w.jobs_processed,
+        jobs_failed = w.jobs_failed,
+        current_job = w.current_job,
+        max_concurrent = w.max_concurrent,
+    };
+}
+
+fun[exp] worker_stop(w: Worker): Worker = {
+    return {
+        worker_id = w.worker_id,
+        name = w.name,
+        state = WORKER_STOPPED,
+        jobs_processed = w.jobs_processed,
+        jobs_failed = w.jobs_failed,
+        current_job = "",
+        max_concurrent = w.max_concurrent,
+    };
+}
+
+fun[exp] worker_id(w: Worker): str = {
+    return w.worker_id;
+}
+
+fun[exp] worker_name(w: Worker): str = {
+    return w.name;
+}
+
+fun[exp] worker_state(w: Worker): WorkerState = {
+    return w.state;
+}
+
+fun[exp] worker_jobs_processed(w: Worker): int = {
+    return w.jobs_processed;
+}
+
+fun[exp] worker_jobs_failed(w: Worker): int = {
+    return w.jobs_failed;
+}
+
+fun[exp] worker_current_job(w: Worker): str = {
+    return w.current_job;
+}
+
+fun[exp] worker_is_idle(w: Worker): bol = {
+    return .eq(w.state, WORKER_IDLE);
+}
+
+fun[exp] worker_is_busy(w: Worker): bol = {
+    return .eq(w.state, WORKER_BUSY);
+}
+
+fun[exp] worker_is_available(w: Worker): bol = {
+    return .eq(w.state, WORKER_IDLE);
+}
+
+fun[exp] worker_is_stopped(w: Worker): bol = {
+    return .eq(w.state, WORKER_STOPPED);
+}
+
+fun[exp] worker_has_failures(w: Worker): bol = {
+    return .gt(w.jobs_failed, 0);
+}
+
+fun[exp] worker_state_name(w: Worker): str = {
+    when(w.state) {
+        case(WORKER_IDLE) { return "idle"; }
+        case(WORKER_BUSY) { return "busy"; }
+        case(WORKER_PAUSED) { return "paused"; }
+        * { return "stopped"; }
+    }
+}
+
+fun[exp] worker_describe(w: Worker): str = {
+    when(worker_is_busy(w)) {
+        case(true) {
+            when(.gt(.len(w.current_job), 0)) {
+                case(true) { return "busy-assigned"; }
+                * { return "busy"; }
+            }
+        }
+        * {
+            when(worker_is_idle(w)) {
+                case(true) {
+                    when(.gt(w.jobs_processed, 100)) {
+                        case(true) { return "idle-experienced"; }
+                        * { return "idle"; }
+                    }
+                }
+                * {
+                    when(worker_is_stopped(w)) {
+                        case(true) {
+                            when(worker_has_failures(w)) {
+                                case(true) { return "stopped-with-failures"; }
+                                * { return "stopped-clean"; }
+                            }
+                        }
+                        * { return "paused"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Smoke test
+// ---------------------------------------------------------------------------
+
+fun[exp] pipeline_smoke_test(): int = {
+    var s1: Stage = stage_new("parse", KIND_TRANSFORM);
+    var s2: Stage = stage_new("validate", KIND_VALIDATE);
+    var s3: Stage = stage_critical("output", KIND_OUTPUT);
+
+    var s1_started: Stage = stage_start(s1, 100);
+    var s1_done: Stage = stage_complete(s1_started, 95);
+    var s2_started: Stage = stage_start(s2, 95);
+    var s2_failed: Stage = stage_fail(s2_started);
+
+    .echo(stage_describe(s1_done));
+    .echo(stage_describe(s2_failed));
+    .echo(stage_describe(stage_skip(s3)));
+    .echo(stage_kind_name(s1));
+    .echo(stage_kind_name(s2));
+    .echo(stage_kind_name(s3));
+
+    var r1: StageResult = stage_result_success("parse", 95, 500);
+    var r2: StageResult = stage_result_failure("validate", "schema mismatch", 200);
+    var r3: StageResult = stage_result_skipped("output");
+
+    .echo(result_describe(r1));
+    .echo(result_describe(r2));
+    .echo(result_describe(r3));
+
+    var p1: Pipeline = pipeline_new("etl", 3);
+    var p2: Pipeline = pipeline_parallel("batch", 5);
+    var p3: Pipeline = pipeline_conditional("deploy", 4);
+
+    var p1_started: Pipeline = pipeline_start(p1);
+    var p1_stopped: Pipeline = pipeline_stop(p1_started);
+
+    .echo(pipeline_describe(p1));
+    .echo(pipeline_describe(p1_started));
+    .echo(pipeline_describe(p1_stopped));
+    .echo(pipeline_mode_name(p1));
+    .echo(pipeline_mode_name(p2));
+    .echo(pipeline_mode_name(p3));
+
+    var t1: Transform = transform_map("normalize", "raw", "clean");
+    var t2: Transform = transform_filter("remove-nulls", "value");
+    var t3: Transform = transform_reduce("sum", "values", "total");
+    var t4: Transform = transform_sort("order", "score");
+    var t5: Transform = transform_disable(t4);
+
+    .echo(transform_describe(t1));
+    .echo(transform_describe(t2));
+    .echo(transform_describe(t3));
+    .echo(transform_describe(t5));
+
+    var j1: Job = job_new("j-001", "process-csv", JOB_NORMAL, 5000);
+    var j2: Job = job_urgent("j-002", "alert-handler", 100);
+    var j3: Job = job_new("j-003", "bulk-import", JOB_LOW, 50000);
+
+    var j1_started: Job = job_start(j1);
+    var j1_done: Job = job_complete(j1_started);
+    var j2_started: Job = job_start(j2);
+    var j2_failed: Job = job_fail(j2_started);
+
+    .echo(job_describe(j1_done));
+    .echo(job_describe(j2_failed));
+    .echo(job_describe(j3));
+    .echo(job_priority_name(j1));
+    .echo(job_priority_name(j2));
+
+    var w1: Worker = worker_new("w-001", "worker-alpha");
+    var w2: Worker = worker_concurrent("w-002", "worker-beta", 4);
+    var w3: Worker = worker_assign(w1, "process-csv");
+    var w4: Worker = worker_release(w3);
+    var w5: Worker = worker_stop(w2);
+
+    .echo(worker_describe(w1));
+    .echo(worker_describe(w3));
+    .echo(worker_describe(w4));
+    .echo(worker_describe(w5));
+
+    when(stage_is_done(s1_done)) {
+        case(true) {
+            when(stage_is_failed(s2_failed)) {
+                case(true) { return 0; }
+                * { return 1; }
+            }
+        }
+        * { return 1; }
+    }
+}

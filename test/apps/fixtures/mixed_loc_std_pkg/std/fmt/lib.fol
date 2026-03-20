@@ -1,6 +1,6 @@
 fun[exp] double(value: int): int = {
     when(.eq(value, 4)) {
-        case(true) { return 8 }
-        * { return value }
+        case(true) { return 8; }
+        * { return value; }
     }
 }

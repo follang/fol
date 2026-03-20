@@ -219,6 +219,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_con_decl(tokens)?;
+                self.consume_optional_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -281,6 +282,7 @@ impl AstParser {
             if self.lookahead_binding_alternative(tokens).is_some() {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
+                self.consume_optional_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -298,6 +300,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_var_decl(tokens)?;
+                self.consume_optional_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -315,6 +318,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Lab)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_lab_decl(tokens)?;
+                self.consume_optional_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -332,6 +336,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_con_decl(tokens)?;
+                self.consume_optional_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -440,6 +445,7 @@ impl AstParser {
             if self.lookahead_binding_alternative(tokens).is_some() {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
+                self.consume_optional_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -518,6 +524,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_var_decl(tokens)?;
+                self.consume_optional_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -535,6 +542,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Lab)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_lab_decl(tokens)?;
+                self.consume_optional_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -552,6 +560,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_con_decl(tokens)?;
+                self.consume_optional_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -596,6 +605,7 @@ impl AstParser {
             if self.lookahead_binding_alternative(tokens).is_some() {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
+                self.consume_optional_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {

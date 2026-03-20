@@ -1,6 +1,6 @@
 fun preserve_adjacent_comments(): int = {
-    var alpha = 1
+    var alpha = 1;
     `[doc] beta docs`
-    var beta = 2
-    return beta
+    var beta = 2;
+    return beta;
 }

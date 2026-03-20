@@ -172,6 +172,7 @@ impl AstParser {
                 );
                 match self.parse_binding_alternative_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -194,6 +195,7 @@ impl AstParser {
                 );
                 match self.parse_var_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -216,6 +218,7 @@ impl AstParser {
                 );
                 match self.parse_let_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -238,6 +241,7 @@ impl AstParser {
                 );
                 match self.parse_con_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -260,6 +264,7 @@ impl AstParser {
                 );
                 match self.parse_lab_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -510,7 +515,11 @@ impl AstParser {
                     before,
                     "Executable calls are not allowed at file root",
                     &mut errors,
-                    |parser, tokens| parser.parse_call_stmt(tokens).map(|_| ()),
+                    |parser, tokens| {
+                        parser.parse_call_stmt(tokens)?;
+                        parser.consume_optional_semicolon(tokens)?;
+                        Ok(())
+                    },
                 ) {
                     break;
                 }
@@ -567,7 +576,11 @@ impl AstParser {
                     before,
                     "Executable calls are not allowed at file root",
                     &mut errors,
-                    |parser, tokens| parser.parse_invoke_stmt(tokens).map(|_| ()),
+                    |parser, tokens| {
+                        parser.parse_invoke_stmt(tokens)?;
+                        parser.consume_optional_semicolon(tokens)?;
+                        Ok(())
+                    },
                 ) {
                     break;
                 }
@@ -594,7 +607,11 @@ impl AstParser {
                     before,
                     "Executable calls are not allowed at file root",
                     &mut errors,
-                    |parser, tokens| parser.parse_builtin_call_stmt(tokens).map(|_| ()),
+                    |parser, tokens| {
+                        parser.parse_builtin_call_stmt(tokens)?;
+                        parser.consume_optional_semicolon(tokens)?;
+                        Ok(())
+                    },
                 ) {
                     break;
                 }
@@ -617,7 +634,11 @@ impl AstParser {
                     before,
                     "Assignments are not allowed at file root",
                     &mut errors,
-                    |parser, tokens| parser.parse_assignment_stmt(tokens).map(|_| ()),
+                    |parser, tokens| {
+                        parser.parse_assignment_stmt(tokens)?;
+                        parser.consume_optional_semicolon(tokens)?;
+                        Ok(())
+                    },
                 ) {
                     break;
                 }

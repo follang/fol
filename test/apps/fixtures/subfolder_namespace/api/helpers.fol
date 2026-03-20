@@ -1,5 +1,5 @@
-var answer: int = 7
+var answer: int = 7;
 
 fun[] helper(value: int): int = {
-    return value
+    return value;
 }

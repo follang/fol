@@ -1,5 +1,5 @@
 use json: pkg = {json};
 
 fun[] main(): int = {
-    return json::src::answer
+    return json::src::answer;
 }

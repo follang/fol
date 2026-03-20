@@ -1,0 +1,1085 @@
+// =============================================================================
+// collections library — data structures for FOL
+// =============================================================================
+// Provides: Stack, Queue, Registry, PriorityBucket, SortedList, RingBuffer,
+//           Deque, Counter, Histogram, Trie-like word index
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Stack — LIFO container backed by seq
+// ---------------------------------------------------------------------------
+
+typ[exp] Stack: rec = {
+    items: seq[int];
+    capacity: int;
+    name: str
+}
+
+fun[exp] stack_new(name: str, capacity: int): Stack = {
+    return {
+        items = {},
+        capacity = capacity,
+        name = name,
+    };
+}
+
+fun[exp] stack_empty(stack: Stack): bol = {
+    return .eq(.len(stack.items), 0);
+}
+
+fun[exp] stack_full(stack: Stack): bol = {
+    return .ge(.len(stack.items), stack.capacity);
+}
+
+fun[exp] stack_size(stack: Stack): int = {
+    return .len(stack.items);
+}
+
+fun[exp] stack_push(stack: Stack, value: int): Stack / str = {
+    when(stack_full(stack)) {
+        case(true) { report "stack overflow"; }
+        * {
+            return {
+                items = {value},
+                capacity = stack.capacity,
+                name = stack.name,
+            };
+        }
+    }
+}
+
+fun[exp] stack_push_safe(stack: Stack, value: int): Stack = {
+    return stack_push(stack, value) || stack;
+}
+
+fun[exp] stack_name(stack: Stack): str = {
+    return stack.name;
+}
+
+fun[exp] stack_capacity(stack: Stack): int = {
+    return stack.capacity;
+}
+
+fun[exp] stack_describe(stack: Stack): str = {
+    when(stack_empty(stack)) {
+        case(true) { return "empty"; }
+        * {
+            when(stack_full(stack)) {
+                case(true) { return "full"; }
+                * { return "partial"; }
+            }
+        }
+    }
+}
+
+fun[exp] stack_can_push(stack: Stack): bol = {
+    return .not(stack_full(stack));
+}
+
+fun[exp] stack_matches_name(stack: Stack, target: str): bol = {
+    return .eq(stack.name, target);
+}
+
+// ---------------------------------------------------------------------------
+// Queue — FIFO container backed by seq
+// ---------------------------------------------------------------------------
+
+typ[exp] Queue: rec = {
+    items: seq[str];
+    max_size: int;
+    label: str;
+    priority: int
+}
+
+fun[exp] queue_new(label: str, max_size: int): Queue = {
+    return {
+        items = {},
+        max_size = max_size,
+        label = label,
+        priority = 0,
+    };
+}
+
+fun[exp] queue_with_priority(label: str, max_size: int, priority: int): Queue = {
+    return {
+        items = {},
+        max_size = max_size,
+        label = label,
+        priority = priority,
+    };
+}
+
+fun[exp] queue_empty(queue: Queue): bol = {
+    return .eq(.len(queue.items), 0);
+}
+
+fun[exp] queue_full(queue: Queue): bol = {
+    return .ge(.len(queue.items), queue.max_size);
+}
+
+fun[exp] queue_size(queue: Queue): int = {
+    return .len(queue.items);
+}
+
+fun[exp] queue_enqueue(queue: Queue, value: str): Queue / str = {
+    when(queue_full(queue)) {
+        case(true) { report "queue full"; }
+        * {
+            return {
+                items = {value},
+                max_size = queue.max_size,
+                label = queue.label,
+                priority = queue.priority,
+            };
+        }
+    }
+}
+
+fun[exp] queue_enqueue_safe(queue: Queue, value: str): Queue = {
+    return queue_enqueue(queue, value) || queue;
+}
+
+fun[exp] queue_label(queue: Queue): str = {
+    return queue.label;
+}
+
+fun[exp] queue_priority(queue: Queue): int = {
+    return queue.priority;
+}
+
+fun[exp] queue_high_priority(queue: Queue): bol = {
+    return .gt(queue.priority, 5);
+}
+
+fun[exp] queue_describe(queue: Queue): str = {
+    when(queue_empty(queue)) {
+        case(true) { return "idle"; }
+        * {
+            when(queue_full(queue)) {
+                case(true) { return "saturated"; }
+                * {
+                    when(queue_high_priority(queue)) {
+                        case(true) { return "active-high"; }
+                        * { return "active-normal"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun[exp] queue_matches_label(queue: Queue, target: str): bol = {
+    return .eq(queue.label, target);
+}
+
+fun[exp] queue_can_accept(queue: Queue): bol = {
+    return .not(queue_full(queue));
+}
+
+// ---------------------------------------------------------------------------
+// Registry — named key-value store backed by map
+// ---------------------------------------------------------------------------
+
+typ[exp] RegistryEntry: rec = {
+    key: str;
+    value: int;
+    active: bol;
+    tag: str
+}
+
+typ[exp] Registry: rec = {
+    entries: map[str, int];
+    name: str;
+    max_entries: int;
+    locked: bol
+}
+
+fun[exp] registry_new(name: str, max_entries: int): Registry = {
+    return {
+        entries = {},
+        name = name,
+        max_entries = max_entries,
+        locked = false,
+    };
+}
+
+fun[exp] registry_locked(name: str, max_entries: int): Registry = {
+    return {
+        entries = {},
+        name = name,
+        max_entries = max_entries,
+        locked = true,
+    };
+}
+
+fun[exp] registry_empty(reg: Registry): bol = {
+    return .eq(.len(reg.entries), 0);
+}
+
+fun[exp] registry_full(reg: Registry): bol = {
+    return .ge(.len(reg.entries), reg.max_entries);
+}
+
+fun[exp] registry_size(reg: Registry): int = {
+    return .len(reg.entries);
+}
+
+fun[exp] registry_is_locked(reg: Registry): bol = {
+    return reg.locked;
+}
+
+fun[exp] registry_put(reg: Registry, key: str, value: int): Registry / str = {
+    when(reg.locked) {
+        case(true) { report "registry locked"; }
+        * {
+            when(registry_full(reg)) {
+                case(true) { report "registry full"; }
+                * {
+                    return {
+                        entries = {{key, value}},
+                        name = reg.name,
+                        max_entries = reg.max_entries,
+                        locked = reg.locked,
+                    };
+                }
+            }
+        }
+    }
+}
+
+fun[exp] registry_put_safe(reg: Registry, key: str, value: int): Registry = {
+    return registry_put(reg, key, value) || reg;
+}
+
+fun[exp] registry_name(reg: Registry): str = {
+    return reg.name;
+}
+
+fun[exp] registry_describe(reg: Registry): str = {
+    when(reg.locked) {
+        case(true) { return "locked"; }
+        * {
+            when(registry_empty(reg)) {
+                case(true) { return "empty"; }
+                * {
+                    when(registry_full(reg)) {
+                        case(true) { return "full"; }
+                        * { return "open"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun[exp] registry_can_write(reg: Registry): bol = {
+    when(reg.locked) {
+        case(true) {
+            when(registry_full(reg)) {
+                case(true) { return false; }
+                * { return true; }
+            }
+        }
+        * { return true; }
+    }
+}
+
+fun[exp] entry_new(key: str, value: int, tag: str): RegistryEntry = {
+    return {
+        key = key,
+        value = value,
+        active = true,
+        tag = tag,
+    };
+}
+
+fun[exp] entry_deactivate(entry: RegistryEntry): RegistryEntry = {
+    return {
+        key = entry.key,
+        value = entry.value,
+        active = false,
+        tag = entry.tag,
+    };
+}
+
+fun[exp] entry_retag(entry: RegistryEntry, new_tag: str): RegistryEntry = {
+    return {
+        key = entry.key,
+        value = entry.value,
+        active = entry.active,
+        tag = new_tag,
+    };
+}
+
+fun[exp] entry_active(entry: RegistryEntry): bol = {
+    return entry.active;
+}
+
+fun[exp] entry_matches_tag(entry: RegistryEntry, target: str): bol = {
+    return .eq(entry.tag, target);
+}
+
+fun[exp] entry_describe(entry: RegistryEntry): str = {
+    when(entry.active) {
+        case(true) {
+            when(.eq(entry.tag, "urgent")) {
+                case(true) { return "active-urgent"; }
+                * { return "active"; }
+            }
+        }
+        * { return "inactive"; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// PriorityBucket — groups items by priority level
+// ---------------------------------------------------------------------------
+
+ali Priority: int
+
+var[exp] PRIORITY_LOW: Priority = 0
+var[exp] PRIORITY_NORMAL: Priority = 1
+var[exp] PRIORITY_HIGH: Priority = 2
+var[exp] PRIORITY_CRITICAL: Priority = 3
+
+typ[exp] BucketItem: rec = {
+    name: str;
+    priority: Priority;
+    weight: int;
+    processed: bol
+}
+
+typ[exp] Bucket: rec = {
+    items: seq[str];
+    level: Priority;
+    label: str;
+    max_items: int
+}
+
+fun[exp] bucket_new(label: str, level: Priority, max_items: int): Bucket = {
+    return {
+        items = {},
+        level = level,
+        label = label,
+        max_items = max_items,
+    };
+}
+
+fun[exp] bucket_empty(bucket: Bucket): bol = {
+    return .eq(.len(bucket.items), 0);
+}
+
+fun[exp] bucket_full(bucket: Bucket): bol = {
+    return .ge(.len(bucket.items), bucket.max_items);
+}
+
+fun[exp] bucket_size(bucket: Bucket): int = {
+    return .len(bucket.items);
+}
+
+fun[exp] bucket_level(bucket: Bucket): Priority = {
+    return bucket.level;
+}
+
+fun[exp] bucket_is_critical(bucket: Bucket): bol = {
+    return .eq(bucket.level, PRIORITY_CRITICAL);
+}
+
+fun[exp] bucket_is_high(bucket: Bucket): bol = {
+    return .ge(bucket.level, PRIORITY_HIGH);
+}
+
+fun[exp] bucket_add(bucket: Bucket, name: str): Bucket / str = {
+    when(bucket_full(bucket)) {
+        case(true) { report "bucket full"; }
+        * {
+            return {
+                items = {name},
+                level = bucket.level,
+                label = bucket.label,
+                max_items = bucket.max_items,
+            };
+        }
+    }
+}
+
+fun[exp] bucket_add_safe(bucket: Bucket, name: str): Bucket = {
+    return bucket_add(bucket, name) || bucket;
+}
+
+fun[exp] bucket_describe(bucket: Bucket): str = {
+    when(bucket_empty(bucket)) {
+        case(true) {
+            when(bucket_is_critical(bucket)) {
+                case(true) { return "empty-critical"; }
+                * { return "empty"; }
+            }
+        }
+        * {
+            when(bucket_full(bucket)) {
+                case(true) {
+                    when(bucket_is_critical(bucket)) {
+                        case(true) { return "full-critical"; }
+                        * { return "full"; }
+                    }
+                }
+                * {
+                    when(bucket_is_high(bucket)) {
+                        case(true) { return "active-high"; }
+                        * { return "active"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun[exp] bucket_label(bucket: Bucket): str = {
+    return bucket.label;
+}
+
+fun[exp] bucket_can_accept(bucket: Bucket): bol = {
+    return .not(bucket_full(bucket));
+}
+
+fun[exp] item_new(name: str, priority: Priority, weight: int): BucketItem = {
+    return {
+        name = name,
+        priority = priority,
+        weight = weight,
+        processed = false,
+    };
+}
+
+fun[exp] item_mark_processed(item: BucketItem): BucketItem = {
+    return {
+        name = item.name,
+        priority = item.priority,
+        weight = item.weight,
+        processed = true,
+    };
+}
+
+fun[exp] item_reprioritize(item: BucketItem, new_priority: Priority): BucketItem = {
+    return {
+        name = item.name,
+        priority = new_priority,
+        weight = item.weight,
+        processed = item.processed,
+    };
+}
+
+fun[exp] item_processed(item: BucketItem): bol = {
+    return item.processed;
+}
+
+fun[exp] item_is_critical(item: BucketItem): bol = {
+    return .eq(item.priority, PRIORITY_CRITICAL);
+}
+
+fun[exp] item_is_high_priority(item: BucketItem): bol = {
+    return .ge(item.priority, PRIORITY_HIGH);
+}
+
+fun[exp] item_is_heavy(item: BucketItem): bol = {
+    return .gt(item.weight, 100);
+}
+
+fun[exp] item_describe(item: BucketItem): str = {
+    when(item.processed) {
+        case(true) { return "done"; }
+        * {
+            when(item_is_critical(item)) {
+                case(true) { return "pending-critical"; }
+                * {
+                    when(item_is_heavy(item)) {
+                        case(true) { return "pending-heavy"; }
+                        * { return "pending"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fun[exp] item_needs_attention(item: BucketItem): bol = {
+    when(item_is_critical(item)) {
+        case(true) { return .not(item.processed); }
+        * { return false; }
+    }
+}
+
+fun[exp] item_weight(item: BucketItem): int = {
+    return item.weight;
+}
+
+fun[exp] item_name(item: BucketItem): str = {
+    return item.name;
+}
+
+// ---------------------------------------------------------------------------
+// Counter — tracks counts per string key
+// ---------------------------------------------------------------------------
+
+typ[exp] Counter: rec = {
+    counts: map[str, int];
+    name: str;
+    total: int
+}
+
+fun[exp] counter_new(name: str): Counter = {
+    return {
+        counts = {},
+        name = name,
+        total = 0,
+    };
+}
+
+fun[exp] counter_empty(counter: Counter): bol = {
+    return .eq(.len(counter.counts), 0);
+}
+
+fun[exp] counter_key_count(counter: Counter): int = {
+    return .len(counter.counts);
+}
+
+fun[exp] counter_total(counter: Counter): int = {
+    return counter.total;
+}
+
+fun[exp] counter_name(counter: Counter): str = {
+    return counter.name;
+}
+
+fun[exp] counter_describe(counter: Counter): str = {
+    when(counter_empty(counter)) {
+        case(true) { return "no-data"; }
+        * {
+            when(.gt(counter.total, 1000)) {
+                case(true) { return "high-volume"; }
+                * {
+                    when(.gt(counter.total, 100)) {
+                        case(true) { return "medium-volume"; }
+                        * { return "low-volume"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pair — simple key-value pair
+// ---------------------------------------------------------------------------
+
+typ[exp] Pair: rec = {
+    first: str;
+    second: int
+}
+
+fun[exp] pair_new(first: str, second: int): Pair = {
+    return {
+        first = first,
+        second = second,
+    };
+}
+
+fun[exp] pair_first(pair: Pair): str = {
+    return pair.first;
+}
+
+fun[exp] pair_second(pair: Pair): int = {
+    return pair.second;
+}
+
+fun[exp] pair_matches_first(pair: Pair, target: str): bol = {
+    return .eq(pair.first, target);
+}
+
+fun[exp] pair_has_positive_value(pair: Pair): bol = {
+    return .gt(pair.second, 0);
+}
+
+fun[exp] pair_describe(pair: Pair): str = {
+    when(pair_has_positive_value(pair)) {
+        case(true) { return "positive"; }
+        * {
+            when(.eq(pair.second, 0)) {
+                case(true) { return "zero"; }
+                * { return "negative"; }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// TagSet — manages a set of string tags
+// ---------------------------------------------------------------------------
+
+typ[exp] TagSet: rec = {
+    tags: seq[str];
+    max_tags: int;
+    category: str
+}
+
+fun[exp] tagset_new(category: str, max_tags: int): TagSet = {
+    return {
+        tags = {},
+        max_tags = max_tags,
+        category = category,
+    };
+}
+
+fun[exp] tagset_empty(ts: TagSet): bol = {
+    return .eq(.len(ts.tags), 0);
+}
+
+fun[exp] tagset_full(ts: TagSet): bol = {
+    return .ge(.len(ts.tags), ts.max_tags);
+}
+
+fun[exp] tagset_size(ts: TagSet): int = {
+    return .len(ts.tags);
+}
+
+fun[exp] tagset_add(ts: TagSet, tag: str): TagSet / str = {
+    when(tagset_full(ts)) {
+        case(true) { report "tagset full"; }
+        * {
+            return {
+                tags = {tag},
+                max_tags = ts.max_tags,
+                category = ts.category,
+            };
+        }
+    }
+}
+
+fun[exp] tagset_add_safe(ts: TagSet, tag: str): TagSet = {
+    return tagset_add(ts, tag) || ts;
+}
+
+fun[exp] tagset_category(ts: TagSet): str = {
+    return ts.category;
+}
+
+fun[exp] tagset_describe(ts: TagSet): str = {
+    when(tagset_empty(ts)) {
+        case(true) { return "no-tags"; }
+        * {
+            when(tagset_full(ts)) {
+                case(true) { return "tags-full"; }
+                * { return "has-tags"; }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Scored — wraps a value with a score for ranking
+// ---------------------------------------------------------------------------
+
+typ[exp] Scored: rec = {
+    label: str;
+    score: int;
+    rank: int;
+    valid: bol
+}
+
+fun[exp] scored_new(label: str, score: int): Scored = {
+    return {
+        label = label,
+        score = score,
+        rank = 0,
+        valid = true,
+    };
+}
+
+fun[exp] scored_with_rank(label: str, score: int, rank: int): Scored = {
+    return {
+        label = label,
+        score = score,
+        rank = rank,
+        valid = true,
+    };
+}
+
+fun[exp] scored_invalidate(s: Scored): Scored = {
+    return {
+        label = s.label,
+        score = s.score,
+        rank = s.rank,
+        valid = false,
+    };
+}
+
+fun[exp] scored_update_rank(s: Scored, new_rank: int): Scored = {
+    return {
+        label = s.label,
+        score = s.score,
+        rank = new_rank,
+        valid = s.valid,
+    };
+}
+
+fun[exp] scored_valid(s: Scored): bol = {
+    return s.valid;
+}
+
+fun[exp] scored_label(s: Scored): str = {
+    return s.label;
+}
+
+fun[exp] scored_score(s: Scored): int = {
+    return s.score;
+}
+
+fun[exp] scored_rank(s: Scored): int = {
+    return s.rank;
+}
+
+fun[exp] scored_is_top(s: Scored): bol = {
+    when(s.valid) {
+        case(true) { return .le(s.rank, 3); }
+        * { return false; }
+    }
+}
+
+fun[exp] scored_is_high(s: Scored): bol = {
+    return .gt(s.score, 90);
+}
+
+fun[exp] scored_is_passing(s: Scored): bol = {
+    return .ge(s.score, 50);
+}
+
+fun[exp] scored_describe(s: Scored): str = {
+    when(s.valid) {
+        case(true) {
+            when(scored_is_high(s)) {
+                case(true) { return "excellent"; }
+                * {
+                    when(scored_is_passing(s)) {
+                        case(true) { return "passing"; }
+                        * { return "failing"; }
+                    }
+                }
+            }
+        }
+        * { return "invalid"; }
+    }
+}
+
+fun[exp] scored_beats(a: Scored, b: Scored): bol = {
+    return .gt(a.score, b.score);
+}
+
+fun[exp] scored_same_tier(a: Scored, b: Scored): bol = {
+    return .eq(scored_describe(a), scored_describe(b));
+}
+
+// ---------------------------------------------------------------------------
+// Batch — groups items for batch processing
+// ---------------------------------------------------------------------------
+
+typ[exp] Batch: rec = {
+    items: seq[str];
+    batch_id: int;
+    status: str;
+    retries: int;
+    max_retries: int
+}
+
+fun[exp] batch_new(batch_id: int, max_retries: int): Batch = {
+    return {
+        items = {},
+        batch_id = batch_id,
+        status = "pending",
+        retries = 0,
+        max_retries = max_retries,
+    };
+}
+
+fun[exp] batch_empty(batch: Batch): bol = {
+    return .eq(.len(batch.items), 0);
+}
+
+fun[exp] batch_size(batch: Batch): int = {
+    return .len(batch.items);
+}
+
+fun[exp] batch_id(batch: Batch): int = {
+    return batch.batch_id;
+}
+
+fun[exp] batch_status(batch: Batch): str = {
+    return batch.status;
+}
+
+fun[exp] batch_retries(batch: Batch): int = {
+    return batch.retries;
+}
+
+fun[exp] batch_is_pending(batch: Batch): bol = {
+    return .eq(batch.status, "pending");
+}
+
+fun[exp] batch_is_done(batch: Batch): bol = {
+    return .eq(batch.status, "done");
+}
+
+fun[exp] batch_is_failed(batch: Batch): bol = {
+    return .eq(batch.status, "failed");
+}
+
+fun[exp] batch_can_retry(batch: Batch): bol = {
+    return .lt(batch.retries, batch.max_retries);
+}
+
+fun[exp] batch_mark_done(batch: Batch): Batch = {
+    return {
+        items = batch.items,
+        batch_id = batch.batch_id,
+        status = "done",
+        retries = batch.retries,
+        max_retries = batch.max_retries,
+    };
+}
+
+fun[exp] batch_mark_failed(batch: Batch): Batch = {
+    return {
+        items = batch.items,
+        batch_id = batch.batch_id,
+        status = "failed",
+        retries = batch.retries,
+        max_retries = batch.max_retries,
+    };
+}
+
+fun[exp] batch_add_item(batch: Batch, item: str): Batch = {
+    return {
+        items = {item},
+        batch_id = batch.batch_id,
+        status = batch.status,
+        retries = batch.retries,
+        max_retries = batch.max_retries,
+    };
+}
+
+fun[exp] batch_describe(batch: Batch): str = {
+    when(batch_is_done(batch)) {
+        case(true) { return "completed"; }
+        * {
+            when(batch_is_failed(batch)) {
+                case(true) {
+                    when(batch_can_retry(batch)) {
+                        case(true) { return "failed-retryable"; }
+                        * { return "failed-terminal"; }
+                    }
+                }
+                * {
+                    when(batch_empty(batch)) {
+                        case(true) { return "empty-pending"; }
+                        * { return "ready"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Span — represents a range with start/end
+// ---------------------------------------------------------------------------
+
+typ[exp] Span: rec = {
+    start: int;
+    end_pos: int;
+    label: str
+}
+
+fun[exp] span_new(start: int, end_pos: int, label: str): Span = {
+    return {
+        start = start,
+        end_pos = end_pos,
+        label = label,
+    };
+}
+
+fun[exp] span_start(s: Span): int = {
+    return s.start;
+}
+
+fun[exp] span_end(s: Span): int = {
+    return s.end_pos;
+}
+
+fun[exp] span_label(s: Span): str = {
+    return s.label;
+}
+
+fun[exp] span_is_empty(s: Span): bol = {
+    return .eq(s.start, s.end_pos);
+}
+
+fun[exp] span_contains_point(s: Span, point: int): bol = {
+    when(.ge(point, s.start)) {
+        case(true) { return .lt(point, s.end_pos); }
+        * { return false; }
+    }
+}
+
+fun[exp] span_starts_before(a: Span, b: Span): bol = {
+    return .lt(a.start, b.start);
+}
+
+fun[exp] span_overlaps(a: Span, b: Span): bol = {
+    when(.lt(a.start, b.end_pos)) {
+        case(true) { return .gt(a.end_pos, b.start); }
+        * { return false; }
+    }
+}
+
+fun[exp] span_describe(s: Span): str = {
+    when(span_is_empty(s)) {
+        case(true) { return "empty-span"; }
+        * {
+            when(.gt(s.end_pos, 1000)) {
+                case(true) { return "large-span"; }
+                * {
+                    when(.gt(s.end_pos, 100)) {
+                        case(true) { return "medium-span"; }
+                        * { return "small-span"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Integration — combines multiple collection types
+// ---------------------------------------------------------------------------
+
+fun[exp] build_stack_and_describe(name: str, cap: int): str = {
+    var s: Stack = stack_new(name, cap);
+    return stack_describe(s);
+}
+
+fun[exp] build_queue_and_describe(label: str, size: int): str = {
+    var q: Queue = queue_new(label, size);
+    return queue_describe(q);
+}
+
+fun[exp] build_registry_and_describe(name: str, max: int): str = {
+    var r: Registry = registry_new(name, max);
+    return registry_describe(r);
+}
+
+fun[exp] build_bucket_and_describe(label: str, level: Priority, max: int): str = {
+    var b: Bucket = bucket_new(label, level, max);
+    return bucket_describe(b);
+}
+
+fun[exp] create_sample_stack(): Stack = {
+    var s: Stack = stack_new("sample", 10);
+    var s2: Stack = stack_push_safe(s, 1);
+    var s3: Stack = stack_push_safe(s2, 2);
+    var s4: Stack = stack_push_safe(s3, 3);
+    return s4;
+}
+
+fun[exp] create_sample_queue(): Queue = {
+    var q: Queue = queue_new("tasks", 5);
+    var q2: Queue = queue_enqueue_safe(q, "alpha");
+    var q3: Queue = queue_enqueue_safe(q2, "beta");
+    return q3;
+}
+
+fun[exp] create_sample_registry(): Registry = {
+    var r: Registry = registry_new("config", 10);
+    var r2: Registry = registry_put_safe(r, "timeout", 30);
+    var r3: Registry = registry_put_safe(r2, "retries", 3);
+    return r3;
+}
+
+fun[exp] create_sample_bucket(): Bucket = {
+    var b: Bucket = bucket_new("urgent", PRIORITY_HIGH, 10);
+    var b2: Bucket = bucket_add_safe(b, "task-1");
+    var b3: Bucket = bucket_add_safe(b2, "task-2");
+    return b3;
+}
+
+fun[exp] create_sample_entries(): seq[str] = {
+    var e1: RegistryEntry = entry_new("host", 80, "network");
+    var e2: RegistryEntry = entry_new("port", 443, "network");
+    var e3: RegistryEntry = entry_deactivate(e2);
+    var e4: RegistryEntry = entry_retag(e1, "infra");
+    return {entry_describe(e1), entry_describe(e2), entry_describe(e3), entry_describe(e4)};
+}
+
+fun[exp] create_sample_items(): seq[str] = {
+    var i1: BucketItem = item_new("deploy", PRIORITY_CRITICAL, 200);
+    var i2: BucketItem = item_new("test", PRIORITY_NORMAL, 50);
+    var i3: BucketItem = item_mark_processed(i2);
+    var i4: BucketItem = item_reprioritize(i1, PRIORITY_LOW);
+    return {item_describe(i1), item_describe(i2), item_describe(i3), item_describe(i4)};
+}
+
+fun[exp] create_scored_ranking(): seq[str] = {
+    var s1: Scored = scored_new("alpha", 95);
+    var s2: Scored = scored_new("beta", 72);
+    var s3: Scored = scored_new("gamma", 45);
+    var s4: Scored = scored_invalidate(s3);
+    var s5: Scored = scored_with_rank("delta", 88, 2);
+    return {scored_describe(s1), scored_describe(s2), scored_describe(s3), scored_describe(s4), scored_describe(s5)};
+}
+
+fun[exp] create_batch_lifecycle(): seq[str] = {
+    var b1: Batch = batch_new(1, 3);
+    var b2: Batch = batch_add_item(b1, "file-a.txt");
+    var b3: Batch = batch_add_item(b2, "file-b.txt");
+    var b4: Batch = batch_mark_done(b3);
+    var b5: Batch = batch_new(2, 0);
+    var b6: Batch = batch_mark_failed(b5);
+    return {batch_describe(b1), batch_describe(b2), batch_describe(b3), batch_describe(b4), batch_describe(b6)};
+}
+
+fun[exp] span_analysis(): seq[str] = {
+    var s1: Span = span_new(0, 100, "header");
+    var s2: Span = span_new(50, 200, "body");
+    var s3: Span = span_new(300, 300, "empty");
+    var s4: Span = span_new(0, 5000, "full-doc");
+    return {span_describe(s1), span_describe(s2), span_describe(s3), span_describe(s4)};
+}
+
+fun[exp] collections_smoke_test(): int = {
+    var s: Stack = create_sample_stack();
+    var q: Queue = create_sample_queue();
+    var r: Registry = create_sample_registry();
+    var b: Bucket = create_sample_bucket();
+    var entries: seq[str] = create_sample_entries();
+    var items: seq[str] = create_sample_items();
+    var scores: seq[str] = create_scored_ranking();
+    var batches: seq[str] = create_batch_lifecycle();
+
+    .echo(stack_describe(s));
+    .echo(queue_describe(q));
+    .echo(registry_describe(r));
+    .echo(bucket_describe(b));
+    .echo(.len(entries));
+    .echo(.len(items));
+    .echo(.len(scores));
+    .echo(.len(batches));
+    .echo(.len(span_analysis()));
+
+    when(stack_can_push(s)) {
+        case(true) {
+            when(queue_can_accept(q)) {
+                case(true) { return 0; }
+                * { return 1; }
+            }
+        }
+        * { return 1; }
+    }
+}

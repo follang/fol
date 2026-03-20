@@ -315,9 +315,9 @@ use super::*;
             &fixture,
             concat!(
                 "fun[] main(): bol = {\n",
-                "    var same: bol = .eq(1, 1)\n",
-                "    var ordered: bol = .lt(\"Ada\", \"Lin\")\n",
-                "    return .ge('z', 'a')\n",
+                "    var same: bol = .eq(1, 1);\n",
+                "    var ordered: bol = .lt(\"Ada\", \"Lin\");\n",
+                "    return .ge('z', 'a');\n",
                 "}\n",
             ),
         )
@@ -412,8 +412,8 @@ use super::*;
             &fixture,
             concat!(
                 "fun[] main(flag: bol): bol = {\n",
-                "    var inverted: bol = .not(flag)\n",
-                "    return .not(inverted)\n",
+                "    var inverted: bol = .not(flag);\n",
+                "    return .not(inverted);\n",
                 "}\n",
             ),
         )
@@ -504,9 +504,9 @@ use super::*;
             &fixture,
             concat!(
                 "fun[] main(items: seq[int]): int = {\n",
-                "    var text: int = .len(\"Ada\")\n",
-                "    var count: int = .len(items)\n",
-                "    return count\n",
+                "    var text: int = .len(\"Ada\");\n",
+                "    var count: int = .len(items);\n",
+                "    return count;\n",
                 "}\n",
             ),
         )

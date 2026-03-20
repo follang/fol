@@ -430,7 +430,7 @@ fn typecheck_reports_explicit_top_level_binding_type_requirements() {
 fn typecheck_reports_explicit_local_binding_type_requirements() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "fun[] main(): int = {\n    var mystery\n    return mystery;\n}\n",
+        "fun[] main(): int = {\n    var mystery;\n    return mystery;\n}\n",
     )]);
 
     assert!(
@@ -475,7 +475,7 @@ fn reopened_v1_import_failures_no_longer_use_raw_lowered_type_fallbacks() {
 fn reopened_v1_binding_failures_no_longer_use_raw_lowered_type_fallbacks() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "fun[] main(): int = {\n    var mystery\n    return mystery;\n}\n",
+        "fun[] main(): int = {\n    var mystery;\n    return mystery;\n}\n",
     )]);
 
     assert!(

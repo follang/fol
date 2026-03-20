@@ -3,5 +3,5 @@ typ[exp] User: rec = {
 }
 
 fun[exp] make_user(): User = {
-    return { score = 7 }
+    return { score = 7 };
 }

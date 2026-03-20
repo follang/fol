@@ -66,16 +66,19 @@ impl AstParser {
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
                 body.push(self.parse_return_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
                 body.push(self.parse_break_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
                 body.push(self.parse_yield_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -87,6 +90,7 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Assert)
             ) {
                 body.push(self.parse_builtin_call_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -94,32 +98,37 @@ impl AstParser {
                 && self.lookahead_is_dot_builtin_call(tokens)
             {
                 body.push(self.parse_dot_builtin_call_expr(tokens)?);
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if self.lookahead_binding_alternative(tokens).is_some() {
                 body.extend(self.parse_binding_alternative_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
                 body.extend(self.parse_var_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
                 body.extend(self.parse_let_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
                 body.extend(self.parse_con_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Lab)) {
                 body.extend(self.parse_lab_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -233,6 +242,7 @@ impl AstParser {
                 && self.can_start_assignment(tokens)
             {
                 body.push(self.parse_assignment_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -242,6 +252,7 @@ impl AstParser {
                 && !self.lookahead_has_top_level_pipe(tokens)
             {
                 body.push(self.parse_call_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -255,6 +266,7 @@ impl AstParser {
                 && self.can_start_assignment(tokens)
             {
                 body.push(self.parse_invoke_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -470,26 +482,31 @@ impl AstParser {
 
             if self.lookahead_binding_alternative(tokens).is_some() {
                 body.extend(self.parse_binding_alternative_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
                 body.extend(self.parse_var_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
                 body.extend(self.parse_let_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
                 body.extend(self.parse_con_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Lab)) {
                 body.extend(self.parse_lab_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -551,6 +568,7 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Assert)
             ) {
                 body.push(self.parse_builtin_call_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -558,22 +576,25 @@ impl AstParser {
                 && self.lookahead_is_dot_builtin_call(tokens)
             {
                 body.push(self.parse_dot_builtin_call_expr(tokens)?);
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
                 body.push(self.parse_return_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
                 body.push(self.parse_break_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
                 body.push(self.parse_yield_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -607,11 +628,12 @@ impl AstParser {
                 && self.lookahead_is_assignment(tokens)
             {
                 body.push(self.parse_assignment_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             body.push(self.parse_logical_expression(tokens)?);
-            self.consume_optional_semicolon(tokens)?;
+            self.consume_required_semicolon(tokens)?;
         }
 
         let anchor = match anchor_token {

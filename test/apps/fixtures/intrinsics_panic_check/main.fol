@@ -1,11 +1,11 @@
 fun[] fail(flag: bol): int / str = {
     when(flag) {
-        case(true) { report "bad-input" }
-        * { return 7 }
+        case(true) { report "bad-input"; }
+        * { return 7; }
     }
 }
 
 fun[] main(): int = {
-    var failed: bol = check(fail(true))
-    panic "panic-from-check"
+    var failed: bol = check(fail(true));
+    panic "panic-from-check";
 }

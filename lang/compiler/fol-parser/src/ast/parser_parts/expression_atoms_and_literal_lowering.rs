@@ -403,6 +403,33 @@ impl AstParser {
         Ok(())
     }
 
+    pub(super) fn consume_required_semicolon(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<(), ParseError> {
+        self.skip_layout(tokens)?;
+        let token = tokens.curr(false).map_err(|_| ParseError {
+            kind: ParseErrorKind::Syntax,
+            message: "Expected ';' to terminate statement but reached end of input".to_string(),
+            file: None,
+            line: 0,
+            column: 0,
+            length: 0,
+        })?;
+        if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
+            let _ = tokens.bump();
+            Ok(())
+        } else if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
+            // Allow omitting semicolon before closing brace (last statement in block)
+            Ok(())
+        } else {
+            Err(ParseError::from_token(
+                &token,
+                "Expected ';' to terminate statement".to_string(),
+            ))
+        }
+    }
+
     /// Parse a simple literal for testing
     pub fn parse_literal(&self, value: &str) -> Result<AstNode, ParseError> {
         if value.starts_with('"') && value.ends_with('"') {

@@ -1,9 +1,9 @@
 fun[] main(): int = {
-    var ids: set[int] = {}
-    var counts: map[str, int] = {{"ok", 7}}
+    var ids: set[int] = {};
+    var counts: map[str, int] = {{"ok", 7}};
 
     when(.eq(.len(ids), 0)) {
-        case(true) { return counts["ok"] }
-        * { return 0 }
+        case(true) { return counts["ok"]; }
+        * { return 0; }
     }
 }

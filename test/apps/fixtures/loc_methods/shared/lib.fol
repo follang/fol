@@ -2,8 +2,8 @@ typ[exp] Counter: rec = {
     total: int
 }
 
-var[exp] current: Counter
+var[exp] current: Counter;
 
 fun[exp] (Counter)read(): int = {
-    return 7
+    return 7;
 }

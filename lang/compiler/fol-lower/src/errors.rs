@@ -163,9 +163,9 @@ mod tests {
         )
         .to_diagnostic();
 
-        assert_eq!(diagnostic.code, "L1001");
+        assert_eq!(diagnostic.code.as_str(), "L1001");
         assert_eq!(
-            diagnostic.primary_label.as_ref().map(|label| label.line),
+            diagnostic.primary_label().map(|label| label.location.line),
             Some(2)
         );
     }

@@ -1,3 +1,3 @@
 pro[] build(graph: Graph): non = {
-    return graph
+    return graph;
 }

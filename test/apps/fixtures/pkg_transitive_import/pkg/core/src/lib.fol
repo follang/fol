@@ -1,1 +1,1 @@
-var[exp] shared: int = 7
+var[exp] shared: int = 7;

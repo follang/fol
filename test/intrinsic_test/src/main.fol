@@ -1,0 +1,7 @@
+fun[] main(): int = {
+    var a: int = 1;
+    var b: int = 2;
+    .echo(a);
+    .echo(b);
+    return 0;
+}

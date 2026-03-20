@@ -1,9 +1,9 @@
 fun[] main(): int = {
-    var parts: seq[int] = {7, 8}
-    var size: int = .len(parts)
+    var parts: seq[int] = {7, 8};
+    var size: int = .len(parts);
 
     when(.eq(size, 2)) {
-        case(true) { return parts[0] }
-        * { return 0 }
+        case(true) { return parts[0]; }
+        * { return 0; }
     }
 }

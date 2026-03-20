@@ -424,9 +424,15 @@ mod tests {
     use super::LoweringSession;
     use crate::types::{LoweredBuiltinType, LoweredType};
     use fol_parser::ast::AstParser;
-    use fol_resolver::{resolve_package_workspace_with_config, resolve_workspace, ResolverConfig};
+    use fol_resolver::{resolve_package_workspace, resolve_package_workspace_with_config, ResolverConfig};
     use fol_stream::FileStream;
     use fol_typecheck::Typechecker;
+
+    fn safe_temp_dir() -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join("fol_test");
+        std::fs::create_dir_all(&dir).expect("should create test temp root");
+        dir
+    }
 
     #[test]
     fn lowering_session_keeps_typed_workspace_identity_and_size() {
@@ -440,7 +446,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -466,7 +472,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -504,7 +510,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock should be monotonic enough for tmp path")
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("fol_lower_workspace_{stamp}"));
+        let root = safe_temp_dir().join(format!("fol_lower_workspace_{stamp}"));
         let app_dir = root.join("app");
         let shared_dir = root.join("shared");
         fs::create_dir_all(&app_dir).expect("should create app dir");
@@ -524,7 +530,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering folder fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering folder fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering folder fixture should typecheck");
@@ -576,7 +582,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock should be monotonic enough for tmp path")
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("fol_lower_pkg_exports_{stamp}"));
+        let root = safe_temp_dir().join(format!("fol_lower_pkg_exports_{stamp}"));
         let app_dir = root.join("app");
         let store_root = root.join("store");
         let json_root = store_root.join("json");
@@ -616,8 +622,7 @@ mod tests {
             syntax,
             ResolverConfig {
                 std_root: None,
-                package_store_root: Some(store_root.clone()),
-                package_cache_root: None,
+                package_store_root: Some(store_root.to_string_lossy().into_owned()),
             },
         )
         .expect("Lowering folder fixture should resolve");
@@ -652,7 +657,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock should be monotonic enough for tmp path")
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("fol_lower_entry_candidates_{stamp}"));
+        let root = safe_temp_dir().join(format!("fol_lower_entry_candidates_{stamp}"));
         let app_dir = root.join("app");
         let shared_dir = root.join("shared");
         fs::create_dir_all(&app_dir).expect("should create app dir");
@@ -675,7 +680,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering folder fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering folder fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering folder fixture should typecheck");
@@ -701,7 +706,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock should be monotonic enough for tmp path")
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("fol_lower_duplicate_mounts_{stamp}"));
+        let root = safe_temp_dir().join(format!("fol_lower_duplicate_mounts_{stamp}"));
         let app_dir = root.join("app");
         let shared_dir = root.join("shared");
         fs::create_dir_all(&app_dir).expect("should create app dir");
@@ -721,7 +726,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering folder fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering folder fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering folder fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering folder fixture should typecheck");
@@ -749,7 +754,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock should be monotonic enough for tmp path")
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("fol_lower_all_package_kinds_{stamp}"));
+        let root = safe_temp_dir().join(format!("fol_lower_all_package_kinds_{stamp}"));
         let app_dir = root.join("app");
         let shared_dir = root.join("shared");
         let std_root = root.join("std");
@@ -794,9 +799,8 @@ mod tests {
         let resolved = resolve_package_workspace_with_config(
             syntax,
             ResolverConfig {
-                std_root: Some(std_root.clone()),
-                package_store_root: Some(store_root.clone()),
-                package_cache_root: None,
+                std_root: Some(std_root.to_string_lossy().into_owned()),
+                package_store_root: Some(store_root.to_string_lossy().into_owned()),
             },
         )
         .expect("Lowering folder fixture should resolve");
@@ -830,7 +834,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("clock should be monotonic enough for tmp path")
             .as_nanos();
-        let root = std::env::temp_dir().join(format!("fol_lower_build_units_{stamp}"));
+        let root = safe_temp_dir().join(format!("fol_lower_build_units_{stamp}"));
         fs::create_dir_all(root.join("src")).expect("should create temp source dir");
         fs::write(root.join("build.fol"), "`build`\n").expect("should write build file");
         fs::write(
@@ -846,7 +850,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("lowering fixture should typecheck");

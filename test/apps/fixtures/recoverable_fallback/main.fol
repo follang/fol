@@ -1,10 +1,10 @@
 fun[] load(flag: bol): int / str = {
     when(flag) {
-        case(true) { report "bad-input" }
-        * { return 7 }
+        case(true) { report "bad-input"; }
+        * { return 7; }
     }
 }
 
 fun[] main(flag: bol): int = {
-    return load(flag) || 5
+    return load(flag) || 5;
 }

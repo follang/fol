@@ -5,6 +5,6 @@ typ User: rec = {
 fun[] main(): int = {
     var current: User = {
         score = "bad",
-    }
-    return current.score
+    };
+    return current.score;
 }

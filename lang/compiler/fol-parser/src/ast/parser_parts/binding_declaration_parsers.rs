@@ -196,7 +196,6 @@ impl AstParser {
             };
 
             if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
-                let _ = tokens.bump();
                 break;
             }
             if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma))
@@ -210,7 +209,6 @@ impl AstParser {
             break;
         }
 
-        self.consume_optional_semicolon(tokens)?;
         Ok(nodes)
     }
 

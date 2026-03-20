@@ -122,8 +122,6 @@ impl AstParser {
             }
         }
 
-        self.consume_optional_semicolon(tokens)?;
-
         Ok(AstNode::FunctionCall {
             syntax_id,
             surface: crate::ast::CallSurface::KeywordIntrinsic,
@@ -764,26 +762,6 @@ impl AstParser {
             parsed_value
         };
 
-        for _ in 0..64 {
-            let token = match tokens.curr(false) {
-                Ok(token) => token,
-                Err(_) => break,
-            };
-
-            if token.key().is_terminal() {
-                let _ = tokens.bump();
-                break;
-            }
-
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
-                break;
-            }
-
-            if tokens.bump().is_none() {
-                break;
-            }
-        }
-
         Ok(AstNode::Assignment {
             target: Box::new(target),
             value: Box::new(value),
@@ -869,8 +847,6 @@ impl AstParser {
             self.parse_call_expr(tokens)?
         };
 
-        self.consume_optional_semicolon(tokens)?;
-
         Ok(call)
     }
 
@@ -893,7 +869,6 @@ impl AstParser {
             ));
         }
 
-        self.consume_optional_semicolon(tokens)?;
         Ok(expr)
     }
 

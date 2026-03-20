@@ -1,0 +1,1062 @@
+// =============================================================================
+// validation library — input validation and rule checking for FOL
+// =============================================================================
+// Provides: ValidationResult, FieldError, Rule, Validator, Schema, Constraint
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Severity levels
+// ---------------------------------------------------------------------------
+
+ali Severity: int
+
+var[exp] SEV_INFO: Severity = 0
+var[exp] SEV_WARNING: Severity = 1
+var[exp] SEV_ERROR: Severity = 2
+var[exp] SEV_CRITICAL: Severity = 3
+
+fun[exp] severity_name(sev: Severity): str = {
+    when(sev) {
+        case(SEV_INFO) { return "info"; }
+        case(SEV_WARNING) { return "warning"; }
+        case(SEV_ERROR) { return "error"; }
+        * { return "critical"; }
+    }
+}
+
+fun[exp] severity_is_blocking(sev: Severity): bol = {
+    return .ge(sev, SEV_ERROR);
+}
+
+fun[exp] severity_is_critical(sev: Severity): bol = {
+    return .eq(sev, SEV_CRITICAL);
+}
+
+fun[exp] severity_at_least(sev: Severity, min: Severity): bol = {
+    return .ge(sev, min);
+}
+
+// ---------------------------------------------------------------------------
+// FieldError — describes a validation failure on a specific field
+// ---------------------------------------------------------------------------
+
+typ[exp] FieldError: rec = {
+    field: str;
+    message: str;
+    code: str;
+    severity: Severity
+}
+
+fun[exp] field_error(field: str, message: str, code: str, severity: Severity): FieldError = {
+    return {
+        field = field,
+        message = message,
+        code = code,
+        severity = severity,
+    };
+}
+
+fun[exp] field_error_warning(field: str, message: str): FieldError = {
+    return {
+        field = field,
+        message = message,
+        code = "WARN",
+        severity = SEV_WARNING,
+    };
+}
+
+fun[exp] field_error_required(field: str): FieldError = {
+    return {
+        field = field,
+        message = "required",
+        code = "REQUIRED",
+        severity = SEV_ERROR,
+    };
+}
+
+fun[exp] field_error_invalid(field: str, reason: str): FieldError = {
+    return {
+        field = field,
+        message = reason,
+        code = "INVALID",
+        severity = SEV_ERROR,
+    };
+}
+
+fun[exp] field_error_critical(field: str, reason: str): FieldError = {
+    return {
+        field = field,
+        message = reason,
+        code = "CRITICAL",
+        severity = SEV_CRITICAL,
+    };
+}
+
+fun[exp] error_field(err: FieldError): str = {
+    return err.field;
+}
+
+fun[exp] error_message(err: FieldError): str = {
+    return err.message;
+}
+
+fun[exp] error_code(err: FieldError): str = {
+    return err.code;
+}
+
+fun[exp] error_severity(err: FieldError): Severity = {
+    return err.severity;
+}
+
+fun[exp] error_is_blocking(err: FieldError): bol = {
+    return severity_is_blocking(err.severity);
+}
+
+fun[exp] error_is_critical(err: FieldError): bol = {
+    return severity_is_critical(err.severity);
+}
+
+fun[exp] error_matches_field(err: FieldError, target: str): bol = {
+    return .eq(err.field, target);
+}
+
+fun[exp] error_matches_code(err: FieldError, target: str): bol = {
+    return .eq(err.code, target);
+}
+
+fun[exp] error_describe(err: FieldError): str = {
+    when(error_is_critical(err)) {
+        case(true) { return "critical-error"; }
+        * {
+            when(error_is_blocking(err)) {
+                case(true) { return "blocking-error"; }
+                * {
+                    when(.eq(err.severity, SEV_WARNING)) {
+                        case(true) { return "warning"; }
+                        * { return "info"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// ValidationResult — aggregates errors from validation
+// ---------------------------------------------------------------------------
+
+typ[exp] ValidationResult: rec = {
+    errors: seq[str];
+    warnings: seq[str];
+    field_count: int;
+    passed: bol;
+    context: str
+}
+
+fun[exp] result_pass(context: str): ValidationResult = {
+    return {
+        errors = {},
+        warnings = {},
+        field_count = 0,
+        passed = true,
+        context = context,
+    };
+}
+
+fun[exp] result_fail(context: str, errors: seq[str]): ValidationResult = {
+    return {
+        errors = errors,
+        warnings = {},
+        field_count = .len(errors),
+        passed = false,
+        context = context,
+    };
+}
+
+fun[exp] result_with_warnings(context: str, warnings: seq[str]): ValidationResult = {
+    return {
+        errors = {},
+        warnings = warnings,
+        field_count = 0,
+        passed = true,
+        context = context,
+    };
+}
+
+fun[exp] result_mixed(context: str, errors: seq[str], warnings: seq[str]): ValidationResult = {
+    when(.eq(.len(errors), 0)) {
+        case(true) {
+            return {
+                errors = errors,
+                warnings = warnings,
+                field_count = 0,
+                passed = true,
+                context = context,
+            };
+        }
+        * {
+            return {
+                errors = errors,
+                warnings = warnings,
+                field_count = .len(errors),
+                passed = false,
+                context = context,
+            };
+        }
+    }
+}
+
+fun[exp] result_passed(r: ValidationResult): bol = {
+    return r.passed;
+}
+
+fun[exp] result_failed(r: ValidationResult): bol = {
+    return .not(r.passed);
+}
+
+fun[exp] result_error_count(r: ValidationResult): int = {
+    return .len(r.errors);
+}
+
+fun[exp] result_warning_count(r: ValidationResult): int = {
+    return .len(r.warnings);
+}
+
+fun[exp] result_has_errors(r: ValidationResult): bol = {
+    return .gt(.len(r.errors), 0);
+}
+
+fun[exp] result_has_warnings(r: ValidationResult): bol = {
+    return .gt(.len(r.warnings), 0);
+}
+
+fun[exp] result_clean(r: ValidationResult): bol = {
+    when(r.passed) {
+        case(true) { return .not(result_has_warnings(r)); }
+        * { return false; }
+    }
+}
+
+fun[exp] result_context(r: ValidationResult): str = {
+    return r.context;
+}
+
+fun[exp] result_describe(r: ValidationResult): str = {
+    when(r.passed) {
+        case(true) {
+            when(result_has_warnings(r)) {
+                case(true) { return "pass-with-warnings"; }
+                * { return "clean-pass"; }
+            }
+        }
+        * {
+            when(.gt(.len(r.errors), 5)) {
+                case(true) { return "many-errors"; }
+                * {
+                    when(.gt(.len(r.errors), 1)) {
+                        case(true) { return "multiple-errors"; }
+                        * { return "single-error"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Constraint — describes a single validation constraint
+// ---------------------------------------------------------------------------
+
+ali ConstraintKind: int
+
+var[exp] CK_REQUIRED: ConstraintKind = 0
+var[exp] CK_MIN_LEN: ConstraintKind = 1
+var[exp] CK_MAX_LEN: ConstraintKind = 2
+var[exp] CK_PATTERN: ConstraintKind = 3
+var[exp] CK_RANGE: ConstraintKind = 4
+var[exp] CK_CUSTOM: ConstraintKind = 5
+
+typ[exp] Constraint: rec = {
+    name: str;
+    kind: ConstraintKind;
+    min_value: int;
+    max_value: int;
+    pattern: str;
+    enabled: bol
+}
+
+fun[exp] constraint_required(name: str): Constraint = {
+    return {
+        name = name,
+        kind = CK_REQUIRED,
+        min_value = 0,
+        max_value = 0,
+        pattern = "",
+        enabled = true,
+    };
+}
+
+fun[exp] constraint_min_length(name: str, min: int): Constraint = {
+    return {
+        name = name,
+        kind = CK_MIN_LEN,
+        min_value = min,
+        max_value = 0,
+        pattern = "",
+        enabled = true,
+    };
+}
+
+fun[exp] constraint_max_length(name: str, max: int): Constraint = {
+    return {
+        name = name,
+        kind = CK_MAX_LEN,
+        min_value = 0,
+        max_value = max,
+        pattern = "",
+        enabled = true,
+    };
+}
+
+fun[exp] constraint_range(name: str, min: int, max: int): Constraint = {
+    return {
+        name = name,
+        kind = CK_RANGE,
+        min_value = min,
+        max_value = max,
+        pattern = "",
+        enabled = true,
+    };
+}
+
+fun[exp] constraint_pattern(name: str, pat: str): Constraint = {
+    return {
+        name = name,
+        kind = CK_PATTERN,
+        min_value = 0,
+        max_value = 0,
+        pattern = pat,
+        enabled = true,
+    };
+}
+
+fun[exp] constraint_custom(name: str): Constraint = {
+    return {
+        name = name,
+        kind = CK_CUSTOM,
+        min_value = 0,
+        max_value = 0,
+        pattern = "",
+        enabled = true,
+    };
+}
+
+fun[exp] constraint_disable(c: Constraint): Constraint = {
+    return {
+        name = c.name,
+        kind = c.kind,
+        min_value = c.min_value,
+        max_value = c.max_value,
+        pattern = c.pattern,
+        enabled = false,
+    };
+}
+
+fun[exp] constraint_enable(c: Constraint): Constraint = {
+    return {
+        name = c.name,
+        kind = c.kind,
+        min_value = c.min_value,
+        max_value = c.max_value,
+        pattern = c.pattern,
+        enabled = true,
+    };
+}
+
+fun[exp] constraint_name(c: Constraint): str = {
+    return c.name;
+}
+
+fun[exp] constraint_enabled(c: Constraint): bol = {
+    return c.enabled;
+}
+
+fun[exp] constraint_kind_name(c: Constraint): str = {
+    when(c.kind) {
+        case(CK_REQUIRED) { return "required"; }
+        case(CK_MIN_LEN) { return "min-length"; }
+        case(CK_MAX_LEN) { return "max-length"; }
+        case(CK_PATTERN) { return "pattern"; }
+        case(CK_RANGE) { return "range"; }
+        * { return "custom"; }
+    }
+}
+
+fun[exp] constraint_describe(c: Constraint): str = {
+    when(c.enabled) {
+        case(true) { return constraint_kind_name(c); }
+        * { return "disabled"; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// FieldSpec — describes the validation rules for a single field
+// ---------------------------------------------------------------------------
+
+typ[exp] FieldSpec: rec = {
+    field_name: str;
+    required: bol;
+    min_length: int;
+    max_length: int;
+    allow_empty: bol;
+    description: str
+}
+
+fun[exp] field_spec(name: str, required: bol, description: str): FieldSpec = {
+    return {
+        field_name = name,
+        required = required,
+        min_length = 0,
+        max_length = 0,
+        allow_empty = .not(required),
+        description = description,
+    };
+}
+
+fun[exp] field_spec_with_length(name: str, min: int, max: int, description: str): FieldSpec = {
+    return {
+        field_name = name,
+        required = true,
+        min_length = min,
+        max_length = max,
+        allow_empty = false,
+        description = description,
+    };
+}
+
+fun[exp] field_spec_optional(name: str, description: str): FieldSpec = {
+    return {
+        field_name = name,
+        required = false,
+        min_length = 0,
+        max_length = 0,
+        allow_empty = true,
+        description = description,
+    };
+}
+
+fun[exp] spec_name(s: FieldSpec): str = {
+    return s.field_name;
+}
+
+fun[exp] spec_required(s: FieldSpec): bol = {
+    return s.required;
+}
+
+fun[exp] spec_allows_empty(s: FieldSpec): bol = {
+    return s.allow_empty;
+}
+
+fun[exp] spec_has_length_constraint(s: FieldSpec): bol = {
+    return .gt(s.max_length, 0);
+}
+
+fun[exp] spec_describe(s: FieldSpec): str = {
+    when(s.required) {
+        case(true) {
+            when(spec_has_length_constraint(s)) {
+                case(true) { return "required-with-length"; }
+                * { return "required"; }
+            }
+        }
+        * { return "optional"; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Schema — describes the shape of a validated object
+// ---------------------------------------------------------------------------
+
+typ[exp] Schema: rec = {
+    name: str;
+    version: int;
+    strict: bol;
+    field_names: seq[str];
+    required_count: int
+}
+
+fun[exp] schema_new(name: str, version: int, strict: bol): Schema = {
+    return {
+        name = name,
+        version = version,
+        strict = strict,
+        field_names = {},
+        required_count = 0,
+    };
+}
+
+fun[exp] schema_with_fields(name: str, version: int, fields: seq[str], required: int): Schema = {
+    return {
+        name = name,
+        version = version,
+        strict = true,
+        field_names = fields,
+        required_count = required,
+    };
+}
+
+fun[exp] schema_name(s: Schema): str = {
+    return s.name;
+}
+
+fun[exp] schema_version(s: Schema): int = {
+    return s.version;
+}
+
+fun[exp] schema_strict(s: Schema): bol = {
+    return s.strict;
+}
+
+fun[exp] schema_field_count(s: Schema): int = {
+    return .len(s.field_names);
+}
+
+fun[exp] schema_required_count(s: Schema): int = {
+    return s.required_count;
+}
+
+fun[exp] schema_has_fields(s: Schema): bol = {
+    return .gt(.len(s.field_names), 0);
+}
+
+fun[exp] schema_all_required(s: Schema): bol = {
+    return .eq(s.required_count, .len(s.field_names));
+}
+
+fun[exp] schema_describe(s: Schema): str = {
+    when(s.strict) {
+        case(true) {
+            when(schema_has_fields(s)) {
+                case(true) {
+                    when(schema_all_required(s)) {
+                        case(true) { return "strict-all-required"; }
+                        * { return "strict-partial"; }
+                    }
+                }
+                * { return "strict-empty"; }
+            }
+        }
+        * { return "lenient"; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Validator — configurable validation engine
+// ---------------------------------------------------------------------------
+
+typ[exp] Validator: rec = {
+    name: str;
+    strict_mode: bol;
+    max_errors: int;
+    fail_fast: bol;
+    enabled: bol;
+    context: str
+}
+
+fun[exp] validator_new(name: str): Validator = {
+    return {
+        name = name,
+        strict_mode = false,
+        max_errors = 100,
+        fail_fast = false,
+        enabled = true,
+        context = "default",
+    };
+}
+
+fun[exp] validator_strict(name: str): Validator = {
+    return {
+        name = name,
+        strict_mode = true,
+        max_errors = 1,
+        fail_fast = true,
+        enabled = true,
+        context = "strict",
+    };
+}
+
+fun[exp] validator_lenient(name: str): Validator = {
+    return {
+        name = name,
+        strict_mode = false,
+        max_errors = 1000,
+        fail_fast = false,
+        enabled = true,
+        context = "lenient",
+    };
+}
+
+fun[exp] validator_disabled(name: str): Validator = {
+    return {
+        name = name,
+        strict_mode = false,
+        max_errors = 0,
+        fail_fast = false,
+        enabled = false,
+        context = "disabled",
+    };
+}
+
+fun[exp] validator_with_context(v: Validator, ctx: str): Validator = {
+    return {
+        name = v.name,
+        strict_mode = v.strict_mode,
+        max_errors = v.max_errors,
+        fail_fast = v.fail_fast,
+        enabled = v.enabled,
+        context = ctx,
+    };
+}
+
+fun[exp] validator_enable(v: Validator): Validator = {
+    return {
+        name = v.name,
+        strict_mode = v.strict_mode,
+        max_errors = v.max_errors,
+        fail_fast = v.fail_fast,
+        enabled = true,
+        context = v.context,
+    };
+}
+
+fun[exp] validator_disable(v: Validator): Validator = {
+    return {
+        name = v.name,
+        strict_mode = v.strict_mode,
+        max_errors = v.max_errors,
+        fail_fast = v.fail_fast,
+        enabled = false,
+        context = v.context,
+    };
+}
+
+fun[exp] validator_name(v: Validator): str = {
+    return v.name;
+}
+
+fun[exp] validator_enabled(v: Validator): bol = {
+    return v.enabled;
+}
+
+fun[exp] validator_strict_mode(v: Validator): bol = {
+    return v.strict_mode;
+}
+
+fun[exp] validator_fail_fast(v: Validator): bol = {
+    return v.fail_fast;
+}
+
+fun[exp] validator_context(v: Validator): str = {
+    return v.context;
+}
+
+fun[exp] validator_describe(v: Validator): str = {
+    when(v.enabled) {
+        case(true) {
+            when(v.strict_mode) {
+                case(true) {
+                    when(v.fail_fast) {
+                        case(true) { return "strict-fail-fast"; }
+                        * { return "strict"; }
+                    }
+                }
+                * {
+                    when(v.fail_fast) {
+                        case(true) { return "lenient-fail-fast"; }
+                        * { return "lenient"; }
+                    }
+                }
+            }
+        }
+        * { return "disabled"; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Validation functions — check string values against rules
+// ---------------------------------------------------------------------------
+
+fun[exp] validate_not_empty(value: str, field: str): opt[str] = {
+    when(.eq(.len(value), 0)) {
+        case(true) { return "empty"; }
+        * { return nil; }
+    }
+}
+
+fun[exp] validate_min_length(value: str, min: int, field: str): opt[str] = {
+    when(.lt(.len(value), min)) {
+        case(true) { return "too-short"; }
+        * { return nil; }
+    }
+}
+
+fun[exp] validate_max_length(value: str, max: int, field: str): opt[str] = {
+    when(.gt(.len(value), max)) {
+        case(true) { return "too-long"; }
+        * { return nil; }
+    }
+}
+
+fun[exp] validate_exact_length(value: str, exact: int, field: str): opt[str] = {
+    when(.eq(.len(value), exact)) {
+        case(true) { return nil; }
+        * { return "wrong-length"; }
+    }
+}
+
+fun[exp] validate_not_equals(value: str, forbidden: str, field: str): opt[str] = {
+    when(.eq(value, forbidden)) {
+        case(true) { return "forbidden-value"; }
+        * { return nil; }
+    }
+}
+
+fun[exp] validate_equals(value: str, expected: str, field: str): opt[str] = {
+    when(.eq(value, expected)) {
+        case(true) { return nil; }
+        * { return "mismatch"; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Integer validation functions
+// ---------------------------------------------------------------------------
+
+fun[exp] validate_positive(value: int, field: str): opt[str] = {
+    when(.gt(value, 0)) {
+        case(true) { return nil; }
+        * { return "not-positive"; }
+    }
+}
+
+fun[exp] validate_non_negative(value: int, field: str): opt[str] = {
+    when(.ge(value, 0)) {
+        case(true) { return nil; }
+        * { return "negative"; }
+    }
+}
+
+fun[exp] validate_in_range(value: int, min: int, max: int, field: str): opt[str] = {
+    when(.lt(value, min)) {
+        case(true) { return "below-min"; }
+        * {
+            when(.gt(value, max)) {
+                case(true) { return "above-max"; }
+                * { return nil; }
+            }
+        }
+    }
+}
+
+fun[exp] validate_max_value(value: int, max: int, field: str): opt[str] = {
+    when(.gt(value, max)) {
+        case(true) { return "exceeds-max"; }
+        * { return nil; }
+    }
+}
+
+fun[exp] validate_min_value(value: int, min: int, field: str): opt[str] = {
+    when(.lt(value, min)) {
+        case(true) { return "below-min"; }
+        * { return nil; }
+    }
+}
+
+fun[exp] validate_not_zero(value: int, field: str): opt[str] = {
+    when(.eq(value, 0)) {
+        case(true) { return "is-zero"; }
+        * { return nil; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Boolean validation
+// ---------------------------------------------------------------------------
+
+fun[exp] validate_is_true(value: bol, field: str): opt[str] = {
+    when(value) {
+        case(true) { return nil; }
+        * { return "must-be-true"; }
+    }
+}
+
+fun[exp] validate_is_false(value: bol, field: str): opt[str] = {
+    when(value) {
+        case(true) { return "must-be-false"; }
+        * { return nil; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Composite validators — validate full records
+// ---------------------------------------------------------------------------
+
+typ[exp] UserInput: rec = {
+    username: str;
+    email: str;
+    age: int;
+    agreed_terms: bol
+}
+
+fun[exp] user_input(username: str, email: str, age: int, agreed: bol): UserInput = {
+    return {
+        username = username,
+        email = email,
+        age = age,
+        agreed_terms = agreed,
+    };
+}
+
+fun[exp] validate_username(input: UserInput): ValidationResult = {
+    var name_err: opt[str] = validate_not_empty(input.username, "username");
+    when(name_err) {
+        case(nil) {
+            var len_err: opt[str] = validate_min_length(input.username, 3, "username");
+            when(len_err) {
+                case(nil) {
+                    var max_err: opt[str] = validate_max_length(input.username, 64, "username");
+                    when(max_err) {
+                        case(nil) { return result_pass("username"); }
+                        * { return result_fail("username", {"too-long"}); }
+                    }
+                }
+                * { return result_fail("username", {"too-short"}); }
+            }
+        }
+        * { return result_fail("username", {"empty"}); }
+    }
+}
+
+fun[exp] validate_email(input: UserInput): ValidationResult = {
+    var empty_err: opt[str] = validate_not_empty(input.email, "email");
+    when(empty_err) {
+        case(nil) {
+            var len_err: opt[str] = validate_min_length(input.email, 5, "email");
+            when(len_err) {
+                case(nil) { return result_pass("email"); }
+                * { return result_fail("email", {"too-short"}); }
+            }
+        }
+        * { return result_fail("email", {"empty"}); }
+    }
+}
+
+fun[exp] validate_age(input: UserInput): ValidationResult = {
+    var range_err: opt[str] = validate_in_range(input.age, 13, 150, "age");
+    when(range_err) {
+        case(nil) { return result_pass("age"); }
+        * { return result_fail("age", {range_err!}); }
+    }
+}
+
+fun[exp] validate_terms(input: UserInput): ValidationResult = {
+    var terms_err: opt[str] = validate_is_true(input.agreed_terms, "terms");
+    when(terms_err) {
+        case(nil) { return result_pass("terms"); }
+        * { return result_fail("terms", {"must-agree"}); }
+    }
+}
+
+fun[exp] validate_user_input(input: UserInput): ValidationResult = {
+    var username_result: ValidationResult = validate_username(input);
+    when(result_failed(username_result)) {
+        case(true) { return username_result; }
+        * {
+            var email_result: ValidationResult = validate_email(input);
+            when(result_failed(email_result)) {
+                case(true) { return email_result; }
+                * {
+                    var age_result: ValidationResult = validate_age(input);
+                    when(result_failed(age_result)) {
+                        case(true) { return age_result; }
+                        * {
+                            var terms_result: ValidationResult = validate_terms(input);
+                            when(result_failed(terms_result)) {
+                                case(true) { return terms_result; }
+                                * { return result_pass("user-input"); }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Config validation
+// ---------------------------------------------------------------------------
+
+typ[exp] ConfigInput: rec = {
+    host: str;
+    port: int;
+    timeout: int;
+    max_connections: int;
+    debug: bol;
+    name: str
+}
+
+fun[exp] config_input(host: str, port: int, timeout: int, max_conn: int, debug: bol, name: str): ConfigInput = {
+    return {
+        host = host,
+        port = port,
+        timeout = timeout,
+        max_connections = max_conn,
+        debug = debug,
+        name = name,
+    };
+}
+
+fun[exp] validate_config_host(cfg: ConfigInput): ValidationResult = {
+    var err: opt[str] = validate_not_empty(cfg.host, "host");
+    when(err) {
+        case(nil) { return result_pass("host"); }
+        * { return result_fail("host", {"empty-host"}); }
+    }
+}
+
+fun[exp] validate_config_port(cfg: ConfigInput): ValidationResult = {
+    var err: opt[str] = validate_in_range(cfg.port, 1, 65535, "port");
+    when(err) {
+        case(nil) { return result_pass("port"); }
+        * { return result_fail("port", {err!}); }
+    }
+}
+
+fun[exp] validate_config_timeout(cfg: ConfigInput): ValidationResult = {
+    var err: opt[str] = validate_in_range(cfg.timeout, 1, 300, "timeout");
+    when(err) {
+        case(nil) { return result_pass("timeout"); }
+        * { return result_fail("timeout", {err!}); }
+    }
+}
+
+fun[exp] validate_config_connections(cfg: ConfigInput): ValidationResult = {
+    var err: opt[str] = validate_in_range(cfg.max_connections, 1, 10000, "connections");
+    when(err) {
+        case(nil) { return result_pass("connections"); }
+        * { return result_fail("connections", {err!}); }
+    }
+}
+
+fun[exp] validate_config_name(cfg: ConfigInput): ValidationResult = {
+    var err: opt[str] = validate_not_empty(cfg.name, "name");
+    when(err) {
+        case(nil) {
+            var len_err: opt[str] = validate_max_length(cfg.name, 128, "name");
+            when(len_err) {
+                case(nil) { return result_pass("name"); }
+                * { return result_fail("name", {"too-long"}); }
+            }
+        }
+        * { return result_fail("name", {"empty"}); }
+    }
+}
+
+fun[exp] validate_config(cfg: ConfigInput): ValidationResult = {
+    var host_r: ValidationResult = validate_config_host(cfg);
+    when(result_failed(host_r)) {
+        case(true) { return host_r; }
+        * {
+            var port_r: ValidationResult = validate_config_port(cfg);
+            when(result_failed(port_r)) {
+                case(true) { return port_r; }
+                * {
+                    var timeout_r: ValidationResult = validate_config_timeout(cfg);
+                    when(result_failed(timeout_r)) {
+                        case(true) { return timeout_r; }
+                        * {
+                            var conn_r: ValidationResult = validate_config_connections(cfg);
+                            when(result_failed(conn_r)) {
+                                case(true) { return conn_r; }
+                                * {
+                                    var name_r: ValidationResult = validate_config_name(cfg);
+                                    when(result_failed(name_r)) {
+                                        case(true) { return name_r; }
+                                        * { return result_pass("config"); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Smoke test
+// ---------------------------------------------------------------------------
+
+fun[exp] validation_smoke_test(): int = {
+    var good_user: UserInput = user_input("alice", "alice@example.com", 30, true);
+    var bad_user: UserInput = user_input("", "a", 5, false);
+
+    var good_result: ValidationResult = validate_user_input(good_user);
+    var bad_result: ValidationResult = validate_user_input(bad_user);
+
+    .echo(result_describe(good_result));
+    .echo(result_describe(bad_result));
+
+    var good_config: ConfigInput = config_input("localhost", 8080, 30, 100, false, "prod");
+    var bad_config: ConfigInput = config_input("", 0, 0, 0, true, "");
+
+    var config_good: ValidationResult = validate_config(good_config);
+    var config_bad: ValidationResult = validate_config(bad_config);
+
+    .echo(result_describe(config_good));
+    .echo(result_describe(config_bad));
+
+    var v1: Validator = validator_new("test");
+    var v2: Validator = validator_strict("strict-test");
+    var v3: Validator = validator_disabled("off");
+
+    .echo(validator_describe(v1));
+    .echo(validator_describe(v2));
+    .echo(validator_describe(v3));
+
+    var c1: Constraint = constraint_required("name");
+    var c2: Constraint = constraint_min_length("email", 5);
+    var c3: Constraint = constraint_range("age", 13, 150);
+    var c4: Constraint = constraint_disable(c3);
+
+    .echo(constraint_describe(c1));
+    .echo(constraint_describe(c2));
+    .echo(constraint_describe(c3));
+    .echo(constraint_describe(c4));
+
+    var s1: Schema = schema_new("user", 1, true);
+    var s2: Schema = schema_with_fields("config", 2, {"host", "port", "timeout"}, 3);
+
+    .echo(schema_describe(s1));
+    .echo(schema_describe(s2));
+
+    var fe1: FieldError = field_error_required("name");
+    var fe2: FieldError = field_error_warning("note", "unusual");
+    var fe3: FieldError = field_error_critical("password", "exposed");
+
+    .echo(error_describe(fe1));
+    .echo(error_describe(fe2));
+    .echo(error_describe(fe3));
+
+    when(result_passed(good_result)) {
+        case(true) {
+            when(result_failed(bad_result)) {
+                case(true) { return 0; }
+                * { return 1; }
+            }
+        }
+        * { return 1; }
+    }
+}

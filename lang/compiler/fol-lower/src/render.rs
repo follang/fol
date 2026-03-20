@@ -245,10 +245,16 @@ mod tests {
     use super::render_lowered_workspace;
     use crate::Lowerer;
     use fol_parser::ast::AstParser;
-    use fol_resolver::resolve_workspace;
+    use fol_resolver::resolve_package_workspace;
     use fol_stream::FileStream;
     use fol_typecheck::Typechecker;
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn safe_temp_dir() -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join("fol_test");
+        std::fs::create_dir_all(&dir).expect("should create test temp root");
+        dir
+    }
 
     #[test]
     fn lowered_workspace_snapshot_is_stable_and_human_readable() {
@@ -262,7 +268,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("snapshot fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("snapshot fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("snapshot fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("snapshot fixture should typecheck");
@@ -287,7 +293,7 @@ mod tests {
 
     #[test]
     fn rendered_workspace_makes_intrinsic_names_and_roles_explicit() {
-        let fixture = std::env::temp_dir().join(format!(
+        let fixture = safe_temp_dir().join(format!(
             "fol_lower_render_intrinsics_{}.fol",
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -312,7 +318,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("intrinsic render fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("intrinsic render fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("intrinsic render fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("intrinsic render fixture should typecheck");

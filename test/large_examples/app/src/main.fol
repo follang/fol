@@ -1,0 +1,676 @@
+// =============================================================================
+// app — integration test application using all libraries
+// =============================================================================
+
+use collections: loc = {"../../collections"};
+use validation: loc = {"../../validation"};
+use logger: loc = {"../../logger"};
+use auth: loc = {"../../auth"};
+use pipeline: loc = {"../../pipeline"};
+
+// ---------------------------------------------------------------------------
+// Collections integration
+// ---------------------------------------------------------------------------
+
+fun[] test_stack_operations(): int = {
+    var s: collections::Stack = collections::stack_new("test-stack", 5);
+    var s2: collections::Stack = collections::stack_push_safe(s, 10);
+    var s3: collections::Stack = collections::stack_push_safe(s2, 20);
+
+    .echo(collections::stack_describe(s));
+    .echo(collections::stack_describe(s3));
+    .echo(collections::stack_size(s3));
+    .echo(collections::stack_can_push(s3));
+
+    when(collections::stack_empty(s)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_queue_operations(): int = {
+    var q: collections::Queue = collections::queue_with_priority("urgent-tasks", 10, 8);
+    var q2: collections::Queue = collections::queue_enqueue_safe(q, "deploy");
+    var q3: collections::Queue = collections::queue_enqueue_safe(q2, "rollback");
+
+    .echo(collections::queue_describe(q3));
+    .echo(collections::queue_high_priority(q3));
+    .echo(collections::queue_size(q3));
+
+    when(collections::queue_can_accept(q3)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_registry_operations(): int = {
+    var r: collections::Registry = collections::registry_new("settings", 50);
+    var r2: collections::Registry = collections::registry_put_safe(r, "timeout", 30);
+    var r3: collections::Registry = collections::registry_put_safe(r2, "retries", 5);
+    var locked: collections::Registry = collections::registry_locked("secrets", 10);
+
+    .echo(collections::registry_describe(r3));
+    .echo(collections::registry_describe(locked));
+    .echo(collections::registry_is_locked(locked));
+
+    when(collections::registry_can_write(r3)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_bucket_operations(): int = {
+    var b: collections::Bucket = collections::bucket_new("alerts", collections::PRIORITY_CRITICAL, 20);
+    var b2: collections::Bucket = collections::bucket_add_safe(b, "disk-full");
+    var b3: collections::Bucket = collections::bucket_add_safe(b2, "memory-high");
+
+    .echo(collections::bucket_describe(b3));
+    .echo(collections::bucket_is_critical(b3));
+
+    var item: collections::BucketItem = collections::item_new("urgent-fix", collections::PRIORITY_CRITICAL, 150);
+    .echo(collections::item_describe(item));
+    .echo(collections::item_needs_attention(item));
+
+    when(collections::bucket_is_critical(b3)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_scored_operations(): int = {
+    var s1: collections::Scored = collections::scored_new("alpha", 95);
+    var s2: collections::Scored = collections::scored_new("beta", 45);
+    var s3: collections::Scored = collections::scored_invalidate(s2);
+
+    .echo(collections::scored_describe(s1));
+    .echo(collections::scored_describe(s2));
+    .echo(collections::scored_describe(s3));
+    .echo(collections::scored_beats(s1, s2));
+    .echo(collections::scored_same_tier(s1, s2));
+
+    when(collections::scored_is_high(s1)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_batch_operations(): int = {
+    var b: collections::Batch = collections::batch_new(42, 3);
+    var b2: collections::Batch = collections::batch_add_item(b, "data-chunk-1");
+    var b3: collections::Batch = collections::batch_mark_done(b2);
+    var b4: collections::Batch = collections::batch_new(43, 0);
+    var b5: collections::Batch = collections::batch_mark_failed(b4);
+
+    .echo(collections::batch_describe(b));
+    .echo(collections::batch_describe(b3));
+    .echo(collections::batch_describe(b5));
+
+    when(collections::batch_is_done(b3)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_span_operations(): int = {
+    var s1: collections::Span = collections::span_new(0, 100, "header");
+    var s2: collections::Span = collections::span_new(50, 150, "body");
+    var s3: collections::Span = collections::span_new(200, 200, "empty");
+
+    .echo(collections::span_describe(s1));
+    .echo(collections::span_describe(s3));
+    .echo(collections::span_overlaps(s1, s2));
+    .echo(collections::span_is_empty(s3));
+    .echo(collections::span_contains_point(s1, 50));
+
+    when(collections::span_starts_before(s1, s2)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Validation integration
+// ---------------------------------------------------------------------------
+
+fun[] test_user_validation(): int = {
+    var good: validation::UserInput = validation::user_input("alice", "alice@example.com", 30, true);
+    var bad_empty: validation::UserInput = validation::user_input("", "", 5, false);
+    var bad_age: validation::UserInput = validation::user_input("bob", "bob@test.com", 200, true);
+    var bad_terms: validation::UserInput = validation::user_input("carol", "carol@test.com", 25, false);
+
+    var r1: validation::ValidationResult = validation::validate_user_input(good);
+    var r2: validation::ValidationResult = validation::validate_user_input(bad_empty);
+    var r3: validation::ValidationResult = validation::validate_user_input(bad_age);
+    var r4: validation::ValidationResult = validation::validate_user_input(bad_terms);
+
+    .echo(validation::result_describe(r1));
+    .echo(validation::result_describe(r2));
+    .echo(validation::result_describe(r3));
+    .echo(validation::result_describe(r4));
+
+    when(validation::result_passed(r1)) {
+        case(true) {
+            when(validation::result_failed(r2)) {
+                case(true) { return 0; }
+                * { return 1; }
+            }
+        }
+        * { return 1; }
+    }
+}
+
+fun[] test_config_validation(): int = {
+    var good: validation::ConfigInput = validation::config_input("localhost", 8080, 30, 100, false, "prod");
+    var bad: validation::ConfigInput = validation::config_input("", 0, 0, 0, true, "");
+
+    var r1: validation::ValidationResult = validation::validate_config(good);
+    var r2: validation::ValidationResult = validation::validate_config(bad);
+
+    .echo(validation::result_describe(r1));
+    .echo(validation::result_describe(r2));
+
+    when(validation::result_passed(r1)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_validators(): int = {
+    var v1: validation::Validator = validation::validator_new("test");
+    var v2: validation::Validator = validation::validator_strict("strict");
+    var v3: validation::Validator = validation::validator_disabled("off");
+    var v4: validation::Validator = validation::validator_with_context(v1, "production");
+
+    .echo(validation::validator_describe(v1));
+    .echo(validation::validator_describe(v2));
+    .echo(validation::validator_describe(v3));
+    .echo(validation::validator_context(v4));
+
+    when(validation::validator_enabled(v1)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_field_errors(): int = {
+    var e1: validation::FieldError = validation::field_error_required("name");
+    var e2: validation::FieldError = validation::field_error_warning("note", "unusual value");
+    var e3: validation::FieldError = validation::field_error_critical("password", "exposed in logs");
+
+    .echo(validation::error_describe(e1));
+    .echo(validation::error_describe(e2));
+    .echo(validation::error_describe(e3));
+    .echo(validation::error_is_blocking(e1));
+    .echo(validation::error_is_critical(e3));
+
+    when(validation::error_matches_field(e1, "name")) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Logger integration
+// ---------------------------------------------------------------------------
+
+fun[] test_logger_levels(): int = {
+    var l1: logger::Logger = logger::logger_new("app");
+    var l2: logger::Logger = logger::logger_debug("dev");
+    var l3: logger::Logger = logger::logger_production("prod");
+    var l4: logger::Logger = logger::logger_silent();
+
+    .echo(logger::logger_describe(l1));
+    .echo(logger::logger_describe(l2));
+    .echo(logger::logger_describe(l3));
+    .echo(logger::logger_describe(l4));
+
+    .echo(logger::logger_accepts(l1, logger::INFO));
+    .echo(logger::logger_accepts(l1, logger::DEBUG));
+    .echo(logger::logger_accepts(l3, logger::WARN));
+    .echo(logger::logger_accepts(l3, logger::DEBUG));
+
+    when(logger::logger_accepts(l1, logger::INFO)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_logger_output(): int = {
+    var l: logger::Logger = logger::logger_verbose("test");
+    var info_len: int = logger::logger_info(l, "application started successfully");
+    var warn_len: int = logger::logger_warn(l, "disk space running low");
+    var err_len: int = logger::logger_error(l, "connection timeout");
+    var trace_len: int = logger::logger_trace(l, "entering main loop");
+
+    .echo(info_len);
+    .echo(warn_len);
+    .echo(err_len);
+    .echo(trace_len);
+
+    when(.gt(info_len, 0)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_log_entries(): int = {
+    var e1: logger::LogEntry = logger::entry_new(logger::INFO, "startup", "main");
+    var e2: logger::LogEntry = logger::entry_with_category(logger::ERROR, "timeout", "db", "network");
+    var e3: logger::LogEntry = logger::entry_with_sequence(logger::WARN, "retry", "http", 7);
+
+    .echo(logger::entry_describe(e1));
+    .echo(logger::entry_describe(e2));
+    .echo(logger::entry_describe(e3));
+    .echo(logger::entry_is_error(e2));
+    .echo(logger::entry_matches_source(e1, "main"));
+
+    when(logger::entry_is_error(e2)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_log_filters(): int = {
+    var f1: logger::LogFilter = logger::filter_new(logger::INFO);
+    var f2: logger::LogFilter = logger::filter_by_source(logger::WARN, "db");
+    var f3: logger::LogFilter = logger::filter_all();
+    var f4: logger::LogFilter = logger::filter_none();
+
+    var entry: logger::LogEntry = logger::entry_new(logger::INFO, "test", "app");
+    var error_entry: logger::LogEntry = logger::entry_with_category(logger::ERROR, "fail", "db", "network");
+
+    .echo(logger::filter_describe(f1));
+    .echo(logger::filter_describe(f2));
+    .echo(logger::filter_accepts_entry(f1, entry));
+    .echo(logger::filter_accepts_entry(f2, error_entry));
+    .echo(logger::filter_accepts_entry(f4, entry));
+
+    when(logger::filter_accepts_entry(f3, entry)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_log_sinks(): int = {
+    var s1: logger::Sink = logger::sink_console("stdout");
+    var s2: logger::Sink = logger::sink_file("app.log", logger::WARN);
+    var s3: logger::Sink = logger::sink_buffer("test");
+    var s4: logger::Sink = logger::sink_null();
+
+    .echo(logger::sink_describe(s1));
+    .echo(logger::sink_describe(s4));
+    .echo(logger::sink_kind_name(s1));
+    .echo(logger::sink_kind_name(s2));
+
+    when(logger::sink_enabled(s1)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_log_formatters(): int = {
+    var f1: logger::Formatter = logger::formatter_plain();
+    var f2: logger::Formatter = logger::formatter_json();
+    var f3: logger::Formatter = logger::formatter_compact();
+    var f4: logger::Formatter = logger::formatter_detailed();
+    var f5: logger::Formatter = logger::formatter_with_prefix(f1, "APP");
+
+    .echo(logger::formatter_describe(f1));
+    .echo(logger::formatter_describe(f2));
+    .echo(logger::formatter_describe(f5));
+    .echo(logger::formatter_field_count(f2));
+    .echo(logger::formatter_field_count(f3));
+
+    when(.eq(logger::formatter_kind_name(f2), "json")) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Auth integration
+// ---------------------------------------------------------------------------
+
+fun[] test_auth_users(): int = {
+    var alice: auth::User = auth::user_new("alice", "alice@example.com", "Alice");
+    var bob: auth::User = auth::user_guest("bob");
+    var carol: auth::User = auth::user_admin("carol", "carol@example.com");
+    var dave: auth::User = auth::user_owner("dave", "dave@example.com");
+
+    .echo(auth::user_describe(alice));
+    .echo(auth::user_describe(bob));
+    .echo(auth::user_describe(carol));
+    .echo(auth::user_describe(dave));
+
+    var verified: auth::User = auth::user_verify(alice);
+    var suspended: auth::User = auth::user_suspend(bob);
+
+    .echo(auth::user_describe(verified));
+    .echo(auth::user_describe(suspended));
+    .echo(auth::user_can_login(verified));
+    .echo(auth::user_can_login(suspended));
+
+    when(auth::user_is_active(verified)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_auth_roles(): int = {
+    var guest: auth::Role = auth::role_guest();
+    var user: auth::Role = auth::role_user();
+    var admin: auth::Role = auth::role_admin();
+    var owner: auth::Role = auth::role_owner();
+
+    .echo(auth::role_describe(guest));
+    .echo(auth::role_describe(admin));
+    .echo(auth::role_describe(owner));
+    .echo(auth::role_outranks(owner, admin));
+    .echo(auth::role_outranks(guest, user));
+
+    when(auth::role_is_admin(admin)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_auth_sessions(): int = {
+    var s1: auth::Session = auth::session_new("sess-001", "alice", 1000, 2000, "10.0.0.1");
+    var s2: auth::Session = auth::session_expire(s1);
+    var s3: auth::Session = auth::session_revoke(s1);
+
+    .echo(auth::session_describe(s1));
+    .echo(auth::session_describe(s2));
+    .echo(auth::session_describe(s3));
+    .echo(auth::session_valid(s1, 1500));
+    .echo(auth::session_valid(s1, 2500));
+    .echo(auth::session_valid(s2, 1500));
+
+    when(auth::session_is_active(s1)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_auth_tokens(): int = {
+    var t1: auth::Token = auth::token_access("abc123", 1000, 2000);
+    var t2: auth::Token = auth::token_api("api789", 1000, "read:all");
+    var t3: auth::Token = auth::token_revoke(t1);
+
+    .echo(auth::token_describe(t1));
+    .echo(auth::token_describe(t2));
+    .echo(auth::token_describe(t3));
+    .echo(auth::token_valid(t1, 1500));
+    .echo(auth::token_valid(t3, 1500));
+
+    when(auth::token_valid(t1, 1500)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_auth_access(): int = {
+    var admin: auth::User = auth::user_admin("admin", "admin@example.com");
+    var guest: auth::User = auth::user_guest("visitor");
+
+    var a1: auth::AccessResult = auth::check_read_access(admin, "documents");
+    var a2: auth::AccessResult = auth::check_admin_access(guest, "settings");
+    var a3: auth::AccessResult = auth::check_write_access(admin, "posts");
+
+    .echo(auth::access_describe(a1));
+    .echo(auth::access_describe(a2));
+    .echo(auth::access_describe(a3));
+
+    when(auth::access_is_allowed(a1)) {
+        case(true) {
+            when(.not(auth::access_is_allowed(a2))) {
+                case(true) { return 0; }
+                * { return 1; }
+            }
+        }
+        * { return 1; }
+    }
+}
+
+fun[] test_auth_policies(): int = {
+    var p1: auth::Policy = auth::policy_public("home", "/");
+    var p2: auth::Policy = auth::policy_authenticated("dashboard", "/dashboard");
+    var p3: auth::Policy = auth::policy_admin_only("admin", "/admin");
+
+    var guest: auth::User = auth::user_guest("visitor");
+    var admin: auth::User = auth::user_admin("admin", "admin@example.com");
+
+    .echo(auth::policy_describe(p1));
+    .echo(auth::policy_describe(p2));
+    .echo(auth::policy_describe(p3));
+    .echo(auth::policy_check_user(p1, guest));
+    .echo(auth::policy_check_user(p3, guest));
+    .echo(auth::policy_check_user(p3, admin));
+
+    when(auth::policy_check_user(p1, guest)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline integration
+// ---------------------------------------------------------------------------
+
+fun[] test_pipeline_stages(): int = {
+    var s1: pipeline::Stage = pipeline::stage_new("parse", pipeline::KIND_TRANSFORM);
+    var s2: pipeline::Stage = pipeline::stage_critical("validate", pipeline::KIND_VALIDATE);
+
+    var started: pipeline::Stage = pipeline::stage_start(s1, 100);
+    var done: pipeline::Stage = pipeline::stage_complete(started, 95);
+    var failed: pipeline::Stage = pipeline::stage_fail(pipeline::stage_start(s2, 50));
+
+    .echo(pipeline::stage_describe(done));
+    .echo(pipeline::stage_describe(failed));
+    .echo(pipeline::stage_kind_name(s1));
+    .echo(pipeline::stage_can_retry(failed));
+
+    when(pipeline::stage_is_done(done)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_pipeline_orchestration(): int = {
+    var p: pipeline::Pipeline = pipeline::pipeline_new("etl", 3);
+    var started: pipeline::Pipeline = pipeline::pipeline_start(p);
+    var stopped: pipeline::Pipeline = pipeline::pipeline_stop(started);
+
+    .echo(pipeline::pipeline_describe(p));
+    .echo(pipeline::pipeline_describe(started));
+    .echo(pipeline::pipeline_describe(stopped));
+    .echo(pipeline::pipeline_mode_name(p));
+
+    var parallel: pipeline::Pipeline = pipeline::pipeline_parallel("batch", 5);
+    .echo(pipeline::pipeline_mode_name(parallel));
+
+    when(.not(pipeline::pipeline_active(stopped))) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_pipeline_transforms(): int = {
+    var t1: pipeline::Transform = pipeline::transform_map("normalize", "raw", "clean");
+    var t2: pipeline::Transform = pipeline::transform_filter("remove-nulls", "value");
+    var t3: pipeline::Transform = pipeline::transform_sort("order", "score");
+    var t4: pipeline::Transform = pipeline::transform_disable(t3);
+
+    .echo(pipeline::transform_describe(t1));
+    .echo(pipeline::transform_describe(t2));
+    .echo(pipeline::transform_describe(t4));
+    .echo(pipeline::transform_preserves_order(t1));
+    .echo(pipeline::transform_preserves_order(t3));
+
+    when(pipeline::transform_enabled(t1)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_pipeline_jobs(): int = {
+    var j1: pipeline::Job = pipeline::job_new("j-001", "process", pipeline::JOB_NORMAL, 5000);
+    var j2: pipeline::Job = pipeline::job_urgent("j-002", "alert", 100);
+
+    var started: pipeline::Job = pipeline::job_start(j1);
+    var done: pipeline::Job = pipeline::job_complete(started);
+    var failed: pipeline::Job = pipeline::job_fail(pipeline::job_start(j2));
+
+    .echo(pipeline::job_describe(done));
+    .echo(pipeline::job_describe(failed));
+    .echo(pipeline::job_priority_name(j1));
+    .echo(pipeline::job_priority_name(j2));
+    .echo(pipeline::job_is_large(pipeline::job_new("j-003", "bulk", pipeline::JOB_LOW, 50000)));
+
+    when(pipeline::job_is_done(done)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_pipeline_workers(): int = {
+    var w1: pipeline::Worker = pipeline::worker_new("w-001", "alpha");
+    var w2: pipeline::Worker = pipeline::worker_concurrent("w-002", "beta", 4);
+    var assigned: pipeline::Worker = pipeline::worker_assign(w1, "job-1");
+    var released: pipeline::Worker = pipeline::worker_release(assigned);
+    var stopped: pipeline::Worker = pipeline::worker_stop(w2);
+
+    .echo(pipeline::worker_describe(w1));
+    .echo(pipeline::worker_describe(assigned));
+    .echo(pipeline::worker_describe(released));
+    .echo(pipeline::worker_describe(stopped));
+
+    when(pipeline::worker_is_idle(released)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Cross-library integration
+// ---------------------------------------------------------------------------
+
+fun[] test_validated_auth(): int = {
+    var input: validation::UserInput = validation::user_input("admin", "admin@example.com", 35, true);
+    var result: validation::ValidationResult = validation::validate_user_input(input);
+
+    when(validation::result_passed(result)) {
+        case(true) {
+            var user: auth::User = auth::user_admin("admin", "admin@example.com");
+            var access: auth::AccessResult = auth::check_admin_access(user, "settings");
+            .echo(auth::access_describe(access));
+            when(auth::access_is_allowed(access)) {
+                case(true) { return 0; }
+                * { return 1; }
+            }
+        }
+        * { return 1; }
+    }
+}
+
+fun[] test_logged_pipeline(): int = {
+    var l: logger::Logger = logger::logger_new("pipeline");
+
+    var stage: pipeline::Stage = pipeline::stage_new("process", pipeline::KIND_TRANSFORM);
+    var started: pipeline::Stage = pipeline::stage_start(stage, 50);
+    logger::logger_info(l, "stage started");
+
+    var done: pipeline::Stage = pipeline::stage_complete(started, 48);
+    logger::logger_info(l, "stage completed");
+
+    .echo(pipeline::stage_describe(done));
+    .echo(logger::logger_describe(l));
+
+    when(pipeline::stage_is_done(done)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+fun[] test_monitored_registry(): int = {
+    var l: logger::Logger = logger::logger_debug("monitor");
+    var reg: collections::Registry = collections::registry_new("config", 100);
+
+    var r2: collections::Registry = collections::registry_put_safe(reg, "host", 1);
+    logger::logger_debug_msg(l, "added host entry");
+
+    var r3: collections::Registry = collections::registry_put_safe(r2, "port", 8080);
+    logger::logger_debug_msg(l, "added port entry");
+
+    .echo(collections::registry_describe(r3));
+    .echo(collections::registry_size(r3));
+
+    when(.not(collections::registry_empty(r3))) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Main — run all tests
+// ---------------------------------------------------------------------------
+
+fun[] main(): int = {
+    // Collections tests
+    var c1: int = test_stack_operations();
+    var c2: int = test_queue_operations();
+    var c3: int = test_registry_operations();
+    var c4: int = test_bucket_operations();
+    var c5: int = test_scored_operations();
+    var c6: int = test_batch_operations();
+    var c7: int = test_span_operations();
+
+    // Validation tests
+    var v1: int = test_user_validation();
+    var v2: int = test_config_validation();
+    var v3: int = test_validators();
+    var v4: int = test_field_errors();
+
+    // Logger tests
+    var l1: int = test_logger_levels();
+    var l2: int = test_logger_output();
+    var l3: int = test_log_entries();
+    var l4: int = test_log_filters();
+    var l5: int = test_log_sinks();
+    var l6: int = test_log_formatters();
+
+    // Auth tests
+    var a1: int = test_auth_users();
+    var a2: int = test_auth_roles();
+    var a3: int = test_auth_sessions();
+    var a4: int = test_auth_tokens();
+    var a5: int = test_auth_access();
+    var a6: int = test_auth_policies();
+
+    // Pipeline tests
+    var p1: int = test_pipeline_stages();
+    var p2: int = test_pipeline_orchestration();
+    var p3: int = test_pipeline_transforms();
+    var p4: int = test_pipeline_jobs();
+    var p5: int = test_pipeline_workers();
+
+    // Cross-library tests
+    var x1: int = test_validated_auth();
+    var x2: int = test_logged_pipeline();
+    var x3: int = test_monitored_registry();
+
+    // Also run each library's internal smoke test
+    var smoke_collections: int = collections::collections_smoke_test();
+    var smoke_validation: int = validation::validation_smoke_test();
+    var smoke_logger: int = logger::logger_smoke_test();
+    var smoke_auth: int = auth::auth_smoke_test();
+    var smoke_pipeline: int = pipeline::pipeline_smoke_test();
+
+    .echo(smoke_collections);
+    .echo(smoke_validation);
+    .echo(smoke_logger);
+    .echo(smoke_auth);
+    .echo(smoke_pipeline);
+
+    return 0;
+}

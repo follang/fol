@@ -1,10 +1,10 @@
 fun[] spin_once(): int = {
     loop(true) {
-        break
+        break;
     }
-    return 7
+    return 7;
 }
 
 fun[] main(): int = {
-    return spin_once()
+    return spin_once();
 }

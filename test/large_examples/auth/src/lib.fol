@@ -1,0 +1,1039 @@
+// =============================================================================
+// auth library — authentication and authorization for FOL
+// =============================================================================
+// Provides: User, Role, Permission, Session, Token, Policy, AccessResult
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// Permission levels
+// ---------------------------------------------------------------------------
+
+ali PermLevel: int
+
+var[exp] PERM_NONE: PermLevel = 0
+var[exp] PERM_READ: PermLevel = 1
+var[exp] PERM_WRITE: PermLevel = 2
+var[exp] PERM_ADMIN: PermLevel = 3
+var[exp] PERM_SUPER: PermLevel = 4
+
+fun[exp] perm_name(level: PermLevel): str = {
+    when(level) {
+        case(PERM_NONE) { return "none"; }
+        case(PERM_READ) { return "read"; }
+        case(PERM_WRITE) { return "write"; }
+        case(PERM_ADMIN) { return "admin"; }
+        * { return "super"; }
+    }
+}
+
+fun[exp] perm_at_least(current: PermLevel, required: PermLevel): bol = {
+    return .ge(current, required);
+}
+
+fun[exp] perm_is_elevated(level: PermLevel): bol = {
+    return .ge(level, PERM_ADMIN);
+}
+
+fun[exp] perm_is_readonly(level: PermLevel): bol = {
+    return .eq(level, PERM_READ);
+}
+
+fun[exp] perm_can_write(level: PermLevel): bol = {
+    return .ge(level, PERM_WRITE);
+}
+
+fun[exp] perm_describe(level: PermLevel): str = {
+    when(perm_is_elevated(level)) {
+        case(true) { return "elevated"; }
+        * {
+            when(perm_can_write(level)) {
+                case(true) { return "standard-write"; }
+                * {
+                    when(perm_is_readonly(level)) {
+                        case(true) { return "readonly"; }
+                        * { return "no-access"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Role — groups permissions under a named role
+// ---------------------------------------------------------------------------
+
+ali RoleKind: int
+
+var[exp] RK_GUEST: RoleKind = 0
+var[exp] RK_USER: RoleKind = 1
+var[exp] RK_EDITOR: RoleKind = 2
+var[exp] RK_MODERATOR: RoleKind = 3
+var[exp] RK_ADMIN: RoleKind = 4
+var[exp] RK_OWNER: RoleKind = 5
+
+typ[exp] Role: rec = {
+    name: str;
+    kind: RoleKind;
+    perm_level: PermLevel;
+    can_delegate: bol;
+    description: str
+}
+
+fun[exp] role_guest(): Role = {
+    return {
+        name = "guest",
+        kind = RK_GUEST,
+        perm_level = PERM_READ,
+        can_delegate = false,
+        description = "read-only guest access",
+    };
+}
+
+fun[exp] role_user(): Role = {
+    return {
+        name = "user",
+        kind = RK_USER,
+        perm_level = PERM_WRITE,
+        can_delegate = false,
+        description = "standard user access",
+    };
+}
+
+fun[exp] role_editor(): Role = {
+    return {
+        name = "editor",
+        kind = RK_EDITOR,
+        perm_level = PERM_WRITE,
+        can_delegate = false,
+        description = "content editor access",
+    };
+}
+
+fun[exp] role_moderator(): Role = {
+    return {
+        name = "moderator",
+        kind = RK_MODERATOR,
+        perm_level = PERM_WRITE,
+        can_delegate = true,
+        description = "moderation privileges",
+    };
+}
+
+fun[exp] role_admin(): Role = {
+    return {
+        name = "admin",
+        kind = RK_ADMIN,
+        perm_level = PERM_ADMIN,
+        can_delegate = true,
+        description = "full admin access",
+    };
+}
+
+fun[exp] role_owner(): Role = {
+    return {
+        name = "owner",
+        kind = RK_OWNER,
+        perm_level = PERM_SUPER,
+        can_delegate = true,
+        description = "system owner",
+    };
+}
+
+fun[exp] role_custom(name: str, kind: RoleKind, level: PermLevel, delegate: bol, desc: str): Role = {
+    return {
+        name = name,
+        kind = kind,
+        perm_level = level,
+        can_delegate = delegate,
+        description = desc,
+    };
+}
+
+fun[exp] role_name(r: Role): str = {
+    return r.name;
+}
+
+fun[exp] role_perm_level(r: Role): PermLevel = {
+    return r.perm_level;
+}
+
+fun[exp] role_can_delegate(r: Role): bol = {
+    return r.can_delegate;
+}
+
+fun[exp] role_is_admin(r: Role): bol = {
+    return .ge(r.kind, RK_ADMIN);
+}
+
+fun[exp] role_is_elevated(r: Role): bol = {
+    return perm_is_elevated(r.perm_level);
+}
+
+fun[exp] role_outranks(a: Role, b: Role): bol = {
+    return .gt(a.kind, b.kind);
+}
+
+fun[exp] role_same_level(a: Role, b: Role): bol = {
+    return .eq(a.kind, b.kind);
+}
+
+fun[exp] role_has_at_least(r: Role, required: PermLevel): bol = {
+    return perm_at_least(r.perm_level, required);
+}
+
+fun[exp] role_describe(r: Role): str = {
+    when(role_is_admin(r)) {
+        case(true) {
+            when(.eq(r.kind, RK_OWNER)) {
+                case(true) { return "owner"; }
+                * { return "admin"; }
+            }
+        }
+        * {
+            when(.eq(r.kind, RK_MODERATOR)) {
+                case(true) { return "moderator"; }
+                * {
+                    when(.eq(r.kind, RK_EDITOR)) {
+                        case(true) { return "editor"; }
+                        * {
+                            when(.eq(r.kind, RK_USER)) {
+                                case(true) { return "user"; }
+                                * { return "guest"; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// User — authenticated identity
+// ---------------------------------------------------------------------------
+
+ali UserStatus: int
+
+var[exp] STATUS_ACTIVE: UserStatus = 0
+var[exp] STATUS_SUSPENDED: UserStatus = 1
+var[exp] STATUS_LOCKED: UserStatus = 2
+var[exp] STATUS_DELETED: UserStatus = 3
+var[exp] STATUS_PENDING: UserStatus = 4
+
+typ[exp] User: rec = {
+    username: str;
+    display_name: str;
+    email: str;
+    role: Role;
+    status: UserStatus;
+    login_count: int;
+    verified: bol
+}
+
+fun[exp] user_new(username: str, email: str, display: str): User = {
+    return {
+        username = username,
+        display_name = display,
+        email = email,
+        role = role_user(),
+        status = STATUS_ACTIVE,
+        login_count = 0,
+        verified = false,
+    };
+}
+
+fun[exp] user_guest(username: str): User = {
+    return {
+        username = username,
+        display_name = username,
+        email = "",
+        role = role_guest(),
+        status = STATUS_ACTIVE,
+        login_count = 0,
+        verified = false,
+    };
+}
+
+fun[exp] user_admin(username: str, email: str): User = {
+    return {
+        username = username,
+        display_name = username,
+        email = email,
+        role = role_admin(),
+        status = STATUS_ACTIVE,
+        login_count = 0,
+        verified = true,
+    };
+}
+
+fun[exp] user_owner(username: str, email: str): User = {
+    return {
+        username = username,
+        display_name = username,
+        email = email,
+        role = role_owner(),
+        status = STATUS_ACTIVE,
+        login_count = 0,
+        verified = true,
+    };
+}
+
+fun[exp] user_with_role(username: str, email: str, r: Role): User = {
+    return {
+        username = username,
+        display_name = username,
+        email = email,
+        role = r,
+        status = STATUS_ACTIVE,
+        login_count = 0,
+        verified = false,
+    };
+}
+
+fun[exp] user_verify(u: User): User = {
+    return {
+        username = u.username,
+        display_name = u.display_name,
+        email = u.email,
+        role = u.role,
+        status = u.status,
+        login_count = u.login_count,
+        verified = true,
+    };
+}
+
+fun[exp] user_suspend(u: User): User = {
+    return {
+        username = u.username,
+        display_name = u.display_name,
+        email = u.email,
+        role = u.role,
+        status = STATUS_SUSPENDED,
+        login_count = u.login_count,
+        verified = u.verified,
+    };
+}
+
+fun[exp] user_lock(u: User): User = {
+    return {
+        username = u.username,
+        display_name = u.display_name,
+        email = u.email,
+        role = u.role,
+        status = STATUS_LOCKED,
+        login_count = u.login_count,
+        verified = u.verified,
+    };
+}
+
+fun[exp] user_delete(u: User): User = {
+    return {
+        username = u.username,
+        display_name = u.display_name,
+        email = u.email,
+        role = u.role,
+        status = STATUS_DELETED,
+        login_count = u.login_count,
+        verified = u.verified,
+    };
+}
+
+fun[exp] user_activate(u: User): User = {
+    return {
+        username = u.username,
+        display_name = u.display_name,
+        email = u.email,
+        role = u.role,
+        status = STATUS_ACTIVE,
+        login_count = u.login_count,
+        verified = u.verified,
+    };
+}
+
+fun[exp] user_change_role(u: User, new_role: Role): User = {
+    return {
+        username = u.username,
+        display_name = u.display_name,
+        email = u.email,
+        role = new_role,
+        status = u.status,
+        login_count = u.login_count,
+        verified = u.verified,
+    };
+}
+
+fun[exp] user_username(u: User): str = {
+    return u.username;
+}
+
+fun[exp] user_display_name(u: User): str = {
+    return u.display_name;
+}
+
+fun[exp] user_email(u: User): str = {
+    return u.email;
+}
+
+fun[exp] user_role(u: User): Role = {
+    return u.role;
+}
+
+fun[exp] user_status(u: User): UserStatus = {
+    return u.status;
+}
+
+fun[exp] user_login_count(u: User): int = {
+    return u.login_count;
+}
+
+fun[exp] user_verified(u: User): bol = {
+    return u.verified;
+}
+
+fun[exp] user_is_active(u: User): bol = {
+    return .eq(u.status, STATUS_ACTIVE);
+}
+
+fun[exp] user_is_suspended(u: User): bol = {
+    return .eq(u.status, STATUS_SUSPENDED);
+}
+
+fun[exp] user_is_locked(u: User): bol = {
+    return .eq(u.status, STATUS_LOCKED);
+}
+
+fun[exp] user_is_deleted(u: User): bol = {
+    return .eq(u.status, STATUS_DELETED);
+}
+
+fun[exp] user_is_admin(u: User): bol = {
+    return role_is_admin(u.role);
+}
+
+fun[exp] user_can_login(u: User): bol = {
+    when(user_is_active(u)) {
+        case(true) { return .not(user_is_locked(u)); }
+        * { return false; }
+    }
+}
+
+fun[exp] user_can_write(u: User): bol = {
+    when(user_is_active(u)) {
+        case(true) { return perm_can_write(u.role.perm_level); }
+        * { return false; }
+    }
+}
+
+fun[exp] user_status_name(u: User): str = {
+    when(u.status) {
+        case(STATUS_ACTIVE) { return "active"; }
+        case(STATUS_SUSPENDED) { return "suspended"; }
+        case(STATUS_LOCKED) { return "locked"; }
+        case(STATUS_DELETED) { return "deleted"; }
+        * { return "pending"; }
+    }
+}
+
+fun[exp] user_describe(u: User): str = {
+    when(user_is_active(u)) {
+        case(true) {
+            when(user_is_admin(u)) {
+                case(true) { return "active-admin"; }
+                * {
+                    when(u.verified) {
+                        case(true) { return "active-verified"; }
+                        * { return "active-unverified"; }
+                    }
+                }
+            }
+        }
+        * {
+            when(user_is_suspended(u)) {
+                case(true) { return "suspended"; }
+                * {
+                    when(user_is_locked(u)) {
+                        case(true) { return "locked"; }
+                        * {
+                            when(user_is_deleted(u)) {
+                                case(true) { return "deleted"; }
+                                * { return "pending"; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Session — tracks an authenticated session
+// ---------------------------------------------------------------------------
+
+ali SessionState: int
+
+var[exp] SESSION_ACTIVE: SessionState = 0
+var[exp] SESSION_EXPIRED: SessionState = 1
+var[exp] SESSION_REVOKED: SessionState = 2
+var[exp] SESSION_REFRESHING: SessionState = 3
+
+typ[exp] Session: rec = {
+    session_id: str;
+    username: str;
+    state: SessionState;
+    created_at: int;
+    expires_at: int;
+    refresh_count: int;
+    ip_address: str
+}
+
+fun[exp] session_new(session_id: str, username: str, created: int, expires: int, ip: str): Session = {
+    return {
+        session_id = session_id,
+        username = username,
+        state = SESSION_ACTIVE,
+        created_at = created,
+        expires_at = expires,
+        refresh_count = 0,
+        ip_address = ip,
+    };
+}
+
+fun[exp] session_expire(s: Session): Session = {
+    return {
+        session_id = s.session_id,
+        username = s.username,
+        state = SESSION_EXPIRED,
+        created_at = s.created_at,
+        expires_at = s.expires_at,
+        refresh_count = s.refresh_count,
+        ip_address = s.ip_address,
+    };
+}
+
+fun[exp] session_revoke(s: Session): Session = {
+    return {
+        session_id = s.session_id,
+        username = s.username,
+        state = SESSION_REVOKED,
+        created_at = s.created_at,
+        expires_at = s.expires_at,
+        refresh_count = s.refresh_count,
+        ip_address = s.ip_address,
+    };
+}
+
+fun[exp] session_id(s: Session): str = {
+    return s.session_id;
+}
+
+fun[exp] session_username(s: Session): str = {
+    return s.username;
+}
+
+fun[exp] session_state(s: Session): SessionState = {
+    return s.state;
+}
+
+fun[exp] session_is_active(s: Session): bol = {
+    return .eq(s.state, SESSION_ACTIVE);
+}
+
+fun[exp] session_is_expired(s: Session): bol = {
+    return .eq(s.state, SESSION_EXPIRED);
+}
+
+fun[exp] session_is_revoked(s: Session): bol = {
+    return .eq(s.state, SESSION_REVOKED);
+}
+
+fun[exp] session_refresh_count(s: Session): int = {
+    return s.refresh_count;
+}
+
+fun[exp] session_ip(s: Session): str = {
+    return s.ip_address;
+}
+
+fun[exp] session_valid(s: Session, now: int): bol = {
+    when(session_is_active(s)) {
+        case(true) { return .lt(now, s.expires_at); }
+        * { return false; }
+    }
+}
+
+fun[exp] session_needs_refresh(s: Session, now: int, threshold: int): bol = {
+    when(session_is_active(s)) {
+        case(true) {
+            return .gt(now, threshold);
+        }
+        * { return false; }
+    }
+}
+
+fun[exp] session_state_name(s: Session): str = {
+    when(s.state) {
+        case(SESSION_ACTIVE) { return "active"; }
+        case(SESSION_EXPIRED) { return "expired"; }
+        case(SESSION_REVOKED) { return "revoked"; }
+        * { return "refreshing"; }
+    }
+}
+
+fun[exp] session_describe(s: Session): str = {
+    when(session_is_active(s)) {
+        case(true) {
+            when(.gt(s.refresh_count, 5)) {
+                case(true) { return "active-many-refreshes"; }
+                * {
+                    when(.gt(s.refresh_count, 0)) {
+                        case(true) { return "active-refreshed"; }
+                        * { return "active-fresh"; }
+                    }
+                }
+            }
+        }
+        * {
+            when(session_is_expired(s)) {
+                case(true) { return "expired"; }
+                * { return "revoked"; }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Token — authentication token
+// ---------------------------------------------------------------------------
+
+ali TokenKind: int
+
+var[exp] TOKEN_ACCESS: TokenKind = 0
+var[exp] TOKEN_REFRESH: TokenKind = 1
+var[exp] TOKEN_API: TokenKind = 2
+var[exp] TOKEN_SERVICE: TokenKind = 3
+
+typ[exp] Token: rec = {
+    value: str;
+    kind: TokenKind;
+    issued_at: int;
+    expires_at: int;
+    revoked: bol;
+    scope: str
+}
+
+fun[exp] token_access(value: str, issued: int, expires: int): Token = {
+    return {
+        value = value,
+        kind = TOKEN_ACCESS,
+        issued_at = issued,
+        expires_at = expires,
+        revoked = false,
+        scope = "user",
+    };
+}
+
+fun[exp] token_refresh(value: str, issued: int, expires: int): Token = {
+    return {
+        value = value,
+        kind = TOKEN_REFRESH,
+        issued_at = issued,
+        expires_at = expires,
+        revoked = false,
+        scope = "refresh",
+    };
+}
+
+fun[exp] token_api(value: str, issued: int, scope: str): Token = {
+    return {
+        value = value,
+        kind = TOKEN_API,
+        issued_at = issued,
+        expires_at = 0,
+        revoked = false,
+        scope = scope,
+    };
+}
+
+fun[exp] token_service(value: str, issued: int): Token = {
+    return {
+        value = value,
+        kind = TOKEN_SERVICE,
+        issued_at = issued,
+        expires_at = 0,
+        revoked = false,
+        scope = "service",
+    };
+}
+
+fun[exp] token_revoke(t: Token): Token = {
+    return {
+        value = t.value,
+        kind = t.kind,
+        issued_at = t.issued_at,
+        expires_at = t.expires_at,
+        revoked = true,
+        scope = t.scope,
+    };
+}
+
+fun[exp] token_value(t: Token): str = {
+    return t.value;
+}
+
+fun[exp] token_revoked(t: Token): bol = {
+    return t.revoked;
+}
+
+fun[exp] token_scope(t: Token): str = {
+    return t.scope;
+}
+
+fun[exp] token_valid(t: Token, now: int): bol = {
+    when(t.revoked) {
+        case(true) { return false; }
+        * {
+            when(.eq(t.expires_at, 0)) {
+                case(true) { return true; }
+                * { return .lt(now, t.expires_at); }
+            }
+        }
+    }
+}
+
+fun[exp] token_kind_name(t: Token): str = {
+    when(t.kind) {
+        case(TOKEN_ACCESS) { return "access"; }
+        case(TOKEN_REFRESH) { return "refresh"; }
+        case(TOKEN_API) { return "api"; }
+        * { return "service"; }
+    }
+}
+
+fun[exp] token_describe(t: Token): str = {
+    when(t.revoked) {
+        case(true) { return "revoked"; }
+        * {
+            when(.eq(t.expires_at, 0)) {
+                case(true) { return "permanent"; }
+                * { return "time-limited"; }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AccessResult — outcome of an access check
+// ---------------------------------------------------------------------------
+
+typ[exp] AccessResult: rec = {
+    allowed: bol;
+    reason: str;
+    resource: str;
+    required_level: PermLevel;
+    actual_level: PermLevel
+}
+
+fun[exp] access_allowed(resource: str, level: PermLevel): AccessResult = {
+    return {
+        allowed = true,
+        reason = "granted",
+        resource = resource,
+        required_level = level,
+        actual_level = level,
+    };
+}
+
+fun[exp] access_denied(resource: str, reason: str, required: PermLevel, actual: PermLevel): AccessResult = {
+    return {
+        allowed = false,
+        reason = reason,
+        resource = resource,
+        required_level = required,
+        actual_level = actual,
+    };
+}
+
+fun[exp] access_is_allowed(r: AccessResult): bol = {
+    return r.allowed;
+}
+
+fun[exp] access_reason(r: AccessResult): str = {
+    return r.reason;
+}
+
+fun[exp] access_resource(r: AccessResult): str = {
+    return r.resource;
+}
+
+fun[exp] access_describe(r: AccessResult): str = {
+    when(r.allowed) {
+        case(true) { return "allowed"; }
+        * {
+            when(.eq(r.reason, "insufficient-permission")) {
+                case(true) { return "denied-permission"; }
+                * {
+                    when(.eq(r.reason, "inactive-user")) {
+                        case(true) { return "denied-inactive"; }
+                        * {
+                            when(.eq(r.reason, "expired-session")) {
+                                case(true) { return "denied-expired"; }
+                                * { return "denied-other"; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Authorization check functions
+// ---------------------------------------------------------------------------
+
+fun[exp] check_access(user: User, resource: str, required: PermLevel): AccessResult = {
+    when(.not(user_is_active(user))) {
+        case(true) {
+            return access_denied(resource, "inactive-user", required, user.role.perm_level);
+        }
+        * {
+            when(.not(perm_at_least(user.role.perm_level, required))) {
+                case(true) {
+                    return access_denied(resource, "insufficient-permission", required, user.role.perm_level);
+                }
+                * {
+                    return access_allowed(resource, user.role.perm_level);
+                }
+            }
+        }
+    }
+}
+
+fun[exp] check_read_access(user: User, resource: str): AccessResult = {
+    return check_access(user, resource, PERM_READ);
+}
+
+fun[exp] check_write_access(user: User, resource: str): AccessResult = {
+    return check_access(user, resource, PERM_WRITE);
+}
+
+fun[exp] check_admin_access(user: User, resource: str): AccessResult = {
+    return check_access(user, resource, PERM_ADMIN);
+}
+
+fun[exp] check_session_access(user: User, session: Session, resource: str, required: PermLevel, now: int): AccessResult = {
+    when(.not(session_valid(session, now))) {
+        case(true) {
+            return access_denied(resource, "expired-session", required, user.role.perm_level);
+        }
+        * {
+            return check_access(user, resource, required);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Policy — defines access rules
+// ---------------------------------------------------------------------------
+
+typ[exp] Policy: rec = {
+    name: str;
+    resource_pattern: str;
+    min_role: RoleKind;
+    require_verified: bol;
+    require_active: bol;
+    description: str
+}
+
+fun[exp] policy_new(name: str, resource: str, min_role: RoleKind, verified: bol): Policy = {
+    return {
+        name = name,
+        resource_pattern = resource,
+        min_role = min_role,
+        require_verified = verified,
+        require_active = true,
+        description = "",
+    };
+}
+
+fun[exp] policy_public(name: str, resource: str): Policy = {
+    return {
+        name = name,
+        resource_pattern = resource,
+        min_role = RK_GUEST,
+        require_verified = false,
+        require_active = false,
+        description = "public access",
+    };
+}
+
+fun[exp] policy_authenticated(name: str, resource: str): Policy = {
+    return {
+        name = name,
+        resource_pattern = resource,
+        min_role = RK_USER,
+        require_verified = false,
+        require_active = true,
+        description = "authenticated users only",
+    };
+}
+
+fun[exp] policy_admin_only(name: str, resource: str): Policy = {
+    return {
+        name = name,
+        resource_pattern = resource,
+        min_role = RK_ADMIN,
+        require_verified = true,
+        require_active = true,
+        description = "admin access only",
+    };
+}
+
+fun[exp] policy_name(p: Policy): str = {
+    return p.name;
+}
+
+fun[exp] policy_resource(p: Policy): str = {
+    return p.resource_pattern;
+}
+
+fun[exp] policy_requires_verified(p: Policy): bol = {
+    return p.require_verified;
+}
+
+fun[exp] policy_check_user(p: Policy, user: User): bol = {
+    when(p.require_active) {
+        case(true) {
+            when(.not(user_is_active(user))) {
+                case(true) { return false; }
+                * {
+                    when(p.require_verified) {
+                        case(true) {
+                            when(.not(user.verified)) {
+                                case(true) { return false; }
+                                * { return .ge(user.role.kind, p.min_role); }
+                            }
+                        }
+                        * { return .ge(user.role.kind, p.min_role); }
+                    }
+                }
+            }
+        }
+        * { return .ge(user.role.kind, p.min_role); }
+    }
+}
+
+fun[exp] policy_describe(p: Policy): str = {
+    when(.eq(p.min_role, RK_GUEST)) {
+        case(true) { return "public"; }
+        * {
+            when(.ge(p.min_role, RK_ADMIN)) {
+                case(true) { return "admin-only"; }
+                * {
+                    when(p.require_verified) {
+                        case(true) { return "verified-users"; }
+                        * { return "authenticated"; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Smoke test
+// ---------------------------------------------------------------------------
+
+fun[exp] auth_smoke_test(): int = {
+    var alice: User = user_new("alice", "alice@example.com", "Alice");
+    var bob: User = user_guest("bob");
+    var carol: User = user_admin("carol", "carol@example.com");
+    var dave: User = user_owner("dave", "dave@example.com");
+
+    .echo(user_describe(alice));
+    .echo(user_describe(bob));
+    .echo(user_describe(carol));
+    .echo(user_describe(dave));
+
+    var verified_alice: User = user_verify(alice);
+    var suspended_bob: User = user_suspend(bob);
+    var locked: User = user_lock(alice);
+    var deleted: User = user_delete(bob);
+
+    .echo(user_describe(verified_alice));
+    .echo(user_describe(suspended_bob));
+    .echo(user_describe(locked));
+    .echo(user_describe(deleted));
+
+    .echo(user_can_login(verified_alice));
+    .echo(user_can_login(suspended_bob));
+    .echo(user_can_write(carol));
+    .echo(user_can_write(bob));
+
+    var r1: Role = role_guest();
+    var r2: Role = role_user();
+    var r3: Role = role_admin();
+    var r4: Role = role_owner();
+
+    .echo(role_describe(r1));
+    .echo(role_describe(r2));
+    .echo(role_describe(r3));
+    .echo(role_describe(r4));
+    .echo(role_outranks(r4, r3));
+    .echo(role_outranks(r1, r2));
+
+    var s1: Session = session_new("sess-001", "alice", 1000, 2000, "10.0.0.1");
+    var s2: Session = session_expire(s1);
+    var s3: Session = session_revoke(s1);
+
+    .echo(session_describe(s1));
+    .echo(session_describe(s2));
+    .echo(session_describe(s3));
+    .echo(session_valid(s1, 1500));
+    .echo(session_valid(s2, 1500));
+
+    var t1: Token = token_access("abc123", 1000, 2000);
+    var t2: Token = token_refresh("ref456", 1000, 5000);
+    var t3: Token = token_api("api789", 1000, "read:all");
+    var t4: Token = token_revoke(t1);
+
+    .echo(token_describe(t1));
+    .echo(token_describe(t2));
+    .echo(token_describe(t3));
+    .echo(token_describe(t4));
+    .echo(token_valid(t1, 1500));
+    .echo(token_valid(t4, 1500));
+
+    var access1: AccessResult = check_read_access(carol, "documents");
+    var access2: AccessResult = check_admin_access(bob, "settings");
+    var access3: AccessResult = check_write_access(verified_alice, "posts");
+    var access4: AccessResult = check_session_access(carol, s1, "admin-panel", PERM_ADMIN, 1500);
+
+    .echo(access_describe(access1));
+    .echo(access_describe(access2));
+    .echo(access_describe(access3));
+    .echo(access_describe(access4));
+
+    var p1: Policy = policy_public("home", "/");
+    var p2: Policy = policy_authenticated("dashboard", "/dashboard");
+    var p3: Policy = policy_admin_only("admin", "/admin");
+
+    .echo(policy_describe(p1));
+    .echo(policy_describe(p2));
+    .echo(policy_describe(p3));
+    .echo(policy_check_user(p1, bob));
+    .echo(policy_check_user(p3, bob));
+    .echo(policy_check_user(p3, carol));
+
+    when(access_is_allowed(access1)) {
+        case(true) {
+            when(.not(access_is_allowed(access2))) {
+                case(true) { return 0; }
+                * { return 1; }
+            }
+        }
+        * { return 1; }
+    }
+}
