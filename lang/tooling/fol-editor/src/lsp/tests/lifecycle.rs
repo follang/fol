@@ -965,6 +965,88 @@ fn lsp_server_reuses_changed_document_snapshot_after_diagnostics_refresh() {
 }
 
 #[test]
+fn lsp_server_keeps_other_file_snapshots_after_a_neighbor_changes() {
+    let (root, uri) = sample_package_root("multi_file_cache_isolation");
+    let second_path = root.join("src/extra.fol");
+    let second_uri = format!("file://{}", second_path.display());
+    let main_text = "fun[] main(): int = {\n    return helper()\n}\n";
+    let extra_text = "fun[] helper(): int = {\n    return 7\n}\n";
+    fs::write(root.join("src/main.fol"), main_text).unwrap();
+    fs::write(&second_path, extra_text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
+    open_document(&mut server, uri.clone(), main_text);
+    open_document(&mut server, second_uri.clone(), extra_text);
+    assert_eq!(analyze_document_diagnostics_call_count(), 2);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
+
+    let hover = |server: &mut EditorLspServer, uri: String, line: u32, character: u32, id: i64| {
+        server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(id),
+                method: "textDocument/hover".to_string(),
+                params: Some(
+                    serde_json::to_value(LspHoverParams {
+                        text_document: LspTextDocumentIdentifier { uri },
+                        position: LspPosition { line, character },
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap()
+    };
+
+    let _main_hover = hover(&mut server, uri.clone(), 1, 12, 740);
+    let _extra_hover = hover(&mut server, second_uri.clone(), 1, 11, 741);
+    assert_eq!(analyze_document_semantics_call_count(), 2);
+
+    let changed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: Some(crate::LspRange {
+                            start: LspPosition {
+                                line: 1,
+                                character: 11,
+                            },
+                            end: LspPosition {
+                                line: 1,
+                                character: 17,
+                            },
+                        }),
+                        range_length: Some(6),
+                        text: "helper".to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert_eq!(changed.len(), 1);
+    assert_eq!(analyze_document_diagnostics_call_count(), 3);
+    assert_eq!(analyze_document_semantics_call_count(), 2);
+
+    let _extra_hover_again = hover(&mut server, second_uri.clone(), 1, 11, 742);
+    assert_eq!(analyze_document_semantics_call_count(), 2);
+
+    let _main_hover_again = hover(&mut server, uri.clone(), 1, 12, 743);
+    assert_eq!(analyze_document_semantics_call_count(), 3);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_did_close_clears_diagnostics_without_reanalysis() {
     let (root, uri) = sample_package_root("close_without_reanalysis");
     let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
