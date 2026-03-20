@@ -23,6 +23,7 @@ use crate::{
     EditorErrorKind, EditorResult, EditorSession, EditorWorkspaceMapping, LspLocation, LspPosition,
 };
 use analysis::{analyze_document, analyze_document_semantics};
+use completion_helpers::completion_context_with_lsp;
 use transport::from_params;
 
 pub struct EditorLspServer {
@@ -265,10 +266,11 @@ impl EditorLspServer {
         let document = self.open_document(uri)?;
         let mapping = self.document_mapping(document, uri)?;
         let snapshot = analyze_document_semantics(document, &mapping)?;
+        let completion_context = completion_context_with_lsp(document, position, context);
         Ok(LspCompletionList {
             is_incomplete: false,
             items: snapshot
-                .plain_completion_items(document, position, context)
+                .completion_items(document, position, completion_context)
                 .into_iter()
                 .map(|item| LspCompletionItem {
                     label: item.label,

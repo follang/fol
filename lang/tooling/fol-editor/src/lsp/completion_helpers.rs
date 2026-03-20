@@ -260,7 +260,12 @@ fn completion_item_priority(item: &EditorCompletionItem) -> u8 {
 
 #[cfg(test)]
 mod tests {
-    use super::{dedupe_completion_items, EditorCompletionItem};
+    use super::{
+        completion_context_with_lsp, dedupe_completion_items, CompletionContext,
+        EditorCompletionItem,
+    };
+    use crate::{EditorDocument, EditorDocumentUri, LspCompletionContext, LspPosition};
+    use std::path::PathBuf;
 
     #[test]
     fn dedupe_completion_items_keeps_higher_priority_symbol_for_same_label() {
@@ -282,6 +287,27 @@ mod tests {
         assert_eq!(items.len(), 1);
         assert_eq!(items[0].label, "helper");
         assert_eq!(items[0].detail.as_deref(), Some("binding"));
+    }
+
+    #[test]
+    fn completion_context_with_lsp_prefers_explicit_dot_trigger() {
+        let uri = EditorDocumentUri::from_file_path(PathBuf::from("/tmp/context.fol")).unwrap();
+        let document = EditorDocument::new(uri, 1, "fun[] main(): int = {\n    return \n}\n".to_string())
+            .unwrap();
+
+        let context = completion_context_with_lsp(
+            &document,
+            LspPosition {
+                line: 1,
+                character: 12,
+            },
+            Some(&LspCompletionContext {
+                trigger_kind: Some(2),
+                trigger_character: Some(".".to_string()),
+            }),
+        );
+
+        assert_eq!(context, CompletionContext::DotTrigger);
     }
 }
 

@@ -5,14 +5,14 @@ use fol_intrinsics::{
 use std::path::PathBuf;
 
 use super::completion_helpers::{
-    completion_builtin_type_item, completion_context_with_lsp,
+    completion_builtin_type_item,
     completion_intrinsic_item, completion_item_from_symbol, completion_namespace_item,
     completion_symbol_is_plain_top_level_candidate, completion_symbol_is_root_visible,
     current_routine_name, dedupe_completion_items, fallback_decl_name,
     fallback_items_from_package_dir, position_to_offset, render_checked_type, render_symbol_kind,
     symbol_kind_code, symbol_visibility_matches_namespace_root, CompletionContext,
 };
-use super::types::{EditorCompletionItem, LspCompletionContext, LspDocumentSymbol, LspHover};
+use super::types::{EditorCompletionItem, LspDocumentSymbol, LspHover};
 
 pub(super) struct SemanticSnapshot {
     pub(super) analyzed_path: Option<PathBuf>,
@@ -24,16 +24,16 @@ pub(super) struct SemanticSnapshot {
 }
 
 impl SemanticSnapshot {
-    pub(super) fn plain_completion_items(
+    pub(super) fn completion_items(
         &self,
         document: &EditorDocument,
         position: LspPosition,
-        context: Option<&LspCompletionContext>,
+        context: CompletionContext,
     ) -> Vec<EditorCompletionItem> {
         if self.current_program().is_none() {
             return self.fallback_completion_items(document, position, context);
         }
-        match completion_context_with_lsp(document, position, context) {
+        match context {
             CompletionContext::Plain => {}
             CompletionContext::TypePosition => {
                 let mut items = self.builtin_type_completion_items();
@@ -62,9 +62,9 @@ impl SemanticSnapshot {
         &self,
         document: &EditorDocument,
         position: LspPosition,
-        context: Option<&LspCompletionContext>,
+        context: CompletionContext,
     ) -> Vec<EditorCompletionItem> {
-        match completion_context_with_lsp(document, position, context) {
+        match context {
             CompletionContext::DotTrigger => self.dot_intrinsic_fallback_completion_items(),
             CompletionContext::QualifiedPath { qualifier } => {
                 self.fallback_qualified_completion_items(&qualifier)
