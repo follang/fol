@@ -396,6 +396,24 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
         serde_json::from_value(completion.result.unwrap()).unwrap();
     assert_eq!(analyze_document_semantics_call_count(), 1);
 
+    let symbols = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(710),
+            method: "textDocument/documentSymbol".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentSymbolParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _symbols: Vec<super::super::LspDocumentSymbol> =
+        serde_json::from_value(symbols.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
     let changed = server
         .handle_notification(JsonRpcNotification {
             jsonrpc: "2.0".to_string(),
