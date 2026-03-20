@@ -42,23 +42,16 @@ impl SemanticSnapshot {
             CompletionContext::TypePosition => {
                 let mut items = self.builtin_type_completion_items();
                 items.extend(self.visible_named_type_completion_items());
-                items.extend(self.fallback_local_named_type_items(document));
-                items.extend(self.fallback_imported_named_type_items(document));
                 return dedupe_completion_items(items);
             }
             CompletionContext::QualifiedPath { qualifier } => {
-                let mut items = self.qualified_completion_items(&qualifier);
-                items.extend(self.fallback_qualified_completion_items(&qualifier));
-                return dedupe_completion_items(items);
+                return self.qualified_completion_items(&qualifier);
             }
             CompletionContext::DotTrigger => return self.dot_intrinsic_fallback_completion_items(),
         }
         let mut items = self.local_completion_items(position);
         items.extend(self.current_package_top_level_completion_items());
         items.extend(self.import_alias_completion_items(position));
-        items.extend(self.fallback_local_scope_items(document, position));
-        items.extend(self.fallback_current_package_top_level_items(document, position));
-        items.extend(self.fallback_import_alias_items(document));
         dedupe_completion_items(items)
     }
 
