@@ -122,6 +122,7 @@ impl EditorLspServer {
                 let result = self.completion(
                     &EditorDocumentUri::parse(&params.text_document.uri)?,
                     params.position,
+                    params.context.as_ref(),
                 )?;
                 Ok(Some(JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
@@ -259,6 +260,7 @@ impl EditorLspServer {
         &self,
         uri: &EditorDocumentUri,
         position: LspPosition,
+        context: Option<&LspCompletionContext>,
     ) -> EditorResult<LspCompletionList> {
         let document = self.open_document(uri)?;
         let mapping = self.document_mapping(document, uri)?;
@@ -266,7 +268,7 @@ impl EditorLspServer {
         Ok(LspCompletionList {
             is_incomplete: false,
             items: snapshot
-                .plain_completion_items(document, position)
+                .plain_completion_items(document, position, context)
                 .into_iter()
                 .map(|item| LspCompletionItem {
                     label: item.label,

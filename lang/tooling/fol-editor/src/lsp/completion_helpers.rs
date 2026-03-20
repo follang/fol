@@ -1,4 +1,4 @@
-use crate::{EditorDocument, LspPosition};
+use crate::{EditorDocument, LspCompletionContext, LspPosition};
 use fol_intrinsics::IntrinsicEntry;
 
 use super::types::EditorCompletionItem;
@@ -53,6 +53,19 @@ pub(crate) fn completion_context(
     }
 
     CompletionContext::Plain
+}
+
+pub(crate) fn completion_context_with_lsp(
+    document: &EditorDocument,
+    position: LspPosition,
+    context: Option<&LspCompletionContext>,
+) -> CompletionContext {
+    if let Some(context) = context {
+        if context.trigger_character.as_deref() == Some(".") {
+            return CompletionContext::DotTrigger;
+        }
+    }
+    completion_context(document, position)
 }
 
 pub(super) fn position_to_offset(text: &str, position: LspPosition) -> Option<usize> {
