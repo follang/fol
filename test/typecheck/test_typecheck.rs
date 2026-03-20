@@ -10,6 +10,7 @@ use fol_typecheck::{
 use std::collections::BTreeMap;
 use std::fs::{create_dir_all, write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn resolve_fixture(path: &str) -> fol_resolver::ResolvedProgram {
@@ -25,11 +26,18 @@ fn resolve_fixture(path: &str) -> fol_resolver::ResolvedProgram {
 }
 
 fn unique_temp_dir(prefix: &str) -> PathBuf {
+    static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
     let nonce = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("System time should be after unix epoch")
         .as_nanos();
-    std::env::temp_dir().join(format!("fol_typecheck_{prefix}_{nonce}"))
+    let sequence = NEXT_TEMP_ID.fetch_add(1, Ordering::Relaxed);
+    std::env::temp_dir().join(format!(
+        "fol_typecheck_{prefix}_{}_{}_{}",
+        std::process::id(),
+        nonce,
+        sequence
+    ))
 }
 
 fn write_fixture_files(root: &Path, files: &[(&str, &str)]) {
@@ -40,6 +48,14 @@ fn write_fixture_files(root: &Path, files: &[(&str, &str)]) {
         }
         write(&path, contents).expect("Fixture file should be writable");
     }
+}
+
+#[test]
+fn unique_temp_dir_produces_distinct_paths_for_rapid_calls() {
+    let first = unique_temp_dir("collision_check");
+    let second = unique_temp_dir("collision_check");
+
+    assert_ne!(first, second);
 }
 
 fn typecheck_fixture_folder(files: &[(&str, &str)]) -> fol_typecheck::TypedProgram {
