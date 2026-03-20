@@ -30,10 +30,10 @@ impl EditorCommandSummary {
 pub fn editor_lsp_entrypoint() -> EditorResult<EditorCommandSummary> {
     Ok(EditorCommandSummary::new(
         "lsp",
-        "ready to serve diagnostics, hover, definition, references, rename, symbols, and completion through `fol tool lsp`",
+        "ready to serve diagnostics, hover, definition, references, rename, semantic tokens, symbols, and completion through `fol tool lsp`",
     )
     .with_detail("transport=stdio")
-    .with_detail("features=diagnostics,hover,definition,references,rename,symbols,completion"))
+    .with_detail("features=diagnostics,hover,definition,references,rename,semanticTokens,symbols,completion"))
 }
 
 fn source_line_count(source: &str) -> usize {
@@ -299,6 +299,7 @@ mod tests {
         assert!(summary.summary.contains("completion"));
         assert!(summary.summary.contains("references"));
         assert!(summary.summary.contains("rename"));
+        assert!(summary.summary.contains("semantic tokens"));
         assert!(summary
             .details
             .iter()
@@ -307,7 +308,7 @@ mod tests {
             .details
             .iter()
             .any(|detail| detail
-                == "features=diagnostics,hover,definition,references,rename,symbols,completion"));
+                == "features=diagnostics,hover,definition,references,rename,semanticTokens,symbols,completion"));
     }
 
     #[test]

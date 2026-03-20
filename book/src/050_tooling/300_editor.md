@@ -44,6 +44,7 @@ It is responsible for:
 - go-to-definition
 - references
 - rename for same-file local symbols
+- semantic tokens
 - document symbols
 - completion
 
@@ -54,12 +55,13 @@ The currently supported v1 LSP surface is:
 - definition
 - references
 - rename for same-file local symbols
+- semantic tokens
 - document symbols
 - completion
 
 The server keeps one semantic snapshot per open document version. It reuses
-that snapshot for hover, definition, references, rename, document symbols, and
-completion until the document changes or closes.
+that snapshot for hover, definition, references, rename, semantic tokens,
+document symbols, and completion until the document changes or closes.
 
 ## Compiler Truth
 

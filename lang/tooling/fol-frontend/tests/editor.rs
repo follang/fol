@@ -35,11 +35,12 @@ fn editor_lsp_command_is_publicly_dispatchable() {
     assert!(result.summary.contains("definition"));
     assert!(result.summary.contains("references"));
     assert!(result.summary.contains("rename"));
+    assert!(result.summary.contains("semantic tokens"));
     assert!(result.summary.contains("symbols"));
     assert!(result.summary.contains("completion"));
     assert!(result
         .summary
-        .contains("features=diagnostics,hover,definition,references,rename,symbols,completion"));
+        .contains("features=diagnostics,hover,definition,references,rename,semanticTokens,symbols,completion"));
 }
 
 #[test]
