@@ -460,6 +460,80 @@ fn lsp_server_returns_no_code_actions_without_structured_suggestions() {
 }
 
 #[test]
+fn lsp_server_code_actions_follow_requested_diagnostic_context() {
+    let (root, uri) = sample_package_root("code_action_context");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return mian\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri.clone(), &text);
+    let unresolved = diagnostics[0]
+        .diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.code == "R1003")
+        .cloned()
+        .expect("unresolved-name diagnostic should be published");
+    let unrelated = crate::LspDiagnostic {
+        range: unresolved.range,
+        severity: unresolved.severity,
+        code: "T9999".to_string(),
+        source: "fol".to_string(),
+        message: "[T9999] unrelated".to_string(),
+        related_information: Vec::new(),
+    };
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(125),
+            method: "textDocument/codeAction".to_string(),
+            params: Some(
+                serde_json::to_value(LspCodeActionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    range: unresolved.range,
+                    context: LspCodeActionContext {
+                        diagnostics: vec![unrelated],
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let actions: Vec<LspCodeAction> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert!(actions.is_empty());
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(126),
+            method: "textDocument/codeAction".to_string(),
+            params: Some(
+                serde_json::to_value(LspCodeActionParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    range: unresolved.range,
+                    context: LspCodeActionContext {
+                        diagnostics: vec![unresolved],
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let actions: Vec<LspCodeAction> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert_eq!(actions.len(), 1);
+    assert_eq!(actions[0].title, "replace with 'main'");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_returns_same_package_namespaced_references() {
     let (root, uri) = sample_package_root("same_package_namespaced_references");
     fs::create_dir_all(root.join("src/api")).unwrap();

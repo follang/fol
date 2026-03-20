@@ -138,6 +138,7 @@ impl EditorLspServer {
                 let result = self.code_actions(
                     &EditorDocumentUri::parse(&params.text_document.uri)?,
                     params.range,
+                    &params.context.diagnostics,
                 )?;
                 Ok(Some(JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
@@ -369,10 +370,11 @@ impl EditorLspServer {
         &mut self,
         uri: &EditorDocumentUri,
         range: LspRange,
+        diagnostics: &[crate::LspDiagnostic],
     ) -> EditorResult<Vec<LspCodeAction>> {
         let document = self.open_document(uri)?.clone();
         let snapshot = self.semantic_snapshot(uri, &document)?;
-        Ok(snapshot.code_actions(uri.as_str(), range))
+        Ok(snapshot.code_actions(uri.as_str(), range, diagnostics))
     }
 
     pub fn document_symbols(

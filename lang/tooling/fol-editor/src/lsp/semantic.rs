@@ -99,6 +99,7 @@ impl SemanticSnapshot {
         &self,
         uri: &str,
         range: LspRange,
+        requested_diagnostics: &[LspDiagnostic],
     ) -> Vec<super::types::LspCodeAction> {
         let Some(analyzed_path) = self.analyzed_path.as_ref() else {
             return Vec::new();
@@ -117,6 +118,14 @@ impl SemanticSnapshot {
                     return None;
                 }
                 let lsp_diagnostic = diagnostic_to_lsp(diagnostic);
+                if !requested_diagnostics.is_empty()
+                    && !requested_diagnostics.iter().any(|requested| {
+                        requested.code == lsp_diagnostic.code
+                            && requested.range == lsp_diagnostic.range
+                    })
+                {
+                    return None;
+                }
                 let suggestion = diagnostic
                     .suggestions
                     .iter()
