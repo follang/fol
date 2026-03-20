@@ -77,6 +77,16 @@ Formatting is intentionally whole-document only right now.
 `textDocument/rangeFormatting` stays unsupported until there is a safe
 structure-preserving boundary instead of a partial line-rewriter.
 
+The current formatter contract is intentionally narrow but explicit:
+
+- indentation is four spaces per brace depth
+- lines are trimmed before indentation is re-applied
+- trailing blank lines are removed
+- output always ends with one final newline when the document is non-empty
+- line endings are normalized to `\n`
+- `build.fol` follows the same formatter entrypoint and indentation rules as
+  ordinary source files
+
 Diagnostics refresh on `didOpen` and `didChange`.
 
 Semantic requests keep one semantic snapshot per open document version and
