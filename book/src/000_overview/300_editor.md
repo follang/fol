@@ -10,6 +10,7 @@ It owns:
 - the language server for compiler-backed editor services
 - build-file affordances for `build.fol` through the same parse/highlight/symbol
   and LSP surfaces used for ordinary source files
+- one public editor command surface under `fol tool ...`
 
 The detailed operational reference now lives in the Tooling section:
 

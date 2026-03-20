@@ -26,16 +26,16 @@ The active implementation work belongs in [`PLAN.md`](../PLAN.md).
 
 ## Future Formatting Work
 
-- a formatter integrated through `fol editor format`
+- a formatter integrated through `fol tool format`
 - formatting range support
 - formatting diff/code-action support
 
 ## Future Frontend Exposure
 
-- `fol editor semantic-tokens`
-- `fol editor references`
-- `fol editor rename`
-- `fol editor format`
+- `fol tool semantic-tokens`
+- `fol tool references`
+- `fol tool rename`
+- `fol tool format`
 
 These should wait until the underlying editor features are real.
 
