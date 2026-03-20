@@ -146,6 +146,60 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
 }
 
 #[test]
+fn editor_references_command_can_exclude_declarations() {
+    let root = repo_root();
+    let fixture = "test/apps/fixtures/record_flow/main.fol";
+
+    let (_, references) = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "references",
+            fixture,
+            "--line",
+            "5",
+            "--character",
+            "11",
+            "--exclude-declaration",
+        ],
+        &root,
+    )
+    .expect("editor references should dispatch with declaration exclusion");
+
+    assert_eq!(references.command, "references");
+    assert!(references.summary.contains("include_declaration=false"));
+}
+
+#[test]
+fn editor_rename_command_surfaces_safe_boundary_failures() {
+    let root = repo_root();
+    let fixture = "test/apps/fixtures/record_flow/main.fol";
+    let error = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "rename",
+            fixture,
+            "--line",
+            "0",
+            "--character",
+            "6",
+            "entry",
+        ],
+        &root,
+    )
+    .expect_err("top-level rename should stay outside the safe local boundary");
+    let json = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig {
+        mode: fol_frontend::OutputMode::Json,
+    })
+    .render_error(&error)
+    .expect("json render should succeed");
+
+    assert!(json.contains("\"kind\": \"FrontendCommandFailed\""));
+    assert!(json.contains("same-file local symbols only"));
+}
+
+#[test]
 fn editor_commands_respect_requested_output_mode() {
     let root = repo_root();
     let fixture = "test/apps/fixtures/record_flow/main.fol";

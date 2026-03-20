@@ -674,6 +674,108 @@ fn lsp_server_reuses_changed_document_snapshot_after_diagnostics_refresh() {
 }
 
 #[test]
+fn lsp_server_did_close_clears_diagnostics_without_reanalysis() {
+    let (root, uri) = sample_package_root("close_without_reanalysis");
+    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    reset_analysis_stage_counts();
+    let _open = open_document(&mut server, uri.clone(), text);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let closed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didClose".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidCloseTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 1,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+
+    assert_eq!(closed.len(), 1);
+    assert!(closed[0].diagnostics.is_empty());
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 1,
+            parse_directory_diagnostics: 1,
+            load_directory_package: 1,
+            resolve_workspace: 1,
+            typecheck_workspace: 1,
+        }
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_parser_diagnostics_stop_before_package_load_and_resolution() {
+    let (root, uri) = sample_package_root("parser_stage_short_circuit");
+    let text = "fun[] main(: int = {\n    return 0\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    reset_analysis_stage_counts();
+    let diagnostics = open_document(&mut server, uri, text);
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(!diagnostics[0].diagnostics.is_empty());
+    assert_eq!(diagnostics[0].diagnostics[0].code, "P1001");
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 1,
+            parse_directory_diagnostics: 1,
+            load_directory_package: 0,
+            resolve_workspace: 0,
+            typecheck_workspace: 0,
+        }
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_package_load_failures_stop_before_resolution_and_typecheck() {
+    let (root, uri) = sample_package_root("package_load_stage_short_circuit");
+    fs::remove_file(root.join("build.fol")).unwrap();
+    let text = "fun[] main(): int = {\n    return 0\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    reset_analysis_stage_counts();
+    let diagnostics = open_document(&mut server, uri, text);
+
+    assert_eq!(diagnostics.len(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 1,
+            parse_directory_diagnostics: 1,
+            load_directory_package: 1,
+            resolve_workspace: 0,
+            typecheck_workspace: 0,
+        }
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_drops_semantic_snapshots_when_documents_close_and_reopen() {
     let (root, uri) = sample_package_root("semantic_cache_reopen");
     let text = "fun[] main(): int = {\n    return 7\n}\n";
