@@ -2,7 +2,7 @@ use super::helpers::{open_document, sample_loc_workspace_root, sample_package_ro
 use super::super::{
     EditorLspServer, JsonRpcId, JsonRpcRequest, LspDefinitionParams, LspDocumentSymbolParams,
     LspLocation, LspPosition, LspReferenceContext, LspReferenceParams, LspRenameParams,
-    LspTextDocumentIdentifier, LspWorkspaceEdit,
+    LspSignatureHelp, LspSignatureHelpParams, LspTextDocumentIdentifier, LspWorkspaceEdit,
 };
 use crate::EditorConfig;
 use std::fs;
@@ -232,6 +232,132 @@ fn lsp_server_can_exclude_declarations_from_references() {
     assert_eq!(references.len(), 1);
     assert_eq!(references[0].uri, uri);
     assert_eq!(references[0].range.start.line, 4);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_reports_signature_help_for_plain_calls() {
+    let (root, uri) = sample_package_root("signature_help_plain");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] helper(left: int, right: str): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return helper(1, \"ok\")\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(120),
+            method: "textDocument/signatureHelp".to_string(),
+            params: Some(
+                serde_json::to_value(LspSignatureHelpParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    position: LspPosition {
+                        line: 4,
+                        character: 22,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let help: Option<LspSignatureHelp> = serde_json::from_value(response.result.unwrap()).unwrap();
+    let help = help.expect("signature help should resolve for helper call");
+
+    assert_eq!(help.active_signature, Some(0));
+    assert_eq!(help.active_parameter, Some(1));
+    assert_eq!(help.signatures.len(), 1);
+    assert_eq!(help.signatures[0].label, "helper(int, str): int");
+    assert_eq!(help.signatures[0].parameters.len(), 2);
+    assert_eq!(help.signatures[0].parameters[0].label, "int");
+    assert_eq!(help.signatures[0].parameters[1].label, "str");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_reports_signature_help_for_qualified_calls() {
+    let (root, uri) = sample_package_root("signature_help_qualified");
+    fs::create_dir_all(root.join("src/api")).unwrap();
+    fs::write(
+        root.join("src/api/lib.fol"),
+        "fun[exp] helper(left: int, right: str): int = {\n    return left\n}\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return api::helper(\n        1,\n        \"ok\"\n    )\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(121),
+            method: "textDocument/signatureHelp".to_string(),
+            params: Some(
+                serde_json::to_value(LspSignatureHelpParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    position: LspPosition {
+                        line: 3,
+                        character: 10,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let help: Option<LspSignatureHelp> = serde_json::from_value(response.result.unwrap()).unwrap();
+    let help = help.expect("signature help should resolve for qualified helper call");
+
+    assert_eq!(help.active_parameter, Some(1));
+    assert_eq!(help.signatures[0].label, "helper(int, str): int");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_returns_no_signature_help_outside_calls() {
+    let (root, uri) = sample_package_root("signature_help_none");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] helper(left: int): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return 0\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(122),
+            method: "textDocument/signatureHelp".to_string(),
+            params: Some(
+                serde_json::to_value(LspSignatureHelpParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    position: LspPosition {
+                        line: 4,
+                        character: 11,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let help: Option<LspSignatureHelp> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert!(help.is_none());
 
     fs::remove_dir_all(root).ok();
 }

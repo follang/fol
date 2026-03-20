@@ -13,9 +13,10 @@ pub use types::{
     LspCompletionOptions, LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
     LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams, LspDocumentSymbol,
     LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams, LspInitializeResult,
-    LspPublishDiagnosticsParams, LspReferenceContext, LspReferenceParams, LspRenameParams,
-    LspSemanticTokens, LspSemanticTokensLegend, LspSemanticTokensOptions,
-    LspSemanticTokensParams, LspServerCapabilities, LspServerInfo,
+    LspParameterInformation, LspPublishDiagnosticsParams, LspReferenceContext, LspReferenceParams,
+    LspRenameParams, LspSemanticTokens, LspSemanticTokensLegend, LspSemanticTokensOptions,
+    LspSemanticTokensParams, LspServerCapabilities, LspServerInfo, LspSignatureHelp,
+    LspSignatureHelpOptions, LspSignatureHelpParams, LspSignatureInformation,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
     LspTextDocumentSyncOptions, LspTextEdit, LspVersionedTextDocumentIdentifier,
     LspWorkspaceEdit,
@@ -65,6 +66,9 @@ impl EditorLspServer {
                             hover_provider: true,
                             definition_provider: true,
                             document_symbol_provider: true,
+                            signature_help_provider: Some(LspSignatureHelpOptions {
+                                trigger_characters: vec!["(".to_string(), ",".to_string()],
+                            }),
                             references_provider: Some(true),
                             rename_provider: Some(true),
                             semantic_tokens_provider: Some(LspSemanticTokensOptions {
@@ -123,6 +127,21 @@ impl EditorLspServer {
                     id: request.id,
                     result: Some(
                         serde_json::to_value(result).expect("definition result should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "textDocument/signatureHelp" => {
+                let params: LspSignatureHelpParams = from_params(request.params)?;
+                let result = self.signature_help(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                    params.position,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("signature help should serialize"),
                     ),
                     error: None,
                 }))
@@ -317,6 +336,16 @@ impl EditorLspServer {
         Ok(snapshot
             .reference_at(position)
             .and_then(|reference| snapshot.definition_for_reference(reference)))
+    }
+
+    pub fn signature_help(
+        &mut self,
+        uri: &EditorDocumentUri,
+        position: LspPosition,
+    ) -> EditorResult<Option<LspSignatureHelp>> {
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        Ok(snapshot.signature_help(&document, position))
     }
 
     pub fn document_symbols(

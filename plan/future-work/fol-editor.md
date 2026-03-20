@@ -16,7 +16,6 @@ The active implementation work belongs in [`PLAN.md`](../PLAN.md).
 ## Future LSP Work
 
 - code actions
-- signature help
 - workspace symbols
 - multi-file rename safety
 - incremental semantic invalidation instead of full-document/package reanalysis

@@ -45,6 +45,7 @@ It is responsible for:
 - compiler-backed diagnostics
 - hover
 - go-to-definition
+- signature help for plain and qualified routine calls
 - references
 - rename for same-file local symbols
 - semantic tokens
@@ -56,6 +57,7 @@ The currently supported v1 LSP surface is:
 - diagnostics
 - hover
 - definition
+- signature help for plain and qualified routine calls
 - references
 - rename for same-file local symbols
 - semantic tokens
@@ -63,8 +65,9 @@ The currently supported v1 LSP surface is:
 - completion
 
 The server keeps one semantic snapshot per open document version. It reuses
-that snapshot for hover, definition, references, rename, semantic tokens,
-document symbols, and completion until the document changes or closes.
+that snapshot for hover, definition, signature help, references, rename,
+semantic tokens, document symbols, and completion until the document changes or
+closes.
 
 ## Compiler Truth
 

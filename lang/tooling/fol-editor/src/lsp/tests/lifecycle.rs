@@ -35,6 +35,14 @@ fn lsp_server_handles_initialize_shutdown_and_exit() {
     assert!(result.capabilities.hover_provider);
     assert!(result.capabilities.definition_provider);
     assert!(result.capabilities.document_symbol_provider);
+    let signature_help_provider = result
+        .capabilities
+        .signature_help_provider
+        .expect("signature help should be advertised");
+    assert_eq!(
+        signature_help_provider.trigger_characters,
+        vec!["(".to_string(), ",".to_string()]
+    );
     assert_eq!(result.capabilities.references_provider, Some(true));
     assert_eq!(result.capabilities.rename_provider, Some(true));
     let semantic_tokens_provider = result
@@ -110,14 +118,14 @@ fn lsp_server_rejects_unimplemented_v1_methods_explicitly() {
         .handle_request(JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             id: JsonRpcId::Number(99),
-            method: "textDocument/signatureHelp".to_string(),
+            method: "textDocument/codeAction".to_string(),
             params: Some(serde_json::json!({})),
         })
         .expect_err("unimplemented requests should fail explicitly");
 
     assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
     assert!(error.message.contains("unsupported LSP request"));
-    assert!(error.message.contains("textDocument/signatureHelp"));
+    assert!(error.message.contains("textDocument/codeAction"));
 }
 
 #[test]

@@ -63,6 +63,8 @@ pub struct LspServerCapabilities {
     pub definition_provider: bool,
     pub document_symbol_provider: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub signature_help_provider: Option<LspSignatureHelpOptions>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub references_provider: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rename_provider: Option<bool>,
@@ -75,6 +77,13 @@ pub struct LspServerCapabilities {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct LspCompletionOptions {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub trigger_characters: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspSignatureHelpOptions {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub trigger_characters: Vec<String>,
 }
@@ -184,6 +193,13 @@ pub struct LspDefinitionParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct LspSignatureHelpParams {
+    pub text_document: LspTextDocumentIdentifier,
+    pub position: LspPosition,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspReferenceContext {
     pub include_declaration: bool,
 }
@@ -258,6 +274,30 @@ pub struct EditorCompletionItem {
     pub kind: u8,
     pub detail: Option<String>,
     pub insert_text: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspSignatureHelp {
+    pub signatures: Vec<LspSignatureInformation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_signature: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_parameter: Option<u32>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspSignatureInformation {
+    pub label: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub parameters: Vec<LspParameterInformation>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspParameterInformation {
+    pub label: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

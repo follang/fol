@@ -5,6 +5,7 @@ use crate::{
 use fol_intrinsics::{
     intrinsic_registry, IntrinsicAvailability, IntrinsicStatus, IntrinsicSurface,
 };
+use fol_parser::ast::{AstNode, SyntaxNodeId};
 use std::path::PathBuf;
 
 use super::completion_helpers::{
@@ -15,7 +16,10 @@ use super::completion_helpers::{
     fallback_items_from_package_dir, position_to_offset, render_checked_type, render_symbol_kind,
     symbol_kind_code, symbol_visibility_matches_namespace_root, CompletionContext,
 };
-use super::types::{EditorCompletionItem, LspDocumentSymbol, LspHover};
+use super::types::{
+    EditorCompletionItem, LspDocumentSymbol, LspHover, LspParameterInformation, LspSignatureHelp,
+    LspSignatureInformation,
+};
 
 const SEMANTIC_TOKEN_TYPES: &[&str] = &["namespace", "type", "function", "parameter", "variable"];
 
@@ -34,6 +38,61 @@ pub(crate) struct SemanticSnapshot {
 }
 
 impl SemanticSnapshot {
+    pub(super) fn signature_help(
+        &self,
+        document: &EditorDocument,
+        position: LspPosition,
+    ) -> Option<LspSignatureHelp> {
+        let resolved = self.resolved_workspace.as_ref()?;
+        let typed = self.typed_workspace.as_ref()?;
+        let (package, program) = self.current_resolved_package()?;
+        let typed_package = typed.package(&package.identity)?;
+        let cursor_offset = offset_for_position(&document.text, position)?;
+        let call_site = self.call_site_at_position(program, document, cursor_offset)?;
+        let reference = program
+            .all_references()
+            .find(|reference| reference.syntax_id == Some(call_site.callee_syntax_id))?;
+        let symbol_id = reference.resolved?;
+        let declared_type = typed_package.program.typed_symbol(symbol_id)?.declared_type?;
+        let signature = match typed_package.program.type_table().get(declared_type) {
+            Some(fol_typecheck::CheckedType::Routine(signature)) => signature,
+            _ => return None,
+        };
+        let parameters = signature
+            .params
+            .iter()
+            .map(|type_id| render_checked_type(typed_package.program.type_table(), *type_id))
+            .collect::<Vec<_>>();
+        let label = render_signature_label(
+            program.symbol(symbol_id).map(|symbol| symbol.name.as_str()).unwrap_or(&call_site.display_name),
+            &parameters,
+            signature.return_type.map(|type_id| {
+                render_checked_type(typed_package.program.type_table(), type_id)
+            }),
+            signature.error_type.map(|type_id| {
+                render_checked_type(typed_package.program.type_table(), type_id)
+            }),
+        );
+        let active_parameter = if parameters.is_empty() {
+            None
+        } else {
+            Some(call_site.active_parameter.min(parameters.len().saturating_sub(1)) as u32)
+        };
+
+        let _ = resolved;
+        Some(LspSignatureHelp {
+            signatures: vec![LspSignatureInformation {
+                label,
+                parameters: parameters
+                    .into_iter()
+                    .map(|label| LspParameterInformation { label })
+                    .collect(),
+            }],
+            active_signature: Some(0),
+            active_parameter,
+        })
+    }
+
     pub(super) fn semantic_tokens_for_current_path(&self) -> Vec<u32> {
         let Some(program) = self.current_program() else {
             return Vec::new();
@@ -623,6 +682,51 @@ impl SemanticSnapshot {
             .map(|unit| unit.namespace.clone())
     }
 
+    fn current_resolved_package(
+        &self,
+    ) -> Option<(&fol_resolver::ResolvedPackage, &fol_resolver::ResolvedProgram)> {
+        let resolved = self.resolved_workspace.as_ref()?;
+        let analyzed_path = self.analyzed_path.as_ref()?;
+        let path_text = analyzed_path.to_string_lossy();
+        resolved.packages().find_map(|package| {
+            package
+                .program
+                .source_units
+                .iter()
+                .any(|unit| unit.path == path_text)
+                .then_some((package, &package.program))
+        })
+    }
+
+    fn call_site_at_position(
+        &self,
+        program: &fol_resolver::ResolvedProgram,
+        document: &EditorDocument,
+        cursor_offset: usize,
+    ) -> Option<SignatureCallSite> {
+        let source_unit = self.current_source_unit(program)?;
+        let path = self.analyzed_path.as_ref()?;
+        let text = document.text.as_str();
+        let mut best: Option<SignatureCallSite> = None;
+        for item in &program.syntax().source_units {
+            if item.path != source_unit.path {
+                continue;
+            }
+            for top_level in &item.items {
+                visit_call_sites(
+                    &top_level.node,
+                    program,
+                    path.as_path(),
+                    text,
+                    cursor_offset,
+                    &mut best,
+                );
+            }
+            break;
+        }
+        best
+    }
+
     // COMPILER-BACKED: resolver reference lookup (no text fallback)
     pub(super) fn reference_at(
         &self,
@@ -951,6 +1055,212 @@ impl SemanticSnapshot {
             .source_units
             .iter()
             .find(move |unit| unit.path == path_text)
+    }
+}
+
+#[derive(Debug, Clone)]
+struct SignatureCallSite {
+    callee_syntax_id: SyntaxNodeId,
+    display_name: String,
+    active_parameter: usize,
+    span_len: usize,
+}
+
+fn visit_call_sites(
+    node: &AstNode,
+    program: &fol_resolver::ResolvedProgram,
+    path: &std::path::Path,
+    text: &str,
+    cursor_offset: usize,
+    best: &mut Option<SignatureCallSite>,
+) {
+    match node {
+        AstNode::FunctionCall {
+            syntax_id: Some(syntax_id),
+            name,
+            ..
+        } => {
+            if let Some(candidate) =
+                signature_call_site(program, path, text, cursor_offset, *syntax_id, name)
+            {
+                choose_better_call_site(best, candidate);
+            }
+        }
+        AstNode::QualifiedFunctionCall { path: qualified, .. } => {
+            if let Some(syntax_id) = qualified.syntax_id() {
+                if let Some(candidate) = signature_call_site(
+                    program,
+                    path,
+                    text,
+                    cursor_offset,
+                    syntax_id,
+                    &qualified.joined(),
+                ) {
+                    choose_better_call_site(best, candidate);
+                }
+            }
+        }
+        _ => {}
+    }
+    for child in node.children() {
+        visit_call_sites(child, program, path, text, cursor_offset, best);
+    }
+}
+
+fn choose_better_call_site(best: &mut Option<SignatureCallSite>, candidate: SignatureCallSite) {
+    match best {
+        Some(current) if current.span_len <= candidate.span_len => {}
+        _ => *best = Some(candidate),
+    }
+}
+
+fn signature_call_site(
+    program: &fol_resolver::ResolvedProgram,
+    path: &std::path::Path,
+    text: &str,
+    cursor_offset: usize,
+    callee_syntax_id: SyntaxNodeId,
+    display_name: &str,
+) -> Option<SignatureCallSite> {
+    let origin = program.syntax_index().origin(callee_syntax_id)?;
+    if origin.file.as_deref()? != path.to_str()? {
+        return None;
+    }
+    let callee_start = offset_for_origin(text, origin)?;
+    let callee_end = callee_start + origin.length;
+    let open_paren = find_call_open_paren(text, callee_end)?;
+    let close_paren = find_matching_paren(text, open_paren)?;
+    if cursor_offset < callee_start || cursor_offset > close_paren + 1 {
+        return None;
+    }
+    Some(SignatureCallSite {
+        callee_syntax_id,
+        display_name: display_name.to_string(),
+        active_parameter: active_parameter_index(text, open_paren, cursor_offset),
+        span_len: close_paren.saturating_sub(callee_start),
+    })
+}
+
+fn offset_for_origin(text: &str, origin: &fol_parser::ast::SyntaxOrigin) -> Option<usize> {
+    offset_for_position(
+        text,
+        LspPosition {
+            line: origin.line.saturating_sub(1) as u32,
+            character: origin.column.saturating_sub(1) as u32,
+        },
+    )
+}
+
+fn offset_for_position(text: &str, position: LspPosition) -> Option<usize> {
+    let mut offset = 0usize;
+    for (line_index, line) in text.split_inclusive('\n').enumerate() {
+        if line_index as u32 == position.line {
+            let line_text = line.strip_suffix('\n').unwrap_or(line);
+            return if position.character as usize <= line_text.len() {
+                Some(offset + position.character as usize)
+            } else if position.character as usize == line.len() {
+                Some(offset + line.len())
+            } else {
+                None
+            };
+        }
+        offset += line.len();
+    }
+    if position.line == text.lines().count() as u32 {
+        Some(text.len())
+    } else {
+        None
+    }
+}
+
+fn find_call_open_paren(text: &str, callee_end: usize) -> Option<usize> {
+    let bytes = text.as_bytes();
+    let mut cursor = callee_end;
+    while cursor < bytes.len() {
+        match bytes[cursor] {
+            b'(' => return Some(cursor),
+            b' ' | b'\t' | b'\r' | b'\n' => cursor += 1,
+            _ => return None,
+        }
+    }
+    None
+}
+
+fn find_matching_paren(text: &str, open_paren: usize) -> Option<usize> {
+    let bytes = text.as_bytes();
+    let mut depth = 0usize;
+    let mut index = open_paren;
+    while index < bytes.len() {
+        match bytes[index] {
+            b'(' => depth += 1,
+            b')' => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            b'"' => {
+                index += 1;
+                while index < bytes.len() {
+                    match bytes[index] {
+                        b'\\' => index += 2,
+                        b'"' => break,
+                        _ => index += 1,
+                    }
+                }
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    None
+}
+
+fn active_parameter_index(text: &str, open_paren: usize, cursor_offset: usize) -> usize {
+    if cursor_offset <= open_paren + 1 {
+        return 0;
+    }
+    let bytes = text.as_bytes();
+    let limit = cursor_offset.min(bytes.len());
+    let mut depth = 0usize;
+    let mut index = open_paren + 1;
+    let mut parameter = 0usize;
+    while index < limit {
+        match bytes[index] {
+            b'(' | b'[' | b'{' => depth += 1,
+            b')' | b']' | b'}' => {
+                depth = depth.saturating_sub(1);
+            }
+            b',' if depth == 0 => parameter += 1,
+            b'"' => {
+                index += 1;
+                while index < limit {
+                    match bytes[index] {
+                        b'\\' => index += 2,
+                        b'"' => break,
+                        _ => index += 1,
+                    }
+                }
+            }
+            _ => {}
+        }
+        index += 1;
+    }
+    parameter
+}
+
+fn render_signature_label(
+    name: &str,
+    parameters: &[String],
+    return_type: Option<String>,
+    error_type: Option<String>,
+) -> String {
+    let params = parameters.join(", ");
+    match (return_type, error_type) {
+        (Some(returns), Some(errors)) => format!("{name}({params}): {returns} / {errors}"),
+        (Some(returns), None) => format!("{name}({params}): {returns}"),
+        (None, Some(errors)) => format!("{name}({params}) / {errors}"),
+        (None, None) => format!("{name}({params})"),
     }
 }
 

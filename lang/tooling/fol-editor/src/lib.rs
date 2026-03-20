@@ -30,9 +30,11 @@ pub use lsp::{
     LspCompletionList, LspCompletionOptions, LspCompletionParams, LspDefinitionParams,
     LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams,
     LspDocumentSymbol, LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams,
-    LspInitializeResult, LspPublishDiagnosticsParams, LspReferenceContext, LspReferenceParams,
-    LspRenameParams, LspSemanticTokens, LspSemanticTokensLegend, LspSemanticTokensOptions,
-    LspSemanticTokensParams, LspServerCapabilities, LspServerInfo,
+    LspInitializeResult, LspParameterInformation, LspPublishDiagnosticsParams,
+    LspReferenceContext, LspReferenceParams, LspRenameParams, LspSemanticTokens,
+    LspSemanticTokensLegend, LspSemanticTokensOptions, LspSemanticTokensParams,
+    LspServerCapabilities, LspServerInfo, LspSignatureHelp, LspSignatureHelpOptions,
+    LspSignatureHelpParams, LspSignatureInformation,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
     LspTextDocumentSyncOptions, LspTextEdit, LspVersionedTextDocumentIdentifier,
     LspWorkspaceEdit,
@@ -235,6 +237,7 @@ mod tests {
         assert!(rendered.contains("Content-Length:"));
         assert!(!rendered.contains("\"method\":\"initialize\""));
         assert!(rendered.contains("\"hoverProvider\":true"));
+        assert!(rendered.contains("\"signatureHelpProvider\""));
         assert!(
             rendered.contains("\"completion_provider\"")
                 || rendered.contains("\"completionProvider\"")
@@ -310,6 +313,7 @@ mod tests {
         )
         .unwrap();
         let rendered = String::from_utf8(output).unwrap();
+        assert!(rendered.contains("\"signatureHelpProvider\""));
         assert!(rendered.contains("\"completionProvider\""));
         assert!(rendered.contains("\"isIncomplete\":false"));
         assert!(rendered.contains("\"label\":\"value\""));
