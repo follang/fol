@@ -17,7 +17,6 @@ The active implementation work belongs in [`PLAN.md`](../PLAN.md).
 
 - references
 - rename
-- completion
 - semantic tokens
 - code actions
 - signature help
@@ -42,8 +41,5 @@ These should wait until the underlying editor features are real.
 
 ## Future Editor Ecosystem Work
 
-- VS Code extension glue
-- Neovim integration helpers
-- Helix/Zed distribution assets
 - packaged Tree-sitter releases
 - packaged LSP binaries/releases

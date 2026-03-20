@@ -43,7 +43,18 @@ It is responsible for:
 - hover
 - go-to-definition
 - document symbols
-- completion, as that feature grows
+- completion
+
+The currently supported v1 LSP surface is:
+
+- diagnostics
+- hover
+- definition
+- document symbols
+- completion
+
+Requests outside that v1 set are not advertised yet and should be treated as
+future work until they are implemented for real.
 
 ## Compiler Truth
 
