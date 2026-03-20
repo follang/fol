@@ -1,5 +1,9 @@
-use crate::{lsp::analysis::CachedSemanticSnapshot, EditorDocumentStore, EditorWorkspaceMapping};
+use crate::{
+    lsp::analysis::CachedSemanticSnapshot, EditorDocumentStore, EditorWorkspaceMapping,
+    EditorWorkspaceRoots,
+};
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EditorConfig {
@@ -12,6 +16,7 @@ pub struct EditorSession {
     pub config: EditorConfig,
     pub documents: EditorDocumentStore,
     pub mappings: BTreeMap<String, EditorWorkspaceMapping>,
+    pub(crate) workspace_roots: BTreeMap<PathBuf, EditorWorkspaceRoots>,
     pub(crate) semantic_snapshots: BTreeMap<String, CachedSemanticSnapshot>,
     pub shutdown_requested: bool,
 }
@@ -35,6 +40,7 @@ impl EditorSession {
             config,
             documents: EditorDocumentStore::default(),
             mappings: BTreeMap::new(),
+            workspace_roots: BTreeMap::new(),
             semantic_snapshots: BTreeMap::new(),
             shutdown_requested: false,
         }
@@ -65,6 +71,7 @@ mod tests {
         let session = EditorSession::new(EditorConfig::default());
         assert!(session.documents.is_empty());
         assert!(session.mappings.is_empty());
+        assert!(session.workspace_roots.is_empty());
         assert!(session.semantic_snapshots.is_empty());
         assert!(!session.shutdown_requested);
     }

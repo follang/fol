@@ -3,6 +3,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EditorWorkspaceRoots {
+    pub package_root: Option<PathBuf>,
+    pub workspace_root: Option<PathBuf>,
+    pub analysis_root: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EditorWorkspaceMapping {
     pub document_path: PathBuf,
     pub package_root: Option<PathBuf>,
@@ -42,22 +49,41 @@ pub fn map_document_workspace(
     path: &Path,
     config: &EditorConfig,
 ) -> EditorResult<EditorWorkspaceMapping> {
-    let absolute = if path.is_absolute() {
-        path.to_path_buf()
+    let absolute = canonical_document_path(path)?;
+    let roots = discover_workspace_roots(
+        absolute.parent().ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::InvalidDocumentPath,
+                format!("document '{}' has no parent directory", absolute.display()),
+            )
+        })?,
+        config,
+    );
+    Ok(EditorWorkspaceMapping {
+        document_path: absolute,
+        package_root: roots.package_root,
+        workspace_root: roots.workspace_root,
+        analysis_root: roots.analysis_root,
+    })
+}
+
+pub(crate) fn canonical_document_path(path: &Path) -> EditorResult<PathBuf> {
+    if path.is_absolute() {
+        Ok(path.to_path_buf())
     } else {
         std::fs::canonicalize(path).map_err(|error| {
             EditorError::new(
                 EditorErrorKind::InvalidDocumentPath,
                 format!("failed to resolve '{}': {error}", path.display()),
             )
-        })?
-    };
-    let directory = absolute.parent().ok_or_else(|| {
-        EditorError::new(
-            EditorErrorKind::InvalidDocumentPath,
-            format!("document '{}' has no parent directory", absolute.display()),
-        )
-    })?;
+        })
+    }
+}
+
+pub(crate) fn discover_workspace_roots(
+    directory: &Path,
+    config: &EditorConfig,
+) -> EditorWorkspaceRoots {
     let package_root = find_upward_marker(directory, "package.yaml");
     let workspace_root = config
         .root_markers
@@ -68,12 +94,11 @@ pub fn map_document_workspace(
         .clone()
         .or_else(|| package_root.clone())
         .unwrap_or_else(|| directory.to_path_buf());
-    Ok(EditorWorkspaceMapping {
-        document_path: absolute,
+    EditorWorkspaceRoots {
         package_root,
         workspace_root,
         analysis_root,
-    })
+    }
 }
 
 pub fn materialize_analysis_overlay(

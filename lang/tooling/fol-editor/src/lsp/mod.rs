@@ -19,13 +19,15 @@ pub use types::{
 };
 
 use crate::{
-    dedup_lsp_diagnostics, map_document_workspace, EditorConfig, EditorDocument, EditorDocumentUri, EditorError,
-    EditorErrorKind, EditorResult, EditorSession, EditorWorkspaceMapping, LspLocation, LspPosition,
+    dedup_lsp_diagnostics, EditorConfig, EditorDocument, EditorDocumentUri, EditorError,
+    EditorErrorKind, EditorResult, EditorSession, EditorWorkspaceMapping, EditorWorkspaceRoots,
+    LspLocation, LspPosition,
 };
 use analysis::analyze_document_semantics;
 use completion_helpers::completion_context_with_lsp;
 use std::sync::Arc;
 use transport::from_params;
+use crate::workspace::{canonical_document_path, discover_workspace_roots};
 
 pub struct EditorLspServer {
     pub session: EditorSession,
@@ -165,8 +167,7 @@ impl EditorLspServer {
                     params.text_document.version,
                     params.text_document.text,
                 )?;
-                let mapping =
-                    map_document_workspace(document.path.as_path(), &self.session.config)?;
+                let mapping = self.cached_document_mapping(document.path.as_path())?;
                 self.session
                     .mappings
                     .insert(uri.as_str().to_string(), mapping);
@@ -303,19 +304,45 @@ impl EditorLspServer {
     }
 
     fn document_mapping(
-        &self,
+        &mut self,
         document: &EditorDocument,
         uri: &EditorDocumentUri,
     ) -> EditorResult<EditorWorkspaceMapping> {
-        Ok(self
-            .session
-            .mappings
-            .get(uri.as_str())
-            .cloned()
-            .unwrap_or(map_document_workspace(
-                document.path.as_path(),
-                &self.session.config,
-            )?))
+        if let Some(mapping) = self.session.mappings.get(uri.as_str()) {
+            return Ok(mapping.clone());
+        }
+        self.cached_document_mapping(document.path.as_path())
+    }
+
+    fn cached_document_mapping(&mut self, path: &std::path::Path) -> EditorResult<EditorWorkspaceMapping> {
+        let absolute = canonical_document_path(path)?;
+        let directory = absolute.parent().ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::InvalidDocumentPath,
+                format!("document '{}' has no parent directory", absolute.display()),
+            )
+        })?;
+        let roots = self.cached_workspace_roots(directory);
+        Ok(EditorWorkspaceMapping {
+            document_path: absolute,
+            package_root: roots.package_root,
+            workspace_root: roots.workspace_root,
+            analysis_root: roots.analysis_root,
+        })
+    }
+
+    fn cached_workspace_roots(
+        &mut self,
+        directory: &std::path::Path,
+    ) -> EditorWorkspaceRoots {
+        if let Some(roots) = self.session.workspace_roots.get(directory) {
+            return roots.clone();
+        }
+        let roots = discover_workspace_roots(directory, &self.session.config);
+        self.session
+            .workspace_roots
+            .insert(directory.to_path_buf(), roots.clone());
+        roots
     }
 
     fn semantic_snapshot(

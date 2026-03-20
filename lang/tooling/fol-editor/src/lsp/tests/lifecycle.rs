@@ -483,6 +483,30 @@ fn lsp_server_drops_semantic_snapshots_when_documents_close_and_reopen() {
 }
 
 #[test]
+fn lsp_server_caches_workspace_root_discovery_for_same_directory() {
+    let (root, uri) = sample_package_root("workspace_cache");
+    let src = root.join("src");
+    let extra = src.join("extra.fol");
+    let extra_uri = format!("file://{}", extra.display());
+    let text = "fun[] extra(): int = {\n    return 9\n}\n";
+    fs::write(&extra, text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    open_document(
+        &mut server,
+        uri,
+        &fs::read_to_string(src.join("main.fol")).unwrap(),
+    );
+    assert_eq!(server.session.workspace_roots.len(), 1);
+
+    open_document(&mut server, extra_uri.clone(), text);
+    assert_eq!(server.session.workspace_roots.len(), 1);
+    assert!(server.session.mappings.contains_key(extra_uri.as_str()));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_applies_incremental_text_document_changes() {
     let (root, uri) = sample_package_root("incremental_change");
     let mut server = EditorLspServer::new(EditorConfig::default());

@@ -43,6 +43,7 @@ pub use tree_sitter::{
 };
 pub use workspace::{
     map_document_workspace, materialize_analysis_overlay, EditorAnalysisOverlay,
+    EditorWorkspaceRoots,
     EditorWorkspaceMapping,
 };
 
