@@ -233,6 +233,77 @@ fn editor_subcommands_parse_through_derive_tree() {
 }
 
 #[test]
+fn editor_subcommands_parse_edge_flags_and_output_modes() {
+    let references = parse_clean([
+        "fol",
+        "tool",
+        "--output",
+        "plain",
+        "references",
+        "demo/main.fol",
+        "--line",
+        "5",
+        "--character",
+        "11",
+        "--exclude-declaration",
+    ]);
+    let rename = parse_clean([
+        "fol",
+        "tool",
+        "--output",
+        "json",
+        "rename",
+        "demo/main.fol",
+        "--line",
+        "5",
+        "--character",
+        "11",
+        "count",
+    ]);
+
+    assert_eq!(
+        references.command,
+        Some(FrontendCommand::Tool(ToolCommand {
+            output: FrontendOutputArgs {
+                output: OutputMode::Plain,
+            },
+            command: ToolSubcommand::References(EditorReferenceCommand {
+                path: "demo/main.fol".to_string(),
+                line: 5,
+                character: 11,
+                exclude_declaration: true,
+            }),
+        }))
+    );
+    assert_eq!(
+        rename.command,
+        Some(FrontendCommand::Tool(ToolCommand {
+            output: FrontendOutputArgs {
+                output: OutputMode::Json,
+            },
+            command: ToolSubcommand::Rename(EditorRenameCommand {
+                path: "demo/main.fol".to_string(),
+                line: 5,
+                character: 11,
+                new_name: "count".to_string(),
+            }),
+        }))
+    );
+}
+
+#[test]
+fn unsupported_future_editor_commands_stay_rejected_by_cli() {
+    for args in [
+        vec!["fol", "tool", "workspace-symbols", "needle"],
+        vec!["fol", "tool", "range-format", "demo/main.fol"],
+        vec!["fol", "tool", "semanticTokens", "demo/main.fol"],
+    ] {
+        let error = FrontendCli::try_parse_from(args).expect_err("future editor command should stay rejected");
+        assert_eq!(error.kind(), clap::error::ErrorKind::InvalidSubcommand);
+    }
+}
+
+#[test]
 fn completion_command_parses_requested_shell() {
     let cli = parse_clean(["fol", "tool", "completion", "bash"]);
 
