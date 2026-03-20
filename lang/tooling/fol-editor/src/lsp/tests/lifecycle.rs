@@ -587,6 +587,102 @@ fn lsp_server_applies_multiple_incremental_changes_in_one_notification() {
 }
 
 #[test]
+fn lsp_server_tracks_incremental_edits_through_incomplete_and_recovered_text() {
+    let (root, uri) = sample_package_root("incremental_recovery");
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    open_document(
+        &mut server,
+        uri.clone(),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    );
+
+    let broken = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: Some(crate::LspRange {
+                            start: LspPosition {
+                                line: 2,
+                                character: 0,
+                            },
+                            end: LspPosition {
+                                line: 2,
+                                character: 1,
+                            },
+                        }),
+                        range_length: Some(1),
+                        text: String::new(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert_eq!(broken.len(), 1);
+    assert!(!broken[0].diagnostics.is_empty());
+    assert_eq!(
+        server
+            .session
+            .documents
+            .get(&crate::EditorDocumentUri::parse(&uri).unwrap())
+            .unwrap()
+            .version,
+        2
+    );
+
+    let recovered = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 3,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: Some(crate::LspRange {
+                            start: LspPosition {
+                                line: 2,
+                                character: 0,
+                            },
+                            end: LspPosition {
+                                line: 2,
+                                character: 0,
+                            },
+                        }),
+                        range_length: Some(0),
+                        text: "}".to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert_eq!(recovered.len(), 1);
+    assert!(recovered[0].diagnostics.is_empty());
+    assert_eq!(
+        server
+            .session
+            .documents
+            .get(&crate::EditorDocumentUri::parse(&uri).unwrap())
+            .unwrap()
+            .text,
+        "fun[] main(): int = {\n    return 0\n}\n"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_surfaces_parser_diagnostics_from_open_documents() {
     let (root, uri) = sample_package_root("parser_diag");
     let mut server = EditorLspServer::new(EditorConfig::default());
