@@ -1785,6 +1785,150 @@ fn lsp_server_serves_semantic_requests_from_incrementally_updated_text() {
 }
 
 #[test]
+fn lsp_server_invalidates_stale_snapshots_after_symbol_boundary_edits() {
+    let (root, uri) = sample_package_root("incremental_symbol_boundary");
+    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
+    open_document(&mut server, uri.clone(), text);
+
+    let initial_hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(760),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let initial_hover: Option<LspHover> =
+        serde_json::from_value(initial_hover.result.unwrap()).unwrap();
+    assert!(initial_hover
+        .expect("initial hover should resolve")
+        .contents
+        .contains("value"));
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![
+                        LspTextDocumentContentChangeEvent {
+                            range: Some(crate::LspRange {
+                                start: LspPosition {
+                                    line: 1,
+                                    character: 8,
+                                },
+                                end: LspPosition {
+                                    line: 1,
+                                    character: 13,
+                                },
+                            }),
+                            range_length: Some(5),
+                            text: "total".to_string(),
+                        },
+                        LspTextDocumentContentChangeEvent {
+                            range: Some(crate::LspRange {
+                                start: LspPosition {
+                                    line: 2,
+                                    character: 11,
+                                },
+                                end: LspPosition {
+                                    line: 2,
+                                    character: 16,
+                                },
+                            }),
+                            range_length: Some(5),
+                            text: "total".to_string(),
+                        },
+                    ],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert_eq!(analyze_document_diagnostics_call_count(), 2);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(761),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let completion: LspCompletionList =
+        serde_json::from_value(completion.result.unwrap()).unwrap();
+    let labels = completion
+        .items
+        .iter()
+        .map(|item| item.label.as_str())
+        .collect::<Vec<_>>();
+    assert!(labels.contains(&"total"));
+    assert!(!labels.contains(&"value"));
+    assert_eq!(analyze_document_semantics_call_count(), 2);
+
+    let updated_hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(762),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let updated_hover: Option<LspHover> =
+        serde_json::from_value(updated_hover.result.unwrap()).unwrap();
+    assert!(updated_hover
+        .expect("updated hover should resolve")
+        .contents
+        .contains("total"));
+    assert_eq!(analyze_document_semantics_call_count(), 2);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_surfaces_parser_diagnostics_from_open_documents() {
     let (root, uri) = sample_package_root("parser_diag");
     let mut server = EditorLspServer::new(EditorConfig::default());
