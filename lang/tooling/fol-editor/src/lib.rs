@@ -77,13 +77,14 @@ pub fn crate_name() -> &'static str {
 mod tests {
     use super::{
         crate_name, diagnostic_to_lsp, editor_format_file, editor_highlight_file,
-        editor_lsp_entrypoint, editor_parse_file, editor_symbols_file, editor_tree_generate_bundle,
+        editor_lsp_entrypoint, editor_parse_file, editor_references_file, editor_rename_file,
+        editor_semantic_tokens_file, editor_symbols_file, editor_tree_generate_bundle,
         fol_tree_sitter_corpus, fol_tree_sitter_grammar, fol_tree_sitter_highlights_query,
         fol_tree_sitter_locals_query, fol_tree_sitter_query_snapshots,
         fol_tree_sitter_symbols_query, map_document_workspace, materialize_analysis_overlay,
         Editor, EditorConfig, EditorDocument, EditorDocumentPath, EditorDocumentStore,
         EditorDocumentUri, EditorError, EditorErrorKind, EditorLspServer, EditorResult,
-        EditorSession, LspDiagnosticSeverity, CRATE_NAME,
+        EditorSession, LspDiagnosticSeverity, LspPosition, CRATE_NAME,
     };
     use std::io::Cursor;
     use std::path::{Path, PathBuf};
@@ -207,9 +208,9 @@ mod tests {
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        std::fs::write(root.join("build.fol"), "pro[] build(graph: Graph): non = {\n    return graph\n}\n").unwrap();
+        std::fs::write(root.join("build.fol"), "pro[] build(graph: Graph): non = {\n    return graph;\n};\n").unwrap();
         let file = src.join("main.fol");
-        let text = "fun[] main(): int = {\n    return 0\n}\n";
+        let text = "fun[] main(): int = {\n    return 0;\n};\n";
         std::fs::write(&file, text).unwrap();
 
         let path = file;
@@ -274,11 +275,11 @@ mod tests {
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(
             root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         )
         .unwrap();
         let file = src.join("main.fol");
-        let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+        let text = "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n";
         std::fs::write(&file, text).unwrap();
         let uri = format!("file://{}", file.display());
 

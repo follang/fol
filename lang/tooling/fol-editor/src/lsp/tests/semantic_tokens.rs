@@ -1,6 +1,6 @@
 use super::helpers::{open_document, sample_package_root};
 use super::super::{
-    EditorLspServer, JsonRpcId, JsonRpcRequest, LspPosition, LspSemanticTokens,
+    EditorLspServer, JsonRpcId, JsonRpcRequest, LspSemanticTokens,
     LspSemanticTokensParams, LspTextDocumentIdentifier,
 };
 use crate::EditorConfig;
@@ -29,7 +29,7 @@ fn lsp_server_returns_semantic_tokens_for_source_files() {
     let (root, uri) = sample_package_root("semantic_tokens_source");
     fs::write(
         root.join("src/main.fol"),
-        "typ[] Local: rec = {\n    value: int\n}\n\nfun[] helper(total: int): int = {\n    var value: Local = total\n    return value\n}\n",
+        "typ[] Local: rec = {\n    value: int;\n};\n\nfun[] helper(total: int): int = {\n    var value: Local = total;\n    return value;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -61,7 +61,7 @@ fn lsp_server_returns_semantic_tokens_for_source_files() {
 
 #[test]
 fn lsp_server_returns_semantic_tokens_for_build_files() {
-    let (root, uri) = sample_package_root("semantic_tokens_build");
+    let (root, _uri) = sample_package_root("semantic_tokens_build");
     let build_uri = format!("file://{}", root.join("build.fol").display());
     let build_text = fs::read_to_string(root.join("build.fol")).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());

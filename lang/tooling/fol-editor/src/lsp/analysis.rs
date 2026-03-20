@@ -142,12 +142,22 @@ pub(super) fn analyze_document_semantics(
                 Ok(prepared) => prepared,
                 Err(error) => {
                     let diagnostic = error.to_diagnostic();
+                    let lsp_diags = if diagnostic_targets_path(&diagnostic, overlay.document_path()) {
+                        vec![diagnostic_to_lsp(&diagnostic)]
+                    } else if !parser_diags.is_empty() {
+                        parser_diags
+                            .iter()
+                            .map(|d| diagnostic_to_lsp(d))
+                            .collect()
+                    } else {
+                        vec![diagnostic_to_lsp(&diagnostic)]
+                    };
                     return Ok(SemanticSnapshot {
                         analyzed_path: Some(overlay.document_path().to_path_buf()),
                         source_document_path: mapping.document_path.clone(),
                         source_package_root: mapping.package_root.clone(),
                         compiler_diagnostics: vec![diagnostic.clone()],
-                        diagnostics: vec![diagnostic_to_lsp(&diagnostic)],
+                        diagnostics: lsp_diags,
                         resolved_workspace: None,
                         typed_workspace: None,
                     })
@@ -246,7 +256,9 @@ pub(super) fn analyze_document_diagnostics(
 }
 
 pub(super) fn diagnostic_targets_path(diagnostic: &Diagnostic, path: &Path) -> bool {
-    let path_text = path.to_string_lossy();
+    let canonical = std::fs::canonicalize(path)
+        .unwrap_or_else(|_| path.to_path_buf());
+    let path_text = canonical.to_string_lossy();
     diagnostic
         .primary_location()
         .and_then(|location| location.file.as_ref())

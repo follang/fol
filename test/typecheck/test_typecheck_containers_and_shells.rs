@@ -125,6 +125,7 @@ fn shell_typing_accepts_optional_and_error_payload_lifting() {
          };\n\
          fun[] fail(): int / Failure = {\n\
              report \"broken\";\n\
+             return 0;\n\
          };\n",
     )]);
 

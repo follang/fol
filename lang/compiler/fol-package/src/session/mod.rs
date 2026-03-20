@@ -3,7 +3,7 @@ use crate::{
     PackageIdentity, PackageSourceKind, PreparedPackage,
 };
 use fol_lexer::lexer::stage3::Elements;
-use fol_parser::ast::{AstParser, ParsedPackage, UsePathSegment};
+use fol_parser::ast::{AstParser, ParsedPackage, SyntaxOrigin, UsePathSegment};
 use fol_stream::{FileStream, Source, SourceType};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -378,16 +378,42 @@ pub fn parse_directory_package_syntax(
     let mut parser = AstParser::new();
 
     parser.parse_package(&mut lexer).map_err(|diagnostics| {
-        let first = diagnostics.into_iter().next()
+        let mut iter = diagnostics.into_iter();
+        let first = iter.next()
             .expect("parse_package should produce at least one error");
-        PackageError::new(
-            PackageErrorKind::InvalidInput,
-            format!(
-                "package loader could not parse imported package '{}': {}",
-                root.display(),
-                first.message
+        let origin = first.primary_location().map(|loc| SyntaxOrigin {
+            file: loc.file.clone(),
+            line: loc.line,
+            column: loc.column,
+            length: loc.length.unwrap_or(1),
+        });
+        let message = format!(
+            "package loader could not parse imported package '{}': {}",
+            root.display(),
+            first.message
+        );
+        let mut error = match origin {
+            Some(origin) => PackageError::with_origin(
+                PackageErrorKind::InvalidInput,
+                message,
+                origin,
             ),
-        )
+            None => PackageError::new(PackageErrorKind::InvalidInput, message),
+        };
+        for extra in iter {
+            if let Some(loc) = extra.primary_location() {
+                error = error.with_related_origin(
+                    SyntaxOrigin {
+                        file: loc.file.clone(),
+                        line: loc.line,
+                        column: loc.column,
+                        length: loc.length.unwrap_or(1),
+                    },
+                    extra.message.clone(),
+                );
+            }
+        }
+        error
     })
 }
 

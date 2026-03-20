@@ -102,18 +102,43 @@ pub fn parse_package_build_mode(path: &Path) -> Result<PackageBuildMode, Package
 }
 
 fn build_parse_error(path: &Path, diagnostics: Vec<fol_diagnostics::Diagnostic>) -> PackageError {
-    let first = diagnostics
-        .into_iter()
+    let mut iter = diagnostics.into_iter();
+    let first = iter
         .next()
         .expect("build parser should produce at least one error");
-    PackageError::new(
-        PackageErrorKind::InvalidInput,
-        format!(
-            "package loader could not parse package build file '{}': {}",
-            path.display(),
-            first.message
+    let origin = first.primary_location().map(|loc| SyntaxOrigin {
+        file: loc.file.clone(),
+        line: loc.line,
+        column: loc.column,
+        length: loc.length.unwrap_or(1),
+    });
+    let message = format!(
+        "package loader could not parse package build file '{}': {}",
+        path.display(),
+        first.message
+    );
+    let mut error = match origin {
+        Some(origin) => PackageError::with_origin(
+            PackageErrorKind::InvalidInput,
+            message,
+            origin,
         ),
-    )
+        None => PackageError::new(PackageErrorKind::InvalidInput, message),
+    };
+    for extra in iter {
+        if let Some(loc) = extra.primary_location() {
+            error = error.with_related_origin(
+                SyntaxOrigin {
+                    file: loc.file.clone(),
+                    line: loc.line,
+                    column: loc.column,
+                    length: loc.length.unwrap_or(1),
+                },
+                extra.message.clone(),
+            );
+        }
+    }
+    error
 }
 
 pub fn extract_package_build_definition(

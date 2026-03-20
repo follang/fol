@@ -19,7 +19,7 @@ use fol_resolver::{ResolvedProgram, ScopeId, SourceUnitId};
 
 use helpers::{
     binding_kind_for, ensure_assignable, ensure_assignable_target,
-    internal_error, origin_for,
+    internal_error, node_origin, origin_for,
     unsupported_node_surface,
 };
 
@@ -276,14 +276,40 @@ pub(crate) fn type_node_with_expectation(
             };
             let body_type = type_body(typed, resolved, routine_context, body)?;
             let _ = type_body(typed, resolved, routine_context, inquiries)?;
-            if let (Some(expected), Some(actual)) = (expected_return_type, body_type.value_type) {
-                ensure_assignable(
-                    typed,
-                    expected,
-                    actual,
-                    format!("routine '{name}' body"),
-                    syntax_id.and_then(|id| origin_for(resolved, id)),
-                )?;
+            // Functions with a declared return type require explicit 'return' on all paths
+            let routine_origin = syntax_id.and_then(|id| origin_for(resolved, id));
+            if expected_return_type.is_some() && !body_type.is_never(typed) {
+                let err = TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("routine '{name}' declares a return type but not all code paths use 'return'"),
+                );
+                return Err(match routine_origin.clone() {
+                    Some(o) => err.with_fallback_origin(o),
+                    None => err,
+                });
+            }
+            // Functions with T/E must use both 'return' and 'report'
+            if expected_error_type.is_some() {
+                if !body_contains_return(body) {
+                    let err = TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("routine '{name}' declares an error type — both 'return' and 'report' are required"),
+                    );
+                    return Err(match routine_origin.clone() {
+                        Some(o) => err.with_fallback_origin(o),
+                        None => err,
+                    });
+                }
+                if !body_contains_report(body) {
+                    let err = TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("routine '{name}' declares an error type — both 'return' and 'report' are required"),
+                    );
+                    return Err(match routine_origin {
+                        Some(o) => err.with_fallback_origin(o),
+                        None => err,
+                    });
+                }
             }
             if let (Some(syntax_id), Some(type_id)) =
                 (syntax_id, expected_return_type.or(body_type.value_type))
@@ -339,6 +365,41 @@ pub(crate) fn type_node_with_expectation(
             };
             let body_type = type_body(typed, resolved, routine_context, body)?;
             let _ = type_body(typed, resolved, routine_context, inquiries)?;
+            // Anonymous routines with a declared return type require explicit 'return'
+            let anon_origin = node_origin(resolved, node);
+            if expected_return_type.is_some() && !body_type.is_never(typed) {
+                let err = TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "anonymous routine declares a return type but not all code paths use 'return'",
+                );
+                return Err(match anon_origin.clone() {
+                    Some(o) => err.with_fallback_origin(o),
+                    None => err,
+                });
+            }
+            // Anonymous routines with T/E must use both 'return' and 'report'
+            if expected_error_type.is_some() {
+                if !body_contains_return(body) {
+                    let err = TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        "anonymous routine declares an error type — both 'return' and 'report' are required",
+                    );
+                    return Err(match anon_origin.clone() {
+                        Some(o) => err.with_fallback_origin(o),
+                        None => err,
+                    });
+                }
+                if !body_contains_report(body) {
+                    let err = TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        "anonymous routine declares an error type — both 'return' and 'report' are required",
+                    );
+                    return Err(match anon_origin {
+                        Some(o) => err.with_fallback_origin(o),
+                        None => err,
+                    });
+                }
+            }
             Ok(TypedExpr::maybe_value(expected_return_type.or(body_type.value_type))
                 .with_optional_effect(body_type.recoverable_effect))
         }
@@ -472,6 +533,42 @@ pub(crate) fn type_node_with_expectation(
             }
             Ok(TypedExpr::none())
         }
+    }
+}
+
+/// Check whether an AST body contains at least one `return` statement (non-recursive into nested routines).
+fn body_contains_return(nodes: &[AstNode]) -> bool {
+    nodes.iter().any(|node| node_contains_return(node))
+}
+
+fn node_contains_return(node: &AstNode) -> bool {
+    match node {
+        AstNode::Return { .. } => true,
+        AstNode::FunDecl { .. }
+        | AstNode::ProDecl { .. }
+        | AstNode::LogDecl { .. }
+        | AstNode::AnonymousFun { .. }
+        | AstNode::AnonymousPro { .. }
+        | AstNode::AnonymousLog { .. } => false,
+        _ => node.children().iter().any(|child| node_contains_return(child)),
+    }
+}
+
+/// Check whether an AST body contains at least one `report(...)` call (non-recursive into nested routines).
+fn body_contains_report(nodes: &[AstNode]) -> bool {
+    nodes.iter().any(|node| node_contains_report(node))
+}
+
+fn node_contains_report(node: &AstNode) -> bool {
+    match node {
+        AstNode::FunctionCall { name, .. } if name == "report" => true,
+        AstNode::FunDecl { .. }
+        | AstNode::ProDecl { .. }
+        | AstNode::LogDecl { .. }
+        | AstNode::AnonymousFun { .. }
+        | AstNode::AnonymousPro { .. }
+        | AstNode::AnonymousLog { .. } => false,
+        _ => node.children().iter().any(|child| node_contains_report(child)),
     }
 }
 

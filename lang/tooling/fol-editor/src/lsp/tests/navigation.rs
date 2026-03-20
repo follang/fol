@@ -15,7 +15,7 @@ fn lsp_server_keeps_nested_document_symbols_stable() {
     let (root, uri) = sample_package_root("nested_symbols");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    fun inner(): int = {\n        return 7\n    }\n    return inner()\n}\n",
+        "fun[] main(): int = {\n    fun inner(): int = {\n        return 7;\n    };\n    return inner();\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -168,7 +168,7 @@ fn lsp_server_workspace_symbols_sort_and_qualify_results_deterministically() {
     let (root, uri) = sample_loc_workspace_root("workspace_symbols_order");
     fs::write(
         root.join("shared/src/lib.fol"),
-        "fun[exp] helper(): int = {\n    return 9\n}\n\nfun[exp] build_task(): int = {\n    return helper()\n}\n",
+        "fun[exp] helper(): int = {\n    return 9;\n};\n\nfun[exp] build_task(): int = {\n    return helper();\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
@@ -204,7 +204,7 @@ fn lsp_server_workspace_symbols_sort_and_qualify_results_deterministically() {
 #[test]
 fn lsp_server_surfaces_future_version_boundary_diagnostics() {
     let (root, uri) = sample_package_root("future_boundary");
-    let text = "typ Shape(geo): rec[] = {\n    size: int\n}\n\nfun[] main(): int = {\n    return 0\n}\n";
+    let text = "typ Shape(geo): rec[] = {\n    size: int;\n};\n\nfun[] main(): int = {\n    return 0;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     let diagnostics = open_document(&mut server, uri, text);
@@ -227,7 +227,7 @@ fn lsp_server_returns_same_file_references_for_local_bindings() {
     let (root, uri) = sample_package_root("local_references");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n",
+        "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -270,7 +270,7 @@ fn lsp_server_can_exclude_declarations_from_references() {
     let (root, uri) = sample_package_root("reference_declaration_toggle");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n",
+        "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    return helper();\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -312,7 +312,7 @@ fn lsp_server_reports_signature_help_for_plain_calls() {
     let (root, uri) = sample_package_root("signature_help_plain");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(left: int, right: str): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return helper(1, \"ok\")\n}\n",
+        "fun[] helper(left: int, right: str): int = {\n    return left;\n};\n\nfun[] main(): int = {\n    return helper(1, \"ok\");\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -357,12 +357,12 @@ fn lsp_server_reports_signature_help_for_qualified_calls() {
     fs::create_dir_all(root.join("src/api")).unwrap();
     fs::write(
         root.join("src/api/lib.fol"),
-        "fun[exp] helper(left: int, right: str): int = {\n    return left\n}\n",
+        "fun[exp] helper(left: int, right: str): int = {\n    return left;\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return api::helper(\n        1,\n        \"ok\"\n    )\n}\n",
+        "fun[] main(): int = {\n    return api::helper(;\n        1,\n        \"ok\"\n    );\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -401,7 +401,7 @@ fn lsp_server_returns_no_signature_help_outside_calls() {
     let (root, uri) = sample_package_root("signature_help_none");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(left: int): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return 0\n}\n",
+        "fun[] helper(left: int): int = {\n    return left;\n};\n\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -440,7 +440,7 @@ fn lsp_server_reports_signature_help_for_build_file_calls() {
     let build_uri = format!("file://{}", build_path.display());
     fs::write(
         &build_path,
-        "fun[] helper(left: int, right: str): int = {\n    return left\n}\n\npro[] build(graph: Graph): non = {\n    helper(\n        1,\n        \"ok\"\n    )\n    return graph\n}\n",
+        "fun[] helper(left: int, right: str): int = {\n    return left;\n};\n\npro[] build(graph: Graph): non = {\n    helper(\n        1,\n        \"ok\"\n    );\n    return graph;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(&build_path).unwrap();
@@ -479,7 +479,7 @@ fn lsp_server_surfaces_quick_fix_for_unresolved_names_with_suggestions() {
     let (root, uri) = sample_package_root("code_action_unresolved_name");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return mian\n}\n",
+        "fun[] main(): int = {\n    return mian;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -529,7 +529,7 @@ fn lsp_server_returns_no_code_actions_without_structured_suggestions() {
     let (root, uri) = sample_package_root("code_action_none");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return missing_value\n}\n",
+        "fun[] main(): int = {\n    return missing_value;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -575,7 +575,7 @@ fn lsp_server_code_actions_follow_requested_diagnostic_context() {
     let (root, uri) = sample_package_root("code_action_context");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return mian\n}\n",
+        "fun[] main(): int = {\n    return mian;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -651,7 +651,7 @@ fn lsp_server_surfaces_quick_fix_for_build_file_unresolved_names() {
     let build_uri = format!("file://{}", build_path.display());
     fs::write(
         &build_path,
-        "pro[] build(graph: Graph): non = {\n    return grahp\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return grahp;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(&build_path).unwrap();
@@ -698,7 +698,7 @@ fn lsp_server_returns_no_code_actions_for_parse_only_diagnostics() {
     let (root, uri) = sample_package_root("code_action_parse_only");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(: int = {\n    return 0\n}\n",
+        "fun[] main(: int = {\n    return 0;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -741,7 +741,7 @@ fn lsp_server_returns_no_code_actions_for_typecheck_diagnostics_without_exact_re
     let (root, uri) = sample_package_root("code_action_typecheck_only");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return \"text\"\n}\n",
+        "fun[] main(): int = {\n    return \"text\";\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -785,12 +785,12 @@ fn lsp_server_returns_same_package_namespaced_references() {
     fs::create_dir_all(root.join("src/api")).unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return api::helper()\n}\n",
+        "fun[] main(): int = {\n    return api::helper();\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("src/api/lib.fol"),
-        "fun[exp] helper(): int = {\n    return 7\n}\n",
+        "fun[exp] helper(): int = {\n    return 7;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -833,12 +833,12 @@ fn lsp_server_returns_imported_namespace_references() {
     let (root, uri) = sample_loc_workspace_root("imported_namespace_references");
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper()\n}\n",
+        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper();\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("shared/src/lib.fol"),
-        "fun[exp] helper(): int = {\n    return 7\n}\n",
+        "fun[exp] helper(): int = {\n    return 7;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
@@ -881,7 +881,7 @@ fn lsp_server_renames_same_file_local_bindings() {
     let (root, uri) = sample_package_root("rename_local_binding");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n",
+        "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -926,7 +926,7 @@ fn lsp_server_renames_parameters_within_the_safe_boundary() {
     let (root, uri) = sample_package_root("rename_parameter");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(total: int): int = {\n    return total\n}\n",
+        "fun[] main(total: int): int = {\n    return total;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -971,7 +971,7 @@ fn lsp_server_renames_same_file_top_level_routines() {
     let (root, uri) = sample_package_root("rename_boundary");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n",
+        "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    return helper();\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -985,7 +985,7 @@ fn lsp_server_renames_same_file_top_level_routines() {
             method: "textDocument/rename".to_string(),
             params: Some(
                 serde_json::to_value(LspRenameParams {
-                    text_document: LspTextDocumentIdentifier { uri },
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
                     position: LspPosition {
                         line: 4,
                         character: 13,
@@ -1053,12 +1053,12 @@ fn lsp_server_renames_same_package_namespaced_symbols_with_multi_file_edits() {
     fs::create_dir_all(root.join("src/api")).unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return api::helper()\n}\n",
+        "fun[] main(): int = {\n    return api::helper();\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("src/api/lib.fol"),
-        "fun[exp] helper(): int = {\n    return 7\n}\n",
+        "fun[exp] helper(): int = {\n    return 7;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -1111,12 +1111,12 @@ fn lsp_server_refuses_imported_symbol_rename_outside_the_safe_boundary() {
     let (root, uri) = sample_loc_workspace_root("rename_imported_boundary");
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper()\n}\n",
+        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper();\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("shared/src/lib.fol"),
-        "fun[exp] helper(): int = {\n    return 7\n}\n",
+        "fun[exp] helper(): int = {\n    return 7;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();

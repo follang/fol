@@ -270,7 +270,7 @@ mod tests {
         fs::write(package.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0;\n};\n",
         )
         .unwrap();
 
@@ -292,12 +292,12 @@ mod tests {
         fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         )
         .unwrap();
         fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0;\n};\n",
         )
         .unwrap();
 
@@ -308,7 +308,7 @@ mod tests {
         let document = EditorDocument::new(
             uri,
             2,
-            "fun[] main(): int = {\n    return 7\n}\n".to_string(),
+            "fun[] main(): int = {\n    return 7;\n};\n".to_string(),
         )
         .unwrap();
         let overlay = materialize_analysis_overlay(&mapping, &document).unwrap();
@@ -316,7 +316,7 @@ mod tests {
 
         assert_eq!(
             fs::read_to_string(mirrored).unwrap(),
-            "fun[] main(): int = {\n    return 7\n}\n"
+            "fun[] main(): int = {\n    return 7;\n};\n"
         );
         assert_eq!(overlay.package_root(), Some(overlay.analysis_root()));
         assert_eq!(
@@ -338,23 +338,23 @@ mod tests {
         fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("app/build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         )
         .unwrap();
         fs::write(
             app_src.join("main.fol"),
-            "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper()\n}\n",
+            "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper();\n};\n",
         )
         .unwrap();
         fs::write(root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("shared/build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         )
         .unwrap();
         fs::write(
             shared_src.join("lib.fol"),
-            "fun[exp] helper(): int = {\n    return 7\n}\n",
+            "fun[exp] helper(): int = {\n    return 7;\n};\n",
         )
         .unwrap();
 

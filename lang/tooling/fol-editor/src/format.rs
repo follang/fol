@@ -33,7 +33,11 @@ pub fn format_document(text: &str) -> String {
     if lines.is_empty() {
         String::new()
     } else {
-        format!("{}\n", lines.join("\n"))
+        let mut joined = lines.join("\n");
+        if joined.ends_with(';') {
+            joined.pop();
+        }
+        format!("{};\n", joined)
     }
 }
 
@@ -276,11 +280,15 @@ mod tests {
 
     #[test]
     fn formatter_collapses_blank_line_runs_and_leading_blank_lines() {
-        let source = "\n\nfun[] helper(): int = {\n    return 7;\n}\n\n\nfun[] main(): int = {\n    return helper();\n}\n";
+        let source = "\n\nfun[] helper(): int = {\n    return 7;\n};
+
+\nfun[] main(): int = {\n    return helper();\n};\n";
 
         assert_eq!(
             format_document(source),
-            "fun[] helper(): int = {\n    return 7;\n}\n\nfun[] main(): int = {\n    return helper();\n}\n"
+            "fun[] helper(): int = {\n    return 7;\n};
+
+fun[] main(): int = {\n    return helper();\n};\n"
         );
     }
 
