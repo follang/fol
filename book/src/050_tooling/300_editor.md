@@ -56,6 +56,10 @@ The currently supported v1 LSP surface is:
 Requests outside that v1 set are not advertised yet and should be treated as
 future work until they are implemented for real.
 
+The server keeps one semantic snapshot per open document version. It reuses
+that snapshot for hover, definition, document symbols, and completion until the
+document changes or closes.
+
 ## Compiler Truth
 
 `fol-editor` does not create a second semantic engine.

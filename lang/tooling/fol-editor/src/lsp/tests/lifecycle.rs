@@ -1,14 +1,12 @@
-use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root, temp_root};
+use super::helpers::{open_document, sample_package_root, temp_root};
 use super::super::{
     analysis::{analyze_document_semantics_call_count, reset_analyze_document_semantics_call_count},
     completion_helpers::completion_context, completion_helpers::CompletionContext,
-    EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCompletionContext,
-    LspCompletionList, LspCompletionParams, LspDefinitionParams,
-    LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
-    LspDidOpenTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
-    LspInitializeResult, LspLocation, LspPosition, LspPublishDiagnosticsParams,
-    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
-    LspVersionedTextDocumentIdentifier,
+    EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCompletionList,
+    LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
+    LspDidCloseTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
+    LspInitializeResult, LspLocation, LspPosition, LspTextDocumentContentChangeEvent,
+    LspTextDocumentIdentifier, LspVersionedTextDocumentIdentifier,
 };
 use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
 use std::fs;
@@ -415,6 +413,43 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
     let _definition: Option<LspLocation> =
         serde_json::from_value(definition.result.unwrap()).unwrap();
     assert_eq!(analyze_document_semantics_call_count(), 2);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_drops_semantic_snapshots_when_documents_close_and_reopen() {
+    let (root, uri) = sample_package_root("semantic_cache_reopen");
+    let text = "fun[] main(): int = {\n    return 7\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    let _open = open_document(&mut server, uri.clone(), text);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert!(server.session.semantic_snapshots.contains_key(uri.as_str()));
+
+    let closed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didClose".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidCloseTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.as_str().to_string(),
+                        version: 1,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert_eq!(closed.len(), 1);
+    assert!(!server.session.semantic_snapshots.contains_key(uri.as_str()));
+
+    let _reopened = open_document(&mut server, uri.clone(), text);
+    assert_eq!(analyze_document_semantics_call_count(), 2);
+    assert!(server.session.semantic_snapshots.contains_key(uri.as_str()));
 
     fs::remove_dir_all(root).ok();
 }
