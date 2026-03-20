@@ -119,15 +119,15 @@ fn test_use_declaration_rejects_conflicting_visibility_options() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Conflicting use options 'export' and 'hidden'"),
         "Conflicting use options should report explicit visibility conflict, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -145,15 +145,15 @@ fn test_use_declaration_rejects_duplicate_visibility_options() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate use option 'export'"),
         "Duplicate use options should report the duplicated item, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -171,13 +171,13 @@ fn test_use_declaration_rejects_duplicate_names() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Duplicate use name 'math'"),
+        parse_error.message.clone().contains("Duplicate use name 'math'"),
         "Duplicate use names should report the repeated name, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -195,15 +195,15 @@ fn test_use_declaration_rejects_canonical_duplicate_names() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate use name 'MathName'"),
         "Canonical duplicate use names should report the later spelling, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 

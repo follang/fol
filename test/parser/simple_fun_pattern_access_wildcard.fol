@@ -1,3 +1,3 @@
 fun wildcard(values: vec[int]): vec[int] = {
     return values[*];
-}
+};

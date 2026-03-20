@@ -3,4 +3,4 @@ typ Computer: rec = {
     fun getBrand(): str = { return self.brand; };
     pro reset(): non = { return; };
     log ready(): bol = { return true; };
-}
+};

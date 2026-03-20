@@ -151,7 +151,7 @@ fn test_routine_parameters_preserve_inner_opposite_quote_chars() {
     let fixture = temp_root.join("inner_quotes.fol");
     fs::write(
         &fixture,
-        "fun demo(\"le'ft\": int, 'ri\"ght': int): int = {\n    return 0;\n}\n",
+        "fun demo(\"le'ft\": int, 'ri\"ght': int): int = {\n    return 0;\n};\n",
     )
     .expect("Should write temp parameter fixture");
 

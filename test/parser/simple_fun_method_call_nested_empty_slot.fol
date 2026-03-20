@@ -8,4 +8,4 @@ fun method_nested_empty_slot(obj: int, a: int, b: int): int = {
     );
 
     return b;
-}
+};

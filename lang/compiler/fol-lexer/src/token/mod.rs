@@ -1,4 +1,3 @@
-use colored::Colorize;
 use std::fmt;
 
 pub mod help;
@@ -177,9 +176,9 @@ impl fmt::Display for KEYWORD {
             KEYWORD::Operator(v) => write!(f, "{}", v),
             // KEYWORD::assign(v) => write!(f, "{}", v),
             KEYWORD::Keyword(v) => write!(f, "{}", v),
-            KEYWORD::Identifier => write!(f, "{}", " IDENT    ".black().on_red()),
+            KEYWORD::Identifier => write!(f, "IDENT"),
             KEYWORD::Comment(v) => write!(f, "{}", v),
-            KEYWORD::Illegal => write!(f, "{}", " ILLEGAL  ".black().on_green()),
+            KEYWORD::Illegal => write!(f, "ILLEGAL"),
         }
     }
 }

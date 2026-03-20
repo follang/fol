@@ -1,6 +1,6 @@
 fun[exp] plus_one(value: int): int = {
     when(.eq(value, 3)) {
-        case(true) { return 4 }
-        * { return value }
+        case(true) { return 4; }
+        * { return value; }
     }
-}
+};

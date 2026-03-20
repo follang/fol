@@ -8,4 +8,4 @@ fun method_mixed_unmatched_close_first_arg(obj: int, a: int, b: int): int = {
     );
 
     return b;
-}
+};

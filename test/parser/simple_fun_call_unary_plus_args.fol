@@ -2,4 +2,4 @@ fun unary_plus_calls(obj: int, a: int, b: int, c: int): int = {
     value = run(+a, +(b + c));
     obj.update(+a, +(b + c));
     return emit(+a, +(b + c));
-}
+};

@@ -2,4 +2,4 @@ std geometry: ext = {
     fun area(): flt[64];
     fun area(): flt[64];
     var color: rgb;
-}
+};

@@ -3,4 +3,4 @@ fun someIter: vec[int] = {
     loop(){
         yield curInt.inc(1)
     }
-}
+};

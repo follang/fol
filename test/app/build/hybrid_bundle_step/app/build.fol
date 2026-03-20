@@ -11,4 +11,4 @@ pro[] build(graph: Graph): non = {
     var install_app = graph.install(app);
 
     graph.step("bundle", run_app, install_app);
-}
+};

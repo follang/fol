@@ -13,10 +13,10 @@ fn workspace_entry_value_typing_accepts_imported_named_entry_contexts() {
                     "typ[exp] Status: ent = {\n",
                     "    var OK: int = 1;\n",
                     "    var FAIL: int = 2;\n",
-                    "}\n",
+                    "};\n",
                     "fun[exp] echo(status: Status): Status = {\n",
                     "    return status;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
@@ -26,7 +26,7 @@ fn workspace_entry_value_typing_accepts_imported_named_entry_contexts() {
                     "var imported_status: Status = Status.OK;\n",
                     "fun[] main(): Status = {\n",
                     "    return echo(Status.FAIL);\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -71,15 +71,15 @@ fn workspace_aggregate_typing_keeps_qualified_imported_record_and_entry_surfaces
                 concat!(
                     "typ[exp] User: rec = {\n",
                     "    count: int;\n",
-                    "}\n",
+                    "};\n",
                     "var[exp] current: User = { count = 1 };\n",
                     "typ[exp] Status: ent = {\n",
                     "    var OK: int = 1;\n",
                     "    var FAIL: int = 2;\n",
-                    "}\n",
+                    "};\n",
                     "fun[exp] echo(status: Status): Status = {\n",
                     "    return status;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
@@ -89,7 +89,7 @@ fn workspace_aggregate_typing_keeps_qualified_imported_record_and_entry_surfaces
                     "fun[] main(): Status = {\n",
                     "    var total: int = shared::current.count;\n",
                     "    return shared::echo(shared::Status.OK);\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -116,16 +116,16 @@ fn workspace_aggregate_typing_keeps_qualified_imported_record_and_entry_surfaces
 fn shell_typing_accepts_optional_and_error_payload_lifting() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "ali MaybeText: opt[str]\n\
-         ali Failure: err[str]\n\
-         var label: MaybeText = \"ok\"\n\
-         var issue: Failure = \"bad\"\n\
+        "ali MaybeText: opt[str];\n\
+         ali Failure: err[str];\n\
+         var label: MaybeText = \"ok\";\n\
+         var issue: Failure = \"bad\";\n\
          fun[] maybe(): MaybeText = {\n\
              return \"ready\";\n\
-         }\n\
+         };\n\
          fun[] fail(): int / Failure = {\n\
              report \"broken\";\n\
-         }\n",
+         };\n",
     )]);
 
     let (maybe_id, _maybe_alias) = find_typed_symbol(&typed, "MaybeText", SymbolKind::Alias);
@@ -175,11 +175,11 @@ fn shell_typing_accepts_optional_and_error_payload_lifting() {
 fn shell_typing_rejects_mismatched_optional_payloads() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "ali MaybeText: opt[str]\n\
+        "ali MaybeText: opt[str];\n\
          fun[] bad(): int = {\n\
              var label: MaybeText = 1;\n\
              return 0;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -195,7 +195,7 @@ fn shell_typing_rejects_mismatched_optional_payloads() {
 
 #[test]
 fn shell_typing_rejects_pointer_surfaces_as_v3_only() {
-    let errors = typecheck_fixture_folder_errors(&[("main.fol", "ali CounterPtr: ptr[int]\n")]);
+    let errors = typecheck_fixture_folder_errors(&[("main.fol", "ali CounterPtr: ptr[int];\n")]);
 
     assert!(
         errors.iter().any(|error| {
@@ -214,16 +214,16 @@ fn operator_typing_accepts_v1_scalar_operator_families() {
         "main.fol",
         "fun[] math(): int = {\n\
              return 1 + 2 * 3 - 4 % 2;\n\
-         }\n\
+         };\n\
          fun[] text(): str = {\n\
              return \"ab\" + \"cd\";\n\
-         }\n\
+         };\n\
          fun[] compare(): bol = {\n\
              return 1 < 2 and 3 != 4;\n\
-         }\n\
+         };\n\
          fun[] invert(flag: bol): bol = {\n\
              return not flag xor false;\n\
-         }\n",
+         };\n",
     )]);
 
     for (name, expected) in [
@@ -250,13 +250,13 @@ fn operator_typing_rejects_invalid_scalar_pairs_and_pointer_operators() {
         "main.fol",
         "fun[] bad_math(): int = {\n\
              return true + 1;\n\
-         }\n\
+         };\n\
          fun[] bad_logic(): bol = {\n\
              return 1 and 2;\n\
-         }\n\
+         };\n\
          fun[] bad_ref(value: int): int = {\n\
              return &value;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -290,13 +290,13 @@ fn intrinsic_comparison_typing_accepts_v1_equality_pairs() {
         "main.fol",
         "fun[] same_number(): bol = {\n\
              return .eq(1, 1);\n\
-         }\n\
+         };\n\
          fun[] different_flag(flag: bol): bol = {\n\
              return .nq(flag, false);\n\
-         }\n\
+         };\n\
          fun[] same_text(): bol = {\n\
              return .eq(\"Ada\", \"Ada\");\n\
-         }\n",
+         };\n",
     )]);
 
     for name in ["same_number", "different_flag", "same_text"] {
@@ -318,10 +318,10 @@ fn intrinsic_comparison_typing_rejects_wrong_arity_and_mixed_scalar_pairs() {
         "main.fol",
         "fun[] bad_arity(): bol = {\n\
              return .eq(1);\n\
-         }\n\
+         };\n\
          fun[] bad_pair(): bol = {\n\
              return .eq(1, \"Ada\");\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -348,16 +348,16 @@ fn intrinsic_ordered_comparison_typing_accepts_v1_ordered_pairs() {
         "main.fol",
         "fun[] ints(): bol = {\n\
              return .lt(1, 2);\n\
-         }\n\
+         };\n\
          fun[] text(): bol = {\n\
              return .ge(\"Ada\", \"Ada\");\n\
-         }\n\
+         };\n\
          fun[] chars(): bol = {\n\
              return .le('a', 'z');\n\
-         }\n\
+         };\n\
          fun[] floats(): bol = {\n\
              return .gt(3.5, 1.0);\n\
-         }\n",
+         };\n",
     )]);
 
     for name in ["ints", "text", "chars", "floats"] {
@@ -379,10 +379,10 @@ fn intrinsic_ordered_comparison_typing_rejects_non_ordered_pairs() {
         "main.fol",
         "fun[] bad_bool(): bol = {\n\
              return .lt(true, false);\n\
-         }\n\
+         };\n\
          fun[] bad_mixed(): bol = {\n\
              return .gt(1, 1.0);\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -411,10 +411,10 @@ fn intrinsic_boolean_typing_accepts_not_for_bool_values() {
         "main.fol",
         "fun[] flip(flag: bol): bol = {\n\
              return .not(flag);\n\
-         }\n\
+         };\n\
          fun[] literal(): bol = {\n\
              return .not(false);\n\
-         }\n",
+         };\n",
     )]);
 
     for name in ["flip", "literal"] {
@@ -436,10 +436,10 @@ fn intrinsic_boolean_typing_rejects_wrong_arity_and_non_boolean_operands() {
         "main.fol",
         "fun[] bad_arity(): bol = {\n\
              return .not();\n\
-         }\n\
+         };\n\
          fun[] bad_type(): bol = {\n\
              return .not(1);\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -466,10 +466,10 @@ fn intrinsic_query_typing_accepts_len_for_v1_length_queries() {
         "main.fol",
         "fun[] text_len(): int = {\n\
              return .len(\"Ada\");\n\
-         }\n\
+         };\n\
          fun[] seq_len(items: seq[int]): int = {\n\
              return .len(items);\n\
-         }\n",
+         };\n",
     )]);
 
     for name in ["text_len", "seq_len"] {
@@ -491,10 +491,10 @@ fn intrinsic_query_typing_rejects_wrong_arity_and_non_length_operands() {
         "main.fol",
         "fun[] bad_arity(items: seq[int]): int = {\n\
              return .len(items, items);\n\
-         }\n\
+         };\n\
          fun[] bad_type(): int = {\n\
              return .len(1);\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -522,25 +522,25 @@ fn intrinsic_query_typing_covers_full_v1_length_family_matrix() {
         "main.fol",
         "typ Flagged: rec = {\n\
              name: str;\n\
-         }\n\
+         };\n\
          fun[] text_len(): int = {\n\
              return .len(\"Ada\");\n\
-         }\n\
+         };\n\
          fun[] arr_len(items: arr[int, 3]): int = {\n\
              return .len(items);\n\
-         }\n\
+         };\n\
          fun[] vec_len(items: vec[int]): int = {\n\
              return .len(items);\n\
-         }\n\
+         };\n\
          fun[] seq_len(items: seq[int]): int = {\n\
              return .len(items);\n\
-         }\n\
+         };\n\
          fun[] set_len(items: set[int, str]): int = {\n\
              return .len(items);\n\
-         }\n\
+         };\n\
          fun[] map_len(items: map[str, int]): int = {\n\
              return .len(items);\n\
-         }\n",
+         };\n",
     )]);
 
     for name in ["text_len", "arr_len", "vec_len", "seq_len", "set_len", "map_len"] {
@@ -562,13 +562,13 @@ fn intrinsic_query_typing_rejects_non_query_receiver_families() {
         "main.fol",
         "typ Flagged: rec = {\n\
              name: str;\n\
-         }\n\
+         };\n\
          fun[] bad_record(value: Flagged): int = {\n\
              return .len(value);\n\
-         }\n\
+         };\n\
          fun[] bad_optional(value: opt[str]): int = {\n\
              return .len(value);\n\
-         }\n",
+         };\n",
     )]);
 
     assert_eq!(
@@ -592,7 +592,7 @@ fn intrinsic_query_typing_distinguishes_implemented_and_deferred_families() {
         "main.fol",
         "fun[] count(items: seq[int]): int = {\n\
              return .len(items);\n\
-         }\n",
+         };\n",
     )]);
     let count_syntax_id = find_named_routine_syntax_id(&typed, "count");
     assert_eq!(
@@ -608,13 +608,13 @@ fn intrinsic_query_typing_distinguishes_implemented_and_deferred_families() {
         "main.fol",
         "fun[] capacity(items: seq[int]): int = {\n\
              return .cap(items);\n\
-         }\n\
+         };\n\
          fun[] low_bound(items: seq[int]): int = {\n\
              return .low(items);\n\
-         }\n\
+         };\n\
          fun[] minimum(left: int, right: int): int = {\n\
              return .min(left, right);\n\
-         }\n",
+         };\n",
     )]);
 
     for expected in [
@@ -638,10 +638,10 @@ fn intrinsic_diagnostic_typing_accepts_echo_as_a_value_preserving_tap() {
         "main.fol",
         "fun[] log_flag(flag: bol): bol = {\n\
              return .echo(flag);\n\
-         }\n\
+         };\n\
          fun[] log_count(items: seq[int]): int = {\n\
              return .echo(.len(items));\n\
-         }\n",
+         };\n",
     )]);
 
     for (name, expected) in [
@@ -666,7 +666,7 @@ fn intrinsic_diagnostic_typing_rejects_wrong_arity_for_echo() {
         "main.fol",
         "fun[] bad_arity(): int = {\n\
              return .echo();\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -684,19 +684,19 @@ fn intrinsic_v3_boundary_typing_reports_explicit_milestone_guidance() {
         "main.fol",
         "fun[] free_value(value: int): int = {\n\
              return .de_alloc(value);\n\
-         }\n\
+         };\n\
          fun[] hand_back(value: int): int = {\n\
              return .give_back(value);\n\
-         }\n\
+         };\n\
          fun[] take_address(value: int): int = {\n\
              return .address_of(value);\n\
-         }\n\
+         };\n\
          fun[] read_pointer(value: int): int = {\n\
              return .pointer_value(value);\n\
-         }\n\
+         };\n\
          fun[] borrow_value(value: int): int = {\n\
              return .borrow_from(value);\n\
-         }\n",
+         };\n",
     )]);
 
     for intrinsic in [
@@ -722,31 +722,31 @@ fn intrinsic_comparison_typing_covers_full_v1_scalar_matrix() {
         "main.fol",
         "fun[] eq_ints(): bol = {\n\
              return .eq(1, 1);\n\
-         }\n\
+         };\n\
          fun[] eq_floats(): bol = {\n\
              return .eq(1.0, 1.0);\n\
-         }\n\
+         };\n\
          fun[] eq_bools(): bol = {\n\
              return .eq(true, false);\n\
-         }\n\
+         };\n\
          fun[] eq_chars(): bol = {\n\
              return .eq('a', 'z');\n\
-         }\n\
+         };\n\
          fun[] eq_text(): bol = {\n\
              return .eq(\"Ada\", \"Lin\");\n\
-         }\n\
+         };\n\
          fun[] lt_ints(): bol = {\n\
              return .lt(1, 2);\n\
-         }\n\
+         };\n\
          fun[] lt_floats(): bol = {\n\
              return .lt(1.0, 2.0);\n\
-         }\n\
+         };\n\
          fun[] lt_chars(): bol = {\n\
              return .lt('a', 'z');\n\
-         }\n\
+         };\n\
          fun[] lt_text(): bol = {\n\
              return .lt(\"Ada\", \"Lin\");\n\
-         }\n",
+         };\n",
     )]);
 
     for name in [
@@ -778,16 +778,16 @@ fn intrinsic_comparison_typing_rejects_non_scalar_and_cross_family_pairs() {
         "main.fol",
         "fun[] bad_container(): bol = {\n\
              return .eq({1, 2}, {1, 2});\n\
-         }\n\
+         };\n\
          fun[] bad_ordered_bool(): bol = {\n\
              return .lt(true, false);\n\
-         }\n\
+         };\n\
          fun[] bad_mixed_eq(): bol = {\n\
              return .eq(1, 1.0);\n\
-         }\n\
+         };\n\
          fun[] bad_mixed_lt(): bol = {\n\
              return .lt('a', 1);\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -816,20 +816,20 @@ fn coercion_policy_rejects_implicit_int_float_cross_family_conversions() {
         "main.fol",
         "fun[] take_float(value: flt): flt = {\n\
              return value;\n\
-         }\n\
+         };\n\
          fun[] bad_binding(): int = {\n\
              var count: int = 1.5;\n\
              return count;\n\
-         }\n\
+         };\n\
          fun[] bad_call(): flt = {\n\
              return take_float(1);\n\
-         }\n\
+         };\n\
          fun[] bad_return(): int = {\n\
              return 1.5;\n\
-         }\n\
+         };\n\
          fun[] bad_report(): int / int = {\n\
              report 1.5;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(

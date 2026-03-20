@@ -14,12 +14,12 @@ fn test_function_call_with_unmatched_close_paren_argument_reports_parse_error() 
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -28,7 +28,7 @@ fn test_function_call_with_unmatched_close_paren_argument_reports_parse_error() 
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Unmatched close-paren argument parse error should point to the malformed expression line"
     );
@@ -48,12 +48,12 @@ fn test_method_call_with_unmatched_close_paren_argument_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -62,7 +62,7 @@ fn test_method_call_with_unmatched_close_paren_argument_reports_parse_error() {
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Method unmatched close-paren parse error should point to malformed expression line"
     );
@@ -82,12 +82,12 @@ fn test_top_level_call_with_unmatched_close_paren_argument_reports_parse_error()
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -96,7 +96,7 @@ fn test_top_level_call_with_unmatched_close_paren_argument_reports_parse_error()
             first_message
         );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Top-level unmatched close-paren parse error should point to malformed expression line"
     );
@@ -116,12 +116,12 @@ fn test_function_call_with_unmatched_open_paren_argument_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -130,7 +130,7 @@ fn test_function_call_with_unmatched_open_paren_argument_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         4,
         "Function unmatched open-paren parse error should point to malformed expression line"
     );
@@ -150,12 +150,12 @@ fn test_method_call_with_unmatched_open_paren_argument_reports_parse_error() {
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -164,7 +164,7 @@ fn test_method_call_with_unmatched_open_paren_argument_reports_parse_error() {
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         4,
         "Method unmatched open-paren parse error should point to malformed expression line"
     );
@@ -184,12 +184,12 @@ fn test_top_level_call_with_unmatched_open_paren_argument_reports_parse_error() 
 
     let first_message = errors
         .first()
-        .map(|e| e.to_string())
+        .map(|e| e.message.clone())
         .unwrap_or_else(|| "<no error message>".to_string());
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
@@ -198,7 +198,7 @@ fn test_top_level_call_with_unmatched_open_paren_argument_reports_parse_error() 
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Top-level unmatched open-paren parse error should point to malformed expression line"
     );
@@ -217,7 +217,7 @@ fn assert_first_parse_error(path: &str, expected_message_substring: &str, expect
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .unwrap_or_else(|| {
             panic!(
                 "First parser error should be ParseError for fixture: {}",
@@ -225,7 +225,7 @@ fn assert_first_parse_error(path: &str, expected_message_substring: &str, expect
             )
         });
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains(expected_message_substring),
         "Fixture {} should report '{}', got: {}",
@@ -234,7 +234,7 @@ fn assert_first_parse_error(path: &str, expected_message_substring: &str, expect
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         expected_line,
         "Fixture {} should report expected error line",
         path

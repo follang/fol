@@ -7,10 +7,10 @@ fn check_typing_accepts_errorful_calls_and_returns_bool() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): bol = {\n\
              return check(load());\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "main");
@@ -29,7 +29,7 @@ fn check_typing_rejects_plain_values() {
         "main.fol",
         "fun[] main(): bol = {\n\
              return check(1);\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -49,7 +49,7 @@ fn check_typing_rejects_wrong_arity_through_keyword_intrinsic_diagnostics() {
         "main.fol",
         "fun[] main(): bol = {\n\
              return check();\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -67,7 +67,7 @@ fn check_typing_rejects_wrong_arity_through_keyword_intrinsic_diagnostics() {
 fn check_typing_rejects_err_shell_values_explicitly() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "ali Failure: err[str]\nfun[] main(value: Failure): bol = {\n    return check(value);\n}\n",
+        "ali Failure: err[str];\nfun[] main(value: Failure): bol = {\n    return check(value);\n};\n",
     )]);
 
     assert!(
@@ -88,10 +88,10 @@ fn pipe_or_typing_accepts_default_value_fallbacks() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int = {\n\
              return load() || 5;\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "main");
@@ -108,7 +108,7 @@ fn pipe_or_typing_accepts_default_value_fallbacks() {
 fn pipe_or_typing_rejects_err_shell_values_explicitly() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "ali Failure: err[int]\nfun[] main(value: Failure): int = {\n    return value || 5;\n}\n",
+        "ali Failure: err[int];\nfun[] main(value: Failure): int = {\n    return value || 5;\n};\n",
     )]);
 
     assert!(
@@ -129,10 +129,10 @@ fn pipe_or_typing_rejects_incompatible_fallback_values() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int = {\n\
              return load() || \"fallback\";\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -148,14 +148,14 @@ fn pipe_or_typing_rejects_incompatible_fallback_values() {
 fn err_shell_values_remain_storable_passable_and_returnable() {
     let _typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "ali Failure: err[str]\n\
+        "ali Failure: err[str];\n\
          fun[] keep(value: Failure): Failure = {\n\
              return value;\n\
-         }\n\
+         };\n\
          fun[] main(): Failure = {\n\
              var raised: Failure = \"broken\";\n\
              return keep(raised);\n\
-         }\n",
+         };\n",
     )]);
 }
 
@@ -163,10 +163,10 @@ fn err_shell_values_remain_storable_passable_and_returnable() {
 fn err_shell_values_keep_postfix_unwrap_behavior() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "ali Failure: err[str]\n\
+        "ali Failure: err[str];\n\
          fun[] main(value: Failure): str = {\n\
              return value!;\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "main");
@@ -186,11 +186,11 @@ fn recoverable_calls_reject_inferred_plain_bindings() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int = {\n\
              var captured = load();\n\
              return 0;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -212,11 +212,11 @@ fn recoverable_calls_reject_typed_plain_bindings() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int / str = {\n\
              var captured: int = load();\n\
              return 0;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -238,10 +238,10 @@ fn recoverable_calls_reject_direct_plain_returns() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int / str = {\n\
              return load();\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -263,13 +263,13 @@ fn recoverable_calls_reject_plain_arguments_even_in_error_aware_routines() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] consume(value: int): int = {\n\
              return value;\n\
-         }\n\
+         };\n\
          fun[] main(): int / str = {\n\
              return consume(load());\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -288,14 +288,14 @@ fn recoverable_calls_reject_plain_arguments_even_in_error_aware_routines() {
 fn recoverable_calls_reject_field_access_receivers() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "typ User: rec = { name: str }\n\
+        "typ User: rec = { name: str };\n\
          fun[] load(): User / str = {\n\
              report \"bad\";\n\
              return { name = \"ok\" };\n\
-         }\n\
+         };\n\
          fun[] main(): str = {\n\
              return load().name;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -317,10 +317,10 @@ fn recoverable_calls_reject_index_access_receivers() {
         "fun[] load(): seq[int] / str = {\n\
              report \"bad\";\n\
              return { 1, 2 };\n\
-         }\n\
+         };\n\
          fun[] main(): int = {\n\
              return load()[0];\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -339,17 +339,17 @@ fn recoverable_calls_reject_index_access_receivers() {
 fn recoverable_calls_reject_method_receivers() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "typ User: rec = { name: str }\n\
+        "typ User: rec = { name: str };\n\
          fun[] (User)label(): str = {\n\
              return \"ok\";\n\
-         }\n\
+         };\n\
          fun[] load(): User / str = {\n\
              report \"bad\";\n\
              return { name = \"ok\" };\n\
-         }\n\
+         };\n\
          fun[] main(): str = {\n\
              return load().label();\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -371,13 +371,13 @@ fn recoverable_calls_reject_when_selectors() {
         "fun[] load(): bol / str = {\n\
              report \"bad\";\n\
              return true;\n\
-         }\n\
+         };\n\
          fun[] main(): int = {\n\
              when(load()) {\n\
                  case(true) { return 1; }\n\
                  * { return 0; }\n\
              }\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -399,13 +399,13 @@ fn recoverable_calls_reject_loop_conditions() {
         "fun[] load(): bol / str = {\n\
              report \"bad\";\n\
              return true;\n\
-         }\n\
+         };\n\
          fun[] main(): int = {\n\
              loop(load()) {\n\
                  break;\n\
              }\n\
              return 0;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -427,11 +427,11 @@ fn recoverable_calls_do_not_implicitly_convert_into_err_shell_bindings() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): err[int] / str = {\n\
              var captured: err[int] = load();\n\
              return captured;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -451,10 +451,10 @@ fn recoverable_calls_do_not_implicitly_convert_into_err_shell_returns() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): err[int] / str = {\n\
              return load();\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -474,13 +474,13 @@ fn recoverable_calls_do_not_implicitly_convert_into_err_shell_arguments() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] consume(value: err[int]): int = {\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int / str = {\n\
              return consume(load());\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -497,14 +497,14 @@ fn recoverable_calls_do_not_implicitly_convert_into_err_shell_arguments() {
 fn when_result_typing_accepts_matching_branch_values() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "var yes: int = 1\n\
-         var no: int = 2\n\
+        "var yes: int = 1;\n\
+         var no: int = 2;\n\
          fun[] demo(flag: bol): int = {\n\
              when(flag) {\n\
                  case(true) { yes }\n\
                  * { no }\n\
              }\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "demo");
@@ -521,14 +521,14 @@ fn when_result_typing_accepts_matching_branch_values() {
 fn when_result_typing_rejects_branch_type_mismatches() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "var yes: int = 1\n\
-         var no: bol = false\n\
+        "var yes: int = 1;\n\
+         var no: bol = false;\n\
          fun[] demo(flag: bol): int = {\n\
              when(flag) {\n\
                  case(true) { yes }\n\
                  * { no }\n\
              }\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -549,7 +549,7 @@ fn loop_typing_infers_iteration_binder_types_and_checks_bool_guards() {
                  break;\n\
              }\n\
              return limit;\n\
-         }\n",
+         };\n",
     )]);
 
     let (_item_id, item) = find_typed_symbol(&typed, "item", SymbolKind::LoopBinder);
@@ -571,7 +571,7 @@ fn loop_typing_rejects_non_boolean_conditions_and_reserved_yields() {
                  break;\n\
              }\n\
              return limit;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -589,7 +589,7 @@ fn loop_typing_rejects_non_boolean_conditions_and_reserved_yields() {
                  yield item;\n\
              }\n\
              return items;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -610,7 +610,7 @@ fn control_never_typing_allows_panic_and_skips_unreachable_tails() {
         "fun[] demo(): int = {\n\
              panic \"boom\";\n\
              return \"bad\";\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "demo");
@@ -632,7 +632,7 @@ fn control_never_typing_treats_report_branches_as_early_exits() {
                  case(true) { report \"bad\"; }\n\
                  * { 1 }\n\
              }\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "demo");
@@ -651,13 +651,13 @@ fn container_literal_typing_accepts_array_vector_and_sequence_contexts() {
         "main.fol",
         "fun[] make_arr(): arr[int, 3] = {\n\
              return {1, 2, 3};\n\
-         }\n\
+         };\n\
          fun[] make_vec(): vec[int] = {\n\
              return {1, 2, 3};\n\
-         }\n\
+         };\n\
          fun[] make_seq(): seq[int] = {\n\
              return {1, 2, 3};\n\
-         }\n",
+         };\n",
     )]);
 
     for (name, expected_label) in [
@@ -701,7 +701,7 @@ fn container_literal_typing_rejects_mixed_element_families() {
         "main.fol",
         "fun[] bad(): vec[int] = {\n\
              return {1, false};\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -720,11 +720,11 @@ fn container_literal_typing_accepts_set_and_map_contexts() {
         "fun[] tuple_second(): str = {\n\
              var parts: set[int, str] = {1, \"two\"};\n\
              return parts[1];\n\
-         }\n\
+         };\n\
          fun[] lookup(): int = {\n\
              var counts: map[str, int] = {{\"US\", 45}, {\"DE\", 82}};\n\
              return counts[\"US\"];\n\
-         }\n",
+         };\n",
     )]);
 
     let (_parts_id, parts) = find_typed_symbol(&typed, "parts", SymbolKind::ValueBinding);
@@ -765,11 +765,11 @@ fn container_literal_typing_rejects_bad_map_pairs_and_nonliteral_heterogeneous_s
         "main.fol",
         "fun[] bad_map(): map[str, int] = {\n\
              return {{1, 45}};\n\
-         }\n\
+         };\n\
          fun[] bad_set(idx: int): int = {\n\
              var parts: set[int, str] = {1, \"two\"};\n\
              return parts[idx];\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -797,15 +797,15 @@ fn record_initializer_typing_accepts_nested_record_construction() {
         "typ Bonus: rec = {\n\
              hta: int;\n\
              ra: int\n\
-         }\n\
+         };\n\
          typ Salary: rec = {\n\
              basic: int;\n\
              bonus: Bonus\n\
-         }\n\
+         };\n\
          typ Employee: rec = {\n\
              name: str;\n\
              salary: Salary\n\
-         }\n\
+         };\n\
          fun[] build(): Employee = {\n\
              return {\n\
                  name = \"Mark\",\n\
@@ -814,7 +814,7 @@ fn record_initializer_typing_accepts_nested_record_construction() {
                      bonus = { hta = 2100, ra = 5000 },\n\
                  },\n\
              };\n\
-         }\n",
+         };\n",
     )]);
 
     let (employee_id, _employee) = find_typed_symbol(&typed, "Employee", SymbolKind::Type);
@@ -840,14 +840,14 @@ fn record_initializer_typing_accepts_named_binding_and_call_argument_contexts() 
         "typ User: rec = {\n\
              name: str;\n\
              count: int\n\
-         }\n\
+         };\n\
          fun[] count(user: User): int = {\n\
              return user.count;\n\
-         }\n\
+         };\n\
          fun[] build(): int = {\n\
              var current: User = { name = \"ok\", count = 1 };\n\
              return count({ name = \"next\", count = 2 });\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "build");
@@ -867,16 +867,16 @@ fn record_initializer_typing_rejects_missing_unknown_and_mismatched_fields() {
         "typ User: rec = {\n\
              name: str;\n\
              count: int\n\
-         }\n\
+         };\n\
          fun[] bad_type(): User = {\n\
              return { name = false, count = 1 };\n\
-         }\n\
+         };\n\
          fun[] bad_field(): User = {\n\
              return { name = \"ok\" };\n\
-         }\n\
+         };\n\
          fun[] unknown_field(): User = {\n\
              return { name = \"ok\", count = 1, extra = 3 };\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -910,13 +910,13 @@ fn nested_record_initializer_mismatches_keep_inner_value_locations() {
         "main.fol",
         "typ Meta: rec = {\n\
              ok: bol\n\
-         }\n\
+         };\n\
          typ User: rec = {\n\
              meta: Meta\n\
-         }\n\
+         };\n\
          fun[] main(): User = {\n\
              return { meta = { ok = 1 } };\n\
-         }\n",
+         };\n",
     )]);
 
     let error = errors
@@ -951,10 +951,10 @@ fn imported_nested_record_initializer_mismatches_keep_inner_value_locations() {
                 concat!(
                     "typ[exp] Meta: rec = {\n",
                     "    ok: bol;\n",
-                    "}\n",
+                    "};\n",
                     "typ[exp] User: rec = {\n",
                     "    meta: Meta;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
@@ -999,10 +999,10 @@ fn workspace_record_initializer_typing_accepts_imported_named_record_contexts() 
                     "typ[exp] User: rec = {\n",
                     "    name: str;\n",
                     "    count: int;\n",
-                    "}\n",
+                    "};\n",
                     "fun[exp] count(user: User): int = {\n",
                     "    return user.count;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
@@ -1012,7 +1012,7 @@ fn workspace_record_initializer_typing_accepts_imported_named_record_contexts() 
                     "var imported_user: User = { name = \"ok\", count = 1 };\n",
                     "fun[] main(): int = {\n",
                     "    return count({ name = \"next\", count = 2 });\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -1038,10 +1038,10 @@ fn entry_value_typing_accepts_entry_variant_accesses() {
         "typ Color: ent = {\n\
              var BLUE: str = \"#0037cd\";\n\
              var RED: str = \"#ff0000\";\n\
-         }\n\
+         };\n\
          fun[] blue(): str = {\n\
              return Color.BLUE;\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "blue");
@@ -1061,14 +1061,14 @@ fn entry_value_typing_accepts_named_entry_binding_return_and_call_contexts() {
         "typ Status: ent = {\n\
              var OK: int = 1;\n\
              var FAIL: int = 2;\n\
-         }\n\
+         };\n\
          fun[] echo(status: Status): Status = {\n\
              return status;\n\
-         }\n\
+         };\n\
          fun[] main(): Status = {\n\
              var current: Status = Status.OK;\n\
              return echo(Status.FAIL);\n\
-         }\n",
+         };\n",
     )]);
 
     let (status_id, _status) = find_typed_symbol(&typed, "Status", SymbolKind::Type);
@@ -1093,10 +1093,10 @@ fn entry_value_typing_rejects_unknown_variants() {
         "main.fol",
         "typ Color: ent = {\n\
              var BLUE: str = \"#0037cd\";\n\
-         }\n\
+         };\n\
          fun[] bad(): str = {\n\
              return Color.BLACK;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(

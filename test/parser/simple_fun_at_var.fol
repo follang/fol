@@ -1,4 +1,4 @@
 fun demo(): int = {
     @var heap_value: int = 1;
     return heap_value;
-}
+};

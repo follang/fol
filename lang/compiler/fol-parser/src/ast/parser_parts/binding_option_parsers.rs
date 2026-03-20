@@ -5,7 +5,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         default_options: Vec<VarOption>,
-    ) -> Result<Vec<VarOption>, Box<dyn Glitch>> {
+    ) -> Result<Vec<VarOption>, ParseError> {
         let open = match tokens.curr(false) {
             Ok(token) => token,
             Err(_) => return Ok(default_options),
@@ -38,10 +38,10 @@ impl AstParser {
                 "new" => VarOption::New,
                 "bor" | "borrow" | "borrowing" => VarOption::Borrowing,
                 _ => {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Unknown binding option".to_string(),
-                    )));
+                    ));
                 }
             };
 
@@ -49,14 +49,14 @@ impl AstParser {
                 .iter()
                 .find(|existing| self.binding_options_conflict(existing, &option))
             {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     format!(
                         "Conflicting binding option '{}' with '{}'",
                         Self::binding_option_label(existing),
                         Self::binding_option_label(&option)
                     ),
-                )));
+                ));
             }
 
             parsed_options.push(option);
@@ -85,10 +85,10 @@ impl AstParser {
                 return Ok(self.merge_binding_options(default_options, parsed_options));
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or ']' in binding options".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -106,7 +106,7 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     pub(super) fn merge_binding_options(

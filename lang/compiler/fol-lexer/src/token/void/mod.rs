@@ -1,4 +1,3 @@
-use colored::Colorize;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -17,13 +16,6 @@ impl fmt::Display for VOID {
             VOID::EndLine => "eol",
             VOID::Boundary => "boundary",
         };
-        write!(
-            f,
-            "{}{}",
-            " VOID     ".black().on_red(),
-            (":".to_string().white().on_black().to_string() + &format!(" {} ", t))
-                .black()
-                .on_red()
-        )
+        write!(f, "VOID:{}", t)
     }
 }

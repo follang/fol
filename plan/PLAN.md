@@ -1,449 +1,315 @@
-# FOL Strict Error Model Plan
+# Unified Diagnostics Pipeline
 
 Last updated: 2026-03-19
 
-## Goal
+## Problems
 
-Move FOL to a strict split between:
+### 1. Glitch trait forces type erasure and downcasting
 
-- `err[...]` as a normal first-class value type
-- `T / E` as a call-site control-flow surface only
+The `Glitch` trait in `fol-types` erases concrete error types into
+`Box<dyn Glitch>`. Every consumer that needs structured error data must then
+downcast back to the original type. This creates:
 
-Under this model:
+- a 5-type downcast chain in `fol-frontend/direct.rs` (`lower_compiler_glitch`)
+- a 4-type downcast chain in `fol-editor/analysis.rs` (`glitch_to_diagnostic`)
+- 2 downcast sites in `fol-package` to recover `ParseError` location data
+- downcast sites in integration tests
 
-- `err[...]` values can be stored, passed, returned, and later handled
-- routines declared as `fun[] name(): T / E` do not produce a storable value
-- `var x = name()` is illegal when `name(): T / E`
-- `var x: T = name()` is illegal when `name(): T / E`
-- `check(name())` remains legal if `check(...)` stays in the language
-- `name() || fallback` remains legal
-- plain propagation through ordinary expression contexts is removed
-- captured recoverable-call locals are removed
-- implicit materialization of recoverable results in lowering is removed
+All concrete error types already implement `ToDiagnostic`. The type erasure
+is unnecessary.
 
-This is a deliberate breaking change. Per project policy, the old behavior should be deleted rather than preserved behind compatibility paths.
+### 2. Two frontend compilation paths with different error handling
 
-## Language Decision
+- `direct.rs`: uses `DiagnosticReport` + downcast chain
+- `compile/mod.rs`: uses `lower_*_errors()` which flatten structured errors
+  to plain strings via `.to_string()`, losing codes, locations, and labels
 
-### Final semantic split
+### 3. Colors baked into compiler library crates
 
-1. `err[...]` is the only error-shaped thing that is a normal value.
-2. `T / E` is not a value type. It is a routine-call outcome that must be handled at the call site.
-3. A `/ E` result may only appear in dedicated handling surfaces.
+The `colored` crate is a dependency in 5 compiler/library crates:
 
-Initial allowed `/ E` handling surfaces:
+- `fol-types` — `logit!` macro uses `.red()`
+- `fol-stream` — error messages use `.red()`
+- `fol-lexer` — every token `Display` impl uses `.black().on_red()` etc.
+- `fol-parser` — dependency inherited but not directly used
+- `fol-diagnostics` — `render_human.rs` applies colors unconditionally
 
-- `expr || fallback`
-- `check(expr)` if we keep it
-- possibly future dedicated syntax like `try`, `catch`, `match_err`, etc.
+Colors should only exist in `fol-frontend` where the output mode is known.
+Library crates should produce plain text.
 
-Initial forbidden `/ E` surfaces:
+### 4. Legacy error types with no purpose
 
-- variable binding
-- assignment target initialization
-- record field initialization
-- container elements
-- function arguments to ordinary routines
-- return expressions
-- arithmetic/logical/comparison operands
-- control-flow selectors and conditions
-- method receivers
-- field/index access
-- shell unwrap `!`
+`fol-types` defines `Flaw`, `Typo`, `Slip` — old error enums used only in
+the lexer (3 call sites). Also defines type aliases `Con<T>`, `Vod`, `Errors`
+that wrap `Box<dyn Glitch>`. These are legacy abstractions that spread the
+trait object pattern.
 
-### Consequence
+## Solution
 
-This removes the current hybrid model where `/ E` can flow through expression typing and be implicitly propagated by surrounding `... / E` routines.
+1. Replace `Box<dyn Glitch>` with concrete error types everywhere
+2. Convert compiler errors to `Diagnostic` at the production site
+3. Strip colors from all compiler/library crates
+4. Move colored rendering to `fol-frontend` only
 
-The new language story becomes:
+## Current Inventory
 
-- use `err[...]` when you want a real value that represents success/error state
-- use `T / E` when you want immediate call-site handling with `||` or `check(...)`
+### Glitch implementations (10 types)
 
-## Current Compiler Behavior To Remove
+| Type | Crate | Also implements ToDiagnostic | Used as Box\<dyn Glitch\> |
+|------|-------|------------------------------|---------------------------|
+| BasicError | fol-types | No | Yes (stream I/O) |
+| Flaw | fol-types | No | Yes (lexer stage1) |
+| Typo | fol-types | No | Yes (lexer stage3) |
+| Slip | fol-types | No | Dead code |
+| ParseError | fol-parser | Yes | Yes (parser public API) |
+| PackageError | fol-package | Yes | No (returned typed) |
+| ResolverError | fol-resolver | Yes | No (returned typed) |
+| TypecheckError | fol-typecheck | Yes | No (returned typed) |
+| LoweringError | fol-lower | Yes | No (returned typed) |
+| BuildEvaluationError | fol-build | Yes | No (returned typed) |
 
-The current compiler has a recoverable-effect model:
+### Glitch-dependent type aliases in fol-types
 
-- typechecking attaches `recoverable_effect` metadata to typed expressions and typed symbols
-- inferred locals may retain a recoverable effect
-- plain expression contexts call `plain_value_expr(...)`, which currently permits propagation in `ErrorCallMode::Propagate`
-- lowering materializes recoverable values into control flow using `CheckRecoverable`, `UnwrapRecoverable`, and `ExtractRecoverableError`
+```rust
+pub type Con<T> = Result<T, Box<dyn Glitch + 'static>>;
+pub type Vod = Result<(), Box<dyn Glitch + 'static>>;
+pub type Errors = Vec<Box<dyn Glitch>>;
+```
 
-Current behaviors that must be deleted:
+Used in ~30 lexer signatures (`Con<Element>`, `Con<Part<char>>`, `Vod`).
 
-1. Inferred bindings can capture recoverable call results.
-2. Plain expression use of `/ E` inside matching `... / E` routines can implicitly propagate.
-3. `return load()` is legal because lowering converts recoverable values into report-or-unwrap control flow.
-4. Lowered locals may retain `recoverable_error_type`.
+### Color usage in compiler crates
 
-## Target Architecture
-
-### Type system
-
-Keep both representations distinct:
-
-- `CheckedType::Error { inner }` for `err[...]`
-- `RoutineType { return_type, error_type }` for `T / E`
-
-Do not introduce any coercion or conversion path between them.
-
-### Typechecking
-
-Change the meaning of a recoverable effect:
-
-- a recoverable effect becomes evidence that an expression is only valid in dedicated handling surfaces
-- it is no longer something that ordinary value contexts may propagate
-
-Concretely:
-
-- any ordinary value context that sees `recoverable_effect.is_some()` must error
-- the old “surrounding routine declares compatible error type” rule is removed for ordinary expressions
-- `ErrorCallMode::Propagate` should be removed
-- the only remaining “observe” contexts should be the dedicated handlers like `||` and `check(...)`
-
-### Lowering
-
-Lowering should stop supporting generic materialization of recoverable values.
-
-Instead:
-
-- `||` lowers directly from an observed recoverable call result
-- `check(...)` lowers directly from an observed recoverable call result if kept
-- all ordinary expression lowering assumes no recoverable result reaches it
-- generic propagation helpers should be deleted
-
-### Runtime / IR
-
-The recoverable ABI may still exist for routine calls, but only the dedicated handling constructs should touch it.
-
-That means:
-
-- `CheckRecoverable`, `UnwrapRecoverable`, and `ExtractRecoverableError` may remain as IR instructions
-- generic lowering paths that synthesize propagation from arbitrary expressions should be removed
-- recoverable instructions should appear only under `||`, `check(...)`, or any later explicit handling construct
+| Crate | Files | Usage |
+|-------|-------|-------|
+| fol-types | mod.rs | `logit!` macro: `.red()`, `terminal_size` |
+| fol-stream | lib.rs | Error messages: `.red()` |
+| fol-lexer | 9 files | Every Display impl: `.black().on_red()`, `.white().on_black()` |
+| fol-parser | — | Cargo.toml dep only, no direct usage |
+| fol-diagnostics | render_human.rs | `.red().bold()`, `.yellow().bold()`, `.blue().bold()` |
 
 ## Implementation Slices
 
-### Slice 1: Freeze the language contract in tests first `[complete]`
+### Slice 1: Strip colors from compiler library crates ✅
 
-Before changing implementation, rewrite and add tests so the strict model is explicit.
+Remove the `colored` and `terminal_size` dependencies from all compiler crates.
+Library code must produce plain text.
 
-- Add typecheck tests that reject:
-  - `var x = load()` where `load(): T / E`
-  - `var x: T = load()`
-  - `return load()`
-  - `return load() + 1`
-  - `consume(load())`
-  - `when(load()) { ... }`
-  - `loop(load()) { ... }` if applicable
-  - `load().field`
-  - `load()[0]`
-  - `load().method()`
-- Keep tests that accept:
-  - `load() || fallback`
-  - `load() || report ...`
-  - `load() || panic ...`
-  - `check(load())` if `check(...)` survives
-- Add tests that continue to accept normal `err[...]` value behavior:
-  - `var x: err[int] = ...`
-  - passing `err[...]` to routines
-  - returning `err[...]`
-  - unwrap `value!` on `err[...]`
-- Delete tests that currently assert inferred recoverable locals are valid.
-- Delete tests that currently assert plain propagation through routine bodies is valid.
+Work:
+
+- `fol-types`: remove `colored` and `terminal_size` from Cargo.toml, rewrite
+  `logit!` macro without colors (or delete it if unused outside tests)
+- `fol-stream`: remove `colored` from Cargo.toml, strip `.red()` from error
+  messages in `lib.rs`
+- `fol-lexer`: remove `colored` from Cargo.toml, rewrite all token Display
+  impls to use plain text labels (e.g. `BUILDIN:fun` instead of colored blocks)
+- `fol-parser`: remove `colored` from Cargo.toml
+- `fol-diagnostics`: remove `colored` from Cargo.toml, make `render_human.rs`
+  output plain text (colors will be added by the frontend in a later slice)
+
+Keep `colored` only in `fol-frontend`.
 
 Exit condition:
 
-- test names and expectations describe the new model before implementation lands
+- `cargo tree -p fol-lexer | grep colored` returns nothing
+- `cargo tree -p fol-diagnostics | grep colored` returns nothing
+- all compiler crate tests pass with plain text output
 
-### Slice 2: Replace propagation with hard rejection in typechecking `[complete]`
+### Slice 2: Add color support to fol-frontend diagnostic rendering ✅
 
-Centralize the strict rule in the typechecker helpers.
+After Slice 1, `render_human.rs` in `fol-diagnostics` produces plain text.
+The frontend needs to apply colors at the presentation layer.
 
-- Remove `ErrorCallMode::Propagate`
-- Keep a single “observed recoverable expression” mode only for explicit handlers
-- Replace `plain_value_expr(...)` behavior:
-  - if `recoverable_effect.is_some()`, ordinary use is always an error
-  - emit a dedicated message like:
-    - `recoverable routine results with '/ ErrorType' cannot be used as plain values; handle them with '||' or check(...)`
-- Audit every call site of `plain_value_expr(...)`
-- Rename helpers if needed so the semantics are obvious:
-  - for example `require_plain_value_expr(...)`
-  - and `observe_recoverable_expr(...)`
+Work:
 
-Exit condition:
-
-- no ordinary expression context can silently propagate a `/ E` result
-
-### Slice 3: Ban binding capture completely `[complete]`
-
-Binding capture needs an explicit direct check even after Slice 2, because bindings currently infer and store the recoverable effect.
-
-- In binding initializer typing:
-  - reject any initializer whose typed expression has `recoverable_effect.is_some()`
-  - do this for both explicit and inferred bindings
-- Remove code that stores `symbol.recoverable_effect` for inferred bindings
-- Audit grouped/destructured bindings and record fields for the same issue
-- Ensure diagnostics say the problem is the `/ E` call result itself, not a downstream type mismatch
+- add a render option or wrapper in `fol-frontend` that colorizes diagnostic
+  output before printing
+- or: make `render_human.rs` accept a color flag/trait so the frontend can
+  opt in
+- keep `fol-diagnostics` color-free as a library
 
 Exit condition:
 
-- there is no valid path where a local symbol retains a recoverable effect from a routine call
+- `fol tool lsp` and CLI human output still show colored diagnostics
+- `fol-diagnostics` crate has no color dependency
 
-### Slice 4: Ban implicit return propagation `[complete]`
+### Slice 3: Replace lexer error types with a concrete enum ✅
 
-Current `return load()` works because the typechecker and lowerer treat `/ E` as materializable.
+The lexer uses `Flaw`, `Typo`, `Slip` through `Box<dyn Glitch>` via the
+`Con<T>` and `Vod` aliases. Replace with a concrete enum.
 
-- In return typing:
-  - reject `recoverable_effect.is_some()` before ordinary assignability
-  - replace the old compatibility-based propagation rule with an explicit handling requirement
-- Update diagnostics accordingly
+Work:
 
-Exit condition:
-
-- `return load()` is illegal unless wrapped in a future explicit handler form
-
-### Slice 5: Ban `/ E` in all ordinary expression surfaces `[complete]`
-
-Do a full audit of typechecking sites that currently accept plain values.
-
-Surfaces to cover:
-
-- binary operators
-- unary operators other than dedicated handlers
-- function and method arguments
-- field access
-- index access
-- record initializers
-- container literals
-- `when` selectors and branch conditions
-- loop conditions and iterables
-- intrinsic operands except dedicated handlers
-- dot-root intrinsics
-
-Expected result:
-
-- every one of these surfaces rejects `/ E` values directly and consistently
-- the old “requires a surrounding routine with a declared error type” diagnostics disappear from strict-mode paths
+- define `LexerError` enum in `fol-lexer` (or `fol-types`):
+  ```rust
+  enum LexerError {
+      ReadingBadContent(String),
+      GettingNoEntry(String),
+      GettingWrongPath(String),
+      LexerSpaceAdd(String),
+      ParserMismatch(String),
+  }
+  ```
+- replace `Con<T>` with `Result<T, LexerError>` across lexer stages
+- replace `Vod` with `Result<(), LexerError>`
+- delete `Flaw`, `Typo`, `Slip`
+- delete `Con<T>`, `Vod`, `Errors` type aliases
+- delete the `catch!` macro (just use `LexerError::Variant(msg)`)
+- update `fol-stream` to return `Result<T, StreamError>` or `Result<T, String>`
+  instead of `Result<T, Box<dyn Glitch>>`
 
 Exit condition:
 
-- the only surviving legal `/ E` consumer surfaces are explicit handlers
+- no `Box<dyn Glitch>` in fol-lexer or fol-stream
+- `Con<T>`, `Vod`, `Errors` are deleted
 
-### Slice 6: Simplify typed metadata `[complete]`
+### Slice 4: Parser returns Vec\<Diagnostic\> at the public boundary ✅
 
-Once bindings and plain expressions can no longer carry recoverable results, simplify the typed model.
+The parser internally collects `Vec<Box<dyn Glitch>>` during error recovery.
+These are always `ParseError`. Change the public API to return `Vec<Diagnostic>`.
 
-- Re-evaluate whether `TypedSymbol.recoverable_effect` is still needed
-- Re-evaluate whether `TypedReference.recoverable_effect` is still needed for ordinary references
-- Likely keep `TypedExpr.recoverable_effect` only as transient expression metadata for explicit handlers
-- Remove any typed metadata that exists only to support captured recoverable locals
+Work:
 
-Preferred end state:
-
-- recoverable metadata exists only on expression nodes/references required by `||` and `check(...)`
-- local symbols do not carry recoverable-effect state
-
-### Slice 7: Remove generic recoverable materialization from lowering `[complete]`
-
-This is the core strictness change in lowering.
-
-- Delete or rewrite `materialize_recoverable_value(...)`
-- Delete the idea that ordinary `lower_expression_expected(...)` may convert a recoverable value into report-or-unwrap control flow
-- Ensure ordinary lowering errors if a recoverable result leaks into it
-- Keep direct lowering for:
-  - `||`
-  - `check(...)` if retained
-
-This will likely simplify:
-
-- `lower_expression_expected(...)`
-- local binding lowering
-- return lowering
-- any call sites that currently choose between observed vs expected lowering based on recoverable local state
+- change `parse_package()` return from `Result<T, Vec<Box<dyn Glitch>>>` to
+  `Result<T, Vec<Diagnostic>>`
+- same for `parse_script_package()`, `parse_decl_package()`
+- add a private conversion: in the public methods, map each boxed error to
+  `Diagnostic` via downcast-to-ParseError (this is the LAST downcast, owned
+  by the parser itself)
+- internally the parser can keep `Vec<Box<dyn Glitch>>` for now, or switch to
+  `Vec<ParseError>` if straightforward
+- update all callers:
+  - `fol-package` session and build modules
+  - `fol-frontend/direct.rs`
+  - `fol-editor/analysis.rs`
 
 Exit condition:
 
-- lowering no longer implements implicit propagation
+- parser public API returns `Vec<Diagnostic>`
+- no downstream code downcasts parser output
 
-### Slice 8: Remove recoverable local storage from lowered IR `[complete]`
+### Slice 5: Remove Glitch implementations from compiler error types ✅
 
-The current lowered local model can store `recoverable_error_type` on locals.
+After Slices 3-4, the only remaining `Glitch` users are `BasicError` (used by
+`fol-stream` before Slice 3) and the parser's internal error collection.
 
-Under the strict model, that should disappear for ordinary locals.
+Work:
 
-- Audit `RoutineCursor`, local allocation helpers, and verifier logic
-- Remove `recoverable_error_type` from locals if no longer necessary
-- If some recoverable operand metadata is still needed for direct `||`/`check(...)` lowering, keep it only as temporary expression lowering state, not as persistent general-purpose local storage
-- Update verifier assumptions and tests
-
-Preferred end state:
-
-- routine call recoverable metadata is attached only to the specific call-result lowering path, not stored as a general local capability
-
-### Slice 9: Keep `err[...]` as the real value-based error surface `[complete]`
-
-After removing `/ E` capture and propagation, strengthen `err[...]` as the first-class error container.
-
-Short-term work:
-
-- keep existing `err[...]` type behavior intact
-- keep postfix `!` behavior for `err[...]`
-- ensure docs clearly state `err[...]` is the storable form
-
-Follow-up design work:
-
-- design `err[...]` methods or operators such as:
-  - `.unbox()`
-  - `.is_err()`
-  - `.if_err(...)`
-  - `.map(...)`
-  - `.map_err(...)`
-- decide whether those methods belong to dot-method syntax, intrinsic lowering, or library methods
-
-This method design is separate from the strict `/ E` cleanup and should not block it.
-
-### Slice 10: Rewrite diagnostics `[complete]`
-
-Current diagnostics are phrased around the propagation model. They need to be rewritten to teach the strict model.
-
-Messages to remove or replace:
-
-- `requires a surrounding routine with a declared error type in V1`
-- any wording that implies plain value contexts may propagate
-
-Messages to add:
-
-- `/ ErrorType` results are not plain values
-- `/ ErrorType` results cannot be assigned to variables
-- `/ ErrorType` results cannot be returned directly
-- `/ ErrorType` results must be handled with `||` or `check(...)`
-- `err[...]` is the value form if you need storage and later handling
+- remove `impl Glitch for ParseError`
+- remove `impl Glitch for PackageError`
+- remove `impl Glitch for ResolverError`
+- remove `impl Glitch for TypecheckError`
+- remove `impl Glitch for LoweringError`
+- remove `impl Glitch for BuildEvaluationError`
+- remove `impl Glitch for BasicError`
+- if the parser still uses `Box<dyn Glitch>` internally, switch its internal
+  error collection to `Vec<ParseError>`
+- delete the `Glitch` trait from `fol-types`
+- delete `BasicError` if no longer used (or keep as a simple error struct
+  without Glitch)
+- delete `impl Clone for Box<dyn Glitch>`
+- delete the `erriter!`, `noditer!`, `halt!`, `crash!` macros if unused
 
 Exit condition:
 
-- diagnostics explain the language rule directly instead of exposing internal propagation machinery
+- the `Glitch` trait does not exist
+- `grep -r "dyn Glitch" lang/` returns nothing
+- all tests pass
 
-### Slice 11: Rewrite docs to match the strict model `[complete]`
+### Slice 6: Frontend and editor use Diagnostic directly ✅
 
-The docs currently describe propagation as part of the V1 contract. That must be removed.
+With parser returning `Vec<Diagnostic>` and all other stages returning typed
+errors with `.to_diagnostic()`:
 
-Files already known to need updates:
+Work:
 
-- `book/src/650_errors/200_recover.md`
-- `book/src/400_type/400_special.md`
-- `book/src/500_items/200_routines/_index.md`
-- `book/src/500_items/200_routines/200_functions.md`
-- any examples that show `return load()` or captured recoverable locals
-
-Required doc changes:
-
-- remove propagation as supported behavior
-- state that `/ E` is immediate handling only
-- show `||` and `check(...)` examples
-- state clearly that `err[...]` is the value-based alternative
-
-Exit condition:
-
-- docs no longer teach or imply implicit propagation
-
-### Slice 12: Remove outdated integration fixtures and examples `[complete]`
-
-Audit tests and examples for old behavior.
-
-- Replace propagation fixtures with strict-handling fixtures
-- delete or rewrite fixtures that rely on:
-  - `return load()`
-  - `var attempt = load()`
-  - `return load() + 1`
-- keep fixtures that demonstrate:
-  - `||` defaulting
-  - `|| report`
-  - `|| panic`
-  - `check(load())`
-  - `err[...]` shell/value use
+- `fol-frontend/direct.rs`:
+  - parser errors: iterate `Vec<Diagnostic>`, add to report
+  - typed errors: call `.to_diagnostic()` directly
+  - delete `add_compiler_glitch()`, `lower_compiler_glitch()`
+- `fol-frontend/compile/mod.rs`:
+  - delete `lower_resolver_errors()`, `lower_typecheck_errors()`,
+    `lower_lowering_errors()` — these flatten to strings
+  - use `DiagnosticReport` to collect diagnostics properly
+- `fol-editor/analysis.rs`:
+  - parser returns `Vec<Diagnostic>` — use directly
+  - delete `glitch_to_diagnostic()`
+- `DiagnosticReport::add_error(&dyn Glitch, ...)`:
+  - this method accepted `&dyn Glitch` — replace with
+    `add_diagnostic(Diagnostic)` or a concrete fallback
 
 Exit condition:
 
-- no fixture in the repo demonstrates the removed propagation model
+- no downcast chains in frontend or editor
+- no string-flattening error helpers
+- `glitch_to_diagnostic` and `lower_compiler_glitch` are deleted
 
-## Specific Code Areas To Audit
+### Slice 7: FrontendError implements ToDiagnostic ✅
 
-### Typecheck
+`FrontendError` carries no diagnostic code and no location. It formats as
+`"FrontendWorkspaceNotFound: message"`.
 
-- `lang/compiler/fol-typecheck/src/exprs/helpers.rs`
-- `lang/compiler/fol-typecheck/src/exprs/bindings.rs`
-- `lang/compiler/fol-typecheck/src/exprs/controlflow.rs`
-- `lang/compiler/fol-typecheck/src/exprs/operators.rs`
-- `lang/compiler/fol-typecheck/src/exprs/calls.rs`
-- `lang/compiler/fol-typecheck/src/exprs/access.rs`
-- `lang/compiler/fol-typecheck/src/exprs/literals.rs`
-- `lang/compiler/fol-typecheck/src/exprs/mod.rs`
-- `lang/compiler/fol-typecheck/src/model.rs`
+Work:
 
-### Lowering
+- assign stable codes: F1001 (InvalidInput), F1002 (WorkspaceNotFound),
+  F1003 (PackageFailed), F1004 (CommandFailed), F1099 (Internal)
+- implement `ToDiagnostic` for `FrontendError`
+- preserve notes through the diagnostic model
+- route frontend error display through diagnostic rendering
 
-- `lang/compiler/fol-lower/src/exprs/expressions.rs`
-- `lang/compiler/fol-lower/src/exprs/calls.rs`
-- `lang/compiler/fol-lower/src/exprs/bindings.rs`
-- `lang/compiler/fol-lower/src/exprs/body.rs`
-- `lang/compiler/fol-lower/src/exprs/cursor.rs`
-- `lang/compiler/fol-lower/src/verify/instruction.rs`
-- `lang/compiler/fol-lower/src/verify/mod.rs`
+Exit condition:
 
-### Docs and tests
+- `FrontendError` has `[F1xxx]` codes
+- frontend errors render through the same pipeline as compiler errors
 
-- `test/typecheck/test_typecheck_foundation.rs`
-- `test/typecheck/test_typecheck_error_typing.rs`
-- `test/integration_tests/integration_cli_lowering.rs`
-- `test/apps/fixtures/recoverable_propagation/main.fol`
-- `test/apps/fixtures/recoverable_fallback/main.fol`
-- `book/src/650_errors/200_recover.md`
-- `book/src/400_type/400_special.md`
-- `book/src/500_items/200_routines/_index.md`
-- `book/src/500_items/200_routines/200_functions.md`
+### Slice 8: Integration tests for the unified pipeline ✅
 
-## Ordered Execution Plan
+Verify that the same diagnostic flows identically through all output paths.
 
-1. Rewrite tests to define the strict contract.
-2. Change typechecker helpers so `/ E` is rejected in all ordinary value contexts.
-3. Ban binding capture explicitly and remove symbol-level recoverable locals.
-4. Ban direct return propagation.
-5. Audit all expression surfaces for consistent rejection.
-6. Simplify typed metadata.
-7. Remove generic recoverable materialization from lowering.
-8. Remove lowered local recoverable storage if no longer needed.
-9. Rewrite diagnostics.
-10. Rewrite docs and examples.
-11. Run full test suite and remove any remaining propagation-era behavior.
+Work:
 
-## Acceptance Criteria
+- fixture that produces each error family (P, K, R, T, L, F)
+- verify CLI human, CLI JSON, and LSP all carry the same code, message,
+  location, and labels
+- verify no `Box<dyn Glitch>` exists in any public API
+- verify no `colored` dependency in any compiler crate
 
-The strict model is complete when all of the following are true:
+Exit condition:
 
-- `err[...]` remains a normal value type.
-- `/ E` results cannot be assigned to locals.
-- `/ E` results cannot be returned directly.
-- `/ E` results cannot appear in ordinary expressions.
-- only explicit handler surfaces can consume `/ E`.
-- no typed local symbol stores recoverable-call state.
-- lowering no longer performs implicit propagation.
-- docs and tests consistently teach the strict split.
+- one test suite proves end-to-end diagnostic fidelity
+- no regression in existing tests
 
-## Non-Goals
+## Architecture After
 
-- preserving backward compatibility with propagation-based `/ E` code
-- introducing migration warnings
-- adding fallback behavior
-- merging `/ E` and `err[...]` into one representation
+```
+Source → Lexer (LexerError) → Parser → Vec<Diagnostic>
+                                ↓
+Package (PackageError) → .to_diagnostic() → Diagnostic
+Resolver (ResolverError) → .to_diagnostic() → Diagnostic
+Typecheck (TypecheckError) → .to_diagnostic() → Diagnostic
+Lower (LoweringError) → .to_diagnostic() → Diagnostic
+                                ↓
+                        DiagnosticReport
+                                ↓
+                 ┌──────────────┼──────────────┐
+                 │              │              │
+          CLI Plain      CLI Colored      LSP Adapter
+        (fol-diagnostics) (fol-frontend)  (fol-diagnostics)
+```
 
-## Follow-Up After This Plan
+No `Glitch` trait. No `Box<dyn Glitch>`. No downcasting. No colors in libraries.
+Every stage owns its concrete error type and converts to `Diagnostic` at its
+own boundary. The frontend decides presentation style.
 
-After the strict split lands, do a separate design pass for `err[...]` ergonomics:
+## What This Plan Does Not Cover
 
-- value methods
-- library helpers
-- pattern/match support
-- naming of `unbox`, `unwrap`, `if_err`, `map_err`, etc.
+- `BackendError` and `RuntimeError` — execution-layer errors, not compiler
+  diagnostics. They stay as their own types.
+- `EditorError` — transport/session error, not a diagnostic.
+- Tree-sitter maintenance and language facts — covered by completed work,
+  not reopened.
 
-That work should start only after the `/ E` propagation model has been fully removed.
+## Immediate Next Slice
+
+Start with Slice 1 (strip colors). It is the simplest, most independent change
+and immediately improves library hygiene.

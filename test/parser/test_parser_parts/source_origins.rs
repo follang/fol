@@ -20,7 +20,7 @@ fn test_parse_package_retains_successful_top_level_origins() {
     let temp_root = unique_temp_root("top_level");
     fs::create_dir_all(&temp_root).expect("Should create temporary source-origin fixture dir");
     let fixture = temp_root.join("origins.fol");
-    fs::write(&fixture, "`doc`\nvar alpha = 1\nfun beta(): int = { return alpha }\n")
+    fs::write(&fixture, "`doc`\nvar alpha = 1;\nfun beta(): int = { return alpha };\n")
         .expect("Should write temporary source-origin fixture");
 
     let parsed = parse_package_from_file(
@@ -69,8 +69,8 @@ fn test_parse_package_retains_item_origins_across_multiple_files() {
     fs::create_dir_all(&temp_root).expect("Should create temporary multi-file origin fixture dir");
     let alpha = temp_root.join("00_alpha.fol");
     let beta = temp_root.join("10_beta.fol");
-    fs::write(&alpha, "var alpha = 1\n").expect("Should write first multi-file origin fixture");
-    fs::write(&beta, "var beta = 2\n").expect("Should write second multi-file origin fixture");
+    fs::write(&alpha, "var alpha = 1;\n").expect("Should write first multi-file origin fixture");
+    fs::write(&beta, "var beta = 2;\n").expect("Should write second multi-file origin fixture");
 
     let parsed = parse_package_from_folder(
         temp_root
@@ -99,7 +99,7 @@ fn test_parse_package_retains_nested_routine_origins() {
     let fixture = temp_root.join("nested_routines.fol");
     fs::write(
         &fixture,
-        "fun outer(): int = {\n    fun inner(): int = { return 1 }\n    return inner()\n}\n",
+        "fun outer(): int = {\n    fun inner(): int = { return 1 };\n    return inner();\n};\n",
     )
     .expect("Should write temporary nested-routine fixture");
 
@@ -134,7 +134,7 @@ fn test_parse_package_retains_nested_use_decl_origins() {
     let fixture = temp_root.join("nested_use.fol");
     fs::write(
         &fixture,
-        "fun outer(): int = {\n    use warn: loc = {pkg::warn}\n    return 0\n}\n",
+        "fun outer(): int = {\n    use warn: loc = {pkg::warn};\n    return 0;\n};\n",
     )
     .expect("Should write temporary nested-use fixture");
 
@@ -169,7 +169,7 @@ fn test_parse_package_retains_qualified_reference_origins() {
     let fixture = temp_root.join("qualified_refs.fol");
     fs::write(
         &fixture,
-        "fun outer(): int = {\n    fun inner(): pkg::Value = {\n        return pkg::value\n    }\n    return 0\n}\n",
+        "fun outer(): int = {\n    fun inner(): pkg::Value = {\n        return pkg::value;\n    };\n    return 0;\n};\n",
     )
     .expect("Should write temporary qualified-ref fixture");
 
@@ -226,7 +226,7 @@ fn test_parse_package_retains_plain_identifier_origins() {
     let fixture = temp_root.join("identifier_refs.fol");
     fs::write(
         &fixture,
-        "fun outer(): int = {\n    return missing\n}\n",
+        "fun outer(): int = {\n    return missing;\n};\n",
     )
     .expect("Should write temporary identifier-origin fixture");
 
@@ -269,7 +269,7 @@ fn test_parse_package_retains_plain_free_call_origins() {
     let fixture = temp_root.join("call_refs.fol");
     fs::write(
         &fixture,
-        "fun outer(): int = {\n    return helper(1)\n}\n",
+        "fun outer(): int = {\n    return helper(1);\n};\n",
     )
     .expect("Should write temporary call-origin fixture");
 
@@ -310,7 +310,7 @@ fn test_parse_package_retains_plain_named_type_origins() {
     let temp_root = unique_temp_root("plain_named_type");
     fs::create_dir_all(&temp_root).expect("Should create temporary type-origin fixture dir");
     let fixture = temp_root.join("type_refs.fol");
-    fs::write(&fixture, "fun outer(value: Missing): Missing = {\n    return value\n}\n")
+    fs::write(&fixture, "fun outer(value: Missing): Missing = {\n    return value;\n};\n")
         .expect("Should write temporary type-origin fixture");
 
     let parsed = parse_package_from_file(

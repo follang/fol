@@ -5,4 +5,4 @@ fun[] inspect(value: int): int = {
         imp LocalImpl: int;
         std LocalStd: pro = { fun ping(): int; };
     }
-}
+};

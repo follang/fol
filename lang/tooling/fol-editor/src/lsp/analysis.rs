@@ -1,15 +1,14 @@
 use crate::{
-    diagnostic_to_lsp, materialize_analysis_overlay, EditorDocument,
+    dedup_lsp_diagnostics, diagnostic_to_lsp, materialize_analysis_overlay, EditorDocument,
     EditorError, EditorErrorKind, EditorResult, EditorWorkspaceMapping, LspDiagnostic,
 };
 use fol_diagnostics::Diagnostic;
 use fol_diagnostics::ToDiagnostic;
-use fol_package::{PackageError, PackageSession, PackageSourceKind};
-use fol_parser::ast::{AstParser, ParseError};
-use fol_resolver::{Resolver, ResolverError};
+use fol_package::{PackageSession, PackageSourceKind};
+use fol_parser::ast::AstParser;
+use fol_resolver::Resolver;
 use fol_stream::{FileStream, Source, SourceType};
-use fol_typecheck::{TypecheckError, Typechecker};
-use std::collections::HashSet;
+use fol_typecheck::Typechecker;
 use std::path::Path;
 
 use super::semantic::SemanticSnapshot;
@@ -19,18 +18,7 @@ pub(super) fn analyze_document(
     mapping: &EditorWorkspaceMapping,
 ) -> EditorResult<Vec<LspDiagnostic>> {
     let snapshot = analyze_document_semantics(document, mapping)?;
-    Ok(dedup_diagnostics(snapshot.diagnostics))
-}
-
-/// Deduplicate LSP diagnostics by (line, code), keeping only the first
-/// diagnostic for each unique pair. This prevents cascade errors from
-/// flooding the editor with redundant markers on the same line.
-pub(crate) fn dedup_diagnostics(diagnostics: Vec<LspDiagnostic>) -> Vec<LspDiagnostic> {
-    let mut seen = HashSet::new();
-    diagnostics
-        .into_iter()
-        .filter(|d| seen.insert((d.range.start.line, d.code.clone())))
-        .collect()
+    Ok(dedup_lsp_diagnostics(snapshot.diagnostics))
 }
 
 pub(super) fn analyze_document_semantics(
@@ -151,43 +139,37 @@ pub(super) fn diagnostic_targets_path(diagnostic: &Diagnostic, path: &Path) -> b
         .unwrap_or(false)
 }
 
+/// Parse a single file for diagnostics when no package root is available.
+///
+/// Uses an in-memory source/stream so no temp files are written to disk.
 pub(super) fn parse_single_file_diagnostics(
     path: &Path,
     text: &str,
 ) -> EditorResult<Vec<Diagnostic>> {
-    let root = std::env::temp_dir().join(format!(
-        "fol_editor_parse_{}_{}",
-        std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time should be after epoch")
-            .as_nanos()
-    ));
-    std::fs::create_dir_all(&root).map_err(|error| {
+    let path_str = path.to_string_lossy().to_string();
+    let package_name = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("main");
+    let source = Source {
+        call: path_str.clone(),
+        path: path_str,
+        data: text.to_string(),
+        namespace: String::new(),
+        package: package_name.to_string(),
+    };
+    let mut stream = FileStream::from_preloaded(vec![source]).map_err(|error| {
         EditorError::new(
             EditorErrorKind::Internal,
-            format!(
-                "failed to create parser temp root '{}': {error}",
-                root.display()
-            ),
+            format!("failed to create in-memory stream for '{}': {error}", path.display()),
         )
     })?;
-    let file = root.join(
-        path.file_name()
-            .unwrap_or_else(|| std::ffi::OsStr::new("main.fol")),
-    );
-    std::fs::write(&file, text).map_err(|error| {
-        EditorError::new(
-            EditorErrorKind::Internal,
-            format!(
-                "failed to write parser temp file '{}': {error}",
-                file.display()
-            ),
-        )
-    })?;
-    let diagnostics = parse_directory_diagnostics(&root)?;
-    let _ = std::fs::remove_dir_all(&root);
-    Ok(diagnostics)
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = AstParser::new();
+    match parser.parse_package(&mut lexer) {
+        Ok(_) => Ok(Vec::new()),
+        Err(diagnostics) => Ok(diagnostics),
+    }
 }
 
 pub(super) fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagnostic>> {
@@ -225,27 +207,8 @@ pub(super) fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagn
 
     match parser.parse_package(&mut lexer) {
         Ok(_) => Ok(Vec::new()),
-        Err(errors) => Ok(errors
-            .into_iter()
-            .map(|error| glitch_to_diagnostic(error.as_ref()))
-            .collect()),
+        Err(diagnostics) => Ok(diagnostics),
     }
-}
-
-pub(super) fn glitch_to_diagnostic(error: &dyn fol_types::Glitch) -> Diagnostic {
-    if let Some(parse_error) = error.as_any().downcast_ref::<ParseError>() {
-        return parse_error.to_diagnostic();
-    }
-    if let Some(package_error) = error.as_any().downcast_ref::<PackageError>() {
-        return package_error.to_diagnostic();
-    }
-    if let Some(resolver_error) = error.as_any().downcast_ref::<ResolverError>() {
-        return resolver_error.to_diagnostic();
-    }
-    if let Some(typecheck_error) = error.as_any().downcast_ref::<TypecheckError>() {
-        return typecheck_error.to_diagnostic();
-    }
-    fol_diagnostics::Diagnostic::error("E9999", error.to_string())
 }
 
 pub(super) fn syntax_at_position(

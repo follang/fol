@@ -1,4 +1,4 @@
 fun demo(): int = {
     var one: int = 24, two = 13, three: int = 7;
     return one;
-}
+};

@@ -4,4 +4,4 @@ def argo: mod[init] = {
     fun add(a, b: int): int = {
         return a + b;
     }
-}
+};

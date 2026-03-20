@@ -134,7 +134,7 @@ fn semantic_member_planning_uses_graph_projected_build_run_and_check_steps() {
         member_root: workspace.members[0].root.clone(),
         package_name: "app".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("semantic member planning should succeed");
 
     assert!(plan.steps.iter().any(|step| step.name == "build"));
@@ -212,7 +212,7 @@ fn workspace_route_planner_accepts_only_semantic_members() {
     .unwrap();
     fs::write(
         modern.join("build.fol"),
-        "pro[] build(graph: Graph): non = graph;\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
     )
     .unwrap();
     fs::write(
@@ -254,7 +254,7 @@ fn workspace_route_planner_rejects_old_build_members() {
     fs::write(root.join("package.yaml"), "name: old\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "var[] answer: int = 42;\n",
     )
     .unwrap();
 
@@ -270,9 +270,9 @@ fn workspace_route_planner_rejects_old_build_members() {
         },
         "build",
     )
-    .expect_err("old build syntax should be rejected");
+    .expect_err("build file without canonical entry should be rejected");
 
-    assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
+    assert_eq!(error.kind(), crate::FrontendErrorKind::PackageFailed);
     assert!(error
         .message()
         .contains("canonical `pro[] build(graph: Graph): non` entry"));
@@ -312,7 +312,7 @@ fn workspace_route_planner_rejects_broken_modern_builds() {
     )
     .expect_err("broken modern-only build should stay a parse failure");
 
-    assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
+    assert_eq!(error.kind(), crate::FrontendErrorKind::PackageFailed);
     assert!(error
         .message()
         .contains("package loader could not parse package build file"));
@@ -363,7 +363,7 @@ fn modern_members_plan_custom_steps_from_semantic_builds() {
     .expect("modern workspace route should classify successfully");
     assert_eq!(route.members[0].mode, FrontendBuildWorkflowMode::Modern);
 
-    let plan = plan_member_execution(&route.members[0])
+    let plan = plan_member_execution(&route.members[0], &FrontendConfig::default())
         .expect("modern member should plan custom graph steps");
     let docs = plan
         .steps
@@ -470,7 +470,7 @@ fn build_body_step_calls_flow_into_member_execution_plans() {
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .unwrap();
 
     assert!(plan.steps.iter().any(|step| step.name == "docs"));
@@ -514,7 +514,7 @@ fn build_body_step_dependencies_are_accepted_during_member_planning() {
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .unwrap();
 
     assert!(plan.steps.iter().any(|step| step.name == "gen"));
@@ -555,7 +555,7 @@ fn custom_build_steps_plan_as_build_execution() {
         member_root: root.clone(),
         package_name: "demo".to_string(),
         mode: FrontendBuildWorkflowMode::Modern,
-    })
+    }, &FrontendConfig::default())
     .expect("custom build-like step should plan successfully");
 
     let docs = plan

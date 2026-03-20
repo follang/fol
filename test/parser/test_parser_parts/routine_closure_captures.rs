@@ -72,10 +72,10 @@ fn test_duplicate_routine_closure_captures_are_rejected() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let message = parse_error.to_string();
+    let message = parse_error.message.clone();
     assert!(
         message.contains("Duplicate capture name 'n'"),
         "Duplicate capture names should be rejected, got: {}",
@@ -97,10 +97,10 @@ fn test_canonical_duplicate_routine_closure_captures_are_rejected() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let message = parse_error.to_string();
+    let message = parse_error.message.clone();
     assert!(
         message.contains("Duplicate capture name 'NValue'"),
         "Canonical duplicate capture names should report the later spelling, got: {}",

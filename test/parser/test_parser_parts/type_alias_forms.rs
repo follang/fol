@@ -118,17 +118,17 @@ fn test_special_boxed_type_bad_arity_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected exactly one type argument for opt[...]"),
         "Malformed opt type should report bad arity, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Special type bad-arity parse error should point to the declaration line"
     );
@@ -239,17 +239,17 @@ fn test_container_type_bad_arity_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected exactly two type arguments for map[...]"),
         "Malformed map type should report bad arity, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Container type bad-arity parse error should point to the declaration line"
     );
@@ -615,10 +615,10 @@ fn test_type_alias_parsing_rejects_unknown_scalar_type_option() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Unknown integer type option 'wat'"),
         "Malformed scalar type alias should report unknown option, got: {}",

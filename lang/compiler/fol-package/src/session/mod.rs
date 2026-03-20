@@ -377,40 +377,17 @@ pub fn parse_directory_package_syntax(
     let mut lexer = Elements::init(&mut stream);
     let mut parser = AstParser::new();
 
-    parser.parse_package(&mut lexer).map_err(|errors| {
-        let first = errors
-            .into_iter()
-            .next()
+    parser.parse_package(&mut lexer).map_err(|diagnostics| {
+        let first = diagnostics.into_iter().next()
             .expect("parse_package should produce at least one error");
-        if let Some(parse_error) = first
-            .as_ref()
-            .as_any()
-            .downcast_ref::<fol_parser::ast::ParseError>()
-        {
-            PackageError::with_origin(
-                PackageErrorKind::InvalidInput,
-                format!(
-                    "package loader could not parse imported package '{}': {}",
-                    root.display(),
-                    parse_error
-                ),
-                fol_parser::ast::SyntaxOrigin {
-                    file: parse_error.file(),
-                    line: parse_error.line(),
-                    column: parse_error.column(),
-                    length: parse_error.length(),
-                },
-            )
-        } else {
-            PackageError::new(
-                PackageErrorKind::InvalidInput,
-                format!(
-                    "package loader could not parse imported package '{}': {}",
-                    root.display(),
-                    first
-                ),
-            )
-        }
+        PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package loader could not parse imported package '{}': {}",
+                root.display(),
+                first.message
+            ),
+        )
     })
 }
 

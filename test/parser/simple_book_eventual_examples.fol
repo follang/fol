@@ -1,9 +1,9 @@
 pro main(): int = {
     result = doItFast() | async;
     .echo("dosomething to echo");
-}
+};
 
 fun doItFast(): str = {
     result = client.get(address).send() | await;
     .echo(result);
-}
+};

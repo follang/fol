@@ -8,4 +8,4 @@ fun choose_else_if_multi(a: int, b: int, c: int): int = {
     } else {
         return a;
     }
-}
+};

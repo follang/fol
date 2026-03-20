@@ -1,8 +1,8 @@
 fun caller_forward_method_ok(tool: parser, code: int): int / str = {
     report tool.parse_msg(code);
     return 0;
-}
+};
 
 fun (parser)parse_msg(code: int): str = {
     return "ok";
-}
+};

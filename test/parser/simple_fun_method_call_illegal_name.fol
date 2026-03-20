@@ -1,4 +1,4 @@
 fun method_call(obj: int, value: int): int = {
     obj.bad__update(value);
     return value;
-}
+};

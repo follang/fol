@@ -1,4 +1,3 @@
-use colored::Colorize;
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -71,13 +70,6 @@ impl fmt::Display for SYMBOL {
             SYMBOL::Degree => "°",
             SYMBOL::Sign => "§",
         };
-        write!(
-            f,
-            "{}{}",
-            " SYMBOL   ".black().on_red(),
-            (":".to_string().white().on_black().to_string() + &format!(" {} ", t))
-                .black()
-                .on_red()
-        )
+        write!(f, "SYMBOL:{}", t)
     }
 }

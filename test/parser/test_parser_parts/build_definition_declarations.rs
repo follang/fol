@@ -22,7 +22,7 @@ fn test_package_parser_accepts_canonical_build_procedures() {
     let file_path = temp_root.join("build.fol");
     fs::write(
         &file_path,
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
     )
     .expect("Should write the canonical build fixture");
 
@@ -64,8 +64,8 @@ fn test_package_parser_accepts_helper_declarations_alongside_the_build_entry() {
     fs::write(
         &file_path,
         concat!(
-            "fun[] helper(): int = {\n    return 1\n}\n",
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "fun[] helper(): int = {\n    return 1;\n};\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         ),
     )
     .expect("Should write the helper build fixture");

@@ -1,5 +1,6 @@
 // FOL Diagnostics - Error formatting and output
 mod codes;
+pub mod lsp;
 mod model;
 mod render_human;
 mod render_json;
@@ -64,24 +65,28 @@ impl DiagnosticReport {
 
     pub fn add_error(
         &mut self,
-        error: &dyn fol_types::Glitch,
+        message: impl Into<String>,
         location: Option<DiagnosticLocation>,
     ) {
-        let diagnostic = Diagnostic::from_glitch(error, Severity::Error, location);
+        let diagnostic = Diagnostic::from_message(message, Severity::Error, location);
         self.add_diagnostic(diagnostic);
     }
 
     pub fn add_warning(
         &mut self,
-        warning: &dyn fol_types::Glitch,
+        message: impl Into<String>,
         location: Option<DiagnosticLocation>,
     ) {
-        let diagnostic = Diagnostic::from_glitch(warning, Severity::Warning, location);
+        let diagnostic = Diagnostic::from_message(message, Severity::Warning, location);
         self.add_diagnostic(diagnostic);
     }
 
-    pub fn add_info(&mut self, info: &dyn fol_types::Glitch, location: Option<DiagnosticLocation>) {
-        let diagnostic = Diagnostic::from_glitch(info, Severity::Info, location);
+    pub fn add_info(
+        &mut self,
+        message: impl Into<String>,
+        location: Option<DiagnosticLocation>,
+    ) {
+        let diagnostic = Diagnostic::from_message(message, Severity::Info, location);
         self.add_diagnostic(diagnostic);
     }
 
@@ -170,16 +175,10 @@ pub trait PointLocationLike {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use fol_types::BasicError;
-
     #[test]
     fn test_diagnostic_report_json() {
         let mut report = DiagnosticReport::new();
-        let error = BasicError {
-            message: "Test error".to_string(),
-        };
-
-        report.add_error(&error, None);
+        report.add_error("Test error", None);
 
         let json = report.output(OutputFormat::Json);
         assert!(json.contains("Test error"));
@@ -189,11 +188,7 @@ mod tests {
     #[test]
     fn test_diagnostic_report_human() {
         let mut report = DiagnosticReport::new();
-        let error = BasicError {
-            message: "Test error".to_string(),
-        };
-
-        report.add_error(&error, None);
+        report.add_error("Test error", None);
 
         let human = report.output(OutputFormat::Human);
         assert!(human.contains("Test error"));
@@ -203,12 +198,8 @@ mod tests {
     #[test]
     fn test_diagnostic_report_json_keeps_location_fields_for_cli_consumers() {
         let mut report = DiagnosticReport::new();
-        let error = BasicError {
-            message: "Test error".to_string(),
-        };
-
         report.add_error(
-            &error,
+            "Test error",
             Some(DiagnosticLocation {
                 file: Some("pkg/main.fol".to_string()),
                 line: 7,
@@ -229,12 +220,8 @@ mod tests {
     #[test]
     fn test_diagnostic_report_human_keeps_location_arrow_shape() {
         let mut report = DiagnosticReport::new();
-        let error = BasicError {
-            message: "Test error".to_string(),
-        };
-
         report.add_error(
-            &error,
+            "Test error",
             Some(DiagnosticLocation {
                 file: Some("pkg/main.fol".to_string()),
                 line: 7,
@@ -253,15 +240,8 @@ mod tests {
     #[test]
     fn test_diagnostic_report_warning_and_info_helpers_track_severity_counts() {
         let mut report = DiagnosticReport::new();
-        let warning = BasicError {
-            message: "Test warning".to_string(),
-        };
-        let info = BasicError {
-            message: "Test info".to_string(),
-        };
-
-        report.add_warning(&warning, None);
-        report.add_info(&info, None);
+        report.add_warning("Test warning", None);
+        report.add_info("Test info", None);
 
         assert_eq!(report.error_count, 0);
         assert_eq!(report.warning_count, 1);
@@ -321,11 +301,12 @@ mod tests {
     }
 
     #[test]
-    fn test_glitch_fallback_no_longer_guesses_codes_from_messages() {
-        let error = BasicError {
-            message: "ParserMismatch: legacy text should not drive modern codes".to_string(),
-        };
-        let diagnostic = Diagnostic::from_glitch(&error, Severity::Error, None);
+    fn test_message_fallback_no_longer_guesses_codes_from_messages() {
+        let diagnostic = Diagnostic::from_message(
+            "ParserMismatch: legacy text should not drive modern codes",
+            Severity::Error,
+            None,
+        );
 
         assert_eq!(diagnostic.code, DiagnosticCode::unknown());
     }

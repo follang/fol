@@ -2,4 +2,4 @@ fun broken_block_comment(a: int): int = {
     value = combine(
         a,
         /* missing close
-}
+};

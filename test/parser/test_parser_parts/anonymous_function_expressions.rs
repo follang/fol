@@ -438,8 +438,6 @@ fn test_shorthand_anonymous_function_flow_body_inquiry_parsing() {
         _ => panic!("Expected program node"),
     }
 }
-
-
 #[test]
 fn test_anonymous_routine_inquiry_clauses_parsing() {
     let mut file_stream =
@@ -737,8 +735,6 @@ fn test_shorthand_anonymous_function_flow_capture_inquiry_parsing() {
         _ => panic!("Expected program node"),
     }
 }
-
-
 #[test]
 fn test_shorthand_anonymous_function_flow_return_type_in_initializer() {
     let mut file_stream = FileStream::from_file(

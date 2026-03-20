@@ -3,4 +3,4 @@ fun classify_star_broken(value: int, needle: int): int = {
         is(needle) { return 1; }
         * return 0;
     }
-}
+};

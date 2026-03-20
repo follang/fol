@@ -2,4 +2,4 @@ fun fallback(value: int): int = {
     if(value) => fun inner(): int = { return value; }
     else => pro reset(): int = { return 0; }
     return value;
-}
+};

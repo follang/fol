@@ -1,8 +1,9 @@
 use crate::lexer::stage0;
 use crate::lexer::stage1::Element;
 use crate::token::{help, KEYWORD::*, VOID};
+use crate::Con;
 use fol_stream::FileStream;
-use fol_types::{Con, Win, SLIDER};
+use fol_types::{Win, SLIDER};
 
 pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,

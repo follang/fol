@@ -1,4 +1,4 @@
 fun demo(): int = {
     ?var derived: int = 1;
     return derived;
-}
+};

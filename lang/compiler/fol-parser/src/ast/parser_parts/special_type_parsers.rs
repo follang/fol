@@ -5,7 +5,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         mut base: FolType,
-    ) -> Result<FolType, Box<dyn Glitch>> {
+    ) -> Result<FolType, ParseError> {
         for _ in 0..32 {
             self.skip_ignorable(tokens)?;
             let open = match tokens.curr(false) {
@@ -35,13 +35,13 @@ impl AstParser {
     pub(super) fn parse_type_limit_list(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '[' to start type limits".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -79,16 +79,16 @@ impl AstParser {
                 return Ok(limits);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &separator,
                 "Expected ',', ';', or ']' in type limits".to_string(),
-            )));
+            ));
         }
 
-        Err(Box::new(ParseError::from_token(
+        Err(ParseError::from_token(
             &open,
             "Type limits exceeded parser limit".to_string(),
-        )))
+        ))
     }
 
     pub(super) fn is_missing_type_reference_close_token(key: &KEYWORD) -> bool {
@@ -106,7 +106,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         base_name: &str,
-    ) -> Result<Option<FolType>, Box<dyn Glitch>> {
+    ) -> Result<Option<FolType>, ParseError> {
         if let Some(parsed) = self.try_parse_source_kind_type_suffix(tokens, base_name)? {
             return Ok(Some(parsed));
         }
@@ -116,10 +116,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() != 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected exactly one type argument for opt[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Optional {
                     inner: Box::new(args.into_iter().next().expect("opt arg exists")),
@@ -129,10 +129,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.is_empty() {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected at least one type argument for mul[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Multiple { types: args }))
             }
@@ -140,10 +140,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.is_empty() {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected at least one type argument for uni[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Union { types: args }))
             }
@@ -151,10 +151,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if !args.is_empty() {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected zero type arguments for nev[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Never))
             }
@@ -162,10 +162,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if !args.is_empty() {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected zero type arguments for any[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Any))
             }
@@ -173,10 +173,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if !args.is_empty() {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected zero type arguments for none[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::None))
             }
@@ -184,10 +184,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() != 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected exactly one type argument for ptr[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Pointer {
                     target: Box::new(args.into_iter().next().expect("ptr arg exists")),
@@ -197,10 +197,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() > 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected zero or one type argument for err[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Error {
                     inner: args.into_iter().next().map(Box::new),
@@ -210,10 +210,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() != 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected exactly one type argument for vec[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Vector {
                     element_type: Box::new(args.into_iter().next().expect("vec arg exists")),
@@ -237,10 +237,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() != 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected exactly one type argument for seq[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Sequence {
                     element_type: Box::new(args.into_iter().next().expect("seq arg exists")),
@@ -250,10 +250,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.is_empty() {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected at least one type argument for set[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Set { types: args }))
             }
@@ -261,10 +261,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() != 2 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected exactly two type arguments for map[...]".to_string(),
-                    )));
+                    ));
                 }
                 let mut args = args.into_iter();
                 Ok(Some(FolType::Map {
@@ -276,10 +276,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() != 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected exactly one type argument for chn[...]".to_string(),
-                    )));
+                    ));
                 }
                 Ok(Some(FolType::Channel {
                     element_type: Box::new(args.into_iter().next().expect("chn arg exists")),
@@ -289,10 +289,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() > 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected zero or one type argument for mod[...]".to_string(),
-                    )));
+                    ));
                 }
                 let name = match args.into_iter().next() {
                     None => String::new(),
@@ -306,10 +306,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() > 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected zero or one type argument for blk[...]".to_string(),
-                    )));
+                    ));
                 }
                 let name = match args.into_iter().next() {
                     None => String::new(),
@@ -333,24 +333,24 @@ impl AstParser {
     pub(super) fn parse_integer_type_reference(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<FolType, Box<dyn Glitch>> {
+    ) -> Result<FolType, ParseError> {
         let args = self
             .parse_scalar_type_options(tokens, "Expected closing ']' in integer type reference")?;
 
         if args.len() != 1 {
             let token = tokens.curr(false)?;
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Expected exactly one integer type option in int[...]".to_string(),
-            )));
+            ));
         }
 
         let Some((size, signed)) = Self::lower_integer_option(&args[0]) else {
             let token = tokens.curr(false)?;
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 format!("Unknown integer type option '{}'", args[0]),
-            )));
+            ));
         };
 
         Ok(FolType::Int {
@@ -362,24 +362,24 @@ impl AstParser {
     pub(super) fn parse_float_type_reference(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<FolType, Box<dyn Glitch>> {
+    ) -> Result<FolType, ParseError> {
         let args =
             self.parse_scalar_type_options(tokens, "Expected closing ']' in float type reference")?;
 
         if args.len() != 1 {
             let token = tokens.curr(false)?;
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Expected exactly one float type option in flt[...]".to_string(),
-            )));
+            ));
         }
 
         let Some(size) = Self::lower_float_option(&args[0]) else {
             let token = tokens.curr(false)?;
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 format!("Unknown float type option '{}'", args[0]),
-            )));
+            ));
         };
 
         Ok(FolType::Float { size: Some(size) })
@@ -388,7 +388,7 @@ impl AstParser {
     pub(super) fn parse_char_type_reference(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<FolType, Box<dyn Glitch>> {
+    ) -> Result<FolType, ParseError> {
         let args = self.parse_scalar_type_options(
             tokens,
             "Expected closing ']' in character type reference",
@@ -396,18 +396,18 @@ impl AstParser {
 
         if args.len() != 1 {
             let token = tokens.curr(false)?;
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Expected exactly one character encoding in chr[...]".to_string(),
-            )));
+            ));
         }
 
         let Some(encoding) = Self::lower_char_option(&args[0]) else {
             let token = tokens.curr(false)?;
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 format!("Unknown character type option '{}'", args[0]),
-            )));
+            ));
         };
 
         Ok(FolType::Char { encoding })
@@ -417,13 +417,13 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         missing_close_message: &str,
-    ) -> Result<Vec<String>, Box<dyn Glitch>> {
+    ) -> Result<Vec<String>, ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '[' to start scalar type options".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -442,10 +442,10 @@ impl AstParser {
                 if token.key().is_ident() || token.key().is_buildin() || token.key().is_number() {
                     token.con().trim().to_string()
                 } else {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected scalar type option".to_string(),
-                    )));
+                    ));
                 };
             args.push(option);
             let _ = tokens.bump();
@@ -474,16 +474,16 @@ impl AstParser {
             }
 
             if Self::is_missing_type_reference_close_token(&sep.key()) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected closing ']' in type reference".to_string(),
-                )));
+                ));
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 missing_close_message.to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -501,19 +501,19 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     pub(super) fn parse_type_argument_list(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<FolType>, Box<dyn Glitch>> {
+    ) -> Result<Vec<FolType>, ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '[' to start type argument list".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -528,10 +528,10 @@ impl AstParser {
             }
 
             if Self::is_missing_type_reference_close_token(&token.key()) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     "Expected closing ']' in type reference".to_string(),
-                )));
+                ));
             }
 
             args.push(self.parse_type_reference_tokens(tokens)?);
@@ -559,16 +559,16 @@ impl AstParser {
                 return Ok(args);
             }
             if Self::is_missing_type_reference_close_token(&sep.key()) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &sep,
                     "Expected closing ']' in type reference".to_string(),
-                )));
+                ));
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',', ';', or closing ']' in type reference".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -586,19 +586,19 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 
     pub(super) fn parse_array_type_arguments(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<(FolType, usize), Box<dyn Glitch>> {
+    ) -> Result<(FolType, usize), ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '[' to start array type arguments".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -612,15 +612,15 @@ impl AstParser {
             KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
         ) {
             if Self::is_missing_type_reference_close_token(&comma.key()) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &comma,
                     "Expected closing ']' in type reference".to_string(),
-                )));
+                ));
             }
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &comma,
                 "Expected ',' or ';' after array element type".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
@@ -628,18 +628,18 @@ impl AstParser {
             tokens.curr(false).map(|token| token.key()),
             Ok(KEYWORD::Symbol(SYMBOL::SquarC))
         ) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &tokens.curr(false)?,
                 "Expected decimal array size in arr[...]".to_string(),
-            )));
+            ));
         }
 
         let size_token = tokens.curr(false)?;
         let size = size_token.con().trim().parse::<usize>().map_err(|_| {
-            Box::new(ParseError::from_token(
+            ParseError::from_token(
                 &size_token,
                 "Expected decimal array size in arr[...]".to_string(),
-            )) as Box<dyn Glitch>
+            )
         })?;
         let _ = tokens.bump();
 
@@ -653,10 +653,10 @@ impl AstParser {
         }
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close,
                 "Expected closing ']' in type reference".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -666,13 +666,13 @@ impl AstParser {
     pub(super) fn parse_matrix_type_arguments(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<(FolType, Vec<usize>), Box<dyn Glitch>> {
+    ) -> Result<(FolType, Vec<usize>), ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::SquarO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '[' to start matrix type arguments".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -691,15 +691,15 @@ impl AstParser {
                 KEYWORD::Symbol(SYMBOL::Comma) | KEYWORD::Symbol(SYMBOL::Semi)
             ) {
                 if Self::is_missing_type_reference_close_token(&comma.key()) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &comma,
                         "Expected closing ']' in type reference".to_string(),
-                    )));
+                    ));
                 }
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &comma,
                     "Expected ',' or ';' after matrix element type".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
 
@@ -712,10 +712,10 @@ impl AstParser {
             }
             let dim_token = tokens.curr(false)?;
             let dim = dim_token.con().trim().parse::<usize>().map_err(|_| {
-                Box::new(ParseError::from_token(
+                ParseError::from_token(
                     &dim_token,
                     "Expected decimal matrix dimension in mat[...]".to_string(),
-                )) as Box<dyn Glitch>
+                )
             })?;
             dimensions.push(dim);
             let _ = tokens.bump();
@@ -723,19 +723,19 @@ impl AstParser {
 
         if dimensions.is_empty() {
             let token = tokens.curr(false)?;
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Expected at least one matrix dimension in mat[...]".to_string(),
-            )));
+            ));
         }
 
         self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::SquarC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close,
                 "Expected closing ']' in type reference".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 

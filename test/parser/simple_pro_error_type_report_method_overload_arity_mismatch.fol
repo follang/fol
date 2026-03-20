@@ -1,12 +1,12 @@
 pro (parser)make_err(code: int): int = {
     return code;
-}
+};
 
 pro (parser)make_err(code: int, mode: int): str = {
     return "err";
-}
+};
 
 pro caller_method_overload_bad(tool: parser, a: int): int / str = {
     report tool.make_err(a);
     return 0;
-}
+};

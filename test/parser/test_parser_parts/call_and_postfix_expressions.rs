@@ -445,8 +445,6 @@ fn test_nested_function_and_method_calls_in_expression_positions() {
         "Return should parse emit(process(a), obj.done()) nesting"
     );
 }
-
-
 #[test]
 fn test_multiline_call_arguments_parse_with_expected_shapes() {
     let mut file_stream = FileStream::from_file("test/parser/simple_fun_call_multiline.fol")

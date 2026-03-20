@@ -5,4 +5,4 @@ fun[] inspect(value: int): int = {
         +let exported: int = current;
         lab named: int = exported;
     }
-}
+};

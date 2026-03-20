@@ -14,7 +14,7 @@ fn test_resolver_resolves_qualified_identifiers_through_namespace_roots() {
     .expect("Should write the qualified namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    return tools::answer;\n}\n",
+        "fun[] main(): int = {\n    return tools::answer;\n};\n",
     )
     .expect("Should write the qualified namespace lookup fixture");
 
@@ -69,7 +69,7 @@ fn test_resolver_resolves_qualified_identifiers_through_import_alias_roots() {
         .expect("Should write the imported namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "use math: loc = {math};\nfun[] main(): int = {\n    return math::answer;\n}\n",
+        "use math: loc = {math};\nfun[] main(): int = {\n    return math::answer;\n};\n",
     )
     .expect("Should write the qualified import-alias lookup fixture");
 
@@ -120,7 +120,7 @@ fn test_resolver_resolves_qualified_identifiers_through_non_matching_import_alia
         .expect("Should write the imported namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "use tools: loc = {math};\nfun[] main(): int = {\n    return tools::answer;\n}\n",
+        "use tools: loc = {math};\nfun[] main(): int = {\n    return tools::answer;\n};\n",
     )
     .expect("Should write the non-matching qualified import-alias lookup fixture");
 
@@ -172,7 +172,7 @@ fn test_resolver_resolves_qualified_identifiers_through_non_matching_local_impor
         .expect("Should write the imported namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    use tools: loc = {math};\n    return tools::answer;\n}\n",
+        "fun[] main(): int = {\n    use tools: loc = {math};\n    return tools::answer;\n};\n",
     )
     .expect("Should write the non-matching local qualified import-alias lookup fixture");
 
@@ -227,7 +227,7 @@ fn test_resolver_reports_unresolved_qualified_identifier_paths() {
     .expect("Should write the existing namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    return tools::missing;\n}\n",
+        "fun[] main(): int = {\n    return tools::missing;\n};\n",
     )
     .expect("Should write the unresolved qualified identifier fixture");
 

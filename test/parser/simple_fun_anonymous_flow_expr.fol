@@ -1,4 +1,4 @@
 fun wrap(): int = {
     var f = fun(x: int): int => return x;
     return 1;
-}
+};

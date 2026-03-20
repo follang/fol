@@ -4,7 +4,7 @@ impl AstParser {
     fn parse_trailing_inquiries(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let mut inquiries = Vec::new();
         let mut inquiry_targets = HashSet::new();
 
@@ -22,10 +22,10 @@ impl AstParser {
                 };
                 if !inquiry_targets.insert(canonical_identifier_key(&target)) {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         format!("Duplicate inquiry clause for '{}'", target),
-                    )));
+                    ));
                 }
                 inquiries.push(inquiry);
             }
@@ -39,7 +39,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         open_body_message: &str,
         missing_close_message: &str,
-    ) -> Result<(Vec<AstNode>, Vec<AstNode>), Box<dyn Glitch>> {
+    ) -> Result<(Vec<AstNode>, Vec<AstNode>), ParseError> {
         self.skip_ignorable(tokens)?;
         let open_body = tokens.curr(false)?;
 
@@ -59,9 +59,9 @@ impl AstParser {
             return Ok((body, inquiries));
         }
 
-        Err(Box::new(ParseError::from_token(
+        Err(ParseError::from_token(
             &open_body,
             open_body_message.to_string(),
-        )))
+        ))
     }
 }

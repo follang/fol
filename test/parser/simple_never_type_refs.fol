@@ -1,7 +1,7 @@
-typ Impossible: nev[]
+typ Impossible: nev[];
 
-var doom: nev[]
+var doom: nev[];
 
 fun stop(reason: nev[]): nev[] = {
     return reason;
-}
+};

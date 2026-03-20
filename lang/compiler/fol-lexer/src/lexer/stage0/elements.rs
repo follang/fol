@@ -1,6 +1,7 @@
 use crate::point;
+use crate::Con;
 use fol_stream::{CharacterProvider, FileStream};
-use fol_types::{Con, Win, SLIDER};
+use fol_types::{Win, SLIDER};
 use std::fmt;
 
 // Stage 0 owns raw character windowing only.

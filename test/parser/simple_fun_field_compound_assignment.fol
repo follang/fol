@@ -1,4 +1,4 @@
 fun update_field(obj: int, value: int): int = {
     obj.current += value;
     return obj.current;
-}
+};

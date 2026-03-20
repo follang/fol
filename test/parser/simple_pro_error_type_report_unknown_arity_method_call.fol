@@ -1,8 +1,8 @@
 pro (parser)make_err(code: int): str = {
     return "err";
-}
+};
 
 pro caller_method_arity_bad(tool: parser, a: int, b: int): int / str = {
     report tool.make_err(a, b);
     return 0;
-}
+};

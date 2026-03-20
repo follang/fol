@@ -6,6 +6,7 @@
 mod build_route;
 mod clean;
 mod cli;
+pub(crate) mod colorize;
 mod compile;
 mod completion;
 mod config;
@@ -282,7 +283,18 @@ fn command_profile(cli: &FrontendCli) -> Option<FrontendProfile> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cli::{FrontendOutputArgs, FrontendProfileArgs};
+    use crate::cli::args::{FrontendOutputArgs, FrontendProfileArgs};
+
+    fn semantic_dispatch_build() -> &'static str {
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "    graph.add_test({ name = \"app_test\", root = \"src/main.fol\" });\n",
+            "}\n",
+        )
+    }
 
     fn absorbed_build_dispatch_fixture(label: &str) -> FrontendWorkspace {
         let root = std::env::temp_dir().join(format!(
@@ -298,7 +310,7 @@ mod tests {
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(
             root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            semantic_dispatch_build(),
         )
         .unwrap();
         std::fs::write(
@@ -332,7 +344,7 @@ mod tests {
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(
             root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            semantic_dispatch_build(),
         )
         .unwrap();
         std::fs::write(
@@ -399,7 +411,7 @@ mod tests {
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(
             root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            semantic_dispatch_build(),
         )
         .unwrap();
         std::fs::write(
@@ -427,7 +439,6 @@ mod tests {
         assert_eq!(code, 0);
         assert!(stderr.is_empty());
         assert!(rendered.contains("User-facing frontend for the FOL toolchain"));
-        assert!(rendered.contains("Run `fol <command> --help` for command-specific usage."));
         assert!(!rendered.contains("Workflow Commands:"));
     }
 
@@ -548,11 +559,10 @@ mod tests {
         assert!(result
             .summary
             .contains("built 1 workspace package(s) into "));
-        assert_eq!(result.artifacts.len(), 3);
+        assert_eq!(result.artifacts.len(), 2);
         assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
-        assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::EmittedRust);
-        assert_eq!(result.artifacts[2].kind, FrontendArtifactKind::Binary);
-        assert!(result.artifacts[2]
+        assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::Binary);
+        assert!(result.artifacts[1]
             .path
             .as_ref()
             .expect("binary path should be retained")

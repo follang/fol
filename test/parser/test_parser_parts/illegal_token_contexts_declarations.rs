@@ -10,13 +10,13 @@ fn parse_error_snapshot_decl(path: &str) -> (String, usize, usize) {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     (
-        parse_error.to_string(),
-        parse_error.line(),
-        parse_error.column(),
+        parse_error.message.clone(),
+        parse_error.primary_location().unwrap().line,
+        parse_error.primary_location().unwrap().column,
     )
 }
 

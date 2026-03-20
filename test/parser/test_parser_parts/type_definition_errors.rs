@@ -14,17 +14,17 @@ fn test_type_entry_missing_variant_name_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected entry variant name"),
         "Malformed type entry should report missing variant name, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Type entry parse error should point to the malformed variant line"
     );
@@ -44,22 +44,22 @@ fn test_duplicate_entry_variant_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Duplicate entry variant 'BLUE'"),
         "Duplicate entry variant should report the variant name, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Type entry duplicate parse error should point to the duplicate variant line"
     );
     assert_eq!(
-        parse_error.column(),
+        parse_error.primary_location().unwrap().column,
         9,
         "Type entry duplicate parse error should point to the duplicate variant name"
     );
@@ -79,17 +79,17 @@ fn test_canonical_duplicate_entry_variant_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Duplicate entry variant 'BlueValue'"),
         "Canonical duplicate entry variant should report the later spelling, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Canonical duplicate entry parse error should point to the duplicate variant line"
     );
@@ -109,17 +109,17 @@ fn test_type_entry_marker_unknown_option_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Unknown entry type marker option"),
         "Malformed ent marker option should report unknown option, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Entry marker option parse error should point to the declaration line"
     );
@@ -169,10 +169,10 @@ fn test_type_entry_definition_reports_missing_lab_variant_name() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected entry variant name"),
         "Malformed lab variant should report the missing name, got: {}",
@@ -194,17 +194,17 @@ fn test_type_record_marker_missing_assign_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected '=' after record type marker"),
         "Malformed rec marker should report missing '=', got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Record marker parse error should point to the declaration line"
     );
@@ -224,17 +224,17 @@ fn test_type_record_marker_unknown_option_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Unknown record type marker option"),
         "Malformed rec marker option should report unknown option, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Record marker option parse error should point to the declaration line"
     );
@@ -254,17 +254,17 @@ fn test_type_generic_header_missing_separator_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected ',', ';', or ')' after generic parameter"),
         "Malformed type generic header should report missing separator, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Type generic header parse error should point to the declaration line"
     );
@@ -283,17 +283,17 @@ fn test_type_record_missing_close_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected '}' to close type record definition"),
         "Malformed type record should report missing close brace, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Type record parse error should point to the end of the declaration"
     );
@@ -313,13 +313,13 @@ fn test_duplicate_record_method_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Duplicate type member 'getBrand#0'"),
+        parse_error.message.clone().contains("Duplicate type member 'getBrand#0'"),
         "Duplicate record method should report the member key, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -337,13 +337,13 @@ fn test_record_field_and_alias_name_conflict_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Duplicate type member 'host'"),
+        parse_error.message.clone().contains("Duplicate type member 'host'"),
         "Record field/alias conflict should report duplicate type member, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -361,15 +361,15 @@ fn test_record_field_and_alias_canonical_name_conflict_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate type member 'HostName'"),
         "Canonical field/alias conflict should report the later spelling, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -387,13 +387,13 @@ fn test_entry_variant_and_type_name_conflict_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Duplicate type member 'Ok'"),
+        parse_error.message.clone().contains("Duplicate type member 'Ok'"),
         "Entry variant/type conflict should report duplicate type member, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -411,14 +411,14 @@ fn test_entry_variant_and_type_canonical_name_conflict_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate type member 'OkValue'"),
         "Canonical entry/type conflict should report the later spelling, got: {}",
-        parse_error
+        parse_error.message
     );
 }

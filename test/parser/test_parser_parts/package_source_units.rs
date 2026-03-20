@@ -68,7 +68,7 @@ fn test_parse_package_groups_top_level_items_by_source_unit() {
     let temp_root = unique_temp_root("grouping");
     write_folder_fixture(
         &temp_root,
-        &[("00_alpha.fol", "var alpha = 1\n"), ("10_beta.fol", "var beta = 2\n")],
+        &[("00_alpha.fol", "var alpha = 1;\n"), ("10_beta.fol", "var beta = 2;\n")],
     );
 
     let parsed = parse_package_from_folder(
@@ -107,8 +107,8 @@ fn test_parse_package_retains_namespace_per_source_unit() {
     write_folder_fixture(
         &temp_root,
         &[
-            ("00_root.fol", "var root_value = 1\n"),
-            ("printing/logg/entry.fol", "var warn_value = 2\n"),
+            ("00_root.fol", "var root_value = 1;\n"),
+            ("printing/logg/entry.fol", "var warn_value = 2;\n"),
         ],
     );
 
@@ -144,11 +144,11 @@ fn test_parse_package_source_unit_order_matches_stream_traversal_order() {
     write_folder_fixture(
         &temp_root,
         &[
-            ("00_root.fol", "var root_first = 1\n"),
-            ("a_nested/00_alpha.fol", "var nested_alpha = 2\n"),
-            ("a_nested/10_beta.fol", "var nested_beta = 3\n"),
-            ("b_more/00_gamma.fol", "var nested_gamma = 4\n"),
-            ("m_root.fol", "var root_last = 5\n"),
+            ("00_root.fol", "var root_first = 1;\n"),
+            ("a_nested/00_alpha.fol", "var nested_alpha = 2;\n"),
+            ("a_nested/10_beta.fol", "var nested_beta = 3;\n"),
+            ("b_more/00_gamma.fol", "var nested_gamma = 4;\n"),
+            ("m_root.fol", "var root_last = 5;\n"),
         ],
     );
 
@@ -204,11 +204,11 @@ fn test_decl_package_keeps_root_comments_as_source_unit_items() {
         &[
             (
                 "00_alpha.fol",
-                "`[doc] alpha docs`\n`alpha note`\nvar alpha = 1\n",
+                "`[doc] alpha docs`\n`alpha note`\nvar alpha = 1;\n",
             ),
             (
                 "10_beta.fol",
-                "`[doc] beta docs`\nvar beta = 2\n",
+                "`[doc] beta docs`\nvar beta = 2;\n",
             ),
         ],
     );
@@ -259,7 +259,7 @@ fn test_decl_package_preserves_comment_only_source_units() {
         &temp_root,
         &[
             ("00_notes.fol", "`[doc] package note`\n`side note`\n"),
-            ("10_values.fol", "var ready = 1\n"),
+            ("10_values.fol", "var ready = 1;\n"),
         ],
     );
 

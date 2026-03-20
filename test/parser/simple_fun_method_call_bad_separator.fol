@@ -5,4 +5,4 @@ fun method_bad_sep(obj: int, a: int, b: int): int = {
     );
 
     return 0;
-}
+};

@@ -2,7 +2,6 @@ use fol_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
 };
 use fol_parser::ast::SyntaxOrigin;
-use fol_types::Glitch;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PackageErrorKind {
@@ -88,16 +87,6 @@ impl std::fmt::Display for PackageError {
 }
 
 impl std::error::Error for PackageError {}
-
-impl Glitch for PackageError {
-    fn clone_box(&self) -> Box<dyn Glitch> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
 
 impl ToDiagnosticLocation for PackageError {
     fn to_diagnostic_location(&self, file: Option<String>) -> DiagnosticLocation {

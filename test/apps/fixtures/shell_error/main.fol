@@ -1,15 +1,15 @@
-ali Failure: err[str]
+ali Failure: err[str];
 
 fun[] unwrap(value: Failure): str = {
-    return value!
-}
+    return value!;
+};
 
 fun[] main(): int = {
-    var raised: Failure = "broken"
-    var text: str = unwrap(raised)
+    var raised: Failure = "broken";
+    var text: str = unwrap(raised);
 
     when(.eq(text, "broken")) {
-        case(true) { return 7 }
-        * { return 0 }
+        case(true) { return 7; }
+        * { return 0; }
     }
-}
+};

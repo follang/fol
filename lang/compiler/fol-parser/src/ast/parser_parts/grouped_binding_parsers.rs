@@ -6,13 +6,13 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         options: Vec<VarOption>,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '(' to start grouped bindings".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -23,7 +23,6 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 
@@ -80,7 +79,7 @@ impl AstParser {
                                     length: 0,
                                 }
                             };
-                            Err(Box::new(error) as Box<dyn Glitch>)
+                            Err(error)
                         }
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -101,14 +100,13 @@ impl AstParser {
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &sep,
                 "Expected ',' or ')' in grouped bindings".to_string(),
-            )));
+            ));
         }
 
         let error = if let Ok(token) = tokens.curr(false) {
@@ -126,6 +124,6 @@ impl AstParser {
                 length: 0,
             }
         };
-        Err(Box::new(error))
+        Err(error)
     }
 }

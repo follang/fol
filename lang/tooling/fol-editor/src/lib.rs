@@ -18,8 +18,8 @@ pub use commands::{
     editor_tree_generate_bundle, EditorCommandSummary,
 };
 pub use convert::{
-    diagnostic_to_lsp, location_to_range, LspDiagnostic, LspDiagnosticRelatedInformation,
-    LspDiagnosticSeverity, LspLocation, LspPosition, LspRange,
+    dedup_lsp_diagnostics, diagnostic_to_lsp, location_to_range, LspDiagnostic,
+    LspDiagnosticRelatedInformation, LspDiagnosticSeverity, LspLocation, LspPosition, LspRange,
 };
 pub use documents::{EditorDocument, EditorDocumentStore};
 pub use error::{EditorError, EditorErrorKind, EditorResult};
@@ -74,7 +74,11 @@ mod tests {
         EditorSession, LspDiagnosticSeverity, CRATE_NAME,
     };
     use std::io::Cursor;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
+
+    fn repo_root() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..").canonicalize().expect("repo root should resolve")
+    }
 
     fn lsp_message(value: &str) -> String {
         format!("Content-Length: {}\r\n\r\n{}", value.len(), value)
@@ -131,7 +135,7 @@ mod tests {
 
     #[test]
     fn editor_commands_are_callable() {
-        let path = PathBuf::from("test/apps/fixtures/record_flow/main.fol");
+        let path = repo_root().join("test/apps/fixtures/record_flow/main.fol");
 
         assert_eq!(editor_lsp_entrypoint().unwrap().command, "lsp");
         assert_eq!(editor_parse_file(&path).unwrap().command, "parse");
@@ -147,9 +151,20 @@ mod tests {
 
     #[test]
     fn lsp_and_workspace_shells_are_publicly_constructible() {
-        let path = PathBuf::from("test/apps/fixtures/record_flow/main.fol")
-            .canonicalize()
-            .expect("fixture path should canonicalize");
+        let root = std::env::temp_dir().join(format!(
+            "fol_editor_public_lsp_workspace_{}_{}", std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch").as_nanos()
+        ));
+        let src = root.join("src");
+        std::fs::create_dir_all(&src).unwrap();
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "pro[] build(graph: Graph): non = {\n    return graph\n}\n").unwrap();
+        let file = src.join("main.fol");
+        let text = "fun[] main(): int = {\n    return 0\n}\n";
+        std::fs::write(&file, text).unwrap();
+
+        let path = file;
         let mapping = map_document_workspace(&path, &EditorConfig::default()).unwrap();
         let document = EditorDocument::new(
             EditorDocumentUri::from_file_path(path.clone()).unwrap(),
@@ -165,6 +180,8 @@ mod tests {
         assert!(mapping.package_root.is_some());
         assert!(server.session.documents.is_empty());
         assert_eq!(diagnostic.severity, LspDiagnosticSeverity::Error);
+
+        std::fs::remove_dir_all(root).ok();
     }
 
     #[test]
@@ -182,7 +199,7 @@ mod tests {
         let rendered = String::from_utf8(output).unwrap();
         assert!(rendered.contains("Content-Length:"));
         assert!(!rendered.contains("\"method\":\"initialize\""));
-        assert!(rendered.contains("\"hover_provider\":true"));
+        assert!(rendered.contains("\"hoverProvider\":true"));
         assert!(
             rendered.contains("\"completion_provider\"")
                 || rendered.contains("\"completionProvider\"")

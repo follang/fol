@@ -8,7 +8,7 @@ fn test_resolver_resolves_named_inquiry_targets_against_visible_symbols() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] helper(value: int): int = {\n    return value;\n}\n\nfun[] main(input: int): int = {\n    return helper(input);\n    where(helper) {\n        helper(input);\n    }\n}\n",
+        "fun[] helper(value: int): int = {\n    return value;\n};\n\nfun[] main(input: int): int = {\n    return helper(input);\n    where(helper) {\n        helper(input);\n    };\n};\n",
     )
     .expect("Should write the named inquiry target fixture");
 
@@ -58,12 +58,12 @@ fn test_resolver_resolves_qualified_inquiry_targets_against_namespace_symbols() 
         .expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("tools/helpers.fol"),
-        "fun[] emit(value: int): int = {\n    return value;\n}\n",
+        "fun[] emit(value: int): int = {\n    return value;\n};\n",
     )
     .expect("Should write the qualified inquiry namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(input: int): int = {\n    return tools::emit(input);\n    where(tools::emit) {\n        tools::emit(input);\n    }\n}\n",
+        "fun[] main(input: int): int = {\n    return tools::emit(input);\n    where(tools::emit) {\n        tools::emit(input);\n    };\n};\n",
     )
     .expect("Should write the qualified inquiry target fixture");
 
@@ -121,12 +121,12 @@ fn test_resolver_resolves_qualified_inquiry_targets_against_non_matching_import_
         .expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("math/helpers.fol"),
-        "fun[exp] emit(value: int): int = {\n    return value;\n}\n",
+        "fun[exp] emit(value: int): int = {\n    return value;\n};\n",
     )
     .expect("Should write the imported inquiry namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "use tools: loc = {math};\nfun[] main(input: int): int = {\n    return tools::emit(input);\n    where(tools::emit) {\n        tools::emit(input);\n    }\n}\n",
+        "use tools: loc = {math};\nfun[] main(input: int): int = {\n    return tools::emit(input);\n    where(tools::emit) {\n        tools::emit(input);\n    };\n};\n",
     )
     .expect("Should write the qualified non-matching import-alias inquiry fixture");
 
@@ -180,7 +180,7 @@ fn test_resolver_rejects_this_inquiry_targets_without_declared_return_types() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] show(value: int) = {\n    value;\n    where(this) {\n        value;\n    }\n}\n",
+        "fun[] show(value: int) = {\n    value;\n    where(this) {\n        value;\n    };\n};\n",
     )
     .expect("Should write the invalid this-target inquiry fixture");
 

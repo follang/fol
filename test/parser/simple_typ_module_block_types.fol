@@ -1,4 +1,4 @@
-typ StdModule: mod[std]
-typ InitModule: mod[]
-typ JumpBlock: blk[label]
-typ EmptyBlock: blk[]
+typ StdModule: mod[std];
+typ InitModule: mod[];
+typ JumpBlock: blk[label];
+typ EmptyBlock: blk[];

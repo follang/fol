@@ -8,7 +8,7 @@ fn test_resolver_same_file_routines_can_resolve_hidden_values() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "var[hid] hidden: int = 1;\nfun[] main(): int = {\n    return hidden;\n}\n",
+        "var[hid] hidden: int = 1;\nfun[] main(): int = {\n    return hidden;\n};\n",
     )
     .expect("Should write the same-file hidden value fixture");
 
@@ -56,7 +56,7 @@ fn test_resolver_same_file_routines_can_resolve_hidden_routines() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[hid] helper(value: int): int = {\n    return value;\n}\nfun[] main(input: int): int = {\n    return helper(input);\n}\n",
+        "fun[hid] helper(value: int): int = {\n    return value;\n};\nfun[] main(input: int): int = {\n    return helper(input);\n};\n",
     )
     .expect("Should write the same-file hidden routine fixture");
 
@@ -113,7 +113,7 @@ fn test_resolver_sibling_files_cannot_resolve_hidden_values() {
         .expect("Should write the hidden sibling fixture");
     fs::write(
         temp_root.join("b_main.fol"),
-        "fun[] main(): int = {\n    return hidden;\n}\n",
+        "fun[] main(): int = {\n    return hidden;\n};\n",
     )
     .expect("Should write the sibling lookup fixture");
 
@@ -143,12 +143,12 @@ fn test_resolver_other_namespaces_cannot_resolve_hidden_routines() {
         .expect("Should create a temporary nested resolver fixture directory");
     fs::write(
         temp_root.join("api/helpers.fol"),
-        "fun[hid] helper(value: int): int = {\n    return value;\n}\n",
+        "fun[hid] helper(value: int): int = {\n    return value;\n};\n",
     )
     .expect("Should write the hidden routine namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(input: int): int = {\n    return api::helper(input);\n}\n",
+        "fun[] main(input: int): int = {\n    return api::helper(input);\n};\n",
     )
     .expect("Should write the cross-namespace hidden routine lookup fixture");
 

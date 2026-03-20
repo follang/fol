@@ -1,4 +1,4 @@
 fun bool_literals(): bol = {
     var flag: bol = true;
     return false;
-}
+};

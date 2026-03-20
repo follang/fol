@@ -1,4 +1,4 @@
 fun[] flip(flag: bol): bol = {
-    var inverted: bol = .not(flag)
-    return inverted
-}
+    var inverted: bol = .not(flag);
+    return inverted;
+};

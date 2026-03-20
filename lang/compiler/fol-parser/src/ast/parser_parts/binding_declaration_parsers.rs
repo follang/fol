@@ -5,10 +5,10 @@ impl AstParser {
     pub(super) fn parse_lexer_literal(
         &self,
         token: &fol_lexer::lexer::stage3::element::Element,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let raw = token.con().trim();
-        let wrap_err = |error: Box<dyn Glitch>| -> Box<dyn Glitch> {
-            Box::new(ParseError::from_token(token, error.to_string()))
+        let wrap_err = |error: ParseError| -> ParseError {
+            ParseError::from_token(token, error.to_string())
         };
 
         match token.key() {
@@ -30,28 +30,28 @@ impl AstParser {
     pub(super) fn parse_var_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         self.parse_binding_decl(tokens, "var", vec![VarOption::Mutable, VarOption::Normal])
     }
 
     pub(super) fn parse_let_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         self.parse_binding_decl(tokens, "let", vec![VarOption::Immutable, VarOption::Normal])
     }
 
     pub(super) fn parse_con_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         self.parse_binding_decl(tokens, "con", vec![VarOption::Immutable, VarOption::Normal])
     }
 
     pub(super) fn parse_lab_decl(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let nodes =
             self.parse_binding_decl(tokens, "lab", vec![VarOption::Immutable, VarOption::Normal])?;
         Ok(nodes
@@ -91,7 +91,7 @@ impl AstParser {
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         keyword: &str,
         default_options: Vec<VarOption>,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         if tokens.bump().is_none() {
             let error = if let Ok(token) = tokens.curr(false) {
                 ParseError::from_token(
@@ -108,7 +108,7 @@ impl AstParser {
                     length: 0,
                 }
             };
-            return Err(Box::new(error));
+            return Err(error);
         }
         self.skip_ignorable(tokens)?;
         let options = self.parse_binding_options(tokens, default_options)?;
@@ -176,7 +176,7 @@ impl AstParser {
                                     length: 0,
                                 }
                             };
-                            Err(Box::new(error) as Box<dyn Glitch>)
+                            Err(error)
                         }
                     })
                     .collect::<Result<Vec<_>, _>>()?;
@@ -196,7 +196,6 @@ impl AstParser {
             };
 
             if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
-                let _ = tokens.bump();
                 break;
             }
             if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Comma))
@@ -210,7 +209,6 @@ impl AstParser {
             break;
         }
 
-        self.consume_optional_semicolon(tokens)?;
         Ok(nodes)
     }
 
@@ -218,7 +216,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         keyword: &str,
-    ) -> Result<Vec<BindingPattern>, Box<dyn Glitch>> {
+    ) -> Result<Vec<BindingPattern>, ParseError> {
         let mut patterns = Vec::new();
 
         for _ in 0..256 {
@@ -246,7 +244,7 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         keyword: &str,
-    ) -> Result<BindingPattern, Box<dyn Glitch>> {
+    ) -> Result<BindingPattern, ParseError> {
         let token = tokens.curr(false)?;
 
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
@@ -273,16 +271,16 @@ impl AstParser {
                     return Ok(BindingPattern::Sequence(parts));
                 }
 
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &separator,
                     "Expected ',' or ')' in binding pattern".to_string(),
-                )));
+                ));
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Binding pattern exceeded parser limit".to_string(),
-            )));
+            ));
         }
 
         if matches!(token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
@@ -297,10 +295,10 @@ impl AstParser {
             };
             let _ = tokens.bump();
             if matches!(name_token.key(), KEYWORD::Symbol(SYMBOL::Star)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &star,
                     "Nested '*' binding patterns are not allowed".to_string(),
-                )));
+                ));
             }
             return Ok(BindingPattern::Rest(name));
         }
@@ -323,7 +321,7 @@ impl AstParser {
         type_hint: Option<FolType>,
         values: Vec<AstNode>,
         tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let assigned_values = match values.len() {
             0 => vec![None; names.len()],
             1 => vec![Some(values[0].clone()); names.len()],
@@ -344,7 +342,7 @@ impl AstParser {
                         length: 0,
                     }
                 };
-                return Err(Box::new(error));
+                return Err(error);
             }
         };
 
@@ -367,7 +365,7 @@ impl AstParser {
         type_hint: Option<FolType>,
         values: Vec<AstNode>,
         tokens: &fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         if values.len() != 1 {
             let error = if let Ok(token) = tokens.curr(false) {
                 ParseError::from_token(
@@ -384,7 +382,7 @@ impl AstParser {
                     length: 0,
                 }
             };
-            return Err(Box::new(error));
+            return Err(error);
         }
 
         Ok(AstNode::DestructureDecl {

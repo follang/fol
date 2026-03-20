@@ -1,8 +1,8 @@
 pro caller_forward_keyword_mismatch(): int / str = {
     report get();
     return 0;
-}
+};
 
 fun get(): int = {
     return 1;
-}
+};

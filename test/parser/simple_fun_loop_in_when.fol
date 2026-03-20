@@ -3,4 +3,4 @@ fun iterate_in_when(items: int, limit: int): int = {
         yield i;
     }
     return items;
-}
+};

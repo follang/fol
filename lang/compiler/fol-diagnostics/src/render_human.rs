@@ -1,5 +1,3 @@
-use colored::Colorize;
-
 use crate::{source, Diagnostic, DiagnosticLabelKind, DiagnosticReport, Severity};
 
 pub fn render_report(report: &DiagnosticReport) -> String {
@@ -16,15 +14,13 @@ pub fn render_report(report: &DiagnosticReport) -> String {
             let label = if report.error_count == 1 { "" } else { "s" };
             if report.diagnostics.len() >= 50 {
                 output.push_str(&format!(
-                    "{} found {}+ error{} (output truncated)",
-                    "error:".red().bold(),
+                    "error: found {}+ error{} (output truncated)",
                     report.error_count,
                     label,
                 ));
             } else {
                 output.push_str(&format!(
-                    "{} found {} error{}",
-                    "error:".red().bold(),
+                    "error: found {} error{}",
                     report.error_count,
                     label
                 ));
@@ -36,8 +32,7 @@ pub fn render_report(report: &DiagnosticReport) -> String {
             }
             let label = if report.warning_count == 1 { "" } else { "s" };
             output.push_str(&format!(
-                "{} {} warning{}",
-                "warning:".yellow().bold(),
+                "warning: {} warning{}",
                 report.warning_count,
                 label
             ));
@@ -52,9 +47,9 @@ pub fn render_diagnostic(diagnostic: &Diagnostic) -> String {
     let mut output = String::new();
 
     let prefix = match diagnostic.severity {
-        Severity::Error => "error".red().bold(),
-        Severity::Warning => "warning".yellow().bold(),
-        Severity::Info => "info".blue().bold(),
+        Severity::Error => "error",
+        Severity::Warning => "warning",
+        Severity::Info => "info",
     };
 
     if diagnostic.code.as_str() != "EUNKNOWN" {
@@ -68,7 +63,7 @@ pub fn render_diagnostic(diagnostic: &Diagnostic) -> String {
         if let Some(file) = &loc.file {
             output.push_str(&format!(
                 "  {} {}:{}:{}",
-                "-->".blue().bold(),
+                "-->",
                 file,
                 loc.line,
                 loc.column
@@ -76,7 +71,7 @@ pub fn render_diagnostic(diagnostic: &Diagnostic) -> String {
         } else {
             output.push_str(&format!(
                 "  {} line {}:{}",
-                "-->".blue().bold(),
+                "-->",
                 loc.line,
                 loc.column
             ));
@@ -109,7 +104,7 @@ pub fn render_diagnostic(diagnostic: &Diagnostic) -> String {
                 output.push('\n');
                 output.push_str(&format!(
                     "  {} source unavailable: could not read {}",
-                    "note:".blue().bold(),
+                    "note:",
                     loc.file.as_deref().unwrap_or("<unknown>")
                 ));
             }
@@ -117,7 +112,7 @@ pub fn render_diagnostic(diagnostic: &Diagnostic) -> String {
                 output.push('\n');
                 output.push_str(&format!(
                     "  {} source unavailable: line {} is outside the file",
-                    "note:".blue().bold(),
+                    "note:",
                     loc.line
                 ));
             }
@@ -132,19 +127,19 @@ pub fn render_diagnostic(diagnostic: &Diagnostic) -> String {
         output.push('\n');
         output.push_str(&format!(
             "  {} {}",
-            "note:".blue().bold(),
+            "note:",
             related_label_summary(label)
         ));
     }
 
     for note in &diagnostic.notes {
         output.push('\n');
-        output.push_str(&format!("  {} {}", "note:".blue().bold(), note));
+        output.push_str(&format!("  {} {}", "note:", note));
     }
 
     for help in &diagnostic.helps {
         output.push('\n');
-        output.push_str(&format!("  {} {}", "help:".green().bold(), help));
+        output.push_str(&format!("  {} {}", "help:", help));
     }
 
     output

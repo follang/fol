@@ -1,4 +1,4 @@
-ali log: int
+ali log: int;
 typ get: rec = {
     value: int;
-}
+};

@@ -54,7 +54,7 @@ impl Lowerer {
 mod tests {
     use super::{LoweredWorkspace, Lowerer, LoweringError, LoweringErrorKind, LoweringResult};
     use fol_parser::ast::AstParser;
-    use fol_resolver::resolve_workspace;
+    use fol_resolver::resolve_package_workspace;
     use fol_stream::FileStream;
     use fol_typecheck::Typechecker;
 
@@ -91,7 +91,7 @@ mod tests {
         let syntax = parser
             .parse_package(&mut lexer)
             .expect("Lowering fixture should parse");
-        let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+        let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
         let typed = Typechecker::new()
             .check_resolved_workspace(resolved)
             .expect("Lowering fixture should typecheck");
@@ -105,6 +105,6 @@ mod tests {
 
     #[test]
     fn lowered_workspace_shell_is_constructible() {
-        let _ = LoweredWorkspace;
+        fn _assert_type_exists(_: &LoweredWorkspace) {}
     }
 }

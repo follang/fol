@@ -290,16 +290,16 @@ fn test_grouped_record_duplicate_field_error_anchors_to_duplicate_name() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate record field 'left'"),
         "Expected duplicate grouped record field error, got: {}",
-        parse_error
+        parse_error.message
     );
-    assert_eq!(parse_error.line(), 2);
-    assert_eq!(parse_error.column(), 11);
+    assert_eq!(parse_error.primary_location().unwrap().line, 2);
+    assert_eq!(parse_error.primary_location().unwrap().column, 11);
 }

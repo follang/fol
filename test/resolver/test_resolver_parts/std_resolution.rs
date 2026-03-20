@@ -18,7 +18,7 @@ fn test_resolver_resolves_std_package_roots_from_the_configured_std_root() {
         .expect("Should write the standard library exported value fixture");
     fs::write(
         app_root.join("main.fol"),
-        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n};\n",
     )
     .expect("Should write the std import fixture");
 
@@ -91,7 +91,7 @@ fn test_resolver_resolves_std_namespace_roots_from_the_configured_std_root() {
     .expect("Should write the standard-library namespace export fixture");
     fs::write(
         app_root.join("main.fol"),
-        "use fmt: std = {core/fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+        "use fmt: std = {core/fmt};\nfun[] main(): int = {\n    return answer;\n};\n",
     )
     .expect("Should write the std namespace import fixture");
 
@@ -159,7 +159,7 @@ fn test_resolver_reports_missing_std_targets_explicitly() {
         .expect("Should create the importing package root fixture directory");
     fs::write(
         app_root.join("main.fol"),
-        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n}\n",
+        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write the missing std-target fixture");
 
@@ -208,7 +208,7 @@ fn test_resolver_rejects_std_file_targets_explicitly() {
     .expect("Should write the std file target fixture");
     fs::write(
         app_root.join("main.fol"),
-        "use fmt: std = {fmt.fol};\nfun[] main(): int = {\n    return 0;\n}\n",
+        "use fmt: std = {fmt.fol};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write the std file-target import fixture");
 

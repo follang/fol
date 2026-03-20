@@ -10,4 +10,4 @@ fun nested_inferred_bad(flag: int): str / bol = {
     }
 
     return "done";
-}
+};

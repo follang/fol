@@ -2,8 +2,7 @@ use crate::lexer::stage1;
 use crate::point;
 use crate::token::{operator::OPERATOR, symbol::SYMBOL, void::VOID};
 use crate::token::{KEYWORD, KEYWORD::*};
-use colored::Colorize;
-use fol_types::Vod;
+use crate::Vod;
 use std::fmt;
 
 // Stage 2 owns token folding and normalization only.
@@ -43,7 +42,7 @@ impl fmt::Display for Element {
         } else {
             "".to_string()
         };
-        write!(f, "{}\t{}{}", self.loc, self.key, con.black().on_red())
+        write!(f, "{}\t{}{}", self.loc, self.key, con)
     }
 }
 

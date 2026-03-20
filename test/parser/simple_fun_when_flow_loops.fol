@@ -4,4 +4,4 @@ fun classify(value: int, items: seq[int]): int = {
         has(value) => each(item in items) => break;
     }
     return value;
-}
+};

@@ -2,4 +2,4 @@ fun demo(box: Box): int = {
     value = box.'$'();
     probe."kind"();
     return box.'name';
-}
+};

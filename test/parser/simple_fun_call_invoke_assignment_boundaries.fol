@@ -2,4 +2,4 @@ fun shape(factory: any, value: int) = {
     run(value);
     (factory())(value);
     target = value;
-}
+};

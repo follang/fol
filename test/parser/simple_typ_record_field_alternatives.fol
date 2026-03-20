@@ -1,4 +1,4 @@
 typ Config: rec = {
     +var host: str;
     -con port: int = 8080;
-}
+};

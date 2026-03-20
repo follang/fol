@@ -50,7 +50,7 @@ fn test_alias_declaration_preserves_inner_opposite_quote_chars() {
     let fixture = temp_root.join("inner_quotes.fol");
     fs::write(
         &fixture,
-        "ali \"re'sult\": pkg::Value\nali 'quo\"te': pkg::Other\n",
+        "ali \"re'sult\": pkg::Value;\nali 'quo\"te': pkg::Other;\n",
     )
     .expect("Should write temp alias fixture");
 

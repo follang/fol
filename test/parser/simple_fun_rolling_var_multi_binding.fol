@@ -1,3 +1,3 @@
 fun build(xs: vec[int], ys: vec[int]): vec[int] = {
     return { x + y for (var x: int in xs, var y in ys) };
-}
+};

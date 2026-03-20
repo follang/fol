@@ -3,4 +3,4 @@ fun[] inspect(value: int): int = {
     where(pkg::cache, sys::sink) {
         pkg::cache;
     }
-}
+};

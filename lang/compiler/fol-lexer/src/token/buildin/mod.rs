@@ -1,5 +1,29 @@
-use colored::Colorize;
 use std::fmt;
+
+/// Declaration keyword names used by syntax tooling and tree-sitter.
+pub const DECLARATION_KEYWORDS: &[&str] = &[
+    "fun", "var", "def", "typ", "pro", "log", "seg", "ali", "imp", "lab", "con", "use", "std",
+];
+
+/// Control flow keyword names.
+pub const CONTROL_KEYWORDS: &[&str] = &[
+    "if", "else", "when", "while", "loop", "for", "each", "do", "case",
+    "break", "return", "yield", "go", "select",
+];
+
+/// Operator keyword names.
+pub const OPERATOR_KEYWORDS: &[&str] = &[
+    "not", "or", "xor", "nor", "and", "nand", "as", "cast", "is", "at", "has", "in", "on", "of",
+];
+
+/// Literal keyword names.
+pub const LITERAL_KEYWORDS: &[&str] = &["true", "false"];
+
+/// Diagnostic/error keyword names.
+pub const DIAGNOSTIC_KEYWORDS: &[&str] = &["panic", "report", "check", "assert"];
+
+/// Other keyword names.
+pub const OTHER_KEYWORDS: &[&str] = &["let", "this", "self", "where", "get", "async", "await"];
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum BUILDIN {
@@ -118,13 +142,6 @@ impl fmt::Display for BUILDIN {
             BUILDIN::Await => "await",
             BUILDIN::Select => "select",
         };
-        write!(
-            f,
-            "{}{}",
-            " BUILDIN  ".black().on_red(),
-            (":".to_string().white().on_black().to_string() + &format!(" {} ", t))
-                .black()
-                .on_red()
-        )
+        write!(f, "BUILDIN:{}", t)
     }
 }

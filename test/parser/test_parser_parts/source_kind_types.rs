@@ -56,9 +56,8 @@ fn test_url_source_kind_reports_pkg_migration_diagnostic() {
 
     let message = errors
         .first()
-        .and_then(|error| error.as_ref().as_any().downcast_ref::<ParseError>())
-        .expect("First parser error should be a ParseError")
-        .to_string();
+        .expect("First parser error should exist")
+        .message.clone();
     assert!(
         message.contains("Legacy source kind 'url' was removed; use 'pkg' instead"),
         "Parser should direct legacy url users to pkg, got: {message}",

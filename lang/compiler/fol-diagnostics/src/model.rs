@@ -1,4 +1,3 @@
-use fol_types::Glitch;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -101,13 +100,12 @@ impl Diagnostic {
         Self::new(Severity::Info, code, message)
     }
 
-    pub fn from_glitch(
-        error: &dyn Glitch,
+    pub fn from_message(
+        message: impl Into<String>,
         severity: Severity,
         location: Option<DiagnosticLocation>,
     ) -> Self {
-        let error_msg = error.to_string();
-        let mut diagnostic = Self::new(severity, DiagnosticCode::unknown(), error_msg);
+        let mut diagnostic = Self::new(severity, DiagnosticCode::unknown(), message);
         if let Some(location) = location {
             diagnostic.labels.push(DiagnosticLabel {
                 kind: DiagnosticLabelKind::Primary,

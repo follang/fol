@@ -12,4 +12,4 @@ fun nested_shadow_ok(flag: int): str / int = {
     }
 
     return "done";
-}
+};

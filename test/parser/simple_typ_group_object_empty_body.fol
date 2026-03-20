@@ -1,4 +1,4 @@
 typ (
-    User: obj;
-    Admin: obj[];
-)
+    User: obj,
+    Admin: obj[],
+);

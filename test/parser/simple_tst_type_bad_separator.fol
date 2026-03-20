@@ -1,1 +1,1 @@
-def suite: tst["smoke" @ core] = {}
+def suite: tst["smoke" @ core] = {};

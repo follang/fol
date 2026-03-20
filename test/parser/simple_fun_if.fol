@@ -4,4 +4,4 @@ fun choose_if(a: int, b: int): int = {
     } {
         return b;
     }
-}
+};

@@ -5,16 +5,16 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         base_name: &str,
-    ) -> Result<Option<FolType>, Box<dyn Glitch>> {
+    ) -> Result<Option<FolType>, ParseError> {
         match base_name {
             "pkg" => {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() > 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected zero or one type argument for pkg[...]".to_string(),
-                    )));
+                    ));
                 }
                 let name = match args.into_iter().next() {
                     None => String::new(),
@@ -28,10 +28,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() > 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected zero or one type argument for loc[...]".to_string(),
-                    )));
+                    ));
                 }
                 let name = match args.into_iter().next() {
                     None => String::new(),
@@ -45,10 +45,10 @@ impl AstParser {
                 let args = self.parse_type_argument_list(tokens)?;
                 if args.len() > 1 {
                     let token = tokens.curr(false)?;
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Expected zero or one type argument for std[...]".to_string(),
-                    )));
+                    ));
                 }
                 let name = match args.into_iter().next() {
                     None => String::new(),

@@ -14,17 +14,17 @@ fn test_canonical_duplicate_record_field_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Duplicate record field 'UserName'"),
         "Canonical duplicate record field should report the later spelling, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         3,
         "Canonical duplicate record field parse error should point to the duplicate field line"
     );
@@ -74,10 +74,10 @@ fn test_record_lab_field_missing_name_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected field name in type record definition"),
         "Malformed lab record field should report the missing name, got: {}",
@@ -230,17 +230,17 @@ fn test_type_generic_headers_reject_duplicate_names() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Duplicate generic name 'T'"),
         "Duplicate type generic should report the repeated name, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Duplicate type generic parse error should point to the declaration line"
     );
@@ -493,17 +493,17 @@ fn test_unknown_type_option_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Unknown type option"),
         "Malformed type option should report unknown option, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         1,
         "Type option parse error should point to the declaration line"
     );

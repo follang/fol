@@ -55,7 +55,7 @@ fn test_resolver_unresolved_named_inquiry_target_diagnostics_use_target_role() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    return 0;\n    where(cache) {\n        0;\n    }\n}\n",
+        "fun[] main(): int = {\n    return 0;\n    where(cache) {\n        0;\n    };\n};\n",
     )
     .expect("Should write the unresolved inquiry target fixture");
 

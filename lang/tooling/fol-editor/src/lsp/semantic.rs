@@ -96,12 +96,13 @@ impl SemanticSnapshot {
     }
 
     fn builtin_type_completion_items(&self) -> Vec<EditorCompletionItem> {
-        ["int", "flt", "bol", "chr", "str", "never"]
-            .into_iter()
-            .map(completion_builtin_type_item)
+        fol_typecheck::BuiltinType::ALL_NAMES
+            .iter()
+            .map(|name| completion_builtin_type_item(name))
             .collect()
     }
 
+    // COMPILER-BACKED: reads from resolved all_symbols
     fn visible_named_type_completion_items(&self) -> Vec<EditorCompletionItem> {
         let Some(program) = self.current_program() else {
             return Vec::new();
@@ -119,6 +120,7 @@ impl SemanticSnapshot {
             .collect()
     }
 
+    // COMPILER-BACKED: reads from resolver namespace/scope + child namespaces
     fn qualified_completion_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
         let Some(program) = self.current_program() else {
             return Vec::new();
@@ -175,6 +177,7 @@ impl SemanticSnapshot {
         dedupe_completion_items(items)
     }
 
+    // COMPILER-BACKED: intrinsic registry is the canonical source
     fn dot_intrinsic_fallback_completion_items(&self) -> Vec<EditorCompletionItem> {
         intrinsic_registry()
             .iter()
@@ -185,6 +188,7 @@ impl SemanticSnapshot {
             .collect()
     }
 
+    // COMPILER-BACKED: reads from resolver scope chain
     fn local_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
         let Some((program, scope_id)) = self.scope_at_position(position) else {
             return Vec::new();
@@ -215,6 +219,7 @@ impl SemanticSnapshot {
         items
     }
 
+    // COMPILER-BACKED: reads from resolved program namespace/source-unit scopes
     fn current_package_top_level_completion_items(
         &self,
     ) -> Vec<EditorCompletionItem> {
@@ -256,6 +261,7 @@ impl SemanticSnapshot {
         items
     }
 
+    // COMPILER-BACKED: reads from resolver scope chain
     fn import_alias_completion_items(&self, position: LspPosition) -> Vec<EditorCompletionItem> {
         let Some((program, scope_id)) = self.scope_at_position(position) else {
             return Vec::new();
@@ -276,6 +282,8 @@ impl SemanticSnapshot {
         items
     }
 
+    // FALLBACK: text-scans for `var ` bindings and `fun` parameters when
+    // resolver data is absent or incomplete. Required for broken documents.
     fn fallback_local_scope_items(
         &self,
         document: &EditorDocument,
@@ -330,6 +338,8 @@ impl SemanticSnapshot {
         items
     }
 
+    // FALLBACK: text-matches `fun[`, `pro[`, `typ[`, `ali[`, `def[` prefixes
+    // when resolver data is absent. Required for broken documents.
     fn fallback_current_package_top_level_items(
         &self,
         document: &EditorDocument,
@@ -378,6 +388,7 @@ impl SemanticSnapshot {
         items
     }
 
+    // FALLBACK: filters top-level text fallback for type/alias items only
     fn fallback_local_named_type_items(
         &self,
         document: &EditorDocument,
@@ -396,6 +407,7 @@ impl SemanticSnapshot {
         .collect()
     }
 
+    // FALLBACK: text-matches `use ` prefix to find import aliases
     fn fallback_import_alias_items(&self, document: &EditorDocument) -> Vec<EditorCompletionItem> {
         document
             .text
@@ -414,6 +426,7 @@ impl SemanticSnapshot {
             .collect()
     }
 
+    // FALLBACK: reads imported package files from disk + text-scans
     fn fallback_imported_named_type_items(
         &self,
         document: &EditorDocument,
@@ -433,12 +446,14 @@ impl SemanticSnapshot {
         items
     }
 
+    // FALLBACK: combines local namespace + imported package fallbacks
     fn fallback_qualified_completion_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
         let mut items = self.fallback_local_namespace_items(qualifier);
         items.extend(self.fallback_imported_package_items(qualifier));
         dedupe_completion_items(items)
     }
 
+    // FALLBACK: reads imported package files from disk + text-scans declarations
     fn fallback_imported_package_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
         let Some(package_root) = &self.source_package_root else {
             return Vec::new();
@@ -464,6 +479,7 @@ impl SemanticSnapshot {
         fallback_items_from_package_dir(&target)
     }
 
+    // FALLBACK: reads filesystem directories for namespace items
     fn fallback_local_namespace_items(&self, qualifier: &str) -> Vec<EditorCompletionItem> {
         let Some(package_root) = &self.source_package_root else {
             return Vec::new();
@@ -529,6 +545,7 @@ impl SemanticSnapshot {
             .map(|unit| unit.namespace.clone())
     }
 
+    // COMPILER-BACKED: resolver reference lookup (no text fallback)
     pub(super) fn reference_at(
         &self,
         position: LspPosition,
@@ -546,6 +563,7 @@ impl SemanticSnapshot {
         Some(needle)
     }
 
+    // COMPILER-BACKED: resolved symbol + typed type (no text fallback)
     pub(super) fn hover_for_reference(
         &self,
         reference: &fol_resolver::ResolvedReference,
@@ -590,6 +608,7 @@ impl SemanticSnapshot {
         None
     }
 
+    // COMPILER-BACKED: resolved symbol origin (no text fallback)
     pub(super) fn definition_for_reference(
         &self,
         reference: &fol_resolver::ResolvedReference,
@@ -615,6 +634,7 @@ impl SemanticSnapshot {
         None
     }
 
+    // COMPILER-BACKED: resolved symbols by path (no text fallback)
     pub(super) fn document_symbols_for_current_path(&self) -> Vec<LspDocumentSymbol> {
         let resolved = match &self.resolved_workspace {
             Some(resolved) => resolved,

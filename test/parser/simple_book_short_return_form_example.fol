@@ -1,1 +1,1 @@
-fun[] add(el1, el2: int[64]) = { result = el1 + el2 }
+fun[] add(el1, el2: int[64]) = { result = el1 + el2 };

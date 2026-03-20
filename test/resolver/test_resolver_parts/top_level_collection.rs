@@ -14,7 +14,7 @@ fn test_resolver_collects_top_level_named_declarations_across_multiple_files() {
     .expect("Should write value fixture");
     fs::write(
         temp_root.join("01_routines.fol"),
-        "fun run(a: int): int = { return a; }\npro apply(a: int): int = { return a; }\nlog ready(a: int): bol = { return true; }\n",
+        "fun run(a: int): int = { return a; };\npro apply(a: int): int = { return a; };\nlog ready(a: int): bol = { return true; };\n",
     )
     .expect("Should write routine fixture");
     fs::write(
@@ -29,7 +29,7 @@ fn test_resolver_collects_top_level_named_declarations_across_multiple_files() {
     .expect("Should write imported namespace fixture");
     fs::write(
         temp_root.join("03_meta.fol"),
-        "def[] mark: blk[];\nseg coreSeg: mod = { def helper: blk[] = { } }\nimp Self: Count = { fun ready(): bol = { return true; } }\nstd geometry: pro = { fun area(): int; };\n",
+        "def[] mark: blk[];\nseg coreSeg: mod = { def helper: blk[] = { } };\nimp Self: Count = { fun ready(): bol = { return true; } };\nstd geometry: pro = { fun area(): int; };\n",
     )
     .expect("Should write meta fixture");
 
@@ -78,7 +78,7 @@ fn test_resolver_collects_nested_namespace_declarations_into_namespace_scopes() 
         .expect("Should write root file");
     fs::write(
         temp_root.join("net/http/route.fol"),
-        "fun handle(code: int): int = { return code; }\n",
+        "fun handle(code: int): int = { return code; };\n",
     )
     .expect("Should write namespace file");
 

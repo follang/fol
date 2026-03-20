@@ -1,4 +1,4 @@
 fun report_expr_local_ok(a: int, b: int): str / num = {
     var err_code = a + b;
     report err_code;
-}
+};

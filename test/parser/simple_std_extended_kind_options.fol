@@ -1,4 +1,4 @@
 std geometry: ext[normal] = {
     fun area(): flt[64];
     var color: rgb;
-}
+};

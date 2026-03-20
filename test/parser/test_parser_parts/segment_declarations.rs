@@ -81,10 +81,10 @@ fn test_segment_declaration_rejects_non_module_types() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Segment declarations require module types"),
         "Malformed segment declaration should report invalid type, got: {}",
@@ -151,7 +151,7 @@ fn test_segment_declaration_preserves_inner_opposite_quote_chars() {
     let fixture = temp_root.join("inner_quotes.fol");
     fs::write(
         &fixture,
-        "seg \"co're\": mod = { def helper: blk = {}; }\nseg 'quo\"te': mod = { def value: blk = {}; }\n",
+        "seg \"co're\": mod = { def helper: blk = {}; };\nseg 'quo\"te': mod = { def value: blk = {}; };\n",
     )
     .expect("Should write temp segment fixture");
 
@@ -274,10 +274,10 @@ fn test_segment_declaration_rejects_non_empty_option_brackets() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let message = parse_error.to_string();
+    let message = parse_error.message.clone();
     assert!(
         message.contains("Unknown segment option"),
         "Non-empty segment option brackets should be rejected, got: {}",

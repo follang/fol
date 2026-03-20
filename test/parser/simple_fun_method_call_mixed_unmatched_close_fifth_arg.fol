@@ -11,4 +11,4 @@ fun method_mixed_unmatched_close_fifth_arg(obj: int, a: int, b: int, c: int, d: 
     );
 
     return e;
-}
+};

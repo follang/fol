@@ -265,18 +265,18 @@ fn test_protocol_standard_rejects_duplicate_signatures() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate standard member 'area#0'"),
         "Expected duplicate standard signature error, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.column(),
+        parse_error.primary_location().unwrap().column,
         9,
         "Duplicate protocol signature should point to the duplicate routine name"
     );
@@ -296,18 +296,18 @@ fn test_protocol_standard_rejects_canonical_duplicate_signatures() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate standard member 'AreaValue#0'"),
         "Expected canonical duplicate protocol signature error, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.column(),
+        parse_error.primary_location().unwrap().column,
         9,
         "Canonical duplicate protocol signature should point to the duplicate routine name"
     );
@@ -327,18 +327,18 @@ fn test_blueprint_standard_rejects_duplicate_fields() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate standard member 'color'"),
         "Expected duplicate blueprint member error, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.column(),
+        parse_error.primary_location().unwrap().column,
         9,
         "Duplicate blueprint field should point to the duplicate field name"
     );
@@ -358,18 +358,18 @@ fn test_blueprint_standard_rejects_canonical_duplicate_fields() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate standard member 'ColorName'"),
         "Expected canonical duplicate blueprint member error, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.column(),
+        parse_error.primary_location().unwrap().column,
         9,
         "Canonical duplicate blueprint field should point to the duplicate field name"
     );
@@ -389,18 +389,18 @@ fn test_extended_standard_rejects_duplicate_members() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Duplicate standard member 'area#0'"),
         "Expected duplicate extended member error, got: {}",
-        parse_error
+        parse_error.message
     );
     assert_eq!(
-        parse_error.column(),
+        parse_error.primary_location().unwrap().column,
         9,
         "Duplicate extended member should point to the duplicate member name"
     );
@@ -420,15 +420,15 @@ fn test_standard_rejects_unknown_declaration_options() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Unknown standard option"),
         "Expected std option error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -446,15 +446,15 @@ fn test_standard_rejects_unknown_kind_options() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Unknown protocol standard kind option"),
         "Expected standard kind option error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 

@@ -639,13 +639,13 @@ fn test_pipe_expression_rejects_missing_rhs() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Expected expression after '|'"),
+        parse_error.message.clone().contains("Expected expression after '|'"),
         "Expected missing pipe RHS error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 
@@ -662,13 +662,13 @@ fn test_pipe_or_expression_rejects_missing_rhs() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
-        parse_error.to_string().contains("Expected expression after '||'"),
+        parse_error.message.clone().contains("Expected expression after '||'"),
         "Expected missing pipe-or RHS error, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 

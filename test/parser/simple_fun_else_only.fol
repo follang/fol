@@ -4,4 +4,4 @@ fun choose_else_only(a: int, b: int): int = {
     } else {
         return b;
     }
-}
+};

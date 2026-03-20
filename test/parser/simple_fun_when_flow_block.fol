@@ -9,4 +9,4 @@ fun classify(value: int): int = {
             return local;
         }
     }
-}
+};

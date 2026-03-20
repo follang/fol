@@ -50,11 +50,11 @@ fn test_visibility_marked_declarations_stay_in_their_own_source_units() {
     write_folder_fixture(
         &temp_root,
         &[
-            ("00_public.fol", "var[exp] shared: int = 1\n"),
-            ("10_hidden.fol", "let[hid] local: int = 2\n"),
+            ("00_public.fol", "var[exp] shared: int = 1;\n"),
+            ("10_hidden.fol", "let[hid] local: int = 2;\n"),
             (
                 "nested/20_branch.fol",
-                "use[hidden] cache: loc = {core::cache}\nvar branch: int = 3\n",
+                "use[hidden] cache: loc = {core::cache};\nvar branch: int = 3;\n",
             ),
         ],
     );
@@ -115,11 +115,11 @@ fn test_parsed_top_levels_distinguish_package_namespace_and_file_scope() {
     write_folder_fixture(
         &temp_root,
         &[
-            ("00_public.fol", "var[exp] shared: int = 1\n"),
-            ("10_hidden.fol", "let[hid] local: int = 2\n"),
+            ("00_public.fol", "var[exp] shared: int = 1;\n"),
+            ("10_hidden.fol", "let[hid] local: int = 2;\n"),
             (
                 "nested/20_branch.fol",
-                "use[hidden] cache: loc = {core::cache}\nvar branch: int = 3\n",
+                "use[hidden] cache: loc = {core::cache};\nvar branch: int = 3;\n",
             ),
         ],
     );

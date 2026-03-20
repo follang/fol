@@ -65,6 +65,7 @@ Current code families:
 | `R1xxx`| resolver        | `R1003` unresolved, `R1005` ambiguous |
 | `T1xxx`| type checker    | `T1003` type mismatch           |
 | `L1xxx`| lowering        | `L1001` unsupported surface     |
+| `F1xxx`| frontend        | `F1001` invalid input, `F1002` workspace not found |
 | `K11xx`| build evaluator | `K1101` build failure           |
 
 Codes are structurally assigned. The parser carries an explicit `ParseErrorKind`
@@ -235,6 +236,10 @@ Important rule:
 Instead, both human and JSON outputs are generated from the same structured
 diagnostic model.
 
+The editor/LSP layer should follow that same rule too: editor diagnostics should
+be adapted from the shared structured diagnostic model rather than rebuilt from
+free-form strings.
+
 That means JSON can preserve:
 
 - severity
@@ -295,6 +300,7 @@ At head, the main producers that lower into the shared diagnostics layer are:
 - lowering
 - build evaluator
 - backend
+- frontend (workspace discovery and input validation)
 
 That means diagnostics are already strong across:
 

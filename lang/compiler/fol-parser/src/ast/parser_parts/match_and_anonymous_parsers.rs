@@ -89,17 +89,17 @@ impl AstParser {
     fn parse_match_arrow_body(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         self.skip_ignorable(tokens)?;
         let flow = tokens.curr(false)?;
         if !matches!(
             flow.key(),
             KEYWORD::Operator(OPERATOR::Flow2) | KEYWORD::Operator(OPERATOR::Flow)
         ) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &flow,
                 "Expected '->' or '=>' in matching expression".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
@@ -119,7 +119,7 @@ impl AstParser {
     fn parse_match_expression_has_members(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let mut members = Vec::new();
         for _ in 0..64 {
             members.push(self.parse_logical_expression(tokens)?);
@@ -141,10 +141,10 @@ impl AstParser {
                 continue;
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &next,
                 "Expected ',', ';', or '->' in matching has-case".to_string(),
-            )));
+            ));
         }
 
         if members.len() == 1 {
@@ -160,26 +160,26 @@ impl AstParser {
     pub(super) fn parse_match_expression(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let keyword = tokens.curr(false)?;
         if !matches!(
             keyword.key(),
             KEYWORD::Keyword(BUILDIN::If) | KEYWORD::Keyword(BUILDIN::When)
         ) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &keyword,
                 "Expected matching expression".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
 
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '(' after matching keyword".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -187,20 +187,20 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close,
                 "Expected ')' after matching expression condition".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
 
         let open_cases = tokens.curr(false)?;
         if !matches!(open_cases.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open_cases,
                 "Expected '{' to start matching expression cases".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -249,10 +249,10 @@ impl AstParser {
                 continue;
             }
 
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Expected in/is/has/* case in matching expression".to_string(),
-            )));
+            ));
         }
 
         Ok(AstNode::When {
@@ -397,13 +397,13 @@ impl AstParser {
     pub(super) fn parse_anonymous_fun_expr(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let routine_token = tokens.curr(false)?;
         if !matches!(routine_token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &routine_token,
                 "Expected anonymous function expression".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -413,13 +413,13 @@ impl AstParser {
     pub(super) fn parse_anonymous_pro_expr(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let routine_token = tokens.curr(false)?;
         if !matches!(routine_token.key(), KEYWORD::Keyword(BUILDIN::Pro)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &routine_token,
                 "Expected anonymous procedure expression".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -429,13 +429,13 @@ impl AstParser {
     pub(super) fn parse_anonymous_log_expr(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let routine_token = tokens.curr(false)?;
         if !matches!(routine_token.key(), KEYWORD::Keyword(BUILDIN::Log)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &routine_token,
                 "Expected anonymous logical expression".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -446,26 +446,26 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         kind: AnonymousRoutineKind,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         self.skip_ignorable(tokens)?;
         let options = self.parse_routine_options(tokens)?;
         self.skip_ignorable(tokens)?;
 
         let open_params = tokens.curr(false)?;
         if !matches!(open_params.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open_params,
                 format!("Expected '(' after anonymous {}", kind.label()),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
         let (params, first_untyped) = self.parse_routine_header_list(tokens)?;
         if let Some(token) = first_untyped {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 format!("Expected ':' after {} parameter name", kind.label()),
-            )));
+            ));
         }
         self.ensure_unique_parameter_names(&params, "parameter", tokens)?;
 
@@ -491,13 +491,13 @@ impl AstParser {
             assign.key(),
             KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow)
         ) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &assign,
                 format!(
                     "Expected '=' or '=>' before anonymous {} body",
                     kind.label()
                 ),
-            )));
+            ));
         }
         if matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
             let _ = tokens.bump();
@@ -543,22 +543,22 @@ impl AstParser {
     pub(super) fn parse_shorthand_anonymous_fun_expr(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let open_params = tokens.curr(false)?;
         if !matches!(open_params.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open_params,
                 "Expected '(' to start shorthand anonymous function".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
         let (params, first_untyped) = self.parse_routine_header_list(tokens)?;
         if let Some(token) = first_untyped {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Expected ':' after function parameter name".to_string(),
-            )));
+            ));
         }
         self.ensure_unique_parameter_names(&params, "parameter", tokens)?;
 

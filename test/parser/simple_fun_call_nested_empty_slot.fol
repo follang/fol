@@ -8,4 +8,4 @@ fun nested_empty_slot(a: int, b: int): int = {
     );
 
     return value;
-}
+};

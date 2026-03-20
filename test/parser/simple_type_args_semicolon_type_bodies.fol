@@ -1,7 +1,7 @@
 typ Config: rec = {
     values: seq[int;];
-}
+};
 
 typ Event: ent = {
     var Data: map[str; vec[int;];];
-}
+};

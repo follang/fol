@@ -2,11 +2,15 @@ use super::{
     lower_fixture_error, lower_fixture_panic_message, lower_fixture_workspace,
     lower_folder_fixture_workspace,
 };
-use crate::{LoweredInstrKind, LoweringErrorKind};
+use crate::{LoweredInstrKind, LoweredOperand, LoweringErrorKind};
+use fol_parser::ast::AstParser;
+use fol_resolver::resolve_package_workspace;
+use fol_stream::FileStream;
+use fol_typecheck::Typechecker;
 
 #[test]
 fn record_initializer_lowering_constructs_records_in_binding_and_call_contexts() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_record_init_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -26,7 +30,7 @@ fn record_initializer_lowering_constructs_records_in_binding_and_call_contexts()
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -58,7 +62,7 @@ fn record_initializer_lowering_constructs_records_in_binding_and_call_contexts()
 
 #[test]
 fn linear_container_lowering_constructs_array_vector_and_sequence_values() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_linear_container_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -78,7 +82,7 @@ fn linear_container_lowering_constructs_array_vector_and_sequence_values() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -123,7 +127,7 @@ fn linear_container_lowering_constructs_array_vector_and_sequence_values() {
 
 #[test]
 fn set_and_map_lowering_construct_explicit_aggregate_instructions() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_set_map_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -143,7 +147,7 @@ fn set_and_map_lowering_construct_explicit_aggregate_instructions() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -178,7 +182,7 @@ fn set_and_map_lowering_construct_explicit_aggregate_instructions() {
 
 #[test]
 fn entry_variant_lowering_supports_payload_access_and_entry_construction() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_entry_variant_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -198,7 +202,7 @@ fn entry_variant_lowering_supports_payload_access_and_entry_construction() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -241,7 +245,7 @@ fn entry_variant_lowering_supports_payload_access_and_entry_construction() {
 
 #[test]
 fn nil_lowering_constructs_optional_and_error_shell_values() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_nil_shells_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -261,7 +265,7 @@ fn nil_lowering_constructs_optional_and_error_shell_values() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -300,7 +304,7 @@ fn nil_lowering_constructs_optional_and_error_shell_values() {
 
 #[test]
 fn unwrap_lowering_uses_explicit_shell_unwrap_instructions() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_unwrap_shells_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -320,7 +324,7 @@ fn unwrap_lowering_uses_explicit_shell_unwrap_instructions() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -355,7 +359,7 @@ fn alias_shell_contexts_lower_to_concrete_runtime_shell_operations() {
         .duration_since(UNIX_EPOCH)
         .expect("clock should be monotonic enough for tmp path")
         .as_nanos();
-    let root = std::env::temp_dir().join(format!("fol_lower_shell_alias_{stamp}"));
+    let root = super::safe_temp_dir().join(format!("fol_lower_shell_alias_{stamp}"));
     let app_dir = root.join("app");
     let shared_dir = root.join("shared");
     fs::create_dir_all(&app_dir).expect("should create app dir");
@@ -378,7 +382,7 @@ fn alias_shell_contexts_lower_to_concrete_runtime_shell_operations() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -415,7 +419,7 @@ fn alias_shell_contexts_lower_to_concrete_runtime_shell_operations() {
 
 #[test]
 fn shell_payload_lifting_lowers_to_explicit_runtime_wrappers() {
-    let fixture = std::env::temp_dir().join(format!(
+    let fixture = super::safe_temp_dir().join(format!(
         "fol_lower_shell_lifts_{}.fol",
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -435,7 +439,7 @@ fn shell_payload_lifting_lowers_to_explicit_runtime_wrappers() {
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");
@@ -498,7 +502,7 @@ fn aggregate_container_and_shell_lowering_stays_aligned_across_local_and_importe
         .duration_since(UNIX_EPOCH)
         .expect("clock should be monotonic enough for tmp path")
         .as_nanos();
-    let root = std::env::temp_dir().join(format!("fol_lower_parity_mix_{stamp}"));
+    let root = super::safe_temp_dir().join(format!("fol_lower_parity_mix_{stamp}"));
     let app_dir = root.join("app");
     let shared_dir = root.join("shared");
     fs::create_dir_all(&app_dir).expect("should create app dir");
@@ -521,7 +525,7 @@ fn aggregate_container_and_shell_lowering_stays_aligned_across_local_and_importe
     let syntax = parser
         .parse_package(&mut lexer)
         .expect("Lowering fixture should parse");
-    let resolved = resolve_workspace(syntax).expect("Lowering fixture should resolve");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
     let typed = Typechecker::new()
         .check_resolved_workspace(resolved)
         .expect("Lowering fixture should typecheck");

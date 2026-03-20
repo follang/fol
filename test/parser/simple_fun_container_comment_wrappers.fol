@@ -7,4 +7,4 @@ fun inspect() = {
         beta
         `[doc] trailing beta`
     }
-}
+};

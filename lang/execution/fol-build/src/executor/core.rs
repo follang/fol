@@ -68,11 +68,11 @@ impl BuildBodyExecutor {
 
         let mut lexer = Elements::init(&mut stream);
         let mut parser = fol_parser::ast::AstParser::new();
-        let parsed = parser.parse_package(&mut lexer).map_err(|errors| {
-            let message = errors
+        let parsed = parser.parse_package(&mut lexer).map_err(|diagnostics| {
+            let message = diagnostics
                 .into_iter()
                 .next()
-                .map(|e| e.to_string())
+                .map(|d| d.message)
                 .unwrap_or_else(|| "unknown parse error".to_string());
             BuildEvaluationError::new(
                 BuildEvaluationErrorKind::InvalidInput,

@@ -1,1 +1,1 @@
-def "some unit testing": tst[shko] = {}
+def "some unit testing": tst[shko] = {};

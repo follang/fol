@@ -1,5 +1,5 @@
 fun method_zero(obj: int): int = {
     obj.start();
-    obj.stop()
+    obj.stop();
     return obj.done();
-}
+};

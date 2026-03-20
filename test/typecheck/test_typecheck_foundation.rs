@@ -143,22 +143,88 @@ fn semantic_type_table_covers_declared_and_structural_shapes() {
 }
 
 #[test]
+fn builtin_type_as_str_matches_language_spelling() {
+    assert_eq!(BuiltinType::Int.as_str(), "int");
+    assert_eq!(BuiltinType::Float.as_str(), "flt");
+    assert_eq!(BuiltinType::Bool.as_str(), "bol");
+    assert_eq!(BuiltinType::Char.as_str(), "chr");
+    assert_eq!(BuiltinType::Str.as_str(), "str");
+    assert_eq!(BuiltinType::Never.as_str(), "never");
+}
+
+#[test]
+fn builtin_type_all_names_covers_every_variant() {
+    assert_eq!(BuiltinType::ALL_NAMES.len(), 6);
+    for name in BuiltinType::ALL_NAMES {
+        assert!(!name.is_empty());
+    }
+}
+
+#[test]
+fn render_type_handles_builtins_and_containers() {
+    let mut table = TypeTable::new();
+    let int_id = table.intern_builtin(BuiltinType::Int);
+    let str_id = table.intern_builtin(BuiltinType::Str);
+    let opt_id = table.intern(CheckedType::Optional { inner: int_id });
+    let vec_id = table.intern(CheckedType::Vector {
+        element_type: str_id,
+    });
+    let map_id = table.intern(CheckedType::Map {
+        key_type: str_id,
+        value_type: int_id,
+    });
+
+    assert_eq!(table.render_type(int_id), "int");
+    assert_eq!(table.render_type(opt_id), "opt[int]");
+    assert_eq!(table.render_type(vec_id), "vec[str]");
+    assert_eq!(table.render_type(map_id), "map[str, int]");
+}
+
+#[test]
+fn render_type_handles_routines() {
+    let mut table = TypeTable::new();
+    let int_id = table.intern_builtin(BuiltinType::Int);
+    let str_id = table.intern_builtin(BuiltinType::Str);
+    let routine_id = table.intern(CheckedType::Routine(RoutineType {
+        params: vec![int_id, str_id],
+        return_type: Some(int_id),
+        error_type: None,
+    }));
+    assert_eq!(table.render_type(routine_id), "fun(int, str): int");
+}
+
+#[test]
+fn symbol_kind_display_name_covers_all_variants() {
+    assert_eq!(SymbolKind::Routine.display_name(), "routine");
+    assert_eq!(SymbolKind::Type.display_name(), "type");
+    assert_eq!(SymbolKind::Alias.display_name(), "alias");
+    assert_eq!(SymbolKind::Definition.display_name(), "definition");
+    assert_eq!(SymbolKind::ValueBinding.display_name(), "binding");
+    assert_eq!(SymbolKind::Parameter.display_name(), "parameter");
+    assert_eq!(SymbolKind::Capture.display_name(), "capture");
+    assert_eq!(SymbolKind::ImportAlias.display_name(), "namespace");
+    assert_eq!(SymbolKind::Segment.display_name(), "segment");
+    assert_eq!(SymbolKind::Implementation.display_name(), "implementation");
+    assert_eq!(SymbolKind::Standard.display_name(), "standard");
+}
+
+#[test]
 fn declaration_signature_lowering_records_top_level_type_facts() {
     let typed = typecheck_fixture_folder(&[
         (
             "types.fol",
-            "ali Distance: int\n\
+            "ali Distance: int;\n\
              typ Person: rec = {\n\
                  name: str\n\
-             }\n",
+             };\n",
         ),
         (
             "main.fol",
-            "var total: Distance = 1\n\
-             var holder: Person\n\
+            "var total: Distance = 1;\n\
+             var holder: Person;\n\
              fun[] size(value: Distance): Person = {\n\
                  return holder\n\
-             }\n",
+             };\n",
         ),
     ]);
 
@@ -207,7 +273,7 @@ fn declaration_signature_lowering_records_top_level_type_facts() {
 
 #[test]
 fn declaration_signature_lowering_keeps_builtin_str_types_builtin() {
-    let typed = typecheck_fixture_folder(&[("main.fol", "var label: str = \"ok\"\n")]);
+    let typed = typecheck_fixture_folder(&[("main.fol", "var label: str = \"ok\";\n")]);
     let (_label_id, label) = find_typed_symbol(&typed, "label", SymbolKind::ValueBinding);
 
     assert_eq!(
@@ -219,8 +285,8 @@ fn declaration_signature_lowering_keeps_builtin_str_types_builtin() {
 #[test]
 fn declaration_signature_lowering_keeps_named_types_as_declared_symbols() {
     let typed = typecheck_fixture_folder(&[
-        ("types.fol", "typ Point: rec = {\n}\n"),
-        ("main.fol", "var current: Point\n"),
+        ("types.fol", "typ Point: rec = {\n};\n"),
+        ("main.fol", "var current: Point;\n"),
     ]);
 
     let (point_id, _point) = find_typed_symbol(&typed, "Point", SymbolKind::Type);
@@ -241,8 +307,8 @@ fn declaration_signature_lowering_keeps_named_types_as_declared_symbols() {
 #[test]
 fn declaration_signature_lowering_keeps_alias_references_as_alias_symbols() {
     let typed = typecheck_fixture_folder(&[
-        ("types.fol", "ali Count: int\n"),
-        ("main.fol", "var total: Count = 1\n"),
+        ("types.fol", "ali Count: int;\n"),
+        ("main.fol", "var total: Count = 1;\n"),
     ]);
 
     let (count_id, _count) = find_typed_symbol(&typed, "Count", SymbolKind::Alias);
@@ -262,10 +328,10 @@ fn declaration_signature_lowering_keeps_alias_references_as_alias_symbols() {
 fn expression_typing_resolves_plain_identifier_references_to_declared_types() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "var total: int = 1\n\
+        "var total: int = 1;\n\
          fun[] read(): int = {\n\
              return total;\n\
-         }\n",
+         };\n",
     )]);
 
     let reference = find_typed_reference(&typed, "total", ReferenceKind::Identifier);
@@ -281,12 +347,12 @@ fn expression_typing_resolves_plain_identifier_references_to_declared_types() {
 #[test]
 fn expression_typing_resolves_qualified_identifier_references_to_declared_types() {
     let typed = typecheck_fixture_folder(&[
-        ("util/value.fol", "var[exp] total: int = 1\n"),
+        ("util/value.fol", "var[exp] total: int = 1;\n"),
         (
             "main.fol",
             "fun[] read(): int = {\n\
                  return util::total;\n\
-             }\n",
+             };\n",
         ),
     ]);
 
@@ -307,7 +373,7 @@ fn expression_typing_infers_local_binding_types_from_initializers() {
         "fun[] demo(): int = {\n\
              let current = 1;\n\
              return current;\n\
-         }\n",
+         };\n",
     )]);
 
     let (_current_id, current) = find_typed_symbol(&typed, "current", SymbolKind::ValueBinding);
@@ -324,10 +390,10 @@ fn expression_typing_infers_local_binding_types_from_initializers() {
 fn expression_typing_keeps_final_routine_body_expression_types() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "var total: int = 1\n\
+        "var total: int = 1;\n\
          fun[] demo(): int = {\n\
              total\n\
-         }\n",
+         };\n",
     )]);
     let syntax_id = find_named_routine_syntax_id(&typed, "demo");
 
@@ -344,11 +410,11 @@ fn expression_typing_keeps_final_routine_body_expression_types() {
 fn expression_typing_accepts_assignments_with_matching_types() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "var total: int = 1\n\
+        "var total: int = 1;\n\
          fun[] demo(): int = {\n\
              total = 2;\n\
              return total;\n\
-         }\n",
+         };\n",
     )]);
 
     let reference = find_typed_reference(&typed, "total", ReferenceKind::Identifier);
@@ -364,11 +430,11 @@ fn expression_typing_accepts_assignments_with_matching_types() {
 fn expression_typing_rejects_assignments_with_mismatched_value_types() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "var total: int = 1\n\
+        "var total: int = 1;\n\
          fun[] demo(): int = {\n\
              total = \"bad\";\n\
              return total;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -386,10 +452,10 @@ fn expression_typing_types_free_calls_against_routine_signatures() {
         "main.fol",
         "fun[] id(value: int): int = {\n\
              return value;\n\
-         }\n\
+         };\n\
          fun[] demo(): int = {\n\
              return id(1);\n\
-         }\n",
+         };\n",
     )]);
 
     let reference = find_typed_reference(&typed, "id", ReferenceKind::FunctionCall);
@@ -407,10 +473,10 @@ fn expression_typing_rejects_free_call_arity_mismatches() {
         "main.fol",
         "fun[] id(value: int): int = {\n\
              return value;\n\
-         }\n\
+         };\n\
          fun[] demo(): int = {\n\
              return id();\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -428,14 +494,14 @@ fn expression_typing_types_method_calls_against_explicit_receiver_routines() {
         "main.fol",
         "typ Counter: rec = {\n\
              value: int\n\
-         }\n\
-         var current: Counter\n\
+         };\n\
+         var current: Counter;\n\
          fun (Counter)read(): int = {\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] demo(): int = {\n\
              return current.read();\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "demo");
@@ -454,14 +520,14 @@ fn expression_typing_rejects_method_call_arity_mismatches() {
         "main.fol",
         "typ Counter: rec = {\n\
              value: int\n\
-         }\n\
-         var current: Counter\n\
+         };\n\
+         var current: Counter;\n\
          fun (Counter)read(value: int): int = {\n\
              return value;\n\
-         }\n\
+         };\n\
          fun[] demo(): int = {\n\
              return current.read();\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -479,10 +545,10 @@ fn expression_typing_types_field_access_against_named_record_receivers() {
         "main.fol",
         "typ Counter: rec = {\n\
              value: int\n\
-         }\n\
+         };\n\
          fun[] read(counter: Counter): int = {\n\
              return counter.value;\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "read");
@@ -501,7 +567,7 @@ fn expression_typing_rejects_field_access_on_non_records() {
         "main.fol",
         "fun[] bad(value: int): int = {\n\
              return value.total;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -521,12 +587,12 @@ fn expression_typing_expands_alias_record_shells_for_field_access() {
         "main.fol",
         "typ CounterShape: rec = {\n\
              value: int\n\
-         }\n\
-         ali Counter: CounterShape\n\
-         var current: Counter = { value = 1 }\n\
+         };\n\
+         ali Counter: CounterShape;\n\
+         var current: Counter = { value = 1 };\n\
          fun[] read(): int = {\n\
              return current.value;\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "read");
@@ -545,7 +611,7 @@ fn expression_typing_types_container_index_accesses() {
         "main.fol",
         "fun[] head(values: vec[int]): int = {\n\
              return values[0];\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "head");
@@ -564,7 +630,7 @@ fn expression_typing_types_basic_slice_accesses() {
         "main.fol",
         "fun[] tail(values: vec[int]): vec[int] = {\n\
              return values[1:];\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "tail");
@@ -587,7 +653,7 @@ fn expression_typing_rejects_non_indexable_receivers() {
         "main.fol",
         "fun[] bad(value: int): int = {\n\
              return value[0];\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -607,7 +673,7 @@ fn routine_return_typing_rejects_explicit_return_mismatches() {
         "main.fol",
         "fun[] demo(): int = {\n\
              return false;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -623,10 +689,10 @@ fn routine_return_typing_rejects_explicit_return_mismatches() {
 fn routine_return_typing_rejects_final_body_expression_mismatches() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "var flag: bol = false\n\
+        "var flag: bol = false;\n\
          fun[] demo(): int = {\n\
              flag\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -644,7 +710,7 @@ fn routine_return_typing_rejects_missing_return_values_for_typed_routines() {
         "main.fol",
         "fun[] demo(): int = {\n\
              return;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -665,7 +731,7 @@ fn routine_error_typing_accepts_matching_report_values() {
         "fun[] demo(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n",
+         };\n",
     )]);
 
     let syntax_id = find_named_routine_syntax_id(&typed, "demo");
@@ -685,7 +751,7 @@ fn routine_error_typing_rejects_report_value_mismatches() {
         "fun[] demo(): int / str = {\n\
              report 1;\n\
              return 1;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -704,7 +770,7 @@ fn routine_error_typing_requires_declared_error_types() {
         "fun[] demo(): int = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -725,7 +791,7 @@ fn routine_error_typing_rejects_missing_report_values() {
         "fun[] demo(): int / str = {\n\
              report;\n\
              return 1;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -744,10 +810,10 @@ fn routine_error_calls_keep_recoverable_effects_on_call_references() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): bol = {\n\
              return check(load());\n\
-         }\n",
+         };\n",
     )]);
 
     let reference = find_typed_reference(&typed, "load", ReferenceKind::FunctionCall);
@@ -773,11 +839,11 @@ fn inferred_bindings_reject_recoverable_call_results() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int = {\n\
              var current = load();\n\
              return 0;\n\
-         }\n",
+         };\n",
     )]);
 
     assert_eq!(
@@ -800,11 +866,11 @@ fn plain_use_of_errorful_calls_rejects_plain_value_contexts() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int = {\n\
              var total: int = load() + 1;\n\
              return total;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -825,10 +891,10 @@ fn propagation_typing_rejects_matching_error_types_in_plain_value_contexts() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int / str = {\n\
              return load() + 1;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -849,10 +915,10 @@ fn propagation_typing_rejects_incompatible_error_types_in_plain_value_contexts()
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int / int = {\n\
              return load() + 1;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(

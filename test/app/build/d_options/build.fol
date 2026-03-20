@@ -10,4 +10,4 @@ pro[] build(graph: Graph): non = {
     });
     graph.install(app);
     graph.add_run(app);
-}
+};

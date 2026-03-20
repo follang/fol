@@ -1,15 +1,15 @@
 fun[] add(n: int): int = {
     fun added(x: int)[n;]: int = {
         return x + n;
-    }
+    };
 
     return added(5);
-}
+};
 
 log[] matches(item: str)[rule; value;]: bol = {
     return item == value;
-}
+};
 
 pro[] emit(item: str)[sink;]: non = {
     return sink;
-}
+};

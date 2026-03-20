@@ -42,8 +42,6 @@ fn test_braced_range_expressions_parse_in_assignment_and_return() {
         _ => panic!("Expected program node"),
     }
 }
-
-
 #[test]
 fn test_return_expression_unary_minus_precedence() {
     let mut file_stream = FileStream::from_file("test/parser/simple_fun_unary_precedence.fol")
@@ -801,17 +799,17 @@ fn test_index_assignment_target_missing_close_reports_parse_error() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
-    let first_message = parse_error.to_string();
+    let first_message = parse_error.message.clone();
     assert!(
         first_message.contains("Expected closing ']' for index assignment target"),
         "Malformed index assignment target should report missing close bracket, got: {}",
         first_message
     );
     assert_eq!(
-        parse_error.line(),
+        parse_error.primary_location().unwrap().line,
         2,
         "Malformed index assignment target should report the assignment line"
     );

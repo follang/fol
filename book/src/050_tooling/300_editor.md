@@ -61,6 +61,12 @@ So the model is:
 - Tree-sitter answers “what does this text structurally look like?”
 - compiler crates answer “what does this code mean?”
 
+For the current maintenance contract between compiler crates, LSP behavior, and
+Tree-sitter assets, see:
+
+- [Compiler Integration](./350_compiler_integration.md)
+- [Feature Update Checklist](./450_feature_checklist.md)
+
 ## Current Practical Workflow
 
 Use:

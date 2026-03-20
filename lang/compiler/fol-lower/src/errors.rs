@@ -2,7 +2,6 @@ use fol_diagnostics::{
     Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation,
 };
 use fol_parser::ast::SyntaxOrigin;
-use fol_types::Glitch;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LoweringErrorKind {
@@ -87,16 +86,6 @@ impl std::fmt::Display for LoweringError {
 
 impl std::error::Error for LoweringError {}
 
-impl Glitch for LoweringError {
-    fn clone_box(&self) -> Box<dyn Glitch> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
 impl ToDiagnosticLocation for LoweringError {
     fn to_diagnostic_location(&self, file: Option<String>) -> DiagnosticLocation {
         if let Some(origin) = &self.origin {
@@ -174,9 +163,9 @@ mod tests {
         )
         .to_diagnostic();
 
-        assert_eq!(diagnostic.code, "L1001");
+        assert_eq!(diagnostic.code.as_str(), "L1001");
         assert_eq!(
-            diagnostic.primary_label.as_ref().map(|label| label.line),
+            diagnostic.primary_label().map(|label| label.location.line),
             Some(2)
         );
     }

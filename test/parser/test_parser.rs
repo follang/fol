@@ -4,7 +4,7 @@ use fol_lexer::lexer::stage3::Elements;
 use fol_lexer::token::KEYWORD;
 use fol_parser::ast::{
     AstNode, AstParser, BindingPattern, CharEncoding, CommentKind, FloatSize, FolType, InquiryTarget,
-    IntSize, Literal, Parameter, ParseError, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage,
+    IntSize, Literal, Parameter, ParsedDeclScope, ParsedDeclVisibility, ParsedPackage,
     ParsedSourceUnit, ParsedTopLevel, QualifiedPath, SyntaxOrigin, TypeDefinition,
 };
 use fol_stream::FileStream;
@@ -14,14 +14,14 @@ trait TestParse {
     fn parse(
         &mut self,
         lexer: &mut Elements,
-    ) -> Result<AstNode, Vec<Box<dyn fol_types::Glitch>>>;
+    ) -> Result<AstNode, Vec<fol_diagnostics::Diagnostic>>;
 }
 
 impl TestParse for AstParser {
     fn parse(
         &mut self,
         lexer: &mut Elements,
-    ) -> Result<AstNode, Vec<Box<dyn fol_types::Glitch>>> {
+    ) -> Result<AstNode, Vec<fol_diagnostics::Diagnostic>> {
         let parsed = self.parse_script_package(lexer)?;
         Ok(AstNode::Program {
             declarations: parsed
@@ -107,7 +107,7 @@ fn use_decl_matches_path(node: &AstNode, expected_name: &str, expected_path: &st
 fn parse_script_as_program(
     parser: &mut AstParser,
     lexer: &mut Elements,
-) -> Result<AstNode, Vec<Box<dyn fol_types::Glitch>>> {
+) -> Result<AstNode, Vec<fol_diagnostics::Diagnostic>> {
     let parsed = parser.parse_script_package(lexer)?;
     Ok(AstNode::Program {
         declarations: parsed

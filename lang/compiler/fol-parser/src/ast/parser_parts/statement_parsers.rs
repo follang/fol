@@ -4,13 +4,13 @@ impl AstParser {
     pub(super) fn parse_select_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let select_token = tokens.curr(false)?;
         if !matches!(select_token.key(), KEYWORD::Keyword(BUILDIN::Select)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &select_token,
                 "Expected 'select' statement".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -18,10 +18,10 @@ impl AstParser {
 
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '(' after 'select'".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
@@ -48,10 +48,10 @@ impl AstParser {
 
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close,
                 "Expected ')' after select header".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
@@ -67,7 +67,7 @@ impl AstParser {
     pub(super) fn parse_builtin_call_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let keyword_token = tokens.curr(false)?;
         let syntax_id = self.record_syntax_origin(&keyword_token);
         let name = match keyword_token.key() {
@@ -76,10 +76,10 @@ impl AstParser {
             KEYWORD::Keyword(BUILDIN::Check) => "check",
             KEYWORD::Keyword(BUILDIN::Assert) => "assert",
             _ => {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &keyword_token,
                     "Expected builtin diagnostic statement".to_string(),
-                )));
+                ));
             }
         }
         .to_string();
@@ -109,11 +109,11 @@ impl AstParser {
 
                     let next = tokens.curr(false)?;
                     if next.key().is_terminal() {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &next,
                             "Expected expression after ',' in builtin diagnostic statement"
                                 .to_string(),
-                        )));
+                        ));
                     }
 
                     let expr = self.parse_logical_expression(tokens)?;
@@ -121,8 +121,6 @@ impl AstParser {
                 }
             }
         }
-
-        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::FunctionCall {
             syntax_id,
@@ -135,13 +133,13 @@ impl AstParser {
     pub(super) fn parse_when_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let when_token = tokens.curr(false)?;
         if !matches!(when_token.key(), KEYWORD::Keyword(BUILDIN::When)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &when_token,
                 "Expected 'when' statement".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -149,10 +147,10 @@ impl AstParser {
 
         let open_expr = tokens.curr(false)?;
         if !matches!(open_expr.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open_expr,
                 "Expected '(' after 'when'".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -161,20 +159,20 @@ impl AstParser {
 
         let close_expr = tokens.curr(false)?;
         if !matches!(close_expr.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close_expr,
                 "Expected ')' after when expression".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens)?;
         let open_cases = tokens.curr(false)?;
         if !matches!(open_cases.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open_cases,
                 "Expected '{' to start when cases".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -196,10 +194,10 @@ impl AstParser {
 
                 let open_cond = tokens.curr(false)?;
                 if !matches!(open_cond.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &open_cond,
                         "Expected '(' after case".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -207,10 +205,10 @@ impl AstParser {
                 self.skip_ignorable(tokens)?;
                 let close_cond = tokens.curr(false)?;
                 if !matches!(close_cond.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &close_cond,
                         "Expected ')' after case condition".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -226,10 +224,10 @@ impl AstParser {
 
                 let open_type = tokens.curr(false)?;
                 if !matches!(open_type.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &open_type,
                         "Expected '(' after of".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
                 self.skip_ignorable(tokens)?;
@@ -239,10 +237,10 @@ impl AstParser {
 
                 let close_type = tokens.curr(false)?;
                 if !matches!(close_type.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &close_type,
                         "Expected ')' after of type".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -258,10 +256,10 @@ impl AstParser {
 
                 let open_value = tokens.curr(false)?;
                 if !matches!(open_value.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &open_value,
                         "Expected '(' after is".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -269,10 +267,10 @@ impl AstParser {
                 self.skip_ignorable(tokens)?;
                 let close_value = tokens.curr(false)?;
                 if !matches!(close_value.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &close_value,
                         "Expected ')' after is value".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -288,10 +286,10 @@ impl AstParser {
 
                 let open_range = tokens.curr(false)?;
                 if !matches!(open_range.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &open_range,
                         "Expected '(' after in".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -299,10 +297,10 @@ impl AstParser {
                 self.skip_ignorable(tokens)?;
                 let close_range = tokens.curr(false)?;
                 if !matches!(close_range.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &close_range,
                         "Expected ')' after in range".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -318,10 +316,10 @@ impl AstParser {
 
                 let open_member = tokens.curr(false)?;
                 if !matches!(open_member.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &open_member,
                         "Expected '(' after has".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -329,10 +327,10 @@ impl AstParser {
                 self.skip_ignorable(tokens)?;
                 let close_member = tokens.curr(false)?;
                 if !matches!(close_member.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &close_member,
                         "Expected ')' after has member".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -348,10 +346,10 @@ impl AstParser {
 
                 let open_channel = tokens.curr(false)?;
                 if !matches!(open_channel.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &open_channel,
                         "Expected '(' after on".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -359,10 +357,10 @@ impl AstParser {
                 self.skip_ignorable(tokens)?;
                 let close_channel = tokens.curr(false)?;
                 if !matches!(close_channel.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &close_channel,
                         "Expected ')' after on channel".to_string(),
-                    )));
+                    ));
                 }
                 let _ = tokens.bump();
 
@@ -386,10 +384,10 @@ impl AstParser {
                     next.key(),
                     KEYWORD::Symbol(SYMBOL::CurlyO) | KEYWORD::Operator(OPERATOR::Flow)
                 ) {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &next,
                         "Expected '{' after when default '*'".to_string(),
-                    )));
+                    ));
                 }
                 let body = self.parse_branch_body(tokens)?;
                 default = Some(body);
@@ -417,13 +415,13 @@ impl AstParser {
     pub(super) fn parse_if_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let if_token = tokens.curr(false)?;
         if !matches!(if_token.key(), KEYWORD::Keyword(BUILDIN::If)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &if_token,
                 "Expected 'if' statement".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -431,10 +429,10 @@ impl AstParser {
 
         let open_cond = tokens.curr(false)?;
         if !matches!(open_cond.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open_cond,
                 "Expected '(' after 'if'".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -443,10 +441,10 @@ impl AstParser {
 
         let close_cond = tokens.curr(false)?;
         if !matches!(close_cond.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close_cond,
                 "Expected ')' after if condition".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -468,10 +466,10 @@ impl AstParser {
                 ) {
                     Some(self.parse_branch_body(tokens)?)
                 } else {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &else_target,
                         "Expected 'if', '{', or '=>' after else".to_string(),
-                    )));
+                    ));
                 }
             } else if matches!(token.key(), KEYWORD::Keyword(BUILDIN::If)) {
                 Some(vec![self.parse_if_stmt(tokens)?])
@@ -500,7 +498,7 @@ impl AstParser {
     pub(super) fn parse_branch_body(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         self.skip_ignorable(tokens)?;
         let token = tokens.curr(false)?;
         if matches!(token.key(), KEYWORD::Operator(OPERATOR::Flow)) {
@@ -508,10 +506,10 @@ impl AstParser {
         }
 
         if !matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &token,
                 "Expected '{' or '=>' to start branch body".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.parse_block_body(tokens, "Expected '}' to close case/default body")
@@ -520,7 +518,7 @@ impl AstParser {
     pub(super) fn parse_loop_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let loop_token = tokens.curr(false)?;
         let keyword_name = match loop_token.key() {
             KEYWORD::Keyword(BUILDIN::While) => "while",
@@ -530,10 +528,10 @@ impl AstParser {
             _ => "",
         };
         if keyword_name.is_empty() {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &loop_token,
                 "Expected loop-like statement".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -541,10 +539,10 @@ impl AstParser {
 
         let open_cond = tokens.curr(false)?;
         if !matches!(open_cond.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open_cond,
                 format!("Expected '(' after '{}'", keyword_name),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -553,10 +551,10 @@ impl AstParser {
 
         let close_cond = tokens.curr(false)?;
         if !matches!(close_cond.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close_cond,
                 format!("Expected ')' after {} condition", keyword_name),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -570,10 +568,10 @@ impl AstParser {
         } else {
             let open_body = tokens.curr(false)?;
             if !matches!(open_body.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &open_body,
                     format!("Expected '{{' to start {} body", keyword_name),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.parse_block_body(tokens, "Expected '}' to close loop body")?
@@ -588,7 +586,7 @@ impl AstParser {
     pub(super) fn parse_loop_condition(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<LoopCondition, Box<dyn Glitch>> {
+    ) -> Result<LoopCondition, ParseError> {
         self.skip_ignorable(tokens)?;
 
         let current = tokens.curr(false)?;
@@ -619,10 +617,10 @@ impl AstParser {
 
             let colon = tokens.curr(false)?;
             if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &colon,
                     "Expected ':' after typed iteration binder name".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens)?;
@@ -632,10 +630,10 @@ impl AstParser {
 
             let semi = tokens.curr(false)?;
             if !matches!(semi.key(), KEYWORD::Symbol(SYMBOL::Semi)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &semi,
                     "Expected ';' after typed iteration binder declaration".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens)?;
@@ -652,13 +650,13 @@ impl AstParser {
             };
 
             if iteration_var != declared_var {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &current_var_token,
                     format!(
                         "Typed iteration binder '{}' must match the iteration variable before 'in'",
                         declared_var
                     ),
-                )));
+                ));
             }
         }
 
@@ -683,10 +681,10 @@ impl AstParser {
 
             let in_token = tokens.curr(false)?;
             if !matches!(in_token.key(), KEYWORD::Keyword(BUILDIN::In)) {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &in_token,
                     "Expected 'in' in loop iteration condition".to_string(),
-                )));
+                ));
             }
             let _ = tokens.bump();
             self.skip_ignorable(tokens)?;
@@ -721,7 +719,7 @@ impl AstParser {
     pub(super) fn parse_assignment_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let target = self.parse_assignment_target(tokens)?;
         self.skip_ignorable(tokens)?;
 
@@ -737,18 +735,18 @@ impl AstParser {
                 compound_op = Some(symbol_op);
                 is_simple_assign = false;
             } else {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &eq_token,
                     "Expected '=' after operator in compound assignment".to_string(),
-                )));
+                ));
             }
         }
 
         if !is_simple_assign && compound_op.is_none() {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &assign_token,
                 "Expected assignment operator in assignment statement".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
@@ -764,26 +762,6 @@ impl AstParser {
             parsed_value
         };
 
-        for _ in 0..64 {
-            let token = match tokens.curr(false) {
-                Ok(token) => token,
-                Err(_) => break,
-            };
-
-            if token.key().is_terminal() {
-                let _ = tokens.bump();
-                break;
-            }
-
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
-                break;
-            }
-
-            if tokens.bump().is_none() {
-                break;
-            }
-        }
-
         Ok(AstNode::Assignment {
             target: Box::new(target),
             value: Box::new(value),
@@ -793,7 +771,7 @@ impl AstParser {
     pub(super) fn parse_assignment_target(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let path = self.parse_qualified_path(
             tokens,
             "Expected assignment target",
@@ -817,10 +795,10 @@ impl AstParser {
 
             match token.key() {
                 KEYWORD::Symbol(SYMBOL::RoundO) => {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         "Function call cannot be used as an assignment target".to_string(),
-                    )));
+                    ));
                 }
                 KEYWORD::Symbol(SYMBOL::Dot) => {
                     let _ = tokens.bump();
@@ -838,10 +816,10 @@ impl AstParser {
                         tokens.curr(false).map(|token| token.key()),
                         Ok(KEYWORD::Symbol(SYMBOL::RoundO))
                     ) {
-                        return Err(Box::new(ParseError::from_token(
+                        return Err(ParseError::from_token(
                             &field_token,
                             "Method call cannot be used as an assignment target".to_string(),
-                        )));
+                        ));
                     }
 
                     target = AstNode::FieldAccess {
@@ -862,14 +840,12 @@ impl AstParser {
     pub(super) fn parse_call_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let call = if self.lookahead_is_method_call(tokens) {
             self.parse_method_call_expr(tokens)?
         } else {
             self.parse_call_expr(tokens)?
         };
-
-        self.consume_optional_semicolon(tokens)?;
 
         Ok(call)
     }
@@ -877,7 +853,7 @@ impl AstParser {
     pub(super) fn parse_invoke_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let start_token = tokens.curr(false)?;
         let expr = self.parse_logical_expression(tokens)?;
         if !matches!(
@@ -887,20 +863,19 @@ impl AstParser {
                 | AstNode::MethodCall { .. }
                 | AstNode::Invoke { .. }
         ) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &start_token,
                 "Expected invocable statement expression".to_string(),
-            )));
+            ));
         }
 
-        self.consume_optional_semicolon(tokens)?;
         Ok(expr)
     }
 
     pub(super) fn parse_call_expr(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let path = self.parse_qualified_path(
             tokens,
             "Expected identifier for function call",
@@ -924,7 +899,7 @@ impl AstParser {
     pub(super) fn parse_method_call_expr(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let path = self.parse_qualified_path(
             tokens,
             "Expected object identifier for method call",
@@ -942,10 +917,10 @@ impl AstParser {
 
         let dot = tokens.curr(false)?;
         if !matches!(dot.key(), KEYWORD::Symbol(SYMBOL::Dot)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &dot,
                 "Expected '.' after object identifier".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
@@ -966,15 +941,15 @@ impl AstParser {
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         expected_open_error: &str,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         self.skip_ignorable(tokens)?;
 
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 expected_open_error.to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();

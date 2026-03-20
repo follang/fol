@@ -4,23 +4,23 @@ impl AstParser {
     pub(super) fn parse_function_type_signature(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<(Option<String>, FolType), Box<dyn Glitch>> {
+    ) -> Result<(Option<String>, FolType), ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '{' to start function type".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
         self.skip_ignorable(tokens)?;
         let fun_token = tokens.curr(false)?;
         if !matches!(fun_token.key(), KEYWORD::Keyword(BUILDIN::Fun)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &fun_token,
                 "Expected 'fun' in function type".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -39,28 +39,28 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let open_params = tokens.curr(false)?;
         if !matches!(open_params.key(), KEYWORD::Symbol(SYMBOL::RoundO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open_params,
                 "Expected '(' in function type".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
         let params = self.parse_parameter_list(tokens)?;
         if params.iter().any(|param| param.default.is_some()) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &fun_token,
                 "Default values are not allowed in function types".to_string(),
-            )));
+            ));
         }
 
         self.skip_ignorable(tokens)?;
         let colon = tokens.curr(false)?;
         if !matches!(colon.key(), KEYWORD::Symbol(SYMBOL::Colon)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &colon,
                 "Expected ':' before function type return type".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -70,10 +70,10 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let close = tokens.curr(false)?;
         if !matches!(close.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &close,
                 "Expected '}' to close function type".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
 
@@ -89,7 +89,7 @@ impl AstParser {
     pub(super) fn parse_function_type_reference(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<FolType, Box<dyn Glitch>> {
+    ) -> Result<FolType, ParseError> {
         self.parse_function_type_signature(tokens)
             .map(|(_, function_type)| function_type)
     }
@@ -100,7 +100,7 @@ impl AstParser {
         open_key: KEYWORD,
         close_key: KEYWORD,
         missing_close_message: &str,
-    ) -> Result<String, Box<dyn Glitch>> {
+    ) -> Result<String, ParseError> {
         let mut depth = 0usize;
         let mut rendered = String::new();
         let mut anchor_token = None;
@@ -111,10 +111,10 @@ impl AstParser {
             let key = token.key();
 
             if key.is_boundary() {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     missing_close_message.to_string(),
-                )));
+                ));
             }
 
             if key == open_key {
@@ -124,10 +124,10 @@ impl AstParser {
                 depth += 1;
             } else if key == close_key {
                 if depth == 0 {
-                    return Err(Box::new(ParseError::from_token(
+                    return Err(ParseError::from_token(
                         &token,
                         missing_close_message.to_string(),
-                    )));
+                    ));
                 }
                 depth -= 1;
             }
@@ -147,17 +147,17 @@ impl AstParser {
             Some(token) => token,
             None => tokens.curr(false)?,
         };
-        Err(Box::new(ParseError::from_token(
+        Err(ParseError::from_token(
             &token,
             missing_close_message.to_string(),
-        )))
+        ))
     }
 
     pub(super) fn parse_block_body(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         missing_close_message: &str,
-    ) -> Result<Vec<AstNode>, Box<dyn Glitch>> {
+    ) -> Result<Vec<AstNode>, ParseError> {
         let mut body = Vec::new();
         let mut anchor_token = None;
 
@@ -182,32 +182,35 @@ impl AstParser {
             }
 
             if key.is_boundary() {
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &token,
                     missing_close_message.to_string(),
-                )));
+                ));
             }
 
             if key.is_eof() {
                 let anchor = anchor_token.unwrap_or(token);
-                return Err(Box::new(ParseError::from_token(
+                return Err(ParseError::from_token(
                     &anchor,
                     missing_close_message.to_string(),
-                )));
+                ));
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Return)) {
                 body.push(self.parse_return_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Break)) {
                 body.push(self.parse_break_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Yield)) {
                 body.push(self.parse_yield_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -219,6 +222,7 @@ impl AstParser {
                     | KEYWORD::Keyword(BUILDIN::Assert)
             ) {
                 body.push(self.parse_builtin_call_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -226,82 +230,97 @@ impl AstParser {
                 && self.lookahead_is_dot_builtin_call(tokens)
             {
                 body.push(self.parse_dot_builtin_call_expr(tokens)?);
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if self.lookahead_binding_alternative(tokens).is_some() {
                 body.extend(self.parse_binding_alternative_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Var)) {
                 body.extend(self.parse_var_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Let)) {
                 body.extend(self.parse_let_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Con)) {
                 body.extend(self.parse_con_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Lab)) {
                 body.extend(self.parse_lab_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
                 body.extend(self.parse_use_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Seg)) {
                 body.push(self.parse_seg_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Imp)) {
                 body.push(self.parse_imp_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Std)) && self.lookahead_is_std_decl(tokens) {
                 body.push(self.parse_std_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
                 body.push(self.parse_alias_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Typ)) {
                 body.extend(self.parse_type_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Def)) {
                 body.push(self.parse_def_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Fun)) {
                 body.push(self.parse_fun_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Log)) {
                 body.push(self.parse_log_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Pro)) {
                 body.push(self.parse_pro_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -365,6 +384,7 @@ impl AstParser {
                 && self.can_start_assignment(tokens)
             {
                 body.push(self.parse_assignment_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -374,6 +394,7 @@ impl AstParser {
                 && !self.lookahead_has_top_level_pipe(tokens)
             {
                 body.push(self.parse_call_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -389,6 +410,7 @@ impl AstParser {
                 && self.can_start_assignment(tokens)
             {
                 body.push(self.parse_invoke_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
@@ -410,22 +432,22 @@ impl AstParser {
             Some(token) => token,
             None => tokens.curr(false)?,
         };
-        Err(Box::new(ParseError::from_token(
+        Err(ParseError::from_token(
             &anchor,
             missing_close_message.to_string(),
-        )))
+        ))
     }
 
     pub(super) fn parse_block_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let open = tokens.curr(false)?;
         if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &open,
                 "Expected '{' to start block".to_string(),
-            )));
+            ));
         }
         let _ = tokens.bump();
         let statements = self.parse_block_body(tokens, "Expected '}' to close block")?;
@@ -435,20 +457,20 @@ impl AstParser {
     pub(super) fn parse_return_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let return_token = tokens.curr(false)?;
         if !matches!(return_token.key(), KEYWORD::Keyword(BUILDIN::Return)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &return_token,
                 "Expected 'return' statement".to_string(),
-            )));
+            ));
         }
 
         if !self.is_inside_routine() {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &return_token,
                 "'return' is only allowed inside routines".to_string(),
-            )));
+            ));
         }
 
         if tokens.bump().is_none() {
@@ -463,32 +485,29 @@ impl AstParser {
             Err(_) => None,
         };
 
-        self.consume_optional_semicolon(tokens)?;
-
         Ok(AstNode::Return { value })
     }
 
     pub(super) fn parse_break_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let break_token = tokens.curr(false)?;
         if !matches!(break_token.key(), KEYWORD::Keyword(BUILDIN::Break)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &break_token,
                 "Expected 'break' statement".to_string(),
-            )));
+            ));
         }
 
         if !self.is_inside_loop() {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &break_token,
                 "'break' is only allowed inside loops".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
-        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::Break)
     }
@@ -496,27 +515,25 @@ impl AstParser {
     pub(super) fn parse_yield_stmt(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<AstNode, Box<dyn Glitch>> {
+    ) -> Result<AstNode, ParseError> {
         let yield_token = tokens.curr(false)?;
         if !matches!(yield_token.key(), KEYWORD::Keyword(BUILDIN::Yield)) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &yield_token,
                 "Expected 'yield' statement".to_string(),
-            )));
+            ));
         }
 
         if !(self.is_inside_routine() || self.is_inside_loop()) {
-            return Err(Box::new(ParseError::from_token(
+            return Err(ParseError::from_token(
                 &yield_token,
                 "'yield' is only allowed inside routines or loops".to_string(),
-            )));
+            ));
         }
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
         let value = self.parse_logical_expression(tokens)?;
-
-        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::Yield {
             value: Box::new(value),

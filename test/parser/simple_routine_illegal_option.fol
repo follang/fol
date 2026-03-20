@@ -1,3 +1,3 @@
 fun[ba__d] broken(a: int): int = {
     return a;
-}
+};

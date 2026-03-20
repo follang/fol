@@ -111,15 +111,15 @@ fn test_only_macro_definitions_accept_parameter_headers() {
 
     let parse_error = errors
         .first()
-        .and_then(|e| e.as_ref().as_any().downcast_ref::<ParseError>())
+        
         .expect("First parser error should be ParseError");
 
     assert!(
         parse_error
-            .to_string()
+            .message
             .contains("Definition parameters are currently supported only for mac definitions"),
         "Non-macro parameterized defs should report the parameter restriction, got: {}",
-        parse_error
+        parse_error.message
     );
 }
 

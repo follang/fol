@@ -13,7 +13,6 @@ fol-intrinsics = { path = "../fol-intrinsics" }
 fol-parser = { path = "../fol-parser" }
 fol-resolver = { path = "../fol-resolver" }
 fol-typecheck = { path = "../fol-typecheck" }
-fol-types = { path = "../fol-types" }
 
 [dev-dependencies]
 fol-lexer = { path = "../fol-lexer" }

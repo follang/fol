@@ -34,26 +34,14 @@ fn source_unit_has_root_decl_family(source_unit: &ParsedSourceUnit, family: Root
     })
 }
 
-fn parse_package_errors(path: &str) -> Vec<ParseError> {
+fn parse_package_errors(path: &str) -> Vec<fol_diagnostics::Diagnostic> {
     let mut file_stream =
         FileStream::from_file(path).expect("Should read parser package error fixture");
     let mut lexer = Elements::init(&mut file_stream);
     let mut parser = AstParser::new();
-    let errors = parser
+    parser
         .parse_package(&mut lexer)
-        .expect_err("Package parsing should reject forbidden book-disallowed file-root forms");
-
-    errors
-        .iter()
-        .map(|error| {
-            error
-                .as_ref()
-                .as_any()
-                .downcast_ref::<ParseError>()
-                .cloned()
-                .expect("Declaration-only file-root rejection should produce ParseError values")
-        })
-        .collect()
+        .expect_err("Package parsing should reject forbidden book-disallowed file-root forms")
 }
 
 #[test]
@@ -99,13 +87,14 @@ fn test_decl_package_rejects_top_level_executable_calls_as_one_root_error() {
     );
     assert!(
         errors[0]
-            .to_string()
+            .message
             .contains("Executable calls are not allowed at file root"),
         "Expected executable-call file-root diagnostic, got: {}",
-        errors[0]
+        errors[0].message
     );
-    assert_eq!(errors[0].line(), 1);
-    assert_eq!(errors[0].column(), 1);
+    let loc = errors[0].primary_location().expect("diagnostic should have primary location");
+    assert_eq!(loc.line, 1);
+    assert_eq!(loc.column, 1);
 }
 
 #[test]
@@ -119,22 +108,24 @@ fn test_decl_package_rejects_top_level_assignments_as_one_root_error() {
     );
     assert!(
         errors[0]
-            .to_string()
+            .message
             .contains("Executable calls are not allowed at file root"),
         "Expected executable-call file-root diagnostic first, got: {}",
-        errors[0]
+        errors[0].message
     );
-    assert_eq!(errors[0].line(), 1);
-    assert_eq!(errors[0].column(), 1);
+    let loc0 = errors[0].primary_location().expect("diagnostic should have primary location");
+    assert_eq!(loc0.line, 1);
+    assert_eq!(loc0.column, 1);
     assert!(
         errors[1]
-            .to_string()
+            .message
             .contains("Assignments are not allowed at file root"),
         "Expected assignment file-root diagnostic second, got: {}",
-        errors[1]
+        errors[1].message
     );
-    assert_eq!(errors[1].line(), 2);
-    assert_eq!(errors[1].column(), 1);
+    let loc1 = errors[1].primary_location().expect("diagnostic should have primary location");
+    assert_eq!(loc1.line, 2);
+    assert_eq!(loc1.column, 1);
 }
 
 #[test]
@@ -148,13 +139,14 @@ fn test_decl_package_rejects_top_level_when_statement_as_one_root_error() {
     );
     assert!(
         errors[0]
-            .to_string()
+            .message
             .contains("Control-flow statements are not allowed at file root"),
         "Expected control-flow file-root diagnostic, got: {}",
-        errors[0]
+        errors[0].message
     );
-    assert_eq!(errors[0].line(), 1);
-    assert_eq!(errors[0].column(), 1);
+    let loc = errors[0].primary_location().expect("diagnostic should have primary location");
+    assert_eq!(loc.line, 1);
+    assert_eq!(loc.column, 1);
 }
 
 #[test]
@@ -168,13 +160,14 @@ fn test_decl_package_rejects_top_level_loop_statement_as_one_root_error() {
     );
     assert!(
         errors[0]
-            .to_string()
+            .message
             .contains("Control-flow statements are not allowed at file root"),
         "Expected control-flow file-root diagnostic, got: {}",
-        errors[0]
+        errors[0].message
     );
-    assert_eq!(errors[0].line(), 1);
-    assert_eq!(errors[0].column(), 1);
+    let loc = errors[0].primary_location().expect("diagnostic should have primary location");
+    assert_eq!(loc.line, 1);
+    assert_eq!(loc.column, 1);
 }
 
 #[test]
@@ -189,12 +182,13 @@ fn test_decl_package_rejects_literal_roots_line_by_line() {
     for (index, error) in errors.iter().enumerate() {
         assert!(
             error
-                .to_string()
+                .message
                 .contains("Literal expressions are not allowed at file root"),
             "Expected literal file-root diagnostic, got: {}",
-            error
+            error.message
         );
-        assert_eq!(error.line(), index + 1);
-        assert_eq!(error.column(), 1);
+        let loc = error.primary_location().expect("diagnostic should have primary location");
+        assert_eq!(loc.line, index + 1);
+        assert_eq!(loc.column, 1);
     }
 }

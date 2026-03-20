@@ -1,5 +1,5 @@
 std geometry: blu = {
     var color: rgb;
-    fun describe(): str = { return "shape" }
+    fun describe(): str = { return "shape"; };
     pro reset(): non;
-}
+};

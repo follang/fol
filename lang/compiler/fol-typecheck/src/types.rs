@@ -15,6 +15,21 @@ pub enum BuiltinType {
     Never,
 }
 
+impl BuiltinType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Int => "int",
+            Self::Float => "flt",
+            Self::Bool => "bol",
+            Self::Char => "chr",
+            Self::Str => "str",
+            Self::Never => "never",
+        }
+    }
+
+    pub const ALL_NAMES: &[&str] = &["int", "flt", "bol", "chr", "str", "never"];
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum DeclaredTypeKind {
     Type,
@@ -106,6 +121,66 @@ impl TypeTable {
     pub fn intern_builtin(&mut self, builtin: BuiltinType) -> CheckedTypeId {
         self.intern(CheckedType::Builtin(builtin))
     }
+
+    /// Render a checked type for display in editor tooling (hover, completion).
+    pub fn render_type(&self, type_id: CheckedTypeId) -> String {
+        match self.get(type_id) {
+            Some(CheckedType::Builtin(builtin)) => builtin.as_str().to_string(),
+            Some(CheckedType::Declared { name, .. }) => name.clone(),
+            Some(CheckedType::Optional { inner }) => {
+                format!("opt[{}]", self.render_type(*inner))
+            }
+            Some(CheckedType::Error { inner }) => inner
+                .map(|inner| format!("err[{}]", self.render_type(inner)))
+                .unwrap_or_else(|| "err[]".to_string()),
+            Some(CheckedType::Array { element_type, .. }) => {
+                format!("[{}]", self.render_type(*element_type))
+            }
+            Some(CheckedType::Vector { element_type }) => {
+                format!("vec[{}]", self.render_type(*element_type))
+            }
+            Some(CheckedType::Sequence { element_type }) => {
+                format!("seq[{}]", self.render_type(*element_type))
+            }
+            Some(CheckedType::Set { member_types }) => format!(
+                "set[{}]",
+                member_types
+                    .iter()
+                    .map(|m| self.render_type(*m))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Some(CheckedType::Map {
+                key_type,
+                value_type,
+            }) => format!(
+                "map[{}, {}]",
+                self.render_type(*key_type),
+                self.render_type(*value_type)
+            ),
+            Some(CheckedType::Routine(routine)) => {
+                let params = routine
+                    .params
+                    .iter()
+                    .map(|p| self.render_type(*p))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                let returns = routine
+                    .return_type
+                    .map(|r| self.render_type(r))
+                    .unwrap_or_else(|| "void".to_string());
+                match routine.error_type {
+                    Some(err) => format!(
+                        "fun({params}): {returns} / {}",
+                        self.render_type(err)
+                    ),
+                    None => format!("fun({params}): {returns}"),
+                }
+            }
+            Some(other) => format!("{other:?}"),
+            None => "unknown".to_string(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -168,5 +243,56 @@ mod tests {
                 kind: DeclaredTypeKind::Type,
             })
         );
+    }
+
+    #[test]
+    fn builtin_type_as_str_matches_language_spelling() {
+        assert_eq!(BuiltinType::Int.as_str(), "int");
+        assert_eq!(BuiltinType::Float.as_str(), "flt");
+        assert_eq!(BuiltinType::Bool.as_str(), "bol");
+        assert_eq!(BuiltinType::Char.as_str(), "chr");
+        assert_eq!(BuiltinType::Str.as_str(), "str");
+        assert_eq!(BuiltinType::Never.as_str(), "never");
+    }
+
+    #[test]
+    fn builtin_type_all_names_covers_every_variant() {
+        assert_eq!(BuiltinType::ALL_NAMES.len(), 6);
+        for name in BuiltinType::ALL_NAMES {
+            assert!(!name.is_empty());
+        }
+    }
+
+    #[test]
+    fn render_type_handles_builtins_and_containers() {
+        let mut table = TypeTable::new();
+        let int_id = table.intern_builtin(BuiltinType::Int);
+        let str_id = table.intern_builtin(BuiltinType::Str);
+        let opt_id = table.intern(CheckedType::Optional { inner: int_id });
+        let vec_id = table.intern(CheckedType::Vector {
+            element_type: str_id,
+        });
+        let map_id = table.intern(CheckedType::Map {
+            key_type: str_id,
+            value_type: int_id,
+        });
+
+        assert_eq!(table.render_type(int_id), "int");
+        assert_eq!(table.render_type(opt_id), "opt[int]");
+        assert_eq!(table.render_type(vec_id), "vec[str]");
+        assert_eq!(table.render_type(map_id), "map[str, int]");
+    }
+
+    #[test]
+    fn render_type_handles_routines() {
+        let mut table = TypeTable::new();
+        let int_id = table.intern_builtin(BuiltinType::Int);
+        let str_id = table.intern_builtin(BuiltinType::Str);
+        let routine_id = table.intern(CheckedType::Routine(RoutineType {
+            params: vec![int_id, str_id],
+            return_type: Some(int_id),
+            error_type: None,
+        }));
+        assert_eq!(table.render_type(routine_id), "fun(int, str): int");
     }
 }

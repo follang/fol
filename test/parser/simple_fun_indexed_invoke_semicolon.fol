@@ -1,4 +1,4 @@
 fun indexed_invoke_semicolon(a: int, b: int): int = {
     handlers[idx](a; b;);
     return handlers[idx](a;);
-}
+};

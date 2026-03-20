@@ -1,6 +1,6 @@
 fun build(): int = {
     std geometry: pro = {
         fun area(): flt[64];
-    }
+    };
     return 1;
-}
+};

@@ -8,7 +8,7 @@ fn test_resolver_binds_rolling_names_inside_comprehension_scope() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(items: seq[int]): seq[int] = {\n    return { item for item in items if item };\n}\n",
+        "fun[] main(items: seq[int]): seq[int] = {\n    return { item for item in items if item };\n};\n",
     )
     .expect("Should write the rolling-binder resolver fixture");
 
@@ -52,7 +52,7 @@ fn test_resolver_allows_rolling_binders_to_shadow_outer_locals() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(items: seq[int]): seq[int] = {\n    var item = 1;\n    return { item for item in items if item };\n}\n",
+        "fun[] main(items: seq[int]): seq[int] = {\n    var item = 1;\n    return { item for item in items if item };\n};\n",
     )
     .expect("Should write the rolling shadowing fixture");
 

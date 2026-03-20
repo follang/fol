@@ -1,7 +1,7 @@
 fun classify(value: any): int = {
     return 1;
-}
+};
 
 pro finish(): non = {
     return;
-}
+};

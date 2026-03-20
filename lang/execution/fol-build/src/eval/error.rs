@@ -1,7 +1,6 @@
 use super::capabilities::ForbiddenBuildTimeOperation;
 use fol_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticLocation, ToDiagnostic, ToDiagnosticLocation};
 use fol_parser::ast::SyntaxOrigin;
-use fol_types::Glitch;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildEvaluationErrorKind {
@@ -138,16 +137,6 @@ impl std::fmt::Display for BuildEvaluationError {
 }
 
 impl std::error::Error for BuildEvaluationError {}
-
-impl Glitch for BuildEvaluationError {
-    fn clone_box(&self) -> Box<dyn Glitch> {
-        Box::new(self.clone())
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
 
 impl ToDiagnosticLocation for BuildEvaluationError {
     fn to_diagnostic_location(&self, file: Option<String>) -> DiagnosticLocation {

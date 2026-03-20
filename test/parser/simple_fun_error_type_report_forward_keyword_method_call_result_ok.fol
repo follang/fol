@@ -1,10 +1,10 @@
-typ Parser: rec = { }
+typ Parser: rec = { };
 
 fun caller_forward_keyword_method_ok(tool: Parser): int / str = {
     report tool.log();
     return 0;
-}
+};
 
 fun (Parser)log(): str = {
     return "ok";
-}
+};

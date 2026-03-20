@@ -1,4 +1,4 @@
 typ User: rec[] = {
     name: str,
     age: int
-}
+};

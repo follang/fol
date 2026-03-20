@@ -84,7 +84,7 @@ use super::*;
             "pro[] build(graph: Graph): non = {\n",
             "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
             "    graph.\n",
-            "}\n",
+            "};\n",
         );
         std::fs::write(temp_root.join("build.fol"), build_text).expect("should write build file");
         let uri = format!("file://{}", temp_root.join("build.fol").display());
@@ -501,7 +501,7 @@ use super::*;
             .expect("should write old build syntax");
         std::fs::write(
             root.join("src/main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0;\n};\n",
         )
         .expect("should write app source");
 
@@ -532,12 +532,12 @@ use super::*;
             .expect("should write package metadata");
         std::fs::write(
             root.join("build.fol"),
-            "pro build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro build(graph: Graph): non = {\n    return graph;\n};\n",
         )
         .expect("should write non-canonical build header");
         std::fs::write(
             root.join("src/main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0;\n};\n",
         )
         .expect("should write app source");
 
@@ -546,13 +546,13 @@ use super::*;
 
         assert!(
             !output.status.success(),
-            "plain pro build header should fail: stdout=\n{}\nstderr=\n{}",
+            "plain pro build header should fail: stdout=;\n{};\nstderr=;\n{};",
             String::from_utf8_lossy(&output.stdout),
             stderr
         );
         assert!(
             stderr.contains("canonical `pro[] build(graph: Graph): non` entry"),
-            "plain pro build header should point at the canonical build entry: stdout=\n{}\nstderr=\n{}",
+            "plain pro build header should point at the canonical build entry: stdout=;\n{};\nstderr=;\n{};",
             String::from_utf8_lossy(&output.stdout),
             stderr
         );
@@ -605,7 +605,7 @@ use super::*;
             .expect("Should write app build");
         std::fs::write(
             app_root.join("src/main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0;\n};\n",
         )
         .expect("Should write app source");
     }

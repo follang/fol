@@ -1,6 +1,6 @@
 fun[] make_static_lib(graph: Graph, name: str, root: str): Artifact = {
     return graph.add_static_lib({ name = name, root = root });
-}
+};
 
 pro[] build(graph: Graph): non = {
     var core = make_static_lib(graph, "core", "src/core/lib.fol");
@@ -10,4 +10,4 @@ pro[] build(graph: Graph): non = {
     app.link(io);
     graph.install(app);
     graph.add_run(app);
-}
+};

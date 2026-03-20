@@ -2,7 +2,8 @@ use crate::lexer::stage1;
 use crate::lexer::stage2::Element;
 use crate::token::KEYWORD;
 use fol_stream::FileStream;
-use fol_types::{Con, Vod, Win, SLIDER};
+use crate::{Con, Vod};
+use fol_types::{Win, SLIDER};
 
 pub struct Elements {
     elem: Box<dyn Iterator<Item = Con<Element>>>,
