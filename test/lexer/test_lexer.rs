@@ -9,6 +9,7 @@ use fol_lexer::{
 };
 use fol_stream::FileStream;
 use fol_types::SLIDER;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 fn tokenize_file(path: &str) -> Vec<(KEYWORD, String)> {
@@ -117,15 +118,18 @@ fn tokenize_stage2_file(path: &str) -> Vec<(KEYWORD, String)> {
 }
 
 fn unique_temp_root(label: &str) -> std::path::PathBuf {
+    static NEXT_TEMP_ID: AtomicU64 = AtomicU64::new(0);
     let stamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("System time should be after unix epoch")
         .as_nanos();
+    let sequence = NEXT_TEMP_ID.fetch_add(1, Ordering::Relaxed);
     std::env::temp_dir().join(format!(
-        "fol_lexer_{}_{}_{}",
+        "fol_lexer_{}_{}_{}_{}",
         label,
         std::process::id(),
-        stamp
+        stamp,
+        sequence
     ))
 }
 
@@ -168,6 +172,14 @@ fn tokenize_folder_contents(files: &[(&str, &str)]) -> Vec<(KEYWORD, String)> {
 
     fs::remove_dir_all(&temp_root).ok();
     tokens
+}
+
+#[test]
+fn unique_temp_root_produces_distinct_paths_for_rapid_calls() {
+    let first = unique_temp_root("collision_check");
+    let second = unique_temp_root("collision_check");
+
+    assert_ne!(first, second);
 }
 
 #[cfg(test)]
