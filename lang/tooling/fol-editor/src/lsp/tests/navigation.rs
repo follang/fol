@@ -379,6 +379,51 @@ fn lsp_server_renames_same_file_local_bindings() {
 }
 
 #[test]
+fn lsp_server_renames_parameters_within_the_safe_boundary() {
+    let (root, uri) = sample_package_root("rename_parameter");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(total: int): int = {\n    return total\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let rename = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(943),
+            method: "textDocument/rename".to_string(),
+            params: Some(
+                serde_json::to_value(LspRenameParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 1,
+                        character: 12,
+                    },
+                    new_name: "count".to_string(),
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let edit: LspWorkspaceEdit = serde_json::from_value(rename.result.unwrap()).unwrap();
+    let changes = edit
+        .changes
+        .get(&uri)
+        .expect("parameter rename should return edits for the open file");
+
+    assert_eq!(changes.len(), 2);
+    assert!(changes.iter().all(|edit| edit.new_text == "count"));
+    assert!(changes.iter().any(|edit| edit.range.start.line == 0));
+    assert!(changes.iter().any(|edit| edit.range.start.line == 1));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_refuses_rename_outside_the_first_safe_boundary() {
     let (root, uri) = sample_package_root("rename_boundary");
     fs::write(
@@ -408,6 +453,48 @@ fn lsp_server_refuses_rename_outside_the_first_safe_boundary() {
             ),
         })
         .expect_err("top-level routine rename should stay outside the first safe boundary");
+
+    assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
+    assert!(error.message.contains("same-file local symbols only"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_refuses_imported_symbol_rename_outside_the_safe_boundary() {
+    let (root, uri) = sample_loc_workspace_root("rename_imported_boundary");
+    fs::write(
+        root.join("app/src/main.fol"),
+        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper()\n}\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("shared/src/lib.fol"),
+        "fun[exp] helper(): int = {\n    return 7\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let error = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(944),
+            method: "textDocument/rename".to_string(),
+            params: Some(
+                serde_json::to_value(LspRenameParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    position: LspPosition {
+                        line: 3,
+                        character: 19,
+                    },
+                    new_name: "assist".to_string(),
+                })
+                .unwrap(),
+            ),
+        })
+        .expect_err("imported rename should stay outside the first safe boundary");
 
     assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
     assert!(error.message.contains("same-file local symbols only"));
