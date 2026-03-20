@@ -434,6 +434,47 @@ fn lsp_server_returns_no_signature_help_outside_calls() {
 }
 
 #[test]
+fn lsp_server_reports_signature_help_for_build_file_calls() {
+    let (root, _) = sample_package_root("signature_help_build");
+    let build_path = root.join("build.fol");
+    let build_uri = format!("file://{}", build_path.display());
+    fs::write(
+        &build_path,
+        "fun[] helper(left: int, right: str): int = {\n    return left\n}\n\npro[] build(graph: Graph): non = {\n    helper(\n        1,\n        \"ok\"\n    )\n    return graph\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(&build_path).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, build_uri.clone(), &text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(222),
+            method: "textDocument/signatureHelp".to_string(),
+            params: Some(
+                serde_json::to_value(LspSignatureHelpParams {
+                    text_document: LspTextDocumentIdentifier { uri: build_uri },
+                    position: LspPosition {
+                        line: 6,
+                        character: 10,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let help: Option<LspSignatureHelp> = serde_json::from_value(response.result.unwrap()).unwrap();
+    let help = help.expect("signature help should resolve for build-file helper call");
+
+    assert_eq!(help.active_parameter, Some(1));
+    assert_eq!(help.signatures[0].label, "helper(int, str): int");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_surfaces_quick_fix_for_unresolved_names_with_suggestions() {
     let (root, uri) = sample_package_root("code_action_unresolved_name");
     fs::write(
@@ -599,6 +640,55 @@ fn lsp_server_code_actions_follow_requested_diagnostic_context() {
 
     assert_eq!(actions.len(), 1);
     assert_eq!(actions[0].title, "replace with 'main'");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_surfaces_quick_fix_for_build_file_unresolved_names() {
+    let (root, _) = sample_package_root("code_action_build");
+    let build_path = root.join("build.fol");
+    let build_uri = format!("file://{}", build_path.display());
+    fs::write(
+        &build_path,
+        "pro[] build(graph: Graph): non = {\n    return grahp\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(&build_path).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, build_uri.clone(), &text);
+    let diagnostic = diagnostics[0]
+        .diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.code == "R1003")
+        .cloned()
+        .expect("build file should publish an unresolved-name diagnostic");
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(223),
+            method: "textDocument/codeAction".to_string(),
+            params: Some(
+                serde_json::to_value(LspCodeActionParams {
+                    text_document: LspTextDocumentIdentifier {
+                        uri: build_uri.clone(),
+                    },
+                    range: diagnostic.range,
+                    context: LspCodeActionContext {
+                        diagnostics: vec![diagnostic.clone()],
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let actions: Vec<LspCodeAction> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert_eq!(actions.len(), 1);
+    assert_eq!(actions[0].title, "replace with 'graph'");
+    assert_eq!(actions[0].edit.changes[&build_uri][0].new_text, "graph");
 
     fs::remove_dir_all(root).ok();
 }
@@ -820,6 +910,40 @@ fn lsp_server_refuses_rename_outside_the_first_safe_boundary() {
             ),
         })
         .expect_err("top-level routine rename should stay outside the first safe boundary");
+
+    assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
+    assert!(error.message.contains("same-file local symbols only"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_refuses_build_entry_rename_outside_the_safe_boundary() {
+    let (root, _) = sample_package_root("rename_build_boundary");
+    let build_path = root.join("build.fol");
+    let build_uri = format!("file://{}", build_path.display());
+    let text = fs::read_to_string(&build_path).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, build_uri.clone(), &text);
+
+    let error = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(944),
+            method: "textDocument/rename".to_string(),
+            params: Some(
+                serde_json::to_value(LspRenameParams {
+                    text_document: LspTextDocumentIdentifier { uri: build_uri },
+                    position: LspPosition {
+                        line: 0,
+                        character: 7,
+                    },
+                    new_name: "bundle".to_string(),
+                })
+                .unwrap(),
+            ),
+        })
+        .expect_err("build entry rename should stay outside the safe local boundary");
 
     assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
     assert!(error.message.contains("same-file local symbols only"));
