@@ -29,7 +29,6 @@ The active implementation work belongs in [`PLAN.md`](../PLAN.md).
 
 ## Future Frontend Exposure
 
-- `fol tool rename`
 - `fol tool format`
 
 These should wait until the underlying editor features are real.

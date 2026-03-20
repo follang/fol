@@ -86,6 +86,12 @@ pub fn dispatch_cli(
                 command.character,
                 !command.exclude_declaration,
             ),
+            ToolSubcommand::Rename(command) => crate::editor_rename_command(
+                &command.path,
+                command.line,
+                command.character,
+                &command.new_name,
+            ),
             ToolSubcommand::SemanticTokens(command) => {
                 crate::editor_semantic_tokens_command(&command.path)
             }
@@ -271,6 +277,7 @@ pub fn dispatch_workspace_command(
             | ToolSubcommand::Highlight(_)
             | ToolSubcommand::Symbols(_)
             | ToolSubcommand::References(_)
+            | ToolSubcommand::Rename(_)
             | ToolSubcommand::SemanticTokens(_)
             | ToolSubcommand::Tree(_) => Err(FrontendError::new(
                 FrontendErrorKind::Internal,

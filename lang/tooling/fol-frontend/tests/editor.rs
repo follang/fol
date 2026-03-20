@@ -63,7 +63,6 @@ fn editor_tool_surface_rejects_placeholder_future_commands() {
     let root = repo_root();
 
     for command in [
-        ["fol", "tool", "rename"],
         ["fol", "tool", "format"],
         ["fol", "tool", "semanticTokens"],
     ] {
@@ -106,6 +105,21 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
         &root,
     )
     .expect("editor references should dispatch");
+    let (_, rename) = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "rename",
+            fixture,
+            "--line",
+            "5",
+            "--character",
+            "11",
+            "count",
+        ],
+        &root,
+    )
+    .expect("editor rename should dispatch");
     let (_, semantic_tokens) = run_command_from_args_in_dir(
         ["fol", "tool", "semantic-tokens", fixture],
         &root,
@@ -123,6 +137,9 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
     assert_eq!(references.command, "references");
     assert!(references.summary.contains("reference_count="));
     assert!(references.summary.contains("include_declaration=true"));
+    assert_eq!(rename.command, "rename");
+    assert!(rename.summary.contains("edit_count="));
+    assert!(rename.summary.contains("new_name=count"));
     assert_eq!(semantic_tokens.command, "semantic-tokens");
     assert!(semantic_tokens.summary.contains("token_count="));
     assert!(semantic_tokens.summary.contains("legend="));

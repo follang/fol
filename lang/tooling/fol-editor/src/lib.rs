@@ -15,8 +15,8 @@ mod workspace;
 
 pub use commands::{
     editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
-    editor_references_file, editor_semantic_tokens_file, editor_symbols_file,
-    editor_tree_generate_bundle, EditorCommandSummary,
+    editor_references_file, editor_rename_file, editor_semantic_tokens_file,
+    editor_symbols_file, editor_tree_generate_bundle, EditorCommandSummary,
 };
 pub use convert::{
     dedup_lsp_diagnostics, diagnostic_to_lsp, location_to_range, LspDiagnostic,
@@ -158,6 +158,19 @@ mod tests {
             .unwrap()
             .command,
             "references"
+        );
+        assert_eq!(
+            editor_rename_file(
+                &path,
+                LspPosition {
+                    line: 5,
+                    character: 11,
+                },
+                "count",
+            )
+            .unwrap()
+            .command,
+            "rename"
         );
         assert_eq!(
             editor_semantic_tokens_file(&path).unwrap().command,

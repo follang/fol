@@ -1,11 +1,12 @@
 use super::args::{
     BuildCommand, BuildOptionArgs, BuildStepArgs, CheckCommand, CodeCommand, CodeSubcommand,
     CompileRootArgs, CompleteCommand, CompletionCommand, CompletionShellArg, DirectTargetArg,
-    EditorPathCommand, EditorReferenceCommand, EmitCommand, EmitLoweredCommand,
-    EmitRustCommand, EmitSubcommand, FetchCommand, FrontendCommand, FrontendOutputArgs,
-    FrontendProfile, FrontendProfileArgs, InitCommand, NewCommand, PackCommand, PackSubcommand,
-    RunCommand, TestCommand, ToolCommand, ToolSubcommand, TreeCommand, TreeGenerateCommand,
-    TreeSubcommand, UnitCommand, UpdateCommand, WorkCommand, WorkSubcommand,
+    EditorPathCommand, EditorReferenceCommand, EditorRenameCommand, EmitCommand,
+    EmitLoweredCommand, EmitRustCommand, EmitSubcommand, FetchCommand, FrontendCommand,
+    FrontendOutputArgs, FrontendProfile, FrontendProfileArgs, InitCommand, NewCommand,
+    PackCommand, PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand,
+    TreeCommand, TreeGenerateCommand, TreeSubcommand, UnitCommand, UpdateCommand, WorkCommand,
+    WorkSubcommand,
 };
 use super::parser::FrontendCli;
 use crate::OutputMode;
@@ -126,6 +127,17 @@ fn editor_subcommands_parse_through_derive_tree() {
         "--character",
         "11",
     ]);
+    let rename = parse_clean([
+        "fol",
+        "tool",
+        "rename",
+        "demo/main.fol",
+        "--line",
+        "5",
+        "--character",
+        "11",
+        "count",
+    ]);
     let semantic_tokens =
         parse_clean(["fol", "tool", "semantic-tokens", "demo/main.fol"]);
     let tree = parse_clean(["fol", "tool", "tree", "generate", "/tmp/fol-tree"]);
@@ -173,6 +185,18 @@ fn editor_subcommands_parse_through_derive_tree() {
                 line: 5,
                 character: 11,
                 exclude_declaration: false,
+            }),
+        }))
+    );
+    assert_eq!(
+        rename.command,
+        Some(FrontendCommand::Tool(ToolCommand {
+            output: default_output_args(),
+            command: ToolSubcommand::Rename(EditorRenameCommand {
+                path: "demo/main.fol".to_string(),
+                line: 5,
+                character: 11,
+                new_name: "count".to_string(),
             }),
         }))
     );

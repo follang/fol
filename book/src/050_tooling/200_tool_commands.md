@@ -89,6 +89,7 @@ Tooling commands:
 - `fol tool highlight <PATH>`
 - `fol tool symbols <PATH>`
 - `fol tool references <PATH> --line <LINE> --character <CHARACTER>`
+- `fol tool rename <PATH> --line <LINE> --character <CHARACTER> <NEW_NAME>`
 - `fol tool semantic-tokens <PATH>`
 - `fol tool tree generate <PATH>`
 - `fol tool clean`
@@ -101,6 +102,7 @@ fol tool parse src/main.fol
 fol tool highlight src/main.fol
 fol tool symbols src/main.fol
 fol tool references src/main.fol --line 12 --character 8
+fol tool rename src/main.fol --line 12 --character 8 total
 fol tool semantic-tokens src/main.fol
 fol tool tree generate /tmp/fol
 fol tool lsp

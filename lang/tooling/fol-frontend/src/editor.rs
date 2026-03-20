@@ -76,6 +76,21 @@ pub fn editor_references_command(
     .map_err(lower_editor_error)
 }
 
+pub fn editor_rename_command(
+    path: &str,
+    line: u32,
+    character: u32,
+    new_name: &str,
+) -> FrontendResult<FrontendCommandResult> {
+    fol_editor::editor_rename_file(
+        Path::new(path),
+        fol_editor::LspPosition { line, character },
+        new_name,
+    )
+    .map(editor_summary_to_result)
+    .map_err(lower_editor_error)
+}
+
 pub fn editor_semantic_tokens_command(path: &str) -> FrontendResult<FrontendCommandResult> {
     fol_editor::editor_semantic_tokens_file(Path::new(path))
         .map(editor_summary_to_result)
@@ -92,7 +107,7 @@ pub fn editor_tree_generate_command(path: &str) -> FrontendResult<FrontendComman
 mod tests {
     use super::{
         editor_highlight_command, editor_lsp_command, editor_parse_command, editor_symbols_command,
-        editor_references_command, editor_semantic_tokens_command,
+        editor_references_command, editor_rename_command, editor_semantic_tokens_command,
         editor_tree_generate_command,
     };
     use crate::{FrontendConfig, FrontendErrorKind};
@@ -141,6 +156,8 @@ mod tests {
             editor_symbols_command(path).expect("symbols command should succeed");
         let references = editor_references_command(path, 5, 11, true)
             .expect("references command should succeed");
+        let rename = editor_rename_command(path, 5, 11, "count")
+            .expect("rename command should succeed");
         let semantic_tokens = editor_semantic_tokens_command(path)
             .expect("semantic-tokens command should succeed");
         let tree_root = std::env::temp_dir().join("fol_frontend_editor_tree_command_smoke");
@@ -160,6 +177,8 @@ mod tests {
         assert!(symbols.summary.contains("symbol_candidates="));
         assert_eq!(references.command, "references");
         assert!(references.summary.contains("reference_count="));
+        assert_eq!(rename.command, "rename");
+        assert!(rename.summary.contains("edit_count="));
         assert_eq!(semantic_tokens.command, "semantic-tokens");
         assert!(semantic_tokens.summary.contains("token_count="));
         assert_eq!(tree.command, "tree generate");
