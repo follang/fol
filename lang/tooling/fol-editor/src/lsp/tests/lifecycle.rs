@@ -281,6 +281,37 @@ fn lsp_server_formats_build_files_with_the_same_full_document_contract() {
 }
 
 #[test]
+fn lsp_server_returns_no_build_file_formatting_edits_when_already_formatted() {
+    let root = temp_root("format_build_noop");
+    let build_path = root.join("build.fol");
+    let build_uri = format!("file://{}", build_path.display());
+    let text = "pro[] build(graph: Graph): non = {\n    var target = graph.standard_target();\n    graph.install(target);\n};\n";
+    fs::write(&build_path, text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, build_uri.clone(), text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(203),
+            method: "textDocument/formatting".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentFormattingParams {
+                    text_document: LspTextDocumentIdentifier { uri: build_uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let edits: Vec<LspTextEdit> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert!(edits.is_empty());
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_formats_parse_broken_documents_without_needing_semantic_recovery() {
     let (root, uri) = sample_package_root("formatting_broken");
     let text = "fun[] main(): int = {\nwhen(true) {\ncase(true) {\nreturn 7;\n}\n}\n";
