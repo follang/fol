@@ -81,6 +81,7 @@ The current formatter contract is intentionally narrow but explicit:
 
 - indentation is four spaces per brace depth
 - lines are trimmed before indentation is re-applied
+- leading blank lines are removed and repeated blank lines collapse to one
 - trailing blank lines are removed
 - output always ends with one final newline when the document is non-empty
 - line endings are normalized to `\n`

@@ -9,12 +9,14 @@ pub fn format_document(text: &str) -> String {
 
     let normalized = text.replace("\r\n", "\n").replace('\r', "\n");
     let mut depth = 0usize;
-    let mut lines = Vec::new();
+    let mut lines: Vec<String> = Vec::new();
 
     for raw_line in normalized.split('\n') {
         let trimmed = raw_line.trim();
         if trimmed.is_empty() {
-            lines.push(String::new());
+            if matches!(lines.last(), Some(previous) if !previous.is_empty()) {
+                lines.push(String::new());
+            }
             continue;
         }
 
@@ -270,6 +272,16 @@ mod tests {
         let source = "fun[] main(): int = {\r\n    return 7;   \r\n};";
 
         assert_eq!(format_document(source), "fun[] main(): int = {\n    return 7;\n};\n");
+    }
+
+    #[test]
+    fn formatter_collapses_blank_line_runs_and_leading_blank_lines() {
+        let source = "\n\nfun[] helper(): int = {\n    return 7;\n}\n\n\nfun[] main(): int = {\n    return helper();\n}\n";
+
+        assert_eq!(
+            format_document(source),
+            "fun[] helper(): int = {\n    return 7;\n}\n\nfun[] main(): int = {\n    return helper();\n}\n"
+        );
     }
 
     #[test]
