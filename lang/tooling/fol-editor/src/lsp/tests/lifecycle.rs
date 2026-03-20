@@ -1,6 +1,9 @@
 use super::helpers::{open_document, sample_package_root, temp_root};
 use super::super::{
-    analysis::{analyze_document_semantics_call_count, reset_analyze_document_semantics_call_count},
+    analysis::{
+        analysis_stage_counts, analyze_document_semantics_call_count,
+        reset_analysis_stage_counts, reset_analyze_document_semantics_call_count,
+    },
     completion_helpers::completion_context, completion_helpers::CompletionContext,
     EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCompletionList,
     LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
@@ -471,6 +474,201 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
     let _definition: Option<LspLocation> =
         serde_json::from_value(definition.result.unwrap()).unwrap();
     assert_eq!(analyze_document_semantics_call_count(), 2);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_reuses_diagnostics_seeded_snapshots_for_fast_requests() {
+    let (root, uri) = sample_package_root("diagnostic_seeded_snapshot");
+    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    reset_analysis_stage_counts();
+    let _open = open_document(&mut server, uri.clone(), text);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 1,
+            parse_directory_diagnostics: 1,
+            load_directory_package: 1,
+            resolve_workspace: 1,
+            typecheck_workspace: 1,
+        }
+    );
+
+    let _hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(733),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _definition = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(734),
+            method: "textDocument/definition".to_string(),
+            params: Some(
+                serde_json::to_value(LspDefinitionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(735),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 1,
+            parse_directory_diagnostics: 1,
+            load_directory_package: 1,
+            resolve_workspace: 1,
+            typecheck_workspace: 1,
+        }
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_reuses_changed_document_snapshot_after_diagnostics_refresh() {
+    let (root, uri) = sample_package_root("changed_snapshot_reuse");
+    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    reset_analysis_stage_counts();
+    let _open = open_document(&mut server, uri.clone(), text);
+
+    let changed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: Some(crate::LspRange {
+                            start: LspPosition {
+                                line: 1,
+                                character: 21,
+                            },
+                            end: LspPosition {
+                                line: 1,
+                                character: 22,
+                            },
+                        }),
+                        range_length: Some(1),
+                        text: "9".to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert_eq!(changed.len(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 2);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 2,
+            parse_directory_diagnostics: 2,
+            load_directory_package: 2,
+            resolve_workspace: 2,
+            typecheck_workspace: 2,
+        }
+    );
+
+    let _completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(736),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _symbols = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(737),
+            method: "textDocument/documentSymbol".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentSymbolParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(analyze_document_semantics_call_count(), 2);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 2,
+            parse_directory_diagnostics: 2,
+            load_directory_package: 2,
+            resolve_workspace: 2,
+            typecheck_workspace: 2,
+        }
+    );
 
     fs::remove_dir_all(root).ok();
 }

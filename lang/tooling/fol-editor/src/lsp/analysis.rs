@@ -23,6 +23,21 @@ pub(crate) struct CachedSemanticSnapshot {
 #[cfg(test)]
 static ANALYZE_DOCUMENT_SEMANTICS_CALLS: std::sync::atomic::AtomicUsize =
     std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static MATERIALIZE_ANALYSIS_OVERLAY_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static PARSE_DIRECTORY_DIAGNOSTICS_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static LOAD_DIRECTORY_PACKAGE_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static RESOLVE_WORKSPACE_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
+#[cfg(test)]
+static TYPECHECK_WORKSPACE_CALLS: std::sync::atomic::AtomicUsize =
+    std::sync::atomic::AtomicUsize::new(0);
 
 #[cfg(test)]
 pub(crate) fn reset_analyze_document_semantics_call_count() {
@@ -34,6 +49,41 @@ pub(crate) fn analyze_document_semantics_call_count() -> usize {
     ANALYZE_DOCUMENT_SEMANTICS_CALLS.load(std::sync::atomic::Ordering::Relaxed)
 }
 
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct AnalysisStageCounts {
+    pub materialize_overlay: usize,
+    pub parse_directory_diagnostics: usize,
+    pub load_directory_package: usize,
+    pub resolve_workspace: usize,
+    pub typecheck_workspace: usize,
+}
+
+#[cfg(test)]
+pub(crate) fn reset_analysis_stage_counts() {
+    MATERIALIZE_ANALYSIS_OVERLAY_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+    PARSE_DIRECTORY_DIAGNOSTICS_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+    LOAD_DIRECTORY_PACKAGE_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+    RESOLVE_WORKSPACE_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+    TYPECHECK_WORKSPACE_CALLS.store(0, std::sync::atomic::Ordering::Relaxed);
+}
+
+#[cfg(test)]
+pub(crate) fn analysis_stage_counts() -> AnalysisStageCounts {
+    AnalysisStageCounts {
+        materialize_overlay: MATERIALIZE_ANALYSIS_OVERLAY_CALLS
+            .load(std::sync::atomic::Ordering::Relaxed),
+        parse_directory_diagnostics: PARSE_DIRECTORY_DIAGNOSTICS_CALLS
+            .load(std::sync::atomic::Ordering::Relaxed),
+        load_directory_package: LOAD_DIRECTORY_PACKAGE_CALLS
+            .load(std::sync::atomic::Ordering::Relaxed),
+        resolve_workspace: RESOLVE_WORKSPACE_CALLS
+            .load(std::sync::atomic::Ordering::Relaxed),
+        typecheck_workspace: TYPECHECK_WORKSPACE_CALLS
+            .load(std::sync::atomic::Ordering::Relaxed),
+    }
+}
+
 pub(super) fn analyze_document_semantics(
     document: &EditorDocument,
     mapping: &EditorWorkspaceMapping,
@@ -41,6 +91,8 @@ pub(super) fn analyze_document_semantics(
     #[cfg(test)]
     ANALYZE_DOCUMENT_SEMANTICS_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
+    #[cfg(test)]
+    MATERIALIZE_ANALYSIS_OVERLAY_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let overlay = materialize_analysis_overlay(mapping, document)?;
     if let Some(package_root) = overlay.package_root() {
         let parser_diags = parse_directory_diagnostics(package_root)?
@@ -60,6 +112,8 @@ pub(super) fn analyze_document_semantics(
         }
 
         let mut package_session = PackageSession::new();
+        #[cfg(test)]
+        LOAD_DIRECTORY_PACKAGE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let prepared =
             match package_session.load_directory_package(package_root, PackageSourceKind::Entry) {
                 Ok(prepared) => prepared,
@@ -76,6 +130,8 @@ pub(super) fn analyze_document_semantics(
             };
 
         let mut resolver = Resolver::new();
+        #[cfg(test)]
+        RESOLVE_WORKSPACE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let resolved = match resolver.resolve_prepared_workspace(prepared) {
             Ok(resolved) => resolved,
             Err(errors) => {
@@ -98,6 +154,8 @@ pub(super) fn analyze_document_semantics(
         };
 
         let mut typechecker = Typechecker::new();
+        #[cfg(test)]
+        TYPECHECK_WORKSPACE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         match typechecker.check_resolved_workspace(resolved.clone()) {
             Ok(typed_workspace) => Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
@@ -189,6 +247,8 @@ pub(super) fn parse_single_file_diagnostics(
 }
 
 pub(super) fn parse_directory_diagnostics(root: &Path) -> EditorResult<Vec<Diagnostic>> {
+    #[cfg(test)]
+    PARSE_DIRECTORY_DIAGNOSTICS_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let root_str = root.to_str().ok_or_else(|| {
         EditorError::new(
             EditorErrorKind::InvalidDocumentPath,
