@@ -694,6 +694,49 @@ fn lsp_server_surfaces_quick_fix_for_build_file_unresolved_names() {
 }
 
 #[test]
+fn lsp_server_returns_no_code_actions_for_parse_only_diagnostics() {
+    let (root, uri) = sample_package_root("code_action_parse_only");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(: int = {\n    return 0\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri.clone(), &text);
+    let diagnostic = diagnostics[0]
+        .diagnostics
+        .first()
+        .cloned()
+        .expect("parse error should be published");
+    assert_eq!(diagnostic.code, "P1001");
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(224),
+            method: "textDocument/codeAction".to_string(),
+            params: Some(
+                serde_json::to_value(LspCodeActionParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    range: diagnostic.range,
+                    context: LspCodeActionContext {
+                        diagnostics: vec![diagnostic],
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let actions: Vec<LspCodeAction> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert!(actions.is_empty());
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_returns_same_package_namespaced_references() {
     let (root, uri) = sample_package_root("same_package_namespaced_references");
     fs::create_dir_all(root.join("src/api")).unwrap();
