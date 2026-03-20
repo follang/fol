@@ -171,6 +171,33 @@ fn editor_format_command_reports_noop_for_already_formatted_files() {
 }
 
 #[test]
+fn editor_format_command_rewrites_parse_broken_files_without_failing() {
+    let root = temp_root("format_broken");
+    fs::create_dir_all(&root).expect("should create temp root");
+    let file = root.join("sample.fol");
+    fs::write(
+        &file,
+        "fun[] main(): int = {\nwhen(true) {\ncase(true) {\nreturn 7;\n}\n}\n",
+    )
+    .expect("should write broken source");
+
+    let (_, result) = run_command_from_args_in_dir(
+        ["fol", "tool", "format", file.to_string_lossy().as_ref()],
+        &root,
+    )
+    .expect("editor format should handle broken source");
+
+    assert_eq!(result.command, "format");
+    assert!(result.summary.contains("changed=true"));
+    assert_eq!(
+        fs::read_to_string(&file).unwrap(),
+        "fun[] main(): int = {\n    when(true) {\n        case(true) {\n            return 7;\n        }\n    }\n"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn editor_format_cli_matches_lsp_for_source_files() {
     let root = temp_root("format_parity_src");
     fs::create_dir_all(&root).expect("should create temp root");

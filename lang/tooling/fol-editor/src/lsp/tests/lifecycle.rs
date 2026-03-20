@@ -249,6 +249,39 @@ fn lsp_server_formats_build_files_with_the_same_full_document_contract() {
 }
 
 #[test]
+fn lsp_server_formats_parse_broken_documents_without_needing_semantic_recovery() {
+    let (root, uri) = sample_package_root("formatting_broken");
+    let text = "fun[] main(): int = {\nwhen(true) {\ncase(true) {\nreturn 7;\n}\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(203),
+            method: "textDocument/formatting".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentFormattingParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let edits: Vec<LspTextEdit> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert_eq!(edits.len(), 1);
+    assert_eq!(
+        edits[0].new_text,
+        "fun[] main(): int = {\n    when(true) {\n        case(true) {\n            return 7;\n        }\n    }\n"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn completion_context_detects_type_positions() {
     let uri =
         EditorDocumentUri::from_file_path(PathBuf::from("/tmp/type_context.fol")).unwrap();
