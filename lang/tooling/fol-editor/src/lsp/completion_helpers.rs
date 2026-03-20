@@ -202,16 +202,23 @@ pub(super) fn render_checked_type(
 }
 
 pub(super) fn dedupe_completion_items(items: Vec<EditorCompletionItem>) -> Vec<EditorCompletionItem> {
-    let mut seen = std::collections::BTreeSet::new();
-    let mut filtered = Vec::new();
+    let mut best_by_label = std::collections::BTreeMap::new();
     for item in items {
         if item.label.is_empty() {
             continue;
         }
-        if seen.insert(item.label.clone()) {
-            filtered.push(item);
+        let label = item.label.clone();
+        match best_by_label.get(&label) {
+            Some(current) if completion_item_cmp(&item, current).is_lt() => {
+                best_by_label.insert(label, item);
+            }
+            None => {
+                best_by_label.insert(label, item);
+            }
+            _ => {}
         }
     }
+    let mut filtered = best_by_label.into_values().collect::<Vec<_>>();
     filtered.sort_by(completion_item_cmp);
     filtered
 }
@@ -235,6 +242,33 @@ fn completion_item_priority(item: &EditorCompletionItem) -> u8 {
         9 => 3,
         2 => 4,
         _ => 5,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{dedupe_completion_items, EditorCompletionItem};
+
+    #[test]
+    fn dedupe_completion_items_keeps_higher_priority_symbol_for_same_label() {
+        let items = dedupe_completion_items(vec![
+            EditorCompletionItem {
+                label: "helper".to_string(),
+                kind: 3,
+                detail: Some("routine".to_string()),
+                insert_text: None,
+            },
+            EditorCompletionItem {
+                label: "helper".to_string(),
+                kind: 6,
+                detail: Some("binding".to_string()),
+                insert_text: None,
+            },
+        ]);
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].label, "helper");
+        assert_eq!(items[0].detail.as_deref(), Some("binding"));
     }
 }
 
