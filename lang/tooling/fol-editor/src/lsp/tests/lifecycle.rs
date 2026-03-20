@@ -11,10 +11,10 @@ use super::super::{
     LspCodeActionParams, LspCompletionList, LspCompletionParams, LspDefinitionParams,
     LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
     LspDocumentFormattingParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
-    LspInitializeResult, LspLocation, LspPosition, LspSignatureHelpParams,
+    LspInitializeResult, LspLocation, LspPosition, LspRenameParams, LspSignatureHelpParams,
     LspTextEdit, LspWorkspaceSymbol, LspWorkspaceSymbolParams,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspRange,
-    LspVersionedTextDocumentIdentifier,
+    LspVersionedTextDocumentIdentifier, LspWorkspaceEdit,
 };
 use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
 use std::fs;
@@ -1042,6 +1042,152 @@ fn lsp_server_keeps_other_file_snapshots_after_a_neighbor_changes() {
 
     let _main_hover_again = hover(&mut server, uri.clone(), 1, 12, 743);
     assert_eq!(analyze_document_semantics_call_count(), 3);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_handles_mixed_request_sequences_without_leaking_snapshots() {
+    let (root, uri) = sample_package_root("mixed_request_sequence");
+    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_semantics_call_count();
+    reset_analyze_document_diagnostics_call_count();
+    open_document(&mut server, uri.clone(), text);
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 0);
+
+    let hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(744),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(745),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _completion: LspCompletionList =
+        serde_json::from_value(completion.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let formatting = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(746),
+            method: "textDocument/formatting".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentFormattingParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _formatting: Vec<LspTextEdit> =
+        serde_json::from_value(formatting.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let rename = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(747),
+            method: "textDocument/rename".to_string(),
+            params: Some(
+                serde_json::to_value(LspRenameParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                    new_name: "count".to_string(),
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let rename: LspWorkspaceEdit = serde_json::from_value(rename.result.unwrap()).unwrap();
+    assert_eq!(rename.changes.get(uri.as_str()).unwrap().len(), 2);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert!(server.session.semantic_snapshots.contains_key(uri.as_str()));
+
+    let closed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didClose".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidCloseTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 1,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+    assert!(closed[0].diagnostics.is_empty());
+    assert!(!server.session.semantic_snapshots.contains_key(uri.as_str()));
+
+    open_document(&mut server, uri.clone(), text);
+    assert_eq!(analyze_document_diagnostics_call_count(), 2);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+
+    let reopened_hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(748),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _reopened_hover: Option<LspHover> =
+        serde_json::from_value(reopened_hover.result.unwrap()).unwrap();
+    assert_eq!(analyze_document_semantics_call_count(), 2);
 
     fs::remove_dir_all(root).ok();
 }
