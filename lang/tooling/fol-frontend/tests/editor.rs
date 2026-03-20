@@ -473,6 +473,42 @@ fn editor_command_plain_output_stays_snapshot_stable_for_real_fixtures() {
 }
 
 #[test]
+fn editor_format_plain_output_stays_snapshot_stable() {
+    let root = temp_root("format_plain_snapshot");
+    fs::create_dir_all(&root).expect("should create temp root");
+    let file = root.join("sample.fol");
+    fs::write(&file, "fun[] main(): int = {\nreturn 0;\n};\n")
+        .expect("should write sample source");
+
+    let (output, result) = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "--output",
+            "plain",
+            "format",
+            file.to_string_lossy().as_ref(),
+        ],
+        &root,
+    )
+    .expect("editor format should support plain output");
+    let rendered = output
+        .render_command_summary(&result)
+        .expect("plain output should render");
+
+    assert_eq!(
+        rendered,
+        format!(
+            "command: format\nsummary: formatted {} (path={}, lines=3, changed=true, changed_lines=1, style=hybrid-line)",
+            file.display(),
+            file.display()
+        )
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn editor_command_json_errors_keep_stable_shapes() {
     let error = run_command_from_args_in_dir(
         [
@@ -523,6 +559,42 @@ fn editor_lsp_reports_workspace_guidance_when_no_root_is_present() {
         .contains("start the editor inside a FOL package or workspace root")));
 
     fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn editor_rename_json_error_stays_snapshot_stable() {
+    let root = repo_root();
+    let fixture = "test/apps/fixtures/record_flow/main.fol";
+    let error = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "--output",
+            "json",
+            "rename",
+            fixture,
+            "--line",
+            "0",
+            "--character",
+            "6",
+            "entry",
+        ],
+        &root,
+    )
+    .expect_err("top-level rename should stay outside the safe local boundary");
+    let rendered = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig {
+        mode: fol_frontend::OutputMode::Json,
+    })
+    .render_error(&error)
+    .expect("json render should succeed");
+    let parsed: serde_json::Value = serde_json::from_str(&rendered).expect("stderr should be json");
+
+    assert_eq!(parsed["kind"], "FrontendCommandFailed");
+    assert_eq!(
+        parsed["message"],
+        "rename currently supports same-file local symbols only, not routine"
+    );
+    assert_eq!(parsed["notes"], serde_json::json!([]));
 }
 
 #[test]
