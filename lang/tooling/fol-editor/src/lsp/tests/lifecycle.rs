@@ -30,6 +30,10 @@ fn lsp_server_handles_initialize_shutdown_and_exit() {
     let result: LspInitializeResult =
         serde_json::from_value(initialize.result.unwrap()).unwrap();
     assert!(result.capabilities.text_document_sync.open_close);
+    assert_eq!(result.capabilities.text_document_sync.change, 1);
+    assert!(result.capabilities.hover_provider);
+    assert!(result.capabilities.definition_provider);
+    assert!(result.capabilities.document_symbol_provider);
     let completion_provider = result
         .capabilities
         .completion_provider
@@ -38,6 +42,8 @@ fn lsp_server_handles_initialize_shutdown_and_exit() {
         completion_provider.trigger_characters,
         vec![".".to_string()]
     );
+    assert_eq!(result.server_info.name, "fol-editor");
+    assert_eq!(result.server_info.version, env!("CARGO_PKG_VERSION"));
 
     let shutdown = server
         .handle_request(JsonRpcRequest {
