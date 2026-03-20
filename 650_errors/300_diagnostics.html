@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-fb379c09.js";
+            window.path_to_searchindex_js = "../searchindex-036d43f1.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5bc359b7.js"></script>
@@ -236,6 +236,7 @@ error family and specific failure without relying on message text.</p>
 <tr><td><code>R1xxx</code></td><td>resolver</td><td><code>R1003</code> unresolved, <code>R1005</code> ambiguous</td></tr>
 <tr><td><code>T1xxx</code></td><td>type checker</td><td><code>T1003</code> type mismatch</td></tr>
 <tr><td><code>L1xxx</code></td><td>lowering</td><td><code>L1001</code> unsupported surface</td></tr>
+<tr><td><code>F1xxx</code></td><td>frontend</td><td><code>F1001</code> invalid input, <code>F1002</code> workspace not found</td></tr>
 <tr><td><code>K11xx</code></td><td>build evaluator</td><td><code>K1101</code> build failure</td></tr>
 </tbody>
 </table>
@@ -431,6 +432,7 @@ structured fields are first-class rather than reverse-engineered from text.</p>
 <li>lowering</li>
 <li>build evaluator</li>
 <li>backend</li>
+<li>frontend (workspace discovery and input validation)</li>
 </ul>
 <p>That means diagnostics are already strong across:</p>
 <ul>
