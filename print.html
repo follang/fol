@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-036d43f1.js";
+            window.path_to_searchindex_js = "searchindex-894be181.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-5bc359b7.js"></script>
@@ -428,6 +428,7 @@ workflow shell for:</p>
 <li>the language server for compiler-backed editor services</li>
 <li>build-file affordances for <code>build.fol</code> through the same parse/highlight/symbol
 and LSP surfaces used for ordinary source files</li>
+<li>one public editor command surface under <code>fol tool ...</code></li>
 </ul>
 <p>The detailed operational reference now lives in the Tooling section:</p>
 <ul>
@@ -614,6 +615,9 @@ fol code emit lowered
 <li><code>fol tool parse &lt;PATH&gt;</code></li>
 <li><code>fol tool highlight &lt;PATH&gt;</code></li>
 <li><code>fol tool symbols &lt;PATH&gt;</code></li>
+<li><code>fol tool references &lt;PATH&gt; --line &lt;LINE&gt; --character &lt;CHARACTER&gt;</code></li>
+<li><code>fol tool rename &lt;PATH&gt; --line &lt;LINE&gt; --character &lt;CHARACTER&gt; &lt;NEW_NAME&gt;</code></li>
+<li><code>fol tool semantic-tokens &lt;PATH&gt;</code></li>
 <li><code>fol tool tree generate &lt;PATH&gt;</code></li>
 <li><code>fol tool clean</code></li>
 <li><code>fol tool completion</code></li>
@@ -622,6 +626,9 @@ fol code emit lowered
 <pre><code class="language-text">fol tool parse src/main.fol
 fol tool highlight src/main.fol
 fol tool symbols src/main.fol
+fol tool references src/main.fol --line 12 --character 8
+fol tool rename src/main.fol --line 12 --character 8 total
+fol tool semantic-tokens src/main.fol
 fol tool tree generate /tmp/fol
 fol tool lsp
 fol tool completion bash
@@ -633,6 +640,10 @@ fol tool completion bash
 <li>LSP serving</li>
 <li>generated tool assets</li>
 </ul>
+<p>The public editor surface stays under <code>fol tool ...</code>.
+There is no parallel <code>fol editor ...</code> command group.
+Future editor features are not exposed as placeholder commands.
+Only the shipped <code>fol tool</code> subcommands above are public.</p>
 <h2 id="artifact-reporting"><a class="header" href="#artifact-reporting">Artifact Reporting</a></h2>
 <p>Frontend commands report explicit artifact roots when applicable, including:</p>
 <ul>
@@ -659,6 +670,9 @@ fol tool completion bash
 <li><code>fol tool parse &lt;PATH&gt;</code></li>
 <li><code>fol tool highlight &lt;PATH&gt;</code></li>
 <li><code>fol tool symbols &lt;PATH&gt;</code></li>
+<li><code>fol tool references &lt;PATH&gt; --line &lt;LINE&gt; --character &lt;CHARACTER&gt;</code></li>
+<li><code>fol tool rename &lt;PATH&gt; --line &lt;LINE&gt; --character &lt;CHARACTER&gt; &lt;NEW_NAME&gt;</code></li>
+<li><code>fol tool semantic-tokens &lt;PATH&gt;</code></li>
 <li><code>fol tool tree generate &lt;PATH&gt;</code></li>
 </ul>
 <p>This keeps editor workflows under the same <code>fol</code> binary rather than introducing
@@ -680,9 +694,26 @@ a second public tool.</p>
 <li>compiler-backed diagnostics</li>
 <li>hover</li>
 <li>go-to-definition</li>
+<li>references</li>
+<li>rename for same-file local symbols</li>
+<li>semantic tokens</li>
 <li>document symbols</li>
-<li>completion, as that feature grows</li>
+<li>completion</li>
 </ul>
+<p>The currently supported v1 LSP surface is:</p>
+<ul>
+<li>diagnostics</li>
+<li>hover</li>
+<li>definition</li>
+<li>references</li>
+<li>rename for same-file local symbols</li>
+<li>semantic tokens</li>
+<li>document symbols</li>
+<li>completion</li>
+</ul>
+<p>The server keeps one semantic snapshot per open document version. It reuses
+that snapshot for hover, definition, references, rename, semantic tokens,
+document symbols, and completion until the document changes or closes.</p>
 <h2 id="compiler-truth"><a class="header" href="#compiler-truth">Compiler Truth</a></h2>
 <p><code>fol-editor</code> does not create a second semantic engine.</p>
 <p>Semantic truth still comes from:</p>
@@ -708,10 +739,15 @@ Tree-sitter assets, see:</p>
 <pre><code class="language-text">fol tool lsp
 </code></pre>
 <p>as the language server entrypoint.</p>
+<p>Launch it from inside a discovered package or workspace root. The frontend
+looks upward for <code>package.yaml</code> or <code>fol.work.yaml</code> before starting the server.</p>
 <p>Use:</p>
 <pre><code class="language-text">fol tool parse path/to/file.fol
 fol tool highlight path/to/file.fol
 fol tool symbols path/to/file.fol
+fol tool references path/to/file.fol --line 12 --character 8
+fol tool rename path/to/file.fol --line 12 --character 8 total
+fol tool semantic-tokens path/to/file.fol
 </code></pre>
 <p>for parser/query debugging and validation.</p>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -1184,6 +1220,9 @@ of copied by hand.</p>
 <li>diagnostics</li>
 <li>hover</li>
 <li>go-to-definition</li>
+<li>references</li>
+<li>rename for same-file local symbols</li>
+<li>semantic tokens</li>
 <li>document symbols</li>
 <li>completion</li>
 <li>the same compiler-backed behavior for ordinary source files and <code>build.fol</code></li>
@@ -1191,6 +1230,11 @@ of copied by hand.</p>
 <p>That means build files should not need a separate editor mode.
 <code>build.fol</code> goes through the same language server entrypoint as the rest of the
 package.</p>
+<p><code>textDocument/didChange</code> accepts both whole-document replacements and ranged
+change events. The server applies ranged changes in order against the current
+in-memory document version.</p>
+<p>The server advertises incremental text sync by default.
+Full-document sync remains an explicit opt-in for clients/configs that need it.</p>
 <h2 id="analysis-model"><a class="header" href="#analysis-model">Analysis Model</a></h2>
 <p>The server works like this:</p>
 <ol>
@@ -1200,8 +1244,15 @@ package.</p>
 <li>run parse/package/resolve/typecheck as needed</li>
 <li>convert compiler results into LSP responses</li>
 </ol>
+<p>Package/workspace root discovery is cached for the current session once a
+document directory has been mapped.</p>
 <p>That means diagnostics and navigation are compiler-backed, not guessed from
 Tree-sitter alone.</p>
+<p>For open documents, the server also keeps a semantic snapshot keyed by document
+version. Hover, definition, references, rename, semantic tokens, document
+symbols, and completion reuse that snapshot until <code>didChange</code> or <code>didClose</code>
+invalidates it. A fresh <code>didOpen</code> starts a new snapshot for the new in-memory
+version.</p>
 <h2 id="diagnostics"><a class="header" href="#diagnostics">Diagnostics</a></h2>
 <p>Compiler diagnostics remain canonical.</p>
 <p>The server adapts them into LSP diagnostics for the currently open document.</p>
@@ -1216,6 +1267,9 @@ show at most one diagnostic per line per code in the editor.</p>
 <li>source-file diagnostics in the open file</li>
 <li>hover on resolved symbols</li>
 <li>go-to-definition across current-package and imported symbols where supported</li>
+<li>references for the supported symbol classes</li>
+<li>rename for same-file local symbols only</li>
+<li>semantic tokens for semantic identifier categories</li>
 <li>document symbols for the current file</li>
 <li>completion in ordinary source files and <code>build.fol</code></li>
 </ul>
@@ -1236,7 +1290,7 @@ behavior, see <a href="#compiler-integration">Compiler Integration</a>.</p>
 <pre><code class="language-lua">vim.lsp.config("fol", {
   cmd = { "fol", "tool", "lsp" },
   filetypes = { "fol" },
-  root_markers = { "build.fol", "package.yaml", ".git" },
+  root_markers = { "fol.work.yaml", "package.yaml", ".git" },
 })
 
 vim.lsp.enable("fol")
@@ -1281,6 +1335,9 @@ parser_config.fol = {
 <li>diagnostics</li>
 <li>hover</li>
 <li>definitions</li>
+<li>references</li>
+<li>rename for same-file local symbols</li>
+<li>semantic tokens</li>
 <li>document symbols</li>
 </ul>
 <p>So the normal editor shape is:</p>
@@ -1301,6 +1358,8 @@ fol tool lsp
 </code></pre>
 <p>If <code>fol tool lsp</code> prints nothing and waits, that is correct.</p>
 <p>It is a stdio server, not an interactive shell command.</p>
+<p>If the server refuses to start, check that Neovim opened the file inside a
+directory tree that contains <code>package.yaml</code> or <code>fol.work.yaml</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="build-system"><a class="header" href="#build-system">Build System</a></h1>
 <p>FOL uses a Zig-style build model. The build specification is a normal FOL

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-036d43f1.js";
+            window.path_to_searchindex_js = "../searchindex-894be181.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5bc359b7.js"></script>
@@ -187,6 +187,9 @@
 <li>diagnostics</li>
 <li>hover</li>
 <li>go-to-definition</li>
+<li>references</li>
+<li>rename for same-file local symbols</li>
+<li>semantic tokens</li>
 <li>document symbols</li>
 <li>completion</li>
 <li>the same compiler-backed behavior for ordinary source files and <code>build.fol</code></li>
@@ -194,6 +197,11 @@
 <p>That means build files should not need a separate editor mode.
 <code>build.fol</code> goes through the same language server entrypoint as the rest of the
 package.</p>
+<p><code>textDocument/didChange</code> accepts both whole-document replacements and ranged
+change events. The server applies ranged changes in order against the current
+in-memory document version.</p>
+<p>The server advertises incremental text sync by default.
+Full-document sync remains an explicit opt-in for clients/configs that need it.</p>
 <h2 id="analysis-model"><a class="header" href="#analysis-model">Analysis Model</a></h2>
 <p>The server works like this:</p>
 <ol>
@@ -203,8 +211,15 @@ package.</p>
 <li>run parse/package/resolve/typecheck as needed</li>
 <li>convert compiler results into LSP responses</li>
 </ol>
+<p>Package/workspace root discovery is cached for the current session once a
+document directory has been mapped.</p>
 <p>That means diagnostics and navigation are compiler-backed, not guessed from
 Tree-sitter alone.</p>
+<p>For open documents, the server also keeps a semantic snapshot keyed by document
+version. Hover, definition, references, rename, semantic tokens, document
+symbols, and completion reuse that snapshot until <code>didChange</code> or <code>didClose</code>
+invalidates it. A fresh <code>didOpen</code> starts a new snapshot for the new in-memory
+version.</p>
 <h2 id="diagnostics"><a class="header" href="#diagnostics">Diagnostics</a></h2>
 <p>Compiler diagnostics remain canonical.</p>
 <p>The server adapts them into LSP diagnostics for the currently open document.</p>
@@ -219,6 +234,9 @@ show at most one diagnostic per line per code in the editor.</p>
 <li>source-file diagnostics in the open file</li>
 <li>hover on resolved symbols</li>
 <li>go-to-definition across current-package and imported symbols where supported</li>
+<li>references for the supported symbol classes</li>
+<li>rename for same-file local symbols only</li>
+<li>semantic tokens for semantic identifier categories</li>
 <li>document symbols for the current file</li>
 <li>completion in ordinary source files and <code>build.fol</code></li>
 </ul>

@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-036d43f1.js";
+            window.path_to_searchindex_js = "../searchindex-894be181.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5bc359b7.js"></script>
@@ -249,6 +249,9 @@ fol code emit lowered
 <li><code>fol tool parse &lt;PATH&gt;</code></li>
 <li><code>fol tool highlight &lt;PATH&gt;</code></li>
 <li><code>fol tool symbols &lt;PATH&gt;</code></li>
+<li><code>fol tool references &lt;PATH&gt; --line &lt;LINE&gt; --character &lt;CHARACTER&gt;</code></li>
+<li><code>fol tool rename &lt;PATH&gt; --line &lt;LINE&gt; --character &lt;CHARACTER&gt; &lt;NEW_NAME&gt;</code></li>
+<li><code>fol tool semantic-tokens &lt;PATH&gt;</code></li>
 <li><code>fol tool tree generate &lt;PATH&gt;</code></li>
 <li><code>fol tool clean</code></li>
 <li><code>fol tool completion</code></li>
@@ -257,6 +260,9 @@ fol code emit lowered
 <pre><code class="language-text">fol tool parse src/main.fol
 fol tool highlight src/main.fol
 fol tool symbols src/main.fol
+fol tool references src/main.fol --line 12 --character 8
+fol tool rename src/main.fol --line 12 --character 8 total
+fol tool semantic-tokens src/main.fol
 fol tool tree generate /tmp/fol
 fol tool lsp
 fol tool completion bash
@@ -268,6 +274,10 @@ fol tool completion bash
 <li>LSP serving</li>
 <li>generated tool assets</li>
 </ul>
+<p>The public editor surface stays under <code>fol tool ...</code>.
+There is no parallel <code>fol editor ...</code> command group.
+Future editor features are not exposed as placeholder commands.
+Only the shipped <code>fol tool</code> subcommands above are public.</p>
 <h2 id="artifact-reporting"><a class="header" href="#artifact-reporting">Artifact Reporting</a></h2>
 <p>Frontend commands report explicit artifact roots when applicable, including:</p>
 <ul>

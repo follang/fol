@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-036d43f1.js";
+            window.path_to_searchindex_js = "../searchindex-894be181.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5bc359b7.js"></script>
@@ -191,6 +191,9 @@
 <li><code>fol tool parse &lt;PATH&gt;</code></li>
 <li><code>fol tool highlight &lt;PATH&gt;</code></li>
 <li><code>fol tool symbols &lt;PATH&gt;</code></li>
+<li><code>fol tool references &lt;PATH&gt; --line &lt;LINE&gt; --character &lt;CHARACTER&gt;</code></li>
+<li><code>fol tool rename &lt;PATH&gt; --line &lt;LINE&gt; --character &lt;CHARACTER&gt; &lt;NEW_NAME&gt;</code></li>
+<li><code>fol tool semantic-tokens &lt;PATH&gt;</code></li>
 <li><code>fol tool tree generate &lt;PATH&gt;</code></li>
 </ul>
 <p>This keeps editor workflows under the same <code>fol</code> binary rather than introducing
@@ -212,9 +215,26 @@ a second public tool.</p>
 <li>compiler-backed diagnostics</li>
 <li>hover</li>
 <li>go-to-definition</li>
+<li>references</li>
+<li>rename for same-file local symbols</li>
+<li>semantic tokens</li>
 <li>document symbols</li>
-<li>completion, as that feature grows</li>
+<li>completion</li>
 </ul>
+<p>The currently supported v1 LSP surface is:</p>
+<ul>
+<li>diagnostics</li>
+<li>hover</li>
+<li>definition</li>
+<li>references</li>
+<li>rename for same-file local symbols</li>
+<li>semantic tokens</li>
+<li>document symbols</li>
+<li>completion</li>
+</ul>
+<p>The server keeps one semantic snapshot per open document version. It reuses
+that snapshot for hover, definition, references, rename, semantic tokens,
+document symbols, and completion until the document changes or closes.</p>
 <h2 id="compiler-truth"><a class="header" href="#compiler-truth">Compiler Truth</a></h2>
 <p><code>fol-editor</code> does not create a second semantic engine.</p>
 <p>Semantic truth still comes from:</p>
@@ -240,10 +260,15 @@ Tree-sitter assets, see:</p>
 <pre><code class="language-text">fol tool lsp
 </code></pre>
 <p>as the language server entrypoint.</p>
+<p>Launch it from inside a discovered package or workspace root. The frontend
+looks upward for <code>package.yaml</code> or <code>fol.work.yaml</code> before starting the server.</p>
 <p>Use:</p>
 <pre><code class="language-text">fol tool parse path/to/file.fol
 fol tool highlight path/to/file.fol
 fol tool symbols path/to/file.fol
+fol tool references path/to/file.fol --line 12 --character 8
+fol tool rename path/to/file.fol --line 12 --character 8 total
+fol tool semantic-tokens path/to/file.fol
 </code></pre>
 <p>for parser/query debugging and validation.</p>
 
