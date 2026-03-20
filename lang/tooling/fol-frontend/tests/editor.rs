@@ -36,9 +36,23 @@ fn editor_lsp_command_is_publicly_dispatchable() {
     assert!(result.summary.contains("symbols"));
     assert!(result.summary.contains("completion"));
     assert!(result
-        .details
-        .iter()
-        .any(|detail| detail == "features=diagnostics,hover,definition,symbols,completion"));
+        .summary
+        .contains("features=diagnostics,hover,definition,symbols,completion"));
+}
+
+#[test]
+fn editor_surface_stays_under_tool_not_a_parallel_editor_group() {
+    let root = repo_root();
+    let error = run_command_from_args_in_dir(["fol", "editor", "lsp"], root.join("xtra/logtiny"))
+        .expect_err("`fol editor` should not exist as a parallel public surface");
+    let json = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig {
+        mode: fol_frontend::OutputMode::Json,
+    })
+    .render_error(&error)
+    .expect("json render should succeed");
+    assert!(json.contains("\"kind\": \"FrontendInvalidInput\""));
+    assert!(json.contains("unrecognized subcommand"));
+    assert!(json.contains("editor"));
 }
 
 #[test]

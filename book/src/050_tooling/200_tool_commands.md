@@ -110,6 +110,9 @@ Use `tool` for:
 - LSP serving
 - generated tool assets
 
+The public editor surface stays under `fol tool ...`.
+There is no parallel `fol editor ...` command group.
+
 ## Artifact Reporting
 
 Frontend commands report explicit artifact roots when applicable, including:
