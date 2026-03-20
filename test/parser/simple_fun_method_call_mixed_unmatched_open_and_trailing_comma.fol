@@ -8,4 +8,4 @@ fun method_mixed_unmatched_open_and_trailing_comma(obj: int, a: int, b: int): in
     );
 
     return b;
-}
+};

@@ -1,10 +1,10 @@
 typ User: rec = {
     score: int
-}
+};
 
 fun[] main(): int = {
     var current: User = {
         score = "bad",
     };
     return current.score;
-}
+};

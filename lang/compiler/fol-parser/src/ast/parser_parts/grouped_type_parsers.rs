@@ -22,14 +22,12 @@ impl AstParser {
 
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 
             nodes.extend(self.parse_single_type_decl_with_options(
                 tokens,
                 options.clone(),
-                false,
             )?);
 
             self.skip_ignorable(tokens)?;
@@ -43,7 +41,6 @@ impl AstParser {
             }
             if matches!(sep.key(), KEYWORD::Symbol(SYMBOL::RoundC)) {
                 let _ = tokens.bump();
-                self.consume_optional_semicolon(tokens)?;
                 return Ok(nodes);
             }
 

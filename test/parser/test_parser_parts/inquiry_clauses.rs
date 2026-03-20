@@ -354,7 +354,7 @@ fn test_quoted_inquiry_targets_preserve_inner_opposite_quote_chars() {
     let fixture = temp_root.join("inner_quotes.fol");
     fs::write(
         &fixture,
-        "fun[] inspect(value: int): int = {\n    return value;\n    where(\"cache 'hot'\"; 'sink \"cold\"') {\n        value;\n    }\n}\n",
+        "fun[] inspect(value: int): int = {\n    return value;\n    where(\"cache 'hot'\"; 'sink \"cold\"') {\n        value;\n    };\n};\n",
     )
     .expect("Should write temp inquiry fixture");
 

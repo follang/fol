@@ -1,7 +1,7 @@
 fun (parser)parse(code: int): str = {
     return "ok";
-}
+};
 
 fun (parser)parse(code: int): int = {
     return code;
-}
+};

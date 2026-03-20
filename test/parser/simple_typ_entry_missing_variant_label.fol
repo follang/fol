@@ -1,3 +1,3 @@
 typ Result: ent = {
     lab : str;
-}
+};

@@ -1,3 +1,3 @@
-typ SmallUnsigned: int[u8;]
-typ Float32: flt[f32;]
-typ UtfChar: chr[utf8;]
+typ SmallUnsigned: int[u8;];
+typ Float32: flt[f32;];
+typ UtfChar: chr[utf8;];

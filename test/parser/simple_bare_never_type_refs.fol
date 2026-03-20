@@ -1,5 +1,5 @@
-typ Bottom: nev
+typ Bottom: nev;
 
 fun crash(): nev = {
     panic "boom";
-}
+};

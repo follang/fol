@@ -5,4 +5,4 @@ fun loop_inferred_ok(limit: int): str / str = {
     }
 
     return "done";
-}
+};

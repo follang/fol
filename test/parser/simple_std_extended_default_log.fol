@@ -1,4 +1,4 @@
 std geometry: ext = {
-    log valid(): bol = { return true }
+    log valid(): bol = { return true; };
     var color: rgb;
-}
+};

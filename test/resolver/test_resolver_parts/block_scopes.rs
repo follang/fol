@@ -8,7 +8,7 @@ fn test_resolver_builds_block_scopes_and_allows_shadowing() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    var value = 1;\n    {\n        var value = 2;\n        return value;\n    }\n}\n",
+        "fun[] main(): int = {\n    var value = 1;\n    {\n        var value = 2;\n        return value;\n    };\n};\n",
     )
     .expect("Should write the block shadowing fixture");
 
@@ -63,7 +63,7 @@ fn test_resolver_rejects_same_scope_duplicate_local_bindings() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    var value = 1;\n    var value = 2;\n    return value;\n}\n",
+        "fun[] main(): int = {\n    var value = 1;\n    var value = 2;\n    return value;\n};\n",
     )
     .expect("Should write the duplicate local binding fixture");
 
@@ -91,7 +91,7 @@ fn test_resolver_rejects_use_before_bind_in_local_initializers() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    var first = second;\n    var second = 2;\n    return first;\n}\n",
+        "fun[] main(): int = {\n    var first = second;\n    var second = 2;\n    return first;\n};\n",
     )
     .expect("Should write the use-before-bind fixture");
 

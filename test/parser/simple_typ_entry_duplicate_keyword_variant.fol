@@ -1,4 +1,4 @@
 typ Events: ent = {
     var get: int;
     var get: str;
-}
+};

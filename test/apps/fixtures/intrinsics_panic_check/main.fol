@@ -3,9 +3,9 @@ fun[] fail(flag: bol): int / str = {
         case(true) { report "bad-input"; }
         * { return 7; }
     }
-}
+};
 
 fun[] main(): int = {
     var failed: bol = check(fail(true));
     panic "panic-from-check";
-}
+};

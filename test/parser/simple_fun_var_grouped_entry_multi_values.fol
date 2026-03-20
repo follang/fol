@@ -4,4 +4,4 @@ fun demo(): int = {
         shared_a, shared_b: int = 3,
     );
     return left;
-}
+};

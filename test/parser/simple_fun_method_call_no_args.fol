@@ -2,4 +2,4 @@ fun method_zero(obj: int): int = {
     obj.start();
     obj.stop();
     return obj.done();
-}
+};

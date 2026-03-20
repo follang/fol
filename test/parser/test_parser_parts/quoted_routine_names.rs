@@ -46,7 +46,7 @@ fn test_quoted_routine_names_preserve_inner_opposite_quote_chars() {
     let fixture = temp_root.join("quoted_routine_inner_quotes.fol");
     fs::write(
         &fixture,
-        "fun \"'$'\"(): int = { return 1; }\nfun '\"%\"'(): int = { return 2; }\n",
+        "fun \"'$'\"(): int = { return 1; };\nfun '\"%\"'(): int = { return 2; };\n",
     )
     .expect("Should write temp quoted-routine fixture");
 

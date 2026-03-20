@@ -3,4 +3,4 @@ fun choose_if_no_else(a: int, b: int): int = {
         return a;
     }
     return b;
-}
+};

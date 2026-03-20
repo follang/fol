@@ -1,2 +1,2 @@
-use[export; normal;] math: mod = {"std/math"}
-use[hidden;] cache: mod = {"std/cache"}
+use[export; normal;] math: mod = {"std/math"};
+use[hidden;] cache: mod = {"std/cache"};

@@ -158,7 +158,7 @@ fn test_generic_headers_preserve_inner_opposite_quote_chars() {
     let fixture = temp_root.join("inner_quotes.fol");
     fs::write(
         &fixture,
-        "fun demo(\"g'et\", 'it\"em')(value: int): int = {\n    return value;\n}\ntyp Box(\"g'et\", 'it\"em'): rec = {\n    value: int;\n}\nimp(\"g'et\", 'it\"em') Self: Pair = {\n    fun run(): int = {\n        return 1;\n    }\n}\n",
+        "fun demo(\"g'et\", 'it\"em')(value: int): int = {\n    return value;\n};\ntyp Box(\"g'et\", 'it\"em'): rec = {\n    value: int;\n};\nimp(\"g'et\", 'it\"em') Self: Pair = {\n    fun run(): int = {\n        return 1;\n    };\n};\n",
     )
     .expect("Should write temp generic fixture");
 

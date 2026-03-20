@@ -1,14 +1,14 @@
-typ Parser: rec = { }
+typ Parser: rec = { };
 
 fun caller_forward_keyword_method_overload_mismatch(tool: Parser, a: int, b: int): int / str = {
     report tool.log(a, b);
     return 0;
-}
+};
 
 fun (Parser)log(code: int): str = {
     return "ok";
-}
+};
 
 fun (Parser)log(code: int, mode: int): int = {
     return code + mode;
-}
+};

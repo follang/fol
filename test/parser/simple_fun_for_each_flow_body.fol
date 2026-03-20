@@ -2,4 +2,4 @@ fun[] iter_flow(items: seq[int]): int = {
     for(item in items) => item;
     each(current in items) => current;
     return 0;
-}
+};

@@ -2,4 +2,4 @@ imp Self: ID = {
     fun ready(): bol = {
         return true;
     }
-}
+};

@@ -2,4 +2,4 @@ fun inspect(): int = {
     return 1;
 } where(pkg::cache, sys::sink) {
     pkg::cache;
-}
+};

@@ -8,7 +8,7 @@ fn test_resolver_select_bindings_are_scoped_to_select_bodies() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "pro main(channel: int): int = {\n    select(channel as current) {\n        return current;\n    }\n}\n",
+        "pro main(channel: int): int = {\n    select(channel as current) {\n        return current;\n    }\n};\n",
     )
     .expect("Should write the select binding fixture");
 
@@ -59,7 +59,7 @@ fn test_resolver_select_bindings_do_not_leak_outside_select_bodies() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "pro main(channel: int): int = {\n    select(channel as current) {\n        return current;\n    }\n    return current;\n}\n",
+        "pro main(channel: int): int = {\n    select(channel as current) {\n        return current;\n    }\n    return current;\n};\n",
     )
     .expect("Should write the leaking select binding fixture");
 
@@ -88,7 +88,7 @@ fn test_resolver_audit_surfaces_resolve_type_hints_and_when_of_types() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "typ Item: int;\nfun build(items: vec[int], value: any): int = {\n    for(var item: Item; item in items) {\n        item;\n    }\n    var built: vec[int] = { entry for var entry: Item in items };\n    when(value) {\n        of(Item) { return 1; }\n        { return 0; }\n    }\n}\n",
+        "typ Item: int;\nfun build(items: vec[int], value: any): int = {\n    for(var item: Item; item in items) {\n        item;\n    };\n    var built: vec[int] = { entry for var entry: Item in items };\n    when(value) {\n        of(Item) { return 1; };\n        { return 0; };\n    }\n};\n",
     )
     .expect("Should write the audited type-surface fixture");
 
@@ -127,7 +127,7 @@ fn test_resolver_audit_surfaces_reject_missing_types_in_when_of_cases() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun build(value: any): int = {\n    when(value) {\n        of(Missing) { return 1; }\n        { return 0; }\n    }\n}\n",
+        "fun build(value: any): int = {\n    when(value) {\n        of(Missing) { return 1; };\n        { return 0; };\n    }\n};\n",
     )
     .expect("Should write the missing when-of type fixture");
 

@@ -8,7 +8,7 @@ fn test_resolver_binds_iteration_loop_names_inside_loop_scope() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(items: seq[int], limit: int): int = {\n    loop(item in items when item < limit) {\n        return item;\n    }\n    return limit;\n}\n",
+        "fun[] main(items: seq[int], limit: int): int = {\n    loop(item in items when item < limit) {\n        return item;\n    }\n    return limit;\n};\n",
     )
     .expect("Should write the loop-binder resolver fixture");
 
@@ -52,7 +52,7 @@ fn test_resolver_rejects_iteration_loop_binders_outside_the_loop() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(items: seq[int]): int = {\n    loop(item in items) {\n        return item;\n    }\n    return item;\n}\n",
+        "fun[] main(items: seq[int]): int = {\n    loop(item in items) {\n        return item;\n    }\n    return item;\n};\n",
     )
     .expect("Should write the loop-binder visibility fixture");
 

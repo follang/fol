@@ -5,16 +5,16 @@ fun[] maybe(flag: bol): MaybeScore = {
         case(true) { return 7; }
         * { return nil; }
     }
-}
+};
 
 fun[] load(flag: bol): int / str = {
     when(flag) {
         case(true) { report "bad-input"; }
         * { return 7; }
     }
-}
+};
 
 fun[] main(flag: bol): int = {
     var shell_value: int = maybe(true)!;
     return load(flag) || shell_value;
-}
+};

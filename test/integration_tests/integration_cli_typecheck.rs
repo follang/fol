@@ -49,8 +49,8 @@ use super::*;
         fs::create_dir_all(&app_root).expect("Should create app fixture root");
         fs::write(
             shared_root.join("types.fol"),
-            "typ[exp] Meta: rec = {\n    ok: bol\n}\n\
-             typ[exp] User: rec = {\n    meta: Meta\n}\n",
+            "typ[exp] Meta: rec = {\n    ok: bol\n};\n\
+             typ[exp] User: rec = {\n    meta: Meta\n};\n",
         )
         .expect("Should write imported aggregate fixture");
         fs::write(
@@ -58,7 +58,7 @@ use super::*;
             "use shared: loc = {\"../shared\"};\n\
              fun[] main(): shared::User = {\n\
                  return { meta = { ok = 1 } };\n\
-             }\n",
+             };\n",
         )
         .expect("Should write imported aggregate consumer fixture");
 
@@ -134,7 +134,7 @@ use super::*;
 
         let temp_root = unique_temp_root("cli_typecheck_error_json");
         fs::create_dir_all(&temp_root).expect("Should create temp CLI typecheck JSON fixture");
-        fs::write(temp_root.join("main.fol"), "var[bor] borrowed: int = 1\n")
+        fs::write(temp_root.join("main.fol"), "var[bor] borrowed: int = 1;\n")
             .expect("Should write the unsupported typecheck fixture");
 
         let output = run_fol(&[
@@ -183,7 +183,7 @@ use super::*;
         fs::create_dir_all(&temp_root).expect("Should create temp CLI invalid check fixture");
         fs::write(
             temp_root.join("main.fol"),
-            "fun[] main(): bol = {\n    return check(1);\n}\n",
+            "fun[] main(): bol = {\n    return check(1);\n};\n",
         )
         .expect("Should write invalid check fixture");
 
@@ -217,7 +217,7 @@ use super::*;
             .expect("Should create temp CLI keyword intrinsic arity fixture");
         fs::write(
             temp_root.join("main.fol"),
-            "fun[] main(): bol = {\n    return check();\n}\n",
+            "fun[] main(): bol = {\n    return check();\n};\n",
         )
         .expect("Should write invalid keyword intrinsic arity fixture");
 
@@ -271,10 +271,10 @@ use super::*;
             "fun[] load(): int / str = {\n\
                  report \"bad\";\n\
                  return 1;\n\
-             }\n\
+             };\n\
              fun[] main(): int = {\n\
                  return load() || \"fallback\";\n\
-             }\n",
+             };\n",
         )
         .expect("Should write pipe-or JSON fixture");
 
@@ -373,7 +373,7 @@ use super::*;
         fs::create_dir_all(&temp_root).expect("Should create nil fixture root");
         fs::write(
             temp_root.join("main.fol"),
-            "ali MaybeText: opt[str]\nvar label = nil\n",
+            "ali MaybeText: opt[str];\nvar label = nil;\n",
         )
         .expect("Should write nil fixture");
 
@@ -422,13 +422,13 @@ use super::*;
             temp_root.join("main.fol"),
             "typ Meta: rec = {\n\
                  ok: bol\n\
-             }\n\
+             };\n\
              typ User: rec = {\n\
                  meta: Meta\n\
-             }\n\
+             };\n\
              fun[] main(): User = {\n\
                  return { meta = { ok = 1 } };\n\
-             }\n",
+             };\n",
         )
         .expect("Should write nested record mismatch fixture");
 
@@ -491,12 +491,12 @@ use super::*;
         fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
         fs::write(
             loc_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         )
             .expect("Should write formal package control file");
         fs::write(
             app_root.join("main.fol"),
-            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write package fixture");
         let package_output = run_fol(&[
@@ -528,7 +528,7 @@ use super::*;
         .expect("Should write second imported exported value fixture");
         fs::write(
             resolver_root.join("main.fol"),
-            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write resolver fixture");
         let resolver_output = run_fol(&[
@@ -640,7 +640,7 @@ use super::*;
         let first = temp_root.join("00_good.fol");
         let second = temp_root.join("10_bad.fol");
         fs::create_dir_all(&temp_root).expect("Should create temp parser error fixture dir");
-        fs::write(&first, "var ok = 1\n").expect("Should write first source");
+        fs::write(&first, "var ok = 1;\n").expect("Should write first source");
         fs::write(&second, "\"unterminated").expect("Should write malformed second source");
 
         let mut file_stream = FileStream::from_folder(
@@ -889,7 +889,7 @@ use super::*;
         let lockfile = app_root.join("fol.lock");
         let pinned_before = read_lock_revision(&lockfile);
 
-        fs::write(remote_root.join("src/lib.fol"), "var[exp] level: int = 2\n")
+        fs::write(remote_root.join("src/lib.fol"), "var[exp] level: int = 2;\n")
             .expect("Should update remote source");
         for args in [vec!["add", "."], vec!["commit", "-m", "bump"]] {
             let status = Command::new("git")

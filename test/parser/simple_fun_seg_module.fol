@@ -3,4 +3,4 @@ fun demo(): int = {
         def helper: blk[] = { }
     };
     return 1;
-}
+};

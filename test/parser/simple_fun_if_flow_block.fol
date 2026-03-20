@@ -7,4 +7,4 @@ fun fallback(value: int): int = {
         var local: int = 0;
         return local;
     }
-}
+};

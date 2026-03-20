@@ -44,7 +44,7 @@ fn parse_first_error_from_source(source: &str) -> fol_diagnostics::Diagnostic {
 #[test]
 fn test_anonymous_logical_missing_open_paren_uses_logical_wording() {
     let error =
-        parse_first_error_from_source("fun host(): bool = { return log[] value: bool => value; }\n");
+        parse_first_error_from_source("fun host(): bool = { return log[] value: bool => value; };\n");
 
     assert!(
         error
@@ -58,7 +58,7 @@ fn test_anonymous_logical_missing_open_paren_uses_logical_wording() {
 #[test]
 fn test_anonymous_logical_untyped_parameter_uses_logical_wording() {
     let error = parse_first_error_from_source(
-        "fun host(): bool = { return log[] (value): bool => value; }\n",
+        "fun host(): bool = { return log[] (value): bool => value; };\n",
     );
 
     assert!(
@@ -73,7 +73,7 @@ fn test_anonymous_logical_untyped_parameter_uses_logical_wording() {
 #[test]
 fn test_anonymous_logical_missing_body_separator_uses_logical_wording() {
     let error = parse_first_error_from_source(
-        "fun host(): bool = { return log[] (value: bool): bool value; }\n",
+        "fun host(): bool = { return log[] (value: bool): bool value; };\n",
     );
 
     assert!(

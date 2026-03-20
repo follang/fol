@@ -4,4 +4,4 @@ fun classify(value: any): int = {
         of(map[str, vec[pkg::Output]]) { return 2; }
         { return 0; }
     }
-}
+};

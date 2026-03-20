@@ -1,1 +1,1 @@
-typ BrokenBytes: arr[int, size]
+typ BrokenBytes: arr[int, size];

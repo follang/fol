@@ -1,1 +1,1 @@
-typ Grid: mat[int; 3; 4;]
+typ Grid: mat[int; 3; 4;];

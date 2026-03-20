@@ -134,7 +134,6 @@ impl AstParser {
             StandardKind::Blueprint => self.parse_standard_blueprint_body(tokens)?,
             StandardKind::Extended => self.parse_standard_extended_body(tokens)?,
         };
-        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::StdDecl {
             options,
@@ -181,6 +180,7 @@ impl AstParser {
             ) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let member = self.parse_standard_routine_signature(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 let key = self.standard_member_key(&member);
                 if !seen_members.insert(self.standard_member_comparison_key(&member)) {
                     return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
@@ -192,6 +192,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let member = self.parse_alias_decl(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 let key = self.standard_member_key(&member);
                 if !seen_members.insert(self.standard_member_comparison_key(&member)) {
                     return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
@@ -213,13 +214,14 @@ impl AstParser {
                     }
                     body.push(member);
                 }
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_con_decl(tokens)?;
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -282,7 +284,7 @@ impl AstParser {
             if self.lookahead_binding_alternative(tokens).is_some() {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -300,7 +302,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_var_decl(tokens)?;
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -318,7 +320,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Lab)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_lab_decl(tokens)?;
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -336,7 +338,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_con_decl(tokens)?;
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -359,6 +361,7 @@ impl AstParser {
             ) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let member = self.parse_standard_routine_signature(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 let key = self.standard_member_key(&member);
                 if !seen_members.insert(self.standard_member_comparison_key(&member)) {
                     return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
@@ -370,6 +373,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let member = self.parse_alias_decl(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 let key = self.standard_member_key(&member);
                 if !seen_members.insert(self.standard_member_comparison_key(&member)) {
                     return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
@@ -391,61 +395,14 @@ impl AstParser {
                     }
                     body.push(member);
                 }
-                continue;
-            }
-
-            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
-                let member_anchor = self.peek_standard_member_anchor_token(tokens);
-                for member in self.parse_type_decl(tokens)? {
-                    let key = self.standard_member_key(&member);
-                    if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(
-                            member_anchor,
-                            &token,
-                            &key,
-                        ));
-                    }
-                    body.push(member);
-                }
-                continue;
-            }
-
-            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
-                let member_anchor = self.peek_standard_member_anchor_token(tokens);
-                for member in self.parse_type_decl(tokens)? {
-                    let key = self.standard_member_key(&member);
-                    if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(
-                            member_anchor,
-                            &token,
-                            &key,
-                        ));
-                    }
-                    body.push(member);
-                }
-                continue;
-            }
-
-            if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Typ)) {
-                let member_anchor = self.peek_standard_member_anchor_token(tokens);
-                for member in self.parse_type_decl(tokens)? {
-                    let key = self.standard_member_key(&member);
-                    if !seen_members.insert(self.standard_member_comparison_key(&member)) {
-                        return Err(self.duplicate_standard_member_error(
-                            member_anchor,
-                            &token,
-                            &key,
-                        ));
-                    }
-                    body.push(member);
-                }
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if self.lookahead_binding_alternative(tokens).is_some() {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -513,6 +470,7 @@ impl AstParser {
             ) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let member = self.parse_standard_routine_signature(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 let key = self.standard_member_key(&member);
                 if !seen_members.insert(self.standard_member_comparison_key(&member)) {
                     return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
@@ -524,7 +482,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Var)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_var_decl(tokens)?;
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -542,7 +500,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Lab)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_lab_decl(tokens)?;
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -560,7 +518,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Con)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_con_decl(tokens)?;
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -578,6 +536,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Keyword(BUILDIN::Ali)) {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let member = self.parse_alias_decl(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 let key = self.standard_member_key(&member);
                 if !seen_members.insert(self.standard_member_comparison_key(&member)) {
                     return Err(self.duplicate_standard_member_error(member_anchor, &token, &key));
@@ -599,13 +558,14 @@ impl AstParser {
                     }
                     body.push(member);
                 }
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if self.lookahead_binding_alternative(tokens).is_some() {
                 let member_anchor = self.peek_standard_member_anchor_token(tokens);
                 let members = self.parse_binding_alternative_decl(tokens)?;
-                self.consume_optional_semicolon(tokens)?;
+                self.consume_required_semicolon(tokens)?;
                 for member in members {
                     let key = self.standard_member_key(&member);
                     if !seen_members.insert(self.standard_member_comparison_key(&member)) {
@@ -676,8 +636,8 @@ impl AstParser {
         let mut inquiries = Vec::new();
         let next = tokens.curr(false)?;
         match next.key() {
-            KEYWORD::Symbol(SYMBOL::Semi) => {
-                let _ = tokens.bump();
+            KEYWORD::Symbol(SYMBOL::Semi) | KEYWORD::Symbol(SYMBOL::CurlyC) => {
+                // Signature-only: semicolon consumed by dispatch caller
             }
             KEYWORD::Symbol(SYMBOL::Equal) | KEYWORD::Operator(OPERATOR::Flow) => {
                 if matches!(next.key(), KEYWORD::Symbol(SYMBOL::Equal)) {

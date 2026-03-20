@@ -34,7 +34,7 @@ use super::*;
         fs::create_dir_all(&temp_root).expect("Should create fixture dir");
         fs::write(
             temp_root.join("main.fol"),
-            "fun[] main(): int = {\n    return missing;\n}\n",
+            "fun[] main(): int = {\n    return missing;\n};\n",
         )
         .expect("Should write unresolved fixture");
 
@@ -63,7 +63,7 @@ use super::*;
         fs::create_dir_all(&temp_root).expect("Should create fixture dir");
         fs::write(
             temp_root.join("main.fol"),
-            "var[bor] borrowed: int = 1\n",
+            "var[bor] borrowed: int = 1;\n",
         )
         .expect("Should write typecheck fixture");
 
@@ -104,7 +104,7 @@ use super::*;
         fs::create_dir_all(&temp_root).expect("Should create fixture dir");
         fs::write(
             temp_root.join("main.fol"),
-            "fun[] main(): int = {\n    return missing;\n}\n",
+            "fun[] main(): int = {\n    return missing;\n};\n",
         )
         .expect("Should write fixture");
 
@@ -137,7 +137,7 @@ use super::*;
         fs::create_dir_all(&temp_root).expect("Should create fixture dir");
         fs::write(
             temp_root.join("main.fol"),
-            "fun[] main(): int = {\n    return missing;\n}\n",
+            "fun[] main(): int = {\n    return missing;\n};\n",
         )
         .expect("Should write fixture");
 

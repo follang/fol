@@ -1,4 +1,4 @@
 std geometry: ext = {
-    pro reset(): non = { return 0 }
+    pro reset(): non = { return 0; };
     var color: rgb;
-}
+};

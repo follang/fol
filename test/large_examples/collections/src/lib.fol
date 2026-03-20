@@ -13,7 +13,7 @@ typ[exp] Stack: rec = {
     items: seq[int];
     capacity: int;
     name: str
-}
+};
 
 fun[exp] stack_new(name: str, capacity: int): Stack = {
     return {
@@ -21,19 +21,19 @@ fun[exp] stack_new(name: str, capacity: int): Stack = {
         capacity = capacity,
         name = name,
     };
-}
+};
 
 fun[exp] stack_empty(stack: Stack): bol = {
     return .eq(.len(stack.items), 0);
-}
+};
 
 fun[exp] stack_full(stack: Stack): bol = {
     return .ge(.len(stack.items), stack.capacity);
-}
+};
 
 fun[exp] stack_size(stack: Stack): int = {
     return .len(stack.items);
-}
+};
 
 fun[exp] stack_push(stack: Stack, value: int): Stack / str = {
     when(stack_full(stack)) {
@@ -46,19 +46,19 @@ fun[exp] stack_push(stack: Stack, value: int): Stack / str = {
             };
         }
     }
-}
+};
 
 fun[exp] stack_push_safe(stack: Stack, value: int): Stack = {
     return stack_push(stack, value) || stack;
-}
+};
 
 fun[exp] stack_name(stack: Stack): str = {
     return stack.name;
-}
+};
 
 fun[exp] stack_capacity(stack: Stack): int = {
     return stack.capacity;
-}
+};
 
 fun[exp] stack_describe(stack: Stack): str = {
     when(stack_empty(stack)) {
@@ -70,15 +70,15 @@ fun[exp] stack_describe(stack: Stack): str = {
             }
         }
     }
-}
+};
 
 fun[exp] stack_can_push(stack: Stack): bol = {
     return .not(stack_full(stack));
-}
+};
 
 fun[exp] stack_matches_name(stack: Stack, target: str): bol = {
     return .eq(stack.name, target);
-}
+};
 
 // ---------------------------------------------------------------------------
 // Queue — FIFO container backed by seq
@@ -89,7 +89,7 @@ typ[exp] Queue: rec = {
     max_size: int;
     label: str;
     priority: int
-}
+};
 
 fun[exp] queue_new(label: str, max_size: int): Queue = {
     return {
@@ -98,7 +98,7 @@ fun[exp] queue_new(label: str, max_size: int): Queue = {
         label = label,
         priority = 0,
     };
-}
+};
 
 fun[exp] queue_with_priority(label: str, max_size: int, priority: int): Queue = {
     return {
@@ -107,19 +107,19 @@ fun[exp] queue_with_priority(label: str, max_size: int, priority: int): Queue = 
         label = label,
         priority = priority,
     };
-}
+};
 
 fun[exp] queue_empty(queue: Queue): bol = {
     return .eq(.len(queue.items), 0);
-}
+};
 
 fun[exp] queue_full(queue: Queue): bol = {
     return .ge(.len(queue.items), queue.max_size);
-}
+};
 
 fun[exp] queue_size(queue: Queue): int = {
     return .len(queue.items);
-}
+};
 
 fun[exp] queue_enqueue(queue: Queue, value: str): Queue / str = {
     when(queue_full(queue)) {
@@ -133,23 +133,23 @@ fun[exp] queue_enqueue(queue: Queue, value: str): Queue / str = {
             };
         }
     }
-}
+};
 
 fun[exp] queue_enqueue_safe(queue: Queue, value: str): Queue = {
     return queue_enqueue(queue, value) || queue;
-}
+};
 
 fun[exp] queue_label(queue: Queue): str = {
     return queue.label;
-}
+};
 
 fun[exp] queue_priority(queue: Queue): int = {
     return queue.priority;
-}
+};
 
 fun[exp] queue_high_priority(queue: Queue): bol = {
     return .gt(queue.priority, 5);
-}
+};
 
 fun[exp] queue_describe(queue: Queue): str = {
     when(queue_empty(queue)) {
@@ -166,15 +166,15 @@ fun[exp] queue_describe(queue: Queue): str = {
             }
         }
     }
-}
+};
 
 fun[exp] queue_matches_label(queue: Queue, target: str): bol = {
     return .eq(queue.label, target);
-}
+};
 
 fun[exp] queue_can_accept(queue: Queue): bol = {
     return .not(queue_full(queue));
-}
+};
 
 // ---------------------------------------------------------------------------
 // Registry — named key-value store backed by map
@@ -185,14 +185,14 @@ typ[exp] RegistryEntry: rec = {
     value: int;
     active: bol;
     tag: str
-}
+};
 
 typ[exp] Registry: rec = {
     entries: map[str, int];
     name: str;
     max_entries: int;
     locked: bol
-}
+};
 
 fun[exp] registry_new(name: str, max_entries: int): Registry = {
     return {
@@ -201,7 +201,7 @@ fun[exp] registry_new(name: str, max_entries: int): Registry = {
         max_entries = max_entries,
         locked = false,
     };
-}
+};
 
 fun[exp] registry_locked(name: str, max_entries: int): Registry = {
     return {
@@ -210,23 +210,23 @@ fun[exp] registry_locked(name: str, max_entries: int): Registry = {
         max_entries = max_entries,
         locked = true,
     };
-}
+};
 
 fun[exp] registry_empty(reg: Registry): bol = {
     return .eq(.len(reg.entries), 0);
-}
+};
 
 fun[exp] registry_full(reg: Registry): bol = {
     return .ge(.len(reg.entries), reg.max_entries);
-}
+};
 
 fun[exp] registry_size(reg: Registry): int = {
     return .len(reg.entries);
-}
+};
 
 fun[exp] registry_is_locked(reg: Registry): bol = {
     return reg.locked;
-}
+};
 
 fun[exp] registry_put(reg: Registry, key: str, value: int): Registry / str = {
     when(reg.locked) {
@@ -245,15 +245,15 @@ fun[exp] registry_put(reg: Registry, key: str, value: int): Registry / str = {
             }
         }
     }
-}
+};
 
 fun[exp] registry_put_safe(reg: Registry, key: str, value: int): Registry = {
     return registry_put(reg, key, value) || reg;
-}
+};
 
 fun[exp] registry_name(reg: Registry): str = {
     return reg.name;
-}
+};
 
 fun[exp] registry_describe(reg: Registry): str = {
     when(reg.locked) {
@@ -270,7 +270,7 @@ fun[exp] registry_describe(reg: Registry): str = {
             }
         }
     }
-}
+};
 
 fun[exp] registry_can_write(reg: Registry): bol = {
     when(reg.locked) {
@@ -282,7 +282,7 @@ fun[exp] registry_can_write(reg: Registry): bol = {
         }
         * { return true; }
     }
-}
+};
 
 fun[exp] entry_new(key: str, value: int, tag: str): RegistryEntry = {
     return {
@@ -291,7 +291,7 @@ fun[exp] entry_new(key: str, value: int, tag: str): RegistryEntry = {
         active = true,
         tag = tag,
     };
-}
+};
 
 fun[exp] entry_deactivate(entry: RegistryEntry): RegistryEntry = {
     return {
@@ -300,7 +300,7 @@ fun[exp] entry_deactivate(entry: RegistryEntry): RegistryEntry = {
         active = false,
         tag = entry.tag,
     };
-}
+};
 
 fun[exp] entry_retag(entry: RegistryEntry, new_tag: str): RegistryEntry = {
     return {
@@ -309,15 +309,15 @@ fun[exp] entry_retag(entry: RegistryEntry, new_tag: str): RegistryEntry = {
         active = entry.active,
         tag = new_tag,
     };
-}
+};
 
 fun[exp] entry_active(entry: RegistryEntry): bol = {
     return entry.active;
-}
+};
 
 fun[exp] entry_matches_tag(entry: RegistryEntry, target: str): bol = {
     return .eq(entry.tag, target);
-}
+};
 
 fun[exp] entry_describe(entry: RegistryEntry): str = {
     when(entry.active) {
@@ -329,32 +329,32 @@ fun[exp] entry_describe(entry: RegistryEntry): str = {
         }
         * { return "inactive"; }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // PriorityBucket — groups items by priority level
 // ---------------------------------------------------------------------------
 
-ali Priority: int
+ali Priority: int;
 
-var[exp] PRIORITY_LOW: Priority = 0
-var[exp] PRIORITY_NORMAL: Priority = 1
-var[exp] PRIORITY_HIGH: Priority = 2
-var[exp] PRIORITY_CRITICAL: Priority = 3
+var[exp] PRIORITY_LOW: Priority = 0;
+var[exp] PRIORITY_NORMAL: Priority = 1;
+var[exp] PRIORITY_HIGH: Priority = 2;
+var[exp] PRIORITY_CRITICAL: Priority = 3;
 
 typ[exp] BucketItem: rec = {
     name: str;
     priority: Priority;
     weight: int;
     processed: bol
-}
+};
 
 typ[exp] Bucket: rec = {
     items: seq[str];
     level: Priority;
     label: str;
     max_items: int
-}
+};
 
 fun[exp] bucket_new(label: str, level: Priority, max_items: int): Bucket = {
     return {
@@ -363,31 +363,31 @@ fun[exp] bucket_new(label: str, level: Priority, max_items: int): Bucket = {
         label = label,
         max_items = max_items,
     };
-}
+};
 
 fun[exp] bucket_empty(bucket: Bucket): bol = {
     return .eq(.len(bucket.items), 0);
-}
+};
 
 fun[exp] bucket_full(bucket: Bucket): bol = {
     return .ge(.len(bucket.items), bucket.max_items);
-}
+};
 
 fun[exp] bucket_size(bucket: Bucket): int = {
     return .len(bucket.items);
-}
+};
 
 fun[exp] bucket_level(bucket: Bucket): Priority = {
     return bucket.level;
-}
+};
 
 fun[exp] bucket_is_critical(bucket: Bucket): bol = {
     return .eq(bucket.level, PRIORITY_CRITICAL);
-}
+};
 
 fun[exp] bucket_is_high(bucket: Bucket): bol = {
     return .ge(bucket.level, PRIORITY_HIGH);
-}
+};
 
 fun[exp] bucket_add(bucket: Bucket, name: str): Bucket / str = {
     when(bucket_full(bucket)) {
@@ -401,11 +401,11 @@ fun[exp] bucket_add(bucket: Bucket, name: str): Bucket / str = {
             };
         }
     }
-}
+};
 
 fun[exp] bucket_add_safe(bucket: Bucket, name: str): Bucket = {
     return bucket_add(bucket, name) || bucket;
-}
+};
 
 fun[exp] bucket_describe(bucket: Bucket): str = {
     when(bucket_empty(bucket)) {
@@ -432,15 +432,15 @@ fun[exp] bucket_describe(bucket: Bucket): str = {
             }
         }
     }
-}
+};
 
 fun[exp] bucket_label(bucket: Bucket): str = {
     return bucket.label;
-}
+};
 
 fun[exp] bucket_can_accept(bucket: Bucket): bol = {
     return .not(bucket_full(bucket));
-}
+};
 
 fun[exp] item_new(name: str, priority: Priority, weight: int): BucketItem = {
     return {
@@ -449,7 +449,7 @@ fun[exp] item_new(name: str, priority: Priority, weight: int): BucketItem = {
         weight = weight,
         processed = false,
     };
-}
+};
 
 fun[exp] item_mark_processed(item: BucketItem): BucketItem = {
     return {
@@ -458,7 +458,7 @@ fun[exp] item_mark_processed(item: BucketItem): BucketItem = {
         weight = item.weight,
         processed = true,
     };
-}
+};
 
 fun[exp] item_reprioritize(item: BucketItem, new_priority: Priority): BucketItem = {
     return {
@@ -467,23 +467,23 @@ fun[exp] item_reprioritize(item: BucketItem, new_priority: Priority): BucketItem
         weight = item.weight,
         processed = item.processed,
     };
-}
+};
 
 fun[exp] item_processed(item: BucketItem): bol = {
     return item.processed;
-}
+};
 
 fun[exp] item_is_critical(item: BucketItem): bol = {
     return .eq(item.priority, PRIORITY_CRITICAL);
-}
+};
 
 fun[exp] item_is_high_priority(item: BucketItem): bol = {
     return .ge(item.priority, PRIORITY_HIGH);
-}
+};
 
 fun[exp] item_is_heavy(item: BucketItem): bol = {
     return .gt(item.weight, 100);
-}
+};
 
 fun[exp] item_describe(item: BucketItem): str = {
     when(item.processed) {
@@ -500,22 +500,22 @@ fun[exp] item_describe(item: BucketItem): str = {
             }
         }
     }
-}
+};
 
 fun[exp] item_needs_attention(item: BucketItem): bol = {
     when(item_is_critical(item)) {
         case(true) { return .not(item.processed); }
         * { return false; }
     }
-}
+};
 
 fun[exp] item_weight(item: BucketItem): int = {
     return item.weight;
-}
+};
 
 fun[exp] item_name(item: BucketItem): str = {
     return item.name;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Counter — tracks counts per string key
@@ -525,7 +525,7 @@ typ[exp] Counter: rec = {
     counts: map[str, int];
     name: str;
     total: int
-}
+};
 
 fun[exp] counter_new(name: str): Counter = {
     return {
@@ -533,23 +533,23 @@ fun[exp] counter_new(name: str): Counter = {
         name = name,
         total = 0,
     };
-}
+};
 
 fun[exp] counter_empty(counter: Counter): bol = {
     return .eq(.len(counter.counts), 0);
-}
+};
 
 fun[exp] counter_key_count(counter: Counter): int = {
     return .len(counter.counts);
-}
+};
 
 fun[exp] counter_total(counter: Counter): int = {
     return counter.total;
-}
+};
 
 fun[exp] counter_name(counter: Counter): str = {
     return counter.name;
-}
+};
 
 fun[exp] counter_describe(counter: Counter): str = {
     when(counter_empty(counter)) {
@@ -566,7 +566,7 @@ fun[exp] counter_describe(counter: Counter): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Pair — simple key-value pair
@@ -575,30 +575,30 @@ fun[exp] counter_describe(counter: Counter): str = {
 typ[exp] Pair: rec = {
     first: str;
     second: int
-}
+};
 
 fun[exp] pair_new(first: str, second: int): Pair = {
     return {
         first = first,
         second = second,
     };
-}
+};
 
 fun[exp] pair_first(pair: Pair): str = {
     return pair.first;
-}
+};
 
 fun[exp] pair_second(pair: Pair): int = {
     return pair.second;
-}
+};
 
 fun[exp] pair_matches_first(pair: Pair, target: str): bol = {
     return .eq(pair.first, target);
-}
+};
 
 fun[exp] pair_has_positive_value(pair: Pair): bol = {
     return .gt(pair.second, 0);
-}
+};
 
 fun[exp] pair_describe(pair: Pair): str = {
     when(pair_has_positive_value(pair)) {
@@ -610,7 +610,7 @@ fun[exp] pair_describe(pair: Pair): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // TagSet — manages a set of string tags
@@ -620,7 +620,7 @@ typ[exp] TagSet: rec = {
     tags: seq[str];
     max_tags: int;
     category: str
-}
+};
 
 fun[exp] tagset_new(category: str, max_tags: int): TagSet = {
     return {
@@ -628,19 +628,19 @@ fun[exp] tagset_new(category: str, max_tags: int): TagSet = {
         max_tags = max_tags,
         category = category,
     };
-}
+};
 
 fun[exp] tagset_empty(ts: TagSet): bol = {
     return .eq(.len(ts.tags), 0);
-}
+};
 
 fun[exp] tagset_full(ts: TagSet): bol = {
     return .ge(.len(ts.tags), ts.max_tags);
-}
+};
 
 fun[exp] tagset_size(ts: TagSet): int = {
     return .len(ts.tags);
-}
+};
 
 fun[exp] tagset_add(ts: TagSet, tag: str): TagSet / str = {
     when(tagset_full(ts)) {
@@ -653,15 +653,15 @@ fun[exp] tagset_add(ts: TagSet, tag: str): TagSet / str = {
             };
         }
     }
-}
+};
 
 fun[exp] tagset_add_safe(ts: TagSet, tag: str): TagSet = {
     return tagset_add(ts, tag) || ts;
-}
+};
 
 fun[exp] tagset_category(ts: TagSet): str = {
     return ts.category;
-}
+};
 
 fun[exp] tagset_describe(ts: TagSet): str = {
     when(tagset_empty(ts)) {
@@ -673,7 +673,7 @@ fun[exp] tagset_describe(ts: TagSet): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Scored — wraps a value with a score for ranking
@@ -684,7 +684,7 @@ typ[exp] Scored: rec = {
     score: int;
     rank: int;
     valid: bol
-}
+};
 
 fun[exp] scored_new(label: str, score: int): Scored = {
     return {
@@ -693,7 +693,7 @@ fun[exp] scored_new(label: str, score: int): Scored = {
         rank = 0,
         valid = true,
     };
-}
+};
 
 fun[exp] scored_with_rank(label: str, score: int, rank: int): Scored = {
     return {
@@ -702,7 +702,7 @@ fun[exp] scored_with_rank(label: str, score: int, rank: int): Scored = {
         rank = rank,
         valid = true,
     };
-}
+};
 
 fun[exp] scored_invalidate(s: Scored): Scored = {
     return {
@@ -711,7 +711,7 @@ fun[exp] scored_invalidate(s: Scored): Scored = {
         rank = s.rank,
         valid = false,
     };
-}
+};
 
 fun[exp] scored_update_rank(s: Scored, new_rank: int): Scored = {
     return {
@@ -720,38 +720,38 @@ fun[exp] scored_update_rank(s: Scored, new_rank: int): Scored = {
         rank = new_rank,
         valid = s.valid,
     };
-}
+};
 
 fun[exp] scored_valid(s: Scored): bol = {
     return s.valid;
-}
+};
 
 fun[exp] scored_label(s: Scored): str = {
     return s.label;
-}
+};
 
 fun[exp] scored_score(s: Scored): int = {
     return s.score;
-}
+};
 
 fun[exp] scored_rank(s: Scored): int = {
     return s.rank;
-}
+};
 
 fun[exp] scored_is_top(s: Scored): bol = {
     when(s.valid) {
         case(true) { return .le(s.rank, 3); }
         * { return false; }
     }
-}
+};
 
 fun[exp] scored_is_high(s: Scored): bol = {
     return .gt(s.score, 90);
-}
+};
 
 fun[exp] scored_is_passing(s: Scored): bol = {
     return .ge(s.score, 50);
-}
+};
 
 fun[exp] scored_describe(s: Scored): str = {
     when(s.valid) {
@@ -768,15 +768,15 @@ fun[exp] scored_describe(s: Scored): str = {
         }
         * { return "invalid"; }
     }
-}
+};
 
 fun[exp] scored_beats(a: Scored, b: Scored): bol = {
     return .gt(a.score, b.score);
-}
+};
 
 fun[exp] scored_same_tier(a: Scored, b: Scored): bol = {
     return .eq(scored_describe(a), scored_describe(b));
-}
+};
 
 // ---------------------------------------------------------------------------
 // Batch — groups items for batch processing
@@ -788,7 +788,7 @@ typ[exp] Batch: rec = {
     status: str;
     retries: int;
     max_retries: int
-}
+};
 
 fun[exp] batch_new(batch_id: int, max_retries: int): Batch = {
     return {
@@ -798,43 +798,43 @@ fun[exp] batch_new(batch_id: int, max_retries: int): Batch = {
         retries = 0,
         max_retries = max_retries,
     };
-}
+};
 
 fun[exp] batch_empty(batch: Batch): bol = {
     return .eq(.len(batch.items), 0);
-}
+};
 
 fun[exp] batch_size(batch: Batch): int = {
     return .len(batch.items);
-}
+};
 
 fun[exp] batch_id(batch: Batch): int = {
     return batch.batch_id;
-}
+};
 
 fun[exp] batch_status(batch: Batch): str = {
     return batch.status;
-}
+};
 
 fun[exp] batch_retries(batch: Batch): int = {
     return batch.retries;
-}
+};
 
 fun[exp] batch_is_pending(batch: Batch): bol = {
     return .eq(batch.status, "pending");
-}
+};
 
 fun[exp] batch_is_done(batch: Batch): bol = {
     return .eq(batch.status, "done");
-}
+};
 
 fun[exp] batch_is_failed(batch: Batch): bol = {
     return .eq(batch.status, "failed");
-}
+};
 
 fun[exp] batch_can_retry(batch: Batch): bol = {
     return .lt(batch.retries, batch.max_retries);
-}
+};
 
 fun[exp] batch_mark_done(batch: Batch): Batch = {
     return {
@@ -844,7 +844,7 @@ fun[exp] batch_mark_done(batch: Batch): Batch = {
         retries = batch.retries,
         max_retries = batch.max_retries,
     };
-}
+};
 
 fun[exp] batch_mark_failed(batch: Batch): Batch = {
     return {
@@ -854,7 +854,7 @@ fun[exp] batch_mark_failed(batch: Batch): Batch = {
         retries = batch.retries,
         max_retries = batch.max_retries,
     };
-}
+};
 
 fun[exp] batch_add_item(batch: Batch, item: str): Batch = {
     return {
@@ -864,7 +864,7 @@ fun[exp] batch_add_item(batch: Batch, item: str): Batch = {
         retries = batch.retries,
         max_retries = batch.max_retries,
     };
-}
+};
 
 fun[exp] batch_describe(batch: Batch): str = {
     when(batch_is_done(batch)) {
@@ -886,7 +886,7 @@ fun[exp] batch_describe(batch: Batch): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Span — represents a range with start/end
@@ -896,7 +896,7 @@ typ[exp] Span: rec = {
     start: int;
     end_pos: int;
     label: str
-}
+};
 
 fun[exp] span_new(start: int, end_pos: int, label: str): Span = {
     return {
@@ -904,41 +904,41 @@ fun[exp] span_new(start: int, end_pos: int, label: str): Span = {
         end_pos = end_pos,
         label = label,
     };
-}
+};
 
 fun[exp] span_start(s: Span): int = {
     return s.start;
-}
+};
 
 fun[exp] span_end(s: Span): int = {
     return s.end_pos;
-}
+};
 
 fun[exp] span_label(s: Span): str = {
     return s.label;
-}
+};
 
 fun[exp] span_is_empty(s: Span): bol = {
     return .eq(s.start, s.end_pos);
-}
+};
 
 fun[exp] span_contains_point(s: Span, point: int): bol = {
     when(.ge(point, s.start)) {
         case(true) { return .lt(point, s.end_pos); }
         * { return false; }
     }
-}
+};
 
 fun[exp] span_starts_before(a: Span, b: Span): bol = {
     return .lt(a.start, b.start);
-}
+};
 
 fun[exp] span_overlaps(a: Span, b: Span): bol = {
     when(.lt(a.start, b.end_pos)) {
         case(true) { return .gt(a.end_pos, b.start); }
         * { return false; }
     }
-}
+};
 
 fun[exp] span_describe(s: Span): str = {
     when(span_is_empty(s)) {
@@ -955,7 +955,7 @@ fun[exp] span_describe(s: Span): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Integration — combines multiple collection types
@@ -964,22 +964,22 @@ fun[exp] span_describe(s: Span): str = {
 fun[exp] build_stack_and_describe(name: str, cap: int): str = {
     var s: Stack = stack_new(name, cap);
     return stack_describe(s);
-}
+};
 
 fun[exp] build_queue_and_describe(label: str, size: int): str = {
     var q: Queue = queue_new(label, size);
     return queue_describe(q);
-}
+};
 
 fun[exp] build_registry_and_describe(name: str, max: int): str = {
     var r: Registry = registry_new(name, max);
     return registry_describe(r);
-}
+};
 
 fun[exp] build_bucket_and_describe(label: str, level: Priority, max: int): str = {
     var b: Bucket = bucket_new(label, level, max);
     return bucket_describe(b);
-}
+};
 
 fun[exp] create_sample_stack(): Stack = {
     var s: Stack = stack_new("sample", 10);
@@ -987,28 +987,28 @@ fun[exp] create_sample_stack(): Stack = {
     var s3: Stack = stack_push_safe(s2, 2);
     var s4: Stack = stack_push_safe(s3, 3);
     return s4;
-}
+};
 
 fun[exp] create_sample_queue(): Queue = {
     var q: Queue = queue_new("tasks", 5);
     var q2: Queue = queue_enqueue_safe(q, "alpha");
     var q3: Queue = queue_enqueue_safe(q2, "beta");
     return q3;
-}
+};
 
 fun[exp] create_sample_registry(): Registry = {
     var r: Registry = registry_new("config", 10);
     var r2: Registry = registry_put_safe(r, "timeout", 30);
     var r3: Registry = registry_put_safe(r2, "retries", 3);
     return r3;
-}
+};
 
 fun[exp] create_sample_bucket(): Bucket = {
     var b: Bucket = bucket_new("urgent", PRIORITY_HIGH, 10);
     var b2: Bucket = bucket_add_safe(b, "task-1");
     var b3: Bucket = bucket_add_safe(b2, "task-2");
     return b3;
-}
+};
 
 fun[exp] create_sample_entries(): seq[str] = {
     var e1: RegistryEntry = entry_new("host", 80, "network");
@@ -1016,7 +1016,7 @@ fun[exp] create_sample_entries(): seq[str] = {
     var e3: RegistryEntry = entry_deactivate(e2);
     var e4: RegistryEntry = entry_retag(e1, "infra");
     return {entry_describe(e1), entry_describe(e2), entry_describe(e3), entry_describe(e4)};
-}
+};
 
 fun[exp] create_sample_items(): seq[str] = {
     var i1: BucketItem = item_new("deploy", PRIORITY_CRITICAL, 200);
@@ -1024,7 +1024,7 @@ fun[exp] create_sample_items(): seq[str] = {
     var i3: BucketItem = item_mark_processed(i2);
     var i4: BucketItem = item_reprioritize(i1, PRIORITY_LOW);
     return {item_describe(i1), item_describe(i2), item_describe(i3), item_describe(i4)};
-}
+};
 
 fun[exp] create_scored_ranking(): seq[str] = {
     var s1: Scored = scored_new("alpha", 95);
@@ -1033,7 +1033,7 @@ fun[exp] create_scored_ranking(): seq[str] = {
     var s4: Scored = scored_invalidate(s3);
     var s5: Scored = scored_with_rank("delta", 88, 2);
     return {scored_describe(s1), scored_describe(s2), scored_describe(s3), scored_describe(s4), scored_describe(s5)};
-}
+};
 
 fun[exp] create_batch_lifecycle(): seq[str] = {
     var b1: Batch = batch_new(1, 3);
@@ -1043,7 +1043,7 @@ fun[exp] create_batch_lifecycle(): seq[str] = {
     var b5: Batch = batch_new(2, 0);
     var b6: Batch = batch_mark_failed(b5);
     return {batch_describe(b1), batch_describe(b2), batch_describe(b3), batch_describe(b4), batch_describe(b6)};
-}
+};
 
 fun[exp] span_analysis(): seq[str] = {
     var s1: Span = span_new(0, 100, "header");
@@ -1051,7 +1051,7 @@ fun[exp] span_analysis(): seq[str] = {
     var s3: Span = span_new(300, 300, "empty");
     var s4: Span = span_new(0, 5000, "full-doc");
     return {span_describe(s1), span_describe(s2), span_describe(s3), span_describe(s4)};
-}
+};
 
 fun[exp] collections_smoke_test(): int = {
     var s: Stack = create_sample_stack();
@@ -1082,4 +1082,4 @@ fun[exp] collections_smoke_test(): int = {
         }
         * { return 1; }
     }
-}
+};

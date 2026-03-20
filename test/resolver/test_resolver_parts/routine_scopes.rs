@@ -88,7 +88,7 @@ fn test_resolver_rejects_duplicate_capture_and_parameter_bindings_in_routine_sco
     let main_file = temp_root.join("main.fol");
     fs::write(
         &main_file,
-        "fun[] add(x: int)[x]: int = {\n    return x;\n}\n",
+        "fun[] add(x: int)[x]: int = {\n    return x;\n};\n",
     )
     .expect("Should write the duplicate routine binding fixture");
 

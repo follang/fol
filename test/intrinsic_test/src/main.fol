@@ -4,4 +4,4 @@ fun[] main(): int = {
     .echo(a);
     .echo(b);
     return 0;
-}
+};

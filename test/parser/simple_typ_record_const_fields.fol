@@ -1,4 +1,4 @@
 typ Config: rec = {
     con host: str = "localhost";
     con port: int = 8080;
-}
+};

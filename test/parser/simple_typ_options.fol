@@ -1,4 +1,4 @@
-typ[+] PublicText: str
+typ[+] PublicText: str;
 typ[set, get] Accessors: {
     value: int
-}
+};

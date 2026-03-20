@@ -1,5 +1,5 @@
-fun[] calc(rise: bool; ints: ... int): int = { result[0] = ints[0] + ints[1] + ints[2] * ints[3] | this | ints[0] + ints[1]; }
+fun[] calc(rise: bool; ints: ... int): int = { result[0] = ints[0] + ints[1] + ints[2] * ints[3] | this | ints[0] + ints[1]; };
 
 pro main: int = {
     calc(true,3,3,3,2);
-}
+};

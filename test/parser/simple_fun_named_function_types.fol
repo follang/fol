@@ -1,11 +1,11 @@
 fun takes_plain(handler: {fun demo(value: int): int}): int = {
     return 0;
-}
+};
 
 fun takes_keyword(handler: {fun get(value: int): int}): int = {
     return 0;
-}
+};
 
 fun takes_quoted(handler: {fun "make"(value: int): int}): int = {
     return 0;
-}
+};

@@ -1,2 +1,2 @@
-typ Grid: mat[int, 3, 4]
-typ Tensor: mat[vec[pkg::Value], 2, 2, 2]
+typ Grid: mat[int, 3, 4];
+typ Tensor: mat[vec[pkg::Value], 2, 2, 2];

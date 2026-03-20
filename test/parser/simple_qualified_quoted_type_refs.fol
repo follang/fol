@@ -2,4 +2,4 @@ ali Alias: core::"Target";
 
 fun demo(value: pkg::"Input"): errs::"Output" = {
     return value;
-}
+};

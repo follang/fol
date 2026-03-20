@@ -7,4 +7,4 @@ fun nested_dangling_operator(a: int, b: int): int = {
     );
 
     return value;
-}
+};

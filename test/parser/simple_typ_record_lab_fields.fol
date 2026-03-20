@@ -2,4 +2,4 @@ typ Config: rec = {
     lab name: str;
     lab size: int = 1;
     var ready: bol;
-}
+};

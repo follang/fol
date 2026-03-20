@@ -3,12 +3,12 @@ fun[] load(flag: bol): int / str = {
         case(true) { report "bad-input"; }
         * { return 7; }
     }
-}
+};
 
 fun[] forward(flag: bol): int / str = {
     return load(flag) || report "forward-bad-input";
-}
+};
 
 fun[] main(): int / str = {
     return forward(true) || report "main-bad-input";
-}
+};

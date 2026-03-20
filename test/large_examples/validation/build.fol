@@ -4,4 +4,4 @@ pro[] build(graph: Graph): non = {
         root = "src/lib.fol",
     });
     graph.install(lib);
-}
+};

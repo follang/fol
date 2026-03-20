@@ -4,4 +4,4 @@ fun[] bind_stage(value: int): int = {
         | let next: int = current
         | con final: int = next
         | lab named: int = final;
-}
+};

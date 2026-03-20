@@ -3,4 +3,4 @@ fun preserve_adjacent_comments(): int = {
     `[doc] beta docs`
     var beta = 2;
     return beta;
-}
+};

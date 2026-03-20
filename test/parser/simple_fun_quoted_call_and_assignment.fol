@@ -1,4 +1,4 @@
 fun run() = {
     "check"();
     "state" = ready;
-}
+};

@@ -1,4 +1,4 @@
 fun assign(values: vec[int], value: int): int = {
     values[1; 2] = value;
     return value;
-}
+};

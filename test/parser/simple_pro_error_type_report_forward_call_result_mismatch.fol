@@ -1,8 +1,8 @@
 pro caller_forward_bad(code: int): int / str = {
     report make_num(code);
     return 0;
-}
+};
 
 pro make_num(code: int): int = {
     return code;
-}
+};

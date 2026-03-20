@@ -1,3 +1,3 @@
-`[doc] module docs`
-`ordinary root note`
-var alpha = 1
+`[doc] module docs`;
+`ordinary root note`;
+var alpha = 1;

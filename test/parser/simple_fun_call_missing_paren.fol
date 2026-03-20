@@ -4,4 +4,4 @@ fun broken_missing_paren(a: int): int = {
         2,
     ;
     return value;
-}
+};

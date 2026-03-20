@@ -1,4 +1,4 @@
 pro report_expr_bad(a: int, b: int): int / bol = {
     report a + b;
     return 0;
-}
+};

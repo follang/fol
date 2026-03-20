@@ -6,4 +6,4 @@ fun[] inspect(value: int): int = {
         yield value;
         return value;
     }
-}
+};

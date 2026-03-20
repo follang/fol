@@ -1,3 +1,3 @@
 fun contains(item: str, items: seq[str]): bol = {
     return item in items;
-}
+};

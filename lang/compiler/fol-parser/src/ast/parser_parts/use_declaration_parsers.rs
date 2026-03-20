@@ -61,7 +61,6 @@ impl AstParser {
         let _ = tokens.bump();
 
         let paths = self.parse_use_paths(tokens)?;
-        self.consume_optional_semicolon(tokens)?;
         self.build_use_nodes(options, names, path_type, paths, &use_token)
     }
 

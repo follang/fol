@@ -1,8 +1,8 @@
 pro caller_forward_quoted_mismatch(): int / str = {
     report "$make_err"();
     return 0;
-}
+};
 
 fun "$make_err"(): int = {
     return 1;
-}
+};

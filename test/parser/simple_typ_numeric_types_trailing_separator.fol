@@ -1,2 +1,2 @@
-typ Buffer: arr[int, 8,]
-typ Grid: mat[int, 3, 4,]
+typ Buffer: arr[int, 8,];
+typ Grid: mat[int, 3, 4,];

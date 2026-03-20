@@ -6,4 +6,4 @@ fun[] show(): str = {
     where(this) {
         this;
     }
-}
+};

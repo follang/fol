@@ -3,4 +3,4 @@ fun[] main(): int = {
         case(true) { return 7; }
         * { return 0; }
     }
-}
+};

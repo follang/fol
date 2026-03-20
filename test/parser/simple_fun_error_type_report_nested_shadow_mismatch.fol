@@ -12,4 +12,4 @@ fun nested_shadow_bad(flag: int): str / int = {
     }
 
     return "done";
-}
+};

@@ -8,7 +8,7 @@ fn test_resolver_allows_nested_blocks_to_shadow_routine_parameters() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(value: int): int = {\n    {\n        var value = 2;\n        return value;\n    }\n}\n",
+        "fun[] main(value: int): int = {\n    {\n        var value = 2;\n        return value;\n    };\n};\n",
     )
     .expect("Should write the parameter shadowing fixture");
 
@@ -68,7 +68,7 @@ fn test_resolver_allows_nested_blocks_to_shadow_import_aliases() {
         .expect("Should write the imported namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "use http: loc = {net::http};\nfun[] main(): int = {\n    {\n        var http = 1;\n        return http;\n    }\n}\n",
+        "use http: loc = {net::http};\nfun[] main(): int = {\n    {\n        var http = 1;\n        return http;\n    };\n};\n",
     )
     .expect("Should write the import shadowing fixture");
 

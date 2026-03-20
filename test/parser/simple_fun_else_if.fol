@@ -6,4 +6,4 @@ fun choose_else_if(a: int, b: int): int = {
     } else {
         return a;
     }
-}
+};

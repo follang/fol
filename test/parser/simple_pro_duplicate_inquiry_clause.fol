@@ -6,4 +6,4 @@ pro store(value: int): int = {
     where(self) {
         store(2) is 2;
     }
-}
+};

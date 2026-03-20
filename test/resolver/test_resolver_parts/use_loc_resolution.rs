@@ -13,7 +13,7 @@ fn test_resolver_resolves_use_loc_against_the_current_package_root() {
         .expect("Should write the imported package-root fixture");
     fs::write(
         temp_root.join("app/main.fol"),
-        "use pkg: loc = {\"../pkg\"};\nfun[] main(): int = {\n    return value;\n}\n",
+        "use pkg: loc = {\"../pkg\"};\nfun[] main(): int = {\n    return value;\n};\n",
     )
     .expect("Should write the package-root import fixture");
 
@@ -54,7 +54,7 @@ fn test_resolver_loads_use_loc_from_external_directory_roots() {
         .expect("Should write the dependency package fixture");
     fs::write(
         temp_root.join("app/main.fol"),
-        "use math: loc = {\"../math\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+        "use math: loc = {\"../math\"};\nfun[] main(): int = {\n    return answer;\n};\n",
     )
     .expect("Should write the external loc import fixture");
 
@@ -117,7 +117,7 @@ fn test_resolver_resolves_use_loc_against_nested_namespaces() {
     .expect("Should write the imported namespace fixture");
     fs::write(
         temp_root.join("app/main.fol"),
-        "use http: loc = {\"../shared/net/http\"};\nfun[] main(): int = {\n    return handler;\n}\n",
+        "use http: loc = {\"../shared/net/http\"};\nfun[] main(): int = {\n    return handler;\n};\n",
     )
     .expect("Should write the namespace import fixture");
 
@@ -161,12 +161,12 @@ fn test_resolver_keeps_imported_loc_directory_files_connected_under_one_root() {
     .expect("Should write the imported root export fixture");
     fs::write(
         temp_root.join("shared/helpers.fol"),
-        "fun[exp] emit(value: int): int = {\n    return value;\n}\n",
+        "fun[exp] emit(value: int): int = {\n    return value;\n};\n",
     )
     .expect("Should write the second imported root export fixture");
     fs::write(
         temp_root.join("app/main.fol"),
-        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return emit(root_value);\n}\n",
+        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return emit(root_value);\n};\n",
     )
     .expect("Should write the connected imported-root fixture");
 
@@ -235,7 +235,7 @@ fn test_resolver_reports_missing_use_loc_targets() {
         .expect("Should create the importing package root fixture directory");
     fs::write(
         temp_root.join("app/main.fol"),
-        "use missing: loc = {\"../missing\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+        "use missing: loc = {\"../missing\"};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write the missing import fixture");
 
@@ -276,7 +276,7 @@ fn test_resolver_rejects_use_loc_file_targets_explicitly() {
     .expect("Should write the imported file fixture");
     fs::write(
         temp_root.join("app/main.fol"),
-        "use value: loc = {\"../shared/value.fol\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+        "use value: loc = {\"../shared/value.fol\"};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write the file-target import fixture");
 
@@ -316,12 +316,12 @@ fn test_resolver_rejects_use_loc_targets_that_define_build_fol() {
     .expect("Should write the imported value fixture");
     fs::write(
         temp_root.join("shared/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
     )
     .expect("Should write the formal package build marker");
     fs::write(
         temp_root.join("app/main.fol"),
-        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+        "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write the build-root loc import fixture");
 
@@ -363,7 +363,7 @@ fn test_resolver_uses_exact_directory_targets_without_namespace_ambiguity() {
     .expect("Should write the imported sibling package fixture");
     fs::write(
         temp_root.join("app/main.fol"),
-        "use local: loc = {\"../shared\"};\nfun[] main(): int = {\n    return value;\n}\n",
+        "use local: loc = {\"../shared\"};\nfun[] main(): int = {\n    return value;\n};\n",
     )
     .expect("Should write the exact-directory import fixture");
 

@@ -2,4 +2,4 @@ fun demo(): int = {
     self.value = next;
     this.log();
     return 1;
-}
+};

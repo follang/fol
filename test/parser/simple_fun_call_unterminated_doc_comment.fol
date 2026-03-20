@@ -2,4 +2,4 @@ fun broken_doc_comment(a: int): int = {
     value = combine(
         a,
         `[doc] missing close
-}
+};

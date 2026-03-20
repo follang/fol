@@ -1,4 +1,4 @@
 fun make_items(): int = {
     items = {1; 2; 3};
     return {4; 5};
-}
+};

@@ -4,14 +4,14 @@ use super::*;
 fn cast_policy_rejects_as_and_cast_surfaces_in_v1() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "var text: str = \"label\"\n\
-         var target: int = 0\n\
+        "var text: str = \"label\";\n\
+         var target: int = 0;\n\
          fun[] bad_as(value: int): int = {\n\
              return value as text;\n\
-         }\n\
+         };\n\
          fun[] bad_cast(value: int): int = {\n\
              return value cast target;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -42,18 +42,18 @@ fn literal_family_policy_accepts_matching_integer_and_float_sites() {
         "main.fol",
         "fun[] take_int(value: int): int = {\n\
              return value;\n\
-         }\n\
+         };\n\
          fun[] take_float(value: flt): flt = {\n\
              return value;\n\
-         }\n\
+         };\n\
          fun[] good_int(): int = {\n\
              var count: int = 1;\n\
              return take_int(2);\n\
-         }\n\
+         };\n\
          fun[] good_float(): flt = {\n\
              var ratio: flt = 1.5;\n\
              return take_float(2.5);\n\
-         }\n",
+         };\n",
     )]);
 
     let (_count_id, count) = find_typed_symbol(&typed, "count", SymbolKind::ValueBinding);
@@ -91,16 +91,16 @@ fn v1_boundary_rejects_generic_headers_and_meta_declarations() {
         "main.fol",
          "fun demo(T)(value: int): int = {\n\
              return value;\n\
-         }\n\
+         };\n\
          typ Bound: rec = {\n\
-         }\n\
+         };\n\
          typ Box(T: Bound): rec = {\n\
              value: int\n\
-         }\n\
+         };\n\
          def helper: mod = {\n\
-         }\n\
+         };\n\
          seg core: mod = {\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -146,18 +146,18 @@ fn v1_boundary_rejects_contract_and_conformance_surfaces() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
         "typ geo: rec = {\n\
-         }\n\
+         };\n\
          typ Shape(geo): rec[] = {\n\
              value: int\n\
-         }\n\
-         typ[ext] StrExt: str\n\
+         };\n\
+         typ[ext] StrExt: str;\n\
          typ Box: rec = {\n\
-         }\n\
+         };\n\
          imp Self: Box = {\n\
              fun ready(): bol = {\n\
                  return true;\n\
              }\n\
-         }\n\
+         };\n\
          std geometry: blu = {\n\
              var width: int;\n\
          };\n",
@@ -205,14 +205,14 @@ fn v1_boundary_rejects_contract_and_conformance_surfaces() {
 fn v1_boundary_rejects_v3_declaration_surfaces() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "!var cached: int = 1\n\
-         ?var watching: int = 1\n\
-         @var fresh: int = 1\n\
-         var[bor] borrowed: int = 1\n\
-         ali Bus: chn[int]\n\
+        "!var cached: int = 1;\n\
+         ?var watching: int = 1;\n\
+         @var fresh: int = 1;\n\
+         var[bor] borrowed: int = 1;\n\
+         ali Bus: chn[int];\n\
          fun hold(((meshes)): vec[int]): int = {\n\
              return 0;\n\
-         }\n\
+         };\n\
          ",
     )]);
 
@@ -242,39 +242,39 @@ fn v1_boundary_rejects_v3_expression_surfaces() {
              var span: int = 0;\n\
              span = 1..2;\n\
              return 0;\n\
-         }\n\
+         };\n\
          fun channelDemo(value: int): int = {\n\
              var recv: int = 0;\n\
              recv = value[rx];\n\
              return 0;\n\
-         }\n\
+         };\n\
          fun spawnDemo(value: int): int = {\n\
              var task: int = 0;\n\
              task = [>]value;\n\
              return 0;\n\
-         }\n\
+         };\n\
          fun asyncDemo(value: int): int = {\n\
              var next: int = 0;\n\
              next = value | async;\n\
              return 0;\n\
-         }\n\
+         };\n\
          fun awaitDemo(value: int): int = {\n\
              var next: int = 0;\n\
              next = value | await;\n\
              return 0;\n\
-         }\n\
+         };\n\
          pro selectDemo(value: int): int = {\n\
              select(value) {\n\
                  return 0;\n\
              }\n\
-         }\n\
+         };\n\
          fun anonDemo(): int = {\n\
              var worker: int = 0;\n\
              worker = fun(((locks)): vec[int]): int = {\n\
                  return 0;\n\
              };\n\
              return 0;\n\
-         }\n",
+         };\n",
     )]);
 
     for expected in [
@@ -318,7 +318,7 @@ fn workspace_typechecking_caches_loaded_packages_by_identity() {
             ("shared/lib.fol", "var[exp] answer: int = 42;\n"),
             (
                 "app/main.fol",
-                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -351,7 +351,7 @@ fn workspace_typechecking_dedupes_repeated_loaded_packages() {
                     "use right: loc = {\"../shared\"};\n",
                     "fun[] main(): int = {\n",
                     "    return 0;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -384,12 +384,12 @@ fn workspace_typechecking_imports_mounted_value_and_routine_types_from_foreign_p
                     "var[exp] answer: int = 42;\n",
                     "fun[exp] bump(value: int): int = {\n",
                     "    return value + 1;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
                 "app/main.fol",
-                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -428,10 +428,10 @@ fn workspace_typechecking_preserves_local_only_success_shape() {
         &[(
             "app/main.fol",
             concat!(
-                "ali Count: int\n",
+                "ali Count: int;\n",
                 "fun[] helper(value: Count): Count = {\n",
                 "    return value;\n",
-                "}\n",
+                "};\n",
             ),
         )],
     );
@@ -522,16 +522,16 @@ fn workspace_typechecking_keeps_loaded_package_declaration_signatures() {
             (
                 "shared/lib.fol",
                 concat!(
-                    "ali Count: int\n",
+                    "ali Count: int;\n",
                     "var[exp] answer: Count = 42;\n",
                     "fun[exp] bump(value: Count): Count = {\n",
                     "    return value + 1;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
                 "app/main.fol",
-                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -597,7 +597,7 @@ fn workspace_expression_typing_keeps_plain_imported_value_reference_types() {
                     "use shared: loc = {\"../shared\"};\n",
                     "fun[] main(): int = {\n",
                     "    return answer;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -629,7 +629,7 @@ fn workspace_expression_typing_keeps_plain_imported_call_types() {
                 concat!(
                     "fun[exp] answer(): int = {\n",
                     "    return 42;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
@@ -638,7 +638,7 @@ fn workspace_expression_typing_keeps_plain_imported_call_types() {
                     "use shared: loc = {\"../shared\"};\n",
                     "fun[] main(): int = {\n",
                     "    return answer();\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -672,16 +672,16 @@ fn workspace_typechecking_imports_alias_record_and_entry_type_facts() {
                     "typ[exp] Point: rec = {\n",
                     "    x: int;\n",
                     "    y: int;\n",
-                    "}\n",
+                    "};\n",
                     "typ[exp] Outcome: ent = {\n",
                     "    var Ok: int = 1;\n",
                     "    con Fail: str = \"bad\";\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
                 "app/main.fol",
-                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -745,12 +745,12 @@ fn workspace_typechecking_keeps_direct_loc_import_declaration_facts() {
                     "var[exp] answer: Count = 42;\n",
                     "fun[exp] bump(value: Count): Count = {\n",
                     "    return value + 1;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
                 "app/main.fol",
-                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n}\n",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -776,12 +776,12 @@ fn workspace_typechecking_keeps_direct_std_import_declaration_facts() {
                     "var[exp] answer: Count = 42;\n",
                     "fun[exp] bump(value: Count): Count = {\n",
                     "    return value + 1;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
                 "app/main.fol",
-                "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n}\n",
+                "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -815,7 +815,7 @@ fn workspace_typechecking_keeps_direct_pkg_import_declaration_facts() {
             ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
             (
                 "store/json/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
             ),
             (
                 "store/json/src/lib.fol",
@@ -824,12 +824,12 @@ fn workspace_typechecking_keeps_direct_pkg_import_declaration_facts() {
                     "var[exp] answer: Count = 42;\n",
                     "fun[exp] bump(value: Count): Count = {\n",
                     "    return value + 1;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
                 "app/main.fol",
-                "use json: pkg = {json};\nfun[] main(): int = {\n    return 0;\n}\n",
+                "use json: pkg = {json};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -863,7 +863,7 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
             ("store/core/package.yaml", "name: core\nversion: 1.0.0\n"),
             (
                 "store/core/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
             ),
             ("store/core/src/lib.fol", "typ[exp] Count: int;\n"),
             (
@@ -872,7 +872,7 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
             ),
             (
                 "store/json/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
             ),
             (
                 "store/json/src/lib.fol",
@@ -881,12 +881,12 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
                     "var[exp] answer: core::src::Count = 42;\n",
                     "fun[exp] bump(value: core::src::Count): core::src::Count = {\n",
                     "    return value + 1;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
                 "app/main.fol",
-                "use json: pkg = {json};\nfun[] main(): int = {\n    return 0;\n}\n",
+                "use json: pkg = {json};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -961,12 +961,12 @@ fn workspace_expression_typing_keeps_plain_imported_value_types_in_bindings_retu
                     "use shared: loc = {\"../shared\"};\n",
                     "fun[] echo(value: int): int = {\n",
                     "    return value;\n",
-                    "}\n",
+                    "};\n",
                     "fun[] main(): int = {\n",
                     "    var current: int = answer;\n",
                     "    var echoed: int = echo(answer);\n",
                     "    return answer;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],

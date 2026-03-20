@@ -4,4 +4,4 @@ fun[] routine_stage(value: int): int = {
         | fun[] local_stage(item: int): int = {
             return item;
         };
-}
+};

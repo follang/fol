@@ -8,14 +8,14 @@
 // Log levels
 // ---------------------------------------------------------------------------
 
-ali Level: int
+ali Level: int;
 
-var[exp] TRACE: Level = 0
-var[exp] DEBUG: Level = 1
-var[exp] INFO: Level = 2
-var[exp] WARN: Level = 3
-var[exp] ERROR: Level = 4
-var[exp] FATAL: Level = 5
+var[exp] TRACE: Level = 0;
+var[exp] DEBUG: Level = 1;
+var[exp] INFO: Level = 2;
+var[exp] WARN: Level = 3;
+var[exp] ERROR: Level = 4;
+var[exp] FATAL: Level = 5;
 
 fun[exp] level_name(level: Level): str = {
     when(level) {
@@ -26,7 +26,7 @@ fun[exp] level_name(level: Level): str = {
         case(ERROR) { return "ERROR"; }
         * { return "FATAL"; }
     }
-}
+};
 
 fun[exp] level_short(level: Level): str = {
     when(level) {
@@ -37,23 +37,23 @@ fun[exp] level_short(level: Level): str = {
         case(ERROR) { return "E"; }
         * { return "F"; }
     }
-}
+};
 
 fun[exp] level_is_error(level: Level): bol = {
     return .ge(level, ERROR);
-}
+};
 
 fun[exp] level_is_warn_or_above(level: Level): bol = {
     return .ge(level, WARN);
-}
+};
 
 fun[exp] level_is_debug(level: Level): bol = {
     return .le(level, DEBUG);
-}
+};
 
 fun[exp] level_allows(current: Level, min: Level): bol = {
     return .ge(current, min);
-}
+};
 
 fun[exp] level_describe(level: Level): str = {
     when(level_is_error(level)) {
@@ -70,7 +70,7 @@ fun[exp] level_describe(level: Level): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // LogEntry — a single log record
@@ -82,7 +82,7 @@ typ[exp] LogEntry: rec = {
     source: str;
     category: str;
     sequence: int
-}
+};
 
 fun[exp] entry_new(level: Level, message: str, source: str): LogEntry = {
     return {
@@ -92,7 +92,7 @@ fun[exp] entry_new(level: Level, message: str, source: str): LogEntry = {
         category = "general",
         sequence = 0,
     };
-}
+};
 
 fun[exp] entry_with_category(level: Level, message: str, source: str, category: str): LogEntry = {
     return {
@@ -102,7 +102,7 @@ fun[exp] entry_with_category(level: Level, message: str, source: str, category: 
         category = category,
         sequence = 0,
     };
-}
+};
 
 fun[exp] entry_with_sequence(level: Level, message: str, source: str, seq_num: int): LogEntry = {
     return {
@@ -112,47 +112,47 @@ fun[exp] entry_with_sequence(level: Level, message: str, source: str, seq_num: i
         category = "general",
         sequence = seq_num,
     };
-}
+};
 
 fun[exp] entry_level(e: LogEntry): Level = {
     return e.level;
-}
+};
 
 fun[exp] entry_message(e: LogEntry): str = {
     return e.message;
-}
+};
 
 fun[exp] entry_source(e: LogEntry): str = {
     return e.source;
-}
+};
 
 fun[exp] entry_category(e: LogEntry): str = {
     return e.category;
-}
+};
 
 fun[exp] entry_sequence(e: LogEntry): int = {
     return e.sequence;
-}
+};
 
 fun[exp] entry_is_error(e: LogEntry): bol = {
     return level_is_error(e.level);
-}
+};
 
 fun[exp] entry_is_warning(e: LogEntry): bol = {
     return .eq(e.level, WARN);
-}
+};
 
 fun[exp] entry_message_length(e: LogEntry): int = {
     return .len(e.message);
-}
+};
 
 fun[exp] entry_matches_source(e: LogEntry, target: str): bol = {
     return .eq(e.source, target);
-}
+};
 
 fun[exp] entry_matches_category(e: LogEntry, target: str): bol = {
     return .eq(e.category, target);
-}
+};
 
 fun[exp] entry_describe(e: LogEntry): str = {
     when(entry_is_error(e)) {
@@ -169,7 +169,7 @@ fun[exp] entry_describe(e: LogEntry): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // LogFilter — controls which entries pass through
@@ -181,7 +181,7 @@ typ[exp] LogFilter: rec = {
     category_filter: str;
     enabled: bol;
     inverted: bol
-}
+};
 
 fun[exp] filter_new(min_level: Level): LogFilter = {
     return {
@@ -191,7 +191,7 @@ fun[exp] filter_new(min_level: Level): LogFilter = {
         enabled = true,
         inverted = false,
     };
-}
+};
 
 fun[exp] filter_by_source(min_level: Level, source: str): LogFilter = {
     return {
@@ -201,7 +201,7 @@ fun[exp] filter_by_source(min_level: Level, source: str): LogFilter = {
         enabled = true,
         inverted = false,
     };
-}
+};
 
 fun[exp] filter_by_category(min_level: Level, category: str): LogFilter = {
     return {
@@ -211,7 +211,7 @@ fun[exp] filter_by_category(min_level: Level, category: str): LogFilter = {
         enabled = true,
         inverted = false,
     };
-}
+};
 
 fun[exp] filter_all(): LogFilter = {
     return {
@@ -221,7 +221,7 @@ fun[exp] filter_all(): LogFilter = {
         enabled = true,
         inverted = false,
     };
-}
+};
 
 fun[exp] filter_none(): LogFilter = {
     return {
@@ -231,7 +231,7 @@ fun[exp] filter_none(): LogFilter = {
         enabled = false,
         inverted = false,
     };
-}
+};
 
 fun[exp] filter_invert(f: LogFilter): LogFilter = {
     return {
@@ -241,7 +241,7 @@ fun[exp] filter_invert(f: LogFilter): LogFilter = {
         enabled = f.enabled,
         inverted = .not(f.inverted),
     };
-}
+};
 
 fun[exp] filter_disable(f: LogFilter): LogFilter = {
     return {
@@ -251,7 +251,7 @@ fun[exp] filter_disable(f: LogFilter): LogFilter = {
         enabled = false,
         inverted = f.inverted,
     };
-}
+};
 
 fun[exp] filter_enable(f: LogFilter): LogFilter = {
     return {
@@ -261,19 +261,19 @@ fun[exp] filter_enable(f: LogFilter): LogFilter = {
         enabled = true,
         inverted = f.inverted,
     };
-}
+};
 
 fun[exp] filter_enabled(f: LogFilter): bol = {
     return f.enabled;
-}
+};
 
 fun[exp] filter_has_source_filter(f: LogFilter): bol = {
     return .gt(.len(f.source_filter), 0);
-}
+};
 
 fun[exp] filter_has_category_filter(f: LogFilter): bol = {
     return .gt(.len(f.category_filter), 0);
-}
+};
 
 fun[exp] filter_accepts_level(f: LogFilter, level: Level): bol = {
     when(f.enabled) {
@@ -286,7 +286,7 @@ fun[exp] filter_accepts_level(f: LogFilter, level: Level): bol = {
         }
         * { return false; }
     }
-}
+};
 
 fun[exp] filter_accepts_entry(f: LogFilter, entry: LogEntry): bol = {
     when(.not(f.enabled)) {
@@ -318,7 +318,7 @@ fun[exp] filter_accepts_entry(f: LogFilter, entry: LogEntry): bol = {
             }
         }
     }
-}
+};
 
 fun[exp] filter_describe(f: LogFilter): str = {
     when(f.enabled) {
@@ -340,18 +340,18 @@ fun[exp] filter_describe(f: LogFilter): str = {
         }
         * { return "disabled"; }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Sink — log output destination
 // ---------------------------------------------------------------------------
 
-ali SinkKind: int
+ali SinkKind: int;
 
-var[exp] SK_CONSOLE: SinkKind = 0
-var[exp] SK_FILE: SinkKind = 1
-var[exp] SK_BUFFER: SinkKind = 2
-var[exp] SK_NULL: SinkKind = 3
+var[exp] SK_CONSOLE: SinkKind = 0;
+var[exp] SK_FILE: SinkKind = 1;
+var[exp] SK_BUFFER: SinkKind = 2;
+var[exp] SK_NULL: SinkKind = 3;
 
 typ[exp] Sink: rec = {
     name: str;
@@ -359,7 +359,7 @@ typ[exp] Sink: rec = {
     enabled: bol;
     filter: LogFilter;
     entries_written: int
-}
+};
 
 fun[exp] sink_console(name: str): Sink = {
     return {
@@ -369,7 +369,7 @@ fun[exp] sink_console(name: str): Sink = {
         filter = filter_new(INFO),
         entries_written = 0,
     };
-}
+};
 
 fun[exp] sink_file(name: str, min_level: Level): Sink = {
     return {
@@ -379,7 +379,7 @@ fun[exp] sink_file(name: str, min_level: Level): Sink = {
         filter = filter_new(min_level),
         entries_written = 0,
     };
-}
+};
 
 fun[exp] sink_buffer(name: str): Sink = {
     return {
@@ -389,7 +389,7 @@ fun[exp] sink_buffer(name: str): Sink = {
         filter = filter_all(),
         entries_written = 0,
     };
-}
+};
 
 fun[exp] sink_null(): Sink = {
     return {
@@ -399,7 +399,7 @@ fun[exp] sink_null(): Sink = {
         filter = filter_none(),
         entries_written = 0,
     };
-}
+};
 
 fun[exp] sink_disable(s: Sink): Sink = {
     return {
@@ -409,7 +409,7 @@ fun[exp] sink_disable(s: Sink): Sink = {
         filter = s.filter,
         entries_written = s.entries_written,
     };
-}
+};
 
 fun[exp] sink_enable(s: Sink): Sink = {
     return {
@@ -419,15 +419,15 @@ fun[exp] sink_enable(s: Sink): Sink = {
         filter = s.filter,
         entries_written = s.entries_written,
     };
-}
+};
 
 fun[exp] sink_name(s: Sink): str = {
     return s.name;
-}
+};
 
 fun[exp] sink_enabled(s: Sink): bol = {
     return s.enabled;
-}
+};
 
 fun[exp] sink_kind_name(s: Sink): str = {
     when(s.kind) {
@@ -436,18 +436,18 @@ fun[exp] sink_kind_name(s: Sink): str = {
         case(SK_BUFFER) { return "buffer"; }
         * { return "null"; }
     }
-}
+};
 
 fun[exp] sink_entries_written(s: Sink): int = {
     return s.entries_written;
-}
+};
 
 fun[exp] sink_accepts(s: Sink, entry: LogEntry): bol = {
     when(s.enabled) {
         case(true) { return filter_accepts_entry(s.filter, entry); }
         * { return false; }
     }
-}
+};
 
 fun[exp] sink_describe(s: Sink): str = {
     when(s.enabled) {
@@ -464,7 +464,7 @@ fun[exp] sink_describe(s: Sink): str = {
         }
         * { return "disabled"; }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Logger — main logging facade
@@ -477,7 +477,7 @@ typ[exp] Logger: rec = {
     context: str;
     sink_count: int;
     total_logged: int
-}
+};
 
 fun[exp] logger_new(name: str): Logger = {
     return {
@@ -488,7 +488,7 @@ fun[exp] logger_new(name: str): Logger = {
         sink_count = 1,
         total_logged = 0,
     };
-}
+};
 
 fun[exp] logger_debug(name: str): Logger = {
     return {
@@ -499,7 +499,7 @@ fun[exp] logger_debug(name: str): Logger = {
         sink_count = 1,
         total_logged = 0,
     };
-}
+};
 
 fun[exp] logger_verbose(name: str): Logger = {
     return {
@@ -510,7 +510,7 @@ fun[exp] logger_verbose(name: str): Logger = {
         sink_count = 1,
         total_logged = 0,
     };
-}
+};
 
 fun[exp] logger_production(name: str): Logger = {
     return {
@@ -521,7 +521,7 @@ fun[exp] logger_production(name: str): Logger = {
         sink_count = 2,
         total_logged = 0,
     };
-}
+};
 
 fun[exp] logger_silent(): Logger = {
     return {
@@ -532,7 +532,7 @@ fun[exp] logger_silent(): Logger = {
         sink_count = 0,
         total_logged = 0,
     };
-}
+};
 
 fun[exp] logger_with_context(l: Logger, ctx: str): Logger = {
     return {
@@ -543,35 +543,35 @@ fun[exp] logger_with_context(l: Logger, ctx: str): Logger = {
         sink_count = l.sink_count,
         total_logged = l.total_logged,
     };
-}
+};
 
 fun[exp] logger_name(l: Logger): str = {
     return l.name;
-}
+};
 
 fun[exp] logger_min_level(l: Logger): Level = {
     return l.min_level;
-}
+};
 
 fun[exp] logger_verbose_mode(l: Logger): bol = {
     return l.verbose;
-}
+};
 
 fun[exp] logger_context(l: Logger): str = {
     return l.context;
-}
+};
 
 fun[exp] logger_sink_count(l: Logger): int = {
     return l.sink_count;
-}
+};
 
 fun[exp] logger_total_logged(l: Logger): int = {
     return l.total_logged;
-}
+};
 
 fun[exp] logger_accepts(l: Logger, level: Level): bol = {
     return level_allows(level, l.min_level);
-}
+};
 
 fun[exp] logger_log(l: Logger, level: Level, message: str): int / str = {
     when(logger_accepts(l, level)) {
@@ -583,35 +583,35 @@ fun[exp] logger_log(l: Logger, level: Level, message: str): int / str = {
         }
         * { report "filtered"; }
     }
-}
+};
 
 fun[exp] logger_log_safe(l: Logger, level: Level, message: str): int = {
     return logger_log(l, level, message) || 0;
-}
+};
 
 fun[exp] logger_trace(l: Logger, message: str): int = {
     return logger_log_safe(l, TRACE, message);
-}
+};
 
 fun[exp] logger_debug_msg(l: Logger, message: str): int = {
     return logger_log_safe(l, DEBUG, message);
-}
+};
 
 fun[exp] logger_info(l: Logger, message: str): int = {
     return logger_log_safe(l, INFO, message);
-}
+};
 
 fun[exp] logger_warn(l: Logger, message: str): int = {
     return logger_log_safe(l, WARN, message);
-}
+};
 
 fun[exp] logger_error(l: Logger, message: str): int = {
     return logger_log_safe(l, ERROR, message);
-}
+};
 
 fun[exp] logger_fatal(l: Logger, message: str): int = {
     return logger_log_safe(l, FATAL, message);
-}
+};
 
 fun[exp] logger_describe(l: Logger): str = {
     when(l.verbose) {
@@ -633,7 +633,7 @@ fun[exp] logger_describe(l: Logger): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // LogBuffer — collects log descriptions for testing
@@ -644,7 +644,7 @@ typ[exp] LogBuffer: rec = {
     max_size: int;
     name: str;
     overflow_count: int
-}
+};
 
 fun[exp] buffer_new(name: str, max_size: int): LogBuffer = {
     return {
@@ -653,31 +653,31 @@ fun[exp] buffer_new(name: str, max_size: int): LogBuffer = {
         name = name,
         overflow_count = 0,
     };
-}
+};
 
 fun[exp] buffer_empty(b: LogBuffer): bol = {
     return .eq(.len(b.descriptions), 0);
-}
+};
 
 fun[exp] buffer_full(b: LogBuffer): bol = {
     return .ge(.len(b.descriptions), b.max_size);
-}
+};
 
 fun[exp] buffer_size(b: LogBuffer): int = {
     return .len(b.descriptions);
-}
+};
 
 fun[exp] buffer_name(b: LogBuffer): str = {
     return b.name;
-}
+};
 
 fun[exp] buffer_overflow_count(b: LogBuffer): int = {
     return b.overflow_count;
-}
+};
 
 fun[exp] buffer_has_overflow(b: LogBuffer): bol = {
     return .gt(b.overflow_count, 0);
-}
+};
 
 fun[exp] buffer_describe(b: LogBuffer): str = {
     when(buffer_empty(b)) {
@@ -694,18 +694,18 @@ fun[exp] buffer_describe(b: LogBuffer): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Formatter — controls log output format
 // ---------------------------------------------------------------------------
 
-ali FormatKind: int
+ali FormatKind: int;
 
-var[exp] FORMAT_PLAIN: FormatKind = 0
-var[exp] FORMAT_JSON: FormatKind = 1
-var[exp] FORMAT_COMPACT: FormatKind = 2
-var[exp] FORMAT_DETAILED: FormatKind = 3
+var[exp] FORMAT_PLAIN: FormatKind = 0;
+var[exp] FORMAT_JSON: FormatKind = 1;
+var[exp] FORMAT_COMPACT: FormatKind = 2;
+var[exp] FORMAT_DETAILED: FormatKind = 3;
 
 typ[exp] Formatter: rec = {
     kind: FormatKind;
@@ -713,7 +713,7 @@ typ[exp] Formatter: rec = {
     include_category: bol;
     include_sequence: bol;
     prefix: str
-}
+};
 
 fun[exp] formatter_plain(): Formatter = {
     return {
@@ -723,7 +723,7 @@ fun[exp] formatter_plain(): Formatter = {
         include_sequence = false,
         prefix = "",
     };
-}
+};
 
 fun[exp] formatter_json(): Formatter = {
     return {
@@ -733,7 +733,7 @@ fun[exp] formatter_json(): Formatter = {
         include_sequence = true,
         prefix = "",
     };
-}
+};
 
 fun[exp] formatter_compact(): Formatter = {
     return {
@@ -743,7 +743,7 @@ fun[exp] formatter_compact(): Formatter = {
         include_sequence = false,
         prefix = "",
     };
-}
+};
 
 fun[exp] formatter_detailed(): Formatter = {
     return {
@@ -753,7 +753,7 @@ fun[exp] formatter_detailed(): Formatter = {
         include_sequence = true,
         prefix = ">>",
     };
-}
+};
 
 fun[exp] formatter_with_prefix(f: Formatter, prefix: str): Formatter = {
     return {
@@ -763,7 +763,7 @@ fun[exp] formatter_with_prefix(f: Formatter, prefix: str): Formatter = {
         include_sequence = f.include_sequence,
         prefix = prefix,
     };
-}
+};
 
 fun[exp] formatter_kind_name(f: Formatter): str = {
     when(f.kind) {
@@ -772,18 +772,18 @@ fun[exp] formatter_kind_name(f: Formatter): str = {
         case(FORMAT_COMPACT) { return "compact"; }
         * { return "detailed"; }
     }
-}
+};
 
 fun[exp] formatter_has_prefix(f: Formatter): bol = {
     return .gt(.len(f.prefix), 0);
-}
+};
 
 fun[exp] formatter_describe(f: Formatter): str = {
     when(formatter_has_prefix(f)) {
         case(true) { return "prefixed"; }
         * { return formatter_kind_name(f); }
     }
-}
+};
 
 fun[exp] formatter_field_count(f: Formatter): int = {
     var count: int = 1;
@@ -821,7 +821,7 @@ fun[exp] formatter_field_count(f: Formatter): int = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // LogConfig — full logger configuration
@@ -833,7 +833,7 @@ typ[exp] LogConfig: rec = {
     buffer_size: int;
     async_mode: bol;
     name: str
-}
+};
 
 fun[exp] config_default(): LogConfig = {
     return {
@@ -843,7 +843,7 @@ fun[exp] config_default(): LogConfig = {
         async_mode = false,
         name = "default",
     };
-}
+};
 
 fun[exp] config_debug(): LogConfig = {
     return {
@@ -853,7 +853,7 @@ fun[exp] config_debug(): LogConfig = {
         async_mode = false,
         name = "debug",
     };
-}
+};
 
 fun[exp] config_production(): LogConfig = {
     return {
@@ -863,7 +863,7 @@ fun[exp] config_production(): LogConfig = {
         async_mode = true,
         name = "production",
     };
-}
+};
 
 fun[exp] config_test(): LogConfig = {
     return {
@@ -873,23 +873,23 @@ fun[exp] config_test(): LogConfig = {
         async_mode = false,
         name = "test",
     };
-}
+};
 
 fun[exp] config_name(c: LogConfig): str = {
     return c.name;
-}
+};
 
 fun[exp] config_min_level(c: LogConfig): Level = {
     return c.min_level;
-}
+};
 
 fun[exp] config_buffer_size(c: LogConfig): int = {
     return c.buffer_size;
-}
+};
 
 fun[exp] config_async(c: LogConfig): bol = {
     return c.async_mode;
-}
+};
 
 fun[exp] config_describe(c: LogConfig): str = {
     when(c.async_mode) {
@@ -906,7 +906,7 @@ fun[exp] config_describe(c: LogConfig): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Smoke test
@@ -1006,4 +1006,4 @@ fun[exp] logger_smoke_test(): int = {
         }
         * { return 1; }
     }
-}
+};

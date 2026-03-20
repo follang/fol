@@ -4,4 +4,4 @@ fun builtin_diag(a: int, b: int): int = {
     assert a < b;
     panic b;
     return a;
-}
+};

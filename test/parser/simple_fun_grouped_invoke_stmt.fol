@@ -1,3 +1,3 @@
 fun fire_grouped(factory: any, value: int) = {
     (factory())(value);
-}
+};

@@ -1,1 +1,1 @@
-typ BadInt: int[wat]
+typ BadInt: int[wat];

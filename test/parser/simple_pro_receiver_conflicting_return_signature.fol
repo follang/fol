@@ -1,7 +1,7 @@
 pro (parser)parse(code: int): str = {
     return "ok";
-}
+};
 
 pro (parser)parse(code: int): int = {
     return code;
-}
+};

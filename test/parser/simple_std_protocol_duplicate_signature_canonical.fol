@@ -1,4 +1,4 @@
 std geometry: pro = {
     fun area_value(): flt[64];
     fun AreaValue(): flt[64];
-}
+};

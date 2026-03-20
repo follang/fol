@@ -3,15 +3,15 @@ ali PrimaryScore: Score;
 
 typ User: rec = {
     score: PrimaryScore
-}
+};
 
 fun[] read(value: PrimaryScore): Score = {
     return value;
-}
+};
 
 fun[] main(): int = {
     var current: User = {
         score = 7,
     };
     return read(current.score);
-}
+};

@@ -2,4 +2,4 @@ fun unary_ref_deref_calls(obj: int, a: int, b: int): int = {
     value = run(&a, *b);
     obj.update(&a, *b);
     return emit(&a, *b);
-}
+};

@@ -1,4 +1,4 @@
 fun run(parent: any, value: int): int = {
     parent:[](value);
     return value;
-}
+};

@@ -15,4 +15,4 @@ fun multiline_calls(a: int, b: int, c: int): int = {
     return emit(
         value,
     );
-}
+};

@@ -1,3 +1,3 @@
 typ Box(T: item): rec = {
     var value: T;
-}
+};

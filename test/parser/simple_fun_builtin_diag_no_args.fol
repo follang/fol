@@ -4,4 +4,4 @@ fun builtin_diag_no_args(a: int): int = {
     assert;
     panic;
     return a;
-}
+};

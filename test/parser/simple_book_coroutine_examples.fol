@@ -4,8 +4,8 @@ pro main(): int = {
     select(channel as c) {
         sequence.push(channel[rx][c]);
     }
-}
+};
 
 fun loadMesh(path: str, ((meshes)): vec[mesh]): int = {
     return 1;
-}
+};

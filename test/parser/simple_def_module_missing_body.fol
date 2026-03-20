@@ -1,1 +1,1 @@
-def init: mod[core]
+def init: mod[core];

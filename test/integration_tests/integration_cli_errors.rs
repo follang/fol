@@ -9,7 +9,7 @@ use super::*;
         let main_file = temp_root.join("main.fol");
         fs::write(
             &main_file,
-            "fun[] main(): int = {\n    return missing;\n}\n",
+            "fun[] main(): int = {\n    return missing;\n};\n",
         )
         .expect("Should write unresolved plain-name fixture");
 
@@ -79,7 +79,7 @@ use super::*;
         let main_file = temp_root.join("main.fol");
         fs::write(
             &main_file,
-            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write ambiguous imported plain-name fixture");
 
@@ -133,9 +133,9 @@ use super::*;
 
         let temp_root = unique_temp_root("cli_json_parser_structured");
         fs::create_dir_all(&temp_root).expect("Should create temp parser fixture");
-        fs::write(temp_root.join("00_good.fol"), "var ok = 1\n").expect("Should write good source");
+        fs::write(temp_root.join("00_good.fol"), "var ok = 1;\n").expect("Should write good source");
         let bad_file = temp_root.join("10_bad.fol");
-        fs::write(&bad_file, "run(1, 2)\n").expect("Should write invalid file-root source");
+        fs::write(&bad_file, "run(1, 2);\n").expect("Should write invalid file-root source");
 
         let output = run_fol(&[
             "--json",
@@ -200,13 +200,13 @@ use super::*;
         fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
         fs::write(
             loc_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         )
             .expect("Should write formal package control file");
         let main_file = app_root.join("main.fol");
         fs::write(
             &main_file,
-            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write loc misuse fixture");
 
@@ -281,7 +281,7 @@ use super::*;
         let main_file = temp_root.join("main.fol");
         fs::write(
             &main_file,
-            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write ambiguous imported plain-name fixture");
 
@@ -349,7 +349,7 @@ use super::*;
         fs::create_dir_all(&temp_root).expect("Should create resolver fixture root");
         fs::write(
             temp_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n}\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n};\n",
         )
         .expect("Should write missing std-root fixture");
 
@@ -430,7 +430,7 @@ use super::*;
         .expect("Should write second imported exported value fixture");
         fs::write(
             temp_root.join("main.fol"),
-            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write ambiguous imported plain-name fixture");
 
@@ -463,12 +463,12 @@ use super::*;
         fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
         fs::write(
             loc_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         )
             .expect("Should write formal package control file");
         fs::write(
             app_root.join("main.fol"),
-            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write loc misuse fixture");
 
@@ -498,7 +498,7 @@ use super::*;
         fs::create_dir_all(&temp_root).expect("Should create temp CLI typecheck fixture");
         fs::write(
             temp_root.join("main.fol"),
-            "var value: int = 1\nfun[] main(): int = {\n    return value;\n}\n",
+            "var value: int = 1;\nfun[] main(): int = {\n    return value;\n};\n",
         )
         .expect("Should write the successful typecheck fixture");
 
@@ -527,7 +527,7 @@ use super::*;
 
         let temp_root = unique_temp_root("cli_typecheck_error");
         fs::create_dir_all(&temp_root).expect("Should create temp CLI typecheck error fixture");
-        fs::write(temp_root.join("main.fol"), "var[bor] borrowed: int = 1\n")
+        fs::write(temp_root.join("main.fol"), "var[bor] borrowed: int = 1;\n")
             .expect("Should write the unsupported typecheck fixture");
 
         let output = run_fol(&[temp_root

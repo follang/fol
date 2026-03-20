@@ -2,4 +2,4 @@ use math: pkg = {math};
 
 fun[] main(): int = {
     return math::src::pkg_answer;
-}
+};

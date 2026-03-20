@@ -2,4 +2,4 @@ fun[] while_flow(flag: bol): int = {
     while(flag) => 1;
     loop(flag) => 2;
     return 3;
-}
+};

@@ -3,4 +3,4 @@ fun[] add2(): {fun (x: int): int} = {
         return a + b;
     };
     return f;
-}
+};

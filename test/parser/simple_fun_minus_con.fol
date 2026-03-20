@@ -1,4 +1,4 @@
 fun demo(): int = {
     -con secret: int = 7;
     return secret;
-}
+};

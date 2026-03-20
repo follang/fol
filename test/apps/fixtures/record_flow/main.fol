@@ -1,11 +1,11 @@
 typ Bonus: rec = {
     amount: int
-}
+};
 
 typ Salary: rec = {
     total: int;
     extra: Bonus
-}
+};
 
 fun[] build_salary(): Salary = {
     return {
@@ -14,13 +14,13 @@ fun[] build_salary(): Salary = {
             amount = 2,
         },
     };
-}
+};
 
 fun[] total_amount(salary: Salary): int = {
     return salary.total;
-}
+};
 
 fun[] main(): int = {
     var current: Salary = build_salary();
     return total_amount(current);
-}
+};

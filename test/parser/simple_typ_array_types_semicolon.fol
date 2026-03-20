@@ -1,1 +1,1 @@
-typ Buffer: arr[int; 8]
+typ Buffer: arr[int; 8];

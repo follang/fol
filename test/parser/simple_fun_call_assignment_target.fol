@@ -1,4 +1,4 @@
 fun broken_call_target(value: int): int = {
     make_value() = value;
     return value;
-}
+};

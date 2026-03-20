@@ -6,4 +6,4 @@ fun sum(values: seq[int]): int = {
     where(self) {
         sum({1}) is 1;
     }
-}
+};

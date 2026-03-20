@@ -172,7 +172,7 @@ impl AstParser {
                 );
                 match self.parse_binding_alternative_decl(tokens) {
                     Ok(nodes) => {
-                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -195,7 +195,7 @@ impl AstParser {
                 );
                 match self.parse_var_decl(tokens) {
                     Ok(nodes) => {
-                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -218,7 +218,7 @@ impl AstParser {
                 );
                 match self.parse_let_decl(tokens) {
                     Ok(nodes) => {
-                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -241,7 +241,7 @@ impl AstParser {
                 );
                 match self.parse_con_decl(tokens) {
                     Ok(nodes) => {
-                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -264,7 +264,7 @@ impl AstParser {
                 );
                 match self.parse_lab_decl(tokens) {
                     Ok(nodes) => {
-                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -287,6 +287,7 @@ impl AstParser {
                 );
                 match self.parse_use_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -309,6 +310,7 @@ impl AstParser {
                 );
                 match self.parse_seg_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -331,6 +333,7 @@ impl AstParser {
                 );
                 match self.parse_imp_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -353,6 +356,7 @@ impl AstParser {
                 );
                 match self.parse_std_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -375,6 +379,7 @@ impl AstParser {
                 );
                 match self.parse_def_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -397,6 +402,7 @@ impl AstParser {
                 );
                 match self.parse_alias_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -419,6 +425,7 @@ impl AstParser {
                 );
                 match self.parse_type_decl(tokens) {
                     Ok(nodes) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.extend_top_level_entries(&mut entries, &token, nodes);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -441,6 +448,7 @@ impl AstParser {
                 );
                 match self.parse_fun_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -463,6 +471,7 @@ impl AstParser {
                 );
                 match self.parse_log_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -485,6 +494,7 @@ impl AstParser {
                 );
                 match self.parse_pro_decl(tokens) {
                     Ok(node) => {
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                         self.push_top_level_entry(&mut entries, &token, node);
                         self.bump_if_no_progress(tokens, before);
                     }
@@ -517,7 +527,7 @@ impl AstParser {
                     &mut errors,
                     |parser, tokens| {
                         parser.parse_call_stmt(tokens)?;
-                        parser.consume_optional_semicolon(tokens)?;
+                        parser.consume_required_semicolon(tokens)?;
                         Ok(())
                     },
                 ) {
@@ -544,7 +554,7 @@ impl AstParser {
                     &mut errors,
                     |parser, tokens| {
                         parser.parse_dot_builtin_call_expr(tokens)?;
-                        parser.consume_optional_semicolon(tokens)?;
+                        parser.consume_required_semicolon(tokens)?;
                         Ok(())
                     },
                 ) {
@@ -578,7 +588,7 @@ impl AstParser {
                     &mut errors,
                     |parser, tokens| {
                         parser.parse_invoke_stmt(tokens)?;
-                        parser.consume_optional_semicolon(tokens)?;
+                        parser.consume_required_semicolon(tokens)?;
                         Ok(())
                     },
                 ) {
@@ -609,7 +619,7 @@ impl AstParser {
                     &mut errors,
                     |parser, tokens| {
                         parser.parse_builtin_call_stmt(tokens)?;
-                        parser.consume_optional_semicolon(tokens)?;
+                        parser.consume_required_semicolon(tokens)?;
                         Ok(())
                     },
                 ) {
@@ -636,7 +646,7 @@ impl AstParser {
                     &mut errors,
                     |parser, tokens| {
                         parser.parse_assignment_stmt(tokens)?;
-                        parser.consume_optional_semicolon(tokens)?;
+                        parser.consume_required_semicolon(tokens)?;
                         Ok(())
                     },
                 ) {
@@ -816,7 +826,7 @@ impl AstParser {
                 match self.parse_dot_builtin_call_expr(tokens) {
                     Ok(node) => {
                         self.push_top_level_entry(&mut entries, &token, node);
-                        self.consume_optional_semicolon(tokens).map_err(|e| vec![e])?;
+                        self.consume_required_semicolon(tokens).map_err(|e| vec![e])?;
                     }
                     Err(error) => errors.push(error),
                 }

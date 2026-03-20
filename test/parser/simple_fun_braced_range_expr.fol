@@ -1,4 +1,4 @@
 fun make_span(a: int, b: int): int = {
     values = {a..b};
     return {a + 1..b + 2};
-}
+};

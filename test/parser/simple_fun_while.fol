@@ -3,4 +3,4 @@ fun spin(): int = {
         break;
     }
     return 1;
-}
+};

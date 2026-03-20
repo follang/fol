@@ -26,7 +26,7 @@ fun[] test_stack_operations(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_queue_operations(): int = {
     var q: collections::Queue = collections::queue_with_priority("urgent-tasks", 10, 8);
@@ -41,7 +41,7 @@ fun[] test_queue_operations(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_registry_operations(): int = {
     var r: collections::Registry = collections::registry_new("settings", 50);
@@ -57,7 +57,7 @@ fun[] test_registry_operations(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_bucket_operations(): int = {
     var b: collections::Bucket = collections::bucket_new("alerts", collections::PRIORITY_CRITICAL, 20);
@@ -75,7 +75,7 @@ fun[] test_bucket_operations(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_scored_operations(): int = {
     var s1: collections::Scored = collections::scored_new("alpha", 95);
@@ -92,7 +92,7 @@ fun[] test_scored_operations(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_batch_operations(): int = {
     var b: collections::Batch = collections::batch_new(42, 3);
@@ -109,7 +109,7 @@ fun[] test_batch_operations(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_span_operations(): int = {
     var s1: collections::Span = collections::span_new(0, 100, "header");
@@ -126,7 +126,7 @@ fun[] test_span_operations(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Validation integration
@@ -157,7 +157,7 @@ fun[] test_user_validation(): int = {
         }
         * { return 1; }
     }
-}
+};
 
 fun[] test_config_validation(): int = {
     var good: validation::ConfigInput = validation::config_input("localhost", 8080, 30, 100, false, "prod");
@@ -173,7 +173,7 @@ fun[] test_config_validation(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_validators(): int = {
     var v1: validation::Validator = validation::validator_new("test");
@@ -190,7 +190,7 @@ fun[] test_validators(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_field_errors(): int = {
     var e1: validation::FieldError = validation::field_error_required("name");
@@ -207,7 +207,7 @@ fun[] test_field_errors(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Logger integration
@@ -233,7 +233,7 @@ fun[] test_logger_levels(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_logger_output(): int = {
     var l: logger::Logger = logger::logger_verbose("test");
@@ -251,7 +251,7 @@ fun[] test_logger_output(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_log_entries(): int = {
     var e1: logger::LogEntry = logger::entry_new(logger::INFO, "startup", "main");
@@ -268,7 +268,7 @@ fun[] test_log_entries(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_log_filters(): int = {
     var f1: logger::LogFilter = logger::filter_new(logger::INFO);
@@ -289,7 +289,7 @@ fun[] test_log_filters(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_log_sinks(): int = {
     var s1: logger::Sink = logger::sink_console("stdout");
@@ -306,7 +306,7 @@ fun[] test_log_sinks(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_log_formatters(): int = {
     var f1: logger::Formatter = logger::formatter_plain();
@@ -325,7 +325,7 @@ fun[] test_log_formatters(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Auth integration
@@ -354,7 +354,7 @@ fun[] test_auth_users(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_auth_roles(): int = {
     var guest: auth::Role = auth::role_guest();
@@ -372,7 +372,7 @@ fun[] test_auth_roles(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_auth_sessions(): int = {
     var s1: auth::Session = auth::session_new("sess-001", "alice", 1000, 2000, "10.0.0.1");
@@ -390,7 +390,7 @@ fun[] test_auth_sessions(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_auth_tokens(): int = {
     var t1: auth::Token = auth::token_access("abc123", 1000, 2000);
@@ -407,7 +407,7 @@ fun[] test_auth_tokens(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_auth_access(): int = {
     var admin: auth::User = auth::user_admin("admin", "admin@example.com");
@@ -430,7 +430,7 @@ fun[] test_auth_access(): int = {
         }
         * { return 1; }
     }
-}
+};
 
 fun[] test_auth_policies(): int = {
     var p1: auth::Policy = auth::policy_public("home", "/");
@@ -451,7 +451,7 @@ fun[] test_auth_policies(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Pipeline integration
@@ -474,7 +474,7 @@ fun[] test_pipeline_stages(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_pipeline_orchestration(): int = {
     var p: pipeline::Pipeline = pipeline::pipeline_new("etl", 3);
@@ -493,7 +493,7 @@ fun[] test_pipeline_orchestration(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_pipeline_transforms(): int = {
     var t1: pipeline::Transform = pipeline::transform_map("normalize", "raw", "clean");
@@ -511,7 +511,7 @@ fun[] test_pipeline_transforms(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_pipeline_jobs(): int = {
     var j1: pipeline::Job = pipeline::job_new("j-001", "process", pipeline::JOB_NORMAL, 5000);
@@ -531,7 +531,7 @@ fun[] test_pipeline_jobs(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_pipeline_workers(): int = {
     var w1: pipeline::Worker = pipeline::worker_new("w-001", "alpha");
@@ -549,7 +549,7 @@ fun[] test_pipeline_workers(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Cross-library integration
@@ -571,7 +571,7 @@ fun[] test_validated_auth(): int = {
         }
         * { return 1; }
     }
-}
+};
 
 fun[] test_logged_pipeline(): int = {
     var l: logger::Logger = logger::logger_new("pipeline");
@@ -590,7 +590,7 @@ fun[] test_logged_pipeline(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 fun[] test_monitored_registry(): int = {
     var l: logger::Logger = logger::logger_debug("monitor");
@@ -609,7 +609,7 @@ fun[] test_monitored_registry(): int = {
         case(true) { return 0; }
         * { return 1; }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Main — run all tests
@@ -673,4 +673,4 @@ fun[] main(): int = {
     .echo(smoke_pipeline);
 
     return 0;
-}
+};

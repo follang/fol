@@ -1,4 +1,4 @@
 typ ColorCodes: ent = {
     var BLUE: str = "#0037cd",
     var RED, BLACK, WHITE: str = "#ffffff",
-}
+};

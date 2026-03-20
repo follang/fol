@@ -9,7 +9,7 @@ fn workspace_expression_typing_rejects_plain_imported_call_argument_mismatches()
         &[
             (
                 "shared/lib.fol",
-                "fun[exp] emit(value: int): int = {\n    return value;\n}\n",
+                "fun[exp] emit(value: int): int = {\n    return value;\n};\n",
             ),
             (
                 "app/main.fol",
@@ -17,7 +17,7 @@ fn workspace_expression_typing_rejects_plain_imported_call_argument_mismatches()
                     "use shared: loc = {\"../shared\"};\n",
                     "fun[] main(): int = {\n",
                     "    return emit(\"bad\");\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -50,7 +50,7 @@ fn workspace_expression_typing_keeps_qualified_imported_value_and_call_types() {
                     "var[exp] answer: int = 42;\n",
                     "fun[exp] emit(value: int): int = {\n",
                     "    return value;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
@@ -60,7 +60,7 @@ fn workspace_expression_typing_keeps_qualified_imported_value_and_call_types() {
                     "fun[] main(): int = {\n",
                     "    var current: int = shared::answer;\n",
                     "    return shared::emit(current);\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -103,11 +103,11 @@ fn workspace_expression_typing_types_plain_imported_method_calls() {
                 concat!(
                     "typ[exp] Counter: rec = {\n",
                     "    value: int;\n",
-                    "}\n",
+                    "};\n",
                     "var[exp] current: Counter;\n",
                     "fun[exp] (Counter)read(): int = {\n",
                     "    return 1;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
@@ -116,7 +116,7 @@ fn workspace_expression_typing_types_plain_imported_method_calls() {
                     "use shared: loc = {\"../shared\"};\n",
                     "fun[] main(): int = {\n",
                     "    return current.read();\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -147,11 +147,11 @@ fn workspace_expression_typing_types_qualified_imported_method_calls() {
                 concat!(
                     "typ[exp] Counter: rec = {\n",
                     "    value: int;\n",
-                    "}\n",
+                    "};\n",
                     "var[exp] current: Counter;\n",
                     "fun[exp] (Counter)read(): int = {\n",
                     "    return 1;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
@@ -160,7 +160,7 @@ fn workspace_expression_typing_types_qualified_imported_method_calls() {
                     "use shared: loc = {\"../shared\"};\n",
                     "fun[] main(): int = {\n",
                     "    return shared::current.read();\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -191,9 +191,9 @@ fn workspace_expression_typing_expands_imported_alias_record_shells_for_field_ac
                 concat!(
                     "typ CounterShape: rec = {\n",
                     "    value: int;\n",
-                    "}\n",
-                    "ali Counter: CounterShape\n",
-                    "var[exp] current: Counter = { value = 1 }\n",
+                    "};\n",
+                    "ali Counter: CounterShape;\n",
+                    "var[exp] current: Counter = { value = 1 };\n",
                 ),
             ),
             (
@@ -202,7 +202,7 @@ fn workspace_expression_typing_expands_imported_alias_record_shells_for_field_ac
                     "use shared: loc = {\"../shared\"};\n",
                     "fun[] main(): int = {\n",
                     "    return current.value;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -231,7 +231,7 @@ fn legacy_single_package_typecheck_rejects_imported_loc_values_explicitly() {
             ("shared/lib.fol", "var[exp] answer: int = 42;\n"),
             (
                 "app/main.fol",
-                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n};\n",
             ),
         ],
     );
@@ -262,7 +262,7 @@ fn legacy_single_package_typecheck_rejects_imported_std_values_explicitly() {
             ("std/fmt/value.fol", "var[exp] answer: int = 42;\n"),
             (
                 "app/main.fol",
-                "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+                "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n};\n",
             ),
         ],
     );
@@ -305,12 +305,12 @@ fn legacy_single_package_typecheck_rejects_imported_pkg_values_explicitly() {
             ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
             (
                 "store/json/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
             ),
             ("store/json/src/lib.fol", "var[exp] answer: int = 42;\n"),
             (
                 "app/main.fol",
-                "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n}\n",
+                "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
             ),
         ],
     );
@@ -351,11 +351,11 @@ fn legacy_single_package_typecheck_rejects_imported_routine_calls_explicitly() {
         &[
             (
                 "shared/lib.fol",
-                "fun[exp] answer(): int = {\n    return 42;\n}\n",
+                "fun[exp] answer(): int = {\n    return 42;\n};\n",
             ),
             (
                 "app/main.fol",
-                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer();\n}\n",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer();\n};\n",
             ),
         ],
     );
@@ -380,7 +380,7 @@ fn shell_typing_accepts_nil_in_optional_and_error_binding_contexts() {
     let typed = typecheck_fixture_folder(&[
         (
             "main.fol",
-            "ali MaybeText: opt[str]\nali Failure: err[str]\nali BareFailure: err[]\nvar label: MaybeText = nil\nvar raised: Failure = nil\nvar empty: BareFailure = nil\n",
+            "ali MaybeText: opt[str];\nali Failure: err[str];\nali BareFailure: err[];\nvar label: MaybeText = nil;\nvar raised: Failure = nil;\nvar empty: BareFailure = nil;\n",
         ),
     ]);
 
@@ -412,7 +412,7 @@ fn shell_typing_accepts_nil_in_optional_and_error_binding_contexts() {
 fn typecheck_reports_explicit_top_level_binding_type_requirements() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "var mystery\nfun[] main(): int = {\n    return mystery;\n}\n",
+        "var mystery;\nfun[] main(): int = {\n    return mystery;\n};\n",
     )]);
 
     assert!(
@@ -430,7 +430,7 @@ fn typecheck_reports_explicit_top_level_binding_type_requirements() {
 fn typecheck_reports_explicit_local_binding_type_requirements() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "fun[] main(): int = {\n    var mystery;\n    return mystery;\n}\n",
+        "fun[] main(): int = {\n    var mystery;\n    return mystery;\n};\n",
     )]);
 
     assert!(
@@ -454,7 +454,7 @@ fn reopened_v1_import_failures_no_longer_use_raw_lowered_type_fallbacks() {
             ("shared/lib.fol", "var[exp] answer: int = 42;\n"),
             (
                 "app/main.fol",
-                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n};\n",
             ),
         ],
     );
@@ -475,7 +475,7 @@ fn reopened_v1_import_failures_no_longer_use_raw_lowered_type_fallbacks() {
 fn reopened_v1_binding_failures_no_longer_use_raw_lowered_type_fallbacks() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "fun[] main(): int = {\n    var mystery;\n    return mystery;\n}\n",
+        "fun[] main(): int = {\n    var mystery;\n    return mystery;\n};\n",
     )]);
 
     assert!(
@@ -530,11 +530,11 @@ fn reopened_v1_imported_call_diagnostics_keep_call_site_locations() {
         &[
             (
                 "shared/lib.fol",
-                "fun[exp] twice(value: int): int = {\n    return value;\n}\n",
+                "fun[exp] twice(value: int): int = {\n    return value;\n};\n",
             ),
             (
                 "app/main.fol",
-                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return twice(\"bad\");\n}\n",
+                "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return twice(\"bad\");\n};\n",
             ),
         ],
     );
@@ -570,10 +570,10 @@ fn reopened_v1_imported_method_diagnostics_keep_call_site_locations() {
                 concat!(
                     "typ[exp] User: rec = {\n",
                     "    count: int;\n",
-                    "}\n",
+                    "};\n",
                     "fun[exp] bump(user: User, step: int): int = {\n",
                     "    return step;\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
             (
@@ -583,7 +583,7 @@ fn reopened_v1_imported_method_diagnostics_keep_call_site_locations() {
                     "fun[] main(): int = {\n",
                     "    var user: User = { count = 1 };\n",
                     "    return user.bump();\n",
-                    "}\n",
+                    "};\n",
                 ),
             ),
         ],
@@ -614,7 +614,7 @@ fn reopened_v1_imported_method_diagnostics_keep_call_site_locations() {
 fn reopened_v1_nil_diagnostics_keep_binding_site_locations() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "ali MaybeText: opt[str]\nvar label = nil\n",
+        "ali MaybeText: opt[str];\nvar label = nil;\n",
     )]);
     let error = errors
         .iter()
@@ -644,7 +644,7 @@ fn reopened_v1_nil_diagnostics_keep_binding_site_locations() {
 fn reopened_v1_unwrap_diagnostics_keep_receiver_site_locations() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "fun[] main(): int = {\n    var count: int = 1;\n    return count!;\n}\n",
+        "fun[] main(): int = {\n    var count: int = 1;\n    return count!;\n};\n",
     )]);
     let error = errors
         .iter()
@@ -674,7 +674,7 @@ fn reopened_v1_unwrap_diagnostics_keep_receiver_site_locations() {
 fn nil_typing_rejects_missing_expected_shell_contexts() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "var label = nil\n",
+        "var label = nil;\n",
     )]);
 
     assert!(
@@ -692,7 +692,7 @@ fn nil_typing_rejects_missing_expected_shell_contexts() {
 fn shell_typing_accepts_postfix_unwrap_for_optional_and_typed_error_values() {
     let _typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "ali MaybeText: opt[str]\nali Failure: err[str]\nfun[] take_text(value: MaybeText): str = {\n    return value!;\n}\nfun[] take_error(value: Failure): str = {\n    return value!;\n}\n",
+        "ali MaybeText: opt[str];\nali Failure: err[str];\nfun[] take_text(value: MaybeText): str = {\n    return value!;\n};\nfun[] take_error(value: Failure): str = {\n    return value!;\n};\n",
     )]);
 }
 
@@ -703,10 +703,10 @@ fn shell_typing_rejects_postfix_unwrap_for_recoverable_routine_calls() {
         "fun[] load(): int / str = {\n\
              report \"bad\";\n\
              return 1;\n\
-         }\n\
+         };\n\
          fun[] main(): int / str = {\n\
              return load()!;\n\
-         }\n",
+         };\n",
     )]);
 
     assert!(
@@ -724,7 +724,7 @@ fn shell_typing_rejects_postfix_unwrap_for_recoverable_routine_calls() {
 fn shell_typing_rejects_postfix_unwrap_for_bare_error_shells() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "ali BareFailure: err[]\nfun[] main(value: BareFailure): str = {\n    return value!;\n}\n",
+        "ali BareFailure: err[];\nfun[] main(value: BareFailure): str = {\n    return value!;\n};\n",
     )]);
 
     assert!(
@@ -742,7 +742,7 @@ fn shell_typing_rejects_postfix_unwrap_for_bare_error_shells() {
 fn shell_typing_accepts_nil_in_return_and_call_argument_contexts() {
     let _typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "ali MaybeText: opt[str]\nfun[] echo(value: MaybeText): MaybeText = {\n    return value;\n}\nfun[] make(): MaybeText = {\n    return nil;\n}\nfun[] main(): MaybeText = {\n    return echo(nil);\n}\n",
+        "ali MaybeText: opt[str];\nfun[] echo(value: MaybeText): MaybeText = {\n    return value;\n};\nfun[] make(): MaybeText = {\n    return nil;\n};\nfun[] main(): MaybeText = {\n    return echo(nil);\n};\n",
     )]);
 }
 
@@ -750,7 +750,7 @@ fn shell_typing_accepts_nil_in_return_and_call_argument_contexts() {
 fn shell_typing_accepts_postfix_unwrap_in_binding_and_return_contexts() {
     let _typed = typecheck_fixture_folder(&[(
         "main.fol",
-        "ali MaybeText: opt[str]\nfun[] main(value: MaybeText): str = {\n    var label: str = value!;\n    return value!;\n}\n",
+        "ali MaybeText: opt[str];\nfun[] main(value: MaybeText): str = {\n    var label: str = value!;\n    return value!;\n};\n",
     )]);
 }
 
@@ -758,7 +758,7 @@ fn shell_typing_accepts_postfix_unwrap_in_binding_and_return_contexts() {
 fn shell_typing_rejects_postfix_unwrap_for_non_shell_targets() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
-        "fun[] main(value: int): int = {\n    return value!;\n}\n",
+        "fun[] main(value: int): int = {\n    return value!;\n};\n",
     )]);
 
     assert!(
@@ -775,8 +775,8 @@ fn shell_typing_rejects_postfix_unwrap_for_non_shell_targets() {
 #[test]
 fn declaration_signature_lowering_resolves_qualified_named_types() {
     let typed = typecheck_fixture_folder(&[
-        ("util/types.fol", "ali Count: int\n"),
-        ("main.fol", "var total: util::Count = 1\n"),
+        ("util/types.fol", "ali Count: int;\n"),
+        ("main.fol", "var total: util::Count = 1;\n"),
     ]);
 
     let (count_id, _count) = find_typed_symbol(&typed, "Count", SymbolKind::Alias);
@@ -799,7 +799,7 @@ fn declaration_signature_lowering_checks_local_bindings() {
         "fun[] demo(): int = {\n\
              var local: int = 1;\n\
              return local;\n\
-         }\n",
+         };\n",
     )]);
 
     let (_local_id, local) = find_typed_symbol(&typed, "local", SymbolKind::ValueBinding);
@@ -819,7 +819,7 @@ fn declaration_signature_lowering_checks_nested_routine_signatures() {
                  return seed;\n\
              };\n\
              return seed;\n\
-         }\n",
+         };\n",
     )]);
 
     let (_helper_id, helper) = find_typed_symbol(&typed, "helper", SymbolKind::Routine);
@@ -847,8 +847,8 @@ fn declaration_signature_lowering_checks_nested_routine_signatures() {
 #[test]
 fn declaration_signature_lowering_keeps_alias_target_types_exact() {
     let typed = typecheck_fixture_folder(&[
-        ("types.fol", "ali PathLabel: str\n"),
-        ("main.fol", "var current: PathLabel = \"main\"\n"),
+        ("types.fol", "ali PathLabel: str;\n"),
+        ("main.fol", "var current: PathLabel = \"main\";\n"),
     ]);
 
     let (alias_id, alias) = find_typed_symbol(&typed, "PathLabel", SymbolKind::Alias);
@@ -875,7 +875,7 @@ fn declaration_signature_lowering_records_entry_variant_payload_types() {
         "typ Token: ent = {\n\
              var Word: str = \"word\";\n\
              con Number: int = 1;\n\
-         }\n",
+         };\n",
     )]);
 
     let (_token_id, token) = find_typed_symbol(&typed, "Token", SymbolKind::Type);
@@ -894,8 +894,8 @@ fn declaration_signature_lowering_records_entry_variant_payload_types() {
 #[test]
 fn declaration_signature_lowering_allows_forward_cross_file_alias_references() {
     let typed = typecheck_fixture_folder(&[
-        ("00_main.fol", "var total: Count = 1\n"),
-        ("10_types.fol", "ali Count: int\n"),
+        ("00_main.fol", "var total: Count = 1;\n"),
+        ("10_types.fol", "ali Count: int;\n"),
     ]);
 
     let (count_id, _count) = find_typed_symbol(&typed, "Count", SymbolKind::Alias);
@@ -918,9 +918,9 @@ fn declaration_signature_lowering_allows_cross_file_named_type_references_in_rou
             "00_main.fol",
             "fun[] load(item: model::User): model::User = {\n\
                  return item;\n\
-             }\n",
+             };\n",
         ),
-        ("model/user.fol", "typ User: rec = {\n    name: str\n}\n"),
+        ("model/user.fol", "typ User: rec = {\n    name: str\n};\n"),
     ]);
 
     let (user_id, _user) = find_typed_symbol(&typed, "User", SymbolKind::Type);

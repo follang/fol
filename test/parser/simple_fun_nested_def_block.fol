@@ -4,4 +4,4 @@ fun build(): int = {
     }
 
     return 1;
-}
+};

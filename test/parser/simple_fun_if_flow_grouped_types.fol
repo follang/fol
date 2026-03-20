@@ -2,8 +2,8 @@ fun grouped_flow(flag: bol): int = {
     if(flag) => typ (
         Hit: rec = {
             var value: int;
-        };
-        Miss: str;
-    );
-    else => return 0;
-}
+        },
+        Miss: str
+    )
+    else => return 0
+};

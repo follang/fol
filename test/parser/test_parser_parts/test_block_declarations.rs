@@ -116,7 +116,7 @@ fn test_test_block_labels_preserve_inner_opposite_quote_chars() {
     let fixture = temp_root.join("inner_quotes.fol");
     fs::write(
         &fixture,
-        "typ Alpha: tst[\"unit 'alpha'\", shko]\ndef beta: tst['case \"beta\"', shko] = {}\n",
+        "typ Alpha: tst[\"unit 'alpha'\", shko];\ndef beta: tst['case \"beta\"', shko] = {};\n",
     )
     .expect("Should write temp tst fixture");
 

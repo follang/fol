@@ -6,4 +6,4 @@ fun[] main(): int = {
         case(true) { return counts["ok"]; }
         * { return 0; }
     }
-}
+};

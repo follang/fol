@@ -3,4 +3,4 @@ fun classify(value: int): int = {
         is(0) => 0;
         has(value) => value;
     }
-}
+};

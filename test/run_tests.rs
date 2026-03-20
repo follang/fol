@@ -142,19 +142,19 @@ mod integration_tests {
                 "typ NameTag: rec = {\n",
                 "    label: str;\n",
                 "    code: int\n",
-                "}\n",
+                "};\n",
                 "typ Audit: rec = {\n",
                 "    active: bol;\n",
                 "    marker: NameTag\n",
-                "}\n",
+                "};\n",
                 "typ User: rec = {\n",
                 "    name: str;\n",
                 "    count: int;\n",
                 "    audit: Audit\n",
-                "}\n",
+                "};\n",
                 "fun[] build_tag(): NameTag = {\n",
                 "    return { label = \"stable\", code = high_count };\n",
-                "}\n",
+                "};\n",
                 "fun[] build_user(flag: bol): User = {\n",
                 "    return {\n",
                 "        name = default_name,\n",
@@ -164,13 +164,13 @@ mod integration_tests {
                 "            marker = build_tag(),\n",
                 "        },\n",
                 "    };\n",
-                "}\n",
+                "};\n",
                 "fun[] choose_count(flag: bol): int = {\n",
                 "    when(flag) {\n",
                 "        case(true) { high_count }\n",
                 "        * { low_count }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
                 "fun[] main(flag: bol): int = {\n",
                 "    var current: User = build_user(flag);\n",
                 "    var names: seq[str] = {\"Ada\", \"Lin\"};\n",
@@ -182,7 +182,7 @@ mod integration_tests {
                 "        case(true) { return current.audit.marker.code; }\n",
                 "        * { return counts[\"lin\"]; }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write combined lowering repro fixture");
@@ -199,16 +199,16 @@ mod integration_tests {
                 "        case(true) { 1 }\n",
                 "        * { 0 }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
                 "fun[] echo(flag: bol): bol = {\n",
-                "    return flag\n",
-                "}\n",
+                "    return flag;\n",
+                "};\n",
                 "fun[] main(flag: bol): int = {\n",
                 "    when(echo(flag)) {\n",
                 "        case(true) { return choose(flag) }\n",
                 "        * { return 0 }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write parameter-scope lowering fixture");
@@ -224,7 +224,7 @@ mod integration_tests {
                 "    var names: seq[str] = {\"Ada\", \"Lin\"};\n",
                 "    var counts: map[str, int] = {{\"ada\", 1}, {\"lin\", 2}};\n",
                 "    return counts[\"lin\"];\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write container lowering fixture");
@@ -241,7 +241,7 @@ mod integration_tests {
                 "        case(true) { return 7 }\n",
                 "        * { return 3 }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write early-return when lowering fixture");
@@ -252,7 +252,7 @@ mod integration_tests {
         let fixture = root.join("main.fol");
         std::fs::write(
             &fixture,
-            concat!("fun[] main(): int = {\n", "    return 7\n", "}\n",),
+            concat!("fun[] main(): int = {\n", "    return 7;\n", "};\n",),
         )
         .expect("Should write backend scalar fixture");
         fixture
@@ -265,7 +265,7 @@ mod integration_tests {
                 "    var app = graph.add_exe({{ name = \"{name}\", root = \"src/main.fol\" }});\n",
                 "    graph.install(app);\n",
                 "    graph.add_run(app);\n",
-                "}}\n",
+                "}};\n",
             ),
             name = name
         )
@@ -277,7 +277,7 @@ mod integration_tests {
                 "pro[] build(graph: Graph): non = {{\n",
                 "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
                 "    graph.install(lib);\n",
-                "}}\n",
+                "}};\n",
             ),
             name = name
         )
@@ -292,7 +292,7 @@ mod integration_tests {
         .expect("Should write git package metadata");
         std::fs::write(root.join("build.fol"), semantic_lib_build(name))
             .expect("Should write git package build");
-        std::fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
+        std::fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1;\n")
             .expect("Should write git package source");
 
         for args in [
@@ -329,7 +329,7 @@ mod integration_tests {
             .expect("Should write app build");
         std::fs::write(
             app_root.join("src/main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0;\n};\n",
         )
         .expect("Should write app source");
     }

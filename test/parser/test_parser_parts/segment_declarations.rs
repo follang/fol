@@ -151,7 +151,7 @@ fn test_segment_declaration_preserves_inner_opposite_quote_chars() {
     let fixture = temp_root.join("inner_quotes.fol");
     fs::write(
         &fixture,
-        "seg \"co're\": mod = { def helper: blk = {}; }\nseg 'quo\"te': mod = { def value: blk = {}; }\n",
+        "seg \"co're\": mod = { def helper: blk = {}; };\nseg 'quo\"te': mod = { def value: blk = {}; };\n",
     )
     .expect("Should write temp segment fixture");
 

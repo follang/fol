@@ -8,13 +8,13 @@
 // Stage status
 // ---------------------------------------------------------------------------
 
-ali StageStatus: int
+ali StageStatus: int;
 
-var[exp] STAGE_PENDING: StageStatus = 0
-var[exp] STAGE_RUNNING: StageStatus = 1
-var[exp] STAGE_DONE: StageStatus = 2
-var[exp] STAGE_FAILED: StageStatus = 3
-var[exp] STAGE_SKIPPED: StageStatus = 4
+var[exp] STAGE_PENDING: StageStatus = 0;
+var[exp] STAGE_RUNNING: StageStatus = 1;
+var[exp] STAGE_DONE: StageStatus = 2;
+var[exp] STAGE_FAILED: StageStatus = 3;
+var[exp] STAGE_SKIPPED: StageStatus = 4;
 
 fun[exp] status_name(s: StageStatus): str = {
     when(s) {
@@ -24,23 +24,23 @@ fun[exp] status_name(s: StageStatus): str = {
         case(STAGE_FAILED) { return "failed"; }
         * { return "skipped"; }
     }
-}
+};
 
 fun[exp] status_is_terminal(s: StageStatus): bol = {
     return .ge(s, STAGE_DONE);
-}
+};
 
 fun[exp] status_is_success(s: StageStatus): bol = {
     return .eq(s, STAGE_DONE);
-}
+};
 
 fun[exp] status_is_failure(s: StageStatus): bol = {
     return .eq(s, STAGE_FAILED);
-}
+};
 
 fun[exp] status_is_active(s: StageStatus): bol = {
     return .le(s, STAGE_RUNNING);
-}
+};
 
 // ---------------------------------------------------------------------------
 // StageResult — outcome of running a single stage
@@ -52,7 +52,7 @@ typ[exp] StageResult: rec = {
     output_count: int;
     error_message: str;
     duration_ms: int
-}
+};
 
 fun[exp] stage_result_success(name: str, output_count: int, duration: int): StageResult = {
     return {
@@ -62,7 +62,7 @@ fun[exp] stage_result_success(name: str, output_count: int, duration: int): Stag
         error_message = "",
         duration_ms = duration,
     };
-}
+};
 
 fun[exp] stage_result_failure(name: str, error: str, duration: int): StageResult = {
     return {
@@ -72,7 +72,7 @@ fun[exp] stage_result_failure(name: str, error: str, duration: int): StageResult
         error_message = error,
         duration_ms = duration,
     };
-}
+};
 
 fun[exp] stage_result_skipped(name: str): StageResult = {
     return {
@@ -82,47 +82,47 @@ fun[exp] stage_result_skipped(name: str): StageResult = {
         error_message = "",
         duration_ms = 0,
     };
-}
+};
 
 fun[exp] result_name(r: StageResult): str = {
     return r.stage_name;
-}
+};
 
 fun[exp] result_status(r: StageResult): StageStatus = {
     return r.status;
-}
+};
 
 fun[exp] result_output_count(r: StageResult): int = {
     return r.output_count;
-}
+};
 
 fun[exp] result_error(r: StageResult): str = {
     return r.error_message;
-}
+};
 
 fun[exp] result_duration(r: StageResult): int = {
     return r.duration_ms;
-}
+};
 
 fun[exp] result_succeeded(r: StageResult): bol = {
     return status_is_success(r.status);
-}
+};
 
 fun[exp] result_failed(r: StageResult): bol = {
     return status_is_failure(r.status);
-}
+};
 
 fun[exp] result_has_output(r: StageResult): bol = {
     return .gt(r.output_count, 0);
-}
+};
 
 fun[exp] result_has_error(r: StageResult): bol = {
     return .gt(.len(r.error_message), 0);
-}
+};
 
 fun[exp] result_is_slow(r: StageResult, threshold: int): bol = {
     return .gt(r.duration_ms, threshold);
-}
+};
 
 fun[exp] result_describe(r: StageResult): str = {
     when(result_succeeded(r)) {
@@ -144,19 +144,19 @@ fun[exp] result_describe(r: StageResult): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Stage — a single processing step
 // ---------------------------------------------------------------------------
 
-ali StageKind: int
+ali StageKind: int;
 
-var[exp] KIND_TRANSFORM: StageKind = 0
-var[exp] KIND_FILTER: StageKind = 1
-var[exp] KIND_AGGREGATE: StageKind = 2
-var[exp] KIND_VALIDATE: StageKind = 3
-var[exp] KIND_OUTPUT: StageKind = 4
+var[exp] KIND_TRANSFORM: StageKind = 0;
+var[exp] KIND_FILTER: StageKind = 1;
+var[exp] KIND_AGGREGATE: StageKind = 2;
+var[exp] KIND_VALIDATE: StageKind = 3;
+var[exp] KIND_OUTPUT: StageKind = 4;
 
 typ[exp] Stage: rec = {
     name: str;
@@ -167,7 +167,7 @@ typ[exp] Stage: rec = {
     retries: int;
     max_retries: int;
     critical: bol
-}
+};
 
 fun[exp] stage_new(name: str, kind: StageKind): Stage = {
     return {
@@ -180,7 +180,7 @@ fun[exp] stage_new(name: str, kind: StageKind): Stage = {
         max_retries = 3,
         critical = false,
     };
-}
+};
 
 fun[exp] stage_critical(name: str, kind: StageKind): Stage = {
     return {
@@ -193,7 +193,7 @@ fun[exp] stage_critical(name: str, kind: StageKind): Stage = {
         max_retries = 0,
         critical = true,
     };
-}
+};
 
 fun[exp] stage_with_retries(name: str, kind: StageKind, max_retries: int): Stage = {
     return {
@@ -206,7 +206,7 @@ fun[exp] stage_with_retries(name: str, kind: StageKind, max_retries: int): Stage
         max_retries = max_retries,
         critical = false,
     };
-}
+};
 
 fun[exp] stage_start(s: Stage, input_count: int): Stage = {
     return {
@@ -219,7 +219,7 @@ fun[exp] stage_start(s: Stage, input_count: int): Stage = {
         max_retries = s.max_retries,
         critical = s.critical,
     };
-}
+};
 
 fun[exp] stage_complete(s: Stage, output_count: int): Stage = {
     return {
@@ -232,7 +232,7 @@ fun[exp] stage_complete(s: Stage, output_count: int): Stage = {
         max_retries = s.max_retries,
         critical = s.critical,
     };
-}
+};
 
 fun[exp] stage_fail(s: Stage): Stage = {
     return {
@@ -245,7 +245,7 @@ fun[exp] stage_fail(s: Stage): Stage = {
         max_retries = s.max_retries,
         critical = s.critical,
     };
-}
+};
 
 fun[exp] stage_skip(s: Stage): Stage = {
     return {
@@ -258,55 +258,55 @@ fun[exp] stage_skip(s: Stage): Stage = {
         max_retries = s.max_retries,
         critical = s.critical,
     };
-}
+};
 
 fun[exp] stage_name(s: Stage): str = {
     return s.name;
-}
+};
 
 fun[exp] stage_kind(s: Stage): StageKind = {
     return s.kind;
-}
+};
 
 fun[exp] stage_status(s: Stage): StageStatus = {
     return s.status;
-}
+};
 
 fun[exp] stage_input_count(s: Stage): int = {
     return s.input_count;
-}
+};
 
 fun[exp] stage_output_count(s: Stage): int = {
     return s.output_count;
-}
+};
 
 fun[exp] stage_retries(s: Stage): int = {
     return s.retries;
-}
+};
 
 fun[exp] stage_is_critical(s: Stage): bol = {
     return s.critical;
-}
+};
 
 fun[exp] stage_is_pending(s: Stage): bol = {
     return .eq(s.status, STAGE_PENDING);
-}
+};
 
 fun[exp] stage_is_running(s: Stage): bol = {
     return .eq(s.status, STAGE_RUNNING);
-}
+};
 
 fun[exp] stage_is_done(s: Stage): bol = {
     return .eq(s.status, STAGE_DONE);
-}
+};
 
 fun[exp] stage_is_failed(s: Stage): bol = {
     return .eq(s.status, STAGE_FAILED);
-}
+};
 
 fun[exp] stage_can_retry(s: Stage): bol = {
     return .lt(s.retries, s.max_retries);
-}
+};
 
 fun[exp] stage_kind_name(s: Stage): str = {
     when(s.kind) {
@@ -316,7 +316,7 @@ fun[exp] stage_kind_name(s: Stage): str = {
         case(KIND_VALIDATE) { return "validate"; }
         * { return "output"; }
     }
-}
+};
 
 fun[exp] stage_describe(s: Stage): str = {
     when(stage_is_done(s)) {
@@ -353,17 +353,17 @@ fun[exp] stage_describe(s: Stage): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Pipeline — orchestrates multiple stages
 // ---------------------------------------------------------------------------
 
-ali PipelineMode: int
+ali PipelineMode: int;
 
-var[exp] MODE_SEQUENTIAL: PipelineMode = 0
-var[exp] MODE_PARALLEL: PipelineMode = 1
-var[exp] MODE_CONDITIONAL: PipelineMode = 2
+var[exp] MODE_SEQUENTIAL: PipelineMode = 0;
+var[exp] MODE_PARALLEL: PipelineMode = 1;
+var[exp] MODE_CONDITIONAL: PipelineMode = 2;
 
 typ[exp] Pipeline: rec = {
     name: str;
@@ -374,7 +374,7 @@ typ[exp] Pipeline: rec = {
     skipped_count: int;
     active: bol;
     fail_fast: bol
-}
+};
 
 fun[exp] pipeline_new(name: str, stage_count: int): Pipeline = {
     return {
@@ -387,7 +387,7 @@ fun[exp] pipeline_new(name: str, stage_count: int): Pipeline = {
         active = false,
         fail_fast = true,
     };
-}
+};
 
 fun[exp] pipeline_parallel(name: str, stage_count: int): Pipeline = {
     return {
@@ -400,7 +400,7 @@ fun[exp] pipeline_parallel(name: str, stage_count: int): Pipeline = {
         active = false,
         fail_fast = false,
     };
-}
+};
 
 fun[exp] pipeline_conditional(name: str, stage_count: int): Pipeline = {
     return {
@@ -413,7 +413,7 @@ fun[exp] pipeline_conditional(name: str, stage_count: int): Pipeline = {
         active = false,
         fail_fast = false,
     };
-}
+};
 
 fun[exp] pipeline_start(p: Pipeline): Pipeline = {
     return {
@@ -426,7 +426,7 @@ fun[exp] pipeline_start(p: Pipeline): Pipeline = {
         active = true,
         fail_fast = p.fail_fast,
     };
-}
+};
 
 fun[exp] pipeline_record_success(p: Pipeline): Pipeline = {
     return {
@@ -439,7 +439,7 @@ fun[exp] pipeline_record_success(p: Pipeline): Pipeline = {
         active = p.active,
         fail_fast = p.fail_fast,
     };
-}
+};
 
 fun[exp] pipeline_record_failure(p: Pipeline): Pipeline = {
     return {
@@ -452,7 +452,7 @@ fun[exp] pipeline_record_failure(p: Pipeline): Pipeline = {
         active = p.active,
         fail_fast = p.fail_fast,
     };
-}
+};
 
 fun[exp] pipeline_stop(p: Pipeline): Pipeline = {
     return {
@@ -465,50 +465,50 @@ fun[exp] pipeline_stop(p: Pipeline): Pipeline = {
         active = false,
         fail_fast = p.fail_fast,
     };
-}
+};
 
 fun[exp] pipeline_name(p: Pipeline): str = {
     return p.name;
-}
+};
 
 fun[exp] pipeline_mode(p: Pipeline): PipelineMode = {
     return p.mode;
-}
+};
 
 fun[exp] pipeline_stage_count(p: Pipeline): int = {
     return p.stage_count;
-}
+};
 
 fun[exp] pipeline_completed(p: Pipeline): int = {
     return p.completed_count;
-}
+};
 
 fun[exp] pipeline_failed(p: Pipeline): int = {
     return p.failed_count;
-}
+};
 
 fun[exp] pipeline_skipped(p: Pipeline): int = {
     return p.skipped_count;
-}
+};
 
 fun[exp] pipeline_active(p: Pipeline): bol = {
     return p.active;
-}
+};
 
 fun[exp] pipeline_has_failures(p: Pipeline): bol = {
     return .gt(p.failed_count, 0);
-}
+};
 
 fun[exp] pipeline_all_done(p: Pipeline): bol = {
     return .eq(p.stage_count, p.completed_count);
-}
+};
 
 fun[exp] pipeline_should_stop(p: Pipeline): bol = {
     when(p.fail_fast) {
         case(true) { return pipeline_has_failures(p); }
         * { return false; }
     }
-}
+};
 
 fun[exp] pipeline_mode_name(p: Pipeline): str = {
     when(p.mode) {
@@ -516,7 +516,7 @@ fun[exp] pipeline_mode_name(p: Pipeline): str = {
         case(MODE_PARALLEL) { return "parallel"; }
         * { return "conditional"; }
     }
-}
+};
 
 fun[exp] pipeline_describe(p: Pipeline): str = {
     when(p.active) {
@@ -548,21 +548,21 @@ fun[exp] pipeline_describe(p: Pipeline): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Transform — describes a data transformation
 // ---------------------------------------------------------------------------
 
-ali TransformOp: int
+ali TransformOp: int;
 
-var[exp] OP_MAP: TransformOp = 0
-var[exp] OP_FILTER: TransformOp = 1
-var[exp] OP_REDUCE: TransformOp = 2
-var[exp] OP_FLATTEN: TransformOp = 3
-var[exp] OP_SORT: TransformOp = 4
-var[exp] OP_DEDUPE: TransformOp = 5
-var[exp] OP_LIMIT: TransformOp = 6
+var[exp] OP_MAP: TransformOp = 0;
+var[exp] OP_FILTER: TransformOp = 1;
+var[exp] OP_REDUCE: TransformOp = 2;
+var[exp] OP_FLATTEN: TransformOp = 3;
+var[exp] OP_SORT: TransformOp = 4;
+var[exp] OP_DEDUPE: TransformOp = 5;
+var[exp] OP_LIMIT: TransformOp = 6;
 
 typ[exp] Transform: rec = {
     name: str;
@@ -571,7 +571,7 @@ typ[exp] Transform: rec = {
     output_field: str;
     preserve_order: bol;
     enabled: bol
-}
+};
 
 fun[exp] transform_map(name: str, input: str, output: str): Transform = {
     return {
@@ -582,7 +582,7 @@ fun[exp] transform_map(name: str, input: str, output: str): Transform = {
         preserve_order = true,
         enabled = true,
     };
-}
+};
 
 fun[exp] transform_filter(name: str, field: str): Transform = {
     return {
@@ -593,7 +593,7 @@ fun[exp] transform_filter(name: str, field: str): Transform = {
         preserve_order = true,
         enabled = true,
     };
-}
+};
 
 fun[exp] transform_reduce(name: str, input: str, output: str): Transform = {
     return {
@@ -604,7 +604,7 @@ fun[exp] transform_reduce(name: str, input: str, output: str): Transform = {
         preserve_order = false,
         enabled = true,
     };
-}
+};
 
 fun[exp] transform_flatten(name: str, field: str): Transform = {
     return {
@@ -615,7 +615,7 @@ fun[exp] transform_flatten(name: str, field: str): Transform = {
         preserve_order = true,
         enabled = true,
     };
-}
+};
 
 fun[exp] transform_sort(name: str, field: str): Transform = {
     return {
@@ -626,7 +626,7 @@ fun[exp] transform_sort(name: str, field: str): Transform = {
         preserve_order = false,
         enabled = true,
     };
-}
+};
 
 fun[exp] transform_dedupe(name: str, field: str): Transform = {
     return {
@@ -637,7 +637,7 @@ fun[exp] transform_dedupe(name: str, field: str): Transform = {
         preserve_order = true,
         enabled = true,
     };
-}
+};
 
 fun[exp] transform_limit(name: str, field: str): Transform = {
     return {
@@ -648,7 +648,7 @@ fun[exp] transform_limit(name: str, field: str): Transform = {
         preserve_order = true,
         enabled = true,
     };
-}
+};
 
 fun[exp] transform_disable(t: Transform): Transform = {
     return {
@@ -659,7 +659,7 @@ fun[exp] transform_disable(t: Transform): Transform = {
         preserve_order = t.preserve_order,
         enabled = false,
     };
-}
+};
 
 fun[exp] transform_enable(t: Transform): Transform = {
     return {
@@ -670,19 +670,19 @@ fun[exp] transform_enable(t: Transform): Transform = {
         preserve_order = t.preserve_order,
         enabled = true,
     };
-}
+};
 
 fun[exp] transform_name(t: Transform): str = {
     return t.name;
-}
+};
 
 fun[exp] transform_enabled(t: Transform): bol = {
     return t.enabled;
-}
+};
 
 fun[exp] transform_preserves_order(t: Transform): bol = {
     return t.preserve_order;
-}
+};
 
 fun[exp] transform_op_name(t: Transform): str = {
     when(t.op) {
@@ -694,25 +694,25 @@ fun[exp] transform_op_name(t: Transform): str = {
         case(OP_DEDUPE) { return "dedupe"; }
         * { return "limit"; }
     }
-}
+};
 
 fun[exp] transform_describe(t: Transform): str = {
     when(t.enabled) {
         case(true) { return transform_op_name(t); }
         * { return "disabled"; }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Job — a unit of work submitted to a pipeline
 // ---------------------------------------------------------------------------
 
-ali JobPriority: int
+ali JobPriority: int;
 
-var[exp] JOB_LOW: JobPriority = 0
-var[exp] JOB_NORMAL: JobPriority = 1
-var[exp] JOB_HIGH: JobPriority = 2
-var[exp] JP_URGENT: JobPriority = 3
+var[exp] JOB_LOW: JobPriority = 0;
+var[exp] JOB_NORMAL: JobPriority = 1;
+var[exp] JOB_HIGH: JobPriority = 2;
+var[exp] JP_URGENT: JobPriority = 3;
 
 typ[exp] Job: rec = {
     job_id: str;
@@ -722,7 +722,7 @@ typ[exp] Job: rec = {
     attempts: int;
     max_attempts: int;
     payload_size: int
-}
+};
 
 fun[exp] job_new(job_id: str, name: str, priority: JobPriority, payload_size: int): Job = {
     return {
@@ -734,7 +734,7 @@ fun[exp] job_new(job_id: str, name: str, priority: JobPriority, payload_size: in
         max_attempts = 3,
         payload_size = payload_size,
     };
-}
+};
 
 fun[exp] job_urgent(job_id: str, name: str, payload_size: int): Job = {
     return {
@@ -746,7 +746,7 @@ fun[exp] job_urgent(job_id: str, name: str, payload_size: int): Job = {
         max_attempts = 1,
         payload_size = payload_size,
     };
-}
+};
 
 fun[exp] job_start(j: Job): Job = {
     return {
@@ -758,7 +758,7 @@ fun[exp] job_start(j: Job): Job = {
         max_attempts = j.max_attempts,
         payload_size = j.payload_size,
     };
-}
+};
 
 fun[exp] job_complete(j: Job): Job = {
     return {
@@ -770,7 +770,7 @@ fun[exp] job_complete(j: Job): Job = {
         max_attempts = j.max_attempts,
         payload_size = j.payload_size,
     };
-}
+};
 
 fun[exp] job_fail(j: Job): Job = {
     return {
@@ -782,59 +782,59 @@ fun[exp] job_fail(j: Job): Job = {
         max_attempts = j.max_attempts,
         payload_size = j.payload_size,
     };
-}
+};
 
 fun[exp] job_id(j: Job): str = {
     return j.job_id;
-}
+};
 
 fun[exp] job_name(j: Job): str = {
     return j.name;
-}
+};
 
 fun[exp] job_priority(j: Job): JobPriority = {
     return j.priority;
-}
+};
 
 fun[exp] job_status(j: Job): StageStatus = {
     return j.status;
-}
+};
 
 fun[exp] job_attempts(j: Job): int = {
     return j.attempts;
-}
+};
 
 fun[exp] job_payload_size(j: Job): int = {
     return j.payload_size;
-}
+};
 
 fun[exp] job_is_pending(j: Job): bol = {
     return .eq(j.status, STAGE_PENDING);
-}
+};
 
 fun[exp] job_is_running(j: Job): bol = {
     return .eq(j.status, STAGE_RUNNING);
-}
+};
 
 fun[exp] job_is_done(j: Job): bol = {
     return .eq(j.status, STAGE_DONE);
-}
+};
 
 fun[exp] job_is_failed(j: Job): bol = {
     return .eq(j.status, STAGE_FAILED);
-}
+};
 
 fun[exp] job_is_urgent(j: Job): bol = {
     return .eq(j.priority, JP_URGENT);
-}
+};
 
 fun[exp] job_can_retry(j: Job): bol = {
     return .lt(j.attempts, j.max_attempts);
-}
+};
 
 fun[exp] job_is_large(j: Job): bol = {
     return .gt(j.payload_size, 10000);
-}
+};
 
 fun[exp] job_priority_name(j: Job): str = {
     when(j.priority) {
@@ -843,7 +843,7 @@ fun[exp] job_priority_name(j: Job): str = {
         case(JOB_HIGH) { return "high"; }
         * { return "urgent"; }
     }
-}
+};
 
 fun[exp] job_describe(j: Job): str = {
     when(job_is_done(j)) {
@@ -880,18 +880,18 @@ fun[exp] job_describe(j: Job): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Worker — processes jobs from a pipeline
 // ---------------------------------------------------------------------------
 
-ali WorkerState: int
+ali WorkerState: int;
 
-var[exp] WORKER_IDLE: WorkerState = 0
-var[exp] WORKER_BUSY: WorkerState = 1
-var[exp] WORKER_PAUSED: WorkerState = 2
-var[exp] WORKER_STOPPED: WorkerState = 3
+var[exp] WORKER_IDLE: WorkerState = 0;
+var[exp] WORKER_BUSY: WorkerState = 1;
+var[exp] WORKER_PAUSED: WorkerState = 2;
+var[exp] WORKER_STOPPED: WorkerState = 3;
 
 typ[exp] Worker: rec = {
     worker_id: str;
@@ -901,7 +901,7 @@ typ[exp] Worker: rec = {
     jobs_failed: int;
     current_job: str;
     max_concurrent: int
-}
+};
 
 fun[exp] worker_new(worker_id: str, name: str): Worker = {
     return {
@@ -913,7 +913,7 @@ fun[exp] worker_new(worker_id: str, name: str): Worker = {
         current_job = "",
         max_concurrent = 1,
     };
-}
+};
 
 fun[exp] worker_concurrent(worker_id: str, name: str, max: int): Worker = {
     return {
@@ -925,7 +925,7 @@ fun[exp] worker_concurrent(worker_id: str, name: str, max: int): Worker = {
         current_job = "",
         max_concurrent = max,
     };
-}
+};
 
 fun[exp] worker_assign(w: Worker, job_name: str): Worker = {
     return {
@@ -937,7 +937,7 @@ fun[exp] worker_assign(w: Worker, job_name: str): Worker = {
         current_job = job_name,
         max_concurrent = w.max_concurrent,
     };
-}
+};
 
 fun[exp] worker_release(w: Worker): Worker = {
     return {
@@ -949,7 +949,7 @@ fun[exp] worker_release(w: Worker): Worker = {
         current_job = "",
         max_concurrent = w.max_concurrent,
     };
-}
+};
 
 fun[exp] worker_pause(w: Worker): Worker = {
     return {
@@ -961,7 +961,7 @@ fun[exp] worker_pause(w: Worker): Worker = {
         current_job = w.current_job,
         max_concurrent = w.max_concurrent,
     };
-}
+};
 
 fun[exp] worker_stop(w: Worker): Worker = {
     return {
@@ -973,51 +973,51 @@ fun[exp] worker_stop(w: Worker): Worker = {
         current_job = "",
         max_concurrent = w.max_concurrent,
     };
-}
+};
 
 fun[exp] worker_id(w: Worker): str = {
     return w.worker_id;
-}
+};
 
 fun[exp] worker_name(w: Worker): str = {
     return w.name;
-}
+};
 
 fun[exp] worker_state(w: Worker): WorkerState = {
     return w.state;
-}
+};
 
 fun[exp] worker_jobs_processed(w: Worker): int = {
     return w.jobs_processed;
-}
+};
 
 fun[exp] worker_jobs_failed(w: Worker): int = {
     return w.jobs_failed;
-}
+};
 
 fun[exp] worker_current_job(w: Worker): str = {
     return w.current_job;
-}
+};
 
 fun[exp] worker_is_idle(w: Worker): bol = {
     return .eq(w.state, WORKER_IDLE);
-}
+};
 
 fun[exp] worker_is_busy(w: Worker): bol = {
     return .eq(w.state, WORKER_BUSY);
-}
+};
 
 fun[exp] worker_is_available(w: Worker): bol = {
     return .eq(w.state, WORKER_IDLE);
-}
+};
 
 fun[exp] worker_is_stopped(w: Worker): bol = {
     return .eq(w.state, WORKER_STOPPED);
-}
+};
 
 fun[exp] worker_has_failures(w: Worker): bol = {
     return .gt(w.jobs_failed, 0);
-}
+};
 
 fun[exp] worker_state_name(w: Worker): str = {
     when(w.state) {
@@ -1026,7 +1026,7 @@ fun[exp] worker_state_name(w: Worker): str = {
         case(WORKER_PAUSED) { return "paused"; }
         * { return "stopped"; }
     }
-}
+};
 
 fun[exp] worker_describe(w: Worker): str = {
     when(worker_is_busy(w)) {
@@ -1058,7 +1058,7 @@ fun[exp] worker_describe(w: Worker): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Smoke test
@@ -1149,4 +1149,4 @@ fun[exp] pipeline_smoke_test(): int = {
         }
         * { return 1; }
     }
-}
+};

@@ -3,8 +3,8 @@ fun[] load(flag: bol): int / str = {
         case(true) { report "bad-input"; }
         * { return 7; }
     }
-}
+};
 
 fun[] main(): int = {
     return load(true);
-}
+};

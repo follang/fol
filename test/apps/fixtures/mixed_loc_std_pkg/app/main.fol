@@ -4,4 +4,4 @@ use math: pkg = {math};
 
 fun[] main(): int = {
     return fmt::double(plus_one(math::src::pkg_answer));
-}
+};

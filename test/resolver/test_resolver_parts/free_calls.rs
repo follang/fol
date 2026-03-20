@@ -8,7 +8,7 @@ fn test_resolver_resolves_plain_free_calls_against_visible_routines() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] helper(value: int): int = {\n    return value;\n}\n\nfun[] main(input: int): int = {\n    return helper(input);\n}\n",
+        "fun[] helper(value: int): int = {\n    return value;\n};\n\nfun[] main(input: int): int = {\n    return helper(input);\n};\n",
     )
     .expect("Should write the visible free-call resolver fixture");
 
@@ -58,7 +58,7 @@ fn test_resolver_reports_unresolved_plain_free_calls() {
     fs::create_dir_all(&temp_root).expect("Should create a temporary resolver fixture directory");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(input: int): int = {\n    return helper(input);\n}\n",
+        "fun[] main(input: int): int = {\n    return helper(input);\n};\n",
     )
     .expect("Should write the missing free-call resolver fixture");
 

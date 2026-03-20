@@ -2,22 +2,22 @@ fun make(): any = {
     return fun[](x: int)[outer; count;]: int = {
         return x;
     };
-}
+};
 
 pro build(): int = {
     return pro[](x: int)[outer;]: int = {
         return x;
     };
-}
+};
 
 log check_it(): bool = {
     return log[](x: int)[ready;]: bool = {
         return ready;
     };
-}
+};
 
 fun outer(): any = {
     return ()[left; right;] {
         return left;
     };
-}
+};

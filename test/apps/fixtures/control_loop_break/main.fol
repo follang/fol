@@ -3,8 +3,8 @@ fun[] spin_once(): int = {
         break;
     }
     return 7;
-}
+};
 
 fun[] main(): int = {
     return spin_once();
-}
+};

@@ -1,4 +1,4 @@
 fun build(): any = {
     var items = {1; 2; 3};
     return items;
-}
+};

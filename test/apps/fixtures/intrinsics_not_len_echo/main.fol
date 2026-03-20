@@ -5,4 +5,4 @@ fun[] main(): int = {
         case(true) { return .echo(.len(parts)); }
         * { return 0; }
     }
-}
+};

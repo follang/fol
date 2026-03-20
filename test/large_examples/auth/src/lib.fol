@@ -8,13 +8,13 @@
 // Permission levels
 // ---------------------------------------------------------------------------
 
-ali PermLevel: int
+ali PermLevel: int;
 
-var[exp] PERM_NONE: PermLevel = 0
-var[exp] PERM_READ: PermLevel = 1
-var[exp] PERM_WRITE: PermLevel = 2
-var[exp] PERM_ADMIN: PermLevel = 3
-var[exp] PERM_SUPER: PermLevel = 4
+var[exp] PERM_NONE: PermLevel = 0;
+var[exp] PERM_READ: PermLevel = 1;
+var[exp] PERM_WRITE: PermLevel = 2;
+var[exp] PERM_ADMIN: PermLevel = 3;
+var[exp] PERM_SUPER: PermLevel = 4;
 
 fun[exp] perm_name(level: PermLevel): str = {
     when(level) {
@@ -24,23 +24,23 @@ fun[exp] perm_name(level: PermLevel): str = {
         case(PERM_ADMIN) { return "admin"; }
         * { return "super"; }
     }
-}
+};
 
 fun[exp] perm_at_least(current: PermLevel, required: PermLevel): bol = {
     return .ge(current, required);
-}
+};
 
 fun[exp] perm_is_elevated(level: PermLevel): bol = {
     return .ge(level, PERM_ADMIN);
-}
+};
 
 fun[exp] perm_is_readonly(level: PermLevel): bol = {
     return .eq(level, PERM_READ);
-}
+};
 
 fun[exp] perm_can_write(level: PermLevel): bol = {
     return .ge(level, PERM_WRITE);
-}
+};
 
 fun[exp] perm_describe(level: PermLevel): str = {
     when(perm_is_elevated(level)) {
@@ -57,20 +57,20 @@ fun[exp] perm_describe(level: PermLevel): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Role — groups permissions under a named role
 // ---------------------------------------------------------------------------
 
-ali RoleKind: int
+ali RoleKind: int;
 
-var[exp] RK_GUEST: RoleKind = 0
-var[exp] RK_USER: RoleKind = 1
-var[exp] RK_EDITOR: RoleKind = 2
-var[exp] RK_MODERATOR: RoleKind = 3
-var[exp] RK_ADMIN: RoleKind = 4
-var[exp] RK_OWNER: RoleKind = 5
+var[exp] RK_GUEST: RoleKind = 0;
+var[exp] RK_USER: RoleKind = 1;
+var[exp] RK_EDITOR: RoleKind = 2;
+var[exp] RK_MODERATOR: RoleKind = 3;
+var[exp] RK_ADMIN: RoleKind = 4;
+var[exp] RK_OWNER: RoleKind = 5;
 
 typ[exp] Role: rec = {
     name: str;
@@ -78,7 +78,7 @@ typ[exp] Role: rec = {
     perm_level: PermLevel;
     can_delegate: bol;
     description: str
-}
+};
 
 fun[exp] role_guest(): Role = {
     return {
@@ -88,7 +88,7 @@ fun[exp] role_guest(): Role = {
         can_delegate = false,
         description = "read-only guest access",
     };
-}
+};
 
 fun[exp] role_user(): Role = {
     return {
@@ -98,7 +98,7 @@ fun[exp] role_user(): Role = {
         can_delegate = false,
         description = "standard user access",
     };
-}
+};
 
 fun[exp] role_editor(): Role = {
     return {
@@ -108,7 +108,7 @@ fun[exp] role_editor(): Role = {
         can_delegate = false,
         description = "content editor access",
     };
-}
+};
 
 fun[exp] role_moderator(): Role = {
     return {
@@ -118,7 +118,7 @@ fun[exp] role_moderator(): Role = {
         can_delegate = true,
         description = "moderation privileges",
     };
-}
+};
 
 fun[exp] role_admin(): Role = {
     return {
@@ -128,7 +128,7 @@ fun[exp] role_admin(): Role = {
         can_delegate = true,
         description = "full admin access",
     };
-}
+};
 
 fun[exp] role_owner(): Role = {
     return {
@@ -138,7 +138,7 @@ fun[exp] role_owner(): Role = {
         can_delegate = true,
         description = "system owner",
     };
-}
+};
 
 fun[exp] role_custom(name: str, kind: RoleKind, level: PermLevel, delegate: bol, desc: str): Role = {
     return {
@@ -148,39 +148,39 @@ fun[exp] role_custom(name: str, kind: RoleKind, level: PermLevel, delegate: bol,
         can_delegate = delegate,
         description = desc,
     };
-}
+};
 
 fun[exp] role_name(r: Role): str = {
     return r.name;
-}
+};
 
 fun[exp] role_perm_level(r: Role): PermLevel = {
     return r.perm_level;
-}
+};
 
 fun[exp] role_can_delegate(r: Role): bol = {
     return r.can_delegate;
-}
+};
 
 fun[exp] role_is_admin(r: Role): bol = {
     return .ge(r.kind, RK_ADMIN);
-}
+};
 
 fun[exp] role_is_elevated(r: Role): bol = {
     return perm_is_elevated(r.perm_level);
-}
+};
 
 fun[exp] role_outranks(a: Role, b: Role): bol = {
     return .gt(a.kind, b.kind);
-}
+};
 
 fun[exp] role_same_level(a: Role, b: Role): bol = {
     return .eq(a.kind, b.kind);
-}
+};
 
 fun[exp] role_has_at_least(r: Role, required: PermLevel): bol = {
     return perm_at_least(r.perm_level, required);
-}
+};
 
 fun[exp] role_describe(r: Role): str = {
     when(role_is_admin(r)) {
@@ -207,19 +207,19 @@ fun[exp] role_describe(r: Role): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // User — authenticated identity
 // ---------------------------------------------------------------------------
 
-ali UserStatus: int
+ali UserStatus: int;
 
-var[exp] STATUS_ACTIVE: UserStatus = 0
-var[exp] STATUS_SUSPENDED: UserStatus = 1
-var[exp] STATUS_LOCKED: UserStatus = 2
-var[exp] STATUS_DELETED: UserStatus = 3
-var[exp] STATUS_PENDING: UserStatus = 4
+var[exp] STATUS_ACTIVE: UserStatus = 0;
+var[exp] STATUS_SUSPENDED: UserStatus = 1;
+var[exp] STATUS_LOCKED: UserStatus = 2;
+var[exp] STATUS_DELETED: UserStatus = 3;
+var[exp] STATUS_PENDING: UserStatus = 4;
 
 typ[exp] User: rec = {
     username: str;
@@ -229,7 +229,7 @@ typ[exp] User: rec = {
     status: UserStatus;
     login_count: int;
     verified: bol
-}
+};
 
 fun[exp] user_new(username: str, email: str, display: str): User = {
     return {
@@ -241,7 +241,7 @@ fun[exp] user_new(username: str, email: str, display: str): User = {
         login_count = 0,
         verified = false,
     };
-}
+};
 
 fun[exp] user_guest(username: str): User = {
     return {
@@ -253,7 +253,7 @@ fun[exp] user_guest(username: str): User = {
         login_count = 0,
         verified = false,
     };
-}
+};
 
 fun[exp] user_admin(username: str, email: str): User = {
     return {
@@ -265,7 +265,7 @@ fun[exp] user_admin(username: str, email: str): User = {
         login_count = 0,
         verified = true,
     };
-}
+};
 
 fun[exp] user_owner(username: str, email: str): User = {
     return {
@@ -277,7 +277,7 @@ fun[exp] user_owner(username: str, email: str): User = {
         login_count = 0,
         verified = true,
     };
-}
+};
 
 fun[exp] user_with_role(username: str, email: str, r: Role): User = {
     return {
@@ -289,7 +289,7 @@ fun[exp] user_with_role(username: str, email: str, r: Role): User = {
         login_count = 0,
         verified = false,
     };
-}
+};
 
 fun[exp] user_verify(u: User): User = {
     return {
@@ -301,7 +301,7 @@ fun[exp] user_verify(u: User): User = {
         login_count = u.login_count,
         verified = true,
     };
-}
+};
 
 fun[exp] user_suspend(u: User): User = {
     return {
@@ -313,7 +313,7 @@ fun[exp] user_suspend(u: User): User = {
         login_count = u.login_count,
         verified = u.verified,
     };
-}
+};
 
 fun[exp] user_lock(u: User): User = {
     return {
@@ -325,7 +325,7 @@ fun[exp] user_lock(u: User): User = {
         login_count = u.login_count,
         verified = u.verified,
     };
-}
+};
 
 fun[exp] user_delete(u: User): User = {
     return {
@@ -337,7 +337,7 @@ fun[exp] user_delete(u: User): User = {
         login_count = u.login_count,
         verified = u.verified,
     };
-}
+};
 
 fun[exp] user_activate(u: User): User = {
     return {
@@ -349,7 +349,7 @@ fun[exp] user_activate(u: User): User = {
         login_count = u.login_count,
         verified = u.verified,
     };
-}
+};
 
 fun[exp] user_change_role(u: User, new_role: Role): User = {
     return {
@@ -361,69 +361,69 @@ fun[exp] user_change_role(u: User, new_role: Role): User = {
         login_count = u.login_count,
         verified = u.verified,
     };
-}
+};
 
 fun[exp] user_username(u: User): str = {
     return u.username;
-}
+};
 
 fun[exp] user_display_name(u: User): str = {
     return u.display_name;
-}
+};
 
 fun[exp] user_email(u: User): str = {
     return u.email;
-}
+};
 
 fun[exp] user_role(u: User): Role = {
     return u.role;
-}
+};
 
 fun[exp] user_status(u: User): UserStatus = {
     return u.status;
-}
+};
 
 fun[exp] user_login_count(u: User): int = {
     return u.login_count;
-}
+};
 
 fun[exp] user_verified(u: User): bol = {
     return u.verified;
-}
+};
 
 fun[exp] user_is_active(u: User): bol = {
     return .eq(u.status, STATUS_ACTIVE);
-}
+};
 
 fun[exp] user_is_suspended(u: User): bol = {
     return .eq(u.status, STATUS_SUSPENDED);
-}
+};
 
 fun[exp] user_is_locked(u: User): bol = {
     return .eq(u.status, STATUS_LOCKED);
-}
+};
 
 fun[exp] user_is_deleted(u: User): bol = {
     return .eq(u.status, STATUS_DELETED);
-}
+};
 
 fun[exp] user_is_admin(u: User): bol = {
     return role_is_admin(u.role);
-}
+};
 
 fun[exp] user_can_login(u: User): bol = {
     when(user_is_active(u)) {
         case(true) { return .not(user_is_locked(u)); }
         * { return false; }
     }
-}
+};
 
 fun[exp] user_can_write(u: User): bol = {
     when(user_is_active(u)) {
         case(true) { return perm_can_write(u.role.perm_level); }
         * { return false; }
     }
-}
+};
 
 fun[exp] user_status_name(u: User): str = {
     when(u.status) {
@@ -433,7 +433,7 @@ fun[exp] user_status_name(u: User): str = {
         case(STATUS_DELETED) { return "deleted"; }
         * { return "pending"; }
     }
-}
+};
 
 fun[exp] user_describe(u: User): str = {
     when(user_is_active(u)) {
@@ -465,18 +465,18 @@ fun[exp] user_describe(u: User): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Session — tracks an authenticated session
 // ---------------------------------------------------------------------------
 
-ali SessionState: int
+ali SessionState: int;
 
-var[exp] SESSION_ACTIVE: SessionState = 0
-var[exp] SESSION_EXPIRED: SessionState = 1
-var[exp] SESSION_REVOKED: SessionState = 2
-var[exp] SESSION_REFRESHING: SessionState = 3
+var[exp] SESSION_ACTIVE: SessionState = 0;
+var[exp] SESSION_EXPIRED: SessionState = 1;
+var[exp] SESSION_REVOKED: SessionState = 2;
+var[exp] SESSION_REFRESHING: SessionState = 3;
 
 typ[exp] Session: rec = {
     session_id: str;
@@ -486,7 +486,7 @@ typ[exp] Session: rec = {
     expires_at: int;
     refresh_count: int;
     ip_address: str
-}
+};
 
 fun[exp] session_new(session_id: str, username: str, created: int, expires: int, ip: str): Session = {
     return {
@@ -498,7 +498,7 @@ fun[exp] session_new(session_id: str, username: str, created: int, expires: int,
         refresh_count = 0,
         ip_address = ip,
     };
-}
+};
 
 fun[exp] session_expire(s: Session): Session = {
     return {
@@ -510,7 +510,7 @@ fun[exp] session_expire(s: Session): Session = {
         refresh_count = s.refresh_count,
         ip_address = s.ip_address,
     };
-}
+};
 
 fun[exp] session_revoke(s: Session): Session = {
     return {
@@ -522,46 +522,46 @@ fun[exp] session_revoke(s: Session): Session = {
         refresh_count = s.refresh_count,
         ip_address = s.ip_address,
     };
-}
+};
 
 fun[exp] session_id(s: Session): str = {
     return s.session_id;
-}
+};
 
 fun[exp] session_username(s: Session): str = {
     return s.username;
-}
+};
 
 fun[exp] session_state(s: Session): SessionState = {
     return s.state;
-}
+};
 
 fun[exp] session_is_active(s: Session): bol = {
     return .eq(s.state, SESSION_ACTIVE);
-}
+};
 
 fun[exp] session_is_expired(s: Session): bol = {
     return .eq(s.state, SESSION_EXPIRED);
-}
+};
 
 fun[exp] session_is_revoked(s: Session): bol = {
     return .eq(s.state, SESSION_REVOKED);
-}
+};
 
 fun[exp] session_refresh_count(s: Session): int = {
     return s.refresh_count;
-}
+};
 
 fun[exp] session_ip(s: Session): str = {
     return s.ip_address;
-}
+};
 
 fun[exp] session_valid(s: Session, now: int): bol = {
     when(session_is_active(s)) {
         case(true) { return .lt(now, s.expires_at); }
         * { return false; }
     }
-}
+};
 
 fun[exp] session_needs_refresh(s: Session, now: int, threshold: int): bol = {
     when(session_is_active(s)) {
@@ -570,7 +570,7 @@ fun[exp] session_needs_refresh(s: Session, now: int, threshold: int): bol = {
         }
         * { return false; }
     }
-}
+};
 
 fun[exp] session_state_name(s: Session): str = {
     when(s.state) {
@@ -579,7 +579,7 @@ fun[exp] session_state_name(s: Session): str = {
         case(SESSION_REVOKED) { return "revoked"; }
         * { return "refreshing"; }
     }
-}
+};
 
 fun[exp] session_describe(s: Session): str = {
     when(session_is_active(s)) {
@@ -601,18 +601,18 @@ fun[exp] session_describe(s: Session): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Token — authentication token
 // ---------------------------------------------------------------------------
 
-ali TokenKind: int
+ali TokenKind: int;
 
-var[exp] TOKEN_ACCESS: TokenKind = 0
-var[exp] TOKEN_REFRESH: TokenKind = 1
-var[exp] TOKEN_API: TokenKind = 2
-var[exp] TOKEN_SERVICE: TokenKind = 3
+var[exp] TOKEN_ACCESS: TokenKind = 0;
+var[exp] TOKEN_REFRESH: TokenKind = 1;
+var[exp] TOKEN_API: TokenKind = 2;
+var[exp] TOKEN_SERVICE: TokenKind = 3;
 
 typ[exp] Token: rec = {
     value: str;
@@ -621,7 +621,7 @@ typ[exp] Token: rec = {
     expires_at: int;
     revoked: bol;
     scope: str
-}
+};
 
 fun[exp] token_access(value: str, issued: int, expires: int): Token = {
     return {
@@ -632,7 +632,7 @@ fun[exp] token_access(value: str, issued: int, expires: int): Token = {
         revoked = false,
         scope = "user",
     };
-}
+};
 
 fun[exp] token_refresh(value: str, issued: int, expires: int): Token = {
     return {
@@ -643,7 +643,7 @@ fun[exp] token_refresh(value: str, issued: int, expires: int): Token = {
         revoked = false,
         scope = "refresh",
     };
-}
+};
 
 fun[exp] token_api(value: str, issued: int, scope: str): Token = {
     return {
@@ -654,7 +654,7 @@ fun[exp] token_api(value: str, issued: int, scope: str): Token = {
         revoked = false,
         scope = scope,
     };
-}
+};
 
 fun[exp] token_service(value: str, issued: int): Token = {
     return {
@@ -665,7 +665,7 @@ fun[exp] token_service(value: str, issued: int): Token = {
         revoked = false,
         scope = "service",
     };
-}
+};
 
 fun[exp] token_revoke(t: Token): Token = {
     return {
@@ -676,19 +676,19 @@ fun[exp] token_revoke(t: Token): Token = {
         revoked = true,
         scope = t.scope,
     };
-}
+};
 
 fun[exp] token_value(t: Token): str = {
     return t.value;
-}
+};
 
 fun[exp] token_revoked(t: Token): bol = {
     return t.revoked;
-}
+};
 
 fun[exp] token_scope(t: Token): str = {
     return t.scope;
-}
+};
 
 fun[exp] token_valid(t: Token, now: int): bol = {
     when(t.revoked) {
@@ -700,7 +700,7 @@ fun[exp] token_valid(t: Token, now: int): bol = {
             }
         }
     }
-}
+};
 
 fun[exp] token_kind_name(t: Token): str = {
     when(t.kind) {
@@ -709,7 +709,7 @@ fun[exp] token_kind_name(t: Token): str = {
         case(TOKEN_API) { return "api"; }
         * { return "service"; }
     }
-}
+};
 
 fun[exp] token_describe(t: Token): str = {
     when(t.revoked) {
@@ -721,7 +721,7 @@ fun[exp] token_describe(t: Token): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // AccessResult — outcome of an access check
@@ -733,7 +733,7 @@ typ[exp] AccessResult: rec = {
     resource: str;
     required_level: PermLevel;
     actual_level: PermLevel
-}
+};
 
 fun[exp] access_allowed(resource: str, level: PermLevel): AccessResult = {
     return {
@@ -743,7 +743,7 @@ fun[exp] access_allowed(resource: str, level: PermLevel): AccessResult = {
         required_level = level,
         actual_level = level,
     };
-}
+};
 
 fun[exp] access_denied(resource: str, reason: str, required: PermLevel, actual: PermLevel): AccessResult = {
     return {
@@ -753,19 +753,19 @@ fun[exp] access_denied(resource: str, reason: str, required: PermLevel, actual: 
         required_level = required,
         actual_level = actual,
     };
-}
+};
 
 fun[exp] access_is_allowed(r: AccessResult): bol = {
     return r.allowed;
-}
+};
 
 fun[exp] access_reason(r: AccessResult): str = {
     return r.reason;
-}
+};
 
 fun[exp] access_resource(r: AccessResult): str = {
     return r.resource;
-}
+};
 
 fun[exp] access_describe(r: AccessResult): str = {
     when(r.allowed) {
@@ -787,7 +787,7 @@ fun[exp] access_describe(r: AccessResult): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Authorization check functions
@@ -809,19 +809,19 @@ fun[exp] check_access(user: User, resource: str, required: PermLevel): AccessRes
             }
         }
     }
-}
+};
 
 fun[exp] check_read_access(user: User, resource: str): AccessResult = {
     return check_access(user, resource, PERM_READ);
-}
+};
 
 fun[exp] check_write_access(user: User, resource: str): AccessResult = {
     return check_access(user, resource, PERM_WRITE);
-}
+};
 
 fun[exp] check_admin_access(user: User, resource: str): AccessResult = {
     return check_access(user, resource, PERM_ADMIN);
-}
+};
 
 fun[exp] check_session_access(user: User, session: Session, resource: str, required: PermLevel, now: int): AccessResult = {
     when(.not(session_valid(session, now))) {
@@ -832,7 +832,7 @@ fun[exp] check_session_access(user: User, session: Session, resource: str, requi
             return check_access(user, resource, required);
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Policy — defines access rules
@@ -845,7 +845,7 @@ typ[exp] Policy: rec = {
     require_verified: bol;
     require_active: bol;
     description: str
-}
+};
 
 fun[exp] policy_new(name: str, resource: str, min_role: RoleKind, verified: bol): Policy = {
     return {
@@ -856,7 +856,7 @@ fun[exp] policy_new(name: str, resource: str, min_role: RoleKind, verified: bol)
         require_active = true,
         description = "",
     };
-}
+};
 
 fun[exp] policy_public(name: str, resource: str): Policy = {
     return {
@@ -867,7 +867,7 @@ fun[exp] policy_public(name: str, resource: str): Policy = {
         require_active = false,
         description = "public access",
     };
-}
+};
 
 fun[exp] policy_authenticated(name: str, resource: str): Policy = {
     return {
@@ -878,7 +878,7 @@ fun[exp] policy_authenticated(name: str, resource: str): Policy = {
         require_active = true,
         description = "authenticated users only",
     };
-}
+};
 
 fun[exp] policy_admin_only(name: str, resource: str): Policy = {
     return {
@@ -889,19 +889,19 @@ fun[exp] policy_admin_only(name: str, resource: str): Policy = {
         require_active = true,
         description = "admin access only",
     };
-}
+};
 
 fun[exp] policy_name(p: Policy): str = {
     return p.name;
-}
+};
 
 fun[exp] policy_resource(p: Policy): str = {
     return p.resource_pattern;
-}
+};
 
 fun[exp] policy_requires_verified(p: Policy): bol = {
     return p.require_verified;
-}
+};
 
 fun[exp] policy_check_user(p: Policy, user: User): bol = {
     when(p.require_active) {
@@ -923,7 +923,7 @@ fun[exp] policy_check_user(p: Policy, user: User): bol = {
         }
         * { return .ge(user.role.kind, p.min_role); }
     }
-}
+};
 
 fun[exp] policy_describe(p: Policy): str = {
     when(.eq(p.min_role, RK_GUEST)) {
@@ -940,7 +940,7 @@ fun[exp] policy_describe(p: Policy): str = {
             }
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Smoke test
@@ -1036,4 +1036,4 @@ fun[exp] auth_smoke_test(): int = {
         }
         * { return 1; }
     }
-}
+};

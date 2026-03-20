@@ -5,7 +5,7 @@ fun[] compare_intrinsics(base: int): int = {
         case(true) { return 7; }
         * { return 0; }
     }
-}
+};
 
 fun[] branch_status(flag: bol): int = {
     when(okay_status(flag)) {
@@ -13,7 +13,7 @@ fun[] branch_status(flag: bol): int = {
         case(Status.WARN) { return 13; }
         * { return 17; }
     }
-}
+};
 
 fun[] shell_paths(): int = {
     var label: str = pick_label(true)!;
@@ -22,7 +22,7 @@ fun[] shell_paths(): int = {
         case(true) { return 1; }
         * { return 2; }
     }
-}
+};
 
 fun[] container_paths(): int = {
     var all_names: seq[str] = names();
@@ -32,36 +32,36 @@ fun[] container_paths(): int = {
         case(true) { return all_weights["ada"]; }
         * { return .len(all_names); }
     }
-}
+};
 
 fun[] recover_paths(flag: bol): int = {
     when(score_failed(flag)) {
         case(true) { return safe_score(true); }
         * { return safe_score(false); }
     }
-}
+};
 
 fun[] method_paths(): int = {
     var current: User = lead();
     return current.tag();
-}
+};
 
 fun[] report_paths(flag: bol): int = {
     var report = build_report(flag);
     return report_code(report);
-}
+};
 
 fun[] report_owner_size(flag: bol): int = {
     var report = build_report(flag);
     return owner_size(report);
-}
+};
 
 fun[] loop_probe(flag: bol): int = {
     loop(flag) {
         break;
     }
     return 7;
-}
+};
 
 fun[] final_score(flag: bol): int = {
     var left: int = compare_intrinsics(safe_score(false));
@@ -93,8 +93,8 @@ fun[] final_score(flag: bol): int = {
         }
         * { return .echo(0); }
     }
-}
+};
 
 fun[] main(): int = {
     return final_score(false);
-}
+};

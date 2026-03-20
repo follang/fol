@@ -3,4 +3,4 @@ fun[exp] load(flag: bol): int / str = {
         case(true) { report "bad"; }
         * { return 3; }
     }
-}
+};

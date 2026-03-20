@@ -41,7 +41,6 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let assign = tokens.curr(false)?;
         if !matches!(assign.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
-            self.consume_optional_semicolon(tokens)?;
             return Ok(AstNode::ImpDecl {
                 options,
                 generics,
@@ -63,7 +62,6 @@ impl AstParser {
         let _ = tokens.bump();
 
         let body = self.parse_block_body(tokens, "Expected '}' to close implementation body")?;
-        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::ImpDecl {
             options,

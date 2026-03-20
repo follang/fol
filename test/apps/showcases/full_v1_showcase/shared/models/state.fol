@@ -3,7 +3,7 @@ typ[exp] Report: rec = {
     owner: str;
     status: Status;
     size: int
-}
+};
 
 fun[exp] build_report(flag: bol): Report = {
     var current: User = lead();
@@ -14,7 +14,7 @@ fun[exp] build_report(flag: bol): Report = {
         status = okay_status(flag),
         size = .len(names_local),
     };
-}
+};
 
 fun[exp] report_code(report: Report): int = {
     when(report.status) {
@@ -22,8 +22,8 @@ fun[exp] report_code(report: Report): int = {
         case(Status.WARN) { return 3; }
         * { return 1; }
     }
-}
+};
 
 fun[exp] owner_size(report: Report): int = {
     return .len(report.owner);
-}
+};

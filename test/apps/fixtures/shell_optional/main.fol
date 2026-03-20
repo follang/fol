@@ -5,11 +5,11 @@ fun[] pick(flag: bol): MaybeScore = {
         case(true) { return 7; }
         * { return nil; }
     }
-}
+};
 
 fun[] main(flag: bol): int = {
     when(flag) {
         case(true) { return pick(true)!; }
         * { return 0; }
     }
-}
+};

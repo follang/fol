@@ -6,4 +6,4 @@ fun[] main(): int = {
         case(true) { return parts[0]; }
         * { return 0; }
     }
-}
+};

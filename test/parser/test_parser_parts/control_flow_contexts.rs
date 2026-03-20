@@ -105,7 +105,7 @@ fn test_top_level_break_is_rejected_outside_loop_context() {
 fn test_routine_break_is_rejected_without_loop_context() {
     let error = parse_first_error_from_source(
         "routine_break",
-        "fun bad(): int = {\n    break;\n}\n",
+        "fun bad(): int = {\n    break;\n};\n",
     );
 
     assert!(

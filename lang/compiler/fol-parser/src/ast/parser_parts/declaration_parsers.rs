@@ -119,7 +119,6 @@ impl AstParser {
         let next = tokens.curr(false)?;
         if !matches!(next.key(), KEYWORD::Symbol(SYMBOL::Equal)) {
             if matches!(def_type, FolType::Block { .. }) {
-                self.consume_optional_semicolon(tokens)?;
                 return Ok(AstNode::DefDecl {
                     options,
                     name,
@@ -150,7 +149,6 @@ impl AstParser {
         } else {
             vec![self.parse_logical_expression(tokens)?]
         };
-        self.consume_optional_semicolon(tokens)?;
 
         Ok(AstNode::DefDecl {
             options,
@@ -193,8 +191,6 @@ impl AstParser {
         self.skip_ignorable(tokens)?;
         let target = self.parse_type_reference_tokens(tokens)?;
 
-        self.consume_optional_semicolon(tokens)?;
-
         Ok(AstNode::AliasDecl { name, target })
     }
 
@@ -222,14 +218,13 @@ impl AstParser {
             return self.parse_type_group(tokens, options);
         }
 
-        self.parse_single_type_decl_with_options(tokens, options, true)
+        self.parse_single_type_decl_with_options(tokens, options)
     }
 
     pub(super) fn parse_single_type_decl_with_options(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         options: Vec<TypeOption>,
-        consume_terminator: bool,
     ) -> Result<Vec<AstNode>, ParseError> {
         let name_token = tokens.curr(false)?;
         let name = Self::expect_named_label(&name_token, "Expected type declaration name")?;
@@ -287,10 +282,6 @@ impl AstParser {
                 &token,
                 "Type generics and explicit contracts are currently supported only on single-name type declarations".to_string(),
             ));
-        }
-
-        if consume_terminator {
-            self.consume_optional_semicolon(tokens)?;
         }
 
         let assigned_type_defs = match type_defs.len() {

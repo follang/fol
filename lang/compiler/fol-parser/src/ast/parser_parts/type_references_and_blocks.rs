@@ -266,51 +266,61 @@ impl AstParser {
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Use)) {
                 body.extend(self.parse_use_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Seg)) {
                 body.push(self.parse_seg_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Imp)) {
                 body.push(self.parse_imp_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Std)) && self.lookahead_is_std_decl(tokens) {
                 body.push(self.parse_std_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Ali)) {
                 body.push(self.parse_alias_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Typ)) {
                 body.extend(self.parse_type_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Def)) {
                 body.push(self.parse_def_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Fun)) {
                 body.push(self.parse_fun_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Log)) {
                 body.push(self.parse_log_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 
             if matches!(key, KEYWORD::Keyword(BUILDIN::Pro)) {
                 body.push(self.parse_pro_decl(tokens)?);
+                self.consume_required_semicolon(tokens)?;
                 continue;
             }
 

@@ -248,7 +248,7 @@ fn test_invalid_method_receiver_type_reports_receiver_token_span() {
     let temp_root = unique_temp_root("invalid_receiver_span");
     std::fs::create_dir_all(&temp_root).expect("Should create temp receiver diagnostic dir");
     let fixture = temp_root.join("invalid_receiver_span.fol");
-    std::fs::write(&fixture, "fun (any) parse_msg(): int = { return 1; }\n")
+    std::fs::write(&fixture, "fun (any) parse_msg(): int = { return 1; };\n")
         .expect("Should write invalid receiver diagnostic fixture");
 
     let mut file_stream = FileStream::from_file(
@@ -300,7 +300,7 @@ fn test_none_like_method_receiver_type_reports_dedicated_receiver_diagnostic() {
     let temp_root = unique_temp_root("invalid_none_receiver_span");
     std::fs::create_dir_all(&temp_root).expect("Should create temp receiver diagnostic dir");
     let fixture = temp_root.join("invalid_none_receiver_span.fol");
-    std::fs::write(&fixture, "fun (non) parse_msg(): int = { return 1; }\n")
+    std::fs::write(&fixture, "fun (non) parse_msg(): int = { return 1; };\n")
         .expect("Should write invalid none-like receiver diagnostic fixture");
 
     let mut file_stream = FileStream::from_file(

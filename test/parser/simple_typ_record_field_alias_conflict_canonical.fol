@@ -1,4 +1,4 @@
 typ Config: rec = {
     var host_name: str;
     ali HostName: str;
-}
+};

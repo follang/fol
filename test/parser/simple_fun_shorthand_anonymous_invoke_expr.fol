@@ -2,4 +2,4 @@ fun sum_short(): any = {
     return (a, b: int){
         return a + b;
     }(5, 6);
-}
+};

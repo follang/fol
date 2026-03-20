@@ -7,4 +7,4 @@ fun unmatched_open_paren_arg(a: int, b: int): int = {
     );
 
     return value;
-}
+};

@@ -2,4 +2,4 @@ fun let_locals(a: int): int = {
     let base = a;
     let next: int = base + 1;
     return next;
-}
+};

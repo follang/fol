@@ -8,4 +8,4 @@ fun nested_bad_sep(a: int, b: int): int = {
     );
 
     return value;
-}
+};

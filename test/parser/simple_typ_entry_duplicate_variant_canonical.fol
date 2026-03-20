@@ -1,4 +1,4 @@
 typ Color: ent = {
     var blue_value: str = "#0037cd";
     var BlueValue: str = "#ffffff";
-}
+};

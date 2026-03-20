@@ -58,7 +58,7 @@ fn test_complete_top_level_declarations_remain_separate_across_folder_boundaries
     let temp_root = unique_temp_root("complete_top_level");
     write_folder_fixture(
         &temp_root,
-        &[("00_a.fol", "var a = 1\n"), ("10_b.fol", "var b = 2\n")],
+        &[("00_a.fol", "var a = 1;\n"), ("10_b.fol", "var b = 2;\n")],
     );
 
     let ast = parse_program_from_folder(&temp_root)
@@ -102,7 +102,7 @@ fn test_routine_header_cannot_continue_into_next_file() {
     write_folder_fixture(
         &temp_root,
         &[
-            ("00_a.fol", "fun add(value: int)\n"),
+            ("00_a.fol", "fun add(value: int);\n"),
             ("10_b.fol", ": int = { return value }\n"),
         ],
     );
@@ -144,7 +144,7 @@ fn test_block_body_cannot_continue_into_next_file() {
     write_folder_fixture(
         &temp_root,
         &[
-            ("00_a.fol", "fun value(): int = { return 1\n"),
+            ("00_a.fol", "fun value(): int = { return 1;\n"),
             ("10_b.fol", "}\n"),
         ],
     );
@@ -235,7 +235,7 @@ fn test_decl_package_boundary_tokens_never_become_source_unit_items() {
         &temp_root,
         &[
             ("00_alpha.fol", "var alpha = 1;\n\n"),
-            ("10_beta.fol", "\nvar beta = 2\n"),
+            ("10_beta.fol", "\nvar beta = 2;\n"),
         ],
     );
 

@@ -1,4 +1,4 @@
 fun nested_calls(obj: int, a: int): int = {
     value = wrap(obj.get());
     return emit(process(a), obj.done());
-}
+};

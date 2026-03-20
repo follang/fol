@@ -9,7 +9,7 @@ use super::*;
         let fixture = temp_root.join("main.fol");
         fs::write(
             &fixture,
-            "ali Text: str;\ntyp User: rec = {\n    var name: str;\n};\nfun[] main(path: str): Text = {\n    var local: str = path;\n    return local;\n}\n",
+            "ali Text: str;\ntyp User: rec = {\n    var name: str;\n};\nfun[] main(path: str): Text = {\n    var local: str = path;\n    return local;\n};\n",
         )
         .expect("Should write builtin str CLI fixture");
 
@@ -39,7 +39,7 @@ use super::*;
         let temp_root = unique_temp_root("cli_lowering_failure_human");
         fs::create_dir_all(&temp_root).expect("Should create temp lowering failure fixture dir");
         let fixture = temp_root.join("main.fol");
-        fs::write(&fixture, "fun[] main(): int = {\n    return 1 + 2;\n}\n")
+        fs::write(&fixture, "fun[] main(): int = {\n    return 1 + 2;\n};\n")
             .expect("Should write lowering failure fixture");
 
         let output = run_fol(&[fixture
@@ -74,14 +74,14 @@ use super::*;
 
         assert!(
             output.status.success(),
-            "CLI should compile the combined lowering repro now, got status {:?} and output:\n{}\n{}",
+            "CLI should compile the combined lowering repro now, got status {:?} and output:;\n{};\n{};",
             output.status.code(),
             stdout,
             stderr,
         );
         assert!(
             stdout.contains("Compilation successful"),
-            "Combined repro should compile cleanly through lowering, got stdout:\n{}\n\nstderr:\n{}",
+            "Combined repro should compile cleanly through lowering, got stdout:;\n{};\n\nstderr:;\n{};",
             stdout,
             stderr,
         );
@@ -222,13 +222,13 @@ use super::*;
                 "        case(true) { report \"bad\" }\n",
                 "        * { return 7 }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
                 "fun[] mid(flag: bol): int / str = {\n",
-                "    return leaf(flag) || report \"mid-bad\"\n",
-                "}\n",
+                "    return leaf(flag) || report \"mid-bad\";\n",
+                "};\n",
                 "fun[] main(flag: bol): int / str = {\n",
-                "    return mid(flag) || report \"main-bad\"\n",
-                "}\n",
+                "    return mid(flag) || report \"main-bad\";\n",
+                "};\n",
             ),
         )
         .expect("Should write error propagation fixture");
@@ -268,10 +268,10 @@ use super::*;
                 "        case(true) { report \"bad\" }\n",
                 "        * { return 7 }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
                 "fun[] main(flag: bol): bol = {\n",
-                "    return check(load(flag))\n",
-                "}\n",
+                "    return check(load(flag));\n",
+                "};\n",
             ),
         )
         .expect("Should write error check fixture");
@@ -309,10 +309,10 @@ use super::*;
                 "        case(true) { report \"bad\" }\n",
                 "        * { return 7 }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
                 "fun[] main(flag: bol): int = {\n",
-                "    return load(flag) || 5\n",
-                "}\n",
+                "    return load(flag) || 5;\n",
+                "};\n",
             ),
         )
         .expect("Should write pipe-or default fixture");
@@ -352,10 +352,10 @@ use super::*;
                 "        case(true) { report \"bad\" }\n",
                 "        * { return 7 }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
                 "fun[] main(flag: bol): int / str = {\n",
-                "    return load(flag) || report \"fallback\"\n",
-                "}\n",
+                "    return load(flag) || report \"fallback\";\n",
+                "};\n",
             ),
         )
         .expect("Should write pipe-or report fixture");
@@ -393,10 +393,10 @@ use super::*;
                 "        case(true) { report \"bad\" }\n",
                 "        * { return 7 }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
                 "fun[] main(flag: bol): int = {\n",
-                "    return load(flag) || panic \"fallback\"\n",
-                "}\n",
+                "    return load(flag) || panic \"fallback\";\n",
+                "};\n",
             ),
         )
         .expect("Should write pipe-or panic fixture");
@@ -436,7 +436,7 @@ use super::*;
                 "        case(true) { report \"shared-bad\" }\n",
                 "        * { return 7 }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write shared recoverable fixture");
@@ -448,7 +448,7 @@ use super::*;
                 "        case(true) { report \"leaf-bad\" }\n",
                 "        * { return 5 }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write local recoverable fixture");
@@ -458,13 +458,13 @@ use super::*;
                 "use shared: loc = {\"../shared\"};\n",
                 "fun[] mid(flag: bol): int / str = {\n",
                 "    loop(flag) {\n",
-                "        break\n",
+                "        break;\n",
                 "    }\n",
                 "    when(flag) {\n",
                 "        case(true) { return remote(flag) || report \"mid-shared-bad\" }\n",
                 "        * { return leaf(flag) || report \"mid-leaf-bad\" }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write middle recoverable fixture");
@@ -476,7 +476,7 @@ use super::*;
                 "        case(true) { return mid(flag) || report \"main-mid-bad\" }\n",
                 "        * { return leaf(flag) || report \"main-leaf-bad\" }\n",
                 "    }\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write entry recoverable fixture");
@@ -509,7 +509,7 @@ use super::*;
         let temp_root = unique_temp_root("cli_lowering_failure_json");
         fs::create_dir_all(&temp_root).expect("Should create temp lowering failure fixture dir");
         let fixture = temp_root.join("main.fol");
-        fs::write(&fixture, "fun[] main(): int = {\n    return 1 + 2;\n}\n")
+        fs::write(&fixture, "fun[] main(): int = {\n    return 1 + 2;\n};\n")
             .expect("Should write lowering failure fixture");
 
         let output = run_fol(&[
@@ -551,8 +551,8 @@ use super::*;
 
         let temp_root = unique_temp_root("cli_folder_parse_error");
         fs::create_dir_all(&temp_root).expect("Should create temp CLI error fixture");
-        fs::write(temp_root.join("00_good.fol"), "var ok = 1\n").expect("Should write good source");
-        fs::write(temp_root.join("10_bad.fol"), "run(1, 2)\n")
+        fs::write(temp_root.join("00_good.fol"), "var ok = 1;\n").expect("Should write good source");
+        fs::write(temp_root.join("10_bad.fol"), "run(1, 2);\n")
             .expect("Should write invalid file-root source");
 
         let output = run_fol(&[
@@ -597,9 +597,9 @@ use super::*;
 
         let temp_root = unique_temp_root("cli_folder_resolver_error");
         fs::create_dir_all(&temp_root).expect("Should create temp CLI resolver fixture");
-        fs::write(temp_root.join("00_first.fol"), "var value = 1\n")
+        fs::write(temp_root.join("00_first.fol"), "var value = 1;\n")
             .expect("Should write first declaration source");
-        fs::write(temp_root.join("10_second.fol"), "var value = 2\n")
+        fs::write(temp_root.join("10_second.fol"), "var value = 2;\n")
             .expect("Should write duplicate declaration source");
 
         let output = run_fol(&[temp_root
@@ -629,9 +629,9 @@ use super::*;
 
         let temp_root = unique_temp_root("cli_folder_resolver_error_json");
         fs::create_dir_all(&temp_root).expect("Should create temp CLI resolver fixture");
-        fs::write(temp_root.join("00_first.fol"), "var value = 1\n")
+        fs::write(temp_root.join("00_first.fol"), "var value = 1;\n")
             .expect("Should write first declaration source");
-        fs::write(temp_root.join("10_second.fol"), "var value = 2\n")
+        fs::write(temp_root.join("10_second.fol"), "var value = 2;\n")
             .expect("Should write duplicate declaration source");
 
         let output = run_fol(&[

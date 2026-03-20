@@ -30,7 +30,7 @@ use super::*;
             .expect("Should write the shared export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write the loc import fixture");
 
@@ -69,7 +69,7 @@ use super::*;
         .expect("Should write the standard-library export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write the std import fixture");
 
@@ -86,7 +86,7 @@ use super::*;
 
         assert!(
             output.status.success(),
-            "CLI should resolve std imports through an explicit std-root flag, got status {:?} and output:\n{}",
+            "CLI should resolve std imports through an explicit std-root flag, got status {:?} and output:;\n{};",
             output.status.code(),
             stdout,
         );
@@ -118,7 +118,7 @@ use super::*;
             .expect("Should create the installed package export root fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         )
         .expect("Should write the installed package build fixture");
         fs::write(
@@ -128,7 +128,7 @@ use super::*;
         .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n}\n",
+            "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
         )
         .expect("Should write the pkg import fixture");
 
@@ -170,7 +170,7 @@ use super::*;
             .expect("Should write the shared export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use shared: loc = {\"../shared\"};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write the loc import fixture");
 
@@ -214,7 +214,7 @@ use super::*;
         .expect("Should write the standard-library export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n}\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write the std import fixture");
 
@@ -264,7 +264,7 @@ use super::*;
             .expect("Should create the installed package export root fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         )
         .expect("Should write the installed package build fixture");
         fs::write(
@@ -274,7 +274,7 @@ use super::*;
         .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n}\n",
+            "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
         )
         .expect("Should write the pkg import fixture");
 
@@ -318,7 +318,7 @@ use super::*;
                 "    var same: bol = .eq(1, 1);\n",
                 "    var ordered: bol = .lt(\"Ada\", \"Lin\");\n",
                 "    return .ge('z', 'a');\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write intrinsic comparison fixture");
@@ -358,8 +358,8 @@ use super::*;
             &fixture,
             concat!(
                 "fun[] main(): bol = {\n",
-                "    return .lt(true, false)\n",
-                "}\n",
+                "    return .lt(true, false);\n",
+                "};\n",
             ),
         )
         .expect("Should write intrinsic comparison failure fixture");
@@ -414,7 +414,7 @@ use super::*;
                 "fun[] main(flag: bol): bol = {\n",
                 "    var inverted: bol = .not(flag);\n",
                 "    return .not(inverted);\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write intrinsic boolean fixture");
@@ -452,7 +452,7 @@ use super::*;
         let fixture = temp_root.join("main.fol");
         fs::write(
             &fixture,
-            concat!("fun[] main(): bol = {\n", "    return .not(1)\n", "}\n",),
+            concat!("fun[] main(): bol = {\n", "    return .not(1);\n", "};\n",),
         )
         .expect("Should write intrinsic boolean failure fixture");
 
@@ -507,7 +507,7 @@ use super::*;
                 "    var text: int = .len(\"Ada\");\n",
                 "    var count: int = .len(items);\n",
                 "    return count;\n",
-                "}\n",
+                "};\n",
             ),
         )
         .expect("Should write intrinsic length fixture");
@@ -548,10 +548,10 @@ use super::*;
             concat!(
                 "typ Flagged: rec = {\n",
                 "    name: str;\n",
-                "}\n",
+                "};\n",
                 "fun[] main(value: Flagged): int = {\n",
-                "    return .len(value)\n",
-                "}\n",
+                "    return .len(value);\n",
+                "};\n",
             ),
         )
         .expect("Should write intrinsic length failure fixture");
@@ -608,8 +608,8 @@ use super::*;
             &fixture,
             concat!(
                 "fun[] main(flag: bol): bol = {\n",
-                "    return .echo(flag)\n",
-                "}\n",
+                "    return .echo(flag);\n",
+                "};\n",
             ),
         )
         .expect("Should write intrinsic echo fixture");
@@ -646,7 +646,7 @@ use super::*;
         let fixture = temp_root.join("main.fol");
         fs::write(
             &fixture,
-            concat!("fun[] main(): int = {\n", "    return .echo()\n", "}\n",),
+            concat!("fun[] main(): int = {\n", "    return .echo();\n", "};\n",),
         )
         .expect("Should write intrinsic echo failure fixture");
 
@@ -700,8 +700,8 @@ use super::*;
             &fixture,
             concat!(
                 "fun[] main(value: int): int = {\n",
-                "    return .de_alloc(value)\n",
-                "}\n",
+                "    return .de_alloc(value);\n",
+                "};\n",
             ),
         )
         .expect("Should write intrinsic V3 boundary fixture");
@@ -757,14 +757,14 @@ use super::*;
         fs::write(
             &fixture,
             concat!(
-                "var text: str = \"label\"\n",
-                "var target: int = 0\n",
+                "var text: str = \"label\";\n",
+                "var target: int = 0;\n",
                 "fun[] main(value: int): int = {\n",
-                "    return value as text\n",
-                "}\n",
+                "    return value as text;\n",
+                "};\n",
                 "fun[] side(value: int): int = {\n",
-                "    return value cast target\n",
-                "}\n",
+                "    return value cast target;\n",
+                "};\n",
             ),
         )
         .expect("Should write cast intrinsic failure fixture");
@@ -818,9 +818,9 @@ use super::*;
 
         let temp_root = unique_temp_root("cli_folder_compile");
         fs::create_dir_all(&temp_root).expect("Should create temp CLI folder fixture");
-        fs::write(temp_root.join("00_first.fol"), "var first = 1\n")
+        fs::write(temp_root.join("00_first.fol"), "var first = 1;\n")
             .expect("Should write first declaration source");
-        fs::write(temp_root.join("10_second.fol"), "var second = 2\n")
+        fs::write(temp_root.join("10_second.fol"), "var second = 2;\n")
             .expect("Should write second declaration source");
 
         let output = run_fol(&[temp_root
