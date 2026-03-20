@@ -13,7 +13,7 @@ pub use types::{
     LspCompletionOptions, LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
     LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams, LspDocumentSymbol,
     LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams, LspInitializeResult,
-    LspPublishDiagnosticsParams, LspServerCapabilities, LspServerInfo,
+    LspPublishDiagnosticsParams, LspReferenceParams, LspServerCapabilities, LspServerInfo,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
     LspTextDocumentSyncOptions, LspVersionedTextDocumentIdentifier,
 };
@@ -108,6 +108,22 @@ impl EditorLspServer {
                     id: request.id,
                     result: Some(
                         serde_json::to_value(result).expect("definition result should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "textDocument/references" => {
+                let params: LspReferenceParams = from_params(request.params)?;
+                let result = self.references(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                    params.position,
+                    params.context.include_declaration,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("references should serialize"),
                     ),
                     error: None,
                 }))
@@ -268,6 +284,20 @@ impl EditorLspServer {
         let document = self.open_document(uri)?.clone();
         let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(snapshot.document_symbols_for_current_path())
+    }
+
+    pub fn references(
+        &mut self,
+        uri: &EditorDocumentUri,
+        position: LspPosition,
+        include_declaration: bool,
+    ) -> EditorResult<Vec<LspLocation>> {
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        Ok(snapshot
+            .reference_at(position)
+            .map(|reference| snapshot.references_for_reference(reference, include_declaration))
+            .unwrap_or_default())
     }
 
     pub fn completion(

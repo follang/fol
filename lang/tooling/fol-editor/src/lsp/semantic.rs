@@ -637,6 +637,70 @@ impl SemanticSnapshot {
         None
     }
 
+    pub(super) fn references_for_reference(
+        &self,
+        reference: &fol_resolver::ResolvedReference,
+        include_declaration: bool,
+    ) -> Vec<LspLocation> {
+        let Some(resolved) = self.resolved_workspace.as_ref() else {
+            return Vec::new();
+        };
+        let Some(symbol_id) = reference.resolved else {
+            return Vec::new();
+        };
+        let mut locations = Vec::new();
+
+        for package in resolved.packages() {
+            let program = &package.program;
+            let Some(symbol) = program.symbol(symbol_id) else {
+                continue;
+            };
+
+            if include_declaration {
+                if let Some(origin) = symbol.origin.as_ref() {
+                    if let Some(file) = origin.file.as_ref() {
+                        locations.push(LspLocation {
+                            uri: format!("file://{file}"),
+                            range: location_to_range(&fol_diagnostics::DiagnosticLocation {
+                                file: Some(file.clone()),
+                                line: origin.line,
+                                column: origin.column,
+                                length: Some(origin.length),
+                            }),
+                        });
+                    }
+                }
+            }
+
+            for hit in program.all_references().filter(|hit| hit.resolved == Some(symbol_id)) {
+                let Some(syntax_id) = hit.syntax_id else { continue };
+                let Some(origin) = program.syntax_index().origin(syntax_id) else {
+                    continue;
+                };
+                let Some(file) = origin.file.as_ref() else { continue };
+                locations.push(LspLocation {
+                    uri: format!("file://{file}"),
+                    range: location_to_range(&fol_diagnostics::DiagnosticLocation {
+                        file: Some(file.clone()),
+                        line: origin.line,
+                        column: origin.column,
+                        length: Some(origin.length),
+                    }),
+                });
+            }
+            break;
+        }
+
+        locations.sort_by(|left, right| {
+            left.uri
+                .cmp(&right.uri)
+                .then(left.range.start.line.cmp(&right.range.start.line))
+                .then(left.range.start.character.cmp(&right.range.start.character))
+        });
+        locations.dedup_by(|left, right| left == right);
+        locations
+    }
+
     // COMPILER-BACKED: resolved symbols by path (no text fallback)
     pub(super) fn document_symbols_for_current_path(&self) -> Vec<LspDocumentSymbol> {
         let resolved = match &self.resolved_workspace {

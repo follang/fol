@@ -1,7 +1,7 @@
 use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root};
 use super::super::{
     EditorLspServer, JsonRpcId, JsonRpcRequest, LspDefinitionParams, LspDocumentSymbolParams,
-    LspLocation, LspPosition, LspTextDocumentIdentifier,
+    LspLocation, LspPosition, LspReferenceContext, LspReferenceParams, LspTextDocumentIdentifier,
 };
 use crate::EditorConfig;
 use std::fs;
@@ -146,6 +146,91 @@ fn lsp_server_surfaces_future_version_boundary_diagnostics() {
                 .iter()
                 .any(|info| info.message.contains("V2"))
     );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_returns_same_file_references_for_local_bindings() {
+    let (root, uri) = sample_package_root("local_references");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let references = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(90),
+            method: "textDocument/references".to_string(),
+            params: Some(
+                serde_json::to_value(LspReferenceParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                    context: LspReferenceContext {
+                        include_declaration: true,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let references: Vec<LspLocation> = serde_json::from_value(references.result.unwrap()).unwrap();
+
+    assert_eq!(references.len(), 2);
+    assert!(references.iter().all(|location| location.uri == uri));
+    assert!(references.iter().any(|location| location.range.start.line == 1));
+    assert!(references.iter().any(|location| location.range.start.line == 2));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_can_exclude_declarations_from_references() {
+    let (root, uri) = sample_package_root("reference_declaration_toggle");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let references = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(91),
+            method: "textDocument/references".to_string(),
+            params: Some(
+                serde_json::to_value(LspReferenceParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 4,
+                        character: 13,
+                    },
+                    context: LspReferenceContext {
+                        include_declaration: false,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let references: Vec<LspLocation> = serde_json::from_value(references.result.unwrap()).unwrap();
+
+    assert_eq!(references.len(), 1);
+    assert_eq!(references[0].uri, uri);
+    assert_eq!(references[0].range.start.line, 4);
 
     fs::remove_dir_all(root).ok();
 }

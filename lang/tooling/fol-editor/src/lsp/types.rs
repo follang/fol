@@ -163,6 +163,20 @@ pub struct LspDefinitionParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct LspReferenceContext {
+    pub include_declaration: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspReferenceParams {
+    pub text_document: LspTextDocumentIdentifier,
+    pub position: LspPosition,
+    pub context: LspReferenceContext,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspDocumentSymbolParams {
     pub text_document: LspTextDocumentIdentifier,
 }
