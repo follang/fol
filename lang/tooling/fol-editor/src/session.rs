@@ -19,7 +19,7 @@ pub struct EditorSession {
 impl Default for EditorConfig {
     fn default() -> Self {
         Self {
-            full_document_sync: true,
+            full_document_sync: false,
             root_markers: vec![
                 "fol.work.yaml".to_string(),
                 "package.yaml".to_string(),
@@ -46,10 +46,10 @@ mod tests {
     use super::{EditorConfig, EditorSession};
 
     #[test]
-    fn editor_config_defaults_to_full_sync_and_standard_root_markers() {
+    fn editor_config_defaults_to_incremental_sync_and_standard_root_markers() {
         let config = EditorConfig::default();
 
-        assert!(config.full_document_sync);
+        assert!(!config.full_document_sync);
         assert_eq!(
             config.root_markers,
             vec![

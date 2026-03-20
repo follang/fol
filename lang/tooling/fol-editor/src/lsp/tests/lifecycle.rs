@@ -28,7 +28,7 @@ fn lsp_server_handles_initialize_shutdown_and_exit() {
     let result: LspInitializeResult =
         serde_json::from_value(initialize.result.unwrap()).unwrap();
     assert!(result.capabilities.text_document_sync.open_close);
-    assert_eq!(result.capabilities.text_document_sync.change, 1);
+    assert_eq!(result.capabilities.text_document_sync.change, 2);
     assert!(result.capabilities.hover_provider);
     assert!(result.capabilities.definition_provider);
     assert!(result.capabilities.document_symbol_provider);
@@ -63,6 +63,28 @@ fn lsp_server_handles_initialize_shutdown_and_exit() {
         })
         .unwrap();
     assert!(exit.is_empty());
+}
+
+#[test]
+fn lsp_server_can_advertise_full_document_sync_when_config_requests_it() {
+    let mut server = EditorLspServer::new(EditorConfig {
+        full_document_sync: true,
+        ..EditorConfig::default()
+    });
+
+    let initialize = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(3),
+            method: "initialize".to_string(),
+            params: Some(serde_json::json!({})),
+        })
+        .unwrap()
+        .unwrap();
+    let result: LspInitializeResult =
+        serde_json::from_value(initialize.result.unwrap()).unwrap();
+
+    assert_eq!(result.capabilities.text_document_sync.change, 1);
 }
 
 #[test]

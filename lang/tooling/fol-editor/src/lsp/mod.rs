@@ -51,7 +51,11 @@ impl EditorLspServer {
                         capabilities: LspServerCapabilities {
                             text_document_sync: LspTextDocumentSyncOptions {
                                 open_close: true,
-                                change: 1,
+                                change: if self.session.config.full_document_sync {
+                                    1
+                                } else {
+                                    2
+                                },
                             },
                             hover_provider: true,
                             definition_provider: true,
