@@ -178,6 +178,8 @@ fn lsp_server_tracks_open_change_and_close_document_lifecycle() {
                         version: 2,
                     },
                     content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: None,
+                        range_length: None,
                         text: "fun[] main(): int = {\n    return 7\n}\n".to_string(),
                     }],
                 })
@@ -256,6 +258,8 @@ fn lsp_server_tracks_multiple_open_documents_in_one_session() {
                         version: 2,
                     },
                     content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: None,
+                        range_length: None,
                         text: "fun[] extra(): int = {\n    return 11\n}\n".to_string(),
                     }],
                 })
@@ -381,6 +385,8 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
                         version: 2,
                     },
                     content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: None,
+                        range_length: None,
                         text: "fun[] main(): int = {\n    var value: int = 11\n    return value\n}\n"
                             .to_string(),
                     }],
@@ -450,6 +456,132 @@ fn lsp_server_drops_semantic_snapshots_when_documents_close_and_reopen() {
     let _reopened = open_document(&mut server, uri.clone(), text);
     assert_eq!(analyze_document_semantics_call_count(), 2);
     assert!(server.session.semantic_snapshots.contains_key(uri.as_str()));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_applies_incremental_text_document_changes() {
+    let (root, uri) = sample_package_root("incremental_change");
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    open_document(
+        &mut server,
+        uri.clone(),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    );
+
+    let changed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: Some(crate::LspRange {
+                            start: LspPosition {
+                                line: 1,
+                                character: 11,
+                            },
+                            end: LspPosition {
+                                line: 1,
+                                character: 11,
+                            },
+                        }),
+                        range_length: Some(0),
+                        text: "value + ".to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+
+    assert_eq!(changed.len(), 1);
+    assert_eq!(
+        server
+            .session
+            .documents
+            .get(&crate::EditorDocumentUri::parse(&uri).unwrap())
+            .unwrap()
+            .text,
+        "fun[] main(): int = {\n    return value + 0\n}\n"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_applies_multiple_incremental_changes_in_one_notification() {
+    let (root, uri) = sample_package_root("incremental_multi_change");
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    open_document(
+        &mut server,
+        uri.clone(),
+        "fun[] main(): int = {\n    return 0\n}\n",
+    );
+
+    let changed = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![
+                        LspTextDocumentContentChangeEvent {
+                            range: Some(crate::LspRange {
+                                start: LspPosition {
+                                    line: 1,
+                                    character: 11,
+                                },
+                                end: LspPosition {
+                                    line: 1,
+                                    character: 12,
+                                },
+                            }),
+                            range_length: Some(1),
+                            text: "7".to_string(),
+                        },
+                        LspTextDocumentContentChangeEvent {
+                            range: Some(crate::LspRange {
+                                start: LspPosition {
+                                    line: 1,
+                                    character: 11,
+                                },
+                                end: LspPosition {
+                                    line: 1,
+                                    character: 11,
+                                },
+                            }),
+                            range_length: Some(0),
+                            text: "value + ".to_string(),
+                        },
+                    ],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+
+    assert_eq!(changed.len(), 1);
+    assert_eq!(
+        server
+            .session
+            .documents
+            .get(&crate::EditorDocumentUri::parse(&uri).unwrap())
+            .unwrap()
+            .text,
+        "fun[] main(): int = {\n    return value + 7\n}\n"
+    );
 
     fs::remove_dir_all(root).ok();
 }

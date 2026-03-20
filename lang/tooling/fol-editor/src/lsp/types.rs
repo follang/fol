@@ -108,6 +108,10 @@ pub struct LspVersionedTextDocumentIdentifier {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct LspTextDocumentContentChangeEvent {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range: Option<LspRange>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub range_length: Option<u32>,
     pub text: String,
 }
 

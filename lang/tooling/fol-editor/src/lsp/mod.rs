@@ -174,21 +174,28 @@ impl EditorLspServer {
             "textDocument/didChange" => {
                 let params: LspDidChangeTextDocumentParams = from_params(notification.params)?;
                 let uri = EditorDocumentUri::parse(&params.text_document.uri)?;
-                let text = params
-                    .content_changes
-                    .last()
-                    .map(|change| change.text.clone())
-                    .ok_or_else(|| {
-                        EditorError::new(
-                            EditorErrorKind::InvalidInput,
-                            "didChange requires at least one content change",
-                        )
-                    })?;
-                self.session.documents.apply_full_change(
-                    &uri,
-                    params.text_document.version,
-                    text,
-                )?;
+                if params.content_changes.is_empty() {
+                    return Err(EditorError::new(
+                        EditorErrorKind::InvalidInput,
+                        "didChange requires at least one content change",
+                    ));
+                }
+                for change in params.content_changes {
+                    if let Some(range) = change.range {
+                        self.session.documents.apply_incremental_change(
+                            &uri,
+                            params.text_document.version,
+                            range,
+                            change.text,
+                        )?;
+                    } else {
+                        self.session.documents.apply_full_change(
+                            &uri,
+                            params.text_document.version,
+                            change.text,
+                        )?;
+                    }
+                }
                 self.session.semantic_snapshots.remove(uri.as_str());
                 let diagnostics = self.publish_diagnostics(&uri)?;
                 Ok(vec![diagnostics])
