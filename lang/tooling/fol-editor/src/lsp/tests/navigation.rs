@@ -924,7 +924,7 @@ fn lsp_server_renames_parameters_within_the_safe_boundary() {
 }
 
 #[test]
-fn lsp_server_refuses_rename_outside_the_first_safe_boundary() {
+fn lsp_server_renames_same_file_top_level_routines() {
     let (root, uri) = sample_package_root("rename_boundary");
     fs::write(
         root.join("src/main.fol"),
@@ -935,7 +935,7 @@ fn lsp_server_refuses_rename_outside_the_first_safe_boundary() {
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, uri.clone(), &text);
 
-    let error = server
+    let rename = server
         .handle_request(JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             id: JsonRpcId::Number(93),
@@ -952,10 +952,18 @@ fn lsp_server_refuses_rename_outside_the_first_safe_boundary() {
                 .unwrap(),
             ),
         })
-        .expect_err("top-level routine rename should stay outside the first safe boundary");
+        .unwrap()
+        .unwrap();
+    let edit: LspWorkspaceEdit = serde_json::from_value(rename.result.unwrap()).unwrap();
+    let changes = edit
+        .changes
+        .get(&uri)
+        .expect("same-file top-level rename should return edits for the open file");
 
-    assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
-    assert!(error.message.contains("same-file local symbols only"));
+    assert_eq!(changes.len(), 2);
+    assert!(changes.iter().all(|edit| edit.new_text == "assist"));
+    assert!(changes.iter().any(|edit| edit.range.start.line == 0));
+    assert!(changes.iter().any(|edit| edit.range.start.line == 4));
 
     fs::remove_dir_all(root).ok();
 }

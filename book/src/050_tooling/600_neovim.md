@@ -74,7 +74,7 @@ LSP provides:
 - hover
 - definitions
 - references
-- rename for same-file local symbols
+- rename for same-file local and same-file top-level symbols
 - semantic tokens
 - document symbols
 

@@ -1071,6 +1071,10 @@ impl SemanticSnapshot {
                 fol_resolver::SymbolKind::ValueBinding
                     | fol_resolver::SymbolKind::LabelBinding
                     | fol_resolver::SymbolKind::DestructureBinding
+                    | fol_resolver::SymbolKind::Routine
+                    | fol_resolver::SymbolKind::Type
+                    | fol_resolver::SymbolKind::Alias
+                    | fol_resolver::SymbolKind::Definition
                     | fol_resolver::SymbolKind::Parameter
                     | fol_resolver::SymbolKind::Capture
                     | fol_resolver::SymbolKind::LoopBinder
@@ -1079,7 +1083,7 @@ impl SemanticSnapshot {
                 return Err(EditorError::new(
                     EditorErrorKind::InvalidInput,
                     format!(
-                        "rename currently supports same-file local symbols only, not {}",
+                        "rename currently supports same-file local and top-level symbols only, not {}",
                         render_symbol_kind(symbol.kind)
                     ),
                 ));
