@@ -30,7 +30,15 @@ fn editor_lsp_command_is_publicly_dispatchable() {
 
     assert_eq!(result.command, "lsp");
     assert!(result.summary.contains("fol tool lsp"));
+    assert!(result.summary.contains("diagnostics"));
+    assert!(result.summary.contains("hover"));
+    assert!(result.summary.contains("definition"));
+    assert!(result.summary.contains("symbols"));
     assert!(result.summary.contains("completion"));
+    assert!(result
+        .details
+        .iter()
+        .any(|detail| detail == "features=diagnostics,hover,definition,symbols,completion"));
 }
 
 #[test]
