@@ -242,6 +242,7 @@ fn completion_item_cmp(
 ) -> std::cmp::Ordering {
     completion_item_priority(left)
         .cmp(&completion_item_priority(right))
+        .then(completion_item_detail_priority(left).cmp(&completion_item_detail_priority(right)))
         .then(left.label.cmp(&right.label))
         .then(left.detail.cmp(&right.detail))
         .then(left.insert_text.cmp(&right.insert_text))
@@ -255,6 +256,15 @@ fn completion_item_priority(item: &EditorCompletionItem) -> u8 {
         9 => 3,
         2 => 4,
         _ => 5,
+    }
+}
+
+fn completion_item_detail_priority(item: &EditorCompletionItem) -> u8 {
+    match item.detail.as_deref() {
+        Some("builtin type") => 0,
+        Some("type") => 1,
+        Some("type alias") => 2,
+        _ => 3,
     }
 }
 
