@@ -85,6 +85,7 @@ Use `code` for:
 Tooling commands:
 
 - `fol tool lsp`
+- `fol tool format <PATH>`
 - `fol tool parse <PATH>`
 - `fol tool highlight <PATH>`
 - `fol tool symbols <PATH>`
@@ -99,6 +100,7 @@ Examples:
 
 ```text
 fol tool parse src/main.fol
+fol tool format src/main.fol
 fol tool highlight src/main.fol
 fol tool symbols src/main.fol
 fol tool references src/main.fol --line 12 --character 8

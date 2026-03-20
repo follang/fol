@@ -1,4 +1,5 @@
 use crate::{
+    format_document_in_place,
     fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
     fol_tree_sitter_highlights_query, fol_tree_sitter_query_snapshots,
     fol_tree_sitter_symbols_query, EditorConfig, EditorDocumentUri, EditorError,
@@ -35,10 +36,10 @@ impl EditorCommandSummary {
 pub fn editor_lsp_entrypoint() -> EditorResult<EditorCommandSummary> {
     Ok(EditorCommandSummary::new(
         "lsp",
-        "ready to serve diagnostics, hover, definition, references, rename, semantic tokens, symbols, and completion through `fol tool lsp`",
+        "ready to serve diagnostics, hover, definition, formatting, code actions, signature help, references, rename, semantic tokens, symbols, and completion through `fol tool lsp`",
     )
     .with_detail("transport=stdio")
-    .with_detail("features=diagnostics,hover,definition,references,rename,semanticTokens,symbols,completion"))
+    .with_detail("features=diagnostics,hover,definition,formatting,codeAction,signatureHelp,references,rename,semanticTokens,symbols,completion"))
 }
 
 fn source_line_count(source: &str) -> usize {
@@ -73,6 +74,23 @@ pub fn editor_parse_file(path: &Path) -> EditorResult<EditorCommandSummary> {
     .with_detail(format!("lines={}", source_line_count(&source)))
     .with_detail(format!("bytes={}", source.len()))
     .with_detail(format!("grammar_bytes={}", fol_tree_sitter_grammar().len())))
+}
+
+pub fn editor_format_file(path: &Path) -> EditorResult<EditorCommandSummary> {
+    let result = format_document_in_place(path)?;
+    Ok(EditorCommandSummary::new(
+        "format",
+        if result.changed {
+            format!("formatted {}", result.canonical_path.display())
+        } else {
+            format!("already formatted {}", result.canonical_path.display())
+        },
+    )
+    .with_detail(format!("path={}", result.canonical_path.display()))
+    .with_detail(format!("lines={}", result.line_count()))
+    .with_detail(format!("changed={}", result.changed))
+    .with_detail(format!("changed_lines={}", result.changed_line_count()))
+    .with_detail("style=hybrid-line"))
 }
 
 pub fn editor_highlight_file(path: &Path) -> EditorResult<EditorCommandSummary> {
@@ -490,7 +508,7 @@ fn write_bundle_file(path: &Path, contents: &str) -> EditorResult<()> {
 #[cfg(test)]
 mod tests {
     use super::{
-        editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
+        editor_format_file, editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
         editor_references_file, editor_rename_file, editor_semantic_tokens_file,
         editor_symbols_file, editor_tree_generate_bundle, sorted_query_captures,
     };
@@ -507,6 +525,7 @@ mod tests {
         assert_eq!(summary.command, "lsp");
         assert!(summary.summary.contains("fol tool lsp"));
         assert!(summary.summary.contains("completion"));
+        assert!(summary.summary.contains("formatting"));
         assert!(summary.summary.contains("references"));
         assert!(summary.summary.contains("rename"));
         assert!(summary.summary.contains("semantic tokens"));
@@ -518,12 +537,24 @@ mod tests {
             .details
             .iter()
             .any(|detail| detail
-                == "features=diagnostics,hover,definition,references,rename,semanticTokens,symbols,completion"));
+                == "features=diagnostics,hover,definition,formatting,codeAction,signatureHelp,references,rename,semanticTokens,symbols,completion"));
     }
 
     #[test]
     fn file_backed_editor_commands_report_path_and_shape() {
         let path = repo_root().join("test/apps/fixtures/record_flow/main.fol");
+        let format_root = std::env::temp_dir().join(format!(
+            "fol_editor_format_command_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&format_root).unwrap();
+        let format_path = format_root.join("sample.fol");
+        std::fs::write(&format_path, "fun[] main(): int = {\nreturn 0;\n};\n").unwrap();
+        let format = editor_format_file(&format_path).unwrap();
         let parse = editor_parse_file(&path).unwrap();
         let highlight = editor_highlight_file(&path).unwrap();
         let symbols = editor_symbols_file(&path).unwrap();
@@ -547,6 +578,16 @@ mod tests {
         )
         .unwrap();
 
+        assert!(format.details.iter().any(|detail| detail.contains("path=")));
+        assert!(format.details.iter().any(|detail| detail == "changed=true"));
+        assert!(format
+            .details
+            .iter()
+            .any(|detail| detail.starts_with("changed_lines=")));
+        assert!(format
+            .details
+            .iter()
+            .any(|detail| detail == "style=hybrid-line"));
         assert!(parse.details.iter().any(|detail| detail.contains("path=")));
         assert!(parse.details.iter().any(|detail| detail.contains("lines=")));
         assert!(highlight
@@ -577,13 +618,27 @@ mod tests {
             .details
             .iter()
             .any(|detail| detail.contains("edit_count=")));
+
+        std::fs::remove_dir_all(format_root).ok();
     }
 
     #[test]
     fn real_fixtures_keep_editor_command_summaries_stable() {
         let showcase = repo_root().join("test/apps/showcases/full_v1_showcase/app/main.fol");
         let package = repo_root().join("xtra/logtiny/src/log.fol");
+        let format_root = std::env::temp_dir().join(format!(
+            "fol_editor_format_stable_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&format_root).unwrap();
+        let format_path = format_root.join("sample.fol");
+        std::fs::write(&format_path, "fun[] main(): int = {\nreturn 0;\n};\n").unwrap();
 
+        let format = editor_format_file(&format_path).unwrap();
         let parse = editor_parse_file(&showcase).unwrap();
         let highlight = editor_highlight_file(&showcase).unwrap();
         let symbols = editor_symbols_file(&package).unwrap();
@@ -612,6 +667,17 @@ mod tests {
         let showcase_lines = showcase_text.lines().count();
         let showcase_bytes = showcase_text.len();
 
+        assert_eq!(format.command, "format");
+        assert_eq!(
+            format.details,
+            vec![
+                format!("path={}", format_path.display()),
+                "lines=3".to_string(),
+                "changed=true".to_string(),
+                "changed_lines=2".to_string(),
+                "style=hybrid-line".to_string(),
+            ]
+        );
         assert_eq!(parse.command, "parse");
         assert_eq!(
             parse.details,
@@ -708,6 +774,8 @@ mod tests {
             .parse::<usize>()
             .unwrap();
         assert!(edit_count >= touched_files);
+
+        std::fs::remove_dir_all(format_root).ok();
     }
 
     #[test]

@@ -421,6 +421,7 @@ pub enum CodeSubcommand {
 #[derive(Debug, Clone, Subcommand, PartialEq, Eq)]
 pub enum ToolSubcommand {
     Lsp(UnitCommand),
+    Format(EditorPathCommand),
     Parse(EditorPathCommand),
     Highlight(EditorPathCommand),
     Symbols(EditorPathCommand),

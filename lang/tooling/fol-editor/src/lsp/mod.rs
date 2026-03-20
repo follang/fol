@@ -12,11 +12,12 @@ pub use types::{
     JsonRpcResponse, LspCodeAction, LspCodeActionContext, LspCodeActionParams,
     LspCompletionContext, LspCompletionItem, LspCompletionList, LspCompletionOptions,
     LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
-    LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams, LspDocumentSymbol,
-    LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams, LspInitializeResult,
-    LspParameterInformation, LspPublishDiagnosticsParams, LspReferenceContext, LspReferenceParams,
-    LspRenameParams, LspSemanticTokens, LspSemanticTokensLegend, LspSemanticTokensOptions,
-    LspSemanticTokensParams, LspServerCapabilities, LspServerInfo, LspSignatureHelp,
+    LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams, LspDocumentFormattingParams,
+    LspDocumentSymbol, LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams,
+    LspInitializeResult, LspParameterInformation, LspPublishDiagnosticsParams,
+    LspReferenceContext, LspReferenceParams, LspRenameParams, LspSemanticTokens,
+    LspSemanticTokensLegend, LspSemanticTokensOptions, LspSemanticTokensParams,
+    LspServerCapabilities, LspServerInfo, LspSignatureHelp,
     LspSignatureHelpOptions, LspSignatureHelpParams, LspSignatureInformation,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
     LspTextDocumentSyncOptions, LspTextEdit, LspVersionedTextDocumentIdentifier,
@@ -26,7 +27,7 @@ pub use types::{
 use crate::{
     dedup_lsp_diagnostics, EditorConfig, EditorDocument, EditorDocumentUri, EditorError,
     EditorErrorKind, EditorResult, EditorSession, EditorWorkspaceMapping, EditorWorkspaceRoots,
-    LspLocation, LspPosition, LspRange,
+    LspLocation, LspPosition, LspRange, formatting_edit,
 };
 use analysis::{analyze_document_diagnostics, analyze_document_semantics};
 use completion_helpers::completion_context_with_lsp;
@@ -67,6 +68,7 @@ impl EditorLspServer {
                             hover_provider: true,
                             definition_provider: true,
                             document_symbol_provider: true,
+                            formatting_provider: Some(true),
                             code_action_provider: Some(true),
                             signature_help_provider: Some(LspSignatureHelpOptions {
                                 trigger_characters: vec!["(".to_string(), ",".to_string()],
@@ -145,6 +147,20 @@ impl EditorLspServer {
                     id: request.id,
                     result: Some(
                         serde_json::to_value(result).expect("code actions should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "textDocument/formatting" => {
+                let params: LspDocumentFormattingParams = from_params(request.params)?;
+                let result = self.format_document(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("formatting edits should serialize"),
                     ),
                     error: None,
                 }))
@@ -377,6 +393,14 @@ impl EditorLspServer {
         let document = self.open_document(uri)?.clone();
         let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(snapshot.code_actions(uri.as_str(), range, diagnostics))
+    }
+
+    pub fn format_document(
+        &mut self,
+        uri: &EditorDocumentUri,
+    ) -> EditorResult<Vec<crate::LspTextEdit>> {
+        let document = self.open_document(uri)?.clone();
+        Ok(formatting_edit(&document.text).into_iter().collect())
     }
 
     pub fn document_symbols(

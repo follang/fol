@@ -9,9 +9,10 @@ use super::super::{
     completion_helpers::completion_context, completion_helpers::CompletionContext,
     EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest, LspCodeActionContext,
     LspCodeActionParams, LspCompletionList, LspCompletionParams, LspDefinitionParams,
-    LspDidChangeTextDocumentParams,
-    LspDidCloseTextDocumentParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
+    LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
+    LspDocumentFormattingParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
     LspInitializeResult, LspLocation, LspPosition, LspSignatureHelpParams,
+    LspTextEdit,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspRange,
     LspVersionedTextDocumentIdentifier,
 };
@@ -39,6 +40,7 @@ fn lsp_server_handles_initialize_shutdown_and_exit() {
     assert!(result.capabilities.hover_provider);
     assert!(result.capabilities.definition_provider);
     assert!(result.capabilities.document_symbol_provider);
+    assert_eq!(result.capabilities.formatting_provider, Some(true));
     assert_eq!(result.capabilities.code_action_provider, Some(true));
     let signature_help_provider = result
         .capabilities
@@ -123,14 +125,63 @@ fn lsp_server_rejects_unimplemented_v1_methods_explicitly() {
         .handle_request(JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             id: JsonRpcId::Number(99),
-            method: "textDocument/formatting".to_string(),
+            method: "textDocument/rangeFormatting".to_string(),
             params: Some(serde_json::json!({})),
         })
         .expect_err("unimplemented requests should fail explicitly");
 
     assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
     assert!(error.message.contains("unsupported LSP request"));
-    assert!(error.message.contains("textDocument/formatting"));
+    assert!(error.message.contains("textDocument/rangeFormatting"));
+}
+
+#[test]
+fn lsp_server_formats_open_documents_with_full_document_edits() {
+    let (root, uri) = sample_package_root("formatting");
+    let text = "fun[] main(): int = {\nreturn 0;\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(199),
+            method: "textDocument/formatting".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentFormattingParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let edits: Vec<LspTextEdit> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert_eq!(edits.len(), 1);
+    assert_eq!(edits[0].range.start.line, 0);
+    assert_eq!(edits[0].range.start.character, 0);
+    assert_eq!(edits[0].new_text, "fun[] main(): int = {\n    return 0;\n};\n");
+
+    let second = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(200),
+            method: "textDocument/formatting".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentFormattingParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let second_edits: Vec<LspTextEdit> = serde_json::from_value(second.result.unwrap()).unwrap();
+    assert_eq!(second_edits, edits);
+
+    fs::remove_dir_all(root).ok();
 }
 
 #[test]

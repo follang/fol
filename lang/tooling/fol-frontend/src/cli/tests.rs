@@ -114,6 +114,7 @@ fn emit_subcommands_parse_through_derive_tree() {
 #[test]
 fn editor_subcommands_parse_through_derive_tree() {
     let lsp = parse_clean(["fol", "tool", "lsp"]);
+    let format = parse_clean(["fol", "tool", "format", "demo/main.fol"]);
     let parse = parse_clean(["fol", "tool", "parse", "demo/main.fol"]);
     let highlight = parse_clean(["fol", "tool", "highlight", "demo/main.fol"]);
     let symbols = parse_clean(["fol", "tool", "symbols", "demo/main.fol"]);
@@ -147,6 +148,15 @@ fn editor_subcommands_parse_through_derive_tree() {
         Some(FrontendCommand::Tool(ToolCommand {
             output: default_output_args(),
             command: ToolSubcommand::Lsp(UnitCommand),
+        }))
+    );
+    assert_eq!(
+        format.command,
+        Some(FrontendCommand::Tool(ToolCommand {
+            output: default_output_args(),
+            command: ToolSubcommand::Format(EditorPathCommand {
+                path: "demo/main.fol".to_string(),
+            }),
         }))
     );
     assert_eq!(

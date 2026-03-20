@@ -14,6 +14,7 @@ That crate owns two related subsystems:
 The public entrypoints are exposed through `fol tool`:
 
 - `fol tool lsp`
+- `fol tool format <PATH>`
 - `fol tool parse <PATH>`
 - `fol tool highlight <PATH>`
 - `fol tool symbols <PATH>`
@@ -45,6 +46,7 @@ It is responsible for:
 - compiler-backed diagnostics
 - hover
 - go-to-definition
+- whole-document formatting
 - code actions for exact compiler suggestions
 - signature help for plain and qualified routine calls
 - references
@@ -58,6 +60,7 @@ The currently supported v1 LSP surface is:
 - diagnostics
 - hover
 - definition
+- formatting
 - code actions for exact compiler suggestions
 - signature help for plain and qualified routine calls
 - references
@@ -66,10 +69,13 @@ The currently supported v1 LSP surface is:
 - document symbols
 - completion
 
-The server keeps one semantic snapshot per open document version. It reuses
-that snapshot for hover, definition, signature help, references, rename,
-semantic tokens, document symbols, and completion until the document changes or
-closes.
+The server keeps diagnostics and semantic snapshots separately.
+
+Diagnostics refresh on `didOpen` and `didChange`.
+
+Semantic requests keep one semantic snapshot per open document version and
+reuse it for hover, definition, signature help, references, rename, semantic
+tokens, document symbols, and completion until the document changes or closes.
 
 ## Compiler Truth
 
@@ -99,6 +105,7 @@ Use:
 
 ```text
 fol tool lsp
+fol tool format path/to/file.fol
 ```
 
 as the language server entrypoint.
@@ -112,6 +119,7 @@ Use:
 fol tool parse path/to/file.fol
 fol tool highlight path/to/file.fol
 fol tool symbols path/to/file.fol
+fol tool format path/to/file.fol
 fol tool references path/to/file.fol --line 12 --character 8
 fol tool rename path/to/file.fol --line 12 --character 8 total
 fol tool semantic-tokens path/to/file.fol

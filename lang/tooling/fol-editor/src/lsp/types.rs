@@ -63,6 +63,8 @@ pub struct LspServerCapabilities {
     pub definition_provider: bool,
     pub document_symbol_provider: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub formatting_provider: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code_action_provider: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signature_help_provider: Option<LspSignatureHelpOptions>,
@@ -231,6 +233,12 @@ pub struct LspSemanticTokensParams {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct LspDocumentSymbolParams {
+    pub text_document: LspTextDocumentIdentifier,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspDocumentFormattingParams {
     pub text_document: LspTextDocumentIdentifier,
 }
 

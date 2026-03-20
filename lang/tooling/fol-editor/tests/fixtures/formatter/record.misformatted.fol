@@ -1,0 +1,17 @@
+typ Bonus: rec = {
+amount: int
+};
+
+typ Salary: rec = {
+total: int;
+extra: Bonus
+};
+
+fun[] build_salary(): Salary = {
+return {
+total = 7,
+extra = {
+amount = 2,
+},
+};
+};

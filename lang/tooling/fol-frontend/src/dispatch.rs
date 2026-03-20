@@ -73,6 +73,7 @@ pub fn dispatch_cli(
         }
         Some(FrontendCommand::Tool(command)) => match &command.command {
             ToolSubcommand::Lsp(_) => crate::editor_lsp_command(config),
+            ToolSubcommand::Format(command) => crate::editor_format_command(&command.path),
             ToolSubcommand::Parse(command) => crate::editor_parse_command(&command.path),
             ToolSubcommand::Highlight(command) => {
                 crate::editor_highlight_command(&command.path)
@@ -273,6 +274,7 @@ pub fn dispatch_workspace_command(
         FrontendCommand::Tool(command) => match &command.command {
             ToolSubcommand::Clean(_) => crate::clean_workspace_with_config(workspace, config),
             ToolSubcommand::Lsp(_)
+            | ToolSubcommand::Format(_)
             | ToolSubcommand::Parse(_)
             | ToolSubcommand::Highlight(_)
             | ToolSubcommand::Symbols(_)

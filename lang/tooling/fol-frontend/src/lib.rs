@@ -58,9 +58,9 @@ pub use discovery::{
     DiscoveredRoot, PackageRoot, WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME,
 };
 pub use editor::{
-    editor_highlight_command, editor_lsp_command, editor_lsp_stdio, editor_parse_command,
-    editor_references_command, editor_rename_command, editor_semantic_tokens_command,
-    editor_symbols_command, editor_tree_generate_command,
+    editor_format_command, editor_highlight_command, editor_lsp_command, editor_lsp_stdio,
+    editor_parse_command, editor_references_command, editor_rename_command,
+    editor_semantic_tokens_command, editor_symbols_command, editor_tree_generate_command,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{

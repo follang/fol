@@ -33,6 +33,7 @@ fn editor_lsp_command_is_publicly_dispatchable() {
     assert!(result.summary.contains("diagnostics"));
     assert!(result.summary.contains("hover"));
     assert!(result.summary.contains("definition"));
+    assert!(result.summary.contains("formatting"));
     assert!(result.summary.contains("references"));
     assert!(result.summary.contains("rename"));
     assert!(result.summary.contains("semantic tokens"));
@@ -40,7 +41,7 @@ fn editor_lsp_command_is_publicly_dispatchable() {
     assert!(result.summary.contains("completion"));
     assert!(result
         .summary
-        .contains("features=diagnostics,hover,definition,references,rename,semanticTokens,symbols,completion"));
+        .contains("features=diagnostics,hover,definition,formatting,codeAction,signatureHelp,references,rename,semanticTokens,symbols,completion"));
 }
 
 #[test]
@@ -62,10 +63,7 @@ fn editor_surface_stays_under_tool_not_a_parallel_editor_group() {
 fn editor_tool_surface_rejects_placeholder_future_commands() {
     let root = repo_root();
 
-    for command in [
-        ["fol", "tool", "format"],
-        ["fol", "tool", "semanticTokens"],
-    ] {
+    for command in [["fol", "tool", "semanticTokens"]] {
         let error = run_command_from_args_in_dir(command, root.join("xtra/logtiny"))
             .expect_err("unsupported future tool command should stay off the public surface");
         let json = fol_frontend::FrontendOutput::new(fol_frontend::FrontendOutputConfig {
@@ -78,6 +76,29 @@ fn editor_tool_surface_rejects_placeholder_future_commands() {
         assert!(json.contains("unrecognized subcommand"));
         assert!(json.contains(command[2]));
     }
+}
+
+#[test]
+fn editor_format_command_dispatches_and_rewrites_files() {
+    let root = temp_root("format");
+    fs::create_dir_all(&root).expect("should create temp root");
+    let file = root.join("sample.fol");
+    fs::write(&file, "fun[] main(): int = {\nreturn 0;\n};\n").expect("should write sample source");
+
+    let (_, result) = run_command_from_args_in_dir(
+        ["fol", "tool", "format", file.to_string_lossy().as_ref()],
+        &root,
+    )
+    .expect("editor format should dispatch");
+
+    assert_eq!(result.command, "format");
+    assert!(result.summary.contains("changed=true"));
+    assert_eq!(
+        fs::read_to_string(&file).unwrap(),
+        "fun[] main(): int = {\n    return 0;\n};\n"
+    );
+
+    fs::remove_dir_all(root).ok();
 }
 
 #[test]

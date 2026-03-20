@@ -1,0 +1,7 @@
+fun[] level_name(level: int): str = {
+    when(level) {
+        case(0) { return "debug"; }
+        case(1) { return "info"; }
+        * { return "error"; }
+    }
+};

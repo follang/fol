@@ -21,15 +21,8 @@ The active implementation work belongs in [`PLAN.md`](../PLAN.md).
 
 ## Future Formatting Work
 
-- a formatter integrated through `fol tool format`
 - formatting range support
 - formatting diff/code-action support
-
-## Future Frontend Exposure
-
-- `fol tool format`
-
-These should wait until the underlying editor features are real.
 
 ## Future Editor Ecosystem Work
 

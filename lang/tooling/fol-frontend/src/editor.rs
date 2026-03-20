@@ -43,6 +43,12 @@ pub fn editor_lsp_stdio(config: &FrontendConfig) -> FrontendResult<()> {
     fol_editor::run_lsp_stdio(fol_editor::EditorConfig::default()).map_err(lower_editor_error)
 }
 
+pub fn editor_format_command(path: &str) -> FrontendResult<FrontendCommandResult> {
+    fol_editor::editor_format_file(Path::new(path))
+        .map(editor_summary_to_result)
+        .map_err(lower_editor_error)
+}
+
 pub fn editor_parse_command(path: &str) -> FrontendResult<FrontendCommandResult> {
     fol_editor::editor_parse_file(Path::new(path))
         .map(editor_summary_to_result)
@@ -106,9 +112,9 @@ pub fn editor_tree_generate_command(path: &str) -> FrontendResult<FrontendComman
 #[cfg(test)]
 mod tests {
     use super::{
-        editor_highlight_command, editor_lsp_command, editor_parse_command, editor_symbols_command,
-        editor_references_command, editor_rename_command, editor_semantic_tokens_command,
-        editor_tree_generate_command,
+        editor_format_command, editor_highlight_command, editor_lsp_command, editor_parse_command,
+        editor_symbols_command, editor_references_command, editor_rename_command,
+        editor_semantic_tokens_command, editor_tree_generate_command,
     };
     use crate::{FrontendConfig, FrontendErrorKind};
 
@@ -149,6 +155,19 @@ mod tests {
         let path = path.as_str();
 
         let lsp = editor_lsp_command(&config).expect("lsp command should succeed");
+        let format_root = std::env::temp_dir().join(format!(
+            "fol_frontend_editor_format_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system time should be after epoch")
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&format_root).unwrap();
+        let format_path = format_root.join("sample.fol");
+        std::fs::write(&format_path, "fun[] main(): int = {\nreturn 0;\n};\n").unwrap();
+        let format = editor_format_command(format_path.to_str().unwrap())
+            .expect("format command should succeed");
         let parse = editor_parse_command(path).expect("parse command should succeed");
         let highlight =
             editor_highlight_command(path).expect("highlight command should succeed");
@@ -166,6 +185,8 @@ mod tests {
 
         assert_eq!(lsp.command, "lsp");
         assert!(lsp.summary.contains("fol tool lsp"));
+        assert_eq!(format.command, "format");
+        assert!(format.summary.contains("changed=true"));
         assert_eq!(parse.command, "parse");
         assert!(parse
             .summary
@@ -183,6 +204,7 @@ mod tests {
         assert!(semantic_tokens.summary.contains("token_count="));
         assert_eq!(tree.command, "tree generate");
         assert!(tree.summary.contains("tree-sitter bundle ready"));
+        std::fs::remove_dir_all(format_root).ok();
         std::fs::remove_dir_all(tree_root).ok();
         std::fs::remove_dir_all(temp_root).ok();
     }
