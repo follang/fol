@@ -150,6 +150,27 @@ fn editor_format_command_dispatches_and_rewrites_files() {
 }
 
 #[test]
+fn editor_format_command_reports_noop_for_already_formatted_files() {
+    let root = temp_root("format_noop");
+    fs::create_dir_all(&root).expect("should create temp root");
+    let file = root.join("sample.fol");
+    let text = "fun[] main(): int = {\n    return 0;\n};\n";
+    fs::write(&file, text).expect("should write sample source");
+
+    let (_, result) = run_command_from_args_in_dir(
+        ["fol", "tool", "format", file.to_string_lossy().as_ref()],
+        &root,
+    )
+    .expect("editor format should dispatch");
+
+    assert_eq!(result.command, "format");
+    assert!(result.summary.contains("changed=false"));
+    assert_eq!(fs::read_to_string(&file).unwrap(), text);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn editor_format_cli_matches_lsp_for_source_files() {
     let root = temp_root("format_parity_src");
     fs::create_dir_all(&root).expect("should create temp root");

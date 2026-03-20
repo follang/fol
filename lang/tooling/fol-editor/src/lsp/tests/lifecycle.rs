@@ -185,6 +185,70 @@ fn lsp_server_formats_open_documents_with_full_document_edits() {
 }
 
 #[test]
+fn lsp_server_returns_no_formatting_edits_for_already_formatted_documents() {
+    let (root, uri) = sample_package_root("formatting_noop");
+    let text = "fun[] main(): int = {\n    return 0;\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(201),
+            method: "textDocument/formatting".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentFormattingParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let edits: Vec<LspTextEdit> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert!(edits.is_empty());
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_formats_build_files_with_the_same_full_document_contract() {
+    let root = temp_root("format_build");
+    let build_path = root.join("build.fol");
+    let build_uri = format!("file://{}", build_path.display());
+    let text = "pro[] build(graph: Graph): non = {\nvar target = graph.standard_target();\nvar app = graph.add_exe({\nname = \"demo\",\nroot = \"src/main.fol\",\n});\ngraph.install(app);\n};\n";
+    fs::write(&build_path, text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, build_uri.clone(), text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(202),
+            method: "textDocument/formatting".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentFormattingParams {
+                    text_document: LspTextDocumentIdentifier { uri: build_uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let edits: Vec<LspTextEdit> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert_eq!(edits.len(), 1);
+    assert_eq!(
+        edits[0].new_text,
+        "pro[] build(graph: Graph): non = {\n    var target = graph.standard_target();\n    var app = graph.add_exe({\n        name = \"demo\",\n        root = \"src/main.fol\",\n    });\n    graph.install(app);\n};\n"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn completion_context_detects_type_positions() {
     let uri =
         EditorDocumentUri::from_file_path(PathBuf::from("/tmp/type_context.fol")).unwrap();
