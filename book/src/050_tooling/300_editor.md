@@ -73,6 +73,10 @@ The currently supported v1 LSP surface is:
 
 The server keeps diagnostics and semantic snapshots separately.
 
+Formatting is intentionally whole-document only right now.
+`textDocument/rangeFormatting` stays unsupported until there is a safe
+structure-preserving boundary instead of a partial line-rewriter.
+
 Diagnostics refresh on `didOpen` and `didChange`.
 
 Semantic requests keep one semantic snapshot per open document version and

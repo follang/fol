@@ -249,6 +249,7 @@ mod tests {
         assert!(!rendered.contains("\"method\":\"initialize\""));
         assert!(rendered.contains("\"hoverProvider\":true"));
         assert!(rendered.contains("\"formattingProvider\":true"));
+        assert!(!rendered.contains("\"rangeFormattingProvider\":true"));
         assert!(rendered.contains("\"codeActionProvider\":true"));
         assert!(rendered.contains("\"workspaceSymbolProvider\":true"));
         assert!(rendered.contains("\"signatureHelpProvider\""));
@@ -328,6 +329,7 @@ mod tests {
         .unwrap();
         let rendered = String::from_utf8(output).unwrap();
         assert!(rendered.contains("\"formattingProvider\":true"));
+        assert!(!rendered.contains("\"rangeFormattingProvider\":true"));
         assert!(rendered.contains("\"codeActionProvider\":true"));
         assert!(rendered.contains("\"workspaceSymbolProvider\":true"));
         assert!(rendered.contains("\"signatureHelpProvider\""));
