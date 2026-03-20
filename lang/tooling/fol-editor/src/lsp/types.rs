@@ -63,6 +63,8 @@ pub struct LspServerCapabilities {
     pub definition_provider: bool,
     pub document_symbol_provider: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub code_action_provider: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub signature_help_provider: Option<LspSignatureHelpOptions>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub references_provider: Option<bool>,
@@ -234,6 +236,21 @@ pub struct LspDocumentSymbolParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct LspCodeActionContext {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub diagnostics: Vec<LspDiagnostic>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCodeActionParams {
+    pub text_document: LspTextDocumentIdentifier,
+    pub range: LspRange,
+    pub context: LspCodeActionContext,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspCompletionContext {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trigger_kind: Option<u8>,
@@ -330,6 +347,16 @@ pub struct LspTextEdit {
 #[serde(rename_all = "camelCase")]
 pub struct LspWorkspaceEdit {
     pub changes: std::collections::BTreeMap<String, Vec<LspTextEdit>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspCodeAction {
+    pub title: String,
+    pub kind: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub diagnostics: Vec<LspDiagnostic>,
+    pub edit: LspWorkspaceEdit,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

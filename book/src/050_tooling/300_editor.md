@@ -45,6 +45,7 @@ It is responsible for:
 - compiler-backed diagnostics
 - hover
 - go-to-definition
+- code actions for exact compiler suggestions
 - signature help for plain and qualified routine calls
 - references
 - rename for same-file local symbols
@@ -57,6 +58,7 @@ The currently supported v1 LSP surface is:
 - diagnostics
 - hover
 - definition
+- code actions for exact compiler suggestions
 - signature help for plain and qualified routine calls
 - references
 - rename for same-file local symbols

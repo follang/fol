@@ -97,15 +97,19 @@ pub(super) fn analyze_document_semantics(
     if let Some(package_root) = overlay.package_root() {
         let parser_diags = parse_directory_diagnostics(package_root)?
             .into_iter()
+            .collect::<Vec<_>>();
+        let parser_lsp_diags = parser_diags
+            .iter()
             .filter(|diagnostic| diagnostic_targets_path(diagnostic, overlay.document_path()))
             .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
             .collect::<Vec<_>>();
-        if !parser_diags.is_empty() {
+        if !parser_lsp_diags.is_empty() {
             return Ok(SemanticSnapshot {
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
                 source_document_path: mapping.document_path.clone(),
                 source_package_root: mapping.package_root.clone(),
-                diagnostics: parser_diags,
+                compiler_diagnostics: parser_diags,
+                diagnostics: parser_lsp_diags,
                 resolved_workspace: None,
                 typed_workspace: None,
             });
@@ -118,11 +122,13 @@ pub(super) fn analyze_document_semantics(
             match package_session.load_directory_package(package_root, PackageSourceKind::Entry) {
                 Ok(prepared) => prepared,
                 Err(error) => {
+                    let diagnostic = error.to_diagnostic();
                     return Ok(SemanticSnapshot {
                         analyzed_path: Some(overlay.document_path().to_path_buf()),
                         source_document_path: mapping.document_path.clone(),
                         source_package_root: mapping.package_root.clone(),
-                        diagnostics: vec![diagnostic_to_lsp(&error.to_diagnostic())],
+                        compiler_diagnostics: vec![diagnostic.clone()],
+                        diagnostics: vec![diagnostic_to_lsp(&diagnostic)],
                         resolved_workspace: None,
                         typed_workspace: None,
                     })
@@ -135,17 +141,21 @@ pub(super) fn analyze_document_semantics(
         let resolved = match resolver.resolve_prepared_workspace(prepared) {
             Ok(resolved) => resolved,
             Err(errors) => {
+                let diagnostics = errors
+                    .iter()
+                    .map(|error| error.to_diagnostic())
+                    .collect::<Vec<_>>();
                 return Ok(SemanticSnapshot {
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
                     source_document_path: mapping.document_path.clone(),
                     source_package_root: mapping.package_root.clone(),
-                    diagnostics: errors
+                    compiler_diagnostics: diagnostics.clone(),
+                    diagnostics: diagnostics
                         .iter()
-                        .map(|error| error.to_diagnostic())
                         .filter(|diagnostic| {
                             diagnostic_targets_path(diagnostic, overlay.document_path())
                         })
-                        .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
+                        .map(diagnostic_to_lsp)
                         .collect(),
                     resolved_workspace: None,
                     typed_workspace: None,
@@ -161,32 +171,41 @@ pub(super) fn analyze_document_semantics(
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
                 source_document_path: mapping.document_path.clone(),
                 source_package_root: mapping.package_root.clone(),
+                compiler_diagnostics: Vec::new(),
                 diagnostics: Vec::new(),
                 resolved_workspace: Some(resolved),
                 typed_workspace: Some(typed_workspace),
             }),
-            Err(errors) => Ok(SemanticSnapshot {
-                analyzed_path: Some(overlay.document_path().to_path_buf()),
-                source_document_path: mapping.document_path.clone(),
-                source_package_root: mapping.package_root.clone(),
-                diagnostics: errors
+            Err(errors) => {
+                let diagnostics = errors
                     .iter()
                     .map(|error| error.to_diagnostic())
-                    .filter(|diagnostic| {
-                        diagnostic_targets_path(diagnostic, overlay.document_path())
-                    })
-                    .map(|diagnostic| diagnostic_to_lsp(&diagnostic))
-                    .collect(),
-                resolved_workspace: Some(resolved),
-                typed_workspace: None,
-            }),
+                    .collect::<Vec<_>>();
+                Ok(SemanticSnapshot {
+                    analyzed_path: Some(overlay.document_path().to_path_buf()),
+                    source_document_path: mapping.document_path.clone(),
+                    source_package_root: mapping.package_root.clone(),
+                    compiler_diagnostics: diagnostics.clone(),
+                    diagnostics: diagnostics
+                        .iter()
+                        .filter(|diagnostic| {
+                            diagnostic_targets_path(diagnostic, overlay.document_path())
+                        })
+                        .map(diagnostic_to_lsp)
+                        .collect(),
+                    resolved_workspace: Some(resolved),
+                    typed_workspace: None,
+                })
+            }
         }
     } else {
+        let diagnostics = parse_single_file_diagnostics(&mapping.document_path, &document.text)?;
         Ok(SemanticSnapshot {
             analyzed_path: Some(mapping.document_path.clone()),
             source_document_path: mapping.document_path.clone(),
             source_package_root: mapping.package_root.clone(),
-            diagnostics: parse_single_file_diagnostics(&mapping.document_path, &document.text)?
+            compiler_diagnostics: diagnostics.clone(),
+            diagnostics: diagnostics
                 .into_iter()
                 .filter(|diagnostic| diagnostic_targets_path(diagnostic, &mapping.document_path))
                 .map(|diagnostic| diagnostic_to_lsp(&diagnostic))

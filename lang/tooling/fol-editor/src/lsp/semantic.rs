@@ -1,6 +1,7 @@
 use crate::{
-    location_to_range, EditorDocument, EditorError, EditorErrorKind, EditorResult, LspDiagnostic,
-    LspLocation, LspPosition, LspRange, LspTextEdit, LspWorkspaceEdit,
+    diagnostic_to_lsp, location_to_range, EditorDocument, EditorError, EditorErrorKind,
+    EditorResult, LspDiagnostic, LspLocation, LspPosition, LspRange, LspTextEdit,
+    LspWorkspaceEdit,
 };
 use fol_intrinsics::{
     intrinsic_registry, IntrinsicAvailability, IntrinsicStatus, IntrinsicSurface,
@@ -32,6 +33,7 @@ pub(crate) struct SemanticSnapshot {
     pub(super) analyzed_path: Option<PathBuf>,
     pub(super) source_document_path: PathBuf,
     pub(super) source_package_root: Option<PathBuf>,
+    pub(super) compiler_diagnostics: Vec<fol_diagnostics::Diagnostic>,
     pub(super) diagnostics: Vec<LspDiagnostic>,
     pub(super) resolved_workspace: Option<fol_resolver::ResolvedWorkspace>,
     pub(super) typed_workspace: Option<fol_typecheck::TypedWorkspace>,
@@ -91,6 +93,56 @@ impl SemanticSnapshot {
             active_signature: Some(0),
             active_parameter,
         })
+    }
+
+    pub(super) fn code_actions(
+        &self,
+        uri: &str,
+        range: LspRange,
+    ) -> Vec<super::types::LspCodeAction> {
+        let Some(analyzed_path) = self.analyzed_path.as_ref() else {
+            return Vec::new();
+        };
+        let path_text = analyzed_path.to_string_lossy();
+        let mut actions = self
+            .compiler_diagnostics
+            .iter()
+            .filter_map(|diagnostic| {
+                let location = diagnostic.primary_location()?;
+                if location.file.as_deref()? != path_text {
+                    return None;
+                }
+                let diagnostic_range = location_to_range(location);
+                if !ranges_overlap(diagnostic_range, range) {
+                    return None;
+                }
+                let lsp_diagnostic = diagnostic_to_lsp(diagnostic);
+                let suggestion = diagnostic
+                    .suggestions
+                    .iter()
+                    .find(|suggestion| suggestion.replacement.is_some() && suggestion.location.is_some())?;
+                let suggestion_location = suggestion.location.as_ref()?;
+                if suggestion_location.file.as_deref()? != path_text {
+                    return None;
+                }
+                let mut changes = std::collections::BTreeMap::new();
+                changes.insert(
+                    uri.to_string(),
+                    vec![LspTextEdit {
+                        range: location_to_range(suggestion_location),
+                        new_text: suggestion.replacement.clone().expect("replacement checked above"),
+                    }],
+                );
+                Some(super::types::LspCodeAction {
+                    title: suggestion.message.clone(),
+                    kind: "quickfix".to_string(),
+                    diagnostics: vec![lsp_diagnostic],
+                    edit: LspWorkspaceEdit { changes },
+                })
+            })
+            .collect::<Vec<_>>();
+        actions.sort_by(|left, right| left.title.cmp(&right.title));
+        actions
     }
 
     pub(super) fn semantic_tokens_for_current_path(&self) -> Vec<u32> {
@@ -1262,6 +1314,18 @@ fn render_signature_label(
         (None, Some(errors)) => format!("{name}({params}) / {errors}"),
         (None, None) => format!("{name}({params})"),
     }
+}
+
+fn ranges_overlap(left: LspRange, right: LspRange) -> bool {
+    range_start(left) <= range_end(right) && range_start(right) <= range_end(left)
+}
+
+fn range_start(range: LspRange) -> (u32, u32) {
+    (range.start.line, range.start.character)
+}
+
+fn range_end(range: LspRange) -> (u32, u32) {
+    (range.end.line, range.end.character)
 }
 
 fn semantic_token_type_for_symbol_kind(kind: fol_resolver::SymbolKind) -> Option<u32> {

@@ -26,7 +26,8 @@ pub use documents::{EditorDocument, EditorDocumentStore};
 pub use error::{EditorError, EditorErrorKind, EditorResult};
 pub use lsp::{
     run_lsp_stdio, EditorCompletionItem, EditorLspServer, JsonRpcError, JsonRpcId,
-    JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, LspCompletionContext, LspCompletionItem,
+    JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, LspCodeAction,
+    LspCodeActionContext, LspCodeActionParams, LspCompletionContext, LspCompletionItem,
     LspCompletionList, LspCompletionOptions, LspCompletionParams, LspDefinitionParams,
     LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams,
     LspDocumentSymbol, LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams,
@@ -237,6 +238,7 @@ mod tests {
         assert!(rendered.contains("Content-Length:"));
         assert!(!rendered.contains("\"method\":\"initialize\""));
         assert!(rendered.contains("\"hoverProvider\":true"));
+        assert!(rendered.contains("\"codeActionProvider\":true"));
         assert!(rendered.contains("\"signatureHelpProvider\""));
         assert!(
             rendered.contains("\"completion_provider\"")
@@ -313,6 +315,7 @@ mod tests {
         )
         .unwrap();
         let rendered = String::from_utf8(output).unwrap();
+        assert!(rendered.contains("\"codeActionProvider\":true"));
         assert!(rendered.contains("\"signatureHelpProvider\""));
         assert!(rendered.contains("\"completionProvider\""));
         assert!(rendered.contains("\"isIncomplete\":false"));

@@ -9,8 +9,9 @@ pub use transport::run_lsp_stdio;
 pub(crate) use transport::run_lsp_stdio_with_io;
 pub use types::{
     EditorCompletionItem, JsonRpcError, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
-    JsonRpcResponse, LspCompletionContext, LspCompletionItem, LspCompletionList,
-    LspCompletionOptions, LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
+    JsonRpcResponse, LspCodeAction, LspCodeActionContext, LspCodeActionParams,
+    LspCompletionContext, LspCompletionItem, LspCompletionList, LspCompletionOptions,
+    LspCompletionParams, LspDefinitionParams, LspDidChangeTextDocumentParams,
     LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams, LspDocumentSymbol,
     LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams, LspInitializeResult,
     LspParameterInformation, LspPublishDiagnosticsParams, LspReferenceContext, LspReferenceParams,
@@ -25,7 +26,7 @@ pub use types::{
 use crate::{
     dedup_lsp_diagnostics, EditorConfig, EditorDocument, EditorDocumentUri, EditorError,
     EditorErrorKind, EditorResult, EditorSession, EditorWorkspaceMapping, EditorWorkspaceRoots,
-    LspLocation, LspPosition,
+    LspLocation, LspPosition, LspRange,
 };
 use analysis::analyze_document_semantics;
 use completion_helpers::completion_context_with_lsp;
@@ -66,6 +67,7 @@ impl EditorLspServer {
                             hover_provider: true,
                             definition_provider: true,
                             document_symbol_provider: true,
+                            code_action_provider: Some(true),
                             signature_help_provider: Some(LspSignatureHelpOptions {
                                 trigger_characters: vec!["(".to_string(), ",".to_string()],
                             }),
@@ -127,6 +129,21 @@ impl EditorLspServer {
                     id: request.id,
                     result: Some(
                         serde_json::to_value(result).expect("definition result should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "textDocument/codeAction" => {
+                let params: LspCodeActionParams = from_params(request.params)?;
+                let result = self.code_actions(
+                    &EditorDocumentUri::parse(&params.text_document.uri)?,
+                    params.range,
+                )?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("code actions should serialize"),
                     ),
                     error: None,
                 }))
@@ -346,6 +363,16 @@ impl EditorLspServer {
         let document = self.open_document(uri)?.clone();
         let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(snapshot.signature_help(&document, position))
+    }
+
+    pub fn code_actions(
+        &mut self,
+        uri: &EditorDocumentUri,
+        range: LspRange,
+    ) -> EditorResult<Vec<LspCodeAction>> {
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        Ok(snapshot.code_actions(uri.as_str(), range))
     }
 
     pub fn document_symbols(

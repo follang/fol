@@ -1,8 +1,9 @@
 use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root};
 use super::super::{
-    EditorLspServer, JsonRpcId, JsonRpcRequest, LspDefinitionParams, LspDocumentSymbolParams,
-    LspLocation, LspPosition, LspReferenceContext, LspReferenceParams, LspRenameParams,
-    LspSignatureHelp, LspSignatureHelpParams, LspTextDocumentIdentifier, LspWorkspaceEdit,
+    EditorLspServer, JsonRpcId, JsonRpcRequest, LspCodeAction, LspCodeActionContext,
+    LspCodeActionParams, LspDefinitionParams, LspDocumentSymbolParams, LspLocation, LspPosition,
+    LspRange, LspReferenceContext, LspReferenceParams, LspRenameParams, LspSignatureHelp,
+    LspSignatureHelpParams, LspTextDocumentIdentifier, LspWorkspaceEdit,
 };
 use crate::EditorConfig;
 use std::fs;
@@ -358,6 +359,102 @@ fn lsp_server_returns_no_signature_help_outside_calls() {
     let help: Option<LspSignatureHelp> = serde_json::from_value(response.result.unwrap()).unwrap();
 
     assert!(help.is_none());
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_surfaces_quick_fix_for_unresolved_names_with_suggestions() {
+    let (root, uri) = sample_package_root("code_action_unresolved_name");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return mian\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri.clone(), &text);
+    let diagnostic = diagnostics[0]
+        .diagnostics
+        .iter()
+        .find(|diagnostic| diagnostic.code == "R1003")
+        .cloned()
+        .expect("open should publish the unresolved-name diagnostic");
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(123),
+            method: "textDocument/codeAction".to_string(),
+            params: Some(
+                serde_json::to_value(LspCodeActionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    range: diagnostic.range,
+                    context: LspCodeActionContext {
+                        diagnostics: vec![diagnostic.clone()],
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let actions: Vec<LspCodeAction> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert_eq!(actions.len(), 1);
+    assert_eq!(actions[0].kind, "quickfix");
+    assert_eq!(actions[0].title, "replace with 'main'");
+    assert_eq!(actions[0].diagnostics, vec![diagnostic]);
+    assert_eq!(
+        actions[0].edit.changes[&uri][0].new_text,
+        "main"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_returns_no_code_actions_without_structured_suggestions() {
+    let (root, uri) = sample_package_root("code_action_none");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return missing_value\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(124),
+            method: "textDocument/codeAction".to_string(),
+            params: Some(
+                serde_json::to_value(LspCodeActionParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    range: LspRange {
+                        start: LspPosition {
+                            line: 1,
+                            character: 11,
+                        },
+                        end: LspPosition {
+                            line: 1,
+                            character: 24,
+                        },
+                    },
+                    context: LspCodeActionContext {
+                        diagnostics: Vec::new(),
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let actions: Vec<LspCodeAction> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert!(actions.is_empty());
 
     fs::remove_dir_all(root).ok();
 }
