@@ -63,7 +63,6 @@ fn editor_tool_surface_rejects_placeholder_future_commands() {
     let root = repo_root();
 
     for command in [
-        ["fol", "tool", "references"],
         ["fol", "tool", "rename"],
         ["fol", "tool", "format"],
         ["fol", "tool", "semanticTokens"],
@@ -93,6 +92,20 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
         .expect("editor highlight should dispatch");
     let (_, symbols) = run_command_from_args_in_dir(["fol", "tool", "symbols", fixture], &root)
         .expect("editor symbols should dispatch");
+    let (_, references) = run_command_from_args_in_dir(
+        [
+            "fol",
+            "tool",
+            "references",
+            fixture,
+            "--line",
+            "5",
+            "--character",
+            "11",
+        ],
+        &root,
+    )
+    .expect("editor references should dispatch");
     let (_, semantic_tokens) = run_command_from_args_in_dir(
         ["fol", "tool", "semantic-tokens", fixture],
         &root,
@@ -107,6 +120,9 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
     assert!(highlight.summary.contains("intrinsic_names="));
     assert_eq!(symbols.command, "symbols");
     assert!(symbols.summary.contains("query_snapshots=3"));
+    assert_eq!(references.command, "references");
+    assert!(references.summary.contains("reference_count="));
+    assert!(references.summary.contains("include_declaration=true"));
     assert_eq!(semantic_tokens.command, "semantic-tokens");
     assert!(semantic_tokens.summary.contains("token_count="));
     assert!(semantic_tokens.summary.contains("legend="));

@@ -7,8 +7,8 @@ mod tests;
 pub use args::{
     BuildCommand, BuildOptionArgs, BuildStepArgs, CheckCommand, CodeCommand, CodeSubcommand,
     CompileRootArgs, CompleteCommand, CompletionCommand, CompletionShellArg,
-    EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand,
-    FetchCommand, FrontendCommand, FrontendProfile,
+    EditorPathCommand, EditorReferenceCommand, EmitCommand, EmitLoweredCommand,
+    EmitRustCommand, EmitSubcommand, FetchCommand, FrontendCommand, FrontendProfile,
     InitCommand, NewCommand, PackCommand, PackSubcommand, RunCommand, TestCommand, ToolCommand,
     ToolSubcommand, TreeSubcommand, UnitCommand, UpdateCommand,
     WorkSubcommand,

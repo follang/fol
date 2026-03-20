@@ -3,8 +3,9 @@ use crate::{
     fol_tree_sitter_highlights_query, fol_tree_sitter_query_snapshots,
     fol_tree_sitter_symbols_query, EditorConfig, EditorDocumentUri, EditorError,
     EditorErrorKind, EditorLspServer, EditorResult, JsonRpcId, JsonRpcNotification,
-    JsonRpcRequest, LspDidOpenTextDocumentParams, LspSemanticTokens,
-    LspSemanticTokensParams, LspTextDocumentIdentifier, LspTextDocumentItem,
+    JsonRpcRequest, LspDidOpenTextDocumentParams, LspLocation, LspPosition,
+    LspReferenceContext, LspReferenceParams, LspSemanticTokens, LspSemanticTokensParams,
+    LspTextDocumentIdentifier, LspTextDocumentItem,
 };
 use std::path::Path;
 
@@ -184,6 +185,79 @@ pub fn editor_semantic_tokens_file(path: &Path) -> EditorResult<EditorCommandSum
     .with_detail("legend=namespace,type,function,parameter,variable"))
 }
 
+pub fn editor_references_file(
+    path: &Path,
+    position: LspPosition,
+    include_declaration: bool,
+) -> EditorResult<EditorCommandSummary> {
+    let canonical = path.canonicalize().map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to resolve '{}': {error}", path.display()),
+        )
+    })?;
+    let source = std::fs::read_to_string(&canonical).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to read '{}': {error}", canonical.display()),
+        )
+    })?;
+    let uri = EditorDocumentUri::from_file_path(canonical.clone())?;
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    server.handle_notification(JsonRpcNotification {
+        jsonrpc: "2.0".to_string(),
+        method: "textDocument/didOpen".to_string(),
+        params: Some(
+            serde_json::to_value(LspDidOpenTextDocumentParams {
+                text_document: LspTextDocumentItem {
+                    uri: uri.as_str().to_string(),
+                    language_id: "fol".to_string(),
+                    version: 1,
+                    text: source.clone(),
+                },
+            })
+            .expect("didOpen params should serialize"),
+        ),
+    })?;
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(2),
+            method: "textDocument/references".to_string(),
+            params: Some(
+                serde_json::to_value(LspReferenceParams {
+                    text_document: LspTextDocumentIdentifier {
+                        uri: uri.as_str().to_string(),
+                    },
+                    position,
+                    context: LspReferenceContext {
+                        include_declaration,
+                    },
+                })
+                .expect("reference params should serialize"),
+            ),
+        })?
+        .expect("references request should return a response");
+    let references: Vec<LspLocation> =
+        serde_json::from_value(response.result.expect("references result should exist"))
+            .expect("references should deserialize");
+    let cross_file_count = references
+        .iter()
+        .filter(|location| location.uri != uri.as_str())
+        .count();
+
+    Ok(EditorCommandSummary::new(
+        "references",
+        format!("resolved {} references at the requested position", references.len()),
+    )
+    .with_detail(format!("path={}", canonical.display()))
+    .with_detail(format!("line={}", position.line))
+    .with_detail(format!("character={}", position.character))
+    .with_detail(format!("include_declaration={include_declaration}"))
+    .with_detail(format!("reference_count={}", references.len()))
+    .with_detail(format!("cross_file_count={cross_file_count}")))
+}
+
 pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSummary> {
     if path.exists() && !path.is_dir() {
         return Err(EditorError::new(
@@ -347,10 +421,10 @@ fn write_bundle_file(path: &Path, contents: &str) -> EditorResult<()> {
 mod tests {
     use super::{
         editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
-        editor_semantic_tokens_file, editor_symbols_file, editor_tree_generate_bundle,
-        sorted_query_captures,
+        editor_references_file, editor_semantic_tokens_file, editor_symbols_file,
+        editor_tree_generate_bundle, sorted_query_captures,
     };
-    use crate::{fol_tree_sitter_grammar, fol_tree_sitter_query_snapshots};
+    use crate::{fol_tree_sitter_grammar, fol_tree_sitter_query_snapshots, LspPosition};
     use std::path::{Path, PathBuf};
 
     fn repo_root() -> PathBuf {
@@ -384,6 +458,15 @@ mod tests {
         let highlight = editor_highlight_file(&path).unwrap();
         let symbols = editor_symbols_file(&path).unwrap();
         let semantic_tokens = editor_semantic_tokens_file(&path).unwrap();
+        let references = editor_references_file(
+            &path,
+            LspPosition {
+                line: 5,
+                character: 11,
+            },
+            true,
+        )
+        .unwrap();
 
         assert!(parse.details.iter().any(|detail| detail.contains("path=")));
         assert!(parse.details.iter().any(|detail| detail.contains("lines=")));
@@ -407,6 +490,10 @@ mod tests {
             .details
             .iter()
             .any(|detail| detail == "legend=namespace,type,function,parameter,variable"));
+        assert!(references
+            .details
+            .iter()
+            .any(|detail| detail.contains("reference_count=")));
     }
 
     #[test]
@@ -418,6 +505,15 @@ mod tests {
         let highlight = editor_highlight_file(&showcase).unwrap();
         let symbols = editor_symbols_file(&package).unwrap();
         let semantic_tokens = editor_semantic_tokens_file(&showcase).unwrap();
+        let references = editor_references_file(
+            &package,
+            LspPosition {
+                line: 44,
+                character: 11,
+            },
+            true,
+        )
+        .unwrap();
         let highlight_captures = sorted_query_captures(crate::fol_tree_sitter_highlights_query());
 
         let showcase_text = std::fs::read_to_string(&showcase).unwrap();
@@ -488,6 +584,22 @@ mod tests {
             semantic_tokens.details[4],
             "legend=namespace,type,function,parameter,variable"
         );
+        assert_eq!(references.command, "references");
+        assert_eq!(references.details[0], format!("path={}", package.display()));
+        assert_eq!(references.details[1], "line=44");
+        assert_eq!(references.details[2], "character=11");
+        assert_eq!(references.details[3], "include_declaration=true");
+        let reference_count = references.details[4]
+            .strip_prefix("reference_count=")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        let cross_file_count = references.details[5]
+            .strip_prefix("cross_file_count=")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        assert!(reference_count >= cross_file_count);
     }
 
     #[test]

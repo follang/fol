@@ -80,6 +80,12 @@ pub fn dispatch_cli(
             ToolSubcommand::Symbols(command) => {
                 crate::editor_symbols_command(&command.path)
             }
+            ToolSubcommand::References(command) => crate::editor_references_command(
+                &command.path,
+                command.line,
+                command.character,
+                !command.exclude_declaration,
+            ),
             ToolSubcommand::SemanticTokens(command) => {
                 crate::editor_semantic_tokens_command(&command.path)
             }
@@ -264,6 +270,7 @@ pub fn dispatch_workspace_command(
             | ToolSubcommand::Parse(_)
             | ToolSubcommand::Highlight(_)
             | ToolSubcommand::Symbols(_)
+            | ToolSubcommand::References(_)
             | ToolSubcommand::SemanticTokens(_)
             | ToolSubcommand::Tree(_) => Err(FrontendError::new(
                 FrontendErrorKind::Internal,

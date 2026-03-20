@@ -1,11 +1,11 @@
 use super::args::{
     BuildCommand, BuildOptionArgs, BuildStepArgs, CheckCommand, CodeCommand, CodeSubcommand,
     CompileRootArgs, CompleteCommand, CompletionCommand, CompletionShellArg, DirectTargetArg,
-    EditorPathCommand, EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand,
-    FetchCommand, FrontendCommand, FrontendOutputArgs, FrontendProfile, FrontendProfileArgs,
-    InitCommand, NewCommand, PackCommand, PackSubcommand, RunCommand, TestCommand, ToolCommand,
-    ToolSubcommand, TreeCommand, TreeGenerateCommand, TreeSubcommand, UnitCommand, UpdateCommand,
-    WorkCommand, WorkSubcommand,
+    EditorPathCommand, EditorReferenceCommand, EmitCommand, EmitLoweredCommand,
+    EmitRustCommand, EmitSubcommand, FetchCommand, FrontendCommand, FrontendOutputArgs,
+    FrontendProfile, FrontendProfileArgs, InitCommand, NewCommand, PackCommand, PackSubcommand,
+    RunCommand, TestCommand, ToolCommand, ToolSubcommand, TreeCommand, TreeGenerateCommand,
+    TreeSubcommand, UnitCommand, UpdateCommand, WorkCommand, WorkSubcommand,
 };
 use super::parser::FrontendCli;
 use crate::OutputMode;
@@ -116,6 +116,16 @@ fn editor_subcommands_parse_through_derive_tree() {
     let parse = parse_clean(["fol", "tool", "parse", "demo/main.fol"]);
     let highlight = parse_clean(["fol", "tool", "highlight", "demo/main.fol"]);
     let symbols = parse_clean(["fol", "tool", "symbols", "demo/main.fol"]);
+    let references = parse_clean([
+        "fol",
+        "tool",
+        "references",
+        "demo/main.fol",
+        "--line",
+        "5",
+        "--character",
+        "11",
+    ]);
     let semantic_tokens =
         parse_clean(["fol", "tool", "semantic-tokens", "demo/main.fol"]);
     let tree = parse_clean(["fol", "tool", "tree", "generate", "/tmp/fol-tree"]);
@@ -151,6 +161,18 @@ fn editor_subcommands_parse_through_derive_tree() {
             output: default_output_args(),
             command: ToolSubcommand::Symbols(EditorPathCommand {
                 path: "demo/main.fol".to_string(),
+            }),
+        }))
+    );
+    assert_eq!(
+        references.command,
+        Some(FrontendCommand::Tool(ToolCommand {
+            output: default_output_args(),
+            command: ToolSubcommand::References(EditorReferenceCommand {
+                path: "demo/main.fol".to_string(),
+                line: 5,
+                character: 11,
+                exclude_declaration: false,
             }),
         }))
     );

@@ -29,7 +29,6 @@ The active implementation work belongs in [`PLAN.md`](../PLAN.md).
 
 ## Future Frontend Exposure
 
-- `fol tool references`
 - `fol tool rename`
 - `fol tool format`
 

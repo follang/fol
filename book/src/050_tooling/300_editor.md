@@ -17,6 +17,7 @@ The public entrypoints are exposed through `fol tool`:
 - `fol tool parse <PATH>`
 - `fol tool highlight <PATH>`
 - `fol tool symbols <PATH>`
+- `fol tool references <PATH> --line <LINE> --character <CHARACTER>`
 - `fol tool semantic-tokens <PATH>`
 - `fol tool tree generate <PATH>`
 
@@ -105,6 +106,7 @@ Use:
 fol tool parse path/to/file.fol
 fol tool highlight path/to/file.fol
 fol tool symbols path/to/file.fol
+fol tool references path/to/file.fol --line 12 --character 8
 fol tool semantic-tokens path/to/file.fol
 ```
 
