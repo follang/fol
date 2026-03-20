@@ -21,6 +21,54 @@ fn repo_root() -> PathBuf {
         .expect("repo root should canonicalize")
 }
 
+fn lsp_format_text(path: &std::path::Path, text: &str) -> String {
+    let canonical = path.canonicalize().expect("path should canonicalize");
+    let uri = fol_editor::EditorDocumentUri::from_file_path(canonical.clone())
+        .expect("uri should serialize");
+    let mut server = fol_editor::EditorLspServer::new(fol_editor::EditorConfig::default());
+    server
+        .handle_notification(fol_editor::JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didOpen".to_string(),
+            params: Some(
+                serde_json::to_value(fol_editor::LspDidOpenTextDocumentParams {
+                    text_document: fol_editor::LspTextDocumentItem {
+                        uri: uri.as_str().to_string(),
+                        language_id: "fol".to_string(),
+                        version: 1,
+                        text: text.to_string(),
+                    },
+                })
+                .expect("didOpen params should serialize"),
+            ),
+        })
+        .expect("didOpen should succeed");
+    let response = server
+        .handle_request(fol_editor::JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: fol_editor::JsonRpcId::Number(1),
+            method: "textDocument/formatting".to_string(),
+            params: Some(
+                serde_json::to_value(fol_editor::LspDocumentFormattingParams {
+                    text_document: fol_editor::LspTextDocumentIdentifier {
+                        uri: uri.as_str().to_string(),
+                    },
+                })
+                .expect("formatting params should serialize"),
+            ),
+        })
+        .expect("formatting request should succeed")
+        .expect("formatting request should produce a response");
+    let edits: Vec<fol_editor::LspTextEdit> =
+        serde_json::from_value(response.result.expect("formatting result should exist"))
+            .expect("formatting edits should deserialize");
+    edits
+        .into_iter()
+        .next()
+        .map(|edit| edit.new_text)
+        .unwrap_or_else(|| text.to_string())
+}
+
 #[test]
 fn editor_lsp_command_is_publicly_dispatchable() {
     let root = repo_root();
@@ -97,6 +145,48 @@ fn editor_format_command_dispatches_and_rewrites_files() {
         fs::read_to_string(&file).unwrap(),
         "fun[] main(): int = {\n    return 0;\n};\n"
     );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn editor_format_cli_matches_lsp_for_source_files() {
+    let root = temp_root("format_parity_src");
+    fs::create_dir_all(&root).expect("should create temp root");
+    let file = root.join("sample.fol");
+    let source = "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\nwhen(.eq(7, 7)) {\ncase(true) { return 7; }\n* { return 0; }\n}\n};\n";
+    fs::write(&file, source).expect("should write sample source");
+
+    let lsp_formatted = lsp_format_text(&file, source);
+    let (_, result) = run_command_from_args_in_dir(
+        ["fol", "tool", "format", file.to_string_lossy().as_ref()],
+        &root,
+    )
+    .expect("editor format should dispatch");
+
+    assert_eq!(result.command, "format");
+    assert_eq!(fs::read_to_string(&file).unwrap(), lsp_formatted);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn editor_format_cli_matches_lsp_for_build_files() {
+    let root = temp_root("format_parity_build");
+    fs::create_dir_all(&root).expect("should create temp root");
+    let file = root.join("build.fol");
+    let source = "pro[] build(graph: Graph): non = {\nvar target = graph.standard_target();\nvar app = graph.add_exe({\nname = \"demo\",\nroot = \"src/main.fol\",\n});\ngraph.install(app);\n};\n";
+    fs::write(&file, source).expect("should write build source");
+
+    let lsp_formatted = lsp_format_text(&file, source);
+    let (_, result) = run_command_from_args_in_dir(
+        ["fol", "tool", "format", file.to_string_lossy().as_ref()],
+        &root,
+    )
+    .expect("editor format should dispatch");
+
+    assert_eq!(result.command, "format");
+    assert_eq!(fs::read_to_string(&file).unwrap(), lsp_formatted);
 
     fs::remove_dir_all(root).ok();
 }
