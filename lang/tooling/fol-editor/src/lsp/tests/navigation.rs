@@ -237,6 +237,103 @@ fn lsp_server_can_exclude_declarations_from_references() {
 }
 
 #[test]
+fn lsp_server_returns_same_package_namespaced_references() {
+    let (root, uri) = sample_package_root("same_package_namespaced_references");
+    fs::create_dir_all(root.join("src/api")).unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return api::helper()\n}\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/api/lib.fol"),
+        "fun[exp] helper(): int = {\n    return 7\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let references = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(941),
+            method: "textDocument/references".to_string(),
+            params: Some(
+                serde_json::to_value(LspReferenceParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 1,
+                        character: 16,
+                    },
+                    context: LspReferenceContext {
+                        include_declaration: true,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let references: Vec<LspLocation> = serde_json::from_value(references.result.unwrap()).unwrap();
+    let declaration_uri = format!("file://{}", root.join("src/api/lib.fol").display());
+
+    assert_eq!(references.len(), 2);
+    assert!(references.iter().any(|location| location.uri == declaration_uri));
+    assert!(references.iter().any(|location| location.uri == uri));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_returns_imported_namespace_references() {
+    let (root, uri) = sample_loc_workspace_root("imported_namespace_references");
+    fs::write(
+        root.join("app/src/main.fol"),
+        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper()\n}\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("shared/src/lib.fol"),
+        "fun[exp] helper(): int = {\n    return 7\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let references = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(942),
+            method: "textDocument/references".to_string(),
+            params: Some(
+                serde_json::to_value(LspReferenceParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 3,
+                        character: 19,
+                    },
+                    context: LspReferenceContext {
+                        include_declaration: true,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let references: Vec<LspLocation> = serde_json::from_value(references.result.unwrap()).unwrap();
+    let declaration_uri = format!("file://{}", root.join("shared/src/lib.fol").display());
+
+    assert_eq!(references.len(), 2);
+    assert!(references.iter().any(|location| location.uri == declaration_uri));
+    assert!(references.iter().any(|location| location.uri == uri));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_renames_same_file_local_bindings() {
     let (root, uri) = sample_package_root("rename_local_binding");
     fs::write(
