@@ -21,7 +21,7 @@ pub use types::{
     LspSignatureHelpOptions, LspSignatureHelpParams, LspSignatureInformation,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
     LspTextDocumentSyncOptions, LspTextEdit, LspVersionedTextDocumentIdentifier,
-    LspWorkspaceEdit,
+    LspWorkspaceEdit, LspWorkspaceSymbol, LspWorkspaceSymbolParams,
 };
 
 use crate::{
@@ -68,6 +68,7 @@ impl EditorLspServer {
                             hover_provider: true,
                             definition_provider: true,
                             document_symbol_provider: true,
+                            workspace_symbol_provider: Some(true),
                             formatting_provider: Some(true),
                             code_action_provider: Some(true),
                             signature_help_provider: Some(LspSignatureHelpOptions {
@@ -232,6 +233,18 @@ impl EditorLspServer {
                     id: request.id,
                     result: Some(
                         serde_json::to_value(result).expect("document symbols should serialize"),
+                    ),
+                    error: None,
+                }))
+            }
+            "workspace/symbol" => {
+                let params: LspWorkspaceSymbolParams = from_params(request.params)?;
+                let result = self.workspace_symbols(&params.query)?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("workspace symbols should serialize"),
                     ),
                     error: None,
                 }))
@@ -441,6 +454,54 @@ impl EditorLspServer {
             )
         })?;
         snapshot.rename_for_reference(reference, new_name)
+    }
+
+    pub fn workspace_symbols(
+        &mut self,
+        query: &str,
+    ) -> EditorResult<Vec<LspWorkspaceSymbol>> {
+        let open_documents = self
+            .session
+            .documents
+            .iter()
+            .map(|(uri, document)| (EditorDocumentUri::parse(uri), document.clone()))
+            .collect::<Vec<_>>();
+        let mut symbols = Vec::new();
+        let mut seen = std::collections::BTreeSet::new();
+
+        for (uri, document) in open_documents {
+            let uri = uri?;
+            let snapshot = self.semantic_snapshot(&uri, &document)?;
+            for symbol in snapshot.workspace_symbols(query) {
+                let key = (
+                    symbol.name.clone(),
+                    symbol.kind,
+                    symbol.location.uri.clone(),
+                    symbol.location.range.start.line,
+                    symbol.location.range.start.character,
+                    symbol.container_name.clone(),
+                );
+                if seen.insert(key) {
+                    symbols.push(symbol);
+                }
+            }
+        }
+
+        symbols.sort_by(|left, right| {
+            left.name
+                .cmp(&right.name)
+                .then(left.container_name.cmp(&right.container_name))
+                .then(left.location.uri.cmp(&right.location.uri))
+                .then(left.location.range.start.line.cmp(&right.location.range.start.line))
+                .then(
+                    left.location
+                        .range
+                        .start
+                        .character
+                        .cmp(&right.location.range.start.character),
+                )
+        });
+        Ok(symbols)
     }
 
     pub fn completion(

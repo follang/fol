@@ -106,6 +106,10 @@ impl EditorDocumentStore {
         self.documents.get(uri.as_str())
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = (&str, &EditorDocument)> {
+        self.documents.iter().map(|(uri, document)| (uri.as_str(), document))
+    }
+
     pub fn len(&self) -> usize {
         self.documents.len()
     }

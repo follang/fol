@@ -63,6 +63,8 @@ pub struct LspServerCapabilities {
     pub definition_provider: bool,
     pub document_symbol_provider: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_symbol_provider: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub formatting_provider: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub code_action_provider: Option<bool>,
@@ -238,6 +240,12 @@ pub struct LspDocumentSymbolParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct LspWorkspaceSymbolParams {
+    pub query: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspDocumentFormattingParams {
     pub text_document: LspTextDocumentIdentifier,
 }
@@ -342,6 +350,16 @@ pub struct LspDocumentSymbol {
     pub selection_range: LspRange,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub children: Vec<LspDocumentSymbol>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspWorkspaceSymbol {
+    pub name: String,
+    pub kind: u8,
+    pub location: crate::LspLocation,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub container_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

@@ -53,6 +53,7 @@ It is responsible for:
 - rename for same-file local symbols
 - semantic tokens
 - document symbols
+- workspace symbols for current open workspace members
 - completion
 
 The currently supported v1 LSP surface is:
@@ -67,6 +68,7 @@ The currently supported v1 LSP surface is:
 - rename for same-file local symbols
 - semantic tokens
 - document symbols
+- workspace symbols for current open workspace members
 - completion
 
 The server keeps diagnostics and semantic snapshots separately.
@@ -75,7 +77,8 @@ Diagnostics refresh on `didOpen` and `didChange`.
 
 Semantic requests keep one semantic snapshot per open document version and
 reuse it for hover, definition, signature help, references, rename, semantic
-tokens, document symbols, and completion until the document changes or closes.
+tokens, document symbols, workspace symbols, and completion until the document
+changes or closes.
 
 ## Compiler Truth
 

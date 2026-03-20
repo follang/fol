@@ -12,7 +12,7 @@ use super::super::{
     LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
     LspDocumentFormattingParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
     LspInitializeResult, LspLocation, LspPosition, LspSignatureHelpParams,
-    LspTextEdit,
+    LspTextEdit, LspWorkspaceSymbol, LspWorkspaceSymbolParams,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspRange,
     LspVersionedTextDocumentIdentifier,
 };
@@ -40,6 +40,7 @@ fn lsp_server_handles_initialize_shutdown_and_exit() {
     assert!(result.capabilities.hover_provider);
     assert!(result.capabilities.definition_provider);
     assert!(result.capabilities.document_symbol_provider);
+    assert_eq!(result.capabilities.workspace_symbol_provider, Some(true));
     assert_eq!(result.capabilities.formatting_provider, Some(true));
     assert_eq!(result.capabilities.code_action_provider, Some(true));
     let signature_help_provider = result
@@ -609,7 +610,7 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
         .unwrap();
     let _hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
     assert_eq!(analyze_document_diagnostics_call_count(), 1);
-    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 2);
 
     let completion = server
         .handle_request(JsonRpcRequest {
@@ -701,6 +702,60 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
         serde_json::from_value(definition.result.unwrap()).unwrap();
     assert_eq!(analyze_document_diagnostics_call_count(), 2);
     assert_eq!(analyze_document_semantics_call_count(), 2);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_reuses_semantic_snapshots_for_unchanged_workspace_symbol_requests() {
+    let (root, uri) = sample_package_root("workspace_symbol_cache");
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    reset_analyze_document_diagnostics_call_count();
+    reset_analyze_document_semantics_call_count();
+    reset_analysis_stage_counts();
+    open_document(&mut server, uri.clone(), &text);
+
+    let request = || JsonRpcRequest {
+        jsonrpc: "2.0".to_string(),
+        id: JsonRpcId::Number(54),
+        method: "workspace/symbol".to_string(),
+        params: Some(
+            serde_json::to_value(LspWorkspaceSymbolParams {
+                query: "helper".to_string(),
+            })
+            .unwrap(),
+        ),
+    };
+
+    let first = server.handle_request(request()).unwrap().unwrap();
+    let second = server.handle_request(request()).unwrap().unwrap();
+    let first_symbols: Vec<LspWorkspaceSymbol> =
+        serde_json::from_value(first.result.unwrap()).unwrap();
+    let second_symbols: Vec<LspWorkspaceSymbol> =
+        serde_json::from_value(second.result.unwrap()).unwrap();
+
+    assert_eq!(analyze_document_diagnostics_call_count(), 1);
+    assert_eq!(analyze_document_semantics_call_count(), 1);
+    assert_eq!(
+        analysis_stage_counts(),
+        super::super::analysis::AnalysisStageCounts {
+            materialize_overlay: 2,
+            parse_directory_diagnostics: 2,
+            load_directory_package: 2,
+            resolve_workspace: 2,
+            typecheck_workspace: 2,
+        }
+    );
+    assert_eq!(first_symbols, second_symbols);
+    assert_eq!(first_symbols.len(), 1);
+    assert_eq!(first_symbols[0].name, "helper");
 
     fs::remove_dir_all(root).ok();
 }

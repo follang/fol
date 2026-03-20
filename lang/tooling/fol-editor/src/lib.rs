@@ -42,7 +42,7 @@ pub use lsp::{
     LspSignatureHelpParams, LspSignatureInformation,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
     LspTextDocumentSyncOptions, LspTextEdit, LspVersionedTextDocumentIdentifier,
-    LspWorkspaceEdit,
+    LspWorkspaceEdit, LspWorkspaceSymbol, LspWorkspaceSymbolParams,
 };
 pub use paths::{EditorDocumentPath, EditorDocumentUri};
 pub use session::{EditorConfig, EditorSession};
@@ -250,6 +250,7 @@ mod tests {
         assert!(rendered.contains("\"hoverProvider\":true"));
         assert!(rendered.contains("\"formattingProvider\":true"));
         assert!(rendered.contains("\"codeActionProvider\":true"));
+        assert!(rendered.contains("\"workspaceSymbolProvider\":true"));
         assert!(rendered.contains("\"signatureHelpProvider\""));
         assert!(
             rendered.contains("\"completion_provider\"")
@@ -328,6 +329,7 @@ mod tests {
         let rendered = String::from_utf8(output).unwrap();
         assert!(rendered.contains("\"formattingProvider\":true"));
         assert!(rendered.contains("\"codeActionProvider\":true"));
+        assert!(rendered.contains("\"workspaceSymbolProvider\":true"));
         assert!(rendered.contains("\"signatureHelpProvider\""));
         assert!(rendered.contains("\"completionProvider\""));
         assert!(rendered.contains("\"isIncomplete\":false"));

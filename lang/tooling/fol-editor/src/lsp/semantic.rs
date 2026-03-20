@@ -19,7 +19,7 @@ use super::completion_helpers::{
 };
 use super::types::{
     EditorCompletionItem, LspDocumentSymbol, LspHover, LspParameterInformation, LspSignatureHelp,
-    LspSignatureInformation,
+    LspSignatureInformation, LspWorkspaceSymbol,
 };
 
 const SEMANTIC_TOKEN_TYPES: &[&str] = &["namespace", "type", "function", "parameter", "variable"];
@@ -225,6 +225,103 @@ impl SemanticSnapshot {
             previous_start = start;
         }
         data
+    }
+
+    pub(super) fn workspace_symbols(&self, query: &str) -> Vec<LspWorkspaceSymbol> {
+        let Some(resolved) = self.resolved_workspace.as_ref() else {
+            return Vec::new();
+        };
+        let query = query.trim().to_ascii_lowercase();
+        let mut symbols = Vec::new();
+
+        for package in resolved.packages() {
+            if !matches!(
+                package.identity.source_kind,
+                fol_resolver::PackageSourceKind::Entry | fol_resolver::PackageSourceKind::Local
+            ) {
+                continue;
+            }
+
+            for symbol in package.program.all_symbols() {
+                if !completion_symbol_is_root_visible(&package.program, symbol) {
+                    continue;
+                }
+                if !matches!(
+                    symbol.kind,
+                    fol_resolver::SymbolKind::Routine
+                        | fol_resolver::SymbolKind::Type
+                        | fol_resolver::SymbolKind::Alias
+                        | fol_resolver::SymbolKind::Definition
+                        | fol_resolver::SymbolKind::ValueBinding
+                ) {
+                    continue;
+                }
+                let Some(origin) = symbol.origin.as_ref() else {
+                    continue;
+                };
+                let Some(file) = origin.file.as_ref() else {
+                    continue;
+                };
+                let Some(source_unit) = package.program.source_units.get(symbol.source_unit) else {
+                    continue;
+                };
+
+                let qualified_name = if source_unit.namespace == package.identity.display_name {
+                    symbol.name.clone()
+                } else {
+                    format!("{}::{}", source_unit.namespace, symbol.name)
+                };
+                let container_name = Some(format!(
+                    "{} ({})",
+                    source_unit.namespace, package.identity.display_name
+                ));
+                if !query.is_empty() {
+                    let package_name = package.identity.display_name.to_ascii_lowercase();
+                    let namespace = source_unit.namespace.to_ascii_lowercase();
+                    let qualified_name_lower = qualified_name.to_ascii_lowercase();
+                    let symbol_name = symbol.name.to_ascii_lowercase();
+                    if !symbol_name.contains(&query)
+                        && !qualified_name_lower.contains(&query)
+                        && !package_name.contains(&query)
+                        && !namespace.contains(&query)
+                    {
+                        continue;
+                    }
+                }
+
+                symbols.push(LspWorkspaceSymbol {
+                    name: qualified_name,
+                    kind: symbol_kind_code(symbol.kind),
+                    location: LspLocation {
+                        uri: format!("file://{file}"),
+                        range: location_to_range(&fol_diagnostics::DiagnosticLocation {
+                            file: Some(file.clone()),
+                            line: origin.line,
+                            column: origin.column,
+                            length: Some(origin.length),
+                        }),
+                    },
+                    container_name,
+                });
+            }
+        }
+
+        symbols.sort_by(|left, right| {
+            left.name
+                .cmp(&right.name)
+                .then(left.container_name.cmp(&right.container_name))
+                .then(left.location.uri.cmp(&right.location.uri))
+                .then(left.location.range.start.line.cmp(&right.location.range.start.line))
+                .then(
+                    left.location
+                        .range
+                        .start
+                        .character
+                        .cmp(&right.location.range.start.character),
+                )
+        });
+        symbols.dedup_by(|left, right| left == right);
+        symbols
     }
 
     pub(super) fn completion_items(

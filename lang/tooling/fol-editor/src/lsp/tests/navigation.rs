@@ -3,7 +3,8 @@ use super::super::{
     EditorLspServer, JsonRpcId, JsonRpcRequest, LspCodeAction, LspCodeActionContext,
     LspCodeActionParams, LspDefinitionParams, LspDocumentSymbolParams, LspLocation, LspPosition,
     LspRange, LspReferenceContext, LspReferenceParams, LspRenameParams, LspSignatureHelp,
-    LspSignatureHelpParams, LspTextDocumentIdentifier, LspWorkspaceEdit,
+    LspSignatureHelpParams, LspTextDocumentIdentifier, LspWorkspaceEdit, LspWorkspaceSymbol,
+    LspWorkspaceSymbolParams,
 };
 use crate::EditorConfig;
 use std::fs;
@@ -129,6 +130,75 @@ fn lsp_server_handles_real_checked_in_package_fixture() {
         .unwrap();
     let _symbols: Vec<crate::LspDocumentSymbol> =
         serde_json::from_value(symbols.result.unwrap()).unwrap();
+}
+
+#[test]
+fn lsp_server_returns_workspace_symbols_for_current_workspace_members_only() {
+    let (root, uri) = sample_loc_workspace_root("workspace_symbols");
+    let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri, &text);
+
+    let symbols = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(89),
+            method: "workspace/symbol".to_string(),
+            params: Some(
+                serde_json::to_value(LspWorkspaceSymbolParams {
+                    query: "h".to_string(),
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let symbols: Vec<LspWorkspaceSymbol> = serde_json::from_value(symbols.result.unwrap()).unwrap();
+
+    assert_eq!(symbols.len(), 1);
+    assert_eq!(symbols[0].name, "helper");
+    assert_eq!(symbols[0].container_name.as_deref(), Some("shared (shared)"));
+    assert!(symbols[0].location.uri.ends_with("/shared/src/lib.fol"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_workspace_symbols_sort_and_qualify_results_deterministically() {
+    let (root, uri) = sample_loc_workspace_root("workspace_symbols_order");
+    fs::write(
+        root.join("shared/src/lib.fol"),
+        "fun[exp] helper(): int = {\n    return 9\n}\n\nfun[exp] build_task(): int = {\n    return helper()\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri, &text);
+
+    let symbols = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(90),
+            method: "workspace/symbol".to_string(),
+            params: Some(
+                serde_json::to_value(LspWorkspaceSymbolParams {
+                    query: "".to_string(),
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let symbols: Vec<LspWorkspaceSymbol> = serde_json::from_value(symbols.result.unwrap()).unwrap();
+    let names = symbols.iter().map(|symbol| symbol.name.as_str()).collect::<Vec<_>>();
+
+    assert_eq!(names, vec!["build_task", "helper", "main"]);
+    assert!(symbols.iter().all(|symbol| {
+        symbol.container_name.as_deref() == Some("app (app)")
+            || symbol.container_name.as_deref() == Some("shared (shared)")
+    }));
+
+    fs::remove_dir_all(root).ok();
 }
 
 #[test]
