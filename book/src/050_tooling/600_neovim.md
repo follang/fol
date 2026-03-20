@@ -15,7 +15,7 @@ The language server command is:
 vim.lsp.config("fol", {
   cmd = { "fol", "tool", "lsp" },
   filetypes = { "fol" },
-  root_markers = { "build.fol", "package.yaml", ".git" },
+  root_markers = { "fol.work.yaml", "package.yaml", ".git" },
 })
 
 vim.lsp.enable("fol")
@@ -101,3 +101,6 @@ fol tool lsp
 If `fol tool lsp` prints nothing and waits, that is correct.
 
 It is a stdio server, not an interactive shell command.
+
+If the server refuses to start, check that Neovim opened the file inside a
+directory tree that contains `package.yaml` or `fol.work.yaml`.

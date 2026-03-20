@@ -92,6 +92,9 @@ fol tool lsp
 
 as the language server entrypoint.
 
+Launch it from inside a discovered package or workspace root. The frontend
+looks upward for `package.yaml` or `fol.work.yaml` before starting the server.
+
 Use:
 
 ```text
