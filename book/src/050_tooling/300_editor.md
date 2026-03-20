@@ -17,6 +17,7 @@ The public entrypoints are exposed through `fol tool`:
 - `fol tool parse <PATH>`
 - `fol tool highlight <PATH>`
 - `fol tool symbols <PATH>`
+- `fol tool semantic-tokens <PATH>`
 - `fol tool tree generate <PATH>`
 
 This keeps editor workflows under the same `fol` binary rather than introducing
@@ -104,6 +105,7 @@ Use:
 fol tool parse path/to/file.fol
 fol tool highlight path/to/file.fol
 fol tool symbols path/to/file.fol
+fol tool semantic-tokens path/to/file.fol
 ```
 
 for parser/query debugging and validation.

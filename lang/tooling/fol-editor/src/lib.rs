@@ -14,8 +14,9 @@ mod tree_sitter;
 mod workspace;
 
 pub use commands::{
-    editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
-    editor_tree_generate_bundle, EditorCommandSummary,
+    editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
+    editor_semantic_tokens_file, editor_symbols_file, editor_tree_generate_bundle,
+    EditorCommandSummary,
 };
 pub use convert::{
     dedup_lsp_diagnostics, diagnostic_to_lsp, location_to_range, LspDiagnostic,
@@ -145,6 +146,10 @@ mod tests {
         assert_eq!(editor_parse_file(&path).unwrap().command, "parse");
         assert_eq!(editor_highlight_file(&path).unwrap().command, "highlight");
         assert_eq!(editor_symbols_file(&path).unwrap().command, "symbols");
+        assert_eq!(
+            editor_semantic_tokens_file(&path).unwrap().command,
+            "semantic-tokens"
+        );
         let root = std::env::temp_dir().join("fol_editor_public_tree_bundle_smoke");
         assert_eq!(
             editor_tree_generate_bundle(&root).unwrap().command,

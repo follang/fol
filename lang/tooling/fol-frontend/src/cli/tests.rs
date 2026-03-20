@@ -116,6 +116,8 @@ fn editor_subcommands_parse_through_derive_tree() {
     let parse = parse_clean(["fol", "tool", "parse", "demo/main.fol"]);
     let highlight = parse_clean(["fol", "tool", "highlight", "demo/main.fol"]);
     let symbols = parse_clean(["fol", "tool", "symbols", "demo/main.fol"]);
+    let semantic_tokens =
+        parse_clean(["fol", "tool", "semantic-tokens", "demo/main.fol"]);
     let tree = parse_clean(["fol", "tool", "tree", "generate", "/tmp/fol-tree"]);
 
     assert_eq!(
@@ -148,6 +150,15 @@ fn editor_subcommands_parse_through_derive_tree() {
         Some(FrontendCommand::Tool(ToolCommand {
             output: default_output_args(),
             command: ToolSubcommand::Symbols(EditorPathCommand {
+                path: "demo/main.fol".to_string(),
+            }),
+        }))
+    );
+    assert_eq!(
+        semantic_tokens.command,
+        Some(FrontendCommand::Tool(ToolCommand {
+            output: default_output_args(),
+            command: ToolSubcommand::SemanticTokens(EditorPathCommand {
                 path: "demo/main.fol".to_string(),
             }),
         }))

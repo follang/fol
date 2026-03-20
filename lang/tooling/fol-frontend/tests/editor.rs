@@ -93,6 +93,11 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
         .expect("editor highlight should dispatch");
     let (_, symbols) = run_command_from_args_in_dir(["fol", "tool", "symbols", fixture], &root)
         .expect("editor symbols should dispatch");
+    let (_, semantic_tokens) = run_command_from_args_in_dir(
+        ["fol", "tool", "semantic-tokens", fixture],
+        &root,
+    )
+    .expect("editor semantic-tokens should dispatch");
 
     assert_eq!(parse.command, "parse");
     assert!(parse.summary.contains("grammar_bytes="));
@@ -102,6 +107,9 @@ fn editor_file_commands_dispatch_against_real_fol_fixtures() {
     assert!(highlight.summary.contains("intrinsic_names="));
     assert_eq!(symbols.command, "symbols");
     assert!(symbols.summary.contains("query_snapshots=3"));
+    assert_eq!(semantic_tokens.command, "semantic-tokens");
+    assert!(semantic_tokens.summary.contains("token_count="));
+    assert!(semantic_tokens.summary.contains("legend="));
 }
 
 #[test]

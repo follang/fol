@@ -1,7 +1,10 @@
 use crate::{
     fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
     fol_tree_sitter_highlights_query, fol_tree_sitter_query_snapshots,
-    fol_tree_sitter_symbols_query, EditorError, EditorErrorKind, EditorResult,
+    fol_tree_sitter_symbols_query, EditorConfig, EditorDocumentUri, EditorError,
+    EditorErrorKind, EditorLspServer, EditorResult, JsonRpcId, JsonRpcNotification,
+    JsonRpcRequest, LspDidOpenTextDocumentParams, LspSemanticTokens,
+    LspSemanticTokensParams, LspTextDocumentIdentifier, LspTextDocumentItem,
 };
 use std::path::Path;
 
@@ -117,6 +120,68 @@ pub fn editor_symbols_file(path: &Path) -> EditorResult<EditorCommandSummary> {
         "query_snapshots={}",
         fol_tree_sitter_query_snapshots().len()
     )))
+}
+
+pub fn editor_semantic_tokens_file(path: &Path) -> EditorResult<EditorCommandSummary> {
+    let canonical = path.canonicalize().map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to resolve '{}': {error}", path.display()),
+        )
+    })?;
+    let source = std::fs::read_to_string(&canonical).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to read '{}': {error}", canonical.display()),
+        )
+    })?;
+    let uri = EditorDocumentUri::from_file_path(canonical.clone())?;
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    server.handle_notification(JsonRpcNotification {
+        jsonrpc: "2.0".to_string(),
+        method: "textDocument/didOpen".to_string(),
+        params: Some(
+            serde_json::to_value(LspDidOpenTextDocumentParams {
+                text_document: LspTextDocumentItem {
+                    uri: uri.as_str().to_string(),
+                    language_id: "fol".to_string(),
+                    version: 1,
+                    text: source.clone(),
+                },
+            })
+            .expect("didOpen params should serialize"),
+        ),
+    })?;
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(1),
+            method: "textDocument/semanticTokens/full".to_string(),
+            params: Some(
+                serde_json::to_value(LspSemanticTokensParams {
+                    text_document: LspTextDocumentIdentifier {
+                        uri: uri.as_str().to_string(),
+                    },
+                })
+                .expect("semantic token params should serialize"),
+            ),
+        })?
+        .expect("semantic token request should return a response");
+    let tokens: LspSemanticTokens =
+        serde_json::from_value(response.result.expect("semantic tokens result should exist"))
+            .expect("semantic tokens should deserialize");
+    let encoded_entries = tokens.data.len();
+    let token_count = encoded_entries / 5;
+
+    Ok(EditorCommandSummary::new(
+        "semantic-tokens",
+        format!("semantic token snapshot ready with {token_count} tokens"),
+    )
+    .with_detail(format!("path={}", canonical.display()))
+    .with_detail(format!("lines={}", source_line_count(&source)))
+    .with_detail(format!("token_count={token_count}"))
+    .with_detail(format!("encoded_entries={encoded_entries}"))
+    .with_detail("legend=namespace,type,function,parameter,variable"))
 }
 
 pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSummary> {
@@ -281,8 +346,9 @@ fn write_bundle_file(path: &Path, contents: &str) -> EditorResult<()> {
 #[cfg(test)]
 mod tests {
     use super::{
-        editor_highlight_file, editor_lsp_entrypoint, editor_parse_file, editor_symbols_file,
-        editor_tree_generate_bundle, sorted_query_captures,
+        editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
+        editor_semantic_tokens_file, editor_symbols_file, editor_tree_generate_bundle,
+        sorted_query_captures,
     };
     use crate::{fol_tree_sitter_grammar, fol_tree_sitter_query_snapshots};
     use std::path::{Path, PathBuf};
@@ -317,6 +383,7 @@ mod tests {
         let parse = editor_parse_file(&path).unwrap();
         let highlight = editor_highlight_file(&path).unwrap();
         let symbols = editor_symbols_file(&path).unwrap();
+        let semantic_tokens = editor_semantic_tokens_file(&path).unwrap();
 
         assert!(parse.details.iter().any(|detail| detail.contains("path=")));
         assert!(parse.details.iter().any(|detail| detail.contains("lines=")));
@@ -332,6 +399,14 @@ mod tests {
             .details
             .iter()
             .any(|detail| detail.contains("symbol_candidates=")));
+        assert!(semantic_tokens
+            .details
+            .iter()
+            .any(|detail| detail.contains("token_count=")));
+        assert!(semantic_tokens
+            .details
+            .iter()
+            .any(|detail| detail == "legend=namespace,type,function,parameter,variable"));
     }
 
     #[test]
@@ -342,6 +417,7 @@ mod tests {
         let parse = editor_parse_file(&showcase).unwrap();
         let highlight = editor_highlight_file(&showcase).unwrap();
         let symbols = editor_symbols_file(&package).unwrap();
+        let semantic_tokens = editor_semantic_tokens_file(&showcase).unwrap();
         let highlight_captures = sorted_query_captures(crate::fol_tree_sitter_highlights_query());
 
         let showcase_text = std::fs::read_to_string(&showcase).unwrap();
@@ -393,6 +469,24 @@ mod tests {
                     fol_tree_sitter_query_snapshots().len()
                 ),
             ]
+        );
+        assert_eq!(semantic_tokens.command, "semantic-tokens");
+        assert_eq!(semantic_tokens.details[0], format!("path={}", showcase.display()));
+        assert_eq!(semantic_tokens.details[1], format!("lines={showcase_lines}"));
+        let token_count = semantic_tokens.details[2]
+            .strip_prefix("token_count=")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        let encoded_entries = semantic_tokens.details[3]
+            .strip_prefix("encoded_entries=")
+            .unwrap()
+            .parse::<usize>()
+            .unwrap();
+        assert_eq!(encoded_entries, token_count * 5);
+        assert_eq!(
+            semantic_tokens.details[4],
+            "legend=namespace,type,function,parameter,variable"
         );
     }
 

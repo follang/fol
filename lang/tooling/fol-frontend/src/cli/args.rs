@@ -397,6 +397,7 @@ pub enum ToolSubcommand {
     Parse(EditorPathCommand),
     Highlight(EditorPathCommand),
     Symbols(EditorPathCommand),
+    SemanticTokens(EditorPathCommand),
     Tree(TreeCommand),
     #[command(visible_aliases = ["cl", "purge"])]
     Clean(UnitCommand),

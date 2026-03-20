@@ -61,6 +61,12 @@ pub fn editor_symbols_command(path: &str) -> FrontendResult<FrontendCommandResul
         .map_err(lower_editor_error)
 }
 
+pub fn editor_semantic_tokens_command(path: &str) -> FrontendResult<FrontendCommandResult> {
+    fol_editor::editor_semantic_tokens_file(Path::new(path))
+        .map(editor_summary_to_result)
+        .map_err(lower_editor_error)
+}
+
 pub fn editor_tree_generate_command(path: &str) -> FrontendResult<FrontendCommandResult> {
     fol_editor::editor_tree_generate_bundle(Path::new(path))
         .map(editor_summary_to_result)
@@ -71,7 +77,7 @@ pub fn editor_tree_generate_command(path: &str) -> FrontendResult<FrontendComman
 mod tests {
     use super::{
         editor_highlight_command, editor_lsp_command, editor_parse_command, editor_symbols_command,
-        editor_tree_generate_command,
+        editor_semantic_tokens_command, editor_tree_generate_command,
     };
     use crate::{FrontendConfig, FrontendErrorKind};
 
@@ -117,6 +123,8 @@ mod tests {
             editor_highlight_command(path).expect("highlight command should succeed");
         let symbols =
             editor_symbols_command(path).expect("symbols command should succeed");
+        let semantic_tokens = editor_semantic_tokens_command(path)
+            .expect("semantic-tokens command should succeed");
         let tree_root = std::env::temp_dir().join("fol_frontend_editor_tree_command_smoke");
         let tree = editor_tree_generate_command(tree_root.to_str().unwrap())
             .expect("tree generate command should succeed");
@@ -132,6 +140,8 @@ mod tests {
         assert!(highlight.summary.contains("captures="));
         assert_eq!(symbols.command, "symbols");
         assert!(symbols.summary.contains("symbol_candidates="));
+        assert_eq!(semantic_tokens.command, "semantic-tokens");
+        assert!(semantic_tokens.summary.contains("token_count="));
         assert_eq!(tree.command, "tree generate");
         assert!(tree.summary.contains("tree-sitter bundle ready"));
         std::fs::remove_dir_all(tree_root).ok();

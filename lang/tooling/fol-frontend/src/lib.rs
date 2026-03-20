@@ -58,7 +58,7 @@ pub use discovery::{
 };
 pub use editor::{
     editor_highlight_command, editor_lsp_command, editor_lsp_stdio, editor_parse_command,
-    editor_symbols_command, editor_tree_generate_command,
+    editor_semantic_tokens_command, editor_symbols_command, editor_tree_generate_command,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{

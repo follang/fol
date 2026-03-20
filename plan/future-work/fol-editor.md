@@ -15,7 +15,6 @@ The active implementation work belongs in [`PLAN.md`](../PLAN.md).
 
 ## Future LSP Work
 
-- semantic tokens
 - code actions
 - signature help
 - workspace symbols
@@ -30,7 +29,6 @@ The active implementation work belongs in [`PLAN.md`](../PLAN.md).
 
 ## Future Frontend Exposure
 
-- `fol tool semantic-tokens`
 - `fol tool references`
 - `fol tool rename`
 - `fol tool format`

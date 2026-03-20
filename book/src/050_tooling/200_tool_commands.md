@@ -88,6 +88,7 @@ Tooling commands:
 - `fol tool parse <PATH>`
 - `fol tool highlight <PATH>`
 - `fol tool symbols <PATH>`
+- `fol tool semantic-tokens <PATH>`
 - `fol tool tree generate <PATH>`
 - `fol tool clean`
 - `fol tool completion`
@@ -98,6 +99,7 @@ Examples:
 fol tool parse src/main.fol
 fol tool highlight src/main.fol
 fol tool symbols src/main.fol
+fol tool semantic-tokens src/main.fol
 fol tool tree generate /tmp/fol
 fol tool lsp
 fol tool completion bash
