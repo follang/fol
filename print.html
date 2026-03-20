@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-894be181.js";
+            window.path_to_searchindex_js = "searchindex-7c648d2c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-5bc359b7.js"></script>
@@ -612,6 +612,7 @@ fol code emit lowered
 <p>Tooling commands:</p>
 <ul>
 <li><code>fol tool lsp</code></li>
+<li><code>fol tool format &lt;PATH&gt;</code></li>
 <li><code>fol tool parse &lt;PATH&gt;</code></li>
 <li><code>fol tool highlight &lt;PATH&gt;</code></li>
 <li><code>fol tool symbols &lt;PATH&gt;</code></li>
@@ -624,6 +625,7 @@ fol code emit lowered
 </ul>
 <p>Examples:</p>
 <pre><code class="language-text">fol tool parse src/main.fol
+fol tool format src/main.fol
 fol tool highlight src/main.fol
 fol tool symbols src/main.fol
 fol tool references src/main.fol --line 12 --character 8
@@ -667,6 +669,7 @@ Only the shipped <code>fol tool</code> subcommands above are public.</p>
 <p>The public entrypoints are exposed through <code>fol tool</code>:</p>
 <ul>
 <li><code>fol tool lsp</code></li>
+<li><code>fol tool format &lt;PATH&gt;</code></li>
 <li><code>fol tool parse &lt;PATH&gt;</code></li>
 <li><code>fol tool highlight &lt;PATH&gt;</code></li>
 <li><code>fol tool symbols &lt;PATH&gt;</code></li>
@@ -694,10 +697,16 @@ a second public tool.</p>
 <li>compiler-backed diagnostics</li>
 <li>hover</li>
 <li>go-to-definition</li>
+<li>whole-document formatting</li>
+<li>code actions for exact compiler suggestions
+The current shipped inventory is intentionally one diagnostic family:
+unresolved-name replacements where the compiler attached an exact replacement.</li>
+<li>signature help for plain and qualified routine calls</li>
 <li>references</li>
-<li>rename for same-file local symbols</li>
+<li>rename for same-file local and current-package top-level symbols</li>
 <li>semantic tokens</li>
 <li>document symbols</li>
+<li>workspace symbols for current open workspace members</li>
 <li>completion</li>
 </ul>
 <p>The currently supported v1 LSP surface is:</p>
@@ -705,15 +714,36 @@ a second public tool.</p>
 <li>diagnostics</li>
 <li>hover</li>
 <li>definition</li>
+<li>formatting</li>
+<li>code actions for exact compiler suggestions</li>
+<li>signature help for plain and qualified routine calls</li>
 <li>references</li>
-<li>rename for same-file local symbols</li>
+<li>rename for same-file local and current-package top-level symbols</li>
 <li>semantic tokens</li>
 <li>document symbols</li>
+<li>workspace symbols for current open workspace members</li>
 <li>completion</li>
 </ul>
-<p>The server keeps one semantic snapshot per open document version. It reuses
-that snapshot for hover, definition, references, rename, semantic tokens,
-document symbols, and completion until the document changes or closes.</p>
+<p>The server keeps diagnostics and semantic snapshots separately.</p>
+<p>Formatting is intentionally whole-document only right now.
+<code>textDocument/rangeFormatting</code> stays unsupported until there is a safe
+structure-preserving boundary instead of a partial line-rewriter.</p>
+<p>The current formatter contract is intentionally narrow but explicit:</p>
+<ul>
+<li>indentation is four spaces per brace depth</li>
+<li>lines are trimmed before indentation is re-applied</li>
+<li>leading blank lines are removed and repeated blank lines collapse to one</li>
+<li>trailing blank lines are removed</li>
+<li>output always ends with one final newline when the document is non-empty</li>
+<li>line endings are normalized to <code>\n</code></li>
+<li><code>build.fol</code> follows the same formatter entrypoint and indentation rules as
+ordinary source files</li>
+</ul>
+<p>Diagnostics refresh on <code>didOpen</code> and <code>didChange</code>.</p>
+<p>Semantic requests keep one semantic snapshot per open document version and
+reuse it for hover, definition, signature help, references, rename, semantic
+tokens, document symbols, workspace symbols, and completion until the document
+changes or closes.</p>
 <h2 id="compiler-truth"><a class="header" href="#compiler-truth">Compiler Truth</a></h2>
 <p><code>fol-editor</code> does not create a second semantic engine.</p>
 <p>Semantic truth still comes from:</p>
@@ -737,6 +767,7 @@ Tree-sitter assets, see:</p>
 <h2 id="current-practical-workflow"><a class="header" href="#current-practical-workflow">Current Practical Workflow</a></h2>
 <p>Use:</p>
 <pre><code class="language-text">fol tool lsp
+fol tool format path/to/file.fol
 </code></pre>
 <p>as the language server entrypoint.</p>
 <p>Launch it from inside a discovered package or workspace root. The frontend
@@ -745,6 +776,7 @@ looks upward for <code>package.yaml</code> or <code>fol.work.yaml</code> before 
 <pre><code class="language-text">fol tool parse path/to/file.fol
 fol tool highlight path/to/file.fol
 fol tool symbols path/to/file.fol
+fol tool format path/to/file.fol
 fol tool references path/to/file.fol --line 12 --character 8
 fol tool rename path/to/file.fol --line 12 --character 8 total
 fol tool semantic-tokens path/to/file.fol
@@ -1220,10 +1252,14 @@ of copied by hand.</p>
 <li>diagnostics</li>
 <li>hover</li>
 <li>go-to-definition</li>
+<li>whole-document formatting</li>
+<li>code actions for compiler-suggested unresolved-name replacements</li>
+<li>signature help for plain and qualified routine calls</li>
 <li>references</li>
-<li>rename for same-file local symbols</li>
+<li>rename for same-file local and current-package top-level symbols</li>
 <li>semantic tokens</li>
 <li>document symbols</li>
+<li>workspace symbols for current open workspace members</li>
 <li>completion</li>
 <li>the same compiler-backed behavior for ordinary source files and <code>build.fol</code></li>
 </ul>
@@ -1235,6 +1271,11 @@ change events. The server applies ranged changes in order against the current
 in-memory document version.</p>
 <p>The server advertises incremental text sync by default.
 Full-document sync remains an explicit opt-in for clients/configs that need it.</p>
+<p>Formatting is intentionally limited to <code>textDocument/formatting</code>.
+<code>textDocument/rangeFormatting</code> remains unsupported until the formatter can
+preserve surrounding structure safely instead of guessing at partial blocks.</p>
+<p>Current whole-document formatting also normalizes blank-line runs:
+leading blank lines are removed and repeated blank lines collapse to one.</p>
 <h2 id="analysis-model"><a class="header" href="#analysis-model">Analysis Model</a></h2>
 <p>The server works like this:</p>
 <ol>
@@ -1248,11 +1289,12 @@ Full-document sync remains an explicit opt-in for clients/configs that need it.<
 document directory has been mapped.</p>
 <p>That means diagnostics and navigation are compiler-backed, not guessed from
 Tree-sitter alone.</p>
-<p>For open documents, the server also keeps a semantic snapshot keyed by document
-version. Hover, definition, references, rename, semantic tokens, document
-symbols, and completion reuse that snapshot until <code>didChange</code> or <code>didClose</code>
-invalidates it. A fresh <code>didOpen</code> starts a new snapshot for the new in-memory
-version.</p>
+<p>For open documents, diagnostics and semantic snapshots are cached separately.</p>
+<p><code>didOpen</code> and <code>didChange</code> refresh diagnostics for the current in-memory text.</p>
+<p>Hover, definition, signature help, references, rename, semantic tokens,
+document symbols, workspace symbols, and completion use a semantic snapshot
+keyed by document version and reuse it until <code>didChange</code> or <code>didClose</code>
+invalidates it.</p>
 <h2 id="diagnostics"><a class="header" href="#diagnostics">Diagnostics</a></h2>
 <p>Compiler diagnostics remain canonical.</p>
 <p>The server adapts them into LSP diagnostics for the currently open document.</p>
@@ -1267,10 +1309,16 @@ show at most one diagnostic per line per code in the editor.</p>
 <li>source-file diagnostics in the open file</li>
 <li>hover on resolved symbols</li>
 <li>go-to-definition across current-package and imported symbols where supported</li>
+<li>whole-document formatting edits from <code>textDocument/formatting</code></li>
+<li>code actions only when the compiler attached an exact replacement suggestion
+The current shipped code-action inventory is intentionally narrow:
+unresolved-name replacements only.</li>
+<li>signature help for supported routine call sites</li>
 <li>references for the supported symbol classes</li>
-<li>rename for same-file local symbols only</li>
+<li>rename for same-file local and current-package top-level symbols only</li>
 <li>semantic tokens for semantic identifier categories</li>
 <li>document symbols for the current file</li>
+<li>workspace symbols across the current open workspace members</li>
 <li>completion in ordinary source files and <code>build.fol</code></li>
 </ul>
 <p>If the client is attached but you see no diagnostics at all, the likely issue is
@@ -1336,7 +1384,7 @@ parser_config.fol = {
 <li>hover</li>
 <li>definitions</li>
 <li>references</li>
-<li>rename for same-file local symbols</li>
+<li>rename for same-file local and current-package top-level symbols</li>
 <li>semantic tokens</li>
 <li>document symbols</li>
 </ul>

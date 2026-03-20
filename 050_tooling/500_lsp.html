@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-894be181.js";
+            window.path_to_searchindex_js = "../searchindex-7c648d2c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5bc359b7.js"></script>
@@ -187,10 +187,14 @@
 <li>diagnostics</li>
 <li>hover</li>
 <li>go-to-definition</li>
+<li>whole-document formatting</li>
+<li>code actions for compiler-suggested unresolved-name replacements</li>
+<li>signature help for plain and qualified routine calls</li>
 <li>references</li>
-<li>rename for same-file local symbols</li>
+<li>rename for same-file local and current-package top-level symbols</li>
 <li>semantic tokens</li>
 <li>document symbols</li>
+<li>workspace symbols for current open workspace members</li>
 <li>completion</li>
 <li>the same compiler-backed behavior for ordinary source files and <code>build.fol</code></li>
 </ul>
@@ -202,6 +206,11 @@ change events. The server applies ranged changes in order against the current
 in-memory document version.</p>
 <p>The server advertises incremental text sync by default.
 Full-document sync remains an explicit opt-in for clients/configs that need it.</p>
+<p>Formatting is intentionally limited to <code>textDocument/formatting</code>.
+<code>textDocument/rangeFormatting</code> remains unsupported until the formatter can
+preserve surrounding structure safely instead of guessing at partial blocks.</p>
+<p>Current whole-document formatting also normalizes blank-line runs:
+leading blank lines are removed and repeated blank lines collapse to one.</p>
 <h2 id="analysis-model"><a class="header" href="#analysis-model">Analysis Model</a></h2>
 <p>The server works like this:</p>
 <ol>
@@ -215,11 +224,12 @@ Full-document sync remains an explicit opt-in for clients/configs that need it.<
 document directory has been mapped.</p>
 <p>That means diagnostics and navigation are compiler-backed, not guessed from
 Tree-sitter alone.</p>
-<p>For open documents, the server also keeps a semantic snapshot keyed by document
-version. Hover, definition, references, rename, semantic tokens, document
-symbols, and completion reuse that snapshot until <code>didChange</code> or <code>didClose</code>
-invalidates it. A fresh <code>didOpen</code> starts a new snapshot for the new in-memory
-version.</p>
+<p>For open documents, diagnostics and semantic snapshots are cached separately.</p>
+<p><code>didOpen</code> and <code>didChange</code> refresh diagnostics for the current in-memory text.</p>
+<p>Hover, definition, signature help, references, rename, semantic tokens,
+document symbols, workspace symbols, and completion use a semantic snapshot
+keyed by document version and reuse it until <code>didChange</code> or <code>didClose</code>
+invalidates it.</p>
 <h2 id="diagnostics"><a class="header" href="#diagnostics">Diagnostics</a></h2>
 <p>Compiler diagnostics remain canonical.</p>
 <p>The server adapts them into LSP diagnostics for the currently open document.</p>
@@ -234,10 +244,16 @@ show at most one diagnostic per line per code in the editor.</p>
 <li>source-file diagnostics in the open file</li>
 <li>hover on resolved symbols</li>
 <li>go-to-definition across current-package and imported symbols where supported</li>
+<li>whole-document formatting edits from <code>textDocument/formatting</code></li>
+<li>code actions only when the compiler attached an exact replacement suggestion
+The current shipped code-action inventory is intentionally narrow:
+unresolved-name replacements only.</li>
+<li>signature help for supported routine call sites</li>
 <li>references for the supported symbol classes</li>
-<li>rename for same-file local symbols only</li>
+<li>rename for same-file local and current-package top-level symbols only</li>
 <li>semantic tokens for semantic identifier categories</li>
 <li>document symbols for the current file</li>
+<li>workspace symbols across the current open workspace members</li>
 <li>completion in ordinary source files and <code>build.fol</code></li>
 </ul>
 <p>If the client is attached but you see no diagnostics at all, the likely issue is

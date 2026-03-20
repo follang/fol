@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-894be181.js";
+            window.path_to_searchindex_js = "../searchindex-7c648d2c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5bc359b7.js"></script>
@@ -188,6 +188,7 @@
 <p>The public entrypoints are exposed through <code>fol tool</code>:</p>
 <ul>
 <li><code>fol tool lsp</code></li>
+<li><code>fol tool format &lt;PATH&gt;</code></li>
 <li><code>fol tool parse &lt;PATH&gt;</code></li>
 <li><code>fol tool highlight &lt;PATH&gt;</code></li>
 <li><code>fol tool symbols &lt;PATH&gt;</code></li>
@@ -215,10 +216,16 @@ a second public tool.</p>
 <li>compiler-backed diagnostics</li>
 <li>hover</li>
 <li>go-to-definition</li>
+<li>whole-document formatting</li>
+<li>code actions for exact compiler suggestions
+The current shipped inventory is intentionally one diagnostic family:
+unresolved-name replacements where the compiler attached an exact replacement.</li>
+<li>signature help for plain and qualified routine calls</li>
 <li>references</li>
-<li>rename for same-file local symbols</li>
+<li>rename for same-file local and current-package top-level symbols</li>
 <li>semantic tokens</li>
 <li>document symbols</li>
+<li>workspace symbols for current open workspace members</li>
 <li>completion</li>
 </ul>
 <p>The currently supported v1 LSP surface is:</p>
@@ -226,15 +233,36 @@ a second public tool.</p>
 <li>diagnostics</li>
 <li>hover</li>
 <li>definition</li>
+<li>formatting</li>
+<li>code actions for exact compiler suggestions</li>
+<li>signature help for plain and qualified routine calls</li>
 <li>references</li>
-<li>rename for same-file local symbols</li>
+<li>rename for same-file local and current-package top-level symbols</li>
 <li>semantic tokens</li>
 <li>document symbols</li>
+<li>workspace symbols for current open workspace members</li>
 <li>completion</li>
 </ul>
-<p>The server keeps one semantic snapshot per open document version. It reuses
-that snapshot for hover, definition, references, rename, semantic tokens,
-document symbols, and completion until the document changes or closes.</p>
+<p>The server keeps diagnostics and semantic snapshots separately.</p>
+<p>Formatting is intentionally whole-document only right now.
+<code>textDocument/rangeFormatting</code> stays unsupported until there is a safe
+structure-preserving boundary instead of a partial line-rewriter.</p>
+<p>The current formatter contract is intentionally narrow but explicit:</p>
+<ul>
+<li>indentation is four spaces per brace depth</li>
+<li>lines are trimmed before indentation is re-applied</li>
+<li>leading blank lines are removed and repeated blank lines collapse to one</li>
+<li>trailing blank lines are removed</li>
+<li>output always ends with one final newline when the document is non-empty</li>
+<li>line endings are normalized to <code>\n</code></li>
+<li><code>build.fol</code> follows the same formatter entrypoint and indentation rules as
+ordinary source files</li>
+</ul>
+<p>Diagnostics refresh on <code>didOpen</code> and <code>didChange</code>.</p>
+<p>Semantic requests keep one semantic snapshot per open document version and
+reuse it for hover, definition, signature help, references, rename, semantic
+tokens, document symbols, workspace symbols, and completion until the document
+changes or closes.</p>
 <h2 id="compiler-truth"><a class="header" href="#compiler-truth">Compiler Truth</a></h2>
 <p><code>fol-editor</code> does not create a second semantic engine.</p>
 <p>Semantic truth still comes from:</p>
@@ -258,6 +286,7 @@ Tree-sitter assets, see:</p>
 <h2 id="current-practical-workflow"><a class="header" href="#current-practical-workflow">Current Practical Workflow</a></h2>
 <p>Use:</p>
 <pre><code class="language-text">fol tool lsp
+fol tool format path/to/file.fol
 </code></pre>
 <p>as the language server entrypoint.</p>
 <p>Launch it from inside a discovered package or workspace root. The frontend
@@ -266,6 +295,7 @@ looks upward for <code>package.yaml</code> or <code>fol.work.yaml</code> before 
 <pre><code class="language-text">fol tool parse path/to/file.fol
 fol tool highlight path/to/file.fol
 fol tool symbols path/to/file.fol
+fol tool format path/to/file.fol
 fol tool references path/to/file.fol --line 12 --character 8
 fol tool rename path/to/file.fol --line 12 --character 8 total
 fol tool semantic-tokens path/to/file.fol

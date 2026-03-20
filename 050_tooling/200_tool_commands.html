@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-894be181.js";
+            window.path_to_searchindex_js = "../searchindex-7c648d2c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-5bc359b7.js"></script>
@@ -246,6 +246,7 @@ fol code emit lowered
 <p>Tooling commands:</p>
 <ul>
 <li><code>fol tool lsp</code></li>
+<li><code>fol tool format &lt;PATH&gt;</code></li>
 <li><code>fol tool parse &lt;PATH&gt;</code></li>
 <li><code>fol tool highlight &lt;PATH&gt;</code></li>
 <li><code>fol tool symbols &lt;PATH&gt;</code></li>
@@ -258,6 +259,7 @@ fol code emit lowered
 </ul>
 <p>Examples:</p>
 <pre><code class="language-text">fol tool parse src/main.fol
+fol tool format src/main.fol
 fol tool highlight src/main.fol
 fol tool symbols src/main.fol
 fol tool references src/main.fol --line 12 --character 8
