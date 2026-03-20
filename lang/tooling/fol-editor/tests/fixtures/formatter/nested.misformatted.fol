@@ -1,0 +1,12 @@
+fun[] main(): int = {
+var payload = {
+total = 7,
+extra = {
+amount = 2,
+meta = {
+label = "ok",
+},
+},
+};
+return payload.total;
+};

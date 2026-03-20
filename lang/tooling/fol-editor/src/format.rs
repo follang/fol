@@ -213,12 +213,39 @@ mod tests {
     }
 
     #[test]
+    fn formatter_matches_alias_fixture_snapshot() {
+        let source = fixture("alias.misformatted.fol");
+        let expected = fixture("alias.formatted.fol");
+
+        assert_eq!(format_document(&source), expected);
+    }
+
+    #[test]
+    fn formatter_matches_nested_fixture_snapshot() {
+        let source = fixture("nested.misformatted.fol");
+        let expected = fixture("nested.formatted.fol");
+
+        assert_eq!(format_document(&source), expected);
+    }
+
+    #[test]
+    fn formatter_matches_broken_fixture_snapshot() {
+        let source = fixture("broken.misformatted.fol");
+        let expected = fixture("broken.formatted.fol");
+
+        assert_eq!(format_document(&source), expected);
+    }
+
+    #[test]
     fn formatter_is_idempotent_on_formatted_output() {
         let fixtures = [
             "record.formatted.fol",
             "when.formatted.fol",
             "build.formatted.fol",
             "imports.formatted.fol",
+            "alias.formatted.fol",
+            "nested.formatted.fol",
+            "broken.formatted.fol",
         ];
 
         for fixture_name in fixtures {
