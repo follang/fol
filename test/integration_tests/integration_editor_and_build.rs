@@ -1,4 +1,5 @@
 use super::*;
+use fol_editor::{LspDefinitionParams, LspHover, LspHoverParams, LspLocation};
 
     #[test]
     fn test_editor_file_commands_cover_build_fol_entry_files() {
@@ -72,7 +73,7 @@ use super::*;
     }
 
     #[test]
-    fn test_lsp_covers_build_fol_symbols_and_completion() {
+    fn test_lsp_covers_build_fol_symbols_hover_definition_and_completion() {
         let temp_root = unique_temp_root("lsp_build_fol");
         std::fs::create_dir_all(temp_root.join("src")).expect("should create source root");
         std::fs::write(
@@ -119,10 +120,55 @@ use super::*;
             "build.fol document symbols should include the 'build' entry routine"
         );
 
-        let completion = server
+        let hover = server
             .handle_request(JsonRpcRequest {
                 jsonrpc: "2.0".to_string(),
                 id: JsonRpcId::Number(2),
+                method: "textDocument/hover".to_string(),
+                params: Some(
+                    serde_json::to_value(LspHoverParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 8,
+                        },
+                    })
+                    .expect("hover params should serialize"),
+                ),
+            })
+            .expect("hover request should succeed")
+            .expect("hover should produce a response");
+        let _hover: Option<LspHover> =
+            serde_json::from_value(hover.result.expect("hover should have a result"))
+                .expect("hover result should deserialize");
+
+        let definition = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(3),
+                method: "textDocument/definition".to_string(),
+                params: Some(
+                    serde_json::to_value(LspDefinitionParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                        position: LspPosition {
+                            line: 1,
+                            character: 8,
+                        },
+                    })
+                    .expect("definition params should serialize"),
+                ),
+            })
+            .expect("definition request should succeed")
+            .expect("definition should produce a response");
+        let _definition: Option<LspLocation> = serde_json::from_value(
+            definition.result.expect("definition should have a result"),
+        )
+        .expect("definition result should deserialize");
+
+        let completion = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(4),
                 method: "textDocument/completion".to_string(),
                 params: Some(
                     serde_json::to_value(LspCompletionParams {
