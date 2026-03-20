@@ -197,10 +197,35 @@ mod tests {
     }
 
     #[test]
-    fn formatter_is_idempotent_on_formatted_output() {
-        let expected = fixture("record.formatted.fol");
+    fn formatter_matches_build_fixture_snapshot() {
+        let source = fixture("build.misformatted.fol");
+        let expected = fixture("build.formatted.fol");
 
-        assert_eq!(format_document(&expected), expected);
+        assert_eq!(format_document(&source), expected);
+    }
+
+    #[test]
+    fn formatter_matches_import_fixture_snapshot() {
+        let source = fixture("imports.misformatted.fol");
+        let expected = fixture("imports.formatted.fol");
+
+        assert_eq!(format_document(&source), expected);
+    }
+
+    #[test]
+    fn formatter_is_idempotent_on_formatted_output() {
+        let fixtures = [
+            "record.formatted.fol",
+            "when.formatted.fol",
+            "build.formatted.fol",
+            "imports.formatted.fol",
+        ];
+
+        for fixture_name in fixtures {
+            let expected = fixture(fixture_name);
+
+            assert_eq!(format_document(&expected), expected);
+        }
     }
 
     #[test]
@@ -211,5 +236,23 @@ mod tests {
         let edit = formatting_edit(&source).expect("misformatted source should need an edit");
         assert_eq!(edit.new_text, expected);
         assert_eq!(formatting_edit(&expected), None);
+    }
+
+    #[test]
+    fn formatter_normalizes_crlf_trailing_space_and_final_newline() {
+        let source = "fun[] main(): int = {\r\n    return 7;   \r\n};";
+
+        assert_eq!(format_document(source), "fun[] main(): int = {\n    return 7;\n};\n");
+    }
+
+    #[test]
+    fn formatting_edit_range_covers_the_original_whole_document() {
+        let source = "fun[] main(): int = {\r\nreturn 7;\r\n};";
+        let edit = formatting_edit(source).expect("source should need formatting");
+
+        assert_eq!(edit.range.start.line, 0);
+        assert_eq!(edit.range.start.character, 0);
+        assert_eq!(edit.range.end.line, 2);
+        assert_eq!(edit.range.end.character, 2);
     }
 }
