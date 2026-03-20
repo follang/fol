@@ -48,6 +48,8 @@ It is responsible for:
 - go-to-definition
 - whole-document formatting
 - code actions for exact compiler suggestions
+  The current shipped inventory is intentionally one diagnostic family:
+  unresolved-name replacements where the compiler attached an exact replacement.
 - signature help for plain and qualified routine calls
 - references
 - rename for same-file local and current-package top-level symbols
