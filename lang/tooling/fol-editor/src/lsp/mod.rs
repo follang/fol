@@ -14,9 +14,11 @@ pub use types::{
     LspDidCloseTextDocumentParams, LspDidOpenTextDocumentParams, LspDocumentSymbol,
     LspDocumentSymbolParams, LspHover, LspHoverParams, LspInitializeParams, LspInitializeResult,
     LspPublishDiagnosticsParams, LspReferenceContext, LspReferenceParams, LspRenameParams,
-    LspServerCapabilities, LspServerInfo, LspTextDocumentContentChangeEvent,
-    LspTextDocumentIdentifier, LspTextDocumentItem, LspTextDocumentSyncOptions, LspTextEdit,
-    LspVersionedTextDocumentIdentifier, LspWorkspaceEdit,
+    LspSemanticTokens, LspSemanticTokensLegend, LspSemanticTokensOptions,
+    LspSemanticTokensParams, LspServerCapabilities, LspServerInfo,
+    LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspTextDocumentItem,
+    LspTextDocumentSyncOptions, LspTextEdit, LspVersionedTextDocumentIdentifier,
+    LspWorkspaceEdit,
 };
 
 use crate::{
@@ -65,6 +67,16 @@ impl EditorLspServer {
                             document_symbol_provider: true,
                             references_provider: Some(true),
                             rename_provider: Some(true),
+                            semantic_tokens_provider: Some(LspSemanticTokensOptions {
+                                legend: LspSemanticTokensLegend {
+                                    token_types: semantic::semantic_token_types()
+                                        .iter()
+                                        .map(|kind| kind.to_string())
+                                        .collect(),
+                                    token_modifiers: Vec::new(),
+                                },
+                                full: true,
+                            }),
                             completion_provider: Some(LspCompletionOptions {
                                 trigger_characters: vec![".".to_string()],
                             }),
@@ -142,6 +154,19 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(serde_json::to_value(result).expect("rename should serialize")),
+                    error: None,
+                }))
+            }
+            "textDocument/semanticTokens/full" => {
+                let params: LspSemanticTokensParams = from_params(request.params)?;
+                let result =
+                    self.semantic_tokens(&EditorDocumentUri::parse(&params.text_document.uri)?)?;
+                Ok(Some(JsonRpcResponse {
+                    jsonrpc: "2.0".to_string(),
+                    id: request.id,
+                    result: Some(
+                        serde_json::to_value(result).expect("semantic tokens should serialize"),
+                    ),
                     error: None,
                 }))
             }
@@ -355,6 +380,17 @@ impl EditorLspServer {
                     insert_text: item.insert_text,
                 })
                 .collect(),
+        })
+    }
+
+    pub fn semantic_tokens(
+        &mut self,
+        uri: &EditorDocumentUri,
+    ) -> EditorResult<LspSemanticTokens> {
+        let document = self.open_document(uri)?.clone();
+        let snapshot = self.semantic_snapshot(uri, &document)?;
+        Ok(LspSemanticTokens {
+            data: snapshot.semantic_tokens_for_current_path(),
         })
     }
 

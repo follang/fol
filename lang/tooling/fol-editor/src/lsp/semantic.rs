@@ -17,6 +17,12 @@ use super::completion_helpers::{
 };
 use super::types::{EditorCompletionItem, LspDocumentSymbol, LspHover};
 
+const SEMANTIC_TOKEN_TYPES: &[&str] = &["namespace", "type", "function", "parameter", "variable"];
+
+pub(super) fn semantic_token_types() -> &'static [&'static str] {
+    SEMANTIC_TOKEN_TYPES
+}
+
 #[derive(Debug)]
 pub(crate) struct SemanticSnapshot {
     pub(super) analyzed_path: Option<PathBuf>,
@@ -28,6 +34,79 @@ pub(crate) struct SemanticSnapshot {
 }
 
 impl SemanticSnapshot {
+    pub(super) fn semantic_tokens_for_current_path(&self) -> Vec<u32> {
+        let Some(program) = self.current_program() else {
+            return Vec::new();
+        };
+        let Some(analyzed_path) = self.analyzed_path.as_ref() else {
+            return Vec::new();
+        };
+        let path_text = analyzed_path.to_string_lossy();
+        let mut entries = std::collections::BTreeSet::new();
+
+        for symbol in program.all_symbols() {
+            let Some(origin) = symbol.origin.as_ref() else { continue };
+            let Some(file) = origin.file.as_ref() else { continue };
+            if file != &path_text {
+                continue;
+            }
+            let Some(token_type) = semantic_token_type_for_symbol_kind(symbol.kind) else {
+                continue;
+            };
+            let line = origin.line.saturating_sub(1) as u32;
+            let start = origin.column.saturating_sub(1) as u32;
+            let length = origin.length as u32;
+            if length == 0 {
+                continue;
+            }
+            entries.insert((line, start, length, token_type, 0_u32));
+        }
+
+        for reference in program.all_references() {
+            let Some(symbol_id) = reference.resolved else {
+                continue;
+            };
+            let Some(symbol) = program.symbol(symbol_id) else {
+                continue;
+            };
+            let Some(token_type) = semantic_token_type_for_symbol_kind(symbol.kind) else {
+                continue;
+            };
+            let Some(syntax_id) = reference.syntax_id else { continue };
+            let Some(origin) = program.syntax_index().origin(syntax_id) else {
+                continue;
+            };
+            let Some(file) = origin.file.as_ref() else { continue };
+            if file != &path_text {
+                continue;
+            }
+            let line = origin.line.saturating_sub(1) as u32;
+            let start = origin.column.saturating_sub(1) as u32;
+            let length = origin.length as u32;
+            if length == 0 {
+                continue;
+            }
+            entries.insert((line, start, length, token_type, 0_u32));
+        }
+
+        let mut data = Vec::with_capacity(entries.len() * 5);
+        let mut previous_line = 0_u32;
+        let mut previous_start = 0_u32;
+        for (index, (line, start, length, token_type, modifiers)) in entries.into_iter().enumerate()
+        {
+            let delta_line = if index == 0 { line } else { line - previous_line };
+            let delta_start = if index == 0 || delta_line != 0 {
+                start
+            } else {
+                start - previous_start
+            };
+            data.extend([delta_line, delta_start, length, token_type, modifiers]);
+            previous_line = line;
+            previous_start = start;
+        }
+        data
+    }
+
     pub(super) fn completion_items(
         &self,
         document: &EditorDocument,
@@ -872,6 +951,25 @@ impl SemanticSnapshot {
             .source_units
             .iter()
             .find(move |unit| unit.path == path_text)
+    }
+}
+
+fn semantic_token_type_for_symbol_kind(kind: fol_resolver::SymbolKind) -> Option<u32> {
+    match kind {
+        fol_resolver::SymbolKind::ImportAlias => Some(0),
+        fol_resolver::SymbolKind::Type | fol_resolver::SymbolKind::Alias => Some(1),
+        fol_resolver::SymbolKind::Routine => Some(2),
+        fol_resolver::SymbolKind::Parameter | fol_resolver::SymbolKind::GenericParameter => Some(3),
+        fol_resolver::SymbolKind::ValueBinding
+        | fol_resolver::SymbolKind::LabelBinding
+        | fol_resolver::SymbolKind::DestructureBinding
+        | fol_resolver::SymbolKind::Capture
+        | fol_resolver::SymbolKind::LoopBinder
+        | fol_resolver::SymbolKind::RollingBinder
+        | fol_resolver::SymbolKind::Definition => Some(4),
+        fol_resolver::SymbolKind::Segment
+        | fol_resolver::SymbolKind::Implementation
+        | fol_resolver::SymbolKind::Standard => None,
     }
 }
 

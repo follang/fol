@@ -67,6 +67,8 @@ pub struct LspServerCapabilities {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rename_provider: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub semantic_tokens_provider: Option<LspSemanticTokensOptions>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completion_provider: Option<LspCompletionOptions>,
 }
 
@@ -75,6 +77,21 @@ pub struct LspServerCapabilities {
 pub struct LspCompletionOptions {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub trigger_characters: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspSemanticTokensLegend {
+    pub token_types: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub token_modifiers: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspSemanticTokensOptions {
+    pub legend: LspSemanticTokensLegend,
+    pub full: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -189,6 +206,12 @@ pub struct LspRenameParams {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
+pub struct LspSemanticTokensParams {
+    pub text_document: LspTextDocumentIdentifier,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct LspDocumentSymbolParams {
     pub text_document: LspTextDocumentIdentifier,
 }
@@ -267,4 +290,10 @@ pub struct LspTextEdit {
 #[serde(rename_all = "camelCase")]
 pub struct LspWorkspaceEdit {
     pub changes: std::collections::BTreeMap<String, Vec<LspTextEdit>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LspSemanticTokens {
+    pub data: Vec<u32>,
 }

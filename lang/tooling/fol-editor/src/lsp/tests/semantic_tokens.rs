@@ -1,0 +1,94 @@
+use super::helpers::{open_document, sample_package_root};
+use super::super::{
+    EditorLspServer, JsonRpcId, JsonRpcRequest, LspPosition, LspSemanticTokens,
+    LspSemanticTokensParams, LspTextDocumentIdentifier,
+};
+use crate::EditorConfig;
+use std::fs;
+
+fn decode_semantic_tokens(data: &[u32]) -> Vec<(u32, u32, u32, u32, u32)> {
+    let mut decoded = Vec::new();
+    let mut line = 0_u32;
+    let mut start = 0_u32;
+    for chunk in data.chunks_exact(5) {
+        let delta_line = chunk[0];
+        let delta_start = chunk[1];
+        if delta_line == 0 {
+            start += delta_start;
+        } else {
+            line += delta_line;
+            start = delta_start;
+        }
+        decoded.push((line, start, chunk[2], chunk[3], chunk[4]));
+    }
+    decoded
+}
+
+#[test]
+fn lsp_server_returns_semantic_tokens_for_source_files() {
+    let (root, uri) = sample_package_root("semantic_tokens_source");
+    fs::write(
+        root.join("src/main.fol"),
+        "typ[] Local: rec = {\n    value: int\n}\n\nfun[] helper(total: int): int = {\n    var value: Local = total\n    return value\n}\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(951),
+            method: "textDocument/semanticTokens/full".to_string(),
+            params: Some(
+                serde_json::to_value(LspSemanticTokensParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let tokens: LspSemanticTokens = serde_json::from_value(response.result.unwrap()).unwrap();
+    let decoded = decode_semantic_tokens(&tokens.data);
+
+    assert!(decoded.iter().any(|token| *token == (0, 6, 5, 1, 0)));
+    assert!(decoded.iter().any(|token| *token == (3, 6, 6, 2, 0)));
+    assert!(decoded.iter().any(|token| *token == (3, 13, 5, 3, 0)));
+    assert!(decoded.iter().any(|token| *token == (4, 8, 5, 4, 0)));
+}
+
+#[test]
+fn lsp_server_returns_semantic_tokens_for_build_files() {
+    let (root, uri) = sample_package_root("semantic_tokens_build");
+    let build_uri = format!("file://{}", root.join("build.fol").display());
+    let build_text = fs::read_to_string(root.join("build.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, build_uri.clone(), &build_text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(952),
+            method: "textDocument/semanticTokens/full".to_string(),
+            params: Some(
+                serde_json::to_value(LspSemanticTokensParams {
+                    text_document: LspTextDocumentIdentifier { uri: build_uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let tokens: LspSemanticTokens = serde_json::from_value(response.result.unwrap()).unwrap();
+    let decoded = decode_semantic_tokens(&tokens.data);
+
+    assert!(decoded.iter().any(|token| *token == (0, 6, 5, 2, 0)));
+    assert!(decoded.iter().any(|token| *token == (0, 12, 5, 3, 0)));
+    assert!(
+        decoded
+            .iter()
+            .any(|token| token.0 == 0 && token.3 == 1 && token.2 >= 5)
+    );
+}
