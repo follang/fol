@@ -2105,6 +2105,155 @@ fn lsp_server_returns_safe_empty_results_for_incomplete_calls() {
 }
 
 #[test]
+fn lsp_server_recovers_semantic_results_after_incomplete_call_becomes_valid() {
+    let (root, uri) = sample_package_root("incomplete_call_recovery");
+    let broken = "fun[] helper(left: int): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return helper(\n}\n";
+    fs::write(root.join("src/main.fol"), broken).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), broken);
+
+    let before = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(769),
+            method: "textDocument/signatureHelp".to_string(),
+            params: Some(
+                serde_json::to_value(LspSignatureHelpParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 4,
+                        character: 18,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let before: Option<LspSignatureHelp> =
+        serde_json::from_value(before.result.unwrap()).unwrap();
+    assert!(before.is_none());
+
+    let recovered = "fun[] helper(left: int): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return helper(7)\n}\n";
+    server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: None,
+                        range_length: None,
+                        text: recovered.to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+
+    let after = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(770),
+            method: "textDocument/signatureHelp".to_string(),
+            params: Some(
+                serde_json::to_value(LspSignatureHelpParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 4,
+                        character: 19,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let after: Option<LspSignatureHelp> =
+        serde_json::from_value(after.result.unwrap()).unwrap();
+    let after = after.expect("signature help should recover once the call becomes valid");
+    assert_eq!(after.signatures[0].label, "helper(int): int");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_recovers_navigation_after_partial_declaration_becomes_valid() {
+    let (root, uri) = sample_package_root("partial_declaration_recovery");
+    let broken = "fun[] helper(): int = {\n    return 7\n}\n\nfun[] mai";
+    fs::write(root.join("src/main.fol"), broken).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), broken);
+
+    let before = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(771),
+            method: "textDocument/documentSymbol".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentSymbolParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let before: Vec<super::super::LspDocumentSymbol> =
+        serde_json::from_value(before.result.unwrap()).unwrap();
+    assert!(before.is_empty());
+
+    let recovered = "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n";
+    server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didChange".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidChangeTextDocumentParams {
+                    text_document: LspVersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![LspTextDocumentContentChangeEvent {
+                        range: None,
+                        range_length: None,
+                        text: recovered.to_string(),
+                    }],
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap();
+
+    let after = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(772),
+            method: "textDocument/documentSymbol".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentSymbolParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let after: Vec<super::super::LspDocumentSymbol> =
+        serde_json::from_value(after.result.unwrap()).unwrap();
+    let names = after.iter().map(|symbol| symbol.name.as_str()).collect::<Vec<_>>();
+    assert!(names.contains(&"helper"));
+    assert!(names.contains(&"main"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_surfaces_parser_diagnostics_from_open_documents() {
     let (root, uri) = sample_package_root("parser_diag");
     let mut server = EditorLspServer::new(EditorConfig::default());
