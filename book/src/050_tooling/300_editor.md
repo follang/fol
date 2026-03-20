@@ -50,7 +50,7 @@ It is responsible for:
 - code actions for exact compiler suggestions
 - signature help for plain and qualified routine calls
 - references
-- rename for same-file local and same-file top-level symbols
+- rename for same-file local and current-package top-level symbols
 - semantic tokens
 - document symbols
 - workspace symbols for current open workspace members
@@ -65,7 +65,7 @@ The currently supported v1 LSP surface is:
 - code actions for exact compiler suggestions
 - signature help for plain and qualified routine calls
 - references
-- rename for same-file local and same-file top-level symbols
+- rename for same-file local and current-package top-level symbols
 - semantic tokens
 - document symbols
 - workspace symbols for current open workspace members

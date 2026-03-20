@@ -997,13 +997,15 @@ fn lsp_server_refuses_build_entry_rename_outside_the_safe_boundary() {
         .expect_err("build entry rename should stay outside the safe local boundary");
 
     assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
-    assert!(error.message.contains("same-file local symbols only"));
+    assert!(error
+        .message
+        .contains("same-file local and current-package top-level symbols only"));
 
     fs::remove_dir_all(root).ok();
 }
 
 #[test]
-fn lsp_server_refuses_same_package_namespaced_rename_outside_the_safe_boundary() {
+fn lsp_server_renames_same_package_namespaced_symbols_with_multi_file_edits() {
     let (root, uri) = sample_package_root("rename_same_package_namespace_boundary");
     fs::create_dir_all(root.join("src/api")).unwrap();
     fs::write(
@@ -1020,7 +1022,7 @@ fn lsp_server_refuses_same_package_namespaced_rename_outside_the_safe_boundary()
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, uri, &text);
 
-    let error = server
+    let rename = server
         .handle_request(JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
             id: JsonRpcId::Number(945),
@@ -1039,10 +1041,24 @@ fn lsp_server_refuses_same_package_namespaced_rename_outside_the_safe_boundary()
                 .unwrap(),
             ),
         })
-        .expect_err("same-package namespaced rename should stay outside the safe boundary");
+        .unwrap()
+        .unwrap();
+    let edit: LspWorkspaceEdit = serde_json::from_value(rename.result.unwrap()).unwrap();
+    let declaration_uri = format!("file://{}", root.join("src/api/lib.fol").display());
+    let declaration_changes = edit
+        .changes
+        .get(&declaration_uri)
+        .expect("same-package rename should include the declaration file");
+    let usage_changes = edit
+        .changes
+        .get(&format!("file://{}", root.join("src/main.fol").display()))
+        .expect("same-package rename should include the usage file");
 
-    assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
-    assert!(error.message.contains("same-file local symbols only"));
+    assert_eq!(edit.changes.len(), 2);
+    assert_eq!(declaration_changes.len(), 1);
+    assert_eq!(usage_changes.len(), 1);
+    assert_eq!(declaration_changes[0].new_text, "assist");
+    assert_eq!(usage_changes[0].new_text, "assist");
 
     fs::remove_dir_all(root).ok();
 }
@@ -1084,7 +1100,7 @@ fn lsp_server_refuses_imported_symbol_rename_outside_the_safe_boundary() {
         .expect_err("imported rename should stay outside the first safe boundary");
 
     assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
-    assert!(error.message.contains("same-file local symbols only"));
+    assert!(error.message.contains("multi-package symbols"));
 
     fs::remove_dir_all(root).ok();
 }

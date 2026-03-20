@@ -7,6 +7,7 @@ use fol_intrinsics::{
     intrinsic_registry, IntrinsicAvailability, IntrinsicStatus, IntrinsicSurface,
 };
 use fol_parser::ast::{AstNode, SyntaxNodeId};
+use std::path::Path;
 use std::path::PathBuf;
 
 use super::completion_helpers::{
@@ -1058,7 +1059,8 @@ impl SemanticSnapshot {
                 "rename target has no analyzed document path",
             )
         })?;
-        let analyzed_uri = format!("file://{}", analyzed_path.display());
+        let analyzed_path_text = analyzed_path.to_string_lossy().to_string();
+        let source_package_root = self.source_package_root.as_ref();
 
         for package in resolved.packages() {
             let program = &package.program;
@@ -1083,12 +1085,24 @@ impl SemanticSnapshot {
                 return Err(EditorError::new(
                     EditorErrorKind::InvalidInput,
                     format!(
-                        "rename currently supports same-file local and top-level symbols only, not {}",
+                        "rename currently supports same-file local and current-package top-level symbols only, not {}",
                         render_symbol_kind(symbol.kind)
                     ),
                 ));
             }
 
+            let supports_current_package_top_level = matches!(
+                symbol.kind,
+                fol_resolver::SymbolKind::Routine
+                    | fol_resolver::SymbolKind::Type
+                    | fol_resolver::SymbolKind::Alias
+                    | fol_resolver::SymbolKind::Definition
+            );
+            let path_is_in_current_package = |file: &str| {
+                source_package_root
+                    .map(|root| Path::new(file).starts_with(root))
+                    .unwrap_or(false)
+            };
             let mut edits = Vec::new();
             let declaration = symbol.origin.as_ref().ok_or_else(|| {
                 EditorError::new(
@@ -1102,21 +1116,27 @@ impl SemanticSnapshot {
                     "rename target is missing a declaration file",
                 )
             })?;
-            if declaration_file != &analyzed_path.to_string_lossy() {
+            if declaration_file != &analyzed_path_text
+                && !(supports_current_package_top_level
+                    && path_is_in_current_package(declaration_file))
+            {
                 return Err(EditorError::new(
                     EditorErrorKind::InvalidInput,
-                    "rename currently refuses multi-file symbols",
+                    "rename currently refuses multi-package symbols",
                 ));
             }
-            edits.push(LspTextEdit {
-                range: location_to_range(&fol_diagnostics::DiagnosticLocation {
-                    file: Some(declaration_file.clone()),
-                    line: declaration.line,
-                    column: declaration.column,
-                    length: Some(declaration.length),
-                }),
-                new_text: new_name.to_string(),
-            });
+            edits.push((
+                declaration_file.clone(),
+                LspTextEdit {
+                    range: location_to_range(&fol_diagnostics::DiagnosticLocation {
+                        file: Some(declaration_file.clone()),
+                        line: declaration.line,
+                        column: declaration.column,
+                        length: Some(declaration.length),
+                    }),
+                    new_text: new_name.to_string(),
+                },
+            ));
 
             for hit in program.all_references().filter(|hit| hit.resolved == Some(symbol_id)) {
                 let Some(syntax_id) = hit.syntax_id else { continue };
@@ -1124,33 +1144,57 @@ impl SemanticSnapshot {
                     continue;
                 };
                 let Some(file) = origin.file.as_ref() else { continue };
-                if file != &analyzed_path.to_string_lossy() {
+                if file != &analyzed_path_text
+                    && !(supports_current_package_top_level && path_is_in_current_package(file))
+                {
                     return Err(EditorError::new(
                         EditorErrorKind::InvalidInput,
-                        "rename currently refuses multi-file symbols",
+                        "rename currently refuses multi-package symbols",
                     ));
                 }
-                edits.push(LspTextEdit {
-                    range: location_to_range(&fol_diagnostics::DiagnosticLocation {
-                        file: Some(file.clone()),
-                        line: origin.line,
-                        column: origin.column,
-                        length: Some(origin.length),
-                    }),
-                    new_text: new_name.to_string(),
-                });
+                edits.push((
+                    file.clone(),
+                    LspTextEdit {
+                        range: location_to_range(&fol_diagnostics::DiagnosticLocation {
+                            file: Some(file.clone()),
+                            line: origin.line,
+                            column: origin.column,
+                            length: Some(origin.length),
+                        }),
+                        new_text: new_name.to_string(),
+                    },
+                ));
             }
 
             edits.sort_by(|left, right| {
-                left.range
+                left.0
+                    .cmp(&right.0)
+                    .then(left.1.range.start.line.cmp(&right.1.range.start.line))
+                    .then(
+                        left.1
+                            .range
+                            .start
+                            .character
+                            .cmp(&right.1.range.start.character),
+                    )
+            });
+            edits.dedup_by(|left, right| left == right);
+            let mut changes = std::collections::BTreeMap::new();
+            for (file, edit) in edits {
+                changes
+                    .entry(format!("file://{file}"))
+                    .or_insert_with(Vec::new)
+                    .push(edit);
+            }
+            for edits in changes.values_mut() {
+                edits.sort_by(|left, right| {
+                    left.range
                     .start
                     .line
                     .cmp(&right.range.start.line)
                     .then(left.range.start.character.cmp(&right.range.start.character))
-            });
-            edits.dedup_by(|left, right| left == right);
-            let mut changes = std::collections::BTreeMap::new();
-            changes.insert(analyzed_uri, edits);
+                });
+            }
             return Ok(LspWorkspaceEdit { changes });
         }
 

@@ -15,7 +15,7 @@ The active implementation work belongs in [`PLAN.md`](../PLAN.md).
 
 ## Future LSP Work
 
-- multi-file rename safety
+- multi-package rename safety
 - incremental semantic invalidation instead of full-document/package reanalysis
 
 ## Future Formatting Work
