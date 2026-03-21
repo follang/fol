@@ -325,14 +325,14 @@ test_lexer_keywords.rs, test_lexer_errors.rs).
 - [ ] add test app for closures/anonymous routines (after Phase 1.4)
 - [ ] add test app for loops (after Phase 3.8)
 
-### 7.5 Resolver Error Tests
+### 7.5 Resolver Error Tests — PARTIALLY DONE
 
 **Work**:
-- [ ] add test for forward reference errors
+- [x] add test for forward reference errors — forward_references.rs
 - [ ] add test for import cycle detection
-- [ ] add test for symbol shadowing
-- [ ] add test for visibility boundary violations
-- [ ] add test for duplicate declarations
+- [x] add test for symbol shadowing — shadowing_contract.rs
+- [x] add test for visibility boundary violations — file_private_visibility.rs, import_exposure.rs
+- [x] add test for duplicate declarations — top_level_duplicates.rs
 
 ### 7.6 Build System Negative Tests
 
@@ -419,7 +419,7 @@ Phase 7 (Test Coverage)     ──── lock everything down
   ├─ 7.2 Stream tests            OPEN
   ├─ 7.3 Typecheck error tests   PARTIALLY DONE
   ├─ 7.4 Formal E2E tests        PARTIALLY DONE (9/11, 2 blocked)
-  ├─ 7.5 Resolver error tests    OPEN
+  ├─ 7.5 Resolver error tests    PARTIALLY DONE (4/5 covered)
   ├─ 7.6 Build negative tests    OPEN
   └─ 7.7 Editor LSP tests        OPEN
 

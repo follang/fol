@@ -22,6 +22,10 @@ fun[] neg(a: int): int = {
     return -a;
 };
 
+fun[] pow_op(a: int, b: int): int = {
+    return a ^ b;
+};
+
 fun[] combined(x: int, y: int): int = {
     return (x + y) * (x - y);
 };
@@ -33,6 +37,7 @@ fun[] main(): int = {
     var quotient: int = div(product, diff);
     var remainder: int = mod_op(sum, 3);
     var negated: int = neg(remainder);
+    var power: int = pow_op(2, 3);
     var combo: int = combined(5, 3);
     return quotient;
 };
