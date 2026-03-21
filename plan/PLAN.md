@@ -310,18 +310,18 @@ test_lexer_keywords.rs, test_lexer_errors.rs).
 - [ ] add tests for invalid opt/err shell usage
 - [ ] add tests for recursive type definitions
 
-### 7.4 Formal V1 End-to-End Tests
+### 7.4 Formal V1 End-to-End Tests — PARTIALLY DONE
 
 **Work**:
-- [ ] add test app for arithmetic and comparison operators
-- [ ] add test app for boolean logic
-- [ ] add test app for string operations
-- [ ] add test app for container operations (vec, seq, set, map)
-- [ ] add test app for optional values (opt) with check/report
-- [ ] add test app for error handling (err) with check/report/||
-- [ ] add test app for records with methods
-- [ ] add test app for entries
-- [ ] add test app for multi-package workspace with cross-package calls
+- [x] add test app for arithmetic and comparison operators
+- [x] add test app for boolean logic
+- [x] add test app for string operations
+- [x] add test app for container operations (vec, seq, set, map) — container_linear, container_map_set, container_cross_package
+- [x] add test app for optional values (opt) with check/report — shell_optional
+- [x] add test app for error handling (err) with check/report/|| — recoverable_report, recoverable_check, recoverable_fallback, shell_error
+- [x] add test app for records with methods — record_flow, method_flow
+- [x] add test app for entries — entry_flow, scalar_entry
+- [x] add test app for multi-package workspace with cross-package calls — loc_*, std_*, pkg_*, mixed_loc_std_pkg
 - [ ] add test app for closures/anonymous routines (after Phase 1.4)
 - [ ] add test app for loops (after Phase 3.8)
 
@@ -418,7 +418,7 @@ Phase 7 (Test Coverage)     ──── lock everything down
   ├─ 7.1 Lexer tests             PARTIALLY DONE
   ├─ 7.2 Stream tests            OPEN
   ├─ 7.3 Typecheck error tests   PARTIALLY DONE
-  ├─ 7.4 Formal E2E tests        OPEN
+  ├─ 7.4 Formal E2E tests        PARTIALLY DONE (9/11, 2 blocked)
   ├─ 7.5 Resolver error tests    OPEN
   ├─ 7.6 Build negative tests    OPEN
   └─ 7.7 Editor LSP tests        OPEN
