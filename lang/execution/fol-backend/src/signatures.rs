@@ -580,4 +580,36 @@ mod tests {
         ));
         assert_eq!(local_id, LoweredLocalId(1));
     }
+
+    #[test]
+    fn routine_shell_rendering_emits_unreachable_stub_for_function_pointer_locals() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let fn_type_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![int_id],
+            return_type: Some(int_id),
+            error_type: None,
+        }));
+        let outer_sig = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![],
+            return_type: Some(int_id),
+            error_type: None,
+        }));
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let workspace = sample_lowered_workspace();
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(5), "caller", LoweredBlockId(0));
+        routine.signature = Some(outer_sig);
+        let _fn_local = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(fn_type_id),
+            name: Some("callback".to_string()),
+        });
+
+        let rendered = render_routine_shell(&workspace, &package_identity, &routine, &table)
+            .expect("routine shell with fn pointer");
+
+        assert!(rendered.contains("l__pkg__entry__app__r5__l0__callback"));
+        assert!(rendered.contains("unreachable!(\"uninitialized function pointer\")"));
+        assert!(rendered.contains("__fol_uninit"));
+    }
 }
