@@ -75,7 +75,7 @@ pub fn render_core_instruction_in_workspace(
                 crate::mangle_global_name(global_identity, *global, &global_decl.name)
             );
             Ok(format!(
-                "*{global_path}.get_or_init(|| std::sync::Mutex::new(Default::default())).lock().expect(\"global lock\") = {value}.clone();",
+                "*{global_path}.get_or_init(|| std::sync::Mutex::new(Default::default())).lock().unwrap_or_else(|e| e.into_inner()) = {value}.clone();",
             ))
         }
         LoweredInstrKind::Call {

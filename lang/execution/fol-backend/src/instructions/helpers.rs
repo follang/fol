@@ -117,7 +117,7 @@ pub fn render_global_load(
     );
     if global.mutable {
         Ok(format!(
-            "{}.get_or_init(|| std::sync::Mutex::new(Default::default())).lock().expect(\"global lock\").clone()",
+            "{}.get_or_init(|| std::sync::Mutex::new(Default::default())).lock().unwrap_or_else(|e| e.into_inner()).clone()",
             global_name
         ))
     } else {
