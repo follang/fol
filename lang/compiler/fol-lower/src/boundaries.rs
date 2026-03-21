@@ -1,8 +1,6 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnsupportedLoweringSurface {
     TypeMatchingWhenOf,
-    ProcedureStyleFreeCalls,
-    ProcedureStyleMethodCalls,
     EntryVariantConstruction,
 }
 
@@ -10,8 +8,6 @@ impl UnsupportedLoweringSurface {
     pub fn label(self) -> &'static str {
         match self {
             Self::TypeMatchingWhenOf => "when-of-branches",
-            Self::ProcedureStyleFreeCalls => "procedure-style-free-calls",
-            Self::ProcedureStyleMethodCalls => "procedure-style-method-calls",
             Self::EntryVariantConstruction => "entry-variant-construction",
         }
     }
@@ -20,12 +16,6 @@ impl UnsupportedLoweringSurface {
         match self {
             Self::TypeMatchingWhenOf => {
                 "typed type-matching when/of branches still stop at the lowering boundary"
-            }
-            Self::ProcedureStyleFreeCalls => {
-                "typed procedure-style free calls without value results still stop at the lowering boundary"
-            }
-            Self::ProcedureStyleMethodCalls => {
-                "typed procedure-style method calls without value results still stop at the lowering boundary"
             }
             Self::EntryVariantConstruction => {
                 "typed entry variant construction through bare variant access still stops at the lowering boundary"
@@ -36,8 +26,6 @@ impl UnsupportedLoweringSurface {
 
 const V1_BOUNDARIES: &[UnsupportedLoweringSurface] = &[
     UnsupportedLoweringSurface::TypeMatchingWhenOf,
-    UnsupportedLoweringSurface::ProcedureStyleFreeCalls,
-    UnsupportedLoweringSurface::ProcedureStyleMethodCalls,
     UnsupportedLoweringSurface::EntryVariantConstruction,
 ];
 
@@ -57,8 +45,6 @@ mod tests {
             inventory,
             &[
                 UnsupportedLoweringSurface::TypeMatchingWhenOf,
-                UnsupportedLoweringSurface::ProcedureStyleFreeCalls,
-                UnsupportedLoweringSurface::ProcedureStyleMethodCalls,
                 UnsupportedLoweringSurface::EntryVariantConstruction,
             ]
         );
@@ -67,12 +53,7 @@ mod tests {
                 .iter()
                 .map(|surface| surface.label())
                 .collect::<Vec<_>>(),
-            vec![
-                "when-of-branches",
-                "procedure-style-free-calls",
-                "procedure-style-method-calls",
-                "entry-variant-construction",
-            ]
+            vec!["when-of-branches", "entry-variant-construction",]
         );
     }
 }

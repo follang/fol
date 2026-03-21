@@ -1,5 +1,5 @@
 use super::bindings::lower_local_binding;
-use super::calls::lower_keyword_intrinsic_statement;
+use super::calls::{lower_keyword_intrinsic_statement, lower_statement_free_call};
 use super::cursor::{RoutineCursor, WorkspaceDeclIndex};
 use super::expressions::{lower_expression, lower_expression_expected};
 use super::flow::{lower_loop_statement, lower_when_statement, when_always_terminates};
@@ -9,7 +9,7 @@ use crate::{
 };
 use fol_intrinsics::{select_intrinsic, IntrinsicSurface};
 use fol_parser::ast::AstNode;
-use fol_resolver::{PackageIdentity, ScopeId, SourceUnitId, SymbolKind};
+use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolKind};
 use std::collections::BTreeMap;
 
 pub(crate) fn lower_routine_bodies(
@@ -326,7 +326,7 @@ pub(crate) fn lower_body_node(
                     args,
                 )
             } else {
-                lower_expression(
+                lower_statement_free_call(
                     typed_package,
                     type_table,
                     checked_type_map,
@@ -335,11 +335,27 @@ pub(crate) fn lower_body_node(
                     cursor,
                     source_unit_id,
                     scope_id,
-                    node,
+                    *syntax_id,
+                    ReferenceKind::FunctionCall,
+                    name,
+                    args,
                 )
-                .map(Some)
             }
         }
+        AstNode::QualifiedFunctionCall { path, args } => lower_statement_free_call(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            path.syntax_id(),
+            ReferenceKind::QualifiedFunctionCall,
+            &path.joined(),
+            args,
+        ),
         AstNode::When {
             expr,
             cases,

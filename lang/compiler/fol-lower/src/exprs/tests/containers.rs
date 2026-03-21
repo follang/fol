@@ -601,16 +601,6 @@ fn audited_v1_lowering_boundaries_fail_with_explicit_messages() {
             "type-matching when/of branches are not lowered in this slice yet",
         ),
         (
-            crate::UnsupportedLoweringSurface::ProcedureStyleFreeCalls,
-            "pro finish(): non = {\n    return;\n}\nfun[] main(): int = {\n    finish();\n    return 0;\n}\n",
-            "procedure-style calls without a value result are not lowered in this slice yet: 'finish'",
-        ),
-        (
-            crate::UnsupportedLoweringSurface::ProcedureStyleMethodCalls,
-            "typ Box: { value: int }\npro (Box)touch(): non = {\n    return;\n}\nfun[] main(box: Box): int = {\n    box.touch();\n    return box.value;\n}\n",
-            "procedure-style method calls without a value result are not lowered in this slice yet: 'touch'",
-        ),
-        (
             crate::UnsupportedLoweringSurface::EntryVariantConstruction,
             "typ Status: ent = {\n    var OK: int = 1;\n}\nfun[] main(): Status = {\n    return Status.OK;\n}\n",
             "entry construction lowering for variant 'OK' lands in the pending aggregate slice",

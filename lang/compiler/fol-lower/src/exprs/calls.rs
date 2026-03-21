@@ -601,6 +601,96 @@ pub(crate) fn lower_function_call(
     })
 }
 
+pub(crate) fn lower_statement_free_call(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
+    kind: ReferenceKind,
+    display_name: &str,
+    args: &[AstNode],
+) -> Result<Option<LoweredValue>, LoweringError> {
+    let resolved_symbol = resolve_reference_symbol(typed_package, syntax_id, kind, display_name)?;
+    let (owning_identity, owning_symbol_id) = canonical_symbol_key(
+        current_identity,
+        resolved_symbol.mounted_from.as_ref(),
+        resolved_symbol.id,
+    );
+    let Some(callee) = decl_index.routine_id_for_symbol(&owning_identity, owning_symbol_id) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("call target '{display_name}' does not map to a lowered routine definition"),
+        ));
+    };
+    let result_type =
+        resolve_reference_type_id(typed_package, checked_type_map, syntax_id, kind);
+    let param_types = decl_index
+        .routine_param_types(callee)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("call target '{display_name}' does not retain lowered parameter types"),
+            )
+        })?
+        .to_vec();
+    let lowered_args = args
+        .iter()
+        .enumerate()
+        .map(|(index, arg)| {
+            let expected = param_types.get(index).copied();
+            lower_expression_expected(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                expected,
+                arg,
+            )
+            .map(|value| value.local_id)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let call_error_type =
+        lowered_symbol_error_type(typed_package, checked_type_map, resolved_symbol.id);
+    match result_type {
+        Some(result_type) => {
+            let result_local = cursor.allocate_local(result_type, None);
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::Call {
+                    callee,
+                    args: lowered_args,
+                    error_type: call_error_type,
+                },
+            )?;
+            Ok(Some(LoweredValue {
+                local_id: result_local,
+                type_id: result_type,
+                recoverable_error_type: call_error_type,
+            }))
+        }
+        None => {
+            cursor.push_instr(
+                None,
+                LoweredInstrKind::Call {
+                    callee,
+                    args: lowered_args,
+                    error_type: call_error_type,
+                },
+            )?;
+            Ok(None)
+        }
+    }
+}
+
 pub(crate) fn resolve_reference_type_id(
     typed_package: &fol_typecheck::TypedPackage,
     checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,

@@ -13,7 +13,7 @@ use crate::{
 };
 use fol_intrinsics::{select_intrinsic, IntrinsicSurface};
 use fol_parser::ast::{
-    AstNode, CallSurface, ParsedSourceUnitKind,
+    AstNode, CallSurface, FolType, ParsedSourceUnitKind,
 };
 use fol_resolver::{ResolvedProgram, ScopeId, SourceUnitId};
 
@@ -259,10 +259,10 @@ pub(crate) fn type_node_with_expectation(
                         ),
                     )
                 })?;
-            let expected_return_type = return_type
-                .as_ref()
-                .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
-                .transpose()?;
+            let expected_return_type = match return_type.as_ref() {
+                None | Some(FolType::None) => None,
+                Some(ty) => Some(decls::lower_type(typed, resolved, routine_scope, ty)?),
+            };
             let expected_error_type = error_type
                 .as_ref()
                 .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
