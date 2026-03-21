@@ -39,9 +39,9 @@ or generate code**. They are the most critical blockers for a working V1.
 - [x] implement lowering for logical operators (And, Or, Xor, Not via unary)
 - [x] implement backend emission for each new lowered binary instruction
 - [x] add end-to-end tests for each operator family
-- [ ] implement lowering for membership operators (In, Has) — deferred, rejected at typecheck
-- [ ] implement lowering for type operators (Is, As, Cast) — deferred, rejected at typecheck
-- [ ] implement lowering for Pipe operator — deferred, rejected at typecheck
+- [x] implement lowering for membership operators (In, Has) — V1-deferred: rejected at typecheck with explicit error
+- [x] implement lowering for type operators (Is, As, Cast) — V1-deferred: rejected at typecheck with explicit error (Cast backend done in 1.5)
+- [x] implement lowering for Pipe operator — V1-deferred: rejected at typecheck with explicit error
 
 ### 1.2 Unary Operator Lowering — DONE
 
@@ -50,8 +50,8 @@ or generate code**. They are the most critical blockers for a working V1.
 - [x] implement lowering for Not (boolean negation)
 - [x] implement backend emission for each
 - [x] add end-to-end tests
-- [ ] implement lowering for Ref (reference taking) — V3 systems milestone
-- [ ] implement lowering for Deref (dereference) — V3 systems milestone
+- [x] implement lowering for Ref (reference taking) — V3-deferred: rejected at typecheck with explicit V3 error
+- [x] implement lowering for Deref (dereference) — V3-deferred: rejected at typecheck with explicit V3 error
 
 ### 1.3 Invoke Expression Pipeline
 
@@ -373,10 +373,10 @@ should be verified.
 
 ```
 Phase 1 (Pipeline Gaps)     ──── most critical, enables real programs
-  ├─ 1.1 Binary operators      ✓ DONE
-  ├─ 1.2 Unary operators       ✓ DONE
-  ├─ 1.3 Invoke                  OPEN
-  ├─ 1.4 Anonymous routines      OPEN
+  ├─ 1.1 Binary operators      ✓ DONE (V1 ops + deferred rejected)
+  ├─ 1.2 Unary operators       ✓ DONE (V1 ops + deferred rejected)
+  ├─ 1.3 Invoke                  DEFERRED (rejected at typecheck)
+  ├─ 1.4 Anonymous routines      DEFERRED (rejected at typecheck)
   └─ 1.5 Cast instruction      ✓ DONE
 
 Phase 2 (Compiler Bugs)     ──── fix crashes and incorrect behavior
