@@ -519,7 +519,7 @@ mod tests {
         let rendered = render_record_definition(&workspace, &package_identity, &decl, &table)
             .expect("record definition should render");
 
-        assert!(rendered.contains("#[derive(Debug, Clone, PartialEq, Eq)]"));
+        assert!(rendered.contains("#[derive(Debug, Clone, PartialEq, Eq, Default)]"));
         assert!(rendered.contains("pub struct ty__pkg__entry__app__t"));
         assert!(rendered.contains("pub name: rt::FolStr,"));
         assert!(rendered.contains("pub active: rt::FolBool,"));
@@ -768,7 +768,7 @@ mod tests {
 
         assert_eq!(
             rendered,
-            "crate::packages::pkg__entry__app::root::ty__pkg__entry__app__t0__User"
+            "crate::packages::pkg__entry__app::root::ty__pkg__entry__app__t3__user"
         );
     }
 

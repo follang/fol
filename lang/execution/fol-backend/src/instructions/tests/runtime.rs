@@ -1,16 +1,11 @@
 use super::super::render_core_instruction;
-use super::super::render_core_instruction_in_workspace;
 use crate::testing::package_identity;
 use fol_intrinsics::intrinsic_by_canonical_name;
 use fol_lower::{
-    LoweredBlockId, LoweredBuiltinType, LoweredFieldLayout, LoweredInstr, LoweredInstrId,
-    LoweredInstrKind, LoweredLocal, LoweredLocalId, LoweredOperand, LoweredPackage,
-    LoweredRecoverableAbi, LoweredRoutine, LoweredRoutineId, LoweredSourceMap, LoweredType,
-    LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
-    LoweredWorkspace,
+    LoweredBlockId, LoweredBuiltinType, LoweredInstr, LoweredInstrId, LoweredInstrKind,
+    LoweredLocal, LoweredLocalId, LoweredRoutine, LoweredRoutineId, LoweredTypeTable,
 };
-use fol_resolver::{PackageSourceKind, SourceUnitId, SymbolId};
-use std::collections::BTreeMap;
+use fol_resolver::PackageSourceKind;
 
 #[test]
 fn runtime_shaped_instruction_rendering_emits_length_via_runtime_prelude() {
@@ -135,7 +130,7 @@ fn runtime_shaped_instruction_rendering_emits_unwrap_recoverable_success_lane() 
 
     assert_eq!(
         rendered,
-        "let l__pkg__entry__app__r10__l1__unwrapped = l__pkg__entry__app__r10__l0__value.clone().into_value().expect(\"recoverable success\");"
+        "let l__pkg__entry__app__r10__l1__unwrapped = l__pkg__entry__app__r10__l0__value.clone().into_value().expect(\"unwrap of recoverable value failed: result contains an error\");"
     );
 }
 
@@ -165,7 +160,7 @@ fn runtime_shaped_instruction_rendering_emits_recoverable_error_extraction() {
 
     assert_eq!(
         rendered,
-        "let l__pkg__entry__app__r11__l1__error = l__pkg__entry__app__r11__l0__value.clone().into_error().expect(\"recoverable error\");"
+        "let l__pkg__entry__app__r11__l1__error = l__pkg__entry__app__r11__l0__value.clone().into_error().expect(\"extract of recoverable error failed: result contains a value\");"
     );
 }
 
@@ -311,7 +306,7 @@ fn runtime_shaped_instruction_rendering_emits_shell_unwraps_for_optional_and_err
 
     assert_eq!(
         optional_rendered,
-        "let l__pkg__entry__app__r14__l2__a = rt::unwrap_optional_shell(l__pkg__entry__app__r14__l0__maybe.clone()).expect(\"optional shell\");"
+        "let l__pkg__entry__app__r14__l2__a = rt::unwrap_optional_shell(l__pkg__entry__app__r14__l0__maybe.clone()).unwrap();"
     );
     assert_eq!(
         error_rendered,
@@ -441,11 +436,11 @@ fn runtime_shaped_instruction_snapshot_stays_stable() {
             "let l__pkg__entry__app__r15__l4__count = rt::len(&l__pkg__entry__app__r15__l2__maybe);\n",
             "let l__pkg__entry__app__r15__l5__shown = rt::echo(l__pkg__entry__app__r15__l0__value);\n",
             "let l__pkg__entry__app__r15__l6__failed = rt::check_recoverable(&l__pkg__entry__app__r15__l1__recover);\n",
-            "let l__pkg__entry__app__r15__l7__ok = l__pkg__entry__app__r15__l1__recover.clone().into_value().expect(\"recoverable success\");\n",
-            "let l__pkg__entry__app__r15__l8__bad = l__pkg__entry__app__r15__l1__recover.clone().into_error().expect(\"recoverable error\");\n",
+            "let l__pkg__entry__app__r15__l7__ok = l__pkg__entry__app__r15__l1__recover.clone().into_value().expect(\"unwrap of recoverable value failed: result contains an error\");\n",
+            "let l__pkg__entry__app__r15__l8__bad = l__pkg__entry__app__r15__l1__recover.clone().into_error().expect(\"extract of recoverable error failed: result contains a value\");\n",
             "let l__pkg__entry__app__r15__l2__maybe = rt::FolOption::some(l__pkg__entry__app__r15__l0__value.clone());\n",
             "let l__pkg__entry__app__r15__l3__err = rt::FolError::new(l__pkg__entry__app__r15__l0__value.clone());\n",
-            "let l__pkg__entry__app__r15__l7__ok = rt::unwrap_optional_shell(l__pkg__entry__app__r15__l2__maybe.clone()).expect(\"optional shell\");"
+            "let l__pkg__entry__app__r15__l7__ok = rt::unwrap_optional_shell(l__pkg__entry__app__r15__l2__maybe.clone()).unwrap();"
         )
     );
 }

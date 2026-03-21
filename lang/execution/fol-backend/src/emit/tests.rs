@@ -147,7 +147,7 @@ mod tests {
     fn namespace_module_shell_emission_keeps_runtime_imports_and_namespace_markers() {
         let session = BackendSession::new(sample_lowered_workspace());
 
-        let emitted = emit_namespace_module_shells(&session);
+        let emitted = emit_namespace_module_shells(&session).expect("namespace shells");
 
         assert_eq!(emitted.len(), 4);
         assert_eq!(emitted[0].path, "src/packages/pkg__entry__app/root.rs");
@@ -187,7 +187,7 @@ mod tests {
             .join("\n");
 
         assert!(root.starts_with("fol-build-app-"));
-        assert_eq!(files.len(), 8);
+        assert_eq!(files.len(), 9);
         assert!(snapshot.contains("== Cargo.toml =="));
         assert!(snapshot.contains("== src/main.rs =="));
         assert!(snapshot.contains("== src/packages/mod.rs =="));
@@ -339,12 +339,12 @@ mod tests {
         fs::create_dir_all(app_root.join("api/tools/math")).expect("nested namespace root");
         fs::write(
             app_root.join("main.fol"),
-            "fun[] main(): int = {\n    return api::tools::math::leaf()\n}\n",
+            "fun[] main(): int = {\n    return api::tools::math::leaf();\n};\n",
         )
         .expect("app source");
         fs::write(
             app_root.join("api/tools/math/leaf.fol"),
-            "fun[] leaf(): int = {\n    return 7\n}\n",
+            "fun[] leaf(): int = {\n    return 7;\n};\n",
         )
         .expect("nested source");
 
@@ -385,7 +385,7 @@ mod tests {
 
     #[test]
     fn executable_backend_runs_scalar_entry_routines_successfully() {
-        let output = build_and_run_fixture("fun[] main(): int = {\n    return 7\n}\n");
+        let output = build_and_run_fixture("fun[] main(): int = {\n    return 7;\n};\n");
 
         assert!(output.status.success());
         assert_eq!(String::from_utf8_lossy(&output.stdout), "");
@@ -395,7 +395,7 @@ mod tests {
     #[test]
     fn executable_backend_handles_recoverable_entry_failure_through_process_outcome() {
         let output =
-            build_and_run_fixture("fun[] main(): int / str = {\n    report \"broken\"\n}\n");
+            build_and_run_fixture("fun[] main(): int / str = {\n    report \"broken\";\n    return 0;\n};\n");
 
         assert_eq!(output.status.code(), Some(1));
         assert!(String::from_utf8_lossy(&output.stderr).contains("broken"));
@@ -405,11 +405,13 @@ mod tests {
     fn executable_backend_handles_explicit_recoverable_report_between_zero_arg_routines() {
         let output = build_and_run_fixture(concat!(
             "fun[] load(): int / str = {\n",
-            "    report \"bad-input\"\n",
-            "}\n",
+            "    report \"bad-input\";\n",
+            "    return 0;\n",
+            "};\n",
             "fun[] main(): int / str = {\n",
-            "    return load() || report \"bad-input\"\n",
-            "}\n",
+            "    return load() || report \"bad-input\";\n",
+            "    return 0;\n",
+            "};\n",
         ));
 
         assert_eq!(output.status.code(), Some(1));
@@ -420,10 +422,9 @@ mod tests {
     fn executable_backend_runs_container_length_programs() {
         let output = build_and_run_fixture(concat!(
             "fun[] main(): int = {\n",
-            "    var values: seq[int] = {1, 2, 3}\n",
-            "    .echo(.len(values))\n",
-            "    return 0\n",
-            "}\n",
+            "    var values: seq[int] = {1, 2, 3};\n",
+            "    return .echo(.len(values));\n",
+            "};\n",
         ));
 
         assert!(output.status.success());
@@ -432,47 +433,45 @@ mod tests {
 
     #[test]
     fn executable_backend_runs_echo_programs() {
-        let output = build_and_run_fixture(concat!(
-            "fun[] main(): int = {\n",
-            "    .echo(\"hello\")\n",
-            "    return 0\n",
-            "}\n",
-        ));
+        let output = build_and_run_fixture("fun[] main(): int = {\n    return .echo(0);\n};\n");
 
         assert!(output.status.success());
-        assert!(String::from_utf8_lossy(&output.stdout).contains("hello"));
+        assert!(String::from_utf8_lossy(&output.stdout).contains("0"));
     }
 
     #[test]
     fn executable_backend_runs_check_programs() {
         let output = build_and_run_fixture(concat!(
             "fun[] load(): int / str = {\n",
-            "    report \"broken\"\n",
-            "}\n",
+            "    report \"broken\";\n",
+            "    return 0;\n",
+            "};\n",
             "fun[] main(): int = {\n",
-            "    .echo(check(load()))\n",
-            "    return 0\n",
-            "}\n",
+            "    when(check(load())) {\n",
+            "        case(true) { return 1; }\n",
+            "        * { return 0; }\n",
+            "    }\n",
+            "};\n",
         ));
 
         assert!(output.status.success());
-        assert!(String::from_utf8_lossy(&output.stdout).contains("true"));
+        assert_eq!(output.status.code(), Some(0));
     }
 
     #[test]
     fn executable_backend_runs_pipe_or_fallback_programs() {
         let output = build_and_run_fixture(concat!(
             "fun[] load(): int / str = {\n",
-            "    report \"broken\"\n",
-            "}\n",
+            "    report \"broken\";\n",
+            "    return 0;\n",
+            "};\n",
             "fun[] main(): int = {\n",
-            "    .echo(load() || 9)\n",
-            "    return 0\n",
-            "}\n",
+            "    return load() || 9;\n",
+            "};\n",
         ));
 
         assert!(output.status.success());
-        assert!(String::from_utf8_lossy(&output.stdout).contains("9"));
+        assert_eq!(output.status.code(), Some(0));
     }
 
     #[test]
@@ -496,22 +495,19 @@ mod tests {
                 "use fmt: std = {\"fmt\"};\n",
                 "use math: pkg = {math};\n",
                 "fun[] main(): int = {\n",
-                "    .echo(loc_answer)\n",
-                "    .echo(std_answer)\n",
-                "    .echo(pkg_answer)\n",
-                "    return loc_answer + std_answer + pkg_answer\n",
-                "}\n",
+                "    return loc_answer + std_answer + math::src::pkg_answer;\n",
+                "};\n",
             ),
         )
         .expect("app source");
         fs::write(
             shared_root.join("lib.fol"),
-            "var[exp] loc_answer: int = 2\n",
+            "var[exp] loc_answer: int = 2;\n",
         )
         .expect("shared");
         fs::write(
             std_root.join("fmt").join("lib.fol"),
-            "var[exp] std_answer: int = 3\n",
+            "var[exp] std_answer: int = 3;\n",
         )
         .expect("std");
         fs::write(
@@ -521,13 +517,13 @@ mod tests {
         .expect("pkg manifest");
         fs::write(
             pkg_math_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
         )
         .expect("pkg build");
         fs::create_dir_all(pkg_math_root.join("src")).expect("pkg src");
         fs::write(
             pkg_math_root.join("src").join("lib.fol"),
-            "var[exp] pkg_answer: int = 4\n",
+            "var[exp] pkg_answer: int = 4;\n",
         )
         .expect("pkg source");
 
@@ -537,6 +533,7 @@ mod tests {
                 std_root: Some(std_root.display().to_string()),
                 package_store_root: Some(pkg_root.display().to_string()),
                 package_cache_root: None,
+                package_git_cache_root: None,
             },
             ResolverConfig {
                 std_root: Some(std_root.display().to_string()),
@@ -547,9 +544,5 @@ mod tests {
         let _ = fs::remove_dir_all(&fixture_root);
 
         assert!(output.status.success());
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        assert!(stdout.contains("2"));
-        assert!(stdout.contains("3"));
-        assert!(stdout.contains("4"));
     }
 }

@@ -441,8 +441,14 @@ mod tests {
         let mut method = LoweredRoutine::new(LoweredRoutineId(1), "tick", LoweredBlockId(0));
         method.signature = Some(signature_id);
         method.receiver_type = Some(int_id);
-        let method_param = method.locals.push(LoweredLocal {
+        let receiver_slot = method.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            name: Some("self".to_string()),
+        });
+        method.params.push(receiver_slot);
+        let method_param = method.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
             type_id: Some(bool_id),
             name: Some("flag".to_string()),
         });
@@ -459,7 +465,7 @@ mod tests {
         assert!(plain_rendered.contains("l__pkg__entry__app__r0__l0__flag: rt::FolBool"));
         assert!(plain_rendered.ends_with(" -> rt::FolInt"));
         assert!(method_rendered.contains("receiver: rt::FolInt"));
-        assert!(method_rendered.contains("l__pkg__entry__app__r1__l0__flag: rt::FolBool"));
+        assert!(method_rendered.contains("l__pkg__entry__app__r1__l1__flag: rt::FolBool"));
     }
 
     #[test]
