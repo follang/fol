@@ -151,26 +151,22 @@ V1 use cases.
 - [ ] implement backend emission for slicing
 - [ ] add tests for vec/seq slicing
 
-### 3.4 Backend: Unsized Array Type Rendering
+### 3.4 Backend: Unsized Array Type Rendering — DONE
 
 **Work**:
-- [ ] implement unsized array rendering (Rust `Vec<T>` or `&[T]`)
-- [ ] or ensure lowering never produces unsized arrays for V1 and add
-  a lowering-phase rejection with proper diagnostic
+- [x] reject unsized arrays at backend with proper diagnostic message
 
-### 3.5 Backend: Heterogeneous Set Rendering
+### 3.5 Backend: Heterogeneous Set Rendering — DONE
 
 **Work**:
-- [ ] implement heterogeneous set rendering
-- [ ] or reject at typecheck level with proper diagnostic if V1 doesn't
-  support heterogeneous sets
+- [x] reject heterogeneous sets at backend with proper diagnostic message
 
-### 3.6 Backend: Unhandled Type Variants
+### 3.6 Backend: Unhandled Type Variants — DONE
 
 **Work**:
-- [ ] audit all LoweredType variants
-- [ ] implement rendering for each V1-admitted variant
-- [ ] convert catch-all to exhaustive match
+- [x] audit all 11 LoweredType variants (Builtin, Array, Vector, Sequence, Set, Map, Optional, Error, Record, Entry, Routine)
+- [x] implement rendering for each V1-admitted variant
+- [x] convert catch-all to exhaustive match with Routine explicit rejection
 
 ### 3.7 Entry Variant Construction
 
@@ -302,11 +298,11 @@ test_lexer_keywords.rs, test_lexer_errors.rs).
 
 **Work**:
 - [x] add tests for invalid operator type combinations (10 tests)
-- [ ] add test for each TypecheckErrorKind variant (20+ kinds)
-- [ ] add tests for type mismatches in assignments
-- [ ] add tests for type mismatches in function arguments
-- [ ] add tests for type mismatches in return types
-- [ ] add tests for invalid container element types
+- [ ] add test for each TypecheckErrorKind variant (8 kinds)
+- [x] add tests for type mismatches in assignments — assignment_type_mismatch_is_rejected
+- [x] add tests for type mismatches in function arguments — argument_type_mismatch_is_rejected
+- [x] add tests for type mismatches in return types — return_type_mismatch_is_rejected
+- [x] add tests for invalid container element types — vec_literal_rejects_heterogeneous_elements
 - [ ] add tests for invalid opt/err shell usage
 - [ ] add tests for recursive type definitions
 
@@ -395,8 +391,14 @@ Phase 2 (Compiler Bugs)     ──── fix crashes and incorrect behavior
   └─ 2.5 Panic format string    ✓ FALSE POSITIVE (verified correct)
 
 Phase 3 (Pipeline Gaps P2)  ──── expand V1 surface
-  ├─ 3.1-3.7 Expression gaps     OPEN
-  └─ 3.8 Iteration loops         OPEN
+  ├─ 3.1 TemplateCall              OPEN
+  ├─ 3.2 AvailabilityAccess       OPEN
+  ├─ 3.3 SliceAccess              OPEN
+  ├─ 3.4 Unsized arrays         ✓ DONE (rejected at backend)
+  ├─ 3.5 Heterogeneous sets     ✓ DONE (rejected at backend)
+  ├─ 3.6 Type variant audit     ✓ DONE (exhaustive match)
+  ├─ 3.7 Entry variant constr.    OPEN
+  └─ 3.8 Iteration loops          OPEN
 
 Phase 4 (Panic Hardening)   ──── eliminate crash paths
   ├─ 4.1 Intrinsics panics      ✓ JUSTIFIED INVARIANTS
