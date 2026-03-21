@@ -139,15 +139,9 @@ impl Iterator for Elements {
 
 impl fmt::Display for Elements {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.win.1.clone().is_ok() {
-            write!(
-                f,
-                "{} {}",
-                self.win.1.clone().unwrap().1,
-                self.win.1.clone().unwrap().0
-            )
-        } else {
-            write!(f, "ERROR")
+        match &self.win.1 {
+            Ok((ch, loc)) => write!(f, "{loc} {ch}"),
+            Err(_) => write!(f, "ERROR"),
         }
     }
 }

@@ -151,7 +151,10 @@ pub fn emit_backend_artifact(
 
     if matches!(config.mode, BackendMode::EmitSource) {
         let BackendArtifact::RustSourceCrate { files, .. } = source_artifact else {
-            unreachable!("generated crate skeleton should stay a Rust source crate");
+            return Err(BackendError::new(
+                BackendErrorKind::InvalidInput,
+                "generated crate skeleton produced an unexpected artifact type",
+            ));
         };
         return Ok(BackendArtifact::RustSourceCrate {
             root: crate_root.display().to_string(),

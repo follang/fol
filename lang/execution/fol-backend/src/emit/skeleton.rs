@@ -207,7 +207,7 @@ pub(super) fn runtime_dependency_path() -> PathBuf {
     }
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
-        .expect("workspace root")
+        .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")))
         .join("fol-runtime")
 }
 
