@@ -374,6 +374,17 @@ pub struct EditorReferenceCommand {
 }
 
 #[derive(Debug, Clone, Args, PartialEq, Eq)]
+pub struct EditorCompletionCommand {
+    pub path: String,
+
+    #[arg(long, value_name = "LINE")]
+    pub line: u32,
+
+    #[arg(long, value_name = "CHARACTER")]
+    pub character: u32,
+}
+
+#[derive(Debug, Clone, Args, PartialEq, Eq)]
 pub struct EditorRenameCommand {
     pub path: String,
 
@@ -427,6 +438,7 @@ pub enum ToolSubcommand {
     Symbols(EditorPathCommand),
     References(EditorReferenceCommand),
     Rename(EditorRenameCommand),
+    Complete(EditorCompletionCommand),
     SemanticTokens(EditorPathCommand),
     Tree(TreeCommand),
     #[command(visible_aliases = ["cl", "purge"])]

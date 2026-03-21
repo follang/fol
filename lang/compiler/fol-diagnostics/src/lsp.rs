@@ -28,11 +28,29 @@ pub struct LspRange {
     pub end: LspPosition,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LspDiagnosticSeverity {
     Error = 1,
     Warning = 2,
     Information = 3,
+}
+
+impl Serialize for LspDiagnosticSeverity {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_u8(*self as u8)
+    }
+}
+
+impl<'de> Deserialize<'de> for LspDiagnosticSeverity {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = u8::deserialize(deserializer)?;
+        match value {
+            1 => Ok(Self::Error),
+            2 => Ok(Self::Warning),
+            3 => Ok(Self::Information),
+            _ => Err(serde::de::Error::custom(format!("invalid severity: {value}"))),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

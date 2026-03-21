@@ -4,10 +4,10 @@ use crate::{
     fol_tree_sitter_highlights_query, fol_tree_sitter_query_snapshots,
     fol_tree_sitter_symbols_query, EditorConfig, EditorDocumentUri, EditorError,
     EditorErrorKind, EditorLspServer, EditorResult, JsonRpcId, JsonRpcNotification,
-    JsonRpcRequest, LspDidOpenTextDocumentParams, LspLocation, LspPosition,
-    LspReferenceContext, LspReferenceParams, LspRenameParams, LspSemanticTokens,
-    LspSemanticTokensParams, LspTextDocumentIdentifier, LspTextDocumentItem,
-    LspWorkspaceEdit,
+    JsonRpcRequest, LspCompletionList, LspCompletionParams, LspDidOpenTextDocumentParams,
+    LspLocation, LspPosition, LspReferenceContext, LspReferenceParams, LspRenameParams,
+    LspSemanticTokens, LspSemanticTokensParams, LspTextDocumentIdentifier,
+    LspTextDocumentItem, LspWorkspaceEdit,
 };
 use std::path::Path;
 
@@ -344,6 +344,79 @@ pub fn editor_rename_file(
     .with_detail(format!("new_name={new_name}"))
     .with_detail(format!("edit_count={change_count}"))
     .with_detail(format!("touched_files={touched_files}")))
+}
+
+pub fn editor_completion_file(
+    path: &Path,
+    position: LspPosition,
+) -> EditorResult<EditorCommandSummary> {
+    let canonical = path.canonicalize().map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to resolve '{}': {error}", path.display()),
+        )
+    })?;
+    let source = std::fs::read_to_string(&canonical).map_err(|error| {
+        EditorError::new(
+            EditorErrorKind::InvalidDocumentPath,
+            format!("failed to read '{}': {error}", canonical.display()),
+        )
+    })?;
+    let uri = EditorDocumentUri::from_file_path(canonical.clone())?;
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    server.handle_notification(JsonRpcNotification {
+        jsonrpc: "2.0".to_string(),
+        method: "textDocument/didOpen".to_string(),
+        params: Some(
+            serde_json::to_value(LspDidOpenTextDocumentParams {
+                text_document: LspTextDocumentItem {
+                    uri: uri.as_str().to_string(),
+                    language_id: "fol".to_string(),
+                    version: 1,
+                    text: source.clone(),
+                },
+            })
+            .expect("didOpen params should serialize"),
+        ),
+    })?;
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(4),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier {
+                        uri: uri.as_str().to_string(),
+                    },
+                    position,
+                    context: None,
+                })
+                .expect("completion params should serialize"),
+            ),
+        })?
+        .expect("completion request should return a response");
+    let completions: LspCompletionList =
+        serde_json::from_value(response.result.expect("completion result should exist"))
+            .expect("completions should deserialize");
+    let labels: Vec<String> = completions
+        .items
+        .iter()
+        .map(|item| {
+            let detail = item.detail.as_deref().unwrap_or("");
+            format!("{}  ({})", item.label, detail)
+        })
+        .collect();
+
+    Ok(EditorCommandSummary::new(
+        "completion",
+        format!("{} completion items at {}:{}", completions.items.len(), position.line, position.character),
+    )
+    .with_detail(format!("path={}", canonical.display()))
+    .with_detail(format!("line={}", position.line))
+    .with_detail(format!("character={}", position.character))
+    .with_detail(format!("item_count={}", completions.items.len()))
+    .with_detail(format!("items={}", labels.join(", "))))
 }
 
 pub fn editor_tree_generate_bundle(path: &Path) -> EditorResult<EditorCommandSummary> {
