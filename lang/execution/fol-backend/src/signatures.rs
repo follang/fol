@@ -15,6 +15,7 @@ fn recoverable_error_type_for_local(
 ) -> Option<LoweredTypeId> {
     routine.instructions.iter().find_map(|instruction| match &instruction.kind {
         fol_lower::LoweredInstrKind::Call { error_type, .. }
+        | fol_lower::LoweredInstrKind::CallIndirect { error_type, .. }
             if instruction.result == Some(local_id) =>
         {
             *error_type

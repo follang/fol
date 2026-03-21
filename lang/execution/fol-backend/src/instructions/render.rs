@@ -456,5 +456,39 @@ pub fn render_core_instruction_in_workspace(
             )?;
             Ok(format!("let {result} = {operand} as {target};"))
         }
+        LoweredInstrKind::RoutineRef { routine: callee } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let (callee_identity, callee_decl) = resolve_routine_decl(workspace, *callee)?;
+            let callee_name = render_routine_path(workspace, callee_identity, callee_decl)?;
+            let callee_signature = callee_decl.signature.ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("routine '{}' is missing a lowered signature", callee_decl.name),
+                )
+            })?;
+            let fn_type = crate::types::render_rust_type_in_workspace(
+                workspace, type_table, callee_signature,
+            )?;
+            Ok(format!("let {result} = {callee_name} as {fn_type};"))
+        }
+        LoweredInstrKind::CallIndirect {
+            callee,
+            args,
+            error_type: _,
+        } => {
+            let callee_name = render_local_name(package_identity, routine, *callee)?;
+            let rendered_args = args
+                .iter()
+                .map(|local_id| render_local_name(package_identity, routine, *local_id))
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            match instruction.result {
+                Some(_) => {
+                    let result = rendered_result_local(package_identity, routine, instruction)?;
+                    Ok(format!("let {result} = {callee_name}({rendered_args});"))
+                }
+                None => Ok(format!("{callee_name}({rendered_args});")),
+            }
+        }
     }
 }

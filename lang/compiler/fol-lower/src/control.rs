@@ -158,6 +158,14 @@ pub enum LoweredInstrKind {
         op: LoweredUnaryOp,
         operand: LoweredLocalId,
     },
+    RoutineRef {
+        routine: LoweredRoutineId,
+    },
+    CallIndirect {
+        callee: LoweredLocalId,
+        args: Vec<LoweredLocalId>,
+        error_type: Option<LoweredTypeId>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

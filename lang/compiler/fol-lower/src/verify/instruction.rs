@@ -8,7 +8,10 @@ fn recoverable_error_type_for_local(
     local_id: crate::LoweredLocalId,
 ) -> Option<crate::LoweredTypeId> {
     routine.instructions.iter().find_map(|instr| match &instr.kind {
-        crate::LoweredInstrKind::Call { error_type, .. } if instr.result == Some(local_id) => {
+        crate::LoweredInstrKind::Call { error_type, .. }
+        | crate::LoweredInstrKind::CallIndirect { error_type, .. }
+            if instr.result == Some(local_id) =>
+        {
             *error_type
         }
         _ => None,
@@ -290,6 +293,38 @@ pub(super) fn verify_instruction(
         }
         crate::LoweredInstrKind::UnaryOp { operand, .. } => {
             verify_local_reference(routine, instr.id.0, "unary operand", *operand, errors);
+        }
+        crate::LoweredInstrKind::RoutineRef { routine: callee } => {
+            if !valid_routine_ids.contains(callee) {
+                errors.push(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "lowered routine '{}' references missing routine {}",
+                        routine.name, callee.0
+                    ),
+                ));
+            }
+        }
+        crate::LoweredInstrKind::CallIndirect {
+            callee,
+            args,
+            error_type,
+        } => {
+            verify_local_reference(routine, instr.id.0, "indirect callee", *callee, errors);
+            for arg in args {
+                verify_local_reference(routine, instr.id.0, "indirect call arg", *arg, errors);
+            }
+            if let Some(error_type) = error_type {
+                verify_type_reference(
+                    workspace,
+                    package,
+                    routine,
+                    instr.id.0,
+                    "indirect call error type",
+                    *error_type,
+                    errors,
+                );
+            }
         }
     }
 
