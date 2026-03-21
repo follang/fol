@@ -538,12 +538,93 @@ pub(crate) fn lower_function_call(
         resolved_symbol.mounted_from.as_ref(),
         resolved_symbol.id,
     );
-    let Some(callee) = decl_index.routine_id_for_symbol(&owning_identity, owning_symbol_id) else {
+    let callee_opt = decl_index.routine_id_for_symbol(&owning_identity, owning_symbol_id);
+
+    // If the symbol is not a top-level routine, check if it's a function-typed local/parameter
+    if callee_opt.is_none() {
+        if let Some(local_id) = cursor.routine.local_symbols.get(&resolved_symbol.id).copied() {
+            let local = cursor.routine.locals.get(local_id).ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("call target '{display_name}' maps to missing local"),
+                )
+            })?;
+            let local_type_id = local.type_id.ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("call target '{display_name}' local does not have a type"),
+                )
+            })?;
+            let local_type = type_table.get(local_type_id).ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("call target '{display_name}' local type not found in type table"),
+                )
+            })?;
+            if let crate::LoweredType::Routine(signature) = local_type {
+                let signature = signature.clone();
+                let callee_local = cursor.allocate_local(local_type_id, None);
+                cursor.push_instr(
+                    Some(callee_local),
+                    LoweredInstrKind::LoadLocal { local: local_id },
+                )?;
+                let mut lowered_args = Vec::with_capacity(args.len());
+                for (index, arg) in args.iter().enumerate() {
+                    let expected = signature.params.get(index).copied();
+                    let lowered = lower_expression_expected(
+                        typed_package,
+                        type_table,
+                        checked_type_map,
+                        current_identity,
+                        decl_index,
+                        cursor,
+                        source_unit_id,
+                        scope_id,
+                        expected,
+                        arg,
+                    )?;
+                    lowered_args.push(lowered.local_id);
+                }
+                return match signature.return_type {
+                    Some(result_type) => {
+                        let result_local = cursor.allocate_local(result_type, None);
+                        cursor.push_instr(
+                            Some(result_local),
+                            LoweredInstrKind::CallIndirect {
+                                callee: callee_local,
+                                args: lowered_args,
+                                error_type: signature.error_type,
+                            },
+                        )?;
+                        Ok(LoweredValue {
+                            local_id: result_local,
+                            type_id: result_type,
+                            recoverable_error_type: signature.error_type,
+                        })
+                    }
+                    None => {
+                        cursor.push_instr(
+                            None,
+                            LoweredInstrKind::CallIndirect {
+                                callee: callee_local,
+                                args: lowered_args,
+                                error_type: signature.error_type,
+                            },
+                        )?;
+                        Err(LoweringError::with_kind(
+                            LoweringErrorKind::Unsupported,
+                            format!("call to function-typed '{display_name}' with no return type cannot be used as a value"),
+                        ))
+                    }
+                };
+            }
+        }
         return Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
             format!("call target '{display_name}' does not map to a lowered routine definition"),
         ));
-    };
+    }
+    let callee = callee_opt.unwrap();
     let Some(result_type) =
         resolve_reference_type_id(typed_package, checked_type_map, syntax_id, kind)
     else {
