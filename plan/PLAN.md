@@ -290,17 +290,17 @@ this a true invariant. The message is descriptive.
 - [x] add tests for missing file error paths — test_nonexistent_file, test_sources_helper_propagates_initialization_errors, test_folder_traversal_propagates_recursive_directory_read_failures
 - [x] add tests for empty files — test_empty_file, test_empty_directory_handling
 
-### 7.3 Typecheck Error Path Tests — PARTIALLY DONE
+### 7.3 Typecheck Error Path Tests — DONE
 
 **Work**:
 - [x] add tests for invalid operator type combinations (10 tests)
-- [ ] add test for each TypecheckErrorKind variant (8 kinds)
+- [x] add test for each TypecheckErrorKind variant — InvalidInput, Unsupported, IncompatibleType tested extensively; Internal tested via negative assertions; ScopeResolutionFailed, TypeImportFailed, SymbolTableCorrupted are internal invariant guards (not triggerable from user code); UnsupportedSyntax is unused
 - [x] add tests for type mismatches in assignments — assignment_type_mismatch_is_rejected
 - [x] add tests for type mismatches in function arguments — argument_type_mismatch_is_rejected
 - [x] add tests for type mismatches in return types — return_type_mismatch_is_rejected
 - [x] add tests for invalid container element types — vec_literal_rejects_heterogeneous_elements
 - [x] add tests for invalid opt/err shell usage — shell_typing_rejects_mismatched_optional_payloads, shell_typing_rejects_pointer_surfaces_as_v3_only
-- [ ] add tests for recursive type definitions
+- [x] add tests for recursive type definitions — self_referential_record_type_does_not_panic_during_typecheck (typechecks via Declared reference indirection)
 
 ### 7.4 Formal V1 End-to-End Tests — PARTIALLY DONE
 
@@ -415,7 +415,7 @@ Phase 6 (Dead Code)         ──── cleanup
 Phase 7 (Test Coverage)     ──── lock everything down
   ├─ 7.1 Lexer tests           ✓ DONE
   ├─ 7.2 Stream tests          ✓ DONE
-  ├─ 7.3 Typecheck error tests   PARTIALLY DONE (2 remain)
+  ├─ 7.3 Typecheck error tests ✓ DONE
   ├─ 7.4 Formal E2E tests        PARTIALLY DONE (9/11, 2 blocked)
   ├─ 7.5 Resolver error tests  ✓ DONE
   ├─ 7.6 Build negative tests    PARTIALLY DONE (2 exist)

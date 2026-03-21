@@ -931,3 +931,23 @@ fn propagation_typing_rejects_incompatible_error_types_in_plain_value_contexts()
         "Expected a strict no-propagation diagnostic, got: {errors:?}"
     );
 }
+
+#[test]
+fn self_referential_record_type_does_not_panic_during_typecheck() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Node: rec = {\n\
+             value: int;\n\
+             next: Node;\n\
+         };\n\
+         fun[] main(): int = {\n\
+             return 0;\n\
+         };\n",
+    )]);
+
+    let (_node_id, node) = find_typed_symbol(&typed, "Node", SymbolKind::Type);
+    assert!(
+        node.declared_type.is_some(),
+        "Self-referential record types should typecheck via Declared reference indirection"
+    );
+}
