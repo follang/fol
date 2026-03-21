@@ -144,12 +144,12 @@ V1 use cases.
 - [ ] implement backend emission (Rust `.is_some()` equivalent)
 - [ ] add tests with opt values
 
-### 3.3 SliceAccess Expression
+### 3.3 SliceAccess Expression — DONE
 
 **Work**:
-- [ ] implement lowering for SliceAccess
-- [ ] implement backend emission for slicing
-- [ ] add tests for vec/seq slicing
+- [x] implement lowering for SliceAccess — handles start/end bounds with defaults (0 for start, len for end)
+- [x] implement backend emission for slicing — rt::slice_vec, rt::slice_seq runtime helpers
+- [x] add tests for vec/seq slicing — slice_access_lowering_emits_explicit_slice_instructions, container_slice E2E fixture
 
 ### 3.4 Backend: Unsized Array Type Rendering — DONE
 
@@ -176,15 +176,15 @@ V1 use cases.
 - [x] add tests for entry creation and field access — entry_flow and scalar_entry E2E fixtures, declaration_lowering_records_explicit_entry_variant_layouts, entry_variant_lowering_supports_payload_access_and_entry_construction
 - [ ] bare variant access without entry context still hits lowering boundary (edge case)
 
-### 3.8 Iteration Loops (when/loop lowering) — PARTIALLY DONE
+### 3.8 Iteration Loops (when/loop lowering) — DONE
 
 **Work**:
 - [x] implement conditional loop lowering — loop(condition) { body } works end-to-end
 - [x] implement when statement lowering — when(expr) { case(x) {} * {} } works end-to-end
 - [x] implement backend loop emission — loop/break/continue rendering in backend
 - [x] add tests for conditional loops — loop_condition_lowering_keeps_header_body_and_exit_blocks, E2E fixtures
-- [ ] implement iteration loop lowering — loop(item in items) { body } rejected at lowering boundary
-- [ ] add tests for collection iteration loops
+- [x] implement iteration loop lowering — index-driven pattern: LengthOf + IndexAccess + BinaryOp(Lt) + StoreLocal for binder
+- [x] add tests for collection iteration loops — iteration_loop_lowering_produces_index_driven_control_flow, control_iteration E2E fixture
 
 ---
 
@@ -319,7 +319,7 @@ this a true invariant. The message is descriptive.
 - [x] add test app for entries — entry_flow, scalar_entry
 - [x] add test app for multi-package workspace with cross-package calls — loc_*, std_*, pkg_*, mixed_loc_std_pkg
 - [ ] add test app for closures/anonymous routines (after Phase 1.4)
-- [ ] add test app for loops (after Phase 3.8)
+- [x] add test app for loops — control_loop_break (conditional), control_iteration (iteration)
 
 ### 7.5 Resolver Error Tests — DONE
 
@@ -393,12 +393,12 @@ Phase 2 (Compiler Bugs)     ──── fix crashes and incorrect behavior
 Phase 3 (Pipeline Gaps P2)  ──── expand V1 surface
   ├─ 3.1 TemplateCall              OPEN
   ├─ 3.2 AvailabilityAccess       OPEN
-  ├─ 3.3 SliceAccess              OPEN
+  ├─ 3.3 SliceAccess            ✓ DONE
   ├─ 3.4 Unsized arrays         ✓ DONE (rejected at backend)
   ├─ 3.5 Heterogeneous sets     ✓ DONE (rejected at backend)
   ├─ 3.6 Type variant audit     ✓ DONE (exhaustive match)
   ├─ 3.7 Entry variant constr.  ⊘ MOSTLY DONE (edge case remains)
-  └─ 3.8 Iteration loops        ⊘ PARTIALLY DONE (conditional ✓, iteration ✗)
+  └─ 3.8 Iteration loops        ✓ DONE
 
 Phase 4 (Panic Hardening)   ──── eliminate crash paths
   ├─ 4.1 Intrinsics panics      ✓ JUSTIFIED INVARIANTS
@@ -420,7 +420,7 @@ Phase 7 (Test Coverage)     ──── lock everything down
   ├─ 7.1 Lexer tests           ✓ DONE
   ├─ 7.2 Stream tests          ✓ DONE
   ├─ 7.3 Typecheck error tests ✓ DONE
-  ├─ 7.4 Formal E2E tests        PARTIALLY DONE (9/11, 2 blocked)
+  ├─ 7.4 Formal E2E tests        PARTIALLY DONE (10/11, 1 blocked on 1.4)
   ├─ 7.5 Resolver error tests  ✓ DONE
   ├─ 7.6 Build negative tests  ✓ DONE
   └─ 7.7 Editor LSP tests      ✓ DONE (49 lifecycle + 3 integration)
