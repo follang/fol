@@ -81,10 +81,27 @@ pub fn render_rust_type_in_workspace(
         LoweredType::Record { .. } | LoweredType::Entry { .. } => {
             render_named_runtime_type(workspace, type_id)
         }
-        LoweredType::Routine(_) => Err(BackendError::new(
-            BackendErrorKind::Unsupported,
-            "first-class routine types are not rendered as standalone Rust types in V1",
-        )),
+        LoweredType::Routine(routine_type) => {
+            let rendered_params = routine_type
+                .params
+                .iter()
+                .map(|param| render_rust_type_in_workspace(workspace, type_table, *param))
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            let return_section = match (routine_type.return_type, routine_type.error_type) {
+                (Some(ret), Some(err)) => format!(
+                    " -> rt::FolRecover<{}, {}>",
+                    render_rust_type_in_workspace(workspace, type_table, ret)?,
+                    render_rust_type_in_workspace(workspace, type_table, err)?
+                ),
+                (Some(ret), None) => format!(
+                    " -> {}",
+                    render_rust_type_in_workspace(workspace, type_table, ret)?
+                ),
+                (None, _) => String::new(),
+            };
+            Ok(format!("fn({rendered_params}){return_section}"))
+        }
     }
 }
 
@@ -767,12 +784,6 @@ mod tests {
         let heterogeneous_set_id = table.intern(LoweredType::Set {
             member_types: vec![int_id, int_id],
         });
-        let routine_id = table.intern(LoweredType::Routine(LoweredRoutineType {
-            params: vec![int_id],
-            return_type: Some(int_id),
-            error_type: None,
-        }));
-
         let unsized_err = render_rust_type(&table, unsized_array_id)
             .expect_err("unsized arrays should be rejected");
         assert!(
@@ -786,12 +797,42 @@ mod tests {
             het_set_err.message().contains("heterogeneous sets"),
             "heterogeneous set error should mention heterogeneous sets"
         );
+    }
 
-        let routine_err = render_rust_type(&table, routine_id)
-            .expect_err("routine types should be rejected");
-        assert!(
-            routine_err.message().contains("routine types"),
-            "routine type error should mention routine types"
+    #[test]
+    fn routine_type_rendering_emits_function_pointer_syntax() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let str_id = table.intern_builtin(LoweredBuiltinType::Str);
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+
+        let plain_fn_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![int_id, str_id],
+            return_type: Some(bool_id),
+            error_type: None,
+        }));
+        let void_fn_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![int_id],
+            return_type: None,
+            error_type: None,
+        }));
+        let recoverable_fn_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![],
+            return_type: Some(int_id),
+            error_type: Some(str_id),
+        }));
+
+        assert_eq!(
+            render_rust_type(&table, plain_fn_id),
+            Ok("fn(rt::FolInt, rt::FolStr) -> rt::FolBool".to_string())
+        );
+        assert_eq!(
+            render_rust_type(&table, void_fn_id),
+            Ok("fn(rt::FolInt)".to_string())
+        );
+        assert_eq!(
+            render_rust_type(&table, recoverable_fn_id),
+            Ok("fn() -> rt::FolRecover<rt::FolInt, rt::FolStr>".to_string())
         );
     }
 }
