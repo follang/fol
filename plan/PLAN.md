@@ -128,21 +128,17 @@ format strings via `format!()`. Confirmed by existing test.
 Features that parse but lack semantic or codegen support, blocking important
 V1 use cases.
 
-### 3.1 TemplateCall Expression
+### 3.1 TemplateCall Expression — V1-DEFERRED
 
-**Work**:
-- [ ] implement typecheck for TemplateCall
-- [ ] implement lowering for TemplateCall
-- [ ] implement backend emission
-- [ ] add end-to-end tests
+**Status**: TemplateCall (`expr$`) is rejected at typecheck with explicit error:
+"template instantiation is not yet implemented in the V1 typecheck milestone".
+Parser and resolver support exists. Only used with `file` type which is not V1.
 
-### 3.2 AvailabilityAccess Expression
+### 3.2 AvailabilityAccess Expression — V1-DEFERRED
 
-**Work**:
-- [ ] implement typecheck for AvailabilityAccess (should return bool)
-- [ ] implement lowering for AvailabilityAccess
-- [ ] implement backend emission (Rust `.is_some()` equivalent)
-- [ ] add tests with opt values
+**Status**: AvailabilityAccess (`container:[pattern]` / `expr:`) is rejected at typecheck
+with explicit error: "availability access is not yet implemented in the V1 typecheck milestone".
+Parser and resolver support exists. SliceAccess typecheck is done independently.
 
 ### 3.3 SliceAccess Expression — DONE
 
@@ -391,13 +387,13 @@ Phase 2 (Compiler Bugs)     ──── fix crashes and incorrect behavior
   └─ 2.5 Panic format string    ✓ FALSE POSITIVE (verified correct)
 
 Phase 3 (Pipeline Gaps P2)  ──── expand V1 surface
-  ├─ 3.1 TemplateCall              OPEN
-  ├─ 3.2 AvailabilityAccess       OPEN
+  ├─ 3.1 TemplateCall           ⊘ V1-DEFERRED (rejected at typecheck)
+  ├─ 3.2 AvailabilityAccess   ⊘ V1-DEFERRED (rejected at typecheck)
   ├─ 3.3 SliceAccess            ✓ DONE
   ├─ 3.4 Unsized arrays         ✓ DONE (rejected at backend)
   ├─ 3.5 Heterogeneous sets     ✓ DONE (rejected at backend)
   ├─ 3.6 Type variant audit     ✓ DONE (exhaustive match)
-  ├─ 3.7 Entry variant constr.  ⊘ MOSTLY DONE (edge case remains)
+  ├─ 3.7 Entry variant constr.  ⊘ MOSTLY DONE (bare variant edge case)
   └─ 3.8 Iteration loops        ✓ DONE
 
 Phase 4 (Panic Hardening)   ──── eliminate crash paths
