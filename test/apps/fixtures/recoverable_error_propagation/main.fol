@@ -1,0 +1,12 @@
+fun risky(flag: bol): int / str = {
+    when(flag) {
+        case(true) { report "error occurred"; }
+        * { return 42; }
+    }
+};
+
+fun[] main(): int = {
+    var ok_result: int = risky(false) || 99;
+    var err_result: int = risky(true) || 99;
+    return ok_result - 42 + err_result - 99;
+};

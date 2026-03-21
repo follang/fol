@@ -1008,3 +1008,39 @@ fn higher_order_function_fixture_compiles_and_runs() {
     let run_output = compile_and_run_app(&fixture);
     assert_exit_code(&run_output, 0);
 }
+
+#[test]
+fn recoverable_error_propagation_fixture_compiles_and_runs() {
+    let fixture = fixture_root("recoverable_error_propagation");
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn optional_shell_check_fixture_compiles_and_runs() {
+    let fixture = fixture_root("optional_shell_check");
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn empty_containers_fixture_compiles_and_runs() {
+    let fixture = fixture_root("empty_containers");
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn nested_function_calls_fixture_compiles_and_runs() {
+    let fixture = fixture_root("nested_function_calls");
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}

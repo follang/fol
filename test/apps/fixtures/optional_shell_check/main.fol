@@ -1,0 +1,14 @@
+ali MaybeInt: opt[int];
+
+fun maybe(flag: bol): MaybeInt = {
+    when(flag) {
+        case(true) { return 42; }
+        * { return nil; }
+    }
+};
+
+fun[] main(): int = {
+    var present: MaybeInt = maybe(true);
+    var value: int = present!;
+    return value - 42;
+};
