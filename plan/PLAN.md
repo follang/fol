@@ -164,13 +164,13 @@ Parser and resolver support exists. SliceAccess typecheck is done independently.
 - [x] implement rendering for each V1-admitted variant
 - [x] convert catch-all to exhaustive match with Routine explicit rejection
 
-### 3.7 Entry Variant Construction — MOSTLY DONE
+### 3.7 Entry Variant Construction — DONE
 
 **Work**:
 - [x] implement entry variant construction lowering — lower_entry_variant_access in helpers.rs handles payload access, construction with defaults, and entry variant resolution
 - [x] implement backend emission — ConstructEntry instruction rendering in backend
 - [x] add tests for entry creation and field access — entry_flow and scalar_entry E2E fixtures, declaration_lowering_records_explicit_entry_variant_layouts, entry_variant_lowering_supports_payload_access_and_entry_construction
-- [ ] bare variant access without entry context still hits lowering boundary (edge case)
+- [x] fix bare variant access — resolve_entry_variant_target now falls back to symbol's declared_type when reference type is unavailable
 
 ### 3.8 Iteration Loops (when/loop lowering) — DONE
 
@@ -181,6 +181,16 @@ Parser and resolver support exists. SliceAccess typecheck is done independently.
 - [x] add tests for conditional loops — loop_condition_lowering_keeps_header_body_and_exit_blocks, E2E fixtures
 - [x] implement iteration loop lowering — index-driven pattern: LengthOf + IndexAccess + BinaryOp(Lt) + StoreLocal for binder
 - [x] add tests for collection iteration loops — iteration_loop_lowering_produces_index_driven_control_flow, control_iteration E2E fixture
+
+### 3.9 Procedure-Style Call Lowering — DONE
+
+**Work**:
+- [x] implement procedure-style free call lowering — lower_statement_free_call in calls.rs, emits Call with result: None for void routines
+- [x] implement procedure-style method call lowering — resolve_method_target returns Option<LoweredTypeId>, body.rs MethodCall arm handles void and value-returning
+- [x] fix FolType::None handling in typecheck expression pass — exprs/mod.rs now matches None | Some(FolType::None) => None
+- [x] remove ProcedureStyleFreeCalls, ProcedureStyleMethodCalls, EntryVariantConstruction from UnsupportedLoweringSurface enum
+- [x] add E2E tests — procedure_call and procedure_method_call fixtures, unit tests for void call instruction emission
+- [x] TypeMatchingWhenOf remains as sole V1-deferred lowering boundary (runtime type dispatch)
 
 ---
 
@@ -316,6 +326,7 @@ this a true invariant. The message is descriptive.
 - [x] add test app for multi-package workspace with cross-package calls — loc_*, std_*, pkg_*, mixed_loc_std_pkg
 - [ ] add test app for closures/anonymous routines (after Phase 1.4)
 - [x] add test app for loops — control_loop_break (conditional), control_iteration (iteration)
+- [x] add test app for procedure calls — procedure_call (free), procedure_method_call (method)
 
 ### 7.5 Resolver Error Tests — DONE
 
@@ -393,8 +404,9 @@ Phase 3 (Pipeline Gaps P2)  ──── expand V1 surface
   ├─ 3.4 Unsized arrays         ✓ DONE (rejected at backend)
   ├─ 3.5 Heterogeneous sets     ✓ DONE (rejected at backend)
   ├─ 3.6 Type variant audit     ✓ DONE (exhaustive match)
-  ├─ 3.7 Entry variant constr.  ⊘ MOSTLY DONE (bare variant edge case)
-  └─ 3.8 Iteration loops        ✓ DONE
+  ├─ 3.7 Entry variant constr.  ✓ DONE
+  ├─ 3.8 Iteration loops        ✓ DONE
+  └─ 3.9 Procedure call lower.  ✓ DONE (3/4 boundaries removed)
 
 Phase 4 (Panic Hardening)   ──── eliminate crash paths
   ├─ 4.1 Intrinsics panics      ✓ JUSTIFIED INVARIANTS
@@ -416,7 +428,7 @@ Phase 7 (Test Coverage)     ──── lock everything down
   ├─ 7.1 Lexer tests           ✓ DONE
   ├─ 7.2 Stream tests          ✓ DONE
   ├─ 7.3 Typecheck error tests ✓ DONE
-  ├─ 7.4 Formal E2E tests        PARTIALLY DONE (10/11, 1 blocked on 1.4)
+  ├─ 7.4 Formal E2E tests        PARTIALLY DONE (12/13, 1 blocked on 1.4)
   ├─ 7.5 Resolver error tests  ✓ DONE
   ├─ 7.6 Build negative tests  ✓ DONE
   └─ 7.7 Editor LSP tests      ✓ DONE (49 lifecycle + 3 integration)
