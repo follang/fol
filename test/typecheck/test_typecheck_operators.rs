@@ -229,3 +229,73 @@ fn ge_le_operators_accept_ordered_types() {
     )]);
     assert!(typed.type_table().len() > 0);
 }
+
+#[test]
+fn vec_literal_accepts_homogeneous_int_elements() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] main(): vec[int] = {\n\
+             return {1, 2, 3};\n\
+         };\n",
+    )]);
+    assert!(typed.type_table().len() > 0);
+}
+
+#[test]
+fn vec_literal_rejects_heterogeneous_elements() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(): vec[int] = {\n\
+             return {1, true, 3};\n\
+         };\n",
+    )]);
+
+    assert!(
+        !errors.is_empty(),
+        "Mixing int and bool in vec[int] should be rejected"
+    );
+}
+
+#[test]
+fn map_literal_accepts_matching_key_value_types() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] main(): map[str, int] = {\n\
+             return {{\"hello\", 1}, {\"world\", 2}};\n\
+         };\n",
+    )]);
+    assert!(typed.type_table().len() > 0);
+}
+
+#[test]
+fn opt_wrap_and_nil_typecheck_correctly() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] main(): opt[int] = {\n\
+             return nil;\n\
+         };\n",
+    )]);
+    assert!(typed.type_table().len() > 0);
+}
+
+#[test]
+fn chained_boolean_logic_typechecks() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] main(a: bol, b: bol, c: bol): bol = {\n\
+             return (a and b) or (b xor c);\n\
+         };\n",
+    )]);
+    assert!(typed.type_table().len() > 0);
+}
+
+#[test]
+fn nested_arithmetic_typechecks() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] main(x: int, y: int): int = {\n\
+             return (x + y) * (x - y);\n\
+         };\n",
+    )]);
+    assert!(typed.type_table().len() > 0);
+}
