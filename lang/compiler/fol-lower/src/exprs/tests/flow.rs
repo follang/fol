@@ -623,3 +623,62 @@ fn break_lowering_jumps_directly_to_the_loop_exit_block() {
     ));
 }
 
+#[test]
+fn iteration_loop_lowering_produces_index_driven_control_flow() {
+    let fixture = super::safe_temp_dir().join(format!(
+        "fol_lower_iter_loop_{}.fol",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock should be monotonic enough for tmp names")
+            .as_nanos()
+    ));
+    std::fs::write(
+        &fixture,
+        "fun[] sum(items: seq[int]): int = {\n    var total: int = 0;\n    loop(item in items) {\n        total = total + item;\n    }\n    return total;\n};",
+    )
+    .expect("should write iteration loop fixture");
+
+    let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+        .expect("Should open lowering fixture");
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = AstParser::new();
+    let syntax = parser
+        .parse_package(&mut lexer)
+        .expect("Lowering fixture should parse");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
+    let typed = Typechecker::new()
+        .check_resolved_workspace(resolved)
+        .expect("Lowering fixture should typecheck");
+    let lowered = crate::LoweringSession::new(typed)
+        .lower_workspace()
+        .expect("iteration loop lowering should succeed");
+
+    let routine = lowered
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "sum")
+        .expect("sum routine should exist");
+
+    assert!(
+        routine.blocks.len() >= 4,
+        "iteration loop should produce at least 4 blocks, got {}",
+        routine.blocks.len()
+    );
+
+    assert!(
+        routine
+            .instructions
+            .iter()
+            .any(|instr| matches!(instr.kind, LoweredInstrKind::IndexAccess { .. })),
+        "iteration loop should use IndexAccess to extract elements"
+    );
+
+    assert!(
+        routine
+            .instructions
+            .iter()
+            .any(|instr| matches!(instr.kind, LoweredInstrKind::LengthOf { .. })),
+        "iteration loop should use LengthOf to get container length"
+    );
+}

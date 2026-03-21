@@ -2,12 +2,12 @@ use super::body::lower_body_sequence;
 use super::cursor::{LoweredValue, RoutineCursor, WorkspaceDeclIndex};
 use super::expressions::lower_expression_observed;
 use crate::{
-    control::LoweredInstrKind,
+    control::{LoweredBinaryOp, LoweredInstrKind, LoweredOperand},
     ids::{LoweredBlockId, LoweredTypeId},
     LoweringError, LoweringErrorKind,
 };
-use fol_parser::ast::{AstNode, LoopCondition};
-use fol_resolver::{PackageIdentity, ScopeId, SourceUnitId};
+use fol_parser::ast::{AstNode, Literal, LoopCondition};
+use fol_resolver::{PackageIdentity, ScopeId, SourceUnitId, SymbolKind};
 use std::collections::BTreeMap;
 
 pub(crate) fn when_case_body(case: &fol_parser::ast::WhenCase) -> &[AstNode] {
@@ -221,10 +221,262 @@ pub(crate) fn lower_loop_statement(
             cursor.switch_block(exit_block)?;
             Ok(())
         }
-        LoopCondition::Iteration { .. } => Err(LoweringError::with_kind(
-            LoweringErrorKind::Unsupported,
-            "iteration loop lowering is not part of the current lowered V1 control-flow milestone",
-        )),
+        LoopCondition::Iteration {
+            var,
+            iterable,
+            condition,
+            ..
+        } => {
+            let lowered_iterable = lower_expression(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                iterable,
+            )?;
+
+            // Get length of iterable
+            let int_type =
+                super::helpers::literal_type_id(typed_package, checked_type_map, &Literal::Integer(0))
+                    .ok_or_else(|| {
+                        LoweringError::with_kind(
+                            LoweringErrorKind::InvalidInput,
+                            "int type not found for iteration loop index",
+                        )
+                    })?;
+            let len_local = cursor.allocate_local(int_type, None);
+            cursor.push_instr(
+                Some(len_local),
+                LoweredInstrKind::LengthOf {
+                    operand: lowered_iterable.local_id,
+                },
+            )?;
+
+            // Create index counter initialized to 0
+            let index_local = cursor.allocate_local(int_type, None);
+            cursor.push_instr(
+                Some(index_local),
+                LoweredInstrKind::Const(LoweredOperand::Int(0)),
+            )?;
+
+            // Find the loop binder symbol and create its local
+            let binder_scope_id = typed_package
+                .program
+                .resolved()
+                .scopes
+                .iter_with_ids()
+                .find_map(|(sid, s)| {
+                    (s.kind == fol_resolver::ScopeKind::LoopBinder
+                        && s.parent == Some(scope_id)
+                        && s.source_unit == Some(source_unit_id))
+                    .then_some(sid)
+                })
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        "iteration loop binder scope not found",
+                    )
+                })?;
+            let binder_symbol_id = crate::decls::find_symbol_in_scope_or_descendants(
+                &typed_package.program,
+                source_unit_id,
+                binder_scope_id,
+                SymbolKind::LoopBinder,
+                var,
+            )
+            .ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("loop binder '{var}' does not retain a lowering symbol"),
+                )
+            })?;
+            let binder_type_id = typed_package
+                .program
+                .typed_symbol(binder_symbol_id)
+                .and_then(|sym| sym.declared_type)
+                .and_then(|checked| checked_type_map.get(&checked).copied())
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("loop binder '{var}' does not retain a lowered type"),
+                    )
+                })?;
+            let binder_local = cursor.allocate_local(binder_type_id, Some(var.clone()));
+            cursor.routine.local_symbols.insert(binder_symbol_id, binder_local);
+
+            let header_block = cursor.create_block();
+            let body_block = cursor.create_block();
+            let exit_block = cursor.create_block();
+
+            cursor.terminate_current_block(crate::LoweredTerminator::Jump {
+                target: header_block,
+            })?;
+
+            // Header: check index < len
+            cursor.switch_block(header_block)?;
+            let cmp_local = cursor.allocate_local(
+                super::helpers::literal_type_id(typed_package, checked_type_map, &Literal::Boolean(true))
+                    .ok_or_else(|| {
+                        LoweringError::with_kind(
+                            LoweringErrorKind::InvalidInput,
+                            "bool type not found for iteration loop comparison",
+                        )
+                    })?,
+                None,
+            );
+            cursor.push_instr(
+                Some(cmp_local),
+                LoweredInstrKind::BinaryOp {
+                    op: LoweredBinaryOp::Lt,
+                    left: index_local,
+                    right: len_local,
+                },
+            )?;
+            cursor.terminate_current_block(crate::LoweredTerminator::Branch {
+                condition: cmp_local,
+                then_block: body_block,
+                else_block: exit_block,
+            })?;
+
+            // Body: extract element, bind loop variable, run body
+            cursor.switch_block(body_block)?;
+            cursor.push_loop_exit(exit_block);
+
+            // element = container[index]
+            let element_local = cursor.allocate_local(binder_type_id, None);
+            cursor.push_instr(
+                Some(element_local),
+                LoweredInstrKind::IndexAccess {
+                    container: lowered_iterable.local_id,
+                    index: index_local,
+                },
+            )?;
+            // binder = element
+            cursor.push_instr(
+                None,
+                LoweredInstrKind::StoreLocal {
+                    local: binder_local,
+                    value: element_local,
+                },
+            )?;
+
+            // Optional guard condition
+            if let Some(guard) = condition.as_deref() {
+                let guard_block = cursor.create_block();
+                let lowered_guard = lower_expression(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    binder_scope_id,
+                    guard,
+                )?;
+                let increment_block = cursor.create_block();
+                cursor.terminate_current_block(crate::LoweredTerminator::Branch {
+                    condition: lowered_guard.local_id,
+                    then_block: guard_block,
+                    else_block: increment_block,
+                })?;
+
+                // Guard passed: run body
+                cursor.switch_block(guard_block)?;
+                let _ = lower_body_sequence(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    binder_scope_id,
+                    body,
+                )?;
+                if !cursor.current_block_terminated()? {
+                    cursor.terminate_current_block(crate::LoweredTerminator::Jump {
+                        target: increment_block,
+                    })?;
+                }
+
+                // Increment index
+                cursor.switch_block(increment_block)?;
+                let one_local = cursor.allocate_local(int_type, None);
+                cursor.push_instr(
+                    Some(one_local),
+                    LoweredInstrKind::Const(LoweredOperand::Int(1)),
+                )?;
+                let next_index = cursor.allocate_local(int_type, None);
+                cursor.push_instr(
+                    Some(next_index),
+                    LoweredInstrKind::BinaryOp {
+                        op: LoweredBinaryOp::Add,
+                        left: index_local,
+                        right: one_local,
+                    },
+                )?;
+                cursor.push_instr(
+                    None,
+                    LoweredInstrKind::StoreLocal {
+                        local: index_local,
+                        value: next_index,
+                    },
+                )?;
+                cursor.terminate_current_block(crate::LoweredTerminator::Jump {
+                    target: header_block,
+                })?;
+            } else {
+                // No guard: run body directly
+                let _ = lower_body_sequence(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    binder_scope_id,
+                    body,
+                )?;
+
+                // Increment index
+                if !cursor.current_block_terminated()? {
+                    let one_local = cursor.allocate_local(int_type, None);
+                    cursor.push_instr(
+                        Some(one_local),
+                        LoweredInstrKind::Const(LoweredOperand::Int(1)),
+                    )?;
+                    let next_index = cursor.allocate_local(int_type, None);
+                    cursor.push_instr(
+                        Some(next_index),
+                        LoweredInstrKind::BinaryOp {
+                            op: LoweredBinaryOp::Add,
+                            left: index_local,
+                            right: one_local,
+                        },
+                    )?;
+                    cursor.push_instr(
+                        None,
+                        LoweredInstrKind::StoreLocal {
+                            local: index_local,
+                            value: next_index,
+                        },
+                    )?;
+                    cursor.terminate_current_block(crate::LoweredTerminator::Jump {
+                        target: header_block,
+                    })?;
+                }
+            }
+            cursor.pop_loop_exit();
+
+            cursor.switch_block(exit_block)?;
+            Ok(())
+        }
     }
 }
 

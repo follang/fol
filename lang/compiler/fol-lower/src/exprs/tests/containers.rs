@@ -601,11 +601,6 @@ fn audited_v1_lowering_boundaries_fail_with_explicit_messages() {
             "type-matching when/of branches are not lowered in this slice yet",
         ),
         (
-            crate::UnsupportedLoweringSurface::IterationLoops,
-            "fun[] main(items: seq[int]): int = {\n    loop(item in items) {\n        break;\n    }\n    return 0;\n}\n",
-            "iteration loop lowering is not part of the current lowered V1 control-flow milestone",
-        ),
-        (
             crate::UnsupportedLoweringSurface::ProcedureStyleFreeCalls,
             "pro finish(): non = {\n    return;\n}\nfun[] main(): int = {\n    finish();\n    return 0;\n}\n",
             "procedure-style calls without a value result are not lowered in this slice yet: 'finish'",

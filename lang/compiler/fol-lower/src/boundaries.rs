@@ -1,7 +1,6 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnsupportedLoweringSurface {
     TypeMatchingWhenOf,
-    IterationLoops,
     ProcedureStyleFreeCalls,
     ProcedureStyleMethodCalls,
     EntryVariantConstruction,
@@ -11,7 +10,6 @@ impl UnsupportedLoweringSurface {
     pub fn label(self) -> &'static str {
         match self {
             Self::TypeMatchingWhenOf => "when-of-branches",
-            Self::IterationLoops => "iteration-loops",
             Self::ProcedureStyleFreeCalls => "procedure-style-free-calls",
             Self::ProcedureStyleMethodCalls => "procedure-style-method-calls",
             Self::EntryVariantConstruction => "entry-variant-construction",
@@ -22,9 +20,6 @@ impl UnsupportedLoweringSurface {
         match self {
             Self::TypeMatchingWhenOf => {
                 "typed type-matching when/of branches still stop at the lowering boundary"
-            }
-            Self::IterationLoops => {
-                "typed iteration loops still stop at the lowering boundary"
             }
             Self::ProcedureStyleFreeCalls => {
                 "typed procedure-style free calls without value results still stop at the lowering boundary"
@@ -41,7 +36,6 @@ impl UnsupportedLoweringSurface {
 
 const V1_BOUNDARIES: &[UnsupportedLoweringSurface] = &[
     UnsupportedLoweringSurface::TypeMatchingWhenOf,
-    UnsupportedLoweringSurface::IterationLoops,
     UnsupportedLoweringSurface::ProcedureStyleFreeCalls,
     UnsupportedLoweringSurface::ProcedureStyleMethodCalls,
     UnsupportedLoweringSurface::EntryVariantConstruction,
@@ -63,7 +57,6 @@ mod tests {
             inventory,
             &[
                 UnsupportedLoweringSurface::TypeMatchingWhenOf,
-                UnsupportedLoweringSurface::IterationLoops,
                 UnsupportedLoweringSurface::ProcedureStyleFreeCalls,
                 UnsupportedLoweringSurface::ProcedureStyleMethodCalls,
                 UnsupportedLoweringSurface::EntryVariantConstruction,
@@ -76,7 +69,6 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec![
                 "when-of-branches",
-                "iteration-loops",
                 "procedure-style-free-calls",
                 "procedure-style-method-calls",
                 "entry-variant-construction",

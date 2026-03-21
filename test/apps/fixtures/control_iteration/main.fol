@@ -1,0 +1,8 @@
+fun[] main(): int = {
+    var items: seq[int] = {10, 20, 30};
+    var total: int = 0;
+    loop(item in items) {
+        total = total + item;
+    }
+    return total;
+};
