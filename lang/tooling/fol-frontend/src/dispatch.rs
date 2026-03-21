@@ -32,7 +32,7 @@ pub fn dispatch_cli(
             "no frontend command was provided",
         )
         .with_note("run `fol --help` to inspect the frontend workflow")),
-        Some(FrontendCommand::Work(command)) => match &command.command {
+        Some(cmd @ FrontendCommand::Work(command)) => match &command.command {
             cli::WorkSubcommand::Init(command) => crate::init_root(
                 &config.working_directory,
                 command.workspace,
@@ -45,19 +45,13 @@ pub fn dispatch_cli(
                 crate::package_target_kind(command.bin, command.lib),
             ),
             _ => {
-                let Some(cmd) = cli.command.as_ref() else {
-                    unreachable!("command is Some in this match arm")
-                };
                 let discovered =
                     discovered_root_for_command(cmd, &config.working_directory)?;
                 let workspace = crate::load_frontend_workspace(&discovered, config)?;
                 dispatch_workspace_command(cmd, &workspace, config)
             }
         },
-        Some(FrontendCommand::Pack(_)) | Some(FrontendCommand::Code(_)) => {
-            let Some(cmd) = cli.command.as_ref() else {
-                unreachable!("command is Some in this match arm")
-            };
+        Some(cmd @ (FrontendCommand::Pack(_) | FrontendCommand::Code(_))) => {
             let needs_direct = match cmd {
                 FrontendCommand::Code(command) => code_has_direct_target(command),
                 _ => false,
@@ -71,7 +65,7 @@ pub fn dispatch_cli(
                 dispatch_workspace_command(cmd, &workspace, config)
             }
         }
-        Some(FrontendCommand::Tool(command)) => match &command.command {
+        Some(cmd @ FrontendCommand::Tool(command)) => match &command.command {
             ToolSubcommand::Lsp(_) => crate::editor_lsp_command(config),
             ToolSubcommand::Format(command) => crate::editor_format_command(&command.path),
             ToolSubcommand::Parse(command) => crate::editor_parse_command(&command.path),
@@ -93,6 +87,11 @@ pub fn dispatch_cli(
                 command.character,
                 &command.new_name,
             ),
+            ToolSubcommand::Complete(command) => crate::editor_completion_command(
+                &command.path,
+                command.line,
+                command.character,
+            ),
             ToolSubcommand::SemanticTokens(command) => {
                 crate::editor_semantic_tokens_command(&command.path)
             }
@@ -105,9 +104,6 @@ pub fn dispatch_cli(
                 crate::completion_command(parse_completion_shell(command.shell))
             }
             ToolSubcommand::Clean(_) => {
-                let Some(cmd) = cli.command.as_ref() else {
-                    unreachable!("command is Some in this match arm")
-                };
                 let discovered =
                     discovered_root_for_command(cmd, &config.working_directory)?;
                 let workspace = crate::load_frontend_workspace(&discovered, config)?;
@@ -280,6 +276,7 @@ pub fn dispatch_workspace_command(
             | ToolSubcommand::Symbols(_)
             | ToolSubcommand::References(_)
             | ToolSubcommand::Rename(_)
+            | ToolSubcommand::Complete(_)
             | ToolSubcommand::SemanticTokens(_)
             | ToolSubcommand::Tree(_) => Err(FrontendError::new(
                 FrontendErrorKind::Internal,
