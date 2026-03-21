@@ -78,7 +78,7 @@ impl Elements {
         self.win.2.clone()
     }
     pub fn peek(&self, index: usize) -> Con<Part<char>> {
-        let u = if index > SLIDER { 0 } else { index };
+        let u = if index >= SLIDER { SLIDER - 1 } else { index };
         self.next_vec()[u].clone()
     }
     ///prev vector
@@ -88,7 +88,7 @@ impl Elements {
         rev
     }
     pub fn seek(&self, index: usize) -> Con<Part<char>> {
-        let u = if index > SLIDER { 0 } else { index };
+        let u = if index >= SLIDER { SLIDER - 1 } else { index };
         self.prev_vec()[u].clone()
     }
 

@@ -128,13 +128,11 @@ impl Element {
             && el.peek(0)?.key().is_symbol()
             && (!(matches!(el.curr()?.key(), KEYWORD::Symbol(SYMBOL::Semi)))
                 || !(matches!(el.peek(0)?.key(), KEYWORD::Symbol(SYMBOL::Semi))))
-        // && (el.seek(0)?.key().is_void() || el.seek(0)?.key().is_bracket())
         {
             self.make_multi_operator(el)?;
         } else if matches!(el.curr()?.key(), KEYWORD::Identifier) {
             self.set_key(Identifier)
         }
-        // if self.key().is_eol() { self.set_key(symbol(SYMBOL::semi_)) }
         Ok(())
     }
 

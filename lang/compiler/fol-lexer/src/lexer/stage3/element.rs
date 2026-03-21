@@ -123,12 +123,6 @@ impl Element {
     pub fn make_number(&mut self, el: &mut stage2::Elements) -> Vod {
         self.set_key(Literal(LITERAL::Decimal));
 
-        // if el.curr(false)?.key().is_dot() && el.peek(0, false)?.key().is_symbol() {
-        // self.make_multi_operator(el)?;
-        // } else if el.curr(false)?.key().is_decimal() && el.peek(0, false)?.key().is_dot() && el.peek(1, false)?.key().is_symbol() {
-        // return Ok(());
-        // }
-
         if el.curr(false)?.key().is_decimal()
             && el.peek(0, false)?.key().is_dot()
             && el.peek(1, false)?.key().is_decimal()

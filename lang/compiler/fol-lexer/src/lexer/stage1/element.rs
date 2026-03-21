@@ -159,10 +159,6 @@ impl Element {
 
     pub fn endfile(&mut self, _code: &mut stage0::Elements) -> Vod {
         self.key = Void(VOID::EndFile);
-        // while is_eol(&code.peek(0)?.0) || is_space(&code.peek(0)?.0) {
-        //     self.loc.new_line();
-        //     self.bump(code);
-        // }
         self.con = '\0'.to_string();
         Ok(())
     }
@@ -171,7 +167,6 @@ impl Element {
         self.push(code)?;
         self.key = Void(VOID::EndLine);
         while is_eol(&code.peek(0)?.0) || is_space(&code.peek(0)?.0) {
-            // self.loc.new_line();
             self.bump(code)?;
         }
         self.con = " ".to_string();

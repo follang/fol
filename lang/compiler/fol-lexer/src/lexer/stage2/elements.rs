@@ -46,7 +46,7 @@ impl Elements {
         self.win.2.clone()
     }
     pub fn peek(&self, index: usize, ignore: bool) -> Con<Element> {
-        let mut u = if index > SLIDER { SLIDER } else { index };
+        let mut u = if index >= SLIDER { SLIDER - 1 } else { index };
         if ignore && self.next_vec()[u].clone()?.key().is_space() && u + 1 < SLIDER {
             u += 1
         };
@@ -58,7 +58,7 @@ impl Elements {
         rev
     }
     pub fn seek(&self, index: usize, ignore: bool) -> Con<Element> {
-        let mut u = if index > SLIDER { SLIDER } else { index };
+        let mut u = if index >= SLIDER { SLIDER - 1 } else { index };
         if ignore && self.prev_vec()[u].clone()?.key().is_space() && u + 1 < SLIDER {
             u += 1
         };
