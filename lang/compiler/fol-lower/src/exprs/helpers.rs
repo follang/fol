@@ -182,7 +182,7 @@ pub(crate) fn lower_unwrap_expression(
     .ok_or_else(|| {
         LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "unwrap lowering requires an opt[...] or typed err[...] runtime operand in lowered V1",
+            "unwrap lowering requires an opt[...] or typed err[...] runtime operand",
         )
     })?;
     let result_local = cursor.allocate_local(inner_type, None);
@@ -330,7 +330,7 @@ pub(crate) fn lower_assignment_target(
         _ => {
             return Err(LoweringError::with_kind(
                 LoweringErrorKind::InvalidInput,
-                "assignment targets must lower from plain or qualified identifiers in V1",
+                "assignment targets must lower from plain or qualified identifiers",
             ))
         }
     };

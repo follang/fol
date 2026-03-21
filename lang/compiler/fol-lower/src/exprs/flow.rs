@@ -537,7 +537,7 @@ pub(crate) fn lower_when_expression(
     let Some(default) = default else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "value-producing when expressions require a default branch in lowered V1",
+            "when expressions require a default branch",
         ));
     };
 
@@ -651,7 +651,7 @@ fn lower_when_case_condition(
         return Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
             format!(
-                "when case condition type {} does not match subject type {} in lowered V1",
+                "when case condition type {} does not match subject type {}",
                 lowered_condition.type_id.0, subject.type_id.0
             ),
         ));

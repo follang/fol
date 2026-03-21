@@ -309,7 +309,7 @@ pub(crate) fn lower_body_node(
                     return Err(LoweringError::with_kind(
                         LoweringErrorKind::InvalidInput,
                         format!(
-                            "report expects exactly 1 value in lowered V1 bodies, got {}",
+                            "report expects exactly 1 value, got {}",
                             args.len()
                         ),
                     ))
@@ -502,7 +502,7 @@ pub(crate) fn lower_body_node(
         }
         AstNode::Yield { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "yield lowering is not part of the current V1 lowering milestone",
+            "yield lowering is not yet supported",
         )),
         _ => lower_expression(
             typed_package,

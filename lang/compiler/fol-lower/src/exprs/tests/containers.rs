@@ -572,7 +572,7 @@ fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
     let nil_error = lower_fixture_error("fun[] main(): int = {\n    return nil;\n}\n");
     assert_eq!(nil_error.kind(), LoweringErrorKind::Unsupported);
     assert!(nil_error.message().contains(
-        "nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1"
+        "nil lowering requires an expected opt[...] or err[...] runtime type"
     ));
 }
 

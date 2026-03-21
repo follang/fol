@@ -140,7 +140,7 @@ pub(crate) fn lower_expression_observed(
         AstNode::UnaryOp { op, .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
             format!(
-                "unary operator lowering for '{}' is deferred beyond V1",
+                "unary operator lowering for '{}' is not yet supported",
                 describe_unary_operator(op)
             ),
         )),
@@ -181,7 +181,7 @@ pub(crate) fn lower_expression_observed(
                     return Err(LoweringError::with_kind(
                         LoweringErrorKind::Unsupported,
                         format!(
-                            "binary operator lowering for '{}' is deferred beyond V1",
+                            "binary operator lowering for '{}' is not yet supported",
                             describe_binary_operator(other)
                         ),
                     ));
@@ -825,23 +825,23 @@ pub(crate) fn lower_expression_observed(
         | AstNode::ChannelAccess { .. }
         | AstNode::Select { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "concurrency primitives (async, await, spawn, channels, select) are deferred beyond V1",
+            "concurrency primitives (async, await, spawn, channels, select) are not yet supported",
         )),
         AstNode::Rolling { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "rolling/comprehension expressions are deferred beyond V1",
+            "rolling/comprehension expressions are not yet supported",
         )),
         AstNode::Range { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "range expressions are deferred beyond V1",
+            "range expressions are not yet supported",
         )),
         AstNode::Yield { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "yield expressions are deferred beyond V1",
+            "yield expressions are not yet supported",
         )),
         AstNode::PatternAccess { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "pattern access is deferred beyond V1",
+            "pattern access is not yet supported",
         )),
         // Structural nodes consumed by parent lowering
         AstNode::NamedArgument { .. } | AstNode::Unpack { .. } => Err(LoweringError::with_kind(
@@ -1014,7 +1014,7 @@ fn resolve_fol_type_to_lowered(
         _ => {
             return Err(LoweringError::with_kind(
                 LoweringErrorKind::Unsupported,
-                "complex type annotation in anonymous routine is not supported in V1 lowering",
+                "complex type annotation in anonymous routine is not yet supported",
             ));
         }
     };
@@ -1046,7 +1046,7 @@ fn lower_anonymous_routine(
     if !captures.is_empty() {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "anonymous routines with captures are not supported in V1 lowering",
+            "anonymous routines with captures are not yet supported",
         ));
     }
 
