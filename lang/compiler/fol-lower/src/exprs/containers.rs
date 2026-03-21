@@ -506,6 +506,18 @@ pub(crate) fn field_access_type(
     }
 }
 
+pub(crate) fn slice_access_type(
+    type_table: &crate::LoweredTypeTable,
+    container_type: LoweredTypeId,
+) -> Option<LoweredTypeId> {
+    match type_table.get(container_type) {
+        Some(crate::LoweredType::Vector { .. })
+        | Some(crate::LoweredType::Sequence { .. }) => Some(container_type),
+        Some(crate::LoweredType::Array { .. }) => Some(container_type),
+        _ => None,
+    }
+}
+
 pub(crate) fn index_access_type(
     type_table: &crate::LoweredTypeTable,
     container_type: LoweredTypeId,

@@ -1,0 +1,6 @@
+fun[] main(): int = {
+    var values: seq[int] = {10, 20, 30, 40, 50};
+    var sliced: seq[int] = values[1:4];
+    var size: int = .len(sliced);
+    return size;
+};

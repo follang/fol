@@ -628,6 +628,17 @@ fn container_linear_fixture_compiles_and_runs() {
 }
 
 #[test]
+fn container_slice_fixture_compiles_and_runs() {
+    let fixture = fixture_root("container_slice");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
 fn container_map_set_fixture_compiles_and_runs() {
     let fixture = fixture_root("container_map_set");
 

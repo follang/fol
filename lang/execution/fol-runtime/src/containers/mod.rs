@@ -22,6 +22,16 @@ pub use vector::FolVec;
 /// rely on stable fixed-size layout without an extra wrapper type.
 pub type FolArray<T, const N: usize> = [T; N];
 
+fn normalize_slice_bound(bound: FolInt, len: usize) -> usize {
+    if bound < 0 {
+        let adjusted = len as FolInt + bound;
+        if adjusted < 0 { 0 } else { adjusted as usize }
+    } else {
+        let b = bound as usize;
+        if b > len { len } else { b }
+    }
+}
+
 fn normalize_index(index: FolInt, len: usize) -> Result<usize, RuntimeError> {
     if index < 0 {
         return Err(RuntimeError::new(
@@ -57,6 +67,30 @@ pub fn index_vec<T>(values: &FolVec<T>, index: FolInt) -> Result<&T, RuntimeErro
 pub fn index_seq<T>(values: &FolSeq<T>, index: FolInt) -> Result<&T, RuntimeError> {
     let index = normalize_index(index, values.len())?;
     Ok(&values.as_slice()[index])
+}
+
+pub fn slice_vec<T: Clone>(
+    values: &FolVec<T>,
+    start: FolInt,
+    end: FolInt,
+) -> Result<FolVec<T>, RuntimeError> {
+    let len = values.len();
+    let start = normalize_slice_bound(start, len);
+    let end = normalize_slice_bound(end, len);
+    let end = if end < start { start } else { end };
+    Ok(FolVec::from_items(values.as_slice()[start..end].to_vec()))
+}
+
+pub fn slice_seq<T: Clone>(
+    values: &FolSeq<T>,
+    start: FolInt,
+    end: FolInt,
+) -> Result<FolSeq<T>, RuntimeError> {
+    let len = values.len();
+    let start = normalize_slice_bound(start, len);
+    let end = normalize_slice_bound(end, len);
+    let end = if end < start { start } else { end };
+    Ok(FolSeq::from_items(values.as_slice()[start..end].to_vec()))
 }
 
 pub fn lookup_map<'a, K: Ord, V>(values: &'a FolMap<K, V>, key: &K) -> Result<&'a V, RuntimeError> {
@@ -120,7 +154,7 @@ pub fn module_name() -> &'static str {
 mod tests {
     use super::{
         index_array, index_seq, index_vec, lookup_map, render_array, render_map, render_seq,
-        render_set, render_vec, FolArray, FolMap, FolSeq, FolSet, FolVec,
+        render_set, render_vec, slice_seq, slice_vec, FolArray, FolMap, FolSeq, FolSet, FolVec,
     };
     use crate::error::RuntimeErrorKind;
 
@@ -265,5 +299,30 @@ mod tests {
         assert_eq!(left_map.as_map(), right_map.as_map());
         assert_eq!(render_map(&left_map), "map{ada: 1, lin: 4}");
         assert_eq!(render_map(&left_map), render_map(&right_map));
+    }
+
+    #[test]
+    fn runtime_slice_helpers_cover_vec_and_seq_families() {
+        let vector = FolVec::from_items(vec![10, 20, 30, 40, 50]);
+        let sequence = FolSeq::from_items(vec![10, 20, 30, 40, 50]);
+
+        assert_eq!(slice_vec(&vector, 1, 4).unwrap().as_slice(), &[20, 30, 40]);
+        assert_eq!(slice_seq(&sequence, 1, 4).unwrap().as_slice(), &[20, 30, 40]);
+
+        assert_eq!(slice_vec(&vector, 0, 5).unwrap().as_slice(), &[10, 20, 30, 40, 50]);
+        assert_eq!(slice_vec(&vector, 0, 2).unwrap().as_slice(), &[10, 20]);
+        assert_eq!(slice_vec(&vector, 3, 5).unwrap().as_slice(), &[40, 50]);
+
+        // clamping: end beyond length clamps to length
+        assert_eq!(slice_vec(&vector, 0, 100).unwrap().as_slice(), &[10, 20, 30, 40, 50]);
+
+        // empty slice: start == end
+        assert_eq!(slice_vec(&vector, 2, 2).unwrap().as_slice(), &[] as &[i64]);
+
+        // inverted bounds: produces empty
+        assert_eq!(slice_vec(&vector, 4, 2).unwrap().as_slice(), &[] as &[i64]);
+
+        // negative bounds count from end (Python-style clamping)
+        assert_eq!(slice_vec(&vector, -3, 5).unwrap().as_slice(), &[30, 40, 50]);
     }
 }

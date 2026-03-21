@@ -260,6 +260,15 @@ pub(super) fn verify_instruction(
             verify_local_reference(routine, instr.id.0, "index container", *container, errors);
             verify_local_reference(routine, instr.id.0, "index value", *index, errors);
         }
+        crate::LoweredInstrKind::SliceAccess {
+            container,
+            start,
+            end,
+        } => {
+            verify_local_reference(routine, instr.id.0, "slice container", *container, errors);
+            verify_local_reference(routine, instr.id.0, "slice start", *start, errors);
+            verify_local_reference(routine, instr.id.0, "slice end", *end, errors);
+        }
         crate::LoweredInstrKind::Cast {
             operand,
             target_type,

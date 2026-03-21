@@ -137,6 +137,11 @@ pub enum LoweredInstrKind {
         container: LoweredLocalId,
         index: LoweredLocalId,
     },
+    SliceAccess {
+        container: LoweredLocalId,
+        start: LoweredLocalId,
+        end: LoweredLocalId,
+    },
     Cast {
         operand: LoweredLocalId,
         target_type: LoweredTypeId,

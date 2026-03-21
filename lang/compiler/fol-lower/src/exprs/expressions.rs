@@ -4,7 +4,7 @@ use super::calls::{
 };
 use super::containers::{
     apply_expected_shell_wrap, field_access_type, index_access_type, lower_container_literal,
-    lower_nil_literal, lower_record_initializer,
+    lower_nil_literal, lower_record_initializer, slice_access_type,
 };
 use super::cursor::{LoweredValue, RoutineCursor, WorkspaceDeclIndex};
 use super::flow::lower_when_expression;
@@ -666,10 +666,110 @@ pub(crate) fn lower_expression_observed(
             LoweringErrorKind::Unsupported,
             "availability access lowering is not yet implemented",
         )),
-        AstNode::SliceAccess { .. } => Err(LoweringError::with_kind(
-            LoweringErrorKind::Unsupported,
-            "slice access lowering is not yet implemented",
-        )),
+        AstNode::SliceAccess {
+            container,
+            start,
+            end,
+            ..
+        } => {
+            let lowered_container = lower_expression(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                container,
+            )?;
+            let lowered_start = if let Some(start) = start {
+                lower_expression(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    start,
+                )?
+            } else {
+                let int_type = literal_type_id(typed_package, checked_type_map, &Literal::Integer(0))
+                    .ok_or_else(|| {
+                        LoweringError::with_kind(
+                            LoweringErrorKind::InvalidInput,
+                            "int type not found for slice default start bound",
+                        )
+                    })?;
+                let zero_local = cursor.allocate_local(int_type, None);
+                cursor.push_instr(
+                    Some(zero_local),
+                    LoweredInstrKind::Const(crate::control::LoweredOperand::Int(0)),
+                )?;
+                LoweredValue {
+                    local_id: zero_local,
+                    type_id: int_type,
+                    recoverable_error_type: None,
+                }
+            };
+            let lowered_end = if let Some(end) = end {
+                lower_expression(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    end,
+                )?
+            } else {
+                let int_type = literal_type_id(typed_package, checked_type_map, &Literal::Integer(0))
+                    .ok_or_else(|| {
+                        LoweringError::with_kind(
+                            LoweringErrorKind::InvalidInput,
+                            "int type not found for slice default end bound",
+                        )
+                    })?;
+                let len_local = cursor.allocate_local(int_type, None);
+                cursor.push_instr(
+                    Some(len_local),
+                    LoweredInstrKind::LengthOf {
+                        operand: lowered_container.local_id,
+                    },
+                )?;
+                LoweredValue {
+                    local_id: len_local,
+                    type_id: int_type,
+                    recoverable_error_type: None,
+                }
+            };
+            let Some(result_type) =
+                slice_access_type(type_table, lowered_container.type_id)
+            else {
+                return Err(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    "slice access does not map to a lowered container type",
+                ));
+            };
+            let result_local = cursor.allocate_local(result_type, None);
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::SliceAccess {
+                    container: lowered_container.local_id,
+                    start: lowered_start.local_id,
+                    end: lowered_end.local_id,
+                },
+            )?;
+            Ok(LoweredValue {
+                local_id: result_local,
+                type_id: result_type,
+                recoverable_error_type: None,
+            })
+        }
         AstNode::Loop { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
             "loop lowering is not yet implemented",

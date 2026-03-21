@@ -324,6 +324,46 @@ pub fn render_core_instruction_in_workspace(
             };
             Ok(format!("let {result} = {expression};"))
         }
+        LoweredInstrKind::SliceAccess {
+            container,
+            start,
+            end,
+        } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let container_name = render_local_name(package_identity, routine, *container)?;
+            let start_name = render_local_name(package_identity, routine, *start)?;
+            let end_name = render_local_name(package_identity, routine, *end)?;
+            let container_local = routine.locals.get(*container).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("lowered local {:?} is missing", container),
+                )
+            })?;
+            let Some(type_id) = container_local.type_id else {
+                return Err(BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!(
+                        "slice container local {:?} does not have a lowered type",
+                        container
+                    ),
+                ));
+            };
+            let expression = match type_table.get(type_id) {
+                Some(LoweredType::Vector { .. }) => format!(
+                    "rt::slice_vec(&{container_name}, {start_name}.clone(), {end_name}.clone()).expect(\"vector slice\")"
+                ),
+                Some(LoweredType::Sequence { .. }) => format!(
+                    "rt::slice_seq(&{container_name}, {start_name}.clone(), {end_name}.clone()).expect(\"sequence slice\")"
+                ),
+                other => {
+                    return Err(BackendError::new(
+                        BackendErrorKind::InvalidInput,
+                        format!("slice emission expected vector/sequence local but found {other:?}"),
+                    ))
+                }
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
         LoweredInstrKind::ConstructRecord { type_id, fields } => {
             let result = rendered_result_local(package_identity, routine, instruction)?;
             let (type_identity, type_decl) = resolve_type_decl(workspace, *type_id)?;
