@@ -19,6 +19,7 @@ pub(crate) fn lower_routine_bodies(
     type_table: &crate::LoweredTypeTable,
     decl_index: &WorkspaceDeclIndex,
     lowered_package: &mut LoweredPackage,
+    next_routine_index: &mut usize,
 ) -> Result<(), Vec<LoweringError>> {
     let mut errors = Vec::new();
 
@@ -115,7 +116,7 @@ pub(crate) fn lower_routine_bodies(
             let Some(routine) = lowered_package.routine_decls.get_mut(&routine_id) else {
                 continue;
             };
-            if let Err(error) = lower_body_nodes(
+            match lower_body_nodes(
                 typed_package,
                 type_table,
                 &lowered_package.checked_type_map,
@@ -125,8 +126,15 @@ pub(crate) fn lower_routine_bodies(
                 source_unit_id,
                 scope_id,
                 body,
+                next_routine_index,
             ) {
-                errors.push(error);
+                Ok(anonymous_routines) => {
+                    for anon in anonymous_routines {
+                        lowered_package.routines.push(anon.id);
+                        lowered_package.routine_decls.insert(anon.id, anon);
+                    }
+                }
+                Err(error) => errors.push(error),
             }
         }
     }
@@ -148,9 +156,11 @@ fn lower_body_nodes(
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     nodes: &[AstNode],
-) -> Result<(), LoweringError> {
+    next_routine_index: &mut usize,
+) -> Result<Vec<LoweredRoutine>, LoweringError> {
     let entry_block = routine.entry_block;
     let mut cursor = RoutineCursor::new(routine, entry_block);
+    cursor.next_routine_index = *next_routine_index;
     cursor.routine.body_result = lower_body_sequence(
         typed_package,
         type_table,
@@ -164,7 +174,8 @@ fn lower_body_nodes(
     )?
     .map(|value| value.local_id);
 
-    Ok(())
+    *next_routine_index = cursor.next_routine_index;
+    Ok(cursor.anonymous_routines)
 }
 
 pub(crate) fn lower_body_sequence(

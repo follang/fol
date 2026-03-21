@@ -196,6 +196,8 @@ pub(crate) struct RoutineCursor<'a> {
     next_instr_index: usize,
     next_block_index: usize,
     pub(crate) loop_exit_blocks: Vec<LoweredBlockId>,
+    pub(crate) anonymous_routines: Vec<LoweredRoutine>,
+    pub(crate) next_routine_index: usize,
 }
 
 impl<'a> RoutineCursor<'a> {
@@ -207,6 +209,8 @@ impl<'a> RoutineCursor<'a> {
             routine,
             block_id,
             loop_exit_blocks: Vec::new(),
+            anonymous_routines: Vec::new(),
+            next_routine_index: 0,
         }
     }
 

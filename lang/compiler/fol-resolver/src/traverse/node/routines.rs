@@ -133,6 +133,7 @@ pub fn traverse_anonymous_routine(
     program: &mut ResolvedProgram,
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
+    syntax_id: &Option<SyntaxNodeId>,
     captures: &[String],
     params: &[Parameter],
     return_type: &Option<FolType>,
@@ -144,6 +145,7 @@ pub fn traverse_anonymous_routine(
     let nested_routine_context = Some(RoutineContext {
         this_available: return_type.is_some(),
     });
+    program.record_scope_for_syntax(*syntax_id, routine_scope);
 
     for param in params {
         resolve_type_reference(

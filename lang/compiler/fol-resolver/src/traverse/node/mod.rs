@@ -122,6 +122,7 @@ pub fn traverse_node(
             )?;
         }
         AstNode::AnonymousFun {
+            syntax_id,
             captures,
             params,
             return_type,
@@ -131,6 +132,7 @@ pub fn traverse_node(
             ..
         }
         | AstNode::AnonymousPro {
+            syntax_id,
             captures,
             params,
             return_type,
@@ -140,6 +142,7 @@ pub fn traverse_node(
             ..
         }
         | AstNode::AnonymousLog {
+            syntax_id,
             captures,
             params,
             return_type,
@@ -153,6 +156,7 @@ pub fn traverse_node(
                 program,
                 source_unit_id,
                 scope_id,
+                syntax_id,
                 captures,
                 params,
                 return_type,

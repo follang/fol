@@ -76,6 +76,10 @@ impl LoweredTypeTable {
         self.types.get(id.0)
     }
 
+    pub fn find(&self, ty: &LoweredType) -> Option<LoweredTypeId> {
+        self.canonical_ids.get(ty).copied()
+    }
+
     pub fn intern(&mut self, ty: LoweredType) -> LoweredTypeId {
         if let Some(id) = self.canonical_ids.get(&ty) {
             return *id;

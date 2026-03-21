@@ -405,9 +405,10 @@ impl AstParser {
                 "Expected anonymous function expression".to_string(),
             ));
         }
+        let syntax_id = self.record_syntax_origin(&routine_token);
 
         let _ = tokens.bump();
-        self.parse_anonymous_routine_after_keyword(tokens, AnonymousRoutineKind::Function)
+        self.parse_anonymous_routine_after_keyword(tokens, AnonymousRoutineKind::Function, syntax_id)
     }
 
     pub(super) fn parse_anonymous_pro_expr(
@@ -421,9 +422,10 @@ impl AstParser {
                 "Expected anonymous procedure expression".to_string(),
             ));
         }
+        let syntax_id = self.record_syntax_origin(&routine_token);
 
         let _ = tokens.bump();
-        self.parse_anonymous_routine_after_keyword(tokens, AnonymousRoutineKind::Procedure)
+        self.parse_anonymous_routine_after_keyword(tokens, AnonymousRoutineKind::Procedure, syntax_id)
     }
 
     pub(super) fn parse_anonymous_log_expr(
@@ -437,15 +439,17 @@ impl AstParser {
                 "Expected anonymous logical expression".to_string(),
             ));
         }
+        let syntax_id = self.record_syntax_origin(&routine_token);
 
         let _ = tokens.bump();
-        self.parse_anonymous_routine_after_keyword(tokens, AnonymousRoutineKind::Logical)
+        self.parse_anonymous_routine_after_keyword(tokens, AnonymousRoutineKind::Logical, syntax_id)
     }
 
     fn parse_anonymous_routine_after_keyword(
         &self,
         tokens: &mut fol_lexer::lexer::stage3::Elements,
         kind: AnonymousRoutineKind,
+        syntax_id: Option<SyntaxNodeId>,
     ) -> Result<AstNode, ParseError> {
         self.skip_ignorable(tokens)?;
         let options = self.parse_routine_options(tokens)?;
@@ -511,6 +515,7 @@ impl AstParser {
 
         match kind {
             AnonymousRoutineKind::Function => Ok(AstNode::AnonymousFun {
+                syntax_id,
                 options,
                 captures,
                 params,
@@ -520,6 +525,7 @@ impl AstParser {
                 inquiries,
             }),
             AnonymousRoutineKind::Procedure => Ok(AstNode::AnonymousPro {
+                syntax_id,
                 options,
                 captures,
                 params,
@@ -529,6 +535,7 @@ impl AstParser {
                 inquiries,
             }),
             AnonymousRoutineKind::Logical => Ok(AstNode::AnonymousLog {
+                syntax_id,
                 options,
                 captures,
                 params,
@@ -551,6 +558,7 @@ impl AstParser {
                 "Expected '(' to start shorthand anonymous function".to_string(),
             ));
         }
+        let syntax_id = self.record_syntax_origin(&open_params);
         let _ = tokens.bump();
 
         let (params, first_untyped) = self.parse_routine_header_list(tokens)?;
@@ -585,6 +593,7 @@ impl AstParser {
         )?;
 
         Ok(AstNode::AnonymousFun {
+            syntax_id,
             options: Vec::new(),
             captures,
             params,

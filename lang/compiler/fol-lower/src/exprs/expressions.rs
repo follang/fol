@@ -1,3 +1,4 @@
+use super::body::lower_body_sequence;
 use super::calls::{
     lower_dot_intrinsic_call, lower_function_call, lower_keyword_intrinsic_expression,
     lower_pipe_or_expression, reference_type_id, resolve_method_target,
@@ -13,13 +14,14 @@ use super::helpers::{
     literal_type_id, lower_assignment_target, lower_entry_variant_access, lower_unwrap_expression,
 };
 use crate::{
-    control::{LoweredBinaryOp, LoweredInstrKind, LoweredUnaryOp},
+    control::{LoweredInstrKind, LoweredBinaryOp, LoweredUnaryOp},
     ids::LoweredTypeId,
-    LoweringError, LoweringErrorKind,
+    types::{LoweredRoutineType, LoweredType},
+    LoweredBlock, LoweredLocal, LoweredRoutine, LoweringError, LoweringErrorKind,
 };
 use fol_intrinsics::{select_intrinsic, IntrinsicSurface};
-use fol_parser::ast::{AstNode, CallSurface, Literal};
-use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId};
+use fol_parser::ast::{AstNode, CallSurface, FolType, Literal};
+use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolKind};
 use std::collections::BTreeMap;
 
 pub(crate) fn lower_expression(
@@ -641,17 +643,60 @@ pub(crate) fn lower_expression_observed(
             expected_type,
             node,
         ),
-        // V1 pipeline — not yet implemented (Phase 1.3, 1.4)
-        AstNode::Invoke { .. } => Err(LoweringError::with_kind(
-            LoweringErrorKind::Unsupported,
-            "invoke expression lowering is not yet implemented",
-        )),
-        AstNode::AnonymousFun { .. }
-        | AstNode::AnonymousPro { .. }
-        | AstNode::AnonymousLog { .. } => Err(LoweringError::with_kind(
-            LoweringErrorKind::Unsupported,
-            "anonymous routine lowering is not yet implemented",
-        )),
+        AstNode::Invoke { callee, args } => lower_invoke_expression(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            callee,
+            args,
+        ),
+        AstNode::AnonymousFun {
+            syntax_id,
+            captures,
+            params,
+            return_type,
+            error_type,
+            body,
+            ..
+        }
+        | AstNode::AnonymousPro {
+            syntax_id,
+            captures,
+            params,
+            return_type,
+            error_type,
+            body,
+            ..
+        }
+        | AstNode::AnonymousLog {
+            syntax_id,
+            captures,
+            params,
+            return_type,
+            error_type,
+            body,
+            ..
+        } => lower_anonymous_routine(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            *syntax_id,
+            captures,
+            params,
+            return_type.as_ref(),
+            error_type.as_ref(),
+            body,
+        ),
         // V1 pipeline gaps (Phase 3)
         AstNode::TemplateCall { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
@@ -841,6 +886,375 @@ pub(crate) fn lower_expression_observed(
         )),
     }?;
     apply_expected_shell_wrap(type_table, cursor, expected_type, lowered)
+}
+
+fn resolve_fol_type_to_lowered(
+    typed_package: &fol_typecheck::TypedPackage,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    fol_type: &FolType,
+) -> Result<LoweredTypeId, LoweringError> {
+    let builtins = typed_package.program.builtin_types();
+    let checked_id = match fol_type {
+        FolType::Int { .. } => builtins.int,
+        FolType::Float { .. } => builtins.float,
+        FolType::Bool => builtins.bool_,
+        FolType::Char { .. } => builtins.char_,
+        ty if ty.is_builtin_str() => builtins.str_,
+        FolType::Never => builtins.never,
+        FolType::Named { name, syntax_id } => {
+            let syntax_id = syntax_id.ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("type annotation '{name}' does not retain a syntax id"),
+                )
+            })?;
+            let reference = typed_package
+                .program
+                .resolved()
+                .references
+                .iter()
+                .find(|r| {
+                    r.syntax_id == Some(syntax_id) && r.kind == ReferenceKind::TypeName
+                })
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("type annotation '{name}' is missing from resolver output"),
+                    )
+                })?;
+            let symbol_id = reference.resolved.ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("type annotation '{name}' does not resolve to a symbol"),
+                )
+            })?;
+            let typed_symbol =
+                typed_package
+                    .program
+                    .typed_symbol(symbol_id)
+                    .ok_or_else(|| {
+                        LoweringError::with_kind(
+                            LoweringErrorKind::InvalidInput,
+                            format!("type annotation '{name}' lost its typed symbol"),
+                        )
+                    })?;
+            return typed_symbol
+                .declared_type
+                .and_then(|id| checked_type_map.get(&id).copied())
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("type annotation '{name}' does not map to a lowered type"),
+                    )
+                });
+        }
+        FolType::QualifiedNamed { path } => {
+            let syntax_id = path.syntax_id().ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "qualified type '{}' does not retain a syntax id",
+                        path.joined()
+                    ),
+                )
+            })?;
+            let reference = typed_package
+                .program
+                .resolved()
+                .references
+                .iter()
+                .find(|r| {
+                    r.syntax_id == Some(syntax_id)
+                        && r.kind == ReferenceKind::QualifiedTypeName
+                })
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!(
+                            "qualified type '{}' is missing from resolver output",
+                            path.joined()
+                        ),
+                    )
+                })?;
+            let symbol_id = reference.resolved.ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!(
+                        "qualified type '{}' does not resolve to a symbol",
+                        path.joined()
+                    ),
+                )
+            })?;
+            let typed_symbol =
+                typed_package
+                    .program
+                    .typed_symbol(symbol_id)
+                    .ok_or_else(|| {
+                        LoweringError::with_kind(
+                            LoweringErrorKind::InvalidInput,
+                            format!(
+                                "qualified type '{}' lost its typed symbol",
+                                path.joined()
+                            ),
+                        )
+                    })?;
+            return typed_symbol
+                .declared_type
+                .and_then(|id| checked_type_map.get(&id).copied())
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!(
+                            "qualified type '{}' does not map to a lowered type",
+                            path.joined()
+                        ),
+                    )
+                });
+        }
+        _ => {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::Unsupported,
+                "complex type annotation in anonymous routine is not supported in V1 lowering",
+            ));
+        }
+    };
+    checked_type_map.get(&checked_id).copied().ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "type annotation does not map to a lowered type",
+        )
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn lower_anonymous_routine(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    _scope_id: ScopeId,
+    syntax_id: Option<fol_parser::ast::SyntaxNodeId>,
+    captures: &[String],
+    params: &[fol_parser::ast::Parameter],
+    return_type: Option<&FolType>,
+    error_type: Option<&FolType>,
+    body: &[AstNode],
+) -> Result<LoweredValue, LoweringError> {
+    if !captures.is_empty() {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "anonymous routines with captures are not supported in V1 lowering",
+        ));
+    }
+
+    // Resolve parameter types
+    let mut param_lowered_types = Vec::with_capacity(params.len());
+    for param in params {
+        param_lowered_types.push(resolve_fol_type_to_lowered(
+            typed_package,
+            checked_type_map,
+            &param.param_type,
+        )?);
+    }
+
+    // Resolve return and error types
+    let lowered_return_type = match return_type {
+        None | Some(FolType::None) => None,
+        Some(ty) => Some(resolve_fol_type_to_lowered(typed_package, checked_type_map, ty)?),
+    };
+    let lowered_error_type = match error_type {
+        None | Some(FolType::None) => None,
+        Some(ty) => Some(resolve_fol_type_to_lowered(typed_package, checked_type_map, ty)?),
+    };
+
+    // Find the signature type in the lowered type table
+    let signature_type = LoweredType::Routine(LoweredRoutineType {
+        params: param_lowered_types.clone(),
+        return_type: lowered_return_type,
+        error_type: lowered_error_type,
+    });
+    let signature_type_id = type_table.find(&signature_type).ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "anonymous routine signature type is not present in the lowered type table",
+        )
+    })?;
+
+    // Create anonymous routine
+    let routine_id = crate::LoweredRoutineId(cursor.next_routine_index);
+    cursor.next_routine_index += 1;
+    let anon_name = format!("__anon_{}", routine_id.0);
+    let mut anon_routine = LoweredRoutine::new(routine_id, &anon_name, crate::LoweredBlockId(0));
+    anon_routine.source_unit_id = Some(source_unit_id);
+    anon_routine.signature = Some(signature_type_id);
+    let entry_block = anon_routine.blocks.push(LoweredBlock {
+        id: crate::LoweredBlockId(0),
+        instructions: Vec::new(),
+        terminator: None,
+    });
+    anon_routine.entry_block = entry_block;
+
+    // Set up parameters
+    let routine_scope_id = syntax_id
+        .and_then(|sid| typed_package.program.resolved().scope_for_syntax(sid));
+    let mut next_local_index = 0;
+    for (param, &param_type) in params.iter().zip(param_lowered_types.iter()) {
+        let local_id = anon_routine.locals.push(LoweredLocal {
+            id: crate::LoweredLocalId(next_local_index),
+            type_id: Some(param_type),
+            name: Some(param.name.clone()),
+        });
+        if let Some(scope_id) = routine_scope_id {
+            if let Some(param_symbol_id) = crate::decls::find_symbol_in_scope_or_descendants(
+                &typed_package.program,
+                source_unit_id,
+                scope_id,
+                SymbolKind::Parameter,
+                &param.name,
+            ) {
+                anon_routine.local_symbols.insert(param_symbol_id, local_id);
+            }
+        }
+        anon_routine.params.push(local_id);
+        next_local_index += 1;
+    }
+
+    // Lower body into the anonymous routine
+    let scope_id = routine_scope_id.ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "anonymous routine does not retain a scope for body lowering",
+        )
+    })?;
+    let mut anon_cursor = RoutineCursor::new(&mut anon_routine, entry_block);
+    anon_cursor.next_routine_index = cursor.next_routine_index;
+    anon_cursor.routine.body_result = lower_body_sequence(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        &mut anon_cursor,
+        source_unit_id,
+        scope_id,
+        body,
+    )?
+    .map(|value| value.local_id);
+    cursor.next_routine_index = anon_cursor.next_routine_index;
+    let nested_anon = std::mem::take(&mut anon_cursor.anonymous_routines);
+    drop(anon_cursor);
+
+    cursor.anonymous_routines.extend(nested_anon);
+    cursor.anonymous_routines.push(anon_routine);
+
+    // Emit RoutineRef instruction in the current routine
+    let result_local = cursor.allocate_local(signature_type_id, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::RoutineRef { routine: routine_id },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id: signature_type_id,
+        recoverable_error_type: None,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn lower_invoke_expression(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    callee: &AstNode,
+    args: &[AstNode],
+) -> Result<LoweredValue, LoweringError> {
+    let callee_value = lower_expression(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        source_unit_id,
+        scope_id,
+        callee,
+    )?;
+
+    // Extract the routine signature from the callee's type
+    let callee_type = type_table.get(callee_value.type_id).ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "invoke callee does not retain a lowered type",
+        )
+    })?;
+    let LoweredType::Routine(signature) = callee_type else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "invoke callee is not a routine type",
+        ));
+    };
+    let signature = signature.clone();
+
+    // Lower arguments with expected param types
+    let mut lowered_args = Vec::with_capacity(args.len());
+    for (index, arg) in args.iter().enumerate() {
+        let expected = signature.params.get(index).copied();
+        let lowered = lower_expression_expected(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            expected,
+            arg,
+        )?;
+        lowered_args.push(lowered.local_id);
+    }
+
+    // Emit CallIndirect instruction
+    match signature.return_type {
+        Some(result_type) => {
+            let result_local = cursor.allocate_local(result_type, None);
+            cursor.push_instr(
+                Some(result_local),
+                LoweredInstrKind::CallIndirect {
+                    callee: callee_value.local_id,
+                    args: lowered_args,
+                    error_type: signature.error_type,
+                },
+            )?;
+            Ok(LoweredValue {
+                local_id: result_local,
+                type_id: result_type,
+                recoverable_error_type: signature.error_type,
+            })
+        }
+        None => {
+            cursor.push_instr(
+                None,
+                LoweredInstrKind::CallIndirect {
+                    callee: callee_value.local_id,
+                    args: lowered_args,
+                    error_type: signature.error_type,
+                },
+            )?;
+            Err(LoweringError::with_kind(
+                LoweringErrorKind::Unsupported,
+                "invoke expression with void callee cannot be used as a value",
+            ))
+        }
+    }
 }
 
 fn binary_op_result_type(
