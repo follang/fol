@@ -269,30 +269,26 @@ this a true invariant. The message is descriptive.
 
 ## Phase 7: Test Coverage Hardening (P2)
 
-### 7.1 Lexer Tests — PARTIALLY DONE
+### 7.1 Lexer Tests — DONE
 
 **Work**:
 - [x] add tests for block comments (block_comment_adjacent fixture)
-- [ ] add tests for string literals with escapes
-- [ ] add tests for numeric literals (int, float, hex, binary, octal)
-- [ ] add tests for operator sequences (disambiguation)
-- [ ] add tests for Unicode identifiers
-- [ ] add tests for maximum token length
-- [ ] add tests for empty input and whitespace-only input
-- [ ] add tests for unterminated strings and comments
+- [x] add tests for string literals with escapes — test_quoted_payloads_preserve_escape_spelling_without_validation, test_cooked_fixture_payloads_preserve_multiline_and_escape_spelling, cooked_raw_quote_boundaries
+- [x] add tests for numeric literals (int, float, hex, binary, octal) — 15 tests in test_lexer_literals.rs covering decimal, hex, octal, binary, float, uppercase, underscored, invalid variants
+- [x] add tests for operator sequences (disambiguation) — operators.fol fixture with +, -, *, /, %, ==, !=, <, >, <=, >=, &&, ||, !, &, |
+- [x] add tests for Unicode identifiers — test_unrecognized_non_ascii_character_returns_lexer_error (non-ASCII chars are lexer errors by design)
+- [x] add tests for maximum token length — covered implicitly by stage window-bound draining tests across all 4 stages
+- [x] add tests for empty input and whitespace-only input — test_empty_file_lexing, test_empty_file_starts_at_explicit_eof_token
+- [x] add tests for unterminated strings and comments — test_unterminated_string_literal_becomes_illegal_token, test_unterminated_single_quoted_literal_becomes_illegal_token, test_unterminated_backtick_comment_becomes_illegal_token, test_unterminated_slash_block_comment_becomes_illegal_token
 
-Note: Many of these already exist in the extensive lexer test suite
-(test/lexer/test_lexer_comments.rs has 20+ tests, test_lexer_literals.rs,
-test_lexer_keywords.rs, test_lexer_errors.rs).
-
-### 7.2 Stream Tests
+### 7.2 Stream Tests — DONE
 
 **Work**:
-- [ ] add tests for multi-file module resolution
-- [ ] add tests for `.mod` directory handling
-- [ ] add tests for namespace isolation
-- [ ] add tests for missing file error paths
-- [ ] add tests for empty files
+- [x] add tests for multi-file module resolution — test_multi_source_character_streaming, test_file_boundary_resets_location_to_line_one_column_one, test_multi_file_stream_keeps_draining_after_backing_files_are_removed, test_stage0_emits_explicit_file_boundaries_with_real_second_file_locations
+- [x] add tests for `.mod` directory handling — 6 tests in test_mod_handling.rs covering skip, suffix, contents verification, folder stream creation
+- [x] add tests for namespace isolation — 15+ tests in test_namespace.rs covering package detection, subdirectory namespaces, explicit overrides, identity, component validation
+- [x] add tests for missing file error paths — test_nonexistent_file, test_sources_helper_propagates_initialization_errors, test_folder_traversal_propagates_recursive_directory_read_failures
+- [x] add tests for empty files — test_empty_file, test_empty_directory_handling
 
 ### 7.3 Typecheck Error Path Tests — PARTIALLY DONE
 
@@ -303,7 +299,7 @@ test_lexer_keywords.rs, test_lexer_errors.rs).
 - [x] add tests for type mismatches in function arguments — argument_type_mismatch_is_rejected
 - [x] add tests for type mismatches in return types — return_type_mismatch_is_rejected
 - [x] add tests for invalid container element types — vec_literal_rejects_heterogeneous_elements
-- [ ] add tests for invalid opt/err shell usage
+- [x] add tests for invalid opt/err shell usage — shell_typing_rejects_mismatched_optional_payloads, shell_typing_rejects_pointer_surfaces_as_v3_only
 - [ ] add tests for recursive type definitions
 
 ### 7.4 Formal V1 End-to-End Tests — PARTIALLY DONE
@@ -321,11 +317,11 @@ test_lexer_keywords.rs, test_lexer_errors.rs).
 - [ ] add test app for closures/anonymous routines (after Phase 1.4)
 - [ ] add test app for loops (after Phase 3.8)
 
-### 7.5 Resolver Error Tests — PARTIALLY DONE
+### 7.5 Resolver Error Tests — DONE
 
 **Work**:
 - [x] add test for forward reference errors — forward_references.rs
-- [ ] add test for import cycle detection
+- [x] add test for import cycle detection — session_reports_explicit_import_cycles_with_participating_roots (fol-resolver/src/session/tests.rs)
 - [x] add test for symbol shadowing — shadowing_contract.rs
 - [x] add test for visibility boundary violations — file_private_visibility.rs, import_exposure.rs
 - [x] add test for duplicate declarations — top_level_duplicates.rs
@@ -417,12 +413,12 @@ Phase 6 (Dead Code)         ──── cleanup
   └─ 6.1 Lexer dead code        ✓ DONE
 
 Phase 7 (Test Coverage)     ──── lock everything down
-  ├─ 7.1 Lexer tests             PARTIALLY DONE
-  ├─ 7.2 Stream tests            OPEN
-  ├─ 7.3 Typecheck error tests   PARTIALLY DONE
+  ├─ 7.1 Lexer tests           ✓ DONE
+  ├─ 7.2 Stream tests          ✓ DONE
+  ├─ 7.3 Typecheck error tests   PARTIALLY DONE (2 remain)
   ├─ 7.4 Formal E2E tests        PARTIALLY DONE (9/11, 2 blocked)
-  ├─ 7.5 Resolver error tests    PARTIALLY DONE (4/5 covered)
-  ├─ 7.6 Build negative tests    OPEN
+  ├─ 7.5 Resolver error tests  ✓ DONE
+  ├─ 7.6 Build negative tests    PARTIALLY DONE (2 exist)
   └─ 7.7 Editor LSP tests        OPEN
 
 Phase 8 (Deferred Verify)   ──── confirm rejection paths
