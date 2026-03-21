@@ -527,7 +527,35 @@ pub(crate) fn type_node_with_expectation(
             TypecheckErrorKind::Unsupported,
             "yield typing is not part of the V1 typecheck milestone",
         )),
-        _ => {
+        AstNode::Invoke { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "general invoke expressions are not yet implemented in the V1 typecheck milestone",
+        )),
+        AstNode::TemplateCall { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "template instantiation is not yet implemented in the V1 typecheck milestone",
+        )),
+        AstNode::AvailabilityAccess { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "availability access is not yet implemented in the V1 typecheck milestone",
+        )),
+        // Declaration-level constructs: type their children but produce no value.
+        AstNode::UseDecl { .. }
+        | AstNode::TypeDecl { .. }
+        | AstNode::AliasDecl { .. }
+        | AstNode::DefDecl { .. }
+        | AstNode::SegDecl { .. }
+        | AstNode::ImpDecl { .. }
+        | AstNode::StdDecl { .. }
+        | AstNode::DestructureDecl { .. }
+        | AstNode::NamedArgument { .. }
+        | AstNode::Unpack { .. }
+        | AstNode::PatternWildcard
+        | AstNode::PatternCapture { .. }
+        | AstNode::Inquiry { .. } => {
             for child in node.children() {
                 let _ = type_node(typed, resolved, context, child)?;
             }
