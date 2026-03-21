@@ -91,6 +91,133 @@ fn ref_deref_unary_operators_reject_at_typecheck() {
 }
 
 #[test]
+fn float_arithmetic_operators_lower_correctly() {
+    let workspace = lower_fixture_workspace(
+        "fun[] main(a: flt, b: flt): flt = {\n    return a + b;\n};\n",
+    );
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|r| r.name == "main")
+        .expect("should find main routine");
+    let has_add = routine.instructions.iter().any(|instr| {
+        matches!(instr.kind, LoweredInstrKind::BinaryOp { op: LoweredBinaryOp::Add, .. })
+    });
+    assert!(has_add, "float addition should lower to BinaryOp::Add");
+}
+
+#[test]
+fn string_concatenation_lowers_to_binary_add() {
+    let workspace = lower_fixture_workspace(
+        "fun[] main(a: str, b: str): str = {\n    return a + b;\n};\n",
+    );
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|r| r.name == "main")
+        .expect("should find main routine");
+    let has_add = routine.instructions.iter().any(|instr| {
+        matches!(instr.kind, LoweredInstrKind::BinaryOp { op: LoweredBinaryOp::Add, .. })
+    });
+    assert!(has_add, "string concatenation should lower to BinaryOp::Add");
+}
+
+#[test]
+fn division_modulo_power_operators_lower_correctly() {
+    let workspace = lower_fixture_workspace(
+        "fun[] main(a: int, b: int): int = {\n    return a / b;\n};\n",
+    );
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|r| r.name == "main")
+        .expect("should find main routine");
+    let has_div = routine.instructions.iter().any(|instr| {
+        matches!(instr.kind, LoweredInstrKind::BinaryOp { op: LoweredBinaryOp::Div, .. })
+    });
+    assert!(has_div, "lowered IR should contain BinaryOp::Div");
+
+    let workspace2 = lower_fixture_workspace(
+        "fun[] main(a: int, b: int): int = {\n    return a % b;\n};\n",
+    );
+    let routine2 = workspace2
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|r| r.name == "main")
+        .expect("should find main routine");
+    let has_mod = routine2.instructions.iter().any(|instr| {
+        matches!(instr.kind, LoweredInstrKind::BinaryOp { op: LoweredBinaryOp::Mod, .. })
+    });
+    assert!(has_mod, "lowered IR should contain BinaryOp::Mod");
+
+    let workspace3 = lower_fixture_workspace(
+        "fun[] main(a: int, b: int): int = {\n    return a ^ b;\n};\n",
+    );
+    let routine3 = workspace3
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|r| r.name == "main")
+        .expect("should find main routine");
+    let has_pow = routine3.instructions.iter().any(|instr| {
+        matches!(instr.kind, LoweredInstrKind::BinaryOp { op: LoweredBinaryOp::Pow, .. })
+    });
+    assert!(has_pow, "lowered IR should contain BinaryOp::Pow");
+}
+
+#[test]
+fn ordering_comparison_operators_lower_correctly() {
+    let workspace = lower_fixture_workspace(
+        "fun[] main(a: int, b: int): bol = {\n    return a < b;\n};\n",
+    );
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|r| r.name == "main")
+        .expect("should find main routine");
+    let has_lt = routine.instructions.iter().any(|instr| {
+        matches!(instr.kind, LoweredInstrKind::BinaryOp { op: LoweredBinaryOp::Lt, .. })
+    });
+    assert!(has_lt, "lowered IR should contain BinaryOp::Lt");
+}
+
+#[test]
+fn or_and_xor_logical_operators_lower_correctly() {
+    let workspace = lower_fixture_workspace(
+        "fun[] main(a: bol, b: bol): bol = {\n    return a or b;\n};\n",
+    );
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|r| r.name == "main")
+        .expect("should find main routine");
+    let has_or = routine.instructions.iter().any(|instr| {
+        matches!(instr.kind, LoweredInstrKind::BinaryOp { op: LoweredBinaryOp::Or, .. })
+    });
+    assert!(has_or, "lowered IR should contain BinaryOp::Or");
+
+    let workspace2 = lower_fixture_workspace(
+        "fun[] main(a: bol, b: bol): bol = {\n    return a xor b;\n};\n",
+    );
+    let routine2 = workspace2
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|r| r.name == "main")
+        .expect("should find main routine");
+    let has_xor = routine2.instructions.iter().any(|instr| {
+        matches!(instr.kind, LoweredInstrKind::BinaryOp { op: LoweredBinaryOp::Xor, .. })
+    });
+    assert!(has_xor, "lowered IR should contain BinaryOp::Xor");
+}
+
+#[test]
 fn subtraction_and_multiplication_lower_correctly() {
     let workspace = lower_fixture_workspace(
         "fun[] main(a: int, b: int): int = {\n    return a - b * a;\n};\n",
