@@ -613,6 +613,32 @@ fn test_slash_line_comments_remain_supported_as_compatibility_comments() {
 }
 
 #[test]
+fn test_block_comment_adjacent_to_code_does_not_corrupt_token_stream() {
+    let tokens = tokenize_file("test/lexer/block_comment_adjacent.fol");
+    let significant: Vec<(KEYWORD, String)> = tokens
+        .into_iter()
+        .filter(|(key, _)| !key.is_void() && !key.is_comment() && !key.is_eof())
+        .collect();
+
+    assert_eq!(
+        significant,
+        vec![
+            (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
+            (KEYWORD::Identifier, "x".to_string()),
+            (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
+            (KEYWORD::Literal(LITERAL::Decimal), "1".to_string()),
+            (KEYWORD::Symbol(SYMBOL::Semi), "; ".to_string()),
+            (KEYWORD::Keyword(BUILDIN::Var), "var".to_string()),
+            (KEYWORD::Identifier, "y".to_string()),
+            (KEYWORD::Symbol(SYMBOL::Equal), "=".to_string()),
+            (KEYWORD::Literal(LITERAL::Decimal), "2".to_string()),
+            (KEYWORD::Symbol(SYMBOL::Semi), "; ".to_string()),
+        ],
+        "Block comment closing */ must fully consume both characters without leaking / into the token stream"
+    );
+}
+
+#[test]
 fn test_slash_block_comments_remain_supported_as_compatibility_comments() {
     let tokens = tokenize_file("test/lexer/slash_block_comments.fol");
     let comment_tokens: Vec<(KEYWORD, String)> = tokens
