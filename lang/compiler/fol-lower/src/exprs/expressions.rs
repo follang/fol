@@ -414,19 +414,6 @@ pub(crate) fn lower_expression_observed(
                 scope_id,
                 object,
             )?;
-            if let Some(expected_type) = expected_type {
-                if base.type_id == expected_type
-                    && matches!(type_table.get(base.type_id), Some(crate::LoweredType::Entry { variants }) if variants.contains_key(field))
-                {
-                    return Err(LoweringError::with_kind(
-                        LoweringErrorKind::Unsupported,
-                        format!(
-                            "entry construction lowering for variant '{}' lands in the pending aggregate slice",
-                            field
-                        ),
-                    ));
-                }
-            }
             let Some(result_type) = field_access_type(type_table, base.type_id, field) else {
                 return Err(LoweringError::with_kind(
                     LoweringErrorKind::InvalidInput,

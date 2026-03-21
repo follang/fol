@@ -114,16 +114,20 @@ pub(crate) fn resolve_entry_variant_target(
         _ => return Ok(None),
     };
 
-    let Some(checked_type) = checked_type else {
-        return Ok(None);
-    };
-    let lowered_type = checked_type;
     if !matches!(
         resolved_symbol.kind,
         fol_resolver::SymbolKind::Type | fol_resolver::SymbolKind::Alias
     ) {
         return Ok(None);
     }
+    let lowered_type = checked_type.or_else(|| {
+        let typed_symbol = typed_package.program.typed_symbol(resolved_symbol.id)?;
+        let declared_type = typed_symbol.declared_type?;
+        checked_type_map.get(&declared_type).copied()
+    });
+    let Some(lowered_type) = lowered_type else {
+        return Ok(None);
+    };
     if !matches!(type_table_entry_kind(type_table, lowered_type), Some(())) {
         return Ok(None);
     }

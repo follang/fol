@@ -1,14 +1,12 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnsupportedLoweringSurface {
     TypeMatchingWhenOf,
-    EntryVariantConstruction,
 }
 
 impl UnsupportedLoweringSurface {
     pub fn label(self) -> &'static str {
         match self {
             Self::TypeMatchingWhenOf => "when-of-branches",
-            Self::EntryVariantConstruction => "entry-variant-construction",
         }
     }
 
@@ -17,17 +15,12 @@ impl UnsupportedLoweringSurface {
             Self::TypeMatchingWhenOf => {
                 "typed type-matching when/of branches still stop at the lowering boundary"
             }
-            Self::EntryVariantConstruction => {
-                "typed entry variant construction through bare variant access still stops at the lowering boundary"
-            }
         }
     }
 }
 
-const V1_BOUNDARIES: &[UnsupportedLoweringSurface] = &[
-    UnsupportedLoweringSurface::TypeMatchingWhenOf,
-    UnsupportedLoweringSurface::EntryVariantConstruction,
-];
+const V1_BOUNDARIES: &[UnsupportedLoweringSurface] =
+    &[UnsupportedLoweringSurface::TypeMatchingWhenOf];
 
 pub fn v1_lowering_boundaries() -> &'static [UnsupportedLoweringSurface] {
     V1_BOUNDARIES
@@ -43,17 +36,14 @@ mod tests {
 
         assert_eq!(
             inventory,
-            &[
-                UnsupportedLoweringSurface::TypeMatchingWhenOf,
-                UnsupportedLoweringSurface::EntryVariantConstruction,
-            ]
+            &[UnsupportedLoweringSurface::TypeMatchingWhenOf,]
         );
         assert_eq!(
             inventory
                 .iter()
                 .map(|surface| surface.label())
                 .collect::<Vec<_>>(),
-            vec!["when-of-branches", "entry-variant-construction",]
+            vec!["when-of-branches",]
         );
     }
 }
