@@ -9,7 +9,7 @@ use super::containers::{
 use super::cursor::{LoweredValue, RoutineCursor, WorkspaceDeclIndex};
 use super::flow::lower_when_expression;
 use super::helpers::{
-    describe_binary_operator, describe_expression, describe_unary_operator,
+    describe_binary_operator, describe_unary_operator,
     literal_type_id, lower_assignment_target, lower_entry_variant_access, lower_unwrap_expression,
 };
 use crate::{
@@ -646,12 +646,103 @@ pub(crate) fn lower_expression_observed(
             expected_type,
             node,
         ),
-        other => Err(LoweringError::with_kind(
+        // V1 pipeline — not yet implemented (Phase 1.3, 1.4)
+        AstNode::Invoke { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            format!(
-                "expression lowering for '{}' is not implemented in this slice yet",
-                describe_expression(other)
-            ),
+            "invoke expression lowering is not yet implemented",
+        )),
+        AstNode::AnonymousFun { .. }
+        | AstNode::AnonymousPro { .. }
+        | AstNode::AnonymousLog { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "anonymous routine lowering is not yet implemented",
+        )),
+        // V1 pipeline gaps (Phase 3)
+        AstNode::TemplateCall { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "template call lowering is not yet implemented",
+        )),
+        AstNode::AvailabilityAccess { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "availability access lowering is not yet implemented",
+        )),
+        AstNode::SliceAccess { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "slice access lowering is not yet implemented",
+        )),
+        AstNode::Loop { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "loop lowering is not yet implemented",
+        )),
+        AstNode::Block { statements: _ } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "block expression lowering is not yet implemented",
+        )),
+        // Beyond V1 — deferred
+        AstNode::AsyncStage
+        | AstNode::AwaitStage
+        | AstNode::Spawn { .. }
+        | AstNode::ChannelAccess { .. }
+        | AstNode::Select { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "concurrency primitives (async, await, spawn, channels, select) are deferred beyond V1",
+        )),
+        AstNode::Rolling { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "rolling/comprehension expressions are deferred beyond V1",
+        )),
+        AstNode::Range { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "range expressions are deferred beyond V1",
+        )),
+        AstNode::Yield { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "yield expressions are deferred beyond V1",
+        )),
+        AstNode::PatternAccess { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::Unsupported,
+            "pattern access is deferred beyond V1",
+        )),
+        // Structural nodes consumed by parent lowering
+        AstNode::NamedArgument { .. } | AstNode::Unpack { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "named arguments and unpacks should be consumed by call-site lowering",
+        )),
+        AstNode::PatternWildcard | AstNode::PatternCapture { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "pattern elements should be consumed by pattern matching lowering",
+        )),
+        // Statement nodes in expression position
+        AstNode::Return { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "return statement should not appear in expression lowering",
+        )),
+        AstNode::Break => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "break statement should not appear in expression lowering",
+        )),
+        AstNode::Inquiry { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "inquiry clause should not appear in expression lowering",
+        )),
+        // Declaration nodes should never appear in expression position
+        AstNode::VarDecl { .. }
+        | AstNode::DestructureDecl { .. }
+        | AstNode::FunDecl { .. }
+        | AstNode::ProDecl { .. }
+        | AstNode::LogDecl { .. }
+        | AstNode::TypeDecl { .. }
+        | AstNode::UseDecl { .. }
+        | AstNode::AliasDecl { .. }
+        | AstNode::DefDecl { .. }
+        | AstNode::SegDecl { .. }
+        | AstNode::ImpDecl { .. }
+        | AstNode::StdDecl { .. }
+        | AstNode::LabDecl { .. }
+        | AstNode::Comment { .. }
+        | AstNode::Program { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "declaration node should not appear in expression lowering",
         )),
     }?;
     apply_expected_shell_wrap(type_table, cursor, expected_type, lowered)

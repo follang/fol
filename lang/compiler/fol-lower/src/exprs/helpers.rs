@@ -6,7 +6,7 @@ use crate::{
     ids::LoweredTypeId,
     LoweringError, LoweringErrorKind,
 };
-use fol_parser::ast::{AstNode, ContainerType, Literal};
+use fol_parser::ast::{AstNode, Literal};
 use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId};
 use std::collections::BTreeMap;
 
@@ -26,29 +26,6 @@ pub(crate) fn literal_type_id(
     checked_type_map.get(&builtin).copied()
 }
 
-pub(crate) fn describe_expression(node: &AstNode) -> String {
-    match node {
-        AstNode::Assignment { .. } => "assignment".to_string(),
-        AstNode::FunctionCall { name, .. } => format!("function call '{name}'"),
-        AstNode::QualifiedFunctionCall { path, .. } => {
-            format!("qualified function call '{}'", path.joined())
-        }
-        AstNode::MethodCall { method, .. } => format!("method call '{method}'"),
-        AstNode::FieldAccess { field, .. } => format!("field access '.{field}'"),
-        AstNode::IndexAccess { .. } => "index access".to_string(),
-        AstNode::ContainerLiteral { container_type, .. } => match container_type {
-            ContainerType::Array => "array literal".to_string(),
-            ContainerType::Vector => "vector literal".to_string(),
-            ContainerType::Sequence => "sequence literal".to_string(),
-            ContainerType::Set => "set literal".to_string(),
-            ContainerType::Map => "map literal".to_string(),
-        },
-        AstNode::Return { .. } => "return".to_string(),
-        AstNode::When { .. } => "when".to_string(),
-        AstNode::Loop { .. } => "loop".to_string(),
-        _ => "expression".to_string(),
-    }
-}
 
 pub(crate) fn describe_unary_operator(op: &fol_parser::ast::UnaryOperator) -> &'static str {
     match op {
