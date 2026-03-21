@@ -169,7 +169,27 @@ pub(crate) fn type_binary_op(
                 ))
             }
         }
-        _ => Ok(TypedExpr::none()),
+        BinaryOperator::In | BinaryOperator::Has => Err(unsupported_binary_surface(
+            resolved,
+            left,
+            right,
+            "membership operators 'in' and 'has' are not yet implemented in the V1 typecheck milestone",
+        )),
+        BinaryOperator::Is => Err(unsupported_binary_surface(
+            resolved,
+            left,
+            right,
+            "type testing operator 'is' is not yet implemented in the V1 typecheck milestone",
+        )),
+        BinaryOperator::Pipe => Err(unsupported_binary_surface(
+            resolved,
+            left,
+            right,
+            "pipe operator '|>' is not yet implemented in the V1 typecheck milestone",
+        )),
+        BinaryOperator::As | BinaryOperator::Cast | BinaryOperator::PipeOr => {
+            unreachable!("handled before plain binary typing")
+        }
     }
 }
 
