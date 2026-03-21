@@ -1,0 +1,12 @@
+fun apply(f: {fun (n: int): int}, x: int): int = {
+    return f(x);
+};
+
+fun double(n: int): int = {
+    return n + n;
+};
+
+fun[] main(): int = {
+    var result: int = apply(double, 7);
+    return result - 14;
+};

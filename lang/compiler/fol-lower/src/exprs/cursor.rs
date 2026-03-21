@@ -391,26 +391,47 @@ impl<'a> RoutineCursor<'a> {
             resolved_symbol.mounted_from.as_ref(),
             resolved_symbol.id,
         );
-        let Some(global_id) = decl_index.global_id_for_symbol(&owning_identity, owning_symbol_id)
-        else {
-            return Err(LoweringError::with_kind(
-                LoweringErrorKind::InvalidInput,
-                format!(
-                    "value symbol '{}' does not map to a lowered local or global definition",
-                    resolved_symbol.name
-                ),
-            ));
-        };
-        let result_local = self.allocate_local(result_type, None);
-        self.push_instr(
-            Some(result_local),
-            LoweredInstrKind::LoadGlobal { global: global_id },
-        )?;
-        Ok(LoweredValue {
-            local_id: result_local,
-            type_id: result_type,
-            recoverable_error_type: None,
-        })
+        if let Some(global_id) =
+            decl_index.global_id_for_symbol(&owning_identity, owning_symbol_id)
+        {
+            let result_local = self.allocate_local(result_type, None);
+            self.push_instr(
+                Some(result_local),
+                LoweredInstrKind::LoadGlobal { global: global_id },
+            )?;
+            return Ok(LoweredValue {
+                local_id: result_local,
+                type_id: result_type,
+                recoverable_error_type: None,
+            });
+        }
+
+        // Fall back to routine reference — the symbol may be a named routine
+        // used as a function value (e.g. passed as an argument)
+        if let Some(routine_id) =
+            decl_index.routine_id_for_symbol(&owning_identity, owning_symbol_id)
+        {
+            let result_local = self.allocate_local(result_type, None);
+            self.push_instr(
+                Some(result_local),
+                LoweredInstrKind::RoutineRef {
+                    routine: routine_id,
+                },
+            )?;
+            return Ok(LoweredValue {
+                local_id: result_local,
+                type_id: result_type,
+                recoverable_error_type: None,
+            });
+        }
+
+        Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!(
+                "value symbol '{}' does not map to a lowered local, global, or routine definition",
+                resolved_symbol.name
+            ),
+        ))
     }
 }
 
