@@ -248,6 +248,18 @@ this a true invariant. The message is descriptive.
 - [x] replace binary operator catch-all with explicit rejections
 - [x] add operator type-checking error path tests (10 tests)
 
+### 5.2 Audit Lowering Catch-All — DONE
+
+**Work**:
+- [x] replace expression lowering `other =>` catch-all with exhaustive match
+- [x] add explicit arms for V1 pipeline items (Invoke, AnonymousFun/Pro/Log)
+- [x] add explicit arms for Phase 3 pipeline gaps (TemplateCall, AvailabilityAccess, SliceAccess, Loop, Block)
+- [x] add explicit arms for beyond-V1 features (async/await/spawn/channels/select, rolling, range, yield, pattern access)
+- [x] add explicit arms for structural nodes (NamedArgument, Unpack, PatternWildcard, PatternCapture)
+- [x] add explicit arms for statement nodes in expression position (Return, Break, Inquiry)
+- [x] add explicit arms for declaration nodes in expression position
+- [x] remove dead `describe_expression` helper
+
 ---
 
 ## Phase 6: Dead Code Cleanup (P3)
@@ -361,7 +373,7 @@ should be verified.
 ### Work:
 - [x] verify each deferred feature returns clear, user-facing error message
 - [x] existing test covers 5/8 deferred features (v1_boundary_rejects_v3_expression_surfaces)
-- [ ] add tests for Rolling, PatternAccess, Yield rejection paths
+- [x] add tests for Rolling, PatternAccess, Yield rejection paths
 
 ---
 
@@ -396,7 +408,8 @@ Phase 4 (Panic Hardening)   ──── eliminate crash paths
   └─ 4.7 Parser masking         ✓ DONE
 
 Phase 5 (Catch-All Audit)   ──── no silent fallthrough
-  └─ 5.1 Typecheck catch-all    ✓ DONE
+  ├─ 5.1 Typecheck catch-all    ✓ DONE
+  └─ 5.2 Lowering catch-all     ✓ DONE
 
 Phase 6 (Dead Code)         ──── cleanup
   └─ 6.1 Lexer dead code        ✓ DONE
@@ -411,7 +424,7 @@ Phase 7 (Test Coverage)     ──── lock everything down
   └─ 7.7 Editor LSP tests        OPEN
 
 Phase 8 (Deferred Verify)   ──── confirm rejection paths
-  └─ Verification                PARTIALLY DONE (5/8 tested)
+  └─ Verification              ✓ DONE (8/8 tested)
 ```
 
 ## Exit Criteria
