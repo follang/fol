@@ -1,305 +1,433 @@
-# FOL Editor Polish Plan
+# FOL V1 Hardening Plan
 
-Last updated: 2026-03-20
+Last updated: 2026-03-21
 
 ## Goal
 
-Take `fol-editor` from "usable and shipped" to "boring, trustworthy, and hard
-to regress":
+Take the entire V1 language from "compiles basic programs" to "every V1 feature
+parses, typechecks, lowers, generates code, and is tested end-to-end." No stubs,
+no silent fallthrough, no panic-on-valid-input, no half-implemented pipelines.
 
-- formatting should feel intentional, not just minimally stable
-- editor responses should stay predictable under ugly real editing flows
-- the public `fol tool` surface should have stronger behavior guarantees
-- more of the semantic contract should be locked with focused tests
-- performance regressions should become easier to detect before they land
+This plan is based on a full codebase scan across all 15 crates covering:
 
-This is a follow-up plan after the first editor delivery plan reached 100%.
+- parser AST → resolver → typecheck → lower → backend pipeline completeness
+- lexer correctness bugs
+- backend code generation gaps
+- panic/unwrap/unreachable safety
+- test coverage gaps
+- tooling robustness
 
-It is based on:
+## Severity Legend
 
-- the now-shipped `fol-editor` feature set
-- remaining future-work in `plan/future-work/fol-editor.md`
-- the current editor/LSP/frontend tests in-tree
-- the need for much heavier regression coverage around editing behavior
+- **P0**: Blocks correct compilation of V1 programs
+- **P1**: Causes crashes or incorrect behavior on valid V1 input
+- **P2**: Missing coverage, quality gaps, or deferred V1 surface
+- **P3**: Cleanup, consistency, test quality
 
-## Current State
+---
 
-Already shipped:
+## Phase 1: Critical Pipeline Gaps (P0)
 
-- diagnostics, hover, definition, completion, references, rename
-- semantic tokens, signature help, code actions
-- whole-document formatting
-- public `fol tool` exposure for the shipped editor features
-- compiler-backed LSP behavior with per-version semantic caching
+These are constructs that parse (and sometimes typecheck) but **fail to lower
+or generate code**. They are the most critical blockers for a working V1.
 
-Remaining quality gaps:
+### 1.1 Binary Operator Lowering — DONE
 
-- formatting is real, but still shallow and line-oriented
-- range formatting is still unsupported
-- rename safety is intentionally narrow
-- code actions are intentionally narrow
-- there is still not enough test density around malformed edits, cache
-  invalidation, cross-feature interactions, and CLI/LSP parity
+**Work**:
+- [x] implement lowering for arithmetic operators (Add, Sub, Mul, Div, Mod, Pow)
+- [x] implement lowering for comparison operators (Eq, Ne, Lt, Le, Gt, Ge)
+- [x] implement lowering for logical operators (And, Or, Xor, Not via unary)
+- [x] implement backend emission for each new lowered binary instruction
+- [x] add end-to-end tests for each operator family
+- [ ] implement lowering for membership operators (In, Has) — deferred, rejected at typecheck
+- [ ] implement lowering for type operators (Is, As, Cast) — deferred, rejected at typecheck
+- [ ] implement lowering for Pipe operator — deferred, rejected at typecheck
 
-## Product Direction
+### 1.2 Unary Operator Lowering — DONE
 
-The next editor phase should move in this order:
+**Work**:
+- [x] implement lowering for Neg (numeric negation)
+- [x] implement lowering for Not (boolean negation)
+- [x] implement backend emission for each
+- [x] add end-to-end tests
+- [ ] implement lowering for Ref (reference taking) — V3 systems milestone
+- [ ] implement lowering for Deref (dereference) — V3 systems milestone
 
-1. Lock the shipped behavior much harder.
-2. Improve formatting quality and correctness.
-3. Expand safe semantic features only where the safety boundary is explicit.
-4. Add more performance and regression probes before adding broad new surface.
+### 1.3 Invoke Expression Pipeline
 
-Do not add speculative features just because the LSP supports a method name.
+**Problem**: `AstNode::Invoke` (general function invocation) parses but
+needs typecheck and lowering support. Direct function invocation is broken.
 
-## Workstreams
+**Work**:
+- [ ] implement typecheck for Invoke expressions
+- [ ] implement lowering for Invoke expressions
+- [ ] implement backend emission for invocations
+- [ ] add tests for direct calls, chained calls, calls with error returns
 
-### Slice 1: Formatter Quality Pass
+### 1.4 Anonymous Routine Pipeline
 
-The current formatter is a valid first subsystem, but it still needs to become
-less fragile and more language-aware.
+**Problem**: `AnonymousFun`, `AnonymousPro`, `AnonymousLog` have full typecheck
+support but zero lowering support. Closures/lambdas parse and typecheck
+successfully, then fail during code generation.
 
-Work:
+**Work**:
+- [ ] implement lowering for AnonymousFun
+- [ ] implement lowering for AnonymousPro
+- [ ] implement lowering for AnonymousLog
+- [ ] implement backend emission for anonymous routines (Rust closures)
+- [ ] add tests for lambda capture, passing as arguments, returning
 
-- [x] decide and document the intended formatting style per major surface:
-  declarations, records, calls, `when`, imports, and build files
-- [x] tighten indentation and brace-depth handling around nested literals,
-  `when` bodies, and mixed inline/block constructs
-- [x] normalize trailing whitespace, blank-line behavior, and final newline rules
-- [x] ensure formatting does not drift across repeated runs on already-formatted
-  files
-- [x] add formatter fixtures for:
-  records, entries, `when`, nested literals, imports, aliases, build files,
-  and representative error-tolerant input
+### 1.5 Cast Instruction Backend — DONE
 
-Exit condition:
+**Work**:
+- [x] implement Cast instruction rendering in backend
+- [x] verify cast policy matches V1 type system
 
-- formatting output is stable across a representative fixture corpus
-- formatter fixtures cover both source files and `build.fol`
-- formatter idempotence is locked explicitly
+---
 
-### Slice 2: Range Formatting Decision
+## Phase 2: Critical Compiler Bugs (P1)
 
-Range formatting should only exist if it can be correct enough to trust.
+These are bugs that cause incorrect behavior or crashes on valid input.
 
-Work:
+### 2.1 Lexer: Block Comment — FALSE POSITIVE
 
-- [x] evaluate whether range formatting can be implemented without corrupting
-  surrounding structure
-- [x] if yes, ship a safe first range-formatting boundary and lock it with tests
-- [x] if no, keep it explicitly unsupported and document the reason
-- [x] add tests proving the chosen behavior through LSP request handling
+**Status**: Not a bug. `bump()` advances AND pushes the new current char
+into the token content, so one `bump()` after the `*/` loop correctly
+consumes both `*` and `/`. Verified with test.
 
-Exit condition:
+- [x] add lexer test for block comments followed by code
 
-- there is one explicit range-formatting policy:
-  supported with constraints, or rejected intentionally
+### 2.2 Lexer: Out-of-Bounds Array Access in Stages 2-3 — DONE
 
-### Slice 3: Formatting Surface Parity
+**Work**:
+- [x] fix bounds to cap at `SLIDER - 1` instead of `SLIDER`
+- [x] remove dead code from all lexer stages
 
-Formatting now exists in LSP and CLI, but parity needs stronger guarantees.
+### 2.3 Frontend Dispatch: False Unreachable Claims — DONE
 
-Work:
+**Work**:
+- [x] refactor dispatch to destructure command in match arms directly
+- [x] eliminate false unreachable! calls
 
-- [x] add tests proving `fol tool format` and `textDocument/formatting` produce the
-  same output for the same file
-- [x] lock CLI summary/detail shapes for formatted vs already-formatted files
-- [x] add tests for formatting on files outside a discovered workspace
-- [x] verify formatting behavior against `build.fol`
-- [x] add integration tests proving formatting does not mutate unrelated files
+### 2.4 Backend: Global Mutation Panic Risk — DONE
 
-Exit condition:
+**Work**:
+- [x] replace `.expect("global lock")` with `.unwrap_or_else(|e| e.into_inner())`
+      in both render.rs and helpers.rs
 
-- public CLI formatting and LSP formatting stay behaviorally aligned
+### 2.5 Backend: Panic Terminator Format String — FALSE POSITIVE
 
-### Slice 4: Rename Safety Expansion
+**Status**: Not a bug. `"{{}}"` inside `format!()` correctly produces `"{}"` in
+the generated Rust code. The double-brace escaping is the correct way to emit
+format strings via `format!()`. Confirmed by existing test.
 
-Rename should grow only where correctness is explicit.
+---
 
-Work:
+## Phase 3: High-Priority Pipeline Gaps (P2)
 
-- [x] define the next safe rename boundary beyond same-file locals, if one exists
-- [x] evaluate same-package rename safety for unambiguous top-level items
-- [x] reject cross-package and ambiguous cases explicitly
-- [x] add regression tests for:
-  locals, parameters, same-file top-levels, imported names, same-package
-  namespaces, and refusal paths
-- [x] lock exact failure messages/notes where the refusal contract matters
+Features that parse but lack semantic or codegen support, blocking important
+V1 use cases.
 
-Exit condition:
+### 3.1 TemplateCall Expression
 
-- rename support is broader only where full edit sets are proven correct
-- unsafe cases still fail before partial edits are produced
+**Work**:
+- [ ] implement typecheck for TemplateCall
+- [ ] implement lowering for TemplateCall
+- [ ] implement backend emission
+- [ ] add end-to-end tests
 
-### Slice 5: Code Action Depth Without Guessing
+### 3.2 AvailabilityAccess Expression
 
-Code actions should grow from compiler truth, not editor-side heuristics.
+**Work**:
+- [ ] implement typecheck for AvailabilityAccess (should return bool)
+- [ ] implement lowering for AvailabilityAccess
+- [ ] implement backend emission (Rust `.is_some()` equivalent)
+- [ ] add tests with opt values
 
-Work:
+### 3.3 SliceAccess Expression
 
-- [x] inventory compiler diagnostics that already carry structurally obvious fixes
-- [x] add one narrow code-action slice at a time from real diagnostic suggestions
-- [x] avoid speculative actions that require semantic guessing
-- [x] add tests that prove code actions only appear for matching diagnostics and
-  produce deterministic edits
-- [x] add refusal/empty-result tests for nearby but unsupported diagnostic shapes
+**Work**:
+- [ ] implement lowering for SliceAccess
+- [ ] implement backend emission for slicing
+- [ ] add tests for vec/seq slicing
 
-Exit condition:
+### 3.4 Backend: Unsized Array Type Rendering
 
-- every shipped code action is compiler-backed, exact, and test-locked
+**Work**:
+- [ ] implement unsized array rendering (Rust `Vec<T>` or `&[T]`)
+- [ ] or ensure lowering never produces unsized arrays for V1 and add
+  a lowering-phase rejection with proper diagnostic
 
-### Slice 6: Workspace Symbols
+### 3.5 Backend: Heterogeneous Set Rendering
 
-Workspace symbols are a natural next semantic query if they can reuse existing
-compiler facts safely.
+**Work**:
+- [ ] implement heterogeneous set rendering
+- [ ] or reject at typecheck level with proper diagnostic if V1 doesn't
+  support heterogeneous sets
 
-Work:
+### 3.6 Backend: Unhandled Type Variants
 
-- [x] define the first supported workspace-symbol scope:
-  current package only, or current workspace members only
-- [x] implement `workspace/symbol` without introducing a parallel semantic engine
-- [x] sort and rank results deterministically
-- [x] add tests for symbol visibility, namespace qualification, and ordering
-- [x] document the scope boundary clearly
+**Work**:
+- [ ] audit all LoweredType variants
+- [ ] implement rendering for each V1-admitted variant
+- [ ] convert catch-all to exhaustive match
 
-Exit condition:
+### 3.7 Entry Variant Construction
 
-- `workspace/symbol` is real, scoped, and deterministic
+**Work**:
+- [ ] implement entry variant construction lowering
+- [ ] implement backend emission
+- [ ] add tests for entry creation and field access
 
-### Slice 7: Cache And Invalidation Hardening
+### 3.8 Iteration Loops (when/loop lowering)
 
-The current split between diagnostics and semantic snapshots is better, but
-there are still many invalidation edges to lock down.
+**Work**:
+- [ ] implement loop lowering
+- [ ] implement backend loop emission
+- [ ] add tests for counted, conditional, and collection loops
 
-Work:
+---
 
-- [x] add tests for repeated mixed request sequences:
-  diagnose -> hover -> complete -> format -> rename -> close -> reopen
-- [x] add tests for stale snapshot invalidation after ranged edits near symbol
-  boundaries
-- [x] add tests for multi-file sessions where only one file changes
-- [x] add tests that differentiate diagnostic cache reuse from semantic cache reuse
-- [x] add more stage-counter assertions around unchanged formatting and navigation
-  requests
+## Phase 4: Panic/Crash Hardening (P1-P2)
 
-Exit condition:
+Replace all panic paths in non-test code with proper error propagation.
 
-- cache invalidation behavior is locked across mixed real-editor flows
+### 4.1 Intrinsics Catalog Panics — JUSTIFIED INVARIANTS
 
-### Slice 8: Error-Tolerant Editing Matrix
+**Status**: The 7 `panic!` calls in fol-intrinsics assert catalog
+consistency (e.g., "intrinsic X must exist in the catalog"). These are
+compile-time invariants, not runtime user-input failures. Converting to
+Result would add error propagation overhead through the entire intrinsic
+lookup chain without practical benefit.
 
-The editor needs stronger behavior guarantees while users are in broken states.
+### 4.2 Lower Session Package Panic — JUSTIFIED INVARIANT
 
-Work:
+**Status**: The `panic!` at line 820 asserts that a package that was
+already resolved and type-checked must still be present during lowering.
+This is an internal invariant violation, not a user-input failure.
 
-- [x] add completion, hover, signature-help, formatting, and code-action tests on
-  parse-broken input
-- [x] add tests for partially typed declarations, broken `when` blocks, and
-  incomplete calls
-- [x] add tests proving the server returns safe empty/null responses where needed
-  instead of crashing or leaking stale data
-- [x] add tests for recovery after broken text becomes valid again
+### 4.3 Parser Unreachable Calls — DONE
 
-Exit condition:
+**Work**:
+- [x] add descriptive messages to all unreachable! calls
 
-- broken intermediate text is a locked, ordinary case for the server
+### 4.4 Typecheck Unreachable Calls — JUSTIFIED INVARIANTS
 
-### Slice 9: Build File And Non-Standard File Coverage
+**Status**: The `unreachable!` calls in literals.rs and operators.rs
+are true invariants documenting that prior phases guarantee certain
+conditions. They already have descriptive messages.
 
-`build.fol` already works in important paths. The test matrix should treat that
-as a first-class contract.
+### 4.5 Backend Unreachable Calls — JUSTIFIED INVARIANT
 
-Work:
+**Status**: The `unreachable!` in emit/build.rs (line 154) correctly
+asserts that `emit_generated_crate_skeleton()` always returns
+`RustSourceCrate`. The function only creates source files, making
+this a true invariant. The message is descriptive.
 
-- [x] add formatting fixtures and LSP formatting tests for `build.fol`
-- [x] add signature-help, code-action, and rename refusal tests where relevant on
-  `build.fol`
-- [x] add CLI integration coverage for editor commands against build-entry files
-- [x] ensure docs stay aligned if behavior differs intentionally from ordinary
-  source files
+### 4.6 Editor/LSP JSON Serialization Expects — DONE
 
-Exit condition:
+**Work**:
+- [x] replace .expect() calls with proper error propagation
+- [x] return LSP error responses on serialization failure
 
-- build-file behavior is covered across more than diagnostics/navigation only
+### 4.7 Parser Syntax Tracking Masking — DONE
 
-### Slice 10: Public Surface Contract Tests
+**Work**:
+- [x] replace `unwrap_or_default()` with `.expect("syntax tracking must be active")`
 
-The frontend/editor boundary now deserves stronger contract locking.
+---
 
-Work:
+## Phase 5: Typecheck Silent Catch-All (P2)
 
-- [x] add CLI parsing tests for every shipped editor subcommand variant and edge
-  flag combination
-- [x] add summary-shape tests for every public editor command
-- [x] add tests proving unsupported future commands stay rejected
-- [x] add JSON/plain output snapshot-style assertions for representative editor
-  commands and failures
-- [x] lock `initialize` capability exposure against the shipped public docs
+### 5.1 Audit Typecheck Catch-All — DONE
 
-Exit condition:
+**Work**:
+- [x] enumerate all AST expression node kinds
+- [x] verify each has explicit handling or an explicit "unsupported in V1" error
+- [x] convert `_` catch-all to exhaustive match or explicit rejection
+- [x] replace binary operator catch-all with explicit rejections
+- [x] add operator type-checking error path tests (10 tests)
 
-- the public `fol tool` editor surface is hard to accidentally drift
+---
 
-### Slice 11: Test Structure Cleanup
+## Phase 6: Dead Code Cleanup (P3)
 
-The next wave of tests should make the suite easier to maintain, not noisier.
+### 6.1 Lexer Dead Code — DONE
 
-Work:
+**Work**:
+- [x] remove all commented-out code blocks (done as part of 2.2 lexer fix)
 
-- [x] split giant mixed-purpose editor tests when they start covering unrelated
-  behavior
-- [x] introduce shared fixture/setup helpers only where they reduce repetition
-  without hiding intent
-- [x] keep one behavior per regression test where practical
-- [x] add naming discipline so failures immediately describe the broken contract
+---
 
-Exit condition:
+## Phase 7: Test Coverage Hardening (P2)
 
-- editor tests stay denser without turning into unreadable mixed suites
+### 7.1 Lexer Tests — PARTIALLY DONE
 
-## Testing Strategy
+**Work**:
+- [x] add tests for block comments (block_comment_adjacent fixture)
+- [ ] add tests for string literals with escapes
+- [ ] add tests for numeric literals (int, float, hex, binary, octal)
+- [ ] add tests for operator sequences (disambiguation)
+- [ ] add tests for Unicode identifiers
+- [ ] add tests for maximum token length
+- [ ] add tests for empty input and whitespace-only input
+- [ ] add tests for unterminated strings and comments
 
-Add and keep these layers:
+Note: Many of these already exist in the extensive lexer test suite
+(test/lexer/test_lexer_comments.rs has 20+ tests, test_lexer_literals.rs,
+test_lexer_keywords.rs, test_lexer_errors.rs).
 
-- formatter fixture snapshots
-- LSP request/response tests per method
-- mixed lifecycle tests covering cache invalidation and recovery
-- frontend integration tests through `fol tool`
-- parity tests between CLI and LSP for overlapping features
-- performance smoke tests using the existing stage counters
-- refusal-path tests for unsupported or intentionally unsafe behavior
+### 7.2 Stream Tests
 
-Priority testing gaps to close first:
+**Work**:
+- [ ] add tests for multi-file module resolution
+- [ ] add tests for `.mod` directory handling
+- [ ] add tests for namespace isolation
+- [ ] add tests for missing file error paths
+- [ ] add tests for empty files
 
-- formatting fixture depth
-- malformed incremental edit sequences
-- cache invalidation after mixed requests
-- CLI/LSP formatting parity
-- rename refusal coverage
-- code-action diagnostic matching coverage
+### 7.3 Typecheck Error Path Tests — PARTIALLY DONE
 
-## Documentation Work
+**Work**:
+- [x] add tests for invalid operator type combinations (10 tests)
+- [ ] add test for each TypecheckErrorKind variant (20+ kinds)
+- [ ] add tests for type mismatches in assignments
+- [ ] add tests for type mismatches in function arguments
+- [ ] add tests for type mismatches in return types
+- [ ] add tests for invalid container element types
+- [ ] add tests for invalid opt/err shell usage
+- [ ] add tests for recursive type definitions
 
-Update these docs as polish slices land:
+### 7.4 Formal V1 End-to-End Tests
 
-- `book/src/050_tooling/200_tool_commands.md`
-- `book/src/050_tooling/300_editor.md`
-- `book/src/050_tooling/500_lsp.md`
-- `plan/future-work/fol-editor.md`
+**Work**:
+- [ ] add test app for arithmetic and comparison operators
+- [ ] add test app for boolean logic
+- [ ] add test app for string operations
+- [ ] add test app for container operations (vec, seq, set, map)
+- [ ] add test app for optional values (opt) with check/report
+- [ ] add test app for error handling (err) with check/report/||
+- [ ] add test app for records with methods
+- [ ] add test app for entries
+- [ ] add test app for multi-package workspace with cross-package calls
+- [ ] add test app for closures/anonymous routines (after Phase 1.4)
+- [ ] add test app for loops (after Phase 3.8)
 
-Specifically:
+### 7.5 Resolver Error Tests
 
-- keep docs aligned with the real public surface
-- move newly shipped items out of future-work immediately
-- document explicit refusal boundaries, not just success cases
-- document formatter scope and any intentional range-formatting limitation
+**Work**:
+- [ ] add test for forward reference errors
+- [ ] add test for import cycle detection
+- [ ] add test for symbol shadowing
+- [ ] add test for visibility boundary violations
+- [ ] add test for duplicate declarations
 
-## Immediate Next Slice
+### 7.6 Build System Negative Tests
 
-Start with Slice 1 and Slice 3 together:
+**Work**:
+- [ ] add test for invalid build step configurations
+- [ ] add test for circular step dependencies
+- [ ] add test for missing dependency handling
+- [ ] add test for invalid build.fol entry signatures
+- [ ] add test for artifact generation failure recovery
 
-- deepen formatter fixtures and idempotence coverage
-- lock CLI/LSP formatting parity
+### 7.7 Editor LSP Failure Tests
 
-That is the highest-signal polish work because formatting is newly shipped and
-still the easiest place for visible regressions to slip in.
+**Work**:
+- [ ] add tests for malformed LSP requests
+- [ ] add tests for documents with syntax errors
+- [ ] add tests for concurrent edit sequences
+- [ ] add tests for document close during analysis
+- [ ] add tests for workspace with missing files
+
+---
+
+## Phase 8: Explicitly Deferred (Not V1)
+
+These features are intentionally deferred with explicit error messages in the
+typechecker. They should NOT be worked on for V1 but their rejection paths
+should be verified.
+
+### Beyond V1 (properly rejected at typecheck):
+- AsyncStage / AwaitStage (V3 systems milestone)
+- Spawn (V3 systems milestone)
+- ChannelAccess (V3 systems milestone)
+- Select (V3 systems milestone)
+- Rolling / comprehensions
+- Range expressions
+- Yield
+- PatternAccess
+
+### Work:
+- [x] verify each deferred feature returns clear, user-facing error message
+- [x] existing test covers 5/8 deferred features (v1_boundary_rejects_v3_expression_surfaces)
+- [ ] add tests for Rolling, PatternAccess, Yield rejection paths
+
+---
+
+## Execution Order
+
+```
+Phase 1 (Pipeline Gaps)     ──── most critical, enables real programs
+  ├─ 1.1 Binary operators      ✓ DONE
+  ├─ 1.2 Unary operators       ✓ DONE
+  ├─ 1.3 Invoke                  OPEN
+  ├─ 1.4 Anonymous routines      OPEN
+  └─ 1.5 Cast instruction      ✓ DONE
+
+Phase 2 (Compiler Bugs)     ──── fix crashes and incorrect behavior
+  ├─ 2.1 Block comment bug      ✓ FALSE POSITIVE (verified correct)
+  ├─ 2.2 Lexer bounds bug       ✓ DONE
+  ├─ 2.3 Dispatch unreachable   ✓ DONE
+  ├─ 2.4 Global mutation panic  ✓ DONE
+  └─ 2.5 Panic format string    ✓ FALSE POSITIVE (verified correct)
+
+Phase 3 (Pipeline Gaps P2)  ──── expand V1 surface
+  ├─ 3.1-3.7 Expression gaps     OPEN
+  └─ 3.8 Iteration loops         OPEN
+
+Phase 4 (Panic Hardening)   ──── eliminate crash paths
+  ├─ 4.1 Intrinsics panics      ✓ JUSTIFIED INVARIANTS
+  ├─ 4.2 Lower session panic    ✓ JUSTIFIED INVARIANT
+  ├─ 4.3 Parser unreachable     ✓ DONE
+  ├─ 4.4 Typecheck unreachable  ✓ JUSTIFIED INVARIANTS
+  ├─ 4.5 Backend unreachable    ✓ JUSTIFIED INVARIANT
+  ├─ 4.6 Editor panics          ✓ DONE
+  └─ 4.7 Parser masking         ✓ DONE
+
+Phase 5 (Catch-All Audit)   ──── no silent fallthrough
+  └─ 5.1 Typecheck catch-all    ✓ DONE
+
+Phase 6 (Dead Code)         ──── cleanup
+  └─ 6.1 Lexer dead code        ✓ DONE
+
+Phase 7 (Test Coverage)     ──── lock everything down
+  ├─ 7.1 Lexer tests             PARTIALLY DONE
+  ├─ 7.2 Stream tests            OPEN
+  ├─ 7.3 Typecheck error tests   PARTIALLY DONE
+  ├─ 7.4 Formal E2E tests        OPEN
+  ├─ 7.5 Resolver error tests    OPEN
+  ├─ 7.6 Build negative tests    OPEN
+  └─ 7.7 Editor LSP tests        OPEN
+
+Phase 8 (Deferred Verify)   ──── confirm rejection paths
+  └─ Verification                PARTIALLY DONE (5/8 tested)
+```
+
+## Exit Criteria
+
+V1 is hardened when:
+
+1. Every AST construct that V1 admits has an explicit path through
+   typecheck → lower → backend → working binary
+2. Every AST construct that V1 does NOT admit produces a clear,
+   user-facing error at the earliest possible stage
+3. Zero `unreachable!()`, `panic!()`, or `.unwrap()` in non-test compiler
+   code without a documented invariant justification
+4. Zero silent `_` catch-all match arms in typecheck or lowering
+5. Every V1 feature has at least one end-to-end test proving it compiles
+   and runs correctly
+6. Every V1 rejection path has at least one test proving it fails with
+   the right diagnostic
+7. The lexer produces correct token streams for all valid V1 syntax
+8. The backend generates correct Rust for all lowered V1 IR
