@@ -1,0 +1,6 @@
+fun identity(T)(value: T): T = {
+    return value;
+};
+fun[] main(): int = {
+    return identity(42);
+};

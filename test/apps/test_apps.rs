@@ -960,6 +960,34 @@ fn fail_deferred_intrinsic_fixture_fails_cleanly() {
 }
 
 #[test]
+fn fail_generic_routine_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_generic_routine");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "generic");
+}
+
+#[test]
+fn fail_pointer_type_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_pointer_type");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "pointer");
+}
+
+#[test]
+fn fail_pipe_operator_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_pipe_operator");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "pipe");
+}
+
+#[test]
+fn fail_membership_operator_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_membership_operator");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "membership");
+}
+
+#[test]
 fn anonymous_routine_fixture_compiles_and_runs() {
     let fixture = fixture_root("anonymous_routine");
 

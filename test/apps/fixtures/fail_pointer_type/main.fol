@@ -1,0 +1,4 @@
+ali CounterPtr: ptr[int];
+fun[] main(): int = {
+    return 0;
+};

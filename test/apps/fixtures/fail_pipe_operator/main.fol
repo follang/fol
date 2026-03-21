@@ -1,0 +1,6 @@
+fun double(x: int): int = {
+    return x + x;
+};
+fun[] main(): int = {
+    return 5 |> double;
+};
