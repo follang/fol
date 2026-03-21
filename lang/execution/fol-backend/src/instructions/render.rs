@@ -183,14 +183,14 @@ pub fn render_core_instruction_in_workspace(
             let result = rendered_result_local(package_identity, routine, instruction)?;
             let operand = render_local_name(package_identity, routine, *operand)?;
             Ok(format!(
-                "let {result} = {operand}.clone().into_value().expect(\"recoverable success\");"
+                "let {result} = {operand}.clone().into_value().expect(\"unwrap of recoverable value failed: result contains an error\");"
             ))
         }
         LoweredInstrKind::ExtractRecoverableError { operand } => {
             let result = rendered_result_local(package_identity, routine, instruction)?;
             let operand = render_local_name(package_identity, routine, *operand)?;
             Ok(format!(
-                "let {result} = {operand}.clone().into_error().expect(\"recoverable error\");"
+                "let {result} = {operand}.clone().into_error().expect(\"extract of recoverable error failed: result contains a value\");"
             ))
         }
         LoweredInstrKind::ConstructOptional { value, .. } => {
@@ -235,7 +235,7 @@ pub fn render_core_instruction_in_workspace(
             };
             let expression = match type_table.get(type_id) {
                 Some(LoweredType::Optional { .. }) => format!(
-                    "rt::unwrap_optional_shell({operand_name}.clone()).expect(\"optional shell\")"
+                    "rt::unwrap_optional_shell({operand_name}.clone()).unwrap()"
                 ),
                 Some(LoweredType::Error { .. }) => {
                     format!("rt::unwrap_error_shell({operand_name}.clone())")
@@ -304,16 +304,16 @@ pub fn render_core_instruction_in_workspace(
             };
             let expression = match type_table.get(type_id) {
                 Some(LoweredType::Array { .. }) => format!(
-                    "rt::index_array(&{container_name}, {index_name}.clone()).expect(\"array index\").clone()"
+                    "rt::index_array(&{container_name}, {index_name}.clone()).unwrap().clone()"
                 ),
                 Some(LoweredType::Vector { .. }) => format!(
-                    "rt::index_vec(&{container_name}, {index_name}.clone()).expect(\"vector index\").clone()"
+                    "rt::index_vec(&{container_name}, {index_name}.clone()).unwrap().clone()"
                 ),
                 Some(LoweredType::Sequence { .. }) => format!(
-                    "rt::index_seq(&{container_name}, {index_name}.clone()).expect(\"sequence index\").clone()"
+                    "rt::index_seq(&{container_name}, {index_name}.clone()).unwrap().clone()"
                 ),
                 Some(LoweredType::Map { .. }) => format!(
-                    "rt::lookup_map(&{container_name}, &{index_name}).expect(\"map key\").clone()"
+                    "rt::lookup_map(&{container_name}, &{index_name}).unwrap().clone()"
                 ),
                 other => {
                     return Err(BackendError::new(
@@ -350,10 +350,10 @@ pub fn render_core_instruction_in_workspace(
             };
             let expression = match type_table.get(type_id) {
                 Some(LoweredType::Vector { .. }) => format!(
-                    "rt::slice_vec(&{container_name}, {start_name}.clone(), {end_name}.clone()).expect(\"vector slice\")"
+                    "rt::slice_vec(&{container_name}, {start_name}.clone(), {end_name}.clone()).unwrap()"
                 ),
                 Some(LoweredType::Sequence { .. }) => format!(
-                    "rt::slice_seq(&{container_name}, {start_name}.clone(), {end_name}.clone()).expect(\"sequence slice\")"
+                    "rt::slice_seq(&{container_name}, {start_name}.clone(), {end_name}.clone()).unwrap()"
                 ),
                 other => {
                     return Err(BackendError::new(
