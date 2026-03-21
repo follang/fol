@@ -116,4 +116,12 @@ mod tests {
         assert_eq!(format!("{ada}"), "Ada");
         assert_eq!(format!("{ada:?}"), "\"Ada\"");
     }
+
+    #[test]
+    fn fol_str_add_concatenates_strings() {
+        let hello = FolStr::from("hello ");
+        let world = FolStr::from("world");
+
+        assert_eq!((hello + world).as_str(), "hello world");
+    }
 }
