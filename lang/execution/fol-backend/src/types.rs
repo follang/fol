@@ -39,7 +39,7 @@ pub fn render_rust_type_in_workspace(
         )),
         LoweredType::Array { size: None, .. } => Err(BackendError::new(
             BackendErrorKind::Unsupported,
-            "unsized arrays are not part of the V1 backend; use vec[] for dynamic collections",
+            "unsized arrays are not supported; use vec[] for dynamic collections",
         )),
         LoweredType::Vector { element_type } => Ok(format!(
             "rt::FolVec<{}>",
@@ -56,7 +56,7 @@ pub fn render_rust_type_in_workspace(
             )),
             _ => Err(BackendError::new(
                 BackendErrorKind::Unsupported,
-                "heterogeneous sets are not part of the V1 backend; sets must have a single member type",
+                "heterogeneous sets are not supported; sets must have a single member type",
             )),
         },
         LoweredType::Map {

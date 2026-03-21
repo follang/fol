@@ -64,7 +64,7 @@ mod tests {
     fn typechecker_foundation_exposes_typecheck_error_surface() {
         let error = TypecheckError::with_origin(
             TypecheckErrorKind::Unsupported,
-            "generics are not part of the V1 typecheck milestone",
+            "generics are not yet supported",
             SyntaxOrigin {
                 file: Some("pkg/main.fol".to_string()),
                 line: 3,
