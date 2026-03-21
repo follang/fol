@@ -2,6 +2,7 @@ mod containers;
 mod calls;
 mod flow;
 mod literals;
+mod operators;
 
 use super::cursor::{RoutineCursor, WorkspaceDeclIndex};
 use crate::{
