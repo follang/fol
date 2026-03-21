@@ -333,6 +333,14 @@ pub(crate) fn lower_expression_observed(
                 method,
                 receiver.type_id,
             )?;
+            let result_type = result_type.ok_or_else(|| {
+                LoweringError::with_kind(
+                    LoweringErrorKind::Unsupported,
+                    format!(
+                        "procedure-style method call '{method}' cannot be used as an expression value"
+                    ),
+                )
+            })?;
             let mut lowered_args = vec![receiver.local_id];
             let param_types = decl_index
                 .routine_param_types(callee)

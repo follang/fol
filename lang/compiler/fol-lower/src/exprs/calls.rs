@@ -744,7 +744,8 @@ pub(crate) fn resolve_method_target(
     decl_index: &WorkspaceDeclIndex,
     method: &str,
     receiver_type: LoweredTypeId,
-) -> Result<(crate::LoweredRoutineId, LoweredTypeId, Option<LoweredTypeId>), LoweringError> {
+) -> Result<(crate::LoweredRoutineId, Option<LoweredTypeId>, Option<LoweredTypeId>), LoweringError>
+{
     let mut matches = Vec::new();
 
     for (symbol_id, symbol) in typed_package.program.resolved().symbols.iter_with_ids() {
@@ -781,17 +782,9 @@ pub(crate) fn resolve_method_target(
         else {
             continue;
         };
-        let Some(return_type) = signature
+        let return_type = signature
             .return_type
-            .and_then(|return_type| checked_type_map.get(&return_type).copied())
-        else {
-            return Err(LoweringError::with_kind(
-                LoweringErrorKind::Unsupported,
-                format!(
-                    "procedure-style method calls without a value result are not lowered in this slice yet: '{method}'"
-                ),
-            ));
-        };
+            .and_then(|return_type| checked_type_map.get(&return_type).copied());
         let error_type = signature
             .error_type
             .and_then(|error_type| checked_type_map.get(&error_type).copied());

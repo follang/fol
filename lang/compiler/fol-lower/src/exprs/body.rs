@@ -1,6 +1,8 @@
 use super::bindings::lower_local_binding;
-use super::calls::{lower_keyword_intrinsic_statement, lower_statement_free_call};
-use super::cursor::{RoutineCursor, WorkspaceDeclIndex};
+use super::calls::{
+    lower_keyword_intrinsic_statement, lower_statement_free_call, resolve_method_target,
+};
+use super::cursor::{LoweredValue, RoutineCursor, WorkspaceDeclIndex};
 use super::expressions::{lower_expression, lower_expression_expected};
 use super::flow::{lower_loop_statement, lower_when_statement, when_always_terminates};
 use crate::{
@@ -401,6 +403,91 @@ pub(crate) fn lower_body_node(
             cursor
                 .terminate_current_block(crate::LoweredTerminator::Jump { target: exit_block })?;
             Ok(None)
+        }
+        AstNode::MethodCall {
+            object,
+            method,
+            args,
+        } => {
+            let receiver = lower_expression(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                object,
+            )?;
+            let (callee, result_type, error_type) = resolve_method_target(
+                typed_package,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                method,
+                receiver.type_id,
+            )?;
+            let mut lowered_args = vec![receiver.local_id];
+            let param_types = decl_index
+                .routine_param_types(callee)
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("method '{method}' does not retain lowered parameter types"),
+                    )
+                })?
+                .to_vec();
+            lowered_args.extend(
+                args.iter()
+                    .enumerate()
+                    .map(|(index, arg)| {
+                        let expected = param_types.get(index + 1).copied();
+                        lower_expression_expected(
+                            typed_package,
+                            type_table,
+                            checked_type_map,
+                            current_identity,
+                            decl_index,
+                            cursor,
+                            source_unit_id,
+                            scope_id,
+                            expected,
+                            arg,
+                        )
+                        .map(|value| value.local_id)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
+            match result_type {
+                Some(result_type) => {
+                    let result_local = cursor.allocate_local(result_type, None);
+                    cursor.push_instr(
+                        Some(result_local),
+                        crate::control::LoweredInstrKind::Call {
+                            callee,
+                            args: lowered_args,
+                            error_type,
+                        },
+                    )?;
+                    Ok(Some(LoweredValue {
+                        local_id: result_local,
+                        type_id: result_type,
+                        recoverable_error_type: error_type,
+                    }))
+                }
+                None => {
+                    cursor.push_instr(
+                        None,
+                        crate::control::LoweredInstrKind::Call {
+                            callee,
+                            args: lowered_args,
+                            error_type,
+                        },
+                    )?;
+                    Ok(None)
+                }
+            }
         }
         AstNode::Yield { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,

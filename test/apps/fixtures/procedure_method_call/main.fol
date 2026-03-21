@@ -1,0 +1,15 @@
+typ Counter: rec = {
+    total: int
+};
+
+pro (Counter)reset(): non = {
+    return;
+};
+
+fun[] main(): int = {
+    var c: Counter = {
+        total = 42,
+    };
+    c.reset();
+    return 0;
+};

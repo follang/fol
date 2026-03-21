@@ -641,3 +641,33 @@ fn procedure_style_free_call_lowering_emits_void_call_instruction() {
         "procedure-style call should have no result local"
     );
 }
+
+#[test]
+fn procedure_style_method_call_lowering_emits_void_call_instruction() {
+    let workspace = lower_fixture_workspace(
+        "typ Box: rec = { value: int };\npro (Box)reset(): non = {\n    return;\n};\nfun[] main(b: Box): int = {\n    b.reset();\n    return 0;\n};",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+
+    let call_instrs: Vec<_> = routine
+        .instructions
+        .iter()
+        .filter(|instr| matches!(instr.kind, LoweredInstrKind::Call { .. }))
+        .collect();
+
+    assert_eq!(
+        call_instrs.len(),
+        1,
+        "procedure-style method call should produce exactly one Call instruction"
+    );
+    assert_eq!(
+        call_instrs[0].result, None,
+        "procedure-style method call should have no result local"
+    );
+}
