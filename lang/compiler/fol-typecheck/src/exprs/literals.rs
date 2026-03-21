@@ -473,7 +473,7 @@ pub(crate) fn type_set_index_access(
         }
         return Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "non-literal indexing into heterogeneous sets is not part of the V1 typecheck milestone",
+            "non-literal indexing into heterogeneous sets is not yet supported",
         ));
     };
 

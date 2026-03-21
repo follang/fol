@@ -540,7 +540,7 @@ use super::*;
             "CLI should fail when typechecking rejects a parse-clean, resolve-clean program"
         );
         assert!(
-            stdout.contains("borrowing binding semantics are part of the V3 systems milestone"),
+            stdout.contains("borrowing binding semantics are planned for a future release"),
             "CLI diagnostics should surface the typecheck unsupported message"
         );
         assert!(

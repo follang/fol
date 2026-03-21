@@ -205,16 +205,16 @@ pub(crate) fn type_node_with_expectation(
         }
         AstNode::AsyncStage => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "async pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+            "async pipe stages are planned for a future release",
         )),
         AstNode::AwaitStage => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "await pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+            "await pipe stages are planned for a future release",
         )),
         AstNode::Spawn { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "coroutine spawn expressions are part of the V3 systems milestone, not the V1 typecheck milestone",
+            "spawn expressions are planned for a future release",
         )),
         AstNode::FunDecl {
             name,
@@ -503,7 +503,7 @@ pub(crate) fn type_node_with_expectation(
         AstNode::ChannelAccess { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "channel endpoint access is part of the V3 systems milestone, not the V1 typecheck milestone",
+            "channel endpoint access is planned for a future release",
         )),
         AstNode::IndexAccess { container, index } => {
             access::type_index_access(typed, resolved, context, container, index)
@@ -523,22 +523,22 @@ pub(crate) fn type_node_with_expectation(
         ),
         AstNode::PatternAccess { .. } => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "pattern access is not part of the V1 typecheck milestone",
+            "pattern access is not yet supported",
         )),
         AstNode::Rolling { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "rolling/comprehension expressions are not part of the V1 typecheck milestone",
+            "rolling/comprehension expressions are not yet supported",
         )),
         AstNode::Range { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "range expressions are not part of the V1 typecheck milestone",
+            "range expressions are not yet supported",
         )),
         AstNode::Select { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "select/channel semantics are part of the V3 systems milestone, not the V1 typecheck milestone",
+            "select/channel semantics are planned for a future release",
         )),
         AstNode::Return { value } => {
             controlflow::type_return(typed, resolved, context, value.as_deref())
@@ -546,7 +546,7 @@ pub(crate) fn type_node_with_expectation(
         AstNode::Break => Ok(TypedExpr::value(typed.builtin_types().never)),
         AstNode::Yield { .. } => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "yield typing is not part of the V1 typecheck milestone",
+            "yield expressions are not yet supported",
         )),
         AstNode::Invoke { callee, args } => {
             let callee_expr = type_node(typed, resolved, context, callee)?;
@@ -593,12 +593,12 @@ pub(crate) fn type_node_with_expectation(
         AstNode::TemplateCall { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "template instantiation is not yet implemented in the V1 typecheck milestone",
+            "template instantiation is not yet supported",
         )),
         AstNode::AvailabilityAccess { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "availability access is not yet implemented in the V1 typecheck milestone",
+            "availability access is not yet supported",
         )),
         // Declaration-level constructs: type their children but produce no value.
         AstNode::UseDecl { .. }

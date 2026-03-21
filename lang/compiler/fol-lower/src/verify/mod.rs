@@ -339,7 +339,7 @@ fn verify_routine_blocks(
         errors.push(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
             format!(
-                "lowered routine '{}' retains {} reachable unterminated blocks; V1 lowering allows at most one fallthrough block",
+                "lowered routine '{}' retains {} reachable unterminated blocks; at most one fallthrough block is allowed",
                 routine.name, reachable_unterminated
             ),
         ));

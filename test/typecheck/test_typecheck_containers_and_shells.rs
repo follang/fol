@@ -203,7 +203,7 @@ fn shell_typing_rejects_pointer_surfaces_as_v3_only() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("pointer types are part of the V3 systems milestone")
+                    .contains("pointer types are planned for a future release")
         }),
         "Expected a V3 pointer-boundary diagnostic, got: {errors:?}"
     );
@@ -279,7 +279,7 @@ fn operator_typing_rejects_invalid_scalar_pairs_and_pointer_operators() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("pointer operators are part of the V3 systems milestone")
+                    .contains("pointer operators are planned for a future release")
         }),
         "Expected a pointer-operator boundary diagnostic, got: {errors:?}"
     );

@@ -108,7 +108,7 @@ fn v1_boundary_rejects_generic_headers_and_meta_declarations() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("generic routine semantics are not part of the V1 typecheck milestone")
+                    .contains("generic routines are not yet supported")
         }),
         "Expected a generic-routine boundary diagnostic, got: {errors:?}"
     );
@@ -117,7 +117,7 @@ fn v1_boundary_rejects_generic_headers_and_meta_declarations() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("generic type semantics are not part of the V1 typecheck milestone")
+                    .contains("generic types are not yet supported")
         }),
         "Expected a generic-type boundary diagnostic, got: {errors:?}"
     );
@@ -126,7 +126,7 @@ fn v1_boundary_rejects_generic_headers_and_meta_declarations() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("definition/meta declarations are part of the V2 language milestone")
+                    .contains("definition/meta declarations are planned for a future release")
         }),
         "Expected a def/meta boundary diagnostic, got: {errors:?}"
     );
@@ -135,7 +135,7 @@ fn v1_boundary_rejects_generic_headers_and_meta_declarations() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("segment/meta declarations are part of the V2 language milestone")
+                    .contains("segment declarations are planned for a future release")
         }),
         "Expected a seg/meta boundary diagnostic, got: {errors:?}"
     );
@@ -168,7 +168,7 @@ fn v1_boundary_rejects_contract_and_conformance_surfaces() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("type contract conformance is part of the V2 language milestone")
+                    .contains("type contract conformance is planned for a future release")
         }),
         "Expected a type-contract boundary diagnostic, got: {errors:?}"
     );
@@ -177,7 +177,7 @@ fn v1_boundary_rejects_contract_and_conformance_surfaces() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("type extension declarations are part of the V2 language milestone")
+                    .contains("type extension declarations are planned for a future release")
         }),
         "Expected a type-extension boundary diagnostic, got: {errors:?}"
     );
@@ -186,7 +186,7 @@ fn v1_boundary_rejects_contract_and_conformance_surfaces() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("implementation declarations are part of the V2 language milestone")
+                    .contains("implementation declarations are planned for a future release")
         }),
         "Expected an implementation boundary diagnostic, got: {errors:?}"
     );
@@ -195,7 +195,7 @@ fn v1_boundary_rejects_contract_and_conformance_surfaces() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("blueprint standards are part of the V2 language milestone")
+                    .contains("blueprint standards are planned for a future release")
         }),
         "Expected a blueprint-standard boundary diagnostic, got: {errors:?}"
     );
@@ -217,12 +217,12 @@ fn v1_boundary_rejects_v3_declaration_surfaces() {
     )]);
 
     for expected in [
-        "static binding semantics are not part of the V1 typecheck milestone",
-        "reactive binding semantics are not part of the V1 typecheck milestone",
-        "heap/new binding semantics are part of the V3 systems milestone",
-        "borrowing binding semantics are part of the V3 systems milestone",
-        "channel types are not part of the V1 typecheck milestone",
-        "mutex parameter semantics are part of the V3 systems milestone",
+        "static binding semantics are not yet supported",
+        "reactive binding semantics are not yet supported",
+        "heap/new binding semantics are planned for a future release",
+        "borrowing binding semantics are planned for a future release",
+        "channel types are planned for a future release",
+        "mutex parameter semantics are planned for a future release",
     ] {
         assert!(
             errors.iter().any(|error| {
@@ -278,13 +278,13 @@ fn v1_boundary_rejects_v3_expression_surfaces() {
     )]);
 
     for expected in [
-        "range expressions are not part of the V1 typecheck milestone",
-        "channel endpoint access is part of the V3 systems milestone",
-        "coroutine spawn expressions are part of the V3 systems milestone",
-        "async pipe stages are part of the V3 systems milestone",
-        "await pipe stages are part of the V3 systems milestone",
-        "select/channel semantics are part of the V3 systems milestone",
-        "mutex parameter semantics are part of the V3 systems milestone",
+        "range expressions are not yet supported",
+        "channel endpoint access is planned for a future release",
+        "spawn expressions are planned for a future release",
+        "async pipe stages are planned for a future release",
+        "await pipe stages are planned for a future release",
+        "select/channel semantics are planned for a future release",
+        "mutex parameter semantics are planned for a future release",
     ] {
         assert!(
             errors.iter().any(|error| {
@@ -310,7 +310,7 @@ fn v1_boundary_rejects_rolling_expression() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("rolling/comprehension expressions are not part of the V1 typecheck milestone")
+                    .contains("rolling/comprehension expressions are not yet supported")
         }),
         "Rolling expressions should be rejected at typecheck, got: {errors:?}"
     );
@@ -331,7 +331,7 @@ fn v1_boundary_rejects_yield_expression() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("yield typing is not part of the V1 typecheck milestone")
+                    .contains("yield expressions are not yet supported")
         }),
         "Yield expressions should be rejected at typecheck, got: {errors:?}"
     );
@@ -352,7 +352,7 @@ fn v1_boundary_rejects_pattern_access() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("pattern access is not part of the V1 typecheck milestone")
+                    .contains("pattern access is not yet supported")
         }),
         "Pattern access should be rejected at typecheck, got: {errors:?}"
     );

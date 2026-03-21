@@ -597,7 +597,7 @@ fn loop_typing_rejects_non_boolean_conditions_and_reserved_yields() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("yield typing is not part of the V1 typecheck milestone")
+                    .contains("yield expressions are not yet supported")
         }),
         "Expected an explicit yield boundary diagnostic, got: {yield_errors:?}"
     );
@@ -784,7 +784,7 @@ fn container_literal_typing_rejects_bad_map_pairs_and_nonliteral_heterogeneous_s
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("heterogeneous sets is not part of the V1 typecheck milestone")
+                    .contains("heterogeneous sets is not yet supported")
         }),
         "Expected a heterogeneous-set indexing diagnostic, got: {errors:?}"
     );

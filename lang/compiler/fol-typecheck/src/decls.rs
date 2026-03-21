@@ -753,31 +753,24 @@ fn symbol_kind_for_node(node: &AstNode) -> SymbolKind {
 
 fn unsupported_type_error(resolved: &ResolvedProgram, typ: &FolType) -> TypecheckError {
     let label = match typ {
-        FolType::Matrix { .. } => "matrix types are not part of the V1 typecheck milestone",
-        FolType::Pointer { .. } => {
-            "pointer types are part of the V3 systems milestone, not the V1 typecheck milestone"
-        }
-        FolType::Channel { .. } => "channel types are not part of the V1 typecheck milestone",
-        FolType::Multiple { .. } => "multiple types are not part of the V1 typecheck milestone",
-        FolType::Union { .. } => "union types are not part of the V1 typecheck milestone",
-        FolType::Limited { .. } => "limited types are not part of the V1 typecheck milestone",
-        FolType::Any => "any types are not part of the V1 typecheck milestone",
-        FolType::None => "none types are not part of the V1 typecheck milestone",
-        FolType::Function { .. } => {
-            "function type literals are not part of the V1 typecheck milestone"
-        }
-        FolType::Generic { .. } => {
-            "generic type parameters are not part of the V1 typecheck milestone"
-        }
+        FolType::Matrix { .. } => "matrix types are not yet supported",
+        FolType::Pointer { .. } => "pointer types are planned for a future release",
+        FolType::Channel { .. } => "channel types are planned for a future release",
+        FolType::Multiple { .. } => "multiple-return types are not yet supported",
+        FolType::Union { .. } => "union types are not yet supported",
+        FolType::Limited { .. } => "limited/constrained types are not yet supported",
+        FolType::Any => "'any' type is not yet supported",
+        FolType::None => "'none' type is not yet supported",
+        FolType::Generic { .. } => "generic type parameters are not yet supported",
         FolType::Package { .. }
         | FolType::Module { .. }
         | FolType::Block { .. }
         | FolType::Test { .. }
         | FolType::Location { .. }
         | FolType::Standard { .. } => {
-            "package/build-specific type surfaces are not part of the V1 typecheck milestone"
+            "package/build-specific type surfaces are not yet supported"
         }
-        _ => "type surface is not part of the V1 typecheck milestone",
+        _ => "this type surface is not yet supported",
     };
     match type_origin(resolved, typ) {
         Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::Unsupported, label, origin),
@@ -813,42 +806,42 @@ fn unsupported_v1_decl_with_origin(
         | AstNode::LogDecl { generics, .. }
             if !generics.is_empty() =>
         {
-            Some("generic routine semantics are not part of the V1 typecheck milestone")
+            Some("generic routines are not yet supported")
         }
         AstNode::FunDecl { params, .. }
         | AstNode::ProDecl { params, .. }
         | AstNode::LogDecl { params, .. } => unsupported_routine_param_surface_message(params),
         AstNode::TypeDecl { contracts, .. } if !contracts.is_empty() => {
-            Some("type contract conformance is part of the V2 language milestone, not the V1 typecheck milestone")
+            Some("type contract conformance is planned for a future release")
         }
         AstNode::TypeDecl { options, .. }
             if options
                 .iter()
                 .any(|option| matches!(option, TypeOption::Extension)) =>
         {
-            Some("type extension declarations are part of the V2 language milestone, not the V1 typecheck milestone")
+            Some("type extension declarations are planned for a future release")
         }
         AstNode::TypeDecl { generics, .. } if !generics.is_empty() => {
-            Some("generic type semantics are not part of the V1 typecheck milestone")
+            Some("generic types are not yet supported")
         }
         AstNode::DefDecl { .. } => {
-            Some("definition/meta declarations are part of the V2 language milestone, not the V1 typecheck milestone")
+            Some("definition/meta declarations are planned for a future release")
         }
         AstNode::SegDecl { .. } => {
-            Some("segment/meta declarations are part of the V2 language milestone, not the V1 typecheck milestone")
+            Some("segment declarations are planned for a future release")
         }
         AstNode::ImpDecl { .. } => {
-            Some("implementation declarations are part of the V2 language milestone, not the V1 typecheck milestone")
+            Some("implementation declarations are planned for a future release")
         }
         AstNode::StdDecl { kind, .. } => Some(match kind {
             fol_parser::ast::StandardKind::Protocol => {
-                "protocol standards are part of the V2 language milestone, not the V1 typecheck milestone"
+                "protocol standards are planned for a future release"
             }
             fol_parser::ast::StandardKind::Blueprint => {
-                "blueprint standards are part of the V2 language milestone, not the V1 typecheck milestone"
+                "blueprint standards are planned for a future release"
             }
             fol_parser::ast::StandardKind::Extended => {
-                "extended standards are part of the V2 language milestone, not the V1 typecheck milestone"
+                "extended standards are planned for a future release"
             }
         }),
         _ => None,
@@ -866,9 +859,9 @@ pub(crate) fn unsupported_routine_param_surface_message(
     params: &[Parameter],
 ) -> Option<&'static str> {
     if params.iter().any(|param| param.is_mutex) {
-        Some("mutex parameter semantics are part of the V3 systems milestone, not the V1 typecheck milestone")
+        Some("mutex parameter semantics are planned for a future release")
     } else if params.iter().any(|param| param.is_borrowable) {
-        Some("borrowable parameter semantics are part of the V3 systems milestone, not the V1 typecheck milestone")
+        Some("borrowable parameter semantics are planned for a future release")
     } else {
         None
     }
@@ -879,22 +872,22 @@ fn unsupported_binding_surface_message(options: &[VarOption]) -> Option<&'static
         .iter()
         .any(|option| matches!(option, VarOption::Borrowing))
     {
-        Some("borrowing binding semantics are part of the V3 systems milestone, not the V1 typecheck milestone")
+        Some("borrowing binding semantics are planned for a future release")
     } else if options
         .iter()
         .any(|option| matches!(option, VarOption::New))
     {
-        Some("heap/new binding semantics are part of the V3 systems milestone, not the V1 typecheck milestone")
+        Some("heap/new binding semantics are planned for a future release")
     } else if options
         .iter()
         .any(|option| matches!(option, VarOption::Static))
     {
-        Some("static binding semantics are not part of the V1 typecheck milestone")
+        Some("static binding semantics are not yet supported")
     } else if options
         .iter()
         .any(|option| matches!(option, VarOption::Reactive))
     {
-        Some("reactive binding semantics are not part of the V1 typecheck milestone")
+        Some("reactive binding semantics are not yet supported")
     } else {
         None
     }
