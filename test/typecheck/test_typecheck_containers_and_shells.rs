@@ -619,9 +619,9 @@ fn intrinsic_query_typing_distinguishes_implemented_and_deferred_families() {
     )]);
 
     for expected in [
-        ".cap(...) is not implemented in the current V1 compiler milestone",
-        ".low(...) is not implemented in the current V1 compiler milestone",
-        ".min(...) is not implemented in the current V1 compiler milestone",
+        ".cap(...) is not yet supported",
+        ".low(...) is not yet supported",
+        ".min(...) is not yet supported",
     ] {
         assert!(
             errors.iter().any(|error| {
@@ -701,11 +701,11 @@ fn intrinsic_v3_boundary_typing_reports_explicit_milestone_guidance() {
     )]);
 
     for intrinsic in [
-        ".de_alloc(...) belongs to V3 but the current compiler milestone is V1",
-        ".give_back(...) belongs to V3 but the current compiler milestone is V1",
-        ".address_of(...) belongs to V3 but the current compiler milestone is V1",
-        ".pointer_value(...) belongs to V3 but the current compiler milestone is V1",
-        ".borrow_from(...) belongs to V3 but the current compiler milestone is V1",
+        ".de_alloc(...) is planned for a future release",
+        ".give_back(...) is planned for a future release",
+        ".address_of(...) is planned for a future release",
+        ".pointer_value(...) is planned for a future release",
+        ".borrow_from(...) is planned for a future release",
     ] {
         assert!(
             errors.iter().any(|error| {

@@ -19,7 +19,7 @@ fn cast_policy_rejects_as_and_cast_surfaces_in_v1() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("operator 'as' is not implemented in the current V1 compiler milestone")
+                    .contains("operator 'as' is not yet supported")
                 && error.diagnostic_location().is_some()
         }),
         "Expected an unsupported 'as' cast diagnostic, got: {errors:?}"
@@ -29,7 +29,7 @@ fn cast_policy_rejects_as_and_cast_surfaces_in_v1() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("operator 'cast' is not implemented in the current V1 compiler milestone")
+                    .contains("operator 'cast' is not yet supported")
                 && error.diagnostic_location().is_some()
         }),
         "Expected an unsupported 'cast' diagnostic, got: {errors:?}"

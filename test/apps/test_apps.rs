@@ -955,7 +955,7 @@ fn fail_deferred_intrinsic_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_deferred_intrinsic");
 
     let output = compile_app_expect_failure(&fixture);
-    assert_output_contains(&output, "V1");
+    assert_output_contains(&output, "not yet supported");
     assert_output_contains(&output, ".cap");
 }
 

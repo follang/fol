@@ -727,7 +727,7 @@ use super::*;
                 .as_str()
                 .map(|message| {
                     message.contains(
-                        ".de_alloc(...) belongs to V3 but the current compiler milestone is V1",
+                        ".de_alloc(...) is planned for a future release",
                     )
                 })
                 .unwrap_or(false)
@@ -787,8 +787,8 @@ use super::*;
             .expect("CLI JSON output should expose diagnostics");
 
         for expected in [
-            "operator 'as' is not implemented in the current V1 compiler milestone",
-            "operator 'cast' is not implemented in the current V1 compiler milestone",
+            "operator 'as' is not yet supported",
+            "operator 'cast' is not yet supported",
         ] {
             let diagnostic = diagnostics.iter().find(|diagnostic| {
                 diagnostic["message"]
