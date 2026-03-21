@@ -575,12 +575,6 @@ fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
         "nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1"
     ));
 
-    let operator_error = lower_fixture_error("fun[] main(): int = {\n    return 1 + 2;\n}\n");
-    assert_eq!(operator_error.kind(), LoweringErrorKind::Unsupported);
-    assert!(operator_error
-        .message()
-        .contains("binary operator lowering for 'add' lands in a later lowering slice"));
-
     let loop_error = lower_fixture_error(
         "fun[] main(items: seq[int]): int = {\n    loop(item in items) {\n        break;\n    }\n    return 0;\n}\n",
     );
@@ -601,16 +595,6 @@ fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
 #[test]
 fn audited_v1_lowering_boundaries_fail_with_explicit_messages() {
     let cases = [
-        (
-            crate::UnsupportedLoweringSurface::UnaryOperators,
-            "fun[] main(): int = {\n    return -1;\n}\n",
-            "unary operator lowering for 'neg' lands in a later lowering slice",
-        ),
-        (
-            crate::UnsupportedLoweringSurface::BinaryOperators,
-            "fun[] main(): int = {\n    return 1 + 2;\n}\n",
-            "binary operator lowering for 'add' lands in a later lowering slice",
-        ),
         (
             crate::UnsupportedLoweringSurface::TypeMatchingWhenOf,
             "fun classify(value: any): int = {\n    when(value) {\n        of(int) { return 1; }\n        { return 0; }\n    }\n}\n",

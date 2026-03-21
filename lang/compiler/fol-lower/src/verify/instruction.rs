@@ -275,6 +275,13 @@ pub(super) fn verify_instruction(
                 errors,
             );
         }
+        crate::LoweredInstrKind::BinaryOp { left, right, .. } => {
+            verify_local_reference(routine, instr.id.0, "binary left", *left, errors);
+            verify_local_reference(routine, instr.id.0, "binary right", *right, errors);
+        }
+        crate::LoweredInstrKind::UnaryOp { operand, .. } => {
+            verify_local_reference(routine, instr.id.0, "unary operand", *operand, errors);
+        }
     }
 
     match &instr.kind {

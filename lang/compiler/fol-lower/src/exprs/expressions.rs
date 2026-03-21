@@ -13,7 +13,7 @@ use super::helpers::{
     literal_type_id, lower_assignment_target, lower_entry_variant_access, lower_unwrap_expression,
 };
 use crate::{
-    control::LoweredInstrKind,
+    control::{LoweredBinaryOp, LoweredInstrKind, LoweredUnaryOp},
     ids::LoweredTypeId,
     LoweringError, LoweringErrorKind,
 };
@@ -121,10 +121,24 @@ pub(crate) fn lower_expression_observed(
             scope_id,
             operand,
         ),
+        AstNode::UnaryOp {
+            op: fol_parser::ast::UnaryOperator::Neg,
+            operand,
+        } => lower_unary_op(
+            typed_package, type_table, checked_type_map, current_identity,
+            decl_index, cursor, source_unit_id, scope_id, LoweredUnaryOp::Neg, operand,
+        ),
+        AstNode::UnaryOp {
+            op: fol_parser::ast::UnaryOperator::Not,
+            operand,
+        } => lower_unary_op(
+            typed_package, type_table, checked_type_map, current_identity,
+            decl_index, cursor, source_unit_id, scope_id, LoweredUnaryOp::Not, operand,
+        ),
         AstNode::UnaryOp { op, .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
             format!(
-                "unary operator lowering for '{}' lands in a later lowering slice",
+                "unary operator lowering for '{}' is deferred beyond V1",
                 describe_unary_operator(op)
             ),
         )),
@@ -144,13 +158,38 @@ pub(crate) fn lower_expression_observed(
             left,
             right,
         ),
-        AstNode::BinaryOp { op, .. } => Err(LoweringError::with_kind(
-            LoweringErrorKind::Unsupported,
-            format!(
-                "binary operator lowering for '{}' lands in a later lowering slice",
-                describe_binary_operator(op)
-            ),
-        )),
+        AstNode::BinaryOp { op, left, right } => {
+            let lowered_op = match op {
+                fol_parser::ast::BinaryOperator::Add => LoweredBinaryOp::Add,
+                fol_parser::ast::BinaryOperator::Sub => LoweredBinaryOp::Sub,
+                fol_parser::ast::BinaryOperator::Mul => LoweredBinaryOp::Mul,
+                fol_parser::ast::BinaryOperator::Div => LoweredBinaryOp::Div,
+                fol_parser::ast::BinaryOperator::Mod => LoweredBinaryOp::Mod,
+                fol_parser::ast::BinaryOperator::Pow => LoweredBinaryOp::Pow,
+                fol_parser::ast::BinaryOperator::Eq => LoweredBinaryOp::Eq,
+                fol_parser::ast::BinaryOperator::Ne => LoweredBinaryOp::Ne,
+                fol_parser::ast::BinaryOperator::Lt => LoweredBinaryOp::Lt,
+                fol_parser::ast::BinaryOperator::Le => LoweredBinaryOp::Le,
+                fol_parser::ast::BinaryOperator::Gt => LoweredBinaryOp::Gt,
+                fol_parser::ast::BinaryOperator::Ge => LoweredBinaryOp::Ge,
+                fol_parser::ast::BinaryOperator::And => LoweredBinaryOp::And,
+                fol_parser::ast::BinaryOperator::Or => LoweredBinaryOp::Or,
+                fol_parser::ast::BinaryOperator::Xor => LoweredBinaryOp::Xor,
+                other => {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::Unsupported,
+                        format!(
+                            "binary operator lowering for '{}' is deferred beyond V1",
+                            describe_binary_operator(other)
+                        ),
+                    ));
+                }
+            };
+            lower_binary_op(
+                typed_package, type_table, checked_type_map, current_identity,
+                decl_index, cursor, source_unit_id, scope_id, lowered_op, left, right,
+            )
+        }
         AstNode::RecordInit { fields, .. } => lower_record_initializer(
             typed_package,
             type_table,
@@ -616,4 +655,122 @@ pub(crate) fn lower_expression_observed(
         )),
     }?;
     apply_expected_shell_wrap(type_table, cursor, expected_type, lowered)
+}
+
+fn binary_op_result_type(
+    typed_package: &fol_typecheck::TypedPackage,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    op: LoweredBinaryOp,
+    left_type: LoweredTypeId,
+) -> Option<LoweredTypeId> {
+    match op {
+        LoweredBinaryOp::Add
+        | LoweredBinaryOp::Sub
+        | LoweredBinaryOp::Mul
+        | LoweredBinaryOp::Div
+        | LoweredBinaryOp::Mod
+        | LoweredBinaryOp::Pow => Some(left_type),
+        LoweredBinaryOp::Eq
+        | LoweredBinaryOp::Ne
+        | LoweredBinaryOp::Lt
+        | LoweredBinaryOp::Le
+        | LoweredBinaryOp::Gt
+        | LoweredBinaryOp::Ge
+        | LoweredBinaryOp::And
+        | LoweredBinaryOp::Or
+        | LoweredBinaryOp::Xor => {
+            checked_type_map.get(&typed_package.program.builtin_types().bool_).copied()
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn lower_binary_op(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    op: LoweredBinaryOp,
+    left: &AstNode,
+    right: &AstNode,
+) -> Result<LoweredValue, LoweringError> {
+    let left_val = lower_expression(
+        typed_package, type_table, checked_type_map, current_identity,
+        decl_index, cursor, source_unit_id, scope_id, left,
+    )?;
+    let right_val = lower_expression(
+        typed_package, type_table, checked_type_map, current_identity,
+        decl_index, cursor, source_unit_id, scope_id, right,
+    )?;
+    let result_type = binary_op_result_type(typed_package, checked_type_map, op, left_val.type_id)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                "binary operator result type could not be resolved in the lowered type table",
+            )
+        })?;
+    let result_local = cursor.allocate_local(result_type, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::BinaryOp {
+            op,
+            left: left_val.local_id,
+            right: right_val.local_id,
+        },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id: result_type,
+        recoverable_error_type: None,
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn lower_unary_op(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    source_unit_id: SourceUnitId,
+    scope_id: ScopeId,
+    op: LoweredUnaryOp,
+    operand: &AstNode,
+) -> Result<LoweredValue, LoweringError> {
+    let operand_val = lower_expression(
+        typed_package, type_table, checked_type_map, current_identity,
+        decl_index, cursor, source_unit_id, scope_id, operand,
+    )?;
+    let result_type = match op {
+        LoweredUnaryOp::Neg => operand_val.type_id,
+        LoweredUnaryOp::Not => {
+            checked_type_map
+                .get(&typed_package.program.builtin_types().bool_)
+                .copied()
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        "boolean result type could not be resolved in the lowered type table",
+                    )
+                })?
+        }
+    };
+    let result_local = cursor.allocate_local(result_type, None);
+    cursor.push_instr(
+        Some(result_local),
+        LoweredInstrKind::UnaryOp {
+            op,
+            operand: operand_val.local_id,
+        },
+    )?;
+    Ok(LoweredValue {
+        local_id: result_local,
+        type_id: result_type,
+        recoverable_error_type: None,
+    })
 }

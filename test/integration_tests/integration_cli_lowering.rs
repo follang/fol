@@ -33,27 +33,26 @@ use super::*;
     }
 
     #[test]
-    fn test_cli_lowering_failures_surface_human_diagnostics() {
+    fn test_cli_lowering_arithmetic_now_succeeds() {
         use std::fs;
 
-        let temp_root = unique_temp_root("cli_lowering_failure_human");
-        fs::create_dir_all(&temp_root).expect("Should create temp lowering failure fixture dir");
+        let temp_root = unique_temp_root("cli_lowering_arithmetic");
+        fs::create_dir_all(&temp_root).expect("Should create temp lowering arithmetic fixture dir");
         let fixture = temp_root.join("main.fol");
         fs::write(&fixture, "fun[] main(): int = {\n    return 1 + 2;\n};\n")
-            .expect("Should write lowering failure fixture");
+            .expect("Should write arithmetic fixture");
 
         let output = run_fol(&[fixture
             .to_str()
-            .expect("CLI lowering failure fixture path should be utf-8")]);
+            .expect("CLI arithmetic fixture path should be utf-8")]);
         let stdout = String::from_utf8_lossy(&output.stdout);
 
         assert!(
-            !output.status.success(),
-            "CLI should fail lowering on unsupported lowered V1 surfaces, got status {:?} and output:\n{}",
+            output.status.success(),
+            "CLI should compile arithmetic binary operators, got status {:?} and output:\n{}",
             output.status.code(),
             stdout
         );
-        assert!(stdout.contains("binary operator lowering for 'add'"));
 
         fs::remove_dir_all(&temp_root).ok();
     }
@@ -503,44 +502,28 @@ use super::*;
     }
 
     #[test]
-    fn test_cli_json_lowering_failures_keep_structured_fields() {
+    fn test_cli_json_arithmetic_compiles_with_structured_output() {
         use std::fs;
 
-        let temp_root = unique_temp_root("cli_lowering_failure_json");
-        fs::create_dir_all(&temp_root).expect("Should create temp lowering failure fixture dir");
+        let temp_root = unique_temp_root("cli_arithmetic_json");
+        fs::create_dir_all(&temp_root).expect("Should create temp arithmetic JSON fixture dir");
         let fixture = temp_root.join("main.fol");
         fs::write(&fixture, "fun[] main(): int = {\n    return 1 + 2;\n};\n")
-            .expect("Should write lowering failure fixture");
+            .expect("Should write arithmetic fixture");
 
         let output = run_fol(&[
             "--json",
             fixture
                 .to_str()
-                .expect("CLI lowering failure fixture path should be utf-8"),
+                .expect("CLI arithmetic fixture path should be utf-8"),
         ]);
         let payload = parse_cli_json(&output);
 
         assert!(
-            !output.status.success(),
-            "CLI JSON lowering failures should still exit unsuccessfully"
+            output.status.success(),
+            "CLI JSON arithmetic should compile successfully"
         );
-        assert_eq!(payload["error_count"], 1);
-        assert_eq!(payload["diagnostics"][0]["severity"], "Error");
-        assert_eq!(payload["diagnostics"][0]["code"], "L1001");
-        assert!(
-            payload["diagnostics"][0]["message"]
-                .as_str()
-                .expect("lowering failure message should stay textual")
-                .contains("binary operator lowering for 'add'"),
-            "Structured JSON lowering diagnostics should preserve the lowering failure message"
-        );
-        assert!(
-            payload["diagnostics"][0]["labels"]
-                .as_array()
-                .expect("labels should stay arrays")
-                .is_empty(),
-            "Current lowering failures should keep an empty related-label list when no origin is available"
-        );
+        assert_eq!(payload["error_count"], 0);
 
         fs::remove_dir_all(&temp_root).ok();
     }

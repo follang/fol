@@ -32,6 +32,31 @@ pub enum LoweredLinearKind {
     Sequence,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoweredBinaryOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Pow,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    And,
+    Or,
+    Xor,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoweredUnaryOp {
+    Neg,
+    Not,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoweredInstrKind {
     Const(LoweredOperand),
@@ -117,6 +142,15 @@ pub enum LoweredInstrKind {
         target_type: LoweredTypeId,
     },
     UnwrapShell {
+        operand: LoweredLocalId,
+    },
+    BinaryOp {
+        op: LoweredBinaryOp,
+        left: LoweredLocalId,
+        right: LoweredLocalId,
+    },
+    UnaryOp {
+        op: LoweredUnaryOp,
         operand: LoweredLocalId,
     },
 }

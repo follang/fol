@@ -1,7 +1,5 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnsupportedLoweringSurface {
-    UnaryOperators,
-    BinaryOperators,
     TypeMatchingWhenOf,
     IterationLoops,
     ProcedureStyleFreeCalls,
@@ -12,8 +10,6 @@ pub enum UnsupportedLoweringSurface {
 impl UnsupportedLoweringSurface {
     pub fn label(self) -> &'static str {
         match self {
-            Self::UnaryOperators => "unary-operators",
-            Self::BinaryOperators => "binary-operators",
             Self::TypeMatchingWhenOf => "when-of-branches",
             Self::IterationLoops => "iteration-loops",
             Self::ProcedureStyleFreeCalls => "procedure-style-free-calls",
@@ -24,12 +20,6 @@ impl UnsupportedLoweringSurface {
 
     pub fn description(self) -> &'static str {
         match self {
-            Self::UnaryOperators => {
-                "typed unary operators other than postfix unwrap still stop at the lowering boundary"
-            }
-            Self::BinaryOperators => {
-                "typed binary operators still stop at the lowering boundary"
-            }
             Self::TypeMatchingWhenOf => {
                 "typed type-matching when/of branches still stop at the lowering boundary"
             }
@@ -50,8 +40,6 @@ impl UnsupportedLoweringSurface {
 }
 
 const V1_BOUNDARIES: &[UnsupportedLoweringSurface] = &[
-    UnsupportedLoweringSurface::UnaryOperators,
-    UnsupportedLoweringSurface::BinaryOperators,
     UnsupportedLoweringSurface::TypeMatchingWhenOf,
     UnsupportedLoweringSurface::IterationLoops,
     UnsupportedLoweringSurface::ProcedureStyleFreeCalls,
@@ -74,8 +62,6 @@ mod tests {
         assert_eq!(
             inventory,
             &[
-                UnsupportedLoweringSurface::UnaryOperators,
-                UnsupportedLoweringSurface::BinaryOperators,
                 UnsupportedLoweringSurface::TypeMatchingWhenOf,
                 UnsupportedLoweringSurface::IterationLoops,
                 UnsupportedLoweringSurface::ProcedureStyleFreeCalls,
@@ -89,8 +75,6 @@ mod tests {
                 .map(|surface| surface.label())
                 .collect::<Vec<_>>(),
             vec![
-                "unary-operators",
-                "binary-operators",
                 "when-of-branches",
                 "iteration-loops",
                 "procedure-style-free-calls",

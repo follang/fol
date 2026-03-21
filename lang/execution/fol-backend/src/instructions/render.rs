@@ -1,8 +1,9 @@
 use crate::{BackendError, BackendErrorKind, BackendResult};
 use fol_intrinsics::intrinsic_by_id;
 use fol_lower::{
-    control::LoweredLinearKind, LoweredInstr, LoweredInstrKind, LoweredRoutine, LoweredType,
-    LoweredTypeTable, LoweredWorkspace,
+    control::{LoweredBinaryOp, LoweredLinearKind, LoweredUnaryOp},
+    LoweredInstr, LoweredInstrKind, LoweredRoutine, LoweredType, LoweredTypeTable,
+    LoweredWorkspace,
 };
 use fol_resolver::PackageIdentity;
 
@@ -358,9 +359,62 @@ pub fn render_core_instruction_in_workspace(
             };
             Ok(format!("let {result} = {expression};"))
         }
-        other => Err(BackendError::new(
-            BackendErrorKind::Unsupported,
-            format!("core instruction emission is not implemented yet for {other:?}"),
-        )),
+        LoweredInstrKind::BinaryOp { op, left, right } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let left_id = *left;
+            let left = render_local_name(package_identity, routine, left_id)?;
+            let right = render_local_name(package_identity, routine, *right)?;
+            let expression = match op {
+                LoweredBinaryOp::Add => format!("{left} + {right}"),
+                LoweredBinaryOp::Sub => format!("{left} - {right}"),
+                LoweredBinaryOp::Mul => format!("{left} * {right}"),
+                LoweredBinaryOp::Div => format!("{left} / {right}"),
+                LoweredBinaryOp::Mod => format!("{left} % {right}"),
+                LoweredBinaryOp::Pow => {
+                    let left_local = routine.locals.get(left_id).ok_or_else(|| {
+                        BackendError::new(
+                            BackendErrorKind::InvalidInput,
+                            format!("lowered local {:?} is missing", left_id),
+                        )
+                    })?;
+                    if let Some(type_id) = left_local.type_id {
+                        if matches!(type_table.get(type_id), Some(LoweredType::Builtin(fol_lower::LoweredBuiltinType::Float))) {
+                            format!("rt::pow_float({left}, {right})")
+                        } else {
+                            format!("rt::pow({left}, {right})")
+                        }
+                    } else {
+                        format!("rt::pow({left}, {right})")
+                    }
+                }
+                LoweredBinaryOp::Eq => format!("{left} == {right}"),
+                LoweredBinaryOp::Ne => format!("{left} != {right}"),
+                LoweredBinaryOp::Lt => format!("{left} < {right}"),
+                LoweredBinaryOp::Le => format!("{left} <= {right}"),
+                LoweredBinaryOp::Gt => format!("{left} > {right}"),
+                LoweredBinaryOp::Ge => format!("{left} >= {right}"),
+                LoweredBinaryOp::And => format!("{left} && {right}"),
+                LoweredBinaryOp::Or => format!("{left} || {right}"),
+                LoweredBinaryOp::Xor => format!("{left} ^ {right}"),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::UnaryOp { op, operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            let expression = match op {
+                LoweredUnaryOp::Neg => format!("-{operand}"),
+                LoweredUnaryOp::Not => format!("!{operand}"),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::Cast { operand, target_type } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            let target = crate::types::render_rust_type_in_workspace(
+                workspace, type_table, *target_type,
+            )?;
+            Ok(format!("let {result} = {operand} as {target};"))
+        }
     }
 }
