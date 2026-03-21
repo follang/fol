@@ -297,6 +297,68 @@ fn v1_boundary_rejects_v3_expression_surfaces() {
 }
 
 #[test]
+fn v1_boundary_rejects_rolling_expression() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun rolling(items: vec[int]): vec[int] = {\n\
+             return { x for x in items };\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("rolling/comprehension expressions are not part of the V1 typecheck milestone")
+        }),
+        "Rolling expressions should be rejected at typecheck, got: {errors:?}"
+    );
+}
+
+#[test]
+fn v1_boundary_rejects_yield_expression() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(): int = {\n\
+             yield 42;\n\
+             return 0;\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("yield typing is not part of the V1 typecheck milestone")
+        }),
+        "Yield expressions should be rejected at typecheck, got: {errors:?}"
+    );
+}
+
+#[test]
+fn v1_boundary_rejects_pattern_access() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(items: vec[int]): int = {\n\
+             var subset: vec[int] = items[0, 1, 2];\n\
+             return 0;\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::Unsupported
+                && error
+                    .message()
+                    .contains("pattern access is not part of the V1 typecheck milestone")
+        }),
+        "Pattern access should be rejected at typecheck, got: {errors:?}"
+    );
+}
+
+#[test]
 fn ordinary_typechecking_keeps_build_fol_source_units_without_failing() {
     let typed = typecheck_fixture_folder(&[("build.fol", "`package build`\n")]);
 
