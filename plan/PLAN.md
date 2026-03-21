@@ -168,19 +168,23 @@ V1 use cases.
 - [x] implement rendering for each V1-admitted variant
 - [x] convert catch-all to exhaustive match with Routine explicit rejection
 
-### 3.7 Entry Variant Construction
+### 3.7 Entry Variant Construction — MOSTLY DONE
 
 **Work**:
-- [ ] implement entry variant construction lowering
-- [ ] implement backend emission
-- [ ] add tests for entry creation and field access
+- [x] implement entry variant construction lowering — lower_entry_variant_access in helpers.rs handles payload access, construction with defaults, and entry variant resolution
+- [x] implement backend emission — ConstructEntry instruction rendering in backend
+- [x] add tests for entry creation and field access — entry_flow and scalar_entry E2E fixtures, declaration_lowering_records_explicit_entry_variant_layouts, entry_variant_lowering_supports_payload_access_and_entry_construction
+- [ ] bare variant access without entry context still hits lowering boundary (edge case)
 
-### 3.8 Iteration Loops (when/loop lowering)
+### 3.8 Iteration Loops (when/loop lowering) — PARTIALLY DONE
 
 **Work**:
-- [ ] implement loop lowering
-- [ ] implement backend loop emission
-- [ ] add tests for counted, conditional, and collection loops
+- [x] implement conditional loop lowering — loop(condition) { body } works end-to-end
+- [x] implement when statement lowering — when(expr) { case(x) {} * {} } works end-to-end
+- [x] implement backend loop emission — loop/break/continue rendering in backend
+- [x] add tests for conditional loops — loop_condition_lowering_keeps_header_body_and_exit_blocks, E2E fixtures
+- [ ] implement iteration loop lowering — loop(item in items) { body } rejected at lowering boundary
+- [ ] add tests for collection iteration loops
 
 ---
 
@@ -393,8 +397,8 @@ Phase 3 (Pipeline Gaps P2)  ──── expand V1 surface
   ├─ 3.4 Unsized arrays         ✓ DONE (rejected at backend)
   ├─ 3.5 Heterogeneous sets     ✓ DONE (rejected at backend)
   ├─ 3.6 Type variant audit     ✓ DONE (exhaustive match)
-  ├─ 3.7 Entry variant constr.    OPEN
-  └─ 3.8 Iteration loops          OPEN
+  ├─ 3.7 Entry variant constr.  ⊘ MOSTLY DONE (edge case remains)
+  └─ 3.8 Iteration loops        ⊘ PARTIALLY DONE (conditional ✓, iteration ✗)
 
 Phase 4 (Panic Hardening)   ──── eliminate crash paths
   ├─ 4.1 Intrinsics panics      ✓ JUSTIFIED INVARIANTS
