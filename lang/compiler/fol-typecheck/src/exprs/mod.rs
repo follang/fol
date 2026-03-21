@@ -8,8 +8,8 @@ pub mod operators;
 pub mod references;
 
 use crate::{
-    decls, CheckedTypeId, RecoverableCallEffect, TypecheckError, TypecheckErrorKind,
-    TypecheckResult, TypedProgram,
+    decls, CheckedType, CheckedTypeId, RecoverableCallEffect, RoutineType, TypecheckError,
+    TypecheckErrorKind, TypecheckResult, TypedProgram,
 };
 use fol_intrinsics::{select_intrinsic, IntrinsicSurface};
 use fol_parser::ast::{
@@ -18,7 +18,7 @@ use fol_parser::ast::{
 use fol_resolver::{ResolvedProgram, ScopeId, SourceUnitId};
 
 use helpers::{
-    binding_kind_for, ensure_assignable, ensure_assignable_target,
+    binding_kind_for, describe_type, ensure_assignable, ensure_assignable_target,
     internal_error, node_origin, origin_for,
     unsupported_node_surface,
 };
@@ -345,13 +345,14 @@ pub(crate) fn type_node_with_expectation(
             if let Some(message) = decls::unsupported_routine_param_surface_message(params) {
                 return Err(unsupported_node_surface(resolved, node, message));
             }
+            let mut lowered_params = Vec::with_capacity(params.len());
             for param in params {
-                let _ = decls::lower_type(typed, resolved, context.scope_id, &param.param_type)?;
+                lowered_params.push(decls::lower_type(typed, resolved, context.scope_id, &param.param_type)?);
             }
-            let expected_return_type = return_type
-                .as_ref()
-                .map(|ty| decls::lower_type(typed, resolved, context.scope_id, ty))
-                .transpose()?;
+            let expected_return_type = match return_type.as_ref() {
+                None | Some(FolType::None) => None,
+                Some(ty) => Some(decls::lower_type(typed, resolved, context.scope_id, ty)?),
+            };
             let expected_error_type = error_type
                 .as_ref()
                 .map(|ty| decls::lower_type(typed, resolved, context.scope_id, ty))
@@ -400,8 +401,12 @@ pub(crate) fn type_node_with_expectation(
                     });
                 }
             }
-            Ok(TypedExpr::maybe_value(expected_return_type.or(body_type.value_type))
-                .with_optional_effect(body_type.recoverable_effect))
+            let routine_type_id = typed.type_table_mut().intern(CheckedType::Routine(RoutineType {
+                params: lowered_params,
+                return_type: expected_return_type,
+                error_type: expected_error_type,
+            }));
+            Ok(TypedExpr::value(routine_type_id))
         }
         AstNode::Block { statements } => type_body(typed, resolved, context, statements),
         AstNode::Program { declarations } => type_body(typed, resolved, context, declarations),
@@ -527,11 +532,48 @@ pub(crate) fn type_node_with_expectation(
             TypecheckErrorKind::Unsupported,
             "yield typing is not part of the V1 typecheck milestone",
         )),
-        AstNode::Invoke { .. } => Err(unsupported_node_surface(
-            resolved,
-            node,
-            "general invoke expressions are not yet implemented in the V1 typecheck milestone",
-        )),
+        AstNode::Invoke { callee, args } => {
+            let callee_expr = type_node(typed, resolved, context, callee)?;
+            let callee_type_id = callee_expr.value_type.ok_or_else(|| {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "invoke callee expression does not produce a value",
+                )
+            })?;
+            let signature = match typed.type_table().get(callee_type_id) {
+                Some(CheckedType::Routine(sig)) => sig.clone(),
+                _ => {
+                    return Err(TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        format!(
+                            "invoke callee is not a callable routine type (found {})",
+                            describe_type(typed, callee_type_id)
+                        ),
+                    ));
+                }
+            };
+            let arg_effect = calls::check_call_arguments(
+                typed,
+                resolved,
+                context,
+                &signature,
+                args,
+                "<invoke>",
+                node_origin(resolved, node),
+            )?;
+            let call_effect = helpers::merge_recoverable_effects(
+                typed,
+                node_origin(resolved, node),
+                "invoke",
+                [
+                    arg_effect,
+                    signature
+                        .error_type
+                        .map(|error_type| RecoverableCallEffect { error_type }),
+                ],
+            )?;
+            Ok(TypedExpr::maybe_value(signature.return_type).with_optional_effect(call_effect))
+        }
         AstNode::TemplateCall { .. } => Err(unsupported_node_surface(
             resolved,
             node,
