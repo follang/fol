@@ -218,7 +218,10 @@ impl AstParser {
     }
 
     pub(super) fn finish_syntax_tracking(&self) -> SyntaxIndex {
-        self.syntax_index.borrow_mut().take().unwrap_or_default()
+        self.syntax_index
+            .borrow_mut()
+            .take()
+            .expect("syntax tracking must be active when finishing")
     }
 
     pub(super) fn record_syntax_origin(

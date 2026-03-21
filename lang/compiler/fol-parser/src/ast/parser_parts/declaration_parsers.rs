@@ -427,7 +427,7 @@ impl AstParser {
         let close_label = match close_symbol {
             SYMBOL::RoundC => ")",
             SYMBOL::SquarC => "]",
-            _ => unreachable!(),
+            _ => unreachable!("close_symbol is always RoundC or SquarC"),
         };
         if !matches!(
             open.key(),
