@@ -1,6 +1,6 @@
 //! Runtime string support.
 
-use std::{borrow::Borrow, fmt, ops::Deref};
+use std::{borrow::Borrow, fmt, ops::{Add, Deref}};
 
 #[derive(Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
@@ -63,6 +63,14 @@ impl Deref for FolStr {
 
     fn deref(&self) -> &Self::Target {
         self.as_str()
+    }
+}
+
+impl Add for FolStr {
+    type Output = FolStr;
+
+    fn add(self, rhs: FolStr) -> FolStr {
+        FolStr(self.0 + &rhs.0)
     }
 }
 

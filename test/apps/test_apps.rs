@@ -832,6 +832,39 @@ fn shell_vs_recoverable_boundary_fixture_compiles_and_runs() {
 }
 
 #[test]
+fn arithmetic_operators_fixture_compiles_and_runs() {
+    let fixture = fixture_root("arithmetic_operators");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn boolean_logic_fixture_compiles_and_runs() {
+    let fixture = fixture_root("boolean_logic");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn string_operations_fixture_compiles_and_runs() {
+    let fixture = fixture_root("string_operations");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
 fn fail_hidden_cross_file_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_hidden_cross_file");
 

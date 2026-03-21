@@ -1,0 +1,41 @@
+fun[] all_true(a: bol, b: bol): bol = {
+    return a and b;
+};
+
+fun[] any_true(a: bol, b: bol): bol = {
+    return a or b;
+};
+
+fun[] exclusive(a: bol, b: bol): bol = {
+    return a xor b;
+};
+
+fun[] negated(a: bol): bol = {
+    return .not(a);
+};
+
+fun[] compare_ints(a: int, b: int): bol = {
+    var lt: bol = a < b;
+    var gt: bol = a > b;
+    var le: bol = a <= b;
+    var ge: bol = a >= b;
+    var eq: bol = a == b;
+    var ne: bol = a != b;
+    return (lt or gt) and (le or ge) and (eq or ne);
+};
+
+fun[] combined_logic(): int = {
+    var both: bol = all_true(true, true);
+    var either: bol = any_true(false, true);
+    var only_one: bol = exclusive(true, false);
+    var flipped: bol = negated(false);
+    var cmp: bol = compare_ints(3, 5);
+    when(both and either and only_one and flipped and cmp) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+};
+
+fun[] main(): int = {
+    return combined_logic();
+};
