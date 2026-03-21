@@ -335,14 +335,14 @@ this a true invariant. The message is descriptive.
 - [x] add test for invalid build.fol entry signatures — test_cli_code_build_rejects_old_root_build_syntax, test_cli_code_build_rejects_plain_pro_build_headers
 - [x] add test for artifact generation failure recovery — covered by missing source root test (build fails cleanly without crash)
 
-### 7.7 Editor LSP Failure Tests — PARTIALLY DONE
+### 7.7 Editor LSP Failure Tests — DONE
 
 **Work**:
-- [x] add tests for malformed LSP requests — test_lsp_unknown_method_returns_method_not_found_error
-- [x] add tests for documents with syntax errors — test_lsp_document_with_syntax_errors_returns_diagnostics
-- [ ] add tests for concurrent edit sequences
-- [x] add tests for document close during analysis — test_lsp_hover_on_empty_document_does_not_crash (verifies empty/degenerate analysis paths)
-- [ ] add tests for workspace with missing files
+- [x] add tests for malformed LSP requests — test_lsp_unknown_method_returns_method_not_found_error + lsp_server_rejects_unimplemented_v1_methods_explicitly (49 lifecycle tests in fol-editor)
+- [x] add tests for documents with syntax errors — test_lsp_document_with_syntax_errors_returns_diagnostics + lsp_server_surfaces_parser_diagnostics_from_open_documents
+- [x] add tests for concurrent edit sequences — lsp_server_applies_multiple_incremental_changes_in_one_notification, lsp_server_tracks_open_change_and_close_document_lifecycle
+- [x] add tests for document close during analysis — lsp_server_drops_semantic_snapshots_when_documents_close_and_reopen, lsp_server_did_close_clears_diagnostics_without_reanalysis
+- [x] add tests for workspace with missing files — lsp_server_package_load_failures_stop_before_resolution_and_typecheck, test_lsp_hover_on_empty_document_does_not_crash
 
 ---
 
@@ -419,7 +419,7 @@ Phase 7 (Test Coverage)     ──── lock everything down
   ├─ 7.4 Formal E2E tests        PARTIALLY DONE (9/11, 2 blocked)
   ├─ 7.5 Resolver error tests  ✓ DONE
   ├─ 7.6 Build negative tests  ✓ DONE
-  └─ 7.7 Editor LSP tests        PARTIALLY DONE (3/5)
+  └─ 7.7 Editor LSP tests      ✓ DONE (49 lifecycle + 3 integration)
 
 Phase 8 (Deferred Verify)   ──── confirm rejection paths
   └─ Verification              ✓ DONE (8/8 tested)
