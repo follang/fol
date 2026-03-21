@@ -39,7 +39,7 @@ pub fn render_rust_type_in_workspace(
         )),
         LoweredType::Array { size: None, .. } => Err(BackendError::new(
             BackendErrorKind::Unsupported,
-            "Rust type rendering for unsized arrays is not implemented yet",
+            "unsized arrays are not part of the V1 backend; use vec[] for dynamic collections",
         )),
         LoweredType::Vector { element_type } => Ok(format!(
             "rt::FolVec<{}>",
@@ -56,7 +56,7 @@ pub fn render_rust_type_in_workspace(
             )),
             _ => Err(BackendError::new(
                 BackendErrorKind::Unsupported,
-                "Rust type rendering for heterogeneous set members is not implemented yet",
+                "heterogeneous sets are not part of the V1 backend; sets must have a single member type",
             )),
         },
         LoweredType::Map {
@@ -81,9 +81,9 @@ pub fn render_rust_type_in_workspace(
         LoweredType::Record { .. } | LoweredType::Entry { .. } => {
             render_named_runtime_type(workspace, type_id)
         }
-        other => Err(BackendError::new(
+        LoweredType::Routine(_) => Err(BackendError::new(
             BackendErrorKind::Unsupported,
-            format!("Rust type rendering is not implemented yet for {other:?}"),
+            "first-class routine types are not rendered as standalone Rust types in V1",
         )),
     }
 }
@@ -370,8 +370,8 @@ mod tests {
     };
     use crate::testing::{package_identity, sample_lowered_workspace};
     use fol_lower::{
-        LoweredBuiltinType, LoweredFieldLayout, LoweredType, LoweredTypeDecl, LoweredTypeDeclKind,
-        LoweredTypeTable, LoweredVariantLayout,
+        LoweredBuiltinType, LoweredFieldLayout, LoweredRoutineType, LoweredType, LoweredTypeDecl,
+        LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
     };
     use fol_resolver::{PackageSourceKind, SourceUnitId, SymbolId};
 
@@ -752,6 +752,46 @@ mod tests {
         assert_eq!(
             rendered,
             "crate::packages::pkg__entry__app::root::ty__pkg__entry__app__t0__User"
+        );
+    }
+
+    #[test]
+    fn v1_boundary_types_produce_explicit_rejection_messages() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+
+        let unsized_array_id = table.intern(LoweredType::Array {
+            element_type: int_id,
+            size: None,
+        });
+        let heterogeneous_set_id = table.intern(LoweredType::Set {
+            member_types: vec![int_id, int_id],
+        });
+        let routine_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![int_id],
+            return_type: Some(int_id),
+            error_type: None,
+        }));
+
+        let unsized_err = render_rust_type(&table, unsized_array_id)
+            .expect_err("unsized arrays should be rejected");
+        assert!(
+            unsized_err.message().contains("unsized arrays"),
+            "unsized array error should mention unsized arrays"
+        );
+
+        let het_set_err = render_rust_type(&table, heterogeneous_set_id)
+            .expect_err("heterogeneous sets should be rejected");
+        assert!(
+            het_set_err.message().contains("heterogeneous sets"),
+            "heterogeneous set error should mention heterogeneous sets"
+        );
+
+        let routine_err = render_rust_type(&table, routine_id)
+            .expect_err("routine types should be rejected");
+        assert!(
+            routine_err.message().contains("routine types"),
+            "routine type error should mention routine types"
         );
     }
 }
