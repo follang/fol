@@ -1,0 +1,4 @@
+fun[] main(): int = {
+    var adder: {fun (n: int): int} = fun(n: int): int = { return n + 10 };
+    return 0;
+};

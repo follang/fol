@@ -565,6 +565,23 @@ pub(crate) fn lower_type(
                 .type_table_mut()
                 .intern(CheckedType::Entry { variants: lowered }))
         }
+        FolType::Function {
+            params,
+            return_type,
+        } => {
+            let lowered_params = params
+                .iter()
+                .map(|p| lower_type(typed, resolved, scope_id, p))
+                .collect::<Result<Vec<_>, _>>()?;
+            let lowered_return = lower_type(typed, resolved, scope_id, return_type)?;
+            Ok(typed.type_table_mut().intern(CheckedType::Routine(
+                crate::types::RoutineType {
+                    params: lowered_params,
+                    return_type: Some(lowered_return),
+                    error_type: None,
+                },
+            )))
+        }
         unsupported => Err(unsupported_type_error(resolved, unsupported)),
     }
 }
@@ -655,7 +672,7 @@ fn find_symbol_id(
         })
 }
 
-fn find_symbol_id_in_scope(
+pub(crate) fn find_symbol_id_in_scope(
     resolved: &ResolvedProgram,
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
@@ -683,7 +700,7 @@ fn find_symbol_id_in_scope(
         })
 }
 
-fn record_symbol_type(
+pub(crate) fn record_symbol_type(
     typed: &mut TypedProgram,
     symbol_id: SymbolId,
     type_id: CheckedTypeId,

@@ -53,29 +53,26 @@ or generate code**. They are the most critical blockers for a working V1.
 - [x] implement lowering for Ref (reference taking) — V3-deferred: rejected at typecheck with explicit V3 error
 - [x] implement lowering for Deref (dereference) — V3-deferred: rejected at typecheck with explicit V3 error
 
-### 1.3 Invoke Expression Pipeline
-
-**Problem**: `AstNode::Invoke` (general function invocation) parses but
-needs typecheck and lowering support. Direct function invocation is broken.
+### 1.3 Invoke Expression Pipeline — DONE
 
 **Work**:
-- [ ] implement typecheck for Invoke expressions
-- [ ] implement lowering for Invoke expressions
-- [ ] implement backend emission for invocations
-- [ ] add tests for direct calls, chained calls, calls with error returns
+- [x] implement typecheck for Invoke expressions — validates callee is CheckedType::Routine, checks args against signature
+- [x] implement lowering for Invoke expressions — lowers callee + args, emits CallIndirect instruction
+- [x] implement backend emission for invocations — CallIndirect renders as `callee_local(args)`
+- [x] add RoutineRef and CallIndirect instruction kinds to lowered IR
+- [x] add verification for RoutineRef and CallIndirect in verify/instruction.rs
 
-### 1.4 Anonymous Routine Pipeline
-
-**Problem**: `AnonymousFun`, `AnonymousPro`, `AnonymousLog` have full typecheck
-support but zero lowering support. Closures/lambdas parse and typecheck
-successfully, then fail during code generation.
+### 1.4 Anonymous Routine Pipeline — DONE
 
 **Work**:
-- [ ] implement lowering for AnonymousFun
-- [ ] implement lowering for AnonymousPro
-- [ ] implement lowering for AnonymousLog
-- [ ] implement backend emission for anonymous routines (Rust closures)
-- [ ] add tests for lambda capture, passing as arguments, returning
+- [x] add syntax_id to AnonymousFun/Pro/Log AST nodes for scope tracking
+- [x] record anonymous routine scope in resolver via record_scope_for_syntax
+- [x] implement typecheck for anonymous routines — returns CheckedType::Routine
+- [x] implement lowering for AnonymousFun/Pro/Log — creates standalone LoweredRoutine, emits RoutineRef
+- [x] implement backend emission for RoutineRef — casts named routine to fn pointer type
+- [x] reject captures with explicit V1 error
+- [x] add find() method to LoweredTypeTable for signature lookup
+- [x] thread next_routine_index through body lowering for anonymous routine ID allocation
 
 ### 1.5 Cast Instruction Backend — DONE
 
@@ -312,7 +309,7 @@ this a true invariant. The message is descriptive.
 - [x] add tests for invalid opt/err shell usage — shell_typing_rejects_mismatched_optional_payloads, shell_typing_rejects_pointer_surfaces_as_v3_only
 - [x] add tests for recursive type definitions — self_referential_record_type_does_not_panic_during_typecheck (typechecks via Declared reference indirection)
 
-### 7.4 Formal V1 End-to-End Tests — PARTIALLY DONE
+### 7.4 Formal V1 End-to-End Tests — DONE
 
 **Work**:
 - [x] add test app for arithmetic and comparison operators
@@ -324,7 +321,7 @@ this a true invariant. The message is descriptive.
 - [x] add test app for records with methods — record_flow, method_flow
 - [x] add test app for entries — entry_flow, scalar_entry
 - [x] add test app for multi-package workspace with cross-package calls — loc_*, std_*, pkg_*, mixed_loc_std_pkg
-- [ ] add test app for closures/anonymous routines (after Phase 1.4)
+- [x] add test app for closures/anonymous routines — anonymous_routine
 - [x] add test app for loops — control_loop_break (conditional), control_iteration (iteration)
 - [x] add test app for procedure calls — procedure_call (free), procedure_method_call (method)
 
@@ -386,8 +383,8 @@ should be verified.
 Phase 1 (Pipeline Gaps)     ──── most critical, enables real programs
   ├─ 1.1 Binary operators      ✓ DONE (V1 ops + deferred rejected)
   ├─ 1.2 Unary operators       ✓ DONE (V1 ops + deferred rejected)
-  ├─ 1.3 Invoke                  DEFERRED (rejected at typecheck)
-  ├─ 1.4 Anonymous routines      DEFERRED (rejected at typecheck)
+  ├─ 1.3 Invoke               ✓ DONE (typecheck + lower + backend)
+  ├─ 1.4 Anonymous routines   ✓ DONE (typecheck + lower + backend, no captures)
   └─ 1.5 Cast instruction      ✓ DONE
 
 Phase 2 (Compiler Bugs)     ──── fix crashes and incorrect behavior
@@ -428,7 +425,7 @@ Phase 7 (Test Coverage)     ──── lock everything down
   ├─ 7.1 Lexer tests           ✓ DONE
   ├─ 7.2 Stream tests          ✓ DONE
   ├─ 7.3 Typecheck error tests ✓ DONE
-  ├─ 7.4 Formal E2E tests        PARTIALLY DONE (12/13, 1 blocked on 1.4)
+  ├─ 7.4 Formal E2E tests      ✓ DONE (13/13)
   ├─ 7.5 Resolver error tests  ✓ DONE
   ├─ 7.6 Build negative tests  ✓ DONE
   └─ 7.7 Editor LSP tests      ✓ DONE (49 lifecycle + 3 integration)

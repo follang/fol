@@ -319,6 +319,7 @@ pub(crate) fn type_node_with_expectation(
             Ok(body_type)
         }
         AstNode::AnonymousFun {
+            syntax_id,
             params,
             return_type,
             error_type,
@@ -327,6 +328,7 @@ pub(crate) fn type_node_with_expectation(
             ..
         }
         | AstNode::AnonymousPro {
+            syntax_id,
             params,
             return_type,
             error_type,
@@ -335,6 +337,7 @@ pub(crate) fn type_node_with_expectation(
             ..
         }
         | AstNode::AnonymousLog {
+            syntax_id,
             params,
             return_type,
             error_type,
@@ -345,21 +348,34 @@ pub(crate) fn type_node_with_expectation(
             if let Some(message) = decls::unsupported_routine_param_surface_message(params) {
                 return Err(unsupported_node_surface(resolved, node, message));
             }
+            let routine_scope = syntax_id
+                .and_then(|id| resolved.scope_for_syntax(id))
+                .unwrap_or(context.scope_id);
             let mut lowered_params = Vec::with_capacity(params.len());
             for param in params {
-                lowered_params.push(decls::lower_type(typed, resolved, context.scope_id, &param.param_type)?);
+                let param_type = decls::lower_type(typed, resolved, routine_scope, &param.param_type)?;
+                if let Ok(param_symbol_id) = decls::find_symbol_id_in_scope(
+                    resolved,
+                    context.source_unit_id,
+                    routine_scope,
+                    &[fol_resolver::SymbolKind::Parameter],
+                    &param.name,
+                ) {
+                    decls::record_symbol_type(typed, param_symbol_id, param_type)?;
+                }
+                lowered_params.push(param_type);
             }
             let expected_return_type = match return_type.as_ref() {
                 None | Some(FolType::None) => None,
-                Some(ty) => Some(decls::lower_type(typed, resolved, context.scope_id, ty)?),
+                Some(ty) => Some(decls::lower_type(typed, resolved, routine_scope, ty)?),
             };
             let expected_error_type = error_type
                 .as_ref()
-                .map(|ty| decls::lower_type(typed, resolved, context.scope_id, ty))
+                .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
                 .transpose()?;
             let routine_context = TypeContext {
                 source_unit_id: context.source_unit_id,
-                scope_id: context.scope_id,
+                scope_id: routine_scope,
                 routine_return_type: expected_return_type,
                 routine_error_type: expected_error_type,
                 error_call_mode: ErrorCallMode::Propagate,

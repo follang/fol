@@ -252,15 +252,46 @@ fn render_local_declaration(
         }
         (None, _) => "_".to_string(),
     };
+    let initializer = match local.type_id.and_then(|id| type_table.get(id)) {
+        Some(fol_lower::LoweredType::Routine(routine_type)) => {
+            let dummy_params: Vec<String> = routine_type
+                .params
+                .iter()
+                .enumerate()
+                .map(|(i, param_id)| {
+                    render_rust_type_in_workspace(Some(workspace), type_table, *param_id)
+                        .map(|ty| format!("_p{i}: {ty}"))
+                })
+                .collect::<BackendResult<Vec<_>>>()?;
+            let return_clause = match (routine_type.return_type, routine_type.error_type) {
+                (Some(ret), Some(err)) => format!(
+                    " -> rt::FolRecover<{}, {}>",
+                    render_rust_type_in_workspace(Some(workspace), type_table, ret)?,
+                    render_rust_type_in_workspace(Some(workspace), type_table, err)?
+                ),
+                (Some(ret), None) => format!(
+                    " -> {}",
+                    render_rust_type_in_workspace(Some(workspace), type_table, ret)?
+                ),
+                _ => String::new(),
+            };
+            format!(
+                "{{ fn __fol_uninit({}){return_clause} {{ unreachable!(\"uninitialized function pointer\") }} __fol_uninit as {rendered_type} }}",
+                dummy_params.join(", ")
+            )
+        }
+        _ => "Default::default()".to_string(),
+    };
     Ok(format!(
-        "    let mut {}: {} = Default::default();",
+        "    let mut {}: {} = {};",
         mangle_local_name(
             package_identity,
             routine.id,
             local_id,
             local.name.as_deref()
         ),
-        rendered_type
+        rendered_type,
+        initializer
     ))
 }
 
@@ -526,10 +557,11 @@ mod tests {
         });
         routine.params.push(param_id);
 
+        let workspace = sample_lowered_workspace();
         let snapshot = [
-            render_global_declaration(&package_identity, &global, &table).expect("global"),
-            render_routine_signature(&package_identity, &routine, &table).expect("signature"),
-            render_routine_shell(&package_identity, &routine, &table).expect("shell"),
+            render_global_declaration(&workspace, &package_identity, &global, &table).expect("global"),
+            render_routine_signature(&workspace, &package_identity, &routine, &table).expect("signature"),
+            render_routine_shell(&workspace, &package_identity, &routine, &table).expect("shell"),
         ]
         .join("\n");
 
