@@ -5,10 +5,10 @@ pub use crate::aggregate::{
     render_entry, render_entry_debug, render_record, render_record_debug, FolEntry, FolNamedValue,
     FolRecord,
 };
-pub use crate::builtins::{echo, len, render_echo, FolEchoFormat, FolLength};
+pub use crate::builtins::{echo, len, pow, pow_float, render_echo, FolEchoFormat, FolLength};
 pub use crate::containers::{
     index_array, index_seq, index_vec, lookup_map, render_array, render_map, render_seq,
-    render_set, render_vec, FolArray, FolMap, FolSeq, FolSet, FolVec,
+    render_set, render_vec, slice_seq, slice_vec, FolArray, FolMap, FolSeq, FolSet, FolVec,
 };
 pub use crate::entry::{
     failure_outcome_from_error, outcome_from_recoverable, printable_outcome_message,

@@ -607,6 +607,173 @@ use fol_editor::{LspDefinitionParams, LspHover, LspHoverParams, LspLocation};
     }
 
     #[test]
+    fn test_cli_code_build_rejects_empty_build_file() {
+        let root = unique_temp_root("empty_build_file");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(root.join("build.fol"), "")
+            .expect("should write empty build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0;\n};\n",
+        )
+        .expect("should write app source");
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+
+        assert!(
+            !output.status.success(),
+            "empty build.fol should fail: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn test_cli_code_build_rejects_missing_package_yaml() {
+        let root = unique_temp_root("missing_package_yaml");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("build.fol"), semantic_bin_build("demo"))
+            .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0;\n};\n",
+        )
+        .expect("should write app source");
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+
+        assert!(
+            !output.status.success(),
+            "missing package.yaml should fail: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn test_cli_code_build_rejects_missing_source_root() {
+        let root = unique_temp_root("missing_source_root");
+        std::fs::create_dir_all(&root).expect("should create root dir");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(root.join("build.fol"), semantic_bin_build("demo"))
+            .expect("should write build file");
+        // Intentionally no src/main.fol
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+
+        assert!(
+            !output.status.success(),
+            "missing source root should fail: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+
+        std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn test_lsp_unknown_method_returns_method_not_found_error() {
+        let mut server = EditorLspServer::new(EditorConfig::default());
+
+        let result = server.handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(999),
+            method: "textDocument/nonExistentMethod".to_string(),
+            params: None,
+        });
+
+        match result {
+            Ok(Some(response)) => {
+                assert!(
+                    response.error.is_some(),
+                    "Unknown LSP method should return an error response"
+                );
+            }
+            Ok(None) => {
+                // Also acceptable: server ignores unknown methods
+            }
+            Err(_) => {
+                // Also acceptable: server rejects at dispatch level
+            }
+        }
+    }
+
+    #[test]
+    fn test_lsp_document_with_syntax_errors_returns_diagnostics() {
+        let temp_root = unique_temp_root("lsp_syntax_errors");
+        std::fs::create_dir_all(&temp_root).expect("should create temp root");
+        let uri = format!("file://{}", temp_root.join("bad.fol").display());
+        let bad_source = "fun[] main( = {\n    return;\n};\n";
+
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        let diagnostics = server
+            .handle_notification(JsonRpcNotification {
+                jsonrpc: "2.0".to_string(),
+                method: "textDocument/didOpen".to_string(),
+                params: Some(
+                    serde_json::to_value(LspDidOpenTextDocumentParams {
+                        text_document: LspTextDocumentItem {
+                            uri: uri.clone(),
+                            language_id: "fol".to_string(),
+                            version: 1,
+                            text: bad_source.to_string(),
+                        },
+                    })
+                    .expect("didOpen params should serialize"),
+                ),
+            })
+            .expect("didOpen with syntax errors should not crash the server");
+
+        assert!(
+            !diagnostics.is_empty(),
+            "Documents with syntax errors should still produce diagnostic notifications"
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_lsp_hover_on_empty_document_does_not_crash() {
+        let temp_root = unique_temp_root("lsp_empty_hover");
+        std::fs::create_dir_all(&temp_root).expect("should create temp root");
+        let uri = format!("file://{}", temp_root.join("empty.fol").display());
+
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_lsp_document(&mut server, uri.clone(), "");
+
+        let hover = server.handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(1),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    position: LspPosition {
+                        line: 0,
+                        character: 0,
+                    },
+                })
+                .expect("hover params should serialize"),
+            ),
+        });
+
+        assert!(
+            hover.is_ok(),
+            "Hover on empty document should not crash: {:?}",
+            hover
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     #[ignore = "requires network access to github.com"]
     fn test_frontend_fetches_public_logtiny_from_github() {
         let temp_root = unique_temp_root("frontend_fetch_public_logtiny");

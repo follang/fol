@@ -106,7 +106,7 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
         let backend_session = fol_backend::BackendSession::new(lowered);
         let artifact = fol_backend::emit_backend_artifact(
             &backend_session,
-            &backend_config(config),
+            &backend_config(config, profile),
             &output_root,
         )
         .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
@@ -180,6 +180,7 @@ pub fn run_workspace_with_args_and_config(
     config: &FrontendConfig,
     args: &[String],
 ) -> FrontendResult<FrontendCommandResult> {
+    ensure_host_runnable_target(config, "run")?;
     let built = build_workspace_with_config(workspace, config)?;
     let binaries = built
         .artifacts
@@ -238,6 +239,7 @@ pub(crate) fn run_selected_artifact_with_args_and_config(
     selection: &FrontendArtifactExecutionSelection,
     args: &[String],
 ) -> FrontendResult<FrontendCommandResult> {
+    ensure_host_runnable_target(config, "run")?;
     let built = build_selected_artifacts_for_profile_with_config(
         workspace,
         config,
@@ -314,6 +316,7 @@ pub(crate) fn test_selected_artifacts_with_config(
     profile: FrontendProfile,
     selections: &[FrontendArtifactExecutionSelection],
 ) -> FrontendResult<FrontendCommandResult> {
+    ensure_host_runnable_target(config, "test")?;
     let built =
         build_selected_artifacts_for_profile_with_config(workspace, config, profile, selections)?;
     let binaries = built
@@ -403,7 +406,7 @@ pub fn emit_rust_with_config(
             &fol_backend::BackendConfig {
                 mode: fol_backend::BackendMode::EmitSource,
                 keep_build_dir: true,
-                ..backend_config(config)
+                ..backend_config(config, FrontendProfile::Release)
             },
             &output_root,
         )
@@ -604,11 +607,40 @@ fn resolver_config(
     }
 }
 
-fn backend_config(config: &FrontendConfig) -> fol_backend::BackendConfig {
+fn backend_profile(profile: FrontendProfile) -> fol_backend::BackendBuildProfile {
+    match profile {
+        FrontendProfile::Debug => fol_backend::BackendBuildProfile::Debug,
+        FrontendProfile::Release => fol_backend::BackendBuildProfile::Release,
+    }
+}
+
+fn backend_config(
+    config: &FrontendConfig,
+    profile: FrontendProfile,
+) -> fol_backend::BackendConfig {
     fol_backend::BackendConfig {
+        machine_target: config.backend_machine_target(),
+        build_profile: backend_profile(profile),
         keep_build_dir: config.keep_build_dir,
         ..fol_backend::BackendConfig::default()
     }
+}
+
+fn ensure_host_runnable_target(config: &FrontendConfig, command: &str) -> FrontendResult<()> {
+    if config.machine_target_runs_on_host() {
+        return Ok(());
+    }
+    let machine_target = config.backend_machine_target();
+    let selected = machine_target
+        .rust_target_triple()
+        .unwrap_or_else(|| machine_target.display_name().to_string());
+    let host = FrontendConfig::host_rust_target_triple().unwrap_or("unknown-host");
+    Err(FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "{command} command cannot execute target '{selected}' on host '{host}'"
+        ),
+    ))
 }
 
 fn test_workspace_selected_with_config(
@@ -616,6 +648,7 @@ fn test_workspace_selected_with_config(
     config: &FrontendConfig,
     selected_package: Option<&str>,
 ) -> FrontendResult<FrontendCommandResult> {
+    ensure_host_runnable_target(config, "test")?;
     let selected_members = selected_workspace_members(workspace, selected_package)?;
     let mut result = FrontendCommandResult::new("test", "tested 0 workspace package(s)");
     let mut tested_count = 0usize;
@@ -661,4 +694,3 @@ fn selected_workspace_members(
         None => Ok(workspace.members.clone()),
     }
 }
-

@@ -301,7 +301,7 @@ mod tests {
     #[test]
     fn completion_context_with_lsp_prefers_explicit_dot_trigger() {
         let uri = EditorDocumentUri::from_file_path(PathBuf::from("/tmp/context.fol")).unwrap();
-        let document = EditorDocument::new(uri, 1, "fun[] main(): int = {\n    return \n}\n".to_string())
+        let document = EditorDocument::new(uri, 1, "fun[] main(): int = {\n    return \n};\n".to_string())
             .unwrap();
 
         let context = completion_context_with_lsp(

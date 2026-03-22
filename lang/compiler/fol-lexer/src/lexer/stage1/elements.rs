@@ -42,7 +42,7 @@ impl Elements {
         self.win.2.clone()
     }
     pub fn peek(&self, indx: usize) -> Con<Element> {
-        let u = if indx > SLIDER { 0 } else { indx };
+        let u = if indx >= SLIDER { SLIDER - 1 } else { indx };
         self.next_vec()[u].clone()
     }
     pub fn prev_vec(&self) -> Vec<Con<Element>> {
@@ -51,7 +51,7 @@ impl Elements {
         rev
     }
     pub fn seek(&self, indx: usize) -> Con<Element> {
-        let u = if indx > SLIDER { 0 } else { indx };
+        let u = if indx >= SLIDER { SLIDER - 1 } else { indx };
         self.prev_vec()[u].clone()
     }
     pub fn bump(&mut self) -> Option<Con<Element>> {

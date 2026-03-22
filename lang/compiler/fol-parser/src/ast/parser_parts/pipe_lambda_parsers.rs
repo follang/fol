@@ -142,6 +142,7 @@ impl AstParser {
                 "Expected '|' to start lambda expression".to_string(),
             ));
         }
+        let syntax_id = self.record_syntax_origin(&open);
         let _ = tokens.bump();
 
         let params = self.parse_pipe_lambda_params(tokens)?;
@@ -217,6 +218,7 @@ impl AstParser {
         };
 
         Ok(AstNode::AnonymousFun {
+            syntax_id,
             options: vec![FunOption::Mutable],
             captures,
             params,

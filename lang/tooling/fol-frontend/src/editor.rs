@@ -43,6 +43,19 @@ pub fn editor_lsp_stdio(config: &FrontendConfig) -> FrontendResult<()> {
     fol_editor::run_lsp_stdio(fol_editor::EditorConfig::default()).map_err(lower_editor_error)
 }
 
+pub fn editor_completion_command(
+    path: &str,
+    line: u32,
+    character: u32,
+) -> FrontendResult<FrontendCommandResult> {
+    fol_editor::editor_completion_file(
+        Path::new(path),
+        fol_editor::LspPosition { line, character },
+    )
+    .map(editor_summary_to_result)
+    .map_err(lower_editor_error)
+}
+
 pub fn editor_format_command(path: &str) -> FrontendResult<FrontendCommandResult> {
     fol_editor::editor_format_file(Path::new(path))
         .map(editor_summary_to_result)
@@ -159,7 +172,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0\n};\n",
         )
         .unwrap();
         (
@@ -278,8 +291,8 @@ mod tests {
 
         assert_eq!(tree.command, "tree generate");
         assert!(tree.summary.contains("tree-sitter bundle ready"));
-        assert!(tree.summary.contains("captures="));
-        assert!(tree.summary.contains("queries="));
+        assert!(tree.summary.contains("query_files="));
+        assert!(tree.summary.contains("corpus_files="));
 
         std::fs::remove_dir_all(tree_root).ok();
     }

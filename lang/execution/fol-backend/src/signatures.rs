@@ -15,6 +15,7 @@ fn recoverable_error_type_for_local(
 ) -> Option<LoweredTypeId> {
     routine.instructions.iter().find_map(|instruction| match &instruction.kind {
         fol_lower::LoweredInstrKind::Call { error_type, .. }
+        | fol_lower::LoweredInstrKind::CallIndirect { error_type, .. }
             if instruction.result == Some(local_id) =>
         {
             *error_type
@@ -251,15 +252,46 @@ fn render_local_declaration(
         }
         (None, _) => "_".to_string(),
     };
+    let initializer = match local.type_id.and_then(|id| type_table.get(id)) {
+        Some(fol_lower::LoweredType::Routine(routine_type)) => {
+            let dummy_params: Vec<String> = routine_type
+                .params
+                .iter()
+                .enumerate()
+                .map(|(i, param_id)| {
+                    render_rust_type_in_workspace(Some(workspace), type_table, *param_id)
+                        .map(|ty| format!("_p{i}: {ty}"))
+                })
+                .collect::<BackendResult<Vec<_>>>()?;
+            let return_clause = match (routine_type.return_type, routine_type.error_type) {
+                (Some(ret), Some(err)) => format!(
+                    " -> rt::FolRecover<{}, {}>",
+                    render_rust_type_in_workspace(Some(workspace), type_table, ret)?,
+                    render_rust_type_in_workspace(Some(workspace), type_table, err)?
+                ),
+                (Some(ret), None) => format!(
+                    " -> {}",
+                    render_rust_type_in_workspace(Some(workspace), type_table, ret)?
+                ),
+                _ => String::new(),
+            };
+            format!(
+                "{{ fn __fol_uninit({}){return_clause} {{ unreachable!(\"uninitialized function pointer\") }} __fol_uninit as {rendered_type} }}",
+                dummy_params.join(", ")
+            )
+        }
+        _ => "Default::default()".to_string(),
+    };
     Ok(format!(
-        "    let mut {}: {} = Default::default();",
+        "    let mut {}: {} = {};",
         mangle_local_name(
             package_identity,
             routine.id,
             local_id,
             local.name.as_deref()
         ),
-        rendered_type
+        rendered_type,
+        initializer
     ))
 }
 
@@ -409,8 +441,14 @@ mod tests {
         let mut method = LoweredRoutine::new(LoweredRoutineId(1), "tick", LoweredBlockId(0));
         method.signature = Some(signature_id);
         method.receiver_type = Some(int_id);
-        let method_param = method.locals.push(LoweredLocal {
+        let receiver_slot = method.locals.push(LoweredLocal {
             id: LoweredLocalId(0),
+            type_id: Some(int_id),
+            name: Some("self".to_string()),
+        });
+        method.params.push(receiver_slot);
+        let method_param = method.locals.push(LoweredLocal {
+            id: LoweredLocalId(1),
             type_id: Some(bool_id),
             name: Some("flag".to_string()),
         });
@@ -427,7 +465,7 @@ mod tests {
         assert!(plain_rendered.contains("l__pkg__entry__app__r0__l0__flag: rt::FolBool"));
         assert!(plain_rendered.ends_with(" -> rt::FolInt"));
         assert!(method_rendered.contains("receiver: rt::FolInt"));
-        assert!(method_rendered.contains("l__pkg__entry__app__r1__l0__flag: rt::FolBool"));
+        assert!(method_rendered.contains("l__pkg__entry__app__r1__l1__flag: rt::FolBool"));
     }
 
     #[test]
@@ -525,10 +563,11 @@ mod tests {
         });
         routine.params.push(param_id);
 
+        let workspace = sample_lowered_workspace();
         let snapshot = [
-            render_global_declaration(&package_identity, &global, &table).expect("global"),
-            render_routine_signature(&package_identity, &routine, &table).expect("signature"),
-            render_routine_shell(&package_identity, &routine, &table).expect("shell"),
+            render_global_declaration(&workspace, &package_identity, &global, &table).expect("global"),
+            render_routine_signature(&workspace, &package_identity, &routine, &table).expect("signature"),
+            render_routine_shell(&workspace, &package_identity, &routine, &table).expect("shell"),
         ]
         .join("\n");
 
@@ -540,5 +579,37 @@ mod tests {
             "let mut l__pkg__entry__app__r4__l1__value: rt::FolInt = Default::default();"
         ));
         assert_eq!(local_id, LoweredLocalId(1));
+    }
+
+    #[test]
+    fn routine_shell_rendering_emits_unreachable_stub_for_function_pointer_locals() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let fn_type_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![int_id],
+            return_type: Some(int_id),
+            error_type: None,
+        }));
+        let outer_sig = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![],
+            return_type: Some(int_id),
+            error_type: None,
+        }));
+        let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+        let workspace = sample_lowered_workspace();
+        let mut routine = LoweredRoutine::new(LoweredRoutineId(5), "caller", LoweredBlockId(0));
+        routine.signature = Some(outer_sig);
+        let _fn_local = routine.locals.push(LoweredLocal {
+            id: LoweredLocalId(0),
+            type_id: Some(fn_type_id),
+            name: Some("callback".to_string()),
+        });
+
+        let rendered = render_routine_shell(&workspace, &package_identity, &routine, &table)
+            .expect("routine shell with fn pointer");
+
+        assert!(rendered.contains("l__pkg__entry__app__r5__l0__callback"));
+        assert!(rendered.contains("unreachable!(\"uninitialized function pointer\")"));
+        assert!(rendered.contains("__fol_uninit"));
     }
 }

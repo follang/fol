@@ -1,0 +1,43 @@
+fun[] add(a: int, b: int): int = {
+    return a + b;
+};
+
+fun[] sub(a: int, b: int): int = {
+    return a - b;
+};
+
+fun[] mul(a: int, b: int): int = {
+    return a * b;
+};
+
+fun[] div(a: int, b: int): int = {
+    return a / b;
+};
+
+fun[] mod_op(a: int, b: int): int = {
+    return a % b;
+};
+
+fun[] neg(a: int): int = {
+    return -a;
+};
+
+fun[] pow_op(a: int, b: int): int = {
+    return a ^ b;
+};
+
+fun[] combined(x: int, y: int): int = {
+    return (x + y) * (x - y);
+};
+
+fun[] main(): int = {
+    var sum: int = add(3, 4);
+    var diff: int = sub(10, 3);
+    var product: int = mul(sum, 2);
+    var quotient: int = div(product, diff);
+    var remainder: int = mod_op(sum, 3);
+    var negated: int = neg(remainder);
+    var power: int = pow_op(2, 3);
+    var combo: int = combined(5, 3);
+    return quotient;
+};

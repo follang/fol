@@ -1,0 +1,5 @@
+fun[] main(): int = {
+    var items: vec[int] = {};
+    var size: int = .len(items);
+    return size;
+};

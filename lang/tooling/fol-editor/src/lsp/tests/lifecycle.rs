@@ -11,7 +11,7 @@ use super::super::{
     LspCodeActionParams, LspCompletionList, LspCompletionParams, LspDefinitionParams,
     LspDidChangeTextDocumentParams, LspDidCloseTextDocumentParams,
     LspDocumentFormattingParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
-    LspInitializeResult, LspLocation, LspPosition, LspRenameParams, LspSignatureHelpParams,
+    LspInitializeResult, LspLocation, LspPosition, LspRenameParams, LspSignatureHelp, LspSignatureHelpParams,
     LspTextEdit, LspWorkspaceSymbol, LspWorkspaceSymbolParams,
     LspTextDocumentContentChangeEvent, LspTextDocumentIdentifier, LspRange,
     LspVersionedTextDocumentIdentifier, LspWorkspaceEdit,
@@ -314,7 +314,7 @@ fn lsp_server_returns_no_build_file_formatting_edits_when_already_formatted() {
 #[test]
 fn lsp_server_formats_parse_broken_documents_without_needing_semantic_recovery() {
     let (root, uri) = sample_package_root("formatting_broken");
-    let text = "fun[] main(): int = {\nwhen(true) {\ncase(true) {\nreturn 7;\n}\n}\n";
+    let text = "fun[] main(): int = {\nwhen(true) {\ncase(true) {\nreturn 7;\n}\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, uri.clone(), text);
@@ -338,7 +338,7 @@ fn lsp_server_formats_parse_broken_documents_without_needing_semantic_recovery()
     assert_eq!(edits.len(), 1);
     assert_eq!(
         edits[0].new_text,
-        "fun[] main(): int = {\n    when(true) {\n        case(true) {\n            return 7;\n        }\n    }\n"
+        "fun[] main(): int = {\n    when(true) {\n        case(true) {\n            return 7;\n        }\n    };\n"
     );
 
     fs::remove_dir_all(root).ok();
@@ -410,7 +410,7 @@ fn completion_context_detects_type_positions() {
     let document = EditorDocument::new(
         uri,
         1,
-        "fun[] main(total: int): int = {\n    var value: \n    return 0\n}\n".to_string(),
+        "fun[] main(total: int): int = {\n    var value: ;\n    return 0;\n};\n".to_string(),
     )
     .unwrap();
 
@@ -433,7 +433,7 @@ fn completion_context_detects_qualified_paths() {
     let document = EditorDocument::new(
         uri,
         1,
-        "fun[] main(): int = {\n    return api::\n}\n".to_string(),
+        "fun[] main(): int = {\n    return api::;\n};\n".to_string(),
     )
     .unwrap();
 
@@ -457,7 +457,7 @@ fn completion_context_detects_dot_triggers() {
     let document = EditorDocument::new(
         uri,
         1,
-        "fun[] main(): int = {\n    return .\n}\n".to_string(),
+        "fun[] main(): int = {\n    return .;\n};\n".to_string(),
     )
     .unwrap();
 
@@ -481,7 +481,7 @@ fn lsp_server_tracks_open_change_and_close_document_lifecycle() {
     let open = open_document(
         &mut server,
         uri.clone(),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0;\n};\n",
     );
     assert_eq!(server.session.documents.len(), 1);
     assert_eq!(server.session.mappings.len(), 1);
@@ -500,7 +500,7 @@ fn lsp_server_tracks_open_change_and_close_document_lifecycle() {
                     content_changes: vec![LspTextDocumentContentChangeEvent {
                         range: None,
                         range_length: None,
-                        text: "fun[] main(): int = {\n    return 7\n}\n".to_string(),
+                        text: "fun[] main(): int = {\n    return 7;\n};\n".to_string(),
                     }],
                 })
                 .unwrap(),
@@ -546,7 +546,7 @@ fn lsp_server_tracks_multiple_open_documents_in_one_session() {
     let second_path = root.join("src/extra.fol");
     fs::write(
         &second_path,
-        "fun[] extra(): int = {\n    return 9\n}\n",
+        "fun[] extra(): int = {\n    return 9;\n};\n",
     )
     .unwrap();
     let second_uri = format!("file://{}", second_path.display());
@@ -555,12 +555,12 @@ fn lsp_server_tracks_multiple_open_documents_in_one_session() {
     let main_open = open_document(
         &mut server,
         uri.clone(),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0;\n};\n",
     );
     let extra_open = open_document(
         &mut server,
         second_uri.clone(),
-        "fun[] extra(): int = {\n    return 9\n}\n",
+        "fun[] extra(): int = {\n    return 9;\n};\n",
     );
     assert_eq!(server.session.documents.len(), 2);
     assert_eq!(server.session.mappings.len(), 2);
@@ -580,7 +580,7 @@ fn lsp_server_tracks_multiple_open_documents_in_one_session() {
                     content_changes: vec![LspTextDocumentContentChangeEvent {
                         range: None,
                         range_length: None,
-                        text: "fun[] extra(): int = {\n    return 11\n}\n".to_string(),
+                        text: "fun[] extra(): int = {\n    return 11;\n};\n".to_string(),
                     }],
                 })
                 .unwrap(),
@@ -622,14 +622,14 @@ fn lsp_server_maps_document_roots_and_surfaces_resolver_diagnostics() {
     let (root, uri) = sample_package_root("resolver_diag");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return missing_value\n}\n",
+        "fun[] main(): int = {\n    return missing_value;\n};\n",
     )
     .unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     let diagnostics = open_document(
         &mut server,
         uri,
-        "fun[] main(): int = {\n    return missing_value\n}\n",
+        "fun[] main(): int = {\n    return missing_value;\n};\n",
     );
 
     assert_eq!(server.session.mappings.len(), 1);
@@ -642,7 +642,7 @@ fn lsp_server_maps_document_roots_and_surfaces_resolver_diagnostics() {
 #[test]
 fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
     let (root, uri) = sample_package_root("semantic_cache");
-    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    let text = "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -730,7 +730,7 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
                     content_changes: vec![LspTextDocumentContentChangeEvent {
                         range: None,
                         range_length: None,
-                        text: "fun[] main(): int = {\n    var value: int = 11\n    return value\n}\n"
+                        text: "fun[] main(): int = {\n    var value: int = 11;\n    return value;\n};\n"
                             .to_string(),
                     }],
                 })
@@ -773,7 +773,7 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_workspace_symbol_requests(
     let (root, uri) = sample_package_root("workspace_symbol_cache");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n",
+        "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    return helper();\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -825,7 +825,7 @@ fn lsp_server_reuses_semantic_snapshots_for_unchanged_workspace_symbol_requests(
 #[test]
 fn lsp_server_keeps_diagnostics_and_semantic_caches_separate() {
     let (root, uri) = sample_package_root("diagnostic_and_semantic_split");
-    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    let text = "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -891,7 +891,7 @@ fn lsp_server_keeps_diagnostics_and_semantic_caches_separate() {
             method: "textDocument/completion".to_string(),
             params: Some(
                 serde_json::to_value(LspCompletionParams {
-                    text_document: LspTextDocumentIdentifier { uri },
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
                     position: LspPosition {
                         line: 2,
                         character: 12,
@@ -924,7 +924,7 @@ fn lsp_server_keeps_diagnostics_and_semantic_caches_separate() {
 #[test]
 fn lsp_server_reuses_changed_document_snapshot_after_diagnostics_refresh() {
     let (root, uri) = sample_package_root("changed_snapshot_reuse");
-    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    let text = "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -1031,8 +1031,8 @@ fn lsp_server_keeps_other_file_snapshots_after_a_neighbor_changes() {
     let (root, uri) = sample_package_root("multi_file_cache_isolation");
     let second_path = root.join("src/extra.fol");
     let second_uri = format!("file://{}", second_path.display());
-    let main_text = "fun[] main(): int = {\n    return helper()\n}\n";
-    let extra_text = "fun[] helper(): int = {\n    return 7\n}\n";
+    let main_text = "fun[] main(): int = {\n    return helper();\n};\n";
+    let extra_text = "fun[] helper(): int = {\n    return 7;\n};\n";
     fs::write(root.join("src/main.fol"), main_text).unwrap();
     fs::write(&second_path, extra_text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
@@ -1111,7 +1111,7 @@ fn lsp_server_keeps_other_file_snapshots_after_a_neighbor_changes() {
 #[test]
 fn lsp_server_handles_mixed_request_sequences_without_leaking_snapshots() {
     let (root, uri) = sample_package_root("mixed_request_sequence");
-    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    let text = "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -1257,7 +1257,7 @@ fn lsp_server_handles_mixed_request_sequences_without_leaking_snapshots() {
 #[test]
 fn lsp_server_did_close_clears_diagnostics_without_reanalysis() {
     let (root, uri) = sample_package_root("close_without_reanalysis");
-    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    let text = "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -1305,7 +1305,7 @@ fn lsp_server_did_close_clears_diagnostics_without_reanalysis() {
 #[test]
 fn lsp_server_reuses_diagnostic_and_semantic_caches_independently() {
     let (root, uri) = sample_package_root("independent_cache_reuse");
-    let text = "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n";
+    let text = "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    return helper();\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -1316,9 +1316,10 @@ fn lsp_server_reuses_diagnostic_and_semantic_caches_independently() {
     assert_eq!(analyze_document_diagnostics_call_count(), 1);
     assert_eq!(analyze_document_semantics_call_count(), 0);
 
+    let parsed_uri = EditorDocumentUri::parse(&uri).unwrap();
     let _hover = server
         .hover(
-            &uri,
+            &parsed_uri,
             LspPosition {
                 line: 4,
                 character: 13,
@@ -1330,14 +1331,14 @@ fn lsp_server_reuses_diagnostic_and_semantic_caches_independently() {
     assert_eq!(analyze_document_semantics_call_count(), 1);
 
     let _diagnostics = server
-        .publish_diagnostics(&uri)
+        .publish_diagnostics(&parsed_uri)
         .expect("diagnostics should reuse the cached diagnostic snapshot");
     assert_eq!(analyze_document_diagnostics_call_count(), 1);
     assert_eq!(analyze_document_semantics_call_count(), 1);
 
     let _hover = server
         .hover(
-            &uri,
+            &parsed_uri,
             LspPosition {
                 line: 4,
                 character: 13,
@@ -1364,7 +1365,7 @@ fn lsp_server_reuses_diagnostic_and_semantic_caches_independently() {
 #[test]
 fn lsp_server_parser_diagnostics_stop_before_package_load_and_resolution() {
     let (root, uri) = sample_package_root("parser_stage_short_circuit");
-    let text = "fun[] main(: int = {\n    return 0\n}\n";
+    let text = "fun[] main(: int = {\n    return 0;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -1396,7 +1397,7 @@ fn lsp_server_parser_diagnostics_stop_before_package_load_and_resolution() {
 fn lsp_server_package_load_failures_stop_before_resolution_and_typecheck() {
     let (root, uri) = sample_package_root("package_load_stage_short_circuit");
     fs::remove_file(root.join("build.fol")).unwrap();
-    let text = "fun[] main(): int = {\n    return 0\n}\n";
+    let text = "fun[] main(): int = {\n    return 0;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -1427,7 +1428,7 @@ fn lsp_server_reuses_snapshots_for_repeated_signature_help() {
     let (root, uri) = sample_package_root("signature_help_cache");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(left: int, right: str): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return helper(1, \"ok\")\n}\n",
+        "fun[] helper(left: int, right: str): int = {\n    return left;\n};\n\nfun[] main(): int = {\n    return helper(1, \"ok\");\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -1471,7 +1472,7 @@ fn lsp_server_reuses_snapshots_for_repeated_code_actions() {
     let (root, uri) = sample_package_root("code_action_cache");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return mian\n}\n",
+        "fun[] main(): int = {\n    return mian;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -1522,7 +1523,7 @@ fn lsp_server_reuses_snapshots_for_repeated_code_actions() {
 #[test]
 fn lsp_server_drops_semantic_snapshots_when_documents_close_and_reopen() {
     let (root, uri) = sample_package_root("semantic_cache_reopen");
-    let text = "fun[] main(): int = {\n    return 7\n}\n";
+    let text = "fun[] main(): int = {\n    return 7;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -1568,7 +1569,7 @@ fn lsp_server_caches_workspace_root_discovery_for_same_directory() {
     let src = root.join("src");
     let extra = src.join("extra.fol");
     let extra_uri = format!("file://{}", extra.display());
-    let text = "fun[] extra(): int = {\n    return 9\n}\n";
+    let text = "fun[] extra(): int = {\n    return 9;\n};\n";
     fs::write(&extra, text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -1594,7 +1595,7 @@ fn lsp_server_applies_incremental_text_document_changes() {
     open_document(
         &mut server,
         uri.clone(),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0;\n};\n",
     );
 
     let changed = server
@@ -1635,7 +1636,7 @@ fn lsp_server_applies_incremental_text_document_changes() {
             .get(&crate::EditorDocumentUri::parse(&uri).unwrap())
             .unwrap()
             .text,
-        "fun[] main(): int = {\n    return value + 0\n}\n"
+        "fun[] main(): int = {\n    return value + 0;\n};\n"
     );
 
     fs::remove_dir_all(root).ok();
@@ -1649,7 +1650,7 @@ fn lsp_server_applies_multiple_incremental_changes_in_one_notification() {
     open_document(
         &mut server,
         uri.clone(),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0;\n};\n",
     );
 
     let changed = server
@@ -1706,7 +1707,7 @@ fn lsp_server_applies_multiple_incremental_changes_in_one_notification() {
             .get(&crate::EditorDocumentUri::parse(&uri).unwrap())
             .unwrap()
             .text,
-        "fun[] main(): int = {\n    return value + 7\n}\n"
+        "fun[] main(): int = {\n    return value + 7;\n};\n"
     );
 
     fs::remove_dir_all(root).ok();
@@ -1720,7 +1721,7 @@ fn lsp_server_tracks_incremental_edits_through_incomplete_and_recovered_text() {
     open_document(
         &mut server,
         uri.clone(),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0;\n};\n",
     );
 
     let broken = server
@@ -1802,7 +1803,7 @@ fn lsp_server_tracks_incremental_edits_through_incomplete_and_recovered_text() {
             .get(&crate::EditorDocumentUri::parse(&uri).unwrap())
             .unwrap()
             .text,
-        "fun[] main(): int = {\n    return 0\n}\n"
+        "fun[] main(): int = {\n    return 0;\n};\n"
     );
 
     fs::remove_dir_all(root).ok();
@@ -1816,7 +1817,7 @@ fn lsp_server_serves_semantic_requests_from_incrementally_updated_text() {
     open_document(
         &mut server,
         uri.clone(),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0;\n};\n",
     );
 
     let changed = server
@@ -1837,11 +1838,11 @@ fn lsp_server_serves_semantic_requests_from_incrementally_updated_text() {
                             },
                             end: LspPosition {
                                 line: 1,
-                                character: 12,
+                                character: 13,
                             },
                         }),
-                        range_length: Some(8),
-                        text: "var value: int = 7\n    return value".to_string(),
+                        range_length: Some(9),
+                        text: "var value: int = 7;\n    return value;".to_string(),
                     }],
                 })
                 .unwrap(),
@@ -1908,7 +1909,7 @@ fn lsp_server_serves_semantic_requests_from_incrementally_updated_text() {
 #[test]
 fn lsp_server_invalidates_stale_snapshots_after_symbol_boundary_edits() {
     let (root, uri) = sample_package_root("incremental_symbol_boundary");
-    let text = "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n";
+    let text = "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
@@ -2052,7 +2053,7 @@ fn lsp_server_invalidates_stale_snapshots_after_symbol_boundary_edits() {
 #[test]
 fn lsp_server_returns_safe_empty_results_for_partially_typed_declarations() {
     let (root, uri) = sample_package_root("partial_declaration_safe_empty");
-    let text = "fun[] helper(): int = {\n    return 7\n}\n\nfun[] mai";
+    let text = "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] mai";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     let diagnostics = open_document(&mut server, uri.clone(), text);
@@ -2108,7 +2109,7 @@ fn lsp_server_returns_safe_empty_results_for_partially_typed_declarations() {
 #[test]
 fn lsp_server_returns_safe_empty_results_for_broken_when_blocks() {
     let (root, uri) = sample_package_root("broken_when_safe_empty");
-    let text = "fun[] main(): int = {\n    when(true) {\n        case(true) {\n            return 7\n    }\n}\n";
+    let text = "fun[] main(): int = {\n    when(true) {\n        case(true) {\n            return 7;\n    }\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     let diagnostics = open_document(&mut server, uri.clone(), text);
@@ -2170,7 +2171,7 @@ fn lsp_server_returns_safe_empty_results_for_broken_when_blocks() {
 #[test]
 fn lsp_server_returns_safe_empty_results_for_incomplete_calls() {
     let (root, uri) = sample_package_root("incomplete_call_safe_empty");
-    let text = "fun[] helper(left: int): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return helper(\n}\n";
+    let text = "fun[] helper(left: int): int = {\n    return left;\n};\n\nfun[] main(): int = {\n    return helper(;\n};\n";
     fs::write(root.join("src/main.fol"), text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     let diagnostics = open_document(&mut server, uri.clone(), text);
@@ -2228,7 +2229,7 @@ fn lsp_server_returns_safe_empty_results_for_incomplete_calls() {
 #[test]
 fn lsp_server_recovers_semantic_results_after_incomplete_call_becomes_valid() {
     let (root, uri) = sample_package_root("incomplete_call_recovery");
-    let broken = "fun[] helper(left: int): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return helper(\n}\n";
+    let broken = "fun[] helper(left: int): int = {\n    return left;\n};\n\nfun[] main(): int = {\n    return helper(;\n};\n";
     fs::write(root.join("src/main.fol"), broken).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, uri.clone(), broken);
@@ -2255,7 +2256,7 @@ fn lsp_server_recovers_semantic_results_after_incomplete_call_becomes_valid() {
         serde_json::from_value(before.result.unwrap()).unwrap();
     assert!(before.is_none());
 
-    let recovered = "fun[] helper(left: int): int = {\n    return left\n}\n\nfun[] main(): int = {\n    return helper(7)\n}\n";
+    let recovered = "fun[] helper(left: int): int = {\n    return left;\n};\n\nfun[] main(): int = {\n    return helper(7);\n};\n";
     server
         .handle_notification(JsonRpcNotification {
             jsonrpc: "2.0".to_string(),
@@ -2306,7 +2307,7 @@ fn lsp_server_recovers_semantic_results_after_incomplete_call_becomes_valid() {
 #[test]
 fn lsp_server_recovers_navigation_after_partial_declaration_becomes_valid() {
     let (root, uri) = sample_package_root("partial_declaration_recovery");
-    let broken = "fun[] helper(): int = {\n    return 7\n}\n\nfun[] mai";
+    let broken = "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] mai";
     fs::write(root.join("src/main.fol"), broken).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, uri.clone(), broken);
@@ -2329,7 +2330,7 @@ fn lsp_server_recovers_navigation_after_partial_declaration_becomes_valid() {
         serde_json::from_value(before.result.unwrap()).unwrap();
     assert!(before.is_empty());
 
-    let recovered = "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n";
+    let recovered = "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    return helper();\n};\n";
     server
         .handle_notification(JsonRpcNotification {
             jsonrpc: "2.0".to_string(),
@@ -2379,7 +2380,7 @@ fn lsp_server_surfaces_parser_diagnostics_from_open_documents() {
     let (root, uri) = sample_package_root("parser_diag");
     let mut server = EditorLspServer::new(EditorConfig::default());
     let diagnostics =
-        open_document(&mut server, uri, "fun[] main(: int = {\n    return 0\n}\n");
+        open_document(&mut server, uri, "fun[] main(: int = {\n    return 0;\n};\n");
 
     assert_eq!(diagnostics.len(), 1);
     assert_eq!(diagnostics[0].diagnostics[0].code, "P1001");
@@ -2393,7 +2394,7 @@ fn lsp_server_surfaces_package_loading_diagnostics_from_open_documents() {
     fs::remove_file(root.join("build.fol")).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     let diagnostics =
-        open_document(&mut server, uri, "fun[] main(): int = {\n    return 0\n}\n");
+        open_document(&mut server, uri, "fun[] main(): int = {\n    return 0;\n};\n");
 
     assert_eq!(diagnostics.len(), 1);
     // Without build.fol the package loader no longer produces K1001;
@@ -2428,11 +2429,11 @@ fn lsp_server_filters_build_file_diagnostics_out_of_source_buffers() {
     fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
     )
     .unwrap();
     let file = src.join("main.fol");
-    fs::write(&file, "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+    fs::write(&file, "fun[] main(): int = {\n    return 0;\n};\n").unwrap();
     let uri = format!("file://{}", file.display());
     let text = fs::read_to_string(&file).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
@@ -2451,7 +2452,7 @@ fn lsp_server_surfaces_typecheck_diagnostics_from_open_documents() {
     let diagnostics = open_document(
         &mut server,
         uri,
-        "fun[] main(): int = {\n    return \"nope\"\n}\n",
+        "fun[] main(): int = {\n    return \"nope\";\n};\n",
     );
 
     assert_eq!(diagnostics.len(), 1);
@@ -2467,7 +2468,7 @@ fn lsp_server_handles_hover_definition_and_document_symbols() {
     let (root, uri) = sample_package_root("nav");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n",
+        "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    return helper();\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -2545,7 +2546,7 @@ fn lsp_diagnostics_include_code_in_message() {
     let diagnostics = open_document(
         &mut server,
         uri,
-        "fun[] main(): int = {\n    return missing_value\n}\n",
+        "fun[] main(): int = {\n    return missing_value;\n};\n",
     );
 
     assert!(!diagnostics[0].diagnostics.is_empty());
@@ -2617,7 +2618,7 @@ fn lsp_diagnostics_deduplicated_by_line_and_code() {
 fn lsp_parse_cascade_yields_at_most_one_diagnostic_per_line_per_code() {
     let (root, uri) = sample_package_root("cascade_dedup");
     // Intentionally broken syntax that can produce multiple parse errors on the same line
-    let broken = "fun[] main(a b c d e f: int = {\n    return 0\n}\n";
+    let broken = "fun[] main(a b c d e f: int = {\n    return 0;\n};\n";
     let mut server = EditorLspServer::new(EditorConfig::default());
     let diagnostics = open_document(&mut server, uri, broken);
 
@@ -2637,25 +2638,3 @@ fn lsp_parse_cascade_yields_at_most_one_diagnostic_per_line_per_code() {
 
     fs::remove_dir_all(root).ok();
 }
-    let _hover = server
-        .handle_request(JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: JsonRpcId::Number(745),
-            method: "textDocument/hover".to_string(),
-            params: Some(
-                serde_json::to_value(LspHoverParams {
-                    text_document: LspTextDocumentIdentifier {
-                        uri: uri.as_str().to_string(),
-                    },
-                    position: LspPosition {
-                        line: 1,
-                        character: 12,
-                    },
-                })
-                .unwrap(),
-            ),
-        })
-        .unwrap()
-        .unwrap();
-    assert_eq!(analyze_document_semantics_call_count(), 1);
-    assert!(server.session.semantic_snapshots.contains_key(uri.as_str()));

@@ -1,4 +1,5 @@
 use crate::{FrontendOutputConfig, FrontendProfile, OutputMode};
+use fol_backend::BackendMachineTarget;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,6 +46,69 @@ impl Default for FrontendConfig {
 }
 
 impl FrontendConfig {
+    pub fn host_rust_target_triple() -> Option<&'static str> {
+        if cfg!(target_arch = "x86_64") && cfg!(target_os = "linux") && cfg!(target_env = "gnu") {
+            Some("x86_64-unknown-linux-gnu")
+        } else if cfg!(target_arch = "x86_64")
+            && cfg!(target_os = "linux")
+            && cfg!(target_env = "musl")
+        {
+            Some("x86_64-unknown-linux-musl")
+        } else if cfg!(target_arch = "aarch64")
+            && cfg!(target_os = "linux")
+            && cfg!(target_env = "gnu")
+        {
+            Some("aarch64-unknown-linux-gnu")
+        } else if cfg!(target_arch = "aarch64")
+            && cfg!(target_os = "linux")
+            && cfg!(target_env = "musl")
+        {
+            Some("aarch64-unknown-linux-musl")
+        } else if cfg!(target_arch = "x86_64")
+            && cfg!(target_os = "windows")
+            && cfg!(target_env = "gnu")
+        {
+            Some("x86_64-pc-windows-gnu")
+        } else if cfg!(target_arch = "x86_64")
+            && cfg!(target_os = "windows")
+            && cfg!(target_env = "msvc")
+        {
+            Some("x86_64-pc-windows-msvc")
+        } else if cfg!(target_arch = "aarch64")
+            && cfg!(target_os = "windows")
+            && cfg!(target_env = "msvc")
+        {
+            Some("aarch64-pc-windows-msvc")
+        } else if cfg!(target_arch = "x86_64") && cfg!(target_os = "macos") {
+            Some("x86_64-apple-darwin")
+        } else if cfg!(target_arch = "aarch64") && cfg!(target_os = "macos") {
+            Some("aarch64-apple-darwin")
+        } else {
+            None
+        }
+    }
+
+    pub fn backend_machine_target(&self) -> BackendMachineTarget {
+        self.build_target_override
+            .as_deref()
+            .map(BackendMachineTarget::normalize_input)
+            .unwrap_or(BackendMachineTarget::Host)
+    }
+
+    pub fn machine_target_runs_on_host(&self) -> bool {
+        let machine_target = self.backend_machine_target();
+        if machine_target.is_host() {
+            return true;
+        }
+        match (
+            machine_target.rust_target_triple(),
+            Self::host_rust_target_triple(),
+        ) {
+            (Some(target), Some(host)) => target == host,
+            _ => false,
+        }
+    }
+
     pub fn from_env() -> Self {
         let mut config = Self::default();
         config.output.mode = match std::env::var("FOL_OUTPUT").ok().as_deref() {
@@ -96,6 +160,7 @@ impl FrontendConfig {
 mod tests {
     use super::FrontendConfig;
     use crate::{FrontendProfile, OutputMode};
+    use fol_backend::BackendMachineTarget;
 
     #[test]
     fn frontend_config_defaults_to_current_working_defaults() {
@@ -193,5 +258,44 @@ mod tests {
         std::env::remove_var("FOL_REFRESH");
         std::env::remove_var("FOL_OUTPUT");
         std::env::remove_var("FOL_PROFILE");
+    }
+
+    #[test]
+    fn frontend_config_reports_host_machine_target_by_default() {
+        let config = FrontendConfig::default();
+
+        assert_eq!(config.backend_machine_target(), BackendMachineTarget::Host);
+    }
+
+    #[test]
+    fn frontend_config_normalizes_machine_target_override_for_backend() {
+        let config = FrontendConfig {
+            build_target_override: Some("  aarch64-macos-gnu  ".to_string()),
+            ..FrontendConfig::default()
+        };
+
+        assert_eq!(
+            config.backend_machine_target(),
+            BackendMachineTarget::Triple("aarch64-macos-gnu".to_string())
+        );
+    }
+
+    #[test]
+    fn frontend_config_exposes_the_current_host_target_triple() {
+        assert!(FrontendConfig::host_rust_target_triple().is_some());
+    }
+
+    #[test]
+    fn frontend_config_reports_host_compatibility_for_host_and_non_host_targets() {
+        let host_config = FrontendConfig::default();
+        let cross_config = FrontendConfig {
+            build_target_override: Some("aarch64-macos-gnu".to_string()),
+            ..FrontendConfig::default()
+        };
+
+        assert!(host_config.machine_target_runs_on_host());
+        if FrontendConfig::host_rust_target_triple() != Some("aarch64-apple-darwin") {
+            assert!(!cross_config.machine_target_runs_on_host());
+        }
     }
 }

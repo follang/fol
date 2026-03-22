@@ -125,6 +125,7 @@ fn shell_typing_accepts_optional_and_error_payload_lifting() {
          };\n\
          fun[] fail(): int / Failure = {\n\
              report \"broken\";\n\
+             return 0;\n\
          };\n",
     )]);
 
@@ -202,7 +203,7 @@ fn shell_typing_rejects_pointer_surfaces_as_v3_only() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("pointer types are part of the V3 systems milestone")
+                    .contains("pointer types are planned for a future release")
         }),
         "Expected a V3 pointer-boundary diagnostic, got: {errors:?}"
     );
@@ -278,7 +279,7 @@ fn operator_typing_rejects_invalid_scalar_pairs_and_pointer_operators() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("pointer operators are part of the V3 systems milestone")
+                    .contains("pointer operators are planned for a future release")
         }),
         "Expected a pointer-operator boundary diagnostic, got: {errors:?}"
     );
@@ -618,9 +619,9 @@ fn intrinsic_query_typing_distinguishes_implemented_and_deferred_families() {
     )]);
 
     for expected in [
-        ".cap(...) is not implemented in the current V1 compiler milestone",
-        ".low(...) is not implemented in the current V1 compiler milestone",
-        ".min(...) is not implemented in the current V1 compiler milestone",
+        ".cap(...) is not yet supported",
+        ".low(...) is not yet supported",
+        ".min(...) is not yet supported",
     ] {
         assert!(
             errors.iter().any(|error| {
@@ -700,11 +701,11 @@ fn intrinsic_v3_boundary_typing_reports_explicit_milestone_guidance() {
     )]);
 
     for intrinsic in [
-        ".de_alloc(...) belongs to V3 but the current compiler milestone is V1",
-        ".give_back(...) belongs to V3 but the current compiler milestone is V1",
-        ".address_of(...) belongs to V3 but the current compiler milestone is V1",
-        ".pointer_value(...) belongs to V3 but the current compiler milestone is V1",
-        ".borrow_from(...) belongs to V3 but the current compiler milestone is V1",
+        ".de_alloc(...) is planned for a future release",
+        ".give_back(...) is planned for a future release",
+        ".address_of(...) is planned for a future release",
+        ".pointer_value(...) is planned for a future release",
+        ".borrow_from(...) is planned for a future release",
     ] {
         assert!(
             errors.iter().any(|error| {

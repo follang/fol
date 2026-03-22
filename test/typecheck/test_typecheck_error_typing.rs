@@ -501,8 +501,8 @@ fn when_result_typing_accepts_matching_branch_values() {
          var no: int = 2;\n\
          fun[] demo(flag: bol): int = {\n\
              when(flag) {\n\
-                 case(true) { yes }\n\
-                 * { no }\n\
+                 case(true) { return yes }\n\
+                 * { return no }\n\
              }\n\
          };\n",
     )]);
@@ -597,7 +597,7 @@ fn loop_typing_rejects_non_boolean_conditions_and_reserved_yields() {
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("yield typing is not part of the V1 typecheck milestone")
+                    .contains("yield expressions are not yet supported")
         }),
         "Expected an explicit yield boundary diagnostic, got: {yield_errors:?}"
     );
@@ -630,7 +630,7 @@ fn control_never_typing_treats_report_branches_as_early_exits() {
         "fun[] demo(flag: bol): int / str = {\n\
              when(flag) {\n\
                  case(true) { report \"bad\"; }\n\
-                 * { 1 }\n\
+                 * { return 1 }\n\
              }\n\
          };\n",
     )]);
@@ -784,7 +784,7 @@ fn container_literal_typing_rejects_bad_map_pairs_and_nonliteral_heterogeneous_s
             error.kind() == TypecheckErrorKind::Unsupported
                 && error
                     .message()
-                    .contains("heterogeneous sets is not part of the V1 typecheck milestone")
+                    .contains("heterogeneous sets is not yet supported")
         }),
         "Expected a heterogeneous-set indexing diagnostic, got: {errors:?}"
     );

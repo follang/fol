@@ -572,71 +572,17 @@ fn unsupported_lowering_surfaces_report_explicit_boundary_messages() {
     let nil_error = lower_fixture_error("fun[] main(): int = {\n    return nil;\n}\n");
     assert_eq!(nil_error.kind(), LoweringErrorKind::Unsupported);
     assert!(nil_error.message().contains(
-        "nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1"
-    ));
-
-    let operator_error = lower_fixture_error("fun[] main(): int = {\n    return 1 + 2;\n}\n");
-    assert_eq!(operator_error.kind(), LoweringErrorKind::Unsupported);
-    assert!(operator_error
-        .message()
-        .contains("binary operator lowering for 'add' lands in a later lowering slice"));
-
-    let loop_error = lower_fixture_error(
-        "fun[] main(items: seq[int]): int = {\n    loop(item in items) {\n        break;\n    }\n    return 0;\n}\n",
-    );
-    assert_eq!(loop_error.kind(), LoweringErrorKind::Unsupported);
-    assert!(loop_error.message().contains(
-        "iteration loop lowering is not part of the current lowered V1 control-flow milestone"
-    ));
-
-    let entry_error = lower_fixture_error(
-        "typ Status: ent = {\n    var OK: int = 1;\n}\nfun[] main(): Status = {\n    return Status.OK;\n}\n",
-    );
-    assert_eq!(entry_error.kind(), LoweringErrorKind::Unsupported);
-    assert!(entry_error.message().contains(
-        "entry construction lowering for variant 'OK' lands in the pending aggregate slice"
+        "nil lowering requires an expected opt[...] or err[...] runtime type"
     ));
 }
 
 #[test]
 fn audited_v1_lowering_boundaries_fail_with_explicit_messages() {
-    let cases = [
-        (
-            crate::UnsupportedLoweringSurface::UnaryOperators,
-            "fun[] main(): int = {\n    return -1;\n}\n",
-            "unary operator lowering for 'neg' lands in a later lowering slice",
-        ),
-        (
-            crate::UnsupportedLoweringSurface::BinaryOperators,
-            "fun[] main(): int = {\n    return 1 + 2;\n}\n",
-            "binary operator lowering for 'add' lands in a later lowering slice",
-        ),
-        (
-            crate::UnsupportedLoweringSurface::TypeMatchingWhenOf,
-            "fun classify(value: any): int = {\n    when(value) {\n        of(int) { return 1; }\n        { return 0; }\n    }\n}\n",
-            "type-matching when/of branches are not lowered in this slice yet",
-        ),
-        (
-            crate::UnsupportedLoweringSurface::IterationLoops,
-            "fun[] main(items: seq[int]): int = {\n    loop(item in items) {\n        break;\n    }\n    return 0;\n}\n",
-            "iteration loop lowering is not part of the current lowered V1 control-flow milestone",
-        ),
-        (
-            crate::UnsupportedLoweringSurface::ProcedureStyleFreeCalls,
-            "pro finish(): non = {\n    return;\n}\nfun[] main(): int = {\n    finish();\n    return 0;\n}\n",
-            "procedure-style calls without a value result are not lowered in this slice yet: 'finish'",
-        ),
-        (
-            crate::UnsupportedLoweringSurface::ProcedureStyleMethodCalls,
-            "typ Box: { value: int }\npro (Box)touch(): non = {\n    return;\n}\nfun[] main(box: Box): int = {\n    box.touch();\n    return box.value;\n}\n",
-            "procedure-style method calls without a value result are not lowered in this slice yet: 'touch'",
-        ),
-        (
-            crate::UnsupportedLoweringSurface::EntryVariantConstruction,
-            "typ Status: ent = {\n    var OK: int = 1;\n}\nfun[] main(): Status = {\n    return Status.OK;\n}\n",
-            "entry construction lowering for variant 'OK' lands in the pending aggregate slice",
-        ),
-    ];
+    let cases = [(
+        crate::UnsupportedLoweringSurface::TypeMatchingWhenOf,
+        "fun classify(value: any): int = {\n    when(value) {\n        of(int) { return 1; }\n        { return 0; }\n    }\n}\n",
+        "type-matching when/of branches are not lowered in this slice yet",
+    )];
 
     assert_eq!(crate::v1_lowering_boundaries().len(), cases.len());
 

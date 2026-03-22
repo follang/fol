@@ -280,7 +280,7 @@ fn iterable_element_type(
             } else {
                 Err(TypecheckError::new(
                     TypecheckErrorKind::Unsupported,
-                    "heterogeneous set iteration is not part of the V1 typecheck milestone",
+                    "heterogeneous set iteration is not yet supported",
                 ))
             }
         }

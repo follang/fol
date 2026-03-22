@@ -1,0 +1,8 @@
+pro noop(): non = {
+    return;
+};
+
+fun[] main(): int = {
+    noop();
+    return 0;
+};

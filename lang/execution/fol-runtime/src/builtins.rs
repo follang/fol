@@ -162,6 +162,14 @@ impl<K: Ord, V> FolLength for FolMap<K, V> {
     }
 }
 
+pub fn pow(base: FolInt, exponent: FolInt) -> FolInt {
+    base.pow(exponent as u32)
+}
+
+pub fn pow_float(base: f64, exponent: f64) -> f64 {
+    base.powf(exponent)
+}
+
 pub fn module_name() -> &'static str {
     "builtins"
 }

@@ -11,7 +11,7 @@ fn lsp_server_returns_current_package_top_level_completions() {
     let (root, uri) = sample_package_root("completion_top_level");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return helper()\n}\n",
+        "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    return helper();\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -100,7 +100,7 @@ fn lsp_server_prefers_nearer_symbols_when_completion_names_conflict() {
     let (root, uri) = sample_package_root("completion_shadowing");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    var helper: int = 9\n    return helper\n}\n",
+        "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    var helper: int = 9;\n    return helper;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -145,7 +145,7 @@ fn lsp_server_locks_plain_completion_to_local_package_and_import_alias_symbols()
     let (root, uri) = sample_loc_workspace_root("completion_symbol_matrix");
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\nfun[] local_helper(): int = {\n    return 4\n}\n\nfun[] main(total: int): int = {\n    var value: int = 7\n    return value\n}\n",
+        "use shared: loc = {\"../shared\"};\n\nfun[] local_helper(): int = {\n    return 4;\n};\n\nfun[] main(total: int): int = {\n    var value: int = 7;\n    return value;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
@@ -194,12 +194,12 @@ fn lsp_server_keeps_plain_completion_free_of_child_namespace_noise() {
     fs::create_dir_all(root.join("src/api")).unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return \n}\n",
+        "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    return \n};\n",
     )
     .unwrap();
     fs::write(
         root.join("src/api/lib.fol"),
-        "fun[exp] child_helper(): int = {\n    return 9\n}\n",
+        "fun[exp] child_helper(): int = {\n    return 9;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -243,12 +243,12 @@ fn lsp_server_locks_completion_item_labels_kinds_and_order() {
     let (root, uri) = sample_loc_workspace_root("completion_item_shape_matrix");
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\nali[] LocalAlias = int\n\ntyp[] LocalRec: rec = {\n    value: int\n}\n\nfun[] helper(): int = {\n    return 7\n}\n\nfun[] main(total: int): int = {\n    var value: int = 9\n    return \n}\n",
+        "use shared: loc = {\"../shared\"};\n\nali[] LocalAlias = int;\n\ntyp[] LocalRec: rec = {\n    value: int;\n};\n\nfun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(total: int): int = {\n    var value: int = 9;\n    return \n};\n",
     )
     .unwrap();
     fs::write(
         root.join("shared/src/lib.fol"),
-        "fun[exp] helper(): int = {\n    return 8\n}\n",
+        "fun[exp] helper(): int = {\n    return 8;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
@@ -309,7 +309,7 @@ fn lsp_server_ignores_text_fallback_noise_when_resolution_succeeds() {
     let (root, uri) = sample_package_root("completion_authoritative_plain");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] helper(): int = {\n    return 7\n}\n\nfun[] main(): int = {\n    return \n}\n\nfun[] phantom(\n",
+        "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    return \n};\n\nfun[] phantom(\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();

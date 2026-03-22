@@ -1,6 +1,6 @@
 //! Runtime string support.
 
-use std::{borrow::Borrow, fmt, ops::Deref};
+use std::{borrow::Borrow, fmt, ops::{Add, Deref}};
 
 #[derive(Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
@@ -66,6 +66,14 @@ impl Deref for FolStr {
     }
 }
 
+impl Add for FolStr {
+    type Output = FolStr;
+
+    fn add(self, rhs: FolStr) -> FolStr {
+        FolStr(self.0 + &rhs.0)
+    }
+}
+
 impl fmt::Display for FolStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
@@ -107,5 +115,13 @@ mod tests {
         assert!(ada < lin);
         assert_eq!(format!("{ada}"), "Ada");
         assert_eq!(format!("{ada:?}"), "\"Ada\"");
+    }
+
+    #[test]
+    fn fol_str_add_concatenates_strings() {
+        let hello = FolStr::from("hello ");
+        let world = FolStr::from("world");
+
+        assert_eq!((hello + world).as_str(), "hello world");
     }
 }

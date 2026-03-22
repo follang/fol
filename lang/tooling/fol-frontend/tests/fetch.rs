@@ -22,7 +22,7 @@ fn semantic_lib_build(name: &str) -> String {
             "pro[] build(graph: Graph): non = {{\n",
             "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
             "    graph.install(lib);\n",
-            "}}\n",
+            "}};\n",
         ),
         name = name
     )
@@ -200,7 +200,7 @@ fn update_workspace_refreshes_git_dependencies_through_public_api() {
     fetch_workspace(&workspace).expect("initial fetch should succeed");
     let before = fs::read_to_string(root.join("fol.lock")).expect("lockfile should exist");
 
-    fs::write(remote.join("src/lib.fol"), "var[exp] level: int = 2\n")
+    fs::write(remote.join("src/lib.fol"), "var[exp] level: int = 2;\n")
         .expect("should update remote source");
     git(&remote, &["add", "."]);
     git(&remote, &["commit", "-m", "bump"]);
@@ -233,7 +233,7 @@ fn update_prunes_stale_workspace_local_git_materializations() {
     let old_root = PathBuf::from(before.entries[0].materialized_root.clone());
     assert!(old_root.is_dir());
 
-    fs::write(remote.join("src/lib.fol"), "var[exp] level: int = 3\n")
+    fs::write(remote.join("src/lib.fol"), "var[exp] level: int = 3;\n")
         .expect("should update remote source");
     git(&remote, &["add", "."]);
     git(&remote, &["commit", "-m", "bump-again"]);
@@ -307,7 +307,7 @@ fn create_app_with_git_dep(app: &Path, remote: &Path) {
     fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write app build");
     fs::write(
         app.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .expect("should write app source");
 }
@@ -321,7 +321,7 @@ fn create_git_package_repo(root: &Path, name: &str, version: &str) {
     .expect("package metadata should be writable");
     fs::write(root.join("build.fol"), semantic_lib_build(name))
         .expect("package build should be writable");
-    fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
+    fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1;\n")
         .expect("package source should be writable");
     git(root, &["init"]);
     git(root, &["config", "user.name", "FOL"]);

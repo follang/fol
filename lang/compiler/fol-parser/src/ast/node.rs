@@ -206,6 +206,7 @@ pub enum AstNode {
 
     /// Anonymous function expression: fun (...) : T / E = { ... }
     AnonymousFun {
+        syntax_id: Option<SyntaxNodeId>,
         options: Vec<FunOption>,
         captures: Vec<String>,
         params: Vec<Parameter>,
@@ -217,6 +218,7 @@ pub enum AstNode {
 
     /// Anonymous procedure expression: pro (...) : T / E = { ... }
     AnonymousPro {
+        syntax_id: Option<SyntaxNodeId>,
         options: Vec<FunOption>,
         captures: Vec<String>,
         params: Vec<Parameter>,
@@ -228,6 +230,7 @@ pub enum AstNode {
 
     /// Anonymous logical expression: log (...) : bol / E = { ... }
     AnonymousLog {
+        syntax_id: Option<SyntaxNodeId>,
         options: Vec<FunOption>,
         captures: Vec<String>,
         params: Vec<Parameter>,

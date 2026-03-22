@@ -14,8 +14,8 @@ mod verify;
 
 pub use boundaries::{v1_lowering_boundaries, UnsupportedLoweringSurface};
 pub use control::{
-    LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredOperand, LoweredRoutine,
-    LoweredTerminator,
+    LoweredBinaryOp, LoweredBlock, LoweredInstr, LoweredInstrKind, LoweredLocal, LoweredOperand,
+    LoweredRoutine, LoweredTerminator, LoweredUnaryOp,
 };
 pub use errors::{LoweringError, LoweringErrorKind};
 pub use ids::{

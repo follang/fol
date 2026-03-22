@@ -1,5 +1,5 @@
+use crate::ansi::Colored;
 use crate::{FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
-use colored::Colorize;
 use fol_diagnostics::{DiagnosticReport, OutputFormat, ToDiagnostic};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -9,10 +9,7 @@ pub struct FrontendOutput {
 
 impl FrontendOutput {
     pub fn new(config: FrontendOutputConfig) -> Self {
-        // Process-level setting: colored crate uses global state. This is intentional
-        // since the CLI is single-threaded at the output-config level and color mode
-        // is determined once at startup.
-        colored::control::set_override(matches!(config.mode, OutputMode::Human));
+        crate::ansi::set_enabled(matches!(config.mode, OutputMode::Human));
         Self { config }
     }
 
@@ -29,36 +26,19 @@ impl FrontendOutput {
     }
 
     fn styled_section(&self, title: &str) -> String {
-        if self.should_use_color() {
-            title.bold().cyan().to_string()
-        } else {
-            title.to_string()
-        }
+        format!("{}", title.cyan().bold())
     }
 
     fn styled_label(&self, label: &str, width: usize) -> String {
-        let padded = format!("{label:<width$}");
-        if self.should_use_color() {
-            padded.bold().yellow().to_string()
-        } else {
-            padded
-        }
+        format!("{}", format!("{label:<width$}").yellow().bold())
     }
 
     fn styled_action(&self, action: &str) -> String {
-        if self.should_use_color() {
-            action.bold().green().to_string()
-        } else {
-            action.to_string()
-        }
+        format!("{}", action.green().bold())
     }
 
     fn styled_path(&self, path: &str) -> String {
-        if self.should_use_color() {
-            path.cyan().to_string()
-        } else {
-            path.to_string()
-        }
+        format!("{}", path.cyan())
     }
 
 
@@ -259,7 +239,7 @@ mod tests {
 
         assert!(rendered_result.contains("\"command\": \"build\""));
         assert!(rendered_result.contains("\"kind\": \"binary\""));
-        assert!(rendered_error.contains("\"kind\": \"FrontendCommandFailed\""));
+        assert!(rendered_error.contains("\"boom\""));
         assert!(rendered_error.contains("\"note one\""));
     }
 
@@ -282,9 +262,8 @@ mod tests {
 
         let rendered = output.render_human_error(&error);
 
-        assert!(rendered.contains("Error:"));
-        assert!(rendered.contains("Note:"));
         assert!(rendered.contains("missing root"));
+        assert!(rendered.contains("run `fol work init --bin`"));
     }
 
     #[test]

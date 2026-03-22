@@ -103,7 +103,7 @@ mod tests {
     use crate::testing::package_identity;
     use fol_lower::{
         LoweredBlockId, LoweredBuiltinType, LoweredLocal, LoweredLocalId, LoweredRoutine,
-        LoweredRoutineId, LoweredTerminator, LoweredTypeTable,
+        LoweredRoutineId, LoweredTerminator, LoweredType, LoweredTypeTable,
     };
     use fol_resolver::PackageSourceKind;
 

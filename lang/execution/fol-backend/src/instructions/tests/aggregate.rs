@@ -1,13 +1,12 @@
 use super::super::render_core_instruction;
 use super::super::render_core_instruction_in_workspace;
 use crate::testing::package_identity;
-use fol_intrinsics::intrinsic_by_canonical_name;
 use fol_lower::{
+    control::LoweredLinearKind,
     LoweredBlockId, LoweredBuiltinType, LoweredFieldLayout, LoweredInstr, LoweredInstrId,
-    LoweredInstrKind, LoweredLocal, LoweredLocalId, LoweredOperand, LoweredPackage,
-    LoweredRecoverableAbi, LoweredRoutine, LoweredRoutineId, LoweredSourceMap, LoweredType,
-    LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
-    LoweredWorkspace,
+    LoweredInstrKind, LoweredLocal, LoweredLocalId, LoweredPackage, LoweredRecoverableAbi,
+    LoweredRoutine, LoweredRoutineId, LoweredSourceMap, LoweredType, LoweredTypeDecl,
+    LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout, LoweredWorkspace,
 };
 use fol_resolver::{PackageSourceKind, SourceUnitId, SymbolId};
 use std::collections::BTreeMap;
@@ -296,19 +295,19 @@ fn aggregate_and_container_rendering_emits_runtime_index_helpers() {
 
     assert_eq!(
         rendered[0],
-        "let l__pkg__entry__app__r19__l5__a = rt::index_array(&l__pkg__entry__app__r19__l0__arr, l__pkg__entry__app__r19__l4__index.clone()).expect(\"array index\").clone();"
+        "let l__pkg__entry__app__r19__l5__a = rt::index_array(&l__pkg__entry__app__r19__l0__arr, l__pkg__entry__app__r19__l4__index.clone()).unwrap().clone();"
     );
     assert_eq!(
         rendered[1],
-        "let l__pkg__entry__app__r19__l6__b = rt::index_vec(&l__pkg__entry__app__r19__l1__vec, l__pkg__entry__app__r19__l4__index.clone()).expect(\"vector index\").clone();"
+        "let l__pkg__entry__app__r19__l6__b = rt::index_vec(&l__pkg__entry__app__r19__l1__vec, l__pkg__entry__app__r19__l4__index.clone()).unwrap().clone();"
     );
     assert_eq!(
         rendered[2],
-        "let l__pkg__entry__app__r19__l7__c = rt::index_seq(&l__pkg__entry__app__r19__l2__seq, l__pkg__entry__app__r19__l4__index.clone()).expect(\"sequence index\").clone();"
+        "let l__pkg__entry__app__r19__l7__c = rt::index_seq(&l__pkg__entry__app__r19__l2__seq, l__pkg__entry__app__r19__l4__index.clone()).unwrap().clone();"
     );
     assert_eq!(
         rendered[3],
-        "let l__pkg__entry__app__r19__l8__d = rt::lookup_map(&l__pkg__entry__app__r19__l3__map, &l__pkg__entry__app__r19__l4__index).expect(\"map key\").clone();"
+        "let l__pkg__entry__app__r19__l8__d = rt::lookup_map(&l__pkg__entry__app__r19__l3__map, &l__pkg__entry__app__r19__l4__index).unwrap().clone();"
     );
 }
 
@@ -564,13 +563,13 @@ fn aggregate_and_container_snapshot_stays_stable() {
             "let l__pkg__entry__app__r20__l4__seq = rt::FolSeq::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
             "let l__pkg__entry__app__r20__l5__set = rt::FolSet::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
             "let l__pkg__entry__app__r20__l6__map = rt::FolMap::from_pairs(vec![(l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone())]);\n",
-            "let l__pkg__entry__app__r20__l7__out = rt::index_vec(&l__pkg__entry__app__r20__l3__vec, l__pkg__entry__app__r20__l0__a.clone()).expect(\"vector index\").clone();"
+            "let l__pkg__entry__app__r20__l7__out = rt::index_vec(&l__pkg__entry__app__r20__l3__vec, l__pkg__entry__app__r20__l0__a.clone()).unwrap().clone();"
         )
     );
 }
 
 #[test]
-fn unsupported_lowered_instruction_families_fail_explicitly() {
+fn cast_instruction_rendering_emits_native_rust_cast_expression() {
     let mut table = LoweredTypeTable::new();
     let int_id = table.intern_builtin(LoweredBuiltinType::Int);
     let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
@@ -581,18 +580,17 @@ fn unsupported_lowered_instruction_families_fail_explicitly() {
         name: Some("value".to_string()),
     });
 
-    let unsupported = [LoweredInstr {
+    let cast_instr = LoweredInstr {
         id: LoweredInstrId(62),
         result: Some(local_id),
         kind: LoweredInstrKind::Cast {
             operand: local_id,
             target_type: int_id,
         },
-    }];
+    };
 
-    for instruction in unsupported {
-        let error = render_core_instruction(&package_identity, &table, &routine, &instruction)
-            .expect_err("unsupported families should fail explicitly");
-        assert_eq!(error.kind(), crate::BackendErrorKind::Unsupported);
-    }
+    let rendered = render_core_instruction(&package_identity, &table, &routine, &cast_instr)
+        .expect("cast should render");
+    assert!(rendered.contains("l__pkg__entry__app__r21__l0__value"));
+    assert!(rendered.contains("as"));
 }

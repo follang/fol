@@ -3,24 +3,9 @@ use super::super::render_core_instruction_in_workspace;
 use crate::testing::package_identity;
 use fol_intrinsics::intrinsic_by_canonical_name;
 use fol_lower::{
-    LoweredBlockId, LoweredBuiltinType, LoweredFieldLayout, LoweredInstr, LoweredInstrId,
-    LoweredInstrKind, LoweredLocal, LoweredLocalId, LoweredOperand, LoweredPackage,
-    LoweredRecoverableAbi, LoweredRoutine, LoweredRoutineId, LoweredSourceMap, LoweredType,
-    LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
-    LoweredWorkspace,
-};
-use fol_resolver::{PackageSourceKind, SourceUnitId, SymbolId};
-use std::collections::BTreeMap;
-
-use super::render_core_instruction;
-use super::render_core_instruction_in_workspace;
-use crate::testing::package_identity;
-use fol_intrinsics::intrinsic_by_canonical_name;
-use fol_lower::{
-    LoweredBlockId, LoweredBuiltinType, LoweredFieldLayout, LoweredInstr, LoweredInstrId,
-    LoweredInstrKind, LoweredLocal, LoweredLocalId, LoweredOperand, LoweredPackage,
-    LoweredRecoverableAbi, LoweredRoutine, LoweredRoutineId, LoweredSourceMap, LoweredType,
-    LoweredTypeDecl, LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
+    LoweredBlockId, LoweredBuiltinType, LoweredInstr, LoweredInstrId, LoweredInstrKind,
+    LoweredLocal, LoweredLocalId, LoweredOperand, LoweredPackage, LoweredRecoverableAbi,
+    LoweredRoutine, LoweredRoutineId, LoweredSourceMap, LoweredSourceUnit, LoweredTypeTable,
     LoweredWorkspace,
 };
 use fol_resolver::{PackageSourceKind, SourceUnitId, SymbolId};
@@ -91,6 +76,7 @@ fn core_instruction_rendering_emits_plain_routine_calls_for_non_recoverable_site
     let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
     let mut table = LoweredTypeTable::new();
     let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+    let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
     let mut routine = LoweredRoutine::new(LoweredRoutineId(3), "main", LoweredBlockId(0));
     let arg_local = routine.locals.push(LoweredLocal {
         id: LoweredLocalId(0),
@@ -112,11 +98,37 @@ fn core_instruction_rendering_emits_plain_routine_calls_for_non_recoverable_site
         },
     };
 
-    let rendered =
-        render_core_instruction(&package_identity, &table, &routine, &call).expect("call");
+    let mut callee_routine = LoweredRoutine::new(LoweredRoutineId(9), "callee", LoweredBlockId(0));
+    callee_routine.source_unit_id = Some(SourceUnitId(0));
+    let mut package = LoweredPackage::new(fol_lower::LoweredPackageId(0), package_identity.clone());
+    package.source_units.push(LoweredSourceUnit {
+        source_unit_id: SourceUnitId(0),
+        path: "app/main.fol".to_string(),
+        package: "app".to_string(),
+        namespace: "app".to_string(),
+    });
+    package.routine_decls.insert(LoweredRoutineId(9), callee_routine);
+    let workspace = LoweredWorkspace::new(
+        package_identity.clone(),
+        BTreeMap::from([(package_identity.clone(), package)]),
+        Vec::new(),
+        table.clone(),
+        LoweredSourceMap::new(),
+        LoweredRecoverableAbi::v1(bool_id),
+    );
 
-    assert!(rendered
-        .contains("let l__pkg__entry__app__r3__l1__result = r__pkg__entry__app__r9__callee("));
+    let rendered = render_core_instruction_in_workspace(
+        Some(&workspace),
+        &package_identity,
+        &table,
+        &routine,
+        &call,
+    )
+    .expect("call");
+
+    assert!(rendered.contains(
+        "let l__pkg__entry__app__r3__l1__result = crate::packages::pkg__entry__app::root::r__pkg__entry__app__r9__callee("
+    ));
     assert!(rendered.contains("l__pkg__entry__app__r3__l0__value"));
 }
 
@@ -251,6 +263,25 @@ fn combined_core_instruction_snapshot_stays_stable() {
         name: Some("same".to_string()),
     });
 
+    let mut callee_routine = LoweredRoutine::new(LoweredRoutineId(8), "callee", LoweredBlockId(0));
+    callee_routine.source_unit_id = Some(SourceUnitId(0));
+    let mut package = LoweredPackage::new(fol_lower::LoweredPackageId(0), package_identity.clone());
+    package.source_units.push(LoweredSourceUnit {
+        source_unit_id: SourceUnitId(0),
+        path: "app/main.fol".to_string(),
+        package: "app".to_string(),
+        namespace: "app".to_string(),
+    });
+    package.routine_decls.insert(LoweredRoutineId(8), callee_routine);
+    let workspace = LoweredWorkspace::new(
+        package_identity.clone(),
+        BTreeMap::from([(package_identity.clone(), package)]),
+        Vec::new(),
+        table.clone(),
+        LoweredSourceMap::new(),
+        LoweredRecoverableAbi::v1(bool_id),
+    );
+
     let rendered = [
         LoweredInstr {
             id: LoweredInstrId(10),
@@ -306,7 +337,13 @@ fn combined_core_instruction_snapshot_stays_stable() {
     ]
     .iter()
     .map(|instruction| {
-        render_core_instruction(&package_identity, &table, &routine, instruction)
+        render_core_instruction_in_workspace(
+            Some(&workspace),
+            &package_identity,
+            &table,
+            &routine,
+            instruction,
+        )
     })
     .collect::<Result<Vec<_>, _>>()
     .expect("snapshot should render")
@@ -318,11 +355,137 @@ fn combined_core_instruction_snapshot_stays_stable() {
             "let l__pkg__entry__app__r6__l3__tmp = 7_i64;\n",
             "let l__pkg__entry__app__r6__l0__lhs = l__pkg__entry__app__r6__l3__tmp.clone();\n",
             "l__pkg__entry__app__r6__l1__rhs = l__pkg__entry__app__r6__l0__lhs.clone();\n",
-            "let l__pkg__entry__app__r6__l3__tmp = r__pkg__entry__app__r8__callee(l__pkg__entry__app__r6__l0__lhs, l__pkg__entry__app__r6__l1__rhs);\n",
+            "let l__pkg__entry__app__r6__l3__tmp = crate::packages::pkg__entry__app::root::r__pkg__entry__app__r8__callee(l__pkg__entry__app__r6__l0__lhs, l__pkg__entry__app__r6__l1__rhs);\n",
             "let l__pkg__entry__app__r6__l4__same = l__pkg__entry__app__r6__l0__lhs == l__pkg__entry__app__r6__l1__rhs;\n",
             "let l__pkg__entry__app__r6__l4__same = !l__pkg__entry__app__r6__l2__flag;\n",
             "let l__pkg__entry__app__r6__l3__tmp = l__pkg__entry__app__r6__l1__rhs.count.clone();"
         )
+    );
+}
+
+#[test]
+fn core_instruction_rendering_emits_routine_ref_as_fn_pointer_cast() {
+    let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+    let mut table = LoweredTypeTable::new();
+    let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+    let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+    let fn_sig = table.intern(fol_lower::LoweredType::Routine(fol_lower::LoweredRoutineType {
+        params: vec![int_id],
+        return_type: Some(int_id),
+        error_type: None,
+    }));
+    let mut routine = LoweredRoutine::new(LoweredRoutineId(10), "caller", LoweredBlockId(0));
+    let result_local = routine.locals.push(LoweredLocal {
+        id: LoweredLocalId(0),
+        type_id: Some(fn_sig),
+        name: Some("fptr".to_string()),
+    });
+
+    let mut callee_routine =
+        LoweredRoutine::new(LoweredRoutineId(11), "target", LoweredBlockId(0));
+    callee_routine.source_unit_id = Some(SourceUnitId(0));
+    callee_routine.signature = Some(fn_sig);
+    let mut package = LoweredPackage::new(fol_lower::LoweredPackageId(0), package_identity.clone());
+    package.source_units.push(LoweredSourceUnit {
+        source_unit_id: SourceUnitId(0),
+        path: "app/main.fol".to_string(),
+        package: "app".to_string(),
+        namespace: "app".to_string(),
+    });
+    package
+        .routine_decls
+        .insert(LoweredRoutineId(11), callee_routine);
+    let workspace = LoweredWorkspace::new(
+        package_identity.clone(),
+        BTreeMap::from([(package_identity.clone(), package)]),
+        Vec::new(),
+        table.clone(),
+        LoweredSourceMap::new(),
+        LoweredRecoverableAbi::v1(bool_id),
+    );
+
+    let routine_ref = LoweredInstr {
+        id: LoweredInstrId(20),
+        result: Some(result_local),
+        kind: LoweredInstrKind::RoutineRef {
+            routine: LoweredRoutineId(11),
+        },
+    };
+    let rendered = render_core_instruction_in_workspace(
+        Some(&workspace),
+        &package_identity,
+        &table,
+        &routine,
+        &routine_ref,
+    )
+    .expect("routine ref");
+
+    assert!(rendered.contains("l__pkg__entry__app__r10__l0__fptr"));
+    assert!(rendered.contains("r__pkg__entry__app__r11__target"));
+    assert!(rendered.contains(" as "));
+}
+
+#[test]
+fn core_instruction_rendering_emits_call_indirect_with_callee_local() {
+    let package_identity = package_identity("app", PackageSourceKind::Entry, "/workspace/app");
+    let mut table = LoweredTypeTable::new();
+    let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+    let fn_sig = table.intern(fol_lower::LoweredType::Routine(fol_lower::LoweredRoutineType {
+        params: vec![int_id],
+        return_type: Some(int_id),
+        error_type: None,
+    }));
+    let mut routine = LoweredRoutine::new(LoweredRoutineId(12), "main", LoweredBlockId(0));
+    let callee_local = routine.locals.push(LoweredLocal {
+        id: LoweredLocalId(0),
+        type_id: Some(fn_sig),
+        name: Some("callback".to_string()),
+    });
+    let arg_local = routine.locals.push(LoweredLocal {
+        id: LoweredLocalId(1),
+        type_id: Some(int_id),
+        name: Some("arg".to_string()),
+    });
+    let result_local = routine.locals.push(LoweredLocal {
+        id: LoweredLocalId(2),
+        type_id: Some(int_id),
+        name: Some("out".to_string()),
+    });
+
+    let call_indirect = LoweredInstr {
+        id: LoweredInstrId(21),
+        result: Some(result_local),
+        kind: LoweredInstrKind::CallIndirect {
+            callee: callee_local,
+            args: vec![arg_local],
+            error_type: None,
+        },
+    };
+    let rendered =
+        render_core_instruction(&package_identity, &table, &routine, &call_indirect)
+            .expect("call indirect");
+
+    assert_eq!(
+        rendered,
+        "let l__pkg__entry__app__r12__l2__out = l__pkg__entry__app__r12__l0__callback(l__pkg__entry__app__r12__l1__arg);"
+    );
+
+    let void_indirect = LoweredInstr {
+        id: LoweredInstrId(22),
+        result: None,
+        kind: LoweredInstrKind::CallIndirect {
+            callee: callee_local,
+            args: vec![arg_local],
+            error_type: None,
+        },
+    };
+    let void_rendered =
+        render_core_instruction(&package_identity, &table, &routine, &void_indirect)
+            .expect("void indirect");
+
+    assert_eq!(
+        void_rendered,
+        "l__pkg__entry__app__r12__l0__callback(l__pkg__entry__app__r12__l1__arg);"
     );
 }
 

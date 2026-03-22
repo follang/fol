@@ -587,11 +587,11 @@ mod tests {
         );
         assert_eq!(
             wrong_version_message(de_alloc, IntrinsicAvailability::V1),
-            ".de_alloc(...) belongs to V3 but the current compiler milestone is V1"
+            ".de_alloc(...) is planned for a future release"
         );
         assert_eq!(
             unsupported_intrinsic_message(de_alloc),
-            ".de_alloc(...) is not implemented in the current V3 compiler milestone"
+            ".de_alloc(...) is not yet supported"
         );
     }
 

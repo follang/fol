@@ -38,7 +38,7 @@ pub(crate) fn type_binary_op(
                 resolved,
                 left,
                 right,
-                "async pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+                "async pipe stages are planned for a future release",
             ));
         }
         BinaryOperator::Pipe | BinaryOperator::PipeOr
@@ -48,7 +48,7 @@ pub(crate) fn type_binary_op(
                 resolved,
                 left,
                 right,
-                "await pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+                "await pipe stages are planned for a future release",
             ));
         }
         BinaryOperator::PipeOr => return type_pipe_or(typed, resolved, context, left, right),
@@ -169,7 +169,27 @@ pub(crate) fn type_binary_op(
                 ))
             }
         }
-        _ => Ok(TypedExpr::none()),
+        BinaryOperator::In | BinaryOperator::Has => Err(unsupported_binary_surface(
+            resolved,
+            left,
+            right,
+            "membership operators 'in' and 'has' are not yet supported",
+        )),
+        BinaryOperator::Is => Err(unsupported_binary_surface(
+            resolved,
+            left,
+            right,
+            "type testing operator 'is' is not yet supported",
+        )),
+        BinaryOperator::Pipe => Err(unsupported_binary_surface(
+            resolved,
+            left,
+            right,
+            "pipe operator '|>' is not yet supported",
+        )),
+        BinaryOperator::As | BinaryOperator::Cast | BinaryOperator::PipeOr => {
+            unreachable!("handled before plain binary typing")
+        }
     }
 }
 
@@ -322,7 +342,7 @@ pub(crate) fn type_unary_op(
         }
         UnaryOperator::Ref | UnaryOperator::Deref => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "pointer operators are part of the V3 systems milestone, not the V1 typecheck milestone",
+            "pointer operators are planned for a future release",
         )),
         UnaryOperator::Unwrap => unreachable!("unwrap is handled before plain unary typing"),
     }

@@ -14,3 +14,9 @@ fol-lower = { path = "../../compiler/fol-lower" }
 fol-parser = { path = "../../compiler/fol-parser" }
 fol-resolver = { path = "../../compiler/fol-resolver" }
 fol-runtime = { path = "../fol-runtime" }
+
+[dev-dependencies]
+fol-lexer = { path = "../../compiler/fol-lexer" }
+fol-package = { path = "../../compiler/fol-package" }
+fol-stream = { path = "../../compiler/fol-stream" }
+fol-typecheck = { path = "../../compiler/fol-typecheck" }

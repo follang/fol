@@ -21,7 +21,7 @@ fn semantic_lib_build(name: &str) -> String {
             "pro[] build(graph: Graph): non = {{\n",
             "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
             "    graph.install(lib);\n",
-            "}}\n",
+            "}};\n",
         ),
         name = name
     )
@@ -150,7 +150,7 @@ fn create_app_with_git_dep(app: &std::path::Path, remote: &std::path::Path) {
     fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write app build");
     fs::write(
         app.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .expect("should write app source");
 }
@@ -164,7 +164,7 @@ fn create_git_package_repo(root: &std::path::Path, name: &str, version: &str) {
     .expect("package metadata should be writable");
     fs::write(root.join("build.fol"), semantic_lib_build(name))
         .expect("package build should be writable");
-    fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
+    fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1;\n")
         .expect("package source should be writable");
     git(root, &["init"]);
     git(root, &["config", "user.name", "FOL"]);

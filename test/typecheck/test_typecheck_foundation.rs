@@ -392,7 +392,7 @@ fn expression_typing_keeps_final_routine_body_expression_types() {
         "main.fol",
         "var total: int = 1;\n\
          fun[] demo(): int = {\n\
-             total\n\
+             return total;\n\
          };\n",
     )]);
     let syntax_id = find_named_routine_syntax_id(&typed, "demo");
@@ -697,10 +697,10 @@ fn routine_return_typing_rejects_final_body_expression_mismatches() {
 
     assert!(
         errors.iter().any(|error| {
-            error.kind() == TypecheckErrorKind::IncompatibleType
-                && error.message().contains("routine 'demo' body expects")
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("not all code paths use 'return'")
         }),
-        "Expected a routine-body mismatch diagnostic, got: {errors:?}"
+        "Expected a missing-return diagnostic, got: {errors:?}"
     );
 }
 
@@ -929,5 +929,25 @@ fn propagation_typing_rejects_incompatible_error_types_in_plain_value_contexts()
                     .contains("cannot use '/ ErrorType' routine results as plain values")
         }),
         "Expected a strict no-propagation diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn self_referential_record_type_does_not_panic_during_typecheck() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Node: rec = {\n\
+             value: int;\n\
+             next: Node;\n\
+         };\n\
+         fun[] main(): int = {\n\
+             return 0;\n\
+         };\n",
+    )]);
+
+    let (_node_id, node) = find_typed_symbol(&typed, "Node", SymbolKind::Type);
+    assert!(
+        node.declared_type.is_some(),
+        "Self-referential record types should typecheck via Declared reference indirection"
     );
 }

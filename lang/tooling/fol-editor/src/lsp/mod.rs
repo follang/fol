@@ -29,6 +29,12 @@ use crate::{
     EditorErrorKind, EditorResult, EditorSession, EditorWorkspaceMapping, EditorWorkspaceRoots,
     LspLocation, LspPosition, LspRange, formatting_edit,
 };
+
+fn serialize_result(value: &impl serde::Serialize) -> EditorResult<serde_json::Value> {
+    serde_json::to_value(value).map_err(|e| {
+        EditorError::new(EditorErrorKind::Internal, format!("LSP response serialization failed: {e}"))
+    })
+}
 use analysis::{analyze_document_diagnostics, analyze_document_semantics};
 use completion_helpers::completion_context_with_lsp;
 use std::sync::Arc;
@@ -95,7 +101,7 @@ impl EditorLspServer {
                             version: env!("CARGO_PKG_VERSION").to_string(),
                         },
                     })
-                    .expect("initialize result should serialize"),
+                    .map_err(|e| EditorError::new(EditorErrorKind::Internal, format!("LSP serialize: {e}")))?,
                 ),
                 error: None,
             })),
@@ -117,7 +123,7 @@ impl EditorLspServer {
                 Ok(Some(JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
-                    result: Some(serde_json::to_value(result).expect("hover should serialize")),
+                    result: Some(serialize_result(&result)?),
                     error: None,
                 }))
             }
@@ -131,7 +137,7 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(
-                        serde_json::to_value(result).expect("definition result should serialize"),
+                        serialize_result(&result)?,
                     ),
                     error: None,
                 }))
@@ -147,7 +153,7 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(
-                        serde_json::to_value(result).expect("code actions should serialize"),
+                        serialize_result(&result)?,
                     ),
                     error: None,
                 }))
@@ -161,7 +167,7 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(
-                        serde_json::to_value(result).expect("formatting edits should serialize"),
+                        serialize_result(&result)?,
                     ),
                     error: None,
                 }))
@@ -176,7 +182,7 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(
-                        serde_json::to_value(result).expect("signature help should serialize"),
+                        serialize_result(&result)?,
                     ),
                     error: None,
                 }))
@@ -192,7 +198,7 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(
-                        serde_json::to_value(result).expect("references should serialize"),
+                        serialize_result(&result)?,
                     ),
                     error: None,
                 }))
@@ -207,7 +213,7 @@ impl EditorLspServer {
                 Ok(Some(JsonRpcResponse {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
-                    result: Some(serde_json::to_value(result).expect("rename should serialize")),
+                    result: Some(serialize_result(&result)?),
                     error: None,
                 }))
             }
@@ -219,7 +225,7 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(
-                        serde_json::to_value(result).expect("semantic tokens should serialize"),
+                        serialize_result(&result)?,
                     ),
                     error: None,
                 }))
@@ -232,7 +238,7 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(
-                        serde_json::to_value(result).expect("document symbols should serialize"),
+                        serialize_result(&result)?,
                     ),
                     error: None,
                 }))
@@ -244,7 +250,7 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(
-                        serde_json::to_value(result).expect("workspace symbols should serialize"),
+                        serialize_result(&result)?,
                     ),
                     error: None,
                 }))
@@ -260,15 +266,20 @@ impl EditorLspServer {
                     jsonrpc: "2.0".to_string(),
                     id: request.id,
                     result: Some(
-                        serde_json::to_value(result).expect("completion result should serialize"),
+                        serialize_result(&result)?,
                     ),
                     error: None,
                 }))
             }
-            _ => Err(EditorError::new(
-                EditorErrorKind::InvalidInput,
-                format!("unsupported LSP request '{}'", request.method),
-            )),
+            _ => Ok(Some(JsonRpcResponse {
+                jsonrpc: "2.0".to_string(),
+                id: request.id,
+                result: None,
+                error: Some(JsonRpcError {
+                    code: -32601,
+                    message: format!("method '{}' not supported", request.method),
+                }),
+            })),
         }
     }
 
@@ -343,10 +354,7 @@ impl EditorLspServer {
                     diagnostics: Vec::new(),
                 }])
             }
-            _ => Err(EditorError::new(
-                EditorErrorKind::InvalidInput,
-                format!("unsupported LSP notification '{}'", notification.method),
-            )),
+            _ => Ok(Vec::new()),
         }
     }
 

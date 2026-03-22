@@ -24,11 +24,11 @@ pub(super) fn sample_package_root(label: &str) -> (PathBuf, String) {
     fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
     )
     .unwrap();
     let file = src.join("main.fol");
-    fs::write(&file, "fun[] main(): int = {\n    return 0\n}\n").unwrap();
+    fs::write(&file, "fun[] main(): int = {\n    return 0;\n};\n").unwrap();
     let uri = format!("file://{}", file.display());
     (root, uri)
 }
@@ -43,7 +43,7 @@ pub(super) fn sample_loc_workspace_root(label: &str) -> (PathBuf, String) {
     fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("app/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
     )
     .unwrap();
     fs::write(
@@ -53,18 +53,18 @@ pub(super) fn sample_loc_workspace_root(label: &str) -> (PathBuf, String) {
     .unwrap();
     fs::write(
         root.join("shared/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
     )
     .unwrap();
 
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared.helper()\n}\n",
+        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared.helper();\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("shared/src/lib.fol"),
-        "fun[exp] helper(): int = {\n    return 9\n}\n",
+        "fun[exp] helper(): int = {\n    return 9;\n};\n",
     )
     .unwrap();
 

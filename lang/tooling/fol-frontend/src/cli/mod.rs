@@ -13,4 +13,4 @@ pub use args::{
     TestCommand, ToolCommand, ToolSubcommand, TreeSubcommand, UnitCommand, UpdateCommand,
     WorkSubcommand,
 };
-pub use parser::FrontendCli;
+pub use parser::{FrontendCli, ParseError, ParseErrorKind};

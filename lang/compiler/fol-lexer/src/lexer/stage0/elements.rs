@@ -78,7 +78,7 @@ impl Elements {
         self.win.2.clone()
     }
     pub fn peek(&self, index: usize) -> Con<Part<char>> {
-        let u = if index > SLIDER { 0 } else { index };
+        let u = if index >= SLIDER { SLIDER - 1 } else { index };
         self.next_vec()[u].clone()
     }
     ///prev vector
@@ -88,7 +88,7 @@ impl Elements {
         rev
     }
     pub fn seek(&self, index: usize) -> Con<Part<char>> {
-        let u = if index > SLIDER { 0 } else { index };
+        let u = if index >= SLIDER { SLIDER - 1 } else { index };
         self.prev_vec()[u].clone()
     }
 
@@ -139,15 +139,9 @@ impl Iterator for Elements {
 
 impl fmt::Display for Elements {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.win.1.clone().is_ok() {
-            write!(
-                f,
-                "{} {}",
-                self.win.1.clone().unwrap().1,
-                self.win.1.clone().unwrap().0
-            )
-        } else {
-            write!(f, "ERROR")
+        match &self.win.1 {
+            Ok((ch, loc)) => write!(f, "{loc} {ch}"),
+            Err(_) => write!(f, "ERROR"),
         }
     }
 }

@@ -6,7 +6,7 @@ use crate::{
     ids::LoweredTypeId,
     LoweringError, LoweringErrorKind,
 };
-use fol_parser::ast::{AstNode, ContainerType, Literal};
+use fol_parser::ast::{AstNode, Literal};
 use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId};
 use std::collections::BTreeMap;
 
@@ -26,29 +26,6 @@ pub(crate) fn literal_type_id(
     checked_type_map.get(&builtin).copied()
 }
 
-pub(crate) fn describe_expression(node: &AstNode) -> String {
-    match node {
-        AstNode::Assignment { .. } => "assignment".to_string(),
-        AstNode::FunctionCall { name, .. } => format!("function call '{name}'"),
-        AstNode::QualifiedFunctionCall { path, .. } => {
-            format!("qualified function call '{}'", path.joined())
-        }
-        AstNode::MethodCall { method, .. } => format!("method call '{method}'"),
-        AstNode::FieldAccess { field, .. } => format!("field access '.{field}'"),
-        AstNode::IndexAccess { .. } => "index access".to_string(),
-        AstNode::ContainerLiteral { container_type, .. } => match container_type {
-            ContainerType::Array => "array literal".to_string(),
-            ContainerType::Vector => "vector literal".to_string(),
-            ContainerType::Sequence => "sequence literal".to_string(),
-            ContainerType::Set => "set literal".to_string(),
-            ContainerType::Map => "map literal".to_string(),
-        },
-        AstNode::Return { .. } => "return".to_string(),
-        AstNode::When { .. } => "when".to_string(),
-        AstNode::Loop { .. } => "loop".to_string(),
-        _ => "expression".to_string(),
-    }
-}
 
 pub(crate) fn describe_unary_operator(op: &fol_parser::ast::UnaryOperator) -> &'static str {
     match op {
@@ -137,16 +114,20 @@ pub(crate) fn resolve_entry_variant_target(
         _ => return Ok(None),
     };
 
-    let Some(checked_type) = checked_type else {
-        return Ok(None);
-    };
-    let lowered_type = checked_type;
     if !matches!(
         resolved_symbol.kind,
         fol_resolver::SymbolKind::Type | fol_resolver::SymbolKind::Alias
     ) {
         return Ok(None);
     }
+    let lowered_type = checked_type.or_else(|| {
+        let typed_symbol = typed_package.program.typed_symbol(resolved_symbol.id)?;
+        let declared_type = typed_symbol.declared_type?;
+        checked_type_map.get(&declared_type).copied()
+    });
+    let Some(lowered_type) = lowered_type else {
+        return Ok(None);
+    };
     if !matches!(type_table_entry_kind(type_table, lowered_type), Some(())) {
         return Ok(None);
     }
@@ -201,7 +182,7 @@ pub(crate) fn lower_unwrap_expression(
     .ok_or_else(|| {
         LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "unwrap lowering requires an opt[...] or typed err[...] runtime operand in lowered V1",
+            "unwrap lowering requires an opt[...] or typed err[...] runtime operand",
         )
     })?;
     let result_local = cursor.allocate_local(inner_type, None);
@@ -349,7 +330,7 @@ pub(crate) fn lower_assignment_target(
         _ => {
             return Err(LoweringError::with_kind(
                 LoweringErrorKind::InvalidInput,
-                "assignment targets must lower from plain or qualified identifiers in V1",
+                "assignment targets must lower from plain or qualified identifiers",
             ))
         }
     };

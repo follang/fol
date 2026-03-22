@@ -1,0 +1,5 @@
+fun[] main(): int = {
+    var items: vec[int] = [1, 2, 3];
+    var found: bol = 2 in items;
+    return 0;
+};

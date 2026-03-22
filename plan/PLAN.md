@@ -1,305 +1,485 @@
-# FOL Editor Polish Plan
+# Add Cross-Compilation To The `rustc` Backend
 
-Last updated: 2026-03-20
+Last updated: 2026-03-22
 
 ## Goal
 
-Take `fol-editor` from "usable and shipped" to "boring, trustworthy, and hard
-to regress":
+Add explicit cross-compilation support to the current Rust backend so FOL
+programs can be built for non-host targets through direct `rustc`.
 
-- formatting should feel intentional, not just minimally stable
-- editor responses should stay predictable under ugly real editing flows
-- the public `fol tool` surface should have stronger behavior guarantees
-- more of the semantic contract should be locked with focused tests
-- performance regressions should become easier to detect before they land
+The target outcome is:
 
-This is a follow-up plan after the first editor delivery plan reached 100%.
+- `fol code build --target <triple>` builds a binary for that target
+- `build.fol` artifact definitions can declare a target
+- backend runtime artifacts and binary outputs are target-scoped
+- host and cross builds can coexist without clobbering each other
+- normal builds keep using the same Rust emission pipeline
 
-It is based on:
+This is a build-target extension of the current backend, not a new backend.
 
-- the now-shipped `fol-editor` feature set
-- remaining future-work in `plan/future-work/fol-editor.md`
-- the current editor/LSP/frontend tests in-tree
-- the need for much heavier regression coverage around editing behavior
+## Non-goals
 
-## Current State
+- Do not add an LLVM backend in this plan
+- Do not embed `rustc` internals into `fol`
+- Do not reintroduce Cargo as a normal artifact build driver
+- Do not attempt to support arbitrary custom linker orchestration in the first
+  milestone
+- Do not make cross-target `run` or `test` silently emulate binaries
+- Do not preserve ambiguous or legacy target spellings without an explicit
+  mapping rule
 
-Already shipped:
+## Current state
 
-- diagnostics, hover, definition, completion, references, rename
-- semantic tokens, signature help, code actions
-- whole-document formatting
-- public `fol tool` exposure for the shipped editor features
-- compiler-backed LSP behavior with per-version semantic caching
+Today the backend build path is:
 
-Remaining quality gaps:
+1. `build.fol` is evaluated into a build graph
+2. the frontend selects the target artifact/root module
+3. the compiler produces lowered FOL IR
+4. `fol-backend` emits a temporary Rust crate
+5. `fol-backend` compiles `fol-runtime` into an `.rlib` with direct `rustc`
+6. `fol-backend` compiles the generated entry crate with direct `rustc`
+7. the built binary is copied into the backend output `bin/` directory
 
-- formatting is real, but still shallow and line-oriented
-- range formatting is still unsupported
-- rename safety is intentionally narrow
-- code actions are intentionally narrow
-- there is still not enough test density around malformed edits, cache
-  invalidation, cross-feature interactions, and CLI/LSP parity
+Target-related state today:
 
-## Product Direction
+- the build/evaluation layer already has a target concept
+- CLI build options already parse `--target`
+- artifact definitions already have target config fields
+- the backend currently ignores target selection and always builds for the host
+- runtime and binary outputs are not target-scoped
+- `run` and `test` assume the built binary is executable on the current host
 
-The next editor phase should move in this order:
+## Problem statement
 
-1. Lock the shipped behavior much harder.
-2. Improve formatting quality and correctness.
-3. Expand safe semantic features only where the safety boundary is explicit.
-4. Add more performance and regression probes before adding broad new surface.
+Right now target selection exists in the higher-level build model, but that
+information does not reach the actual `rustc` invocations.
 
-Do not add speculative features just because the LSP supports a method name.
+That leaves three gaps:
 
-## Workstreams
+1. target intent is accepted by parts of the system but not enforced
+2. build outputs are not partitioned by target
+3. run/test semantics are underspecified for non-host binaries
 
-### Slice 1: Formatter Quality Pass
+The backend must become the authority on target-aware native artifact builds.
 
-The current formatter is a valid first subsystem, but it still needs to become
-less fragile and more language-aware.
+## Product direction
 
-Work:
+The current backend language remains Rust.
 
-- [x] decide and document the intended formatting style per major surface:
-  declarations, records, calls, `when`, imports, and build files
-- [x] tighten indentation and brace-depth handling around nested literals,
-  `when` bodies, and mixed inline/block constructs
-- [x] normalize trailing whitespace, blank-line behavior, and final newline rules
-- [x] ensure formatting does not drift across repeated runs on already-formatted
-  files
-- [x] add formatter fixtures for:
-  records, entries, `when`, nested literals, imports, aliases, build files,
-  and representative error-tolerant input
+This plan is specifically about:
 
-Exit condition:
+- target-aware artifact builds
+- target-aware output layout
+- target-aware frontend diagnostics
 
-- formatting output is stable across a representative fixture corpus
-- formatter fixtures cover both source files and `build.fol`
-- formatter idempotence is locked explicitly
+This plan is not about:
 
-### Slice 2: Range Formatting Decision
+- replacing Rust with LLVM
+- changing the generated Rust source model
+- changing `emit rust` into a target-specific source format
 
-Range formatting should only exist if it can be correct enough to trust.
+## Success criteria
 
-Work:
+This plan is successful when all of the following are true:
 
-- [x] evaluate whether range formatting can be implemented without corrupting
-  surrounding structure
-- [x] if yes, ship a safe first range-formatting boundary and lock it with tests
-- [x] if no, keep it explicitly unsupported and document the reason
-- [x] add tests proving the chosen behavior through LSP request handling
+- the backend accepts an explicit machine target triple
+- the same target is applied consistently to both `fol-runtime` and the
+  generated entry crate
+- output paths separate artifacts by target and profile
+- host-target builds keep working exactly as before
+- `emit rust` remains available and target-agnostic as source emission
+- non-host `run` and `test` fail with clear diagnostics instead of attempting
+  execution
+- tests cover target mapping, output layout, diagnostics, and host behavior
 
-Exit condition:
+## Design rules
 
-- there is one explicit range-formatting policy:
-  supported with constraints, or rejected intentionally
+1. One code generator only.
+   Cross-compilation must use the same emitted Rust files as host builds.
 
-### Slice 3: Formatting Surface Parity
+2. One artifact builder only.
+   Direct `rustc` remains the product build path for generated binaries.
 
-Formatting now exists in LSP and CLI, but parity needs stronger guarantees.
+3. Target choice must be explicit.
+   The backend should receive a concrete host/default target decision, not
+   infer target behavior in scattered places.
 
-Work:
+4. Target naming must be normalized.
+   FOL-facing target values may differ from Rust target triples, but the mapping
+   must be explicit and centralized.
 
-- [x] add tests proving `fol tool format` and `textDocument/formatting` produce the
-  same output for the same file
-- [x] lock CLI summary/detail shapes for formatted vs already-formatted files
-- [x] add tests for formatting on files outside a discovered workspace
-- [x] verify formatting behavior against `build.fol`
-- [x] add integration tests proving formatting does not mutate unrelated files
+5. Outputs must be target-scoped.
+   Runtime libraries, generated binaries, and related build directories must not
+   collide across targets.
 
-Exit condition:
+6. Execution is not compilation.
+   Building a non-host binary is allowed; running or testing it is a separate
+   concern and should be rejected unless host-compatible.
 
-- public CLI formatting and LSP formatting stay behaviorally aligned
+7. No hidden Cargo fallback.
+   Cross-compilation support must extend the rustc backend, not route around it.
 
-### Slice 4: Rename Safety Expansion
+## User-facing model
 
-Rename should grow only where correctness is explicit.
+The intended user-facing shape is:
 
-Work:
+```bash
+fol code build --target aarch64-unknown-linux-gnu
+fol code build --target x86_64-pc-windows-gnu
+fol code emit rust
+```
 
-- [x] define the next safe rename boundary beyond same-file locals, if one exists
-- [x] evaluate same-package rename safety for unambiguous top-level items
-- [x] reject cross-package and ambiguous cases explicitly
-- [x] add regression tests for:
-  locals, parameters, same-file top-levels, imported names, same-package
-  namespaces, and refusal paths
-- [x] lock exact failure messages/notes where the refusal contract matters
+And in `build.fol`:
 
-Exit condition:
+```fol
+var app = graph.add_exe({
+    name = "app",
+    root = "src/main.fol",
+    target = "aarch64-unknown-linux-gnu"
+});
+```
 
-- rename support is broader only where full edit sets are proven correct
-- unsafe cases still fail before partial edits are produced
+Target precedence should be:
 
-### Slice 5: Code Action Depth Without Guessing
+1. explicit CLI target
+2. artifact target declared in `build.fol`
+3. host default
 
-Code actions should grow from compiler truth, not editor-side heuristics.
+That precedence should be implemented once and then threaded forward.
 
-Work:
+## Proposed architecture
 
-- [x] inventory compiler diagnostics that already carry structurally obvious fixes
-- [x] add one narrow code-action slice at a time from real diagnostic suggestions
-- [x] avoid speculative actions that require semantic guessing
-- [x] add tests that prove code actions only appear for matching diagnostics and
-  produce deterministic edits
-- [x] add refusal/empty-result tests for nearby but unsupported diagnostic shapes
+### Target model
 
-Exit condition:
+The backend needs a real machine-target concept, separate from the current
+backend-language target enum.
 
-- every shipped code action is compiler-backed, exact, and test-locked
+Minimum viable shape:
 
-### Slice 6: Workspace Symbols
+- host target
+- explicit target triple
 
-Workspace symbols are a natural next semantic query if they can reuse existing
-compiler facts safely.
+For example:
 
-Work:
+```rust
+pub enum BackendMachineTarget {
+    Host,
+    Triple(String),
+}
+```
 
-- [x] define the first supported workspace-symbol scope:
-  current package only, or current workspace members only
-- [x] implement `workspace/symbol` without introducing a parallel semantic engine
-- [x] sort and rank results deterministically
-- [x] add tests for symbol visibility, namespace qualification, and ordering
-- [x] document the scope boundary clearly
+or an equivalent normalized `Option<String>` field with explicit host handling.
 
-Exit condition:
+### Rust target mapping
 
-- `workspace/symbol` is real, scoped, and deterministic
+The build system may accept target names that are not already valid Rust target
+triples.
 
-### Slice 7: Cache And Invalidation Hardening
+Examples seen in the repo include values like:
 
-The current split between diagnostics and semantic snapshots is better, but
-there are still many invalidation edges to lock down.
+- `x86_64-linux-gnu`
+- `aarch64-macos-gnu`
 
-Work:
+Those are not necessarily valid `rustc --target` values. So the backend needs a
+translation layer:
 
-- [x] add tests for repeated mixed request sequences:
-  diagnose -> hover -> complete -> format -> rename -> close -> reopen
-- [x] add tests for stale snapshot invalidation after ranged edits near symbol
-  boundaries
-- [x] add tests for multi-file sessions where only one file changes
-- [x] add tests that differentiate diagnostic cache reuse from semantic cache reuse
-- [x] add more stage-counter assertions around unchanged formatting and navigation
-  requests
+- FOL-facing target spelling
+- normalized internal build target
+- final Rust target triple used in `rustc`
 
-Exit condition:
+This mapping must live in one place with tests.
 
-- cache invalidation behavior is locked across mixed real-editor flows
+### Target-aware output layout
 
-### Slice 8: Error-Tolerant Editing Matrix
+Current output layout is not sufficient for cross builds because host and
+cross-target artifacts would overwrite each other.
 
-The editor needs stronger behavior guarantees while users are in broken states.
+The backend should move to a target-aware layout such as:
 
-Work:
+- `.fol/build/debug/bin/<target>/<artifact>`
+- `.fol/build/release/bin/<target>/<artifact>`
+- `.fol/build/<profile>/fol-backend/runtime/<target>/<profile>/...`
+- generated crate target outputs under target-scoped directories as needed
 
-- [x] add completion, hover, signature-help, formatting, and code-action tests on
-  parse-broken input
-- [x] add tests for partially typed declarations, broken `when` blocks, and
-  incomplete calls
-- [x] add tests proving the server returns safe empty/null responses where needed
-  instead of crashing or leaking stale data
-- [x] add tests for recovery after broken text becomes valid again
+The exact shape can vary, but target and profile must both be encoded.
 
-Exit condition:
+### rustc driver behavior
 
-- broken intermediate text is a locked, ordinary case for the server
+Both rustc invocations must receive the same target decision:
 
-### Slice 9: Build File And Non-Standard File Coverage
+1. build `fol-runtime` with `--target <triple>`
+2. build generated `src/main.rs` with `--target <triple>`
 
-`build.fol` already works in important paths. The test matrix should treat that
-as a first-class contract.
+The backend remains responsible for:
 
-Work:
+- target triple selection
+- output roots
+- profile flags
+- diagnostics when rustc or linker execution fails
 
-- [x] add formatting fixtures and LSP formatting tests for `build.fol`
-- [x] add signature-help, code-action, and rename refusal tests where relevant on
-  `build.fol`
-- [x] add CLI integration coverage for editor commands against build-entry files
-- [x] ensure docs stay aligned if behavior differs intentionally from ordinary
-  source files
+## Frontend semantics
 
-Exit condition:
+The frontend should distinguish clearly between:
 
-- build-file behavior is covered across more than diagnostics/navigation only
+- compile-only commands
+- execution commands
 
-### Slice 10: Public Surface Contract Tests
+Expected behavior:
 
-The frontend/editor boundary now deserves stronger contract locking.
+- `build`: supports host and non-host targets
+- `emit rust`: always supported
+- `run`: host only in the first milestone
+- `test`: host only in the first milestone unless it is explicitly redefined as
+  compile-only for some cases
 
-Work:
+For non-host `run`/`test`, the frontend should fail fast with a diagnostic that
+states the selected target and the current host.
 
-- [x] add CLI parsing tests for every shipped editor subcommand variant and edge
-  flag combination
-- [x] add summary-shape tests for every public editor command
-- [x] add tests proving unsupported future commands stay rejected
-- [x] add JSON/plain output snapshot-style assertions for representative editor
-  commands and failures
-- [x] lock `initialize` capability exposure against the shipped public docs
+## Slice tracker
 
-Exit condition:
+- [x] Slice 1: define backend machine-target config and target normalization API
+- [x] Slice 2: thread CLI/build target selection into frontend backend config
+- [x] Slice 3: define FOL-target to Rust-target mapping rules with tests
+- [x] Slice 4: make backend runtime and binary output paths target-scoped
+- [x] Slice 5: pass `--target` to rustc for runtime builds
+- [x] Slice 6: pass `--target` to rustc for generated crate builds
+- [x] Slice 7: reject non-host execution in `run` and `test` with clear diagnostics
+- [x] Slice 8: add backend and frontend tests for target layout and diagnostics
+- [x] Slice 9: document cross-compilation behavior in `book/`
 
-- the public `fol tool` editor surface is hard to accidentally drift
+## Phase 1: Define target ownership
 
-### Slice 11: Test Structure Cleanup
+Goal:
+Make target selection a first-class backend input instead of an ignored build
+option.
 
-The next wave of tests should make the suite easier to maintain, not noisier.
+Tasks:
 
-Work:
+- add a machine-target field to backend config
+- define a host/default representation
+- define a normalization API for target inputs
+- keep current host behavior unchanged when no target is specified
 
-- [x] split giant mixed-purpose editor tests when they start covering unrelated
-  behavior
-- [x] introduce shared fixture/setup helpers only where they reduce repetition
-  without hiding intent
-- [x] keep one behavior per regression test where practical
-- [x] add naming discipline so failures immediately describe the broken contract
+Expected result:
 
-Exit condition:
+- backend APIs can carry target decisions explicitly
 
-- editor tests stay denser without turning into unreadable mixed suites
+## Phase 2: Thread target selection through the frontend
 
-## Testing Strategy
+Goal:
+Carry target intent from CLI/build graph selection into backend invocation.
 
-Add and keep these layers:
+Tasks:
 
-- formatter fixture snapshots
-- LSP request/response tests per method
-- mixed lifecycle tests covering cache invalidation and recovery
-- frontend integration tests through `fol tool`
-- parity tests between CLI and LSP for overlapping features
-- performance smoke tests using the existing stage counters
-- refusal-path tests for unsupported or intentionally unsafe behavior
+- inspect frontend command config sources for target values
+- define precedence between CLI target and artifact target
+- pass the chosen target into backend config
+- keep `emit rust` target-agnostic unless future requirements change
 
-Priority testing gaps to close first:
+Expected result:
 
-- formatting fixture depth
-- malformed incremental edit sequences
-- cache invalidation after mixed requests
-- CLI/LSP formatting parity
-- rename refusal coverage
-- code-action diagnostic matching coverage
+- backend receives the target that the user actually requested
 
-## Documentation Work
+## Phase 3: Normalize target names for rustc
 
-Update these docs as polish slices land:
+Goal:
+Ensure the backend always knows which Rust target triple to hand to `rustc`.
 
-- `book/src/050_tooling/200_tool_commands.md`
-- `book/src/050_tooling/300_editor.md`
-- `book/src/050_tooling/500_lsp.md`
-- `plan/future-work/fol-editor.md`
+Tasks:
 
-Specifically:
+- define accepted FOL-facing target spellings
+- define mapping to canonical Rust target triples
+- reject unsupported or ambiguous target names with clear diagnostics
+- keep this logic centralized and tested
 
-- keep docs aligned with the real public surface
-- move newly shipped items out of future-work immediately
-- document explicit refusal boundaries, not just success cases
-- document formatter scope and any intentional range-formatting limitation
+Expected result:
 
-## Immediate Next Slice
+- `rustc` sees one normalized target triple
 
-Start with Slice 1 and Slice 3 together:
+## Phase 4: Partition outputs by target
 
-- deepen formatter fixtures and idempotence coverage
-- lock CLI/LSP formatting parity
+Goal:
+Prevent artifact collisions between host and cross builds.
 
-That is the highest-signal polish work because formatting is newly shipped and
-still the easiest place for visible regressions to slip in.
+Tasks:
+
+- update runtime artifact output paths to include target
+- update final binary output paths to include target
+- ensure build summaries and artifact reports surface the target-aware paths
+- keep host-only builds easy to discover in the resulting layout
+
+Expected result:
+
+- host and cross builds can coexist safely
+
+## Phase 5: Compile runtime support for the selected target
+
+Goal:
+Build `fol-runtime` for the same target as the final program.
+
+Tasks:
+
+- pass `--target <triple>` to the runtime rustc invocation
+- make the runtime output path target-aware
+- preserve profile behavior
+- keep diagnostics clear when the target toolchain is unavailable
+
+Expected result:
+
+- runtime artifacts match the selected target
+
+## Phase 6: Compile the generated crate for the selected target
+
+Goal:
+Build the generated entry crate for the selected target.
+
+Tasks:
+
+- pass `--target <triple>` to the generated crate rustc invocation
+- use the target-matched runtime `.rlib`
+- keep deterministic crate naming and output naming
+- preserve host behavior when no target is specified
+
+Expected result:
+
+- the produced executable matches the selected target
+
+## Phase 7: Define execution policy for non-host binaries
+
+Goal:
+Avoid pretending cross-built binaries are runnable on the current machine.
+
+Tasks:
+
+- detect when the selected target is not the current host target
+- reject `run` with a clear message for non-host targets
+- reject `test` with a clear message for non-host targets
+- keep host-target execution behavior unchanged
+
+Expected result:
+
+- users get a correct diagnostic instead of an opaque OS execution failure
+
+## Phase 8: Test the target-aware backend
+
+Goal:
+Prove that cross-compilation behavior is deliberate and stable.
+
+Tasks:
+
+- add unit tests for target normalization and mapping
+- add backend tests for target-aware output layout
+- add backend tests that rustc command construction includes target selection
+- add frontend tests for target precedence and non-host run/test diagnostics
+- keep real cross-toolchain requirements out of the default suite where
+  possible
+
+Expected result:
+
+- the design is enforced by tests, not by convention
+
+## Phase 9: Document the model
+
+Goal:
+Explain clearly how cross-compilation works for users and maintainers.
+
+Tasks:
+
+- update `book/` build documentation with target examples
+- document the distinction between build and run for non-host targets
+- document accepted target spellings and any mapping rules
+- document output layout expectations
+
+Expected result:
+
+- the feature is usable without reading backend code
+
+## Testing strategy
+
+The first milestone should not require every development machine or CI worker
+to have multiple cross toolchains installed.
+
+Test layers should be:
+
+1. pure unit tests
+   - target parsing
+   - target mapping
+   - host-vs-non-host checks
+
+2. backend integration tests
+   - output layout
+   - target-aware diagnostics
+   - rustc command construction behavior where practical
+
+3. frontend integration tests
+   - CLI target precedence
+   - non-host run/test rejection
+   - build artifact summaries
+
+4. optional environment-gated real cross-build tests later
+   - only when a target toolchain is present
+
+## Known risks
+
+### Risk 1: FOL target names do not match Rust target triples
+
+The build layer already uses target strings that may not be valid Rust triples.
+
+Mitigation:
+
+- centralize mapping logic
+- reject unknown spellings explicitly
+- keep tests for all accepted aliases
+
+### Risk 2: Missing target toolchains
+
+`rustc` may accept `--target`, but the standard library or linker for that
+target may not be installed.
+
+Mitigation:
+
+- surface rustc/linker failures with the selected target in diagnostics
+- avoid hard dependency on cross toolchains in the default test suite
+
+### Risk 3: Output collisions
+
+Without target-aware paths, repeated builds for different targets will overwrite
+runtime artifacts or final binaries.
+
+Mitigation:
+
+- make target part of runtime and binary output layout from the start
+
+### Risk 4: Confused run/test semantics
+
+Users may assume that a successful cross-build implies local execution.
+
+Mitigation:
+
+- reject non-host run/test explicitly
+- document the behavior in CLI and book docs
+
+### Risk 5: Accidental backend coupling
+
+Target logic could spread across frontend, build graph, and backend in ad hoc
+ways.
+
+Mitigation:
+
+- centralize target normalization and rustc triple selection
+- keep frontend responsible for choosing the target, backend responsible for
+  compiling it
+
+## Definition of done
+
+This plan is complete when:
+
+- target selection reaches the backend intentionally
+- rustc runtime and entry-crate builds both honor the selected target
+- output layout is target-safe
+- host builds remain stable
+- non-host run/test behavior is explicit and correct
+- tests cover the core target model
+- the book explains how to use the feature
+
+LLVM remains separate future work and is not part of this plan.

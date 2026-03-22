@@ -8,18 +8,18 @@ pub mod operators;
 pub mod references;
 
 use crate::{
-    decls, CheckedTypeId, RecoverableCallEffect, TypecheckError, TypecheckErrorKind,
-    TypecheckResult, TypedProgram,
+    decls, CheckedType, CheckedTypeId, RecoverableCallEffect, RoutineType, TypecheckError,
+    TypecheckErrorKind, TypecheckResult, TypedProgram,
 };
 use fol_intrinsics::{select_intrinsic, IntrinsicSurface};
 use fol_parser::ast::{
-    AstNode, CallSurface, ParsedSourceUnitKind,
+    AstNode, CallSurface, FolType, ParsedSourceUnitKind,
 };
 use fol_resolver::{ResolvedProgram, ScopeId, SourceUnitId};
 
 use helpers::{
-    binding_kind_for, ensure_assignable, ensure_assignable_target,
-    internal_error, origin_for,
+    binding_kind_for, describe_type, ensure_assignable, ensure_assignable_target,
+    internal_error, node_origin, origin_for,
     unsupported_node_surface,
 };
 
@@ -205,16 +205,16 @@ pub(crate) fn type_node_with_expectation(
         }
         AstNode::AsyncStage => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "async pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+            "async pipe stages are planned for a future release",
         )),
         AstNode::AwaitStage => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "await pipe stages are part of the V3 systems milestone, not the V1 typecheck milestone",
+            "await pipe stages are planned for a future release",
         )),
         AstNode::Spawn { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "coroutine spawn expressions are part of the V3 systems milestone, not the V1 typecheck milestone",
+            "spawn expressions are planned for a future release",
         )),
         AstNode::FunDecl {
             name,
@@ -259,10 +259,10 @@ pub(crate) fn type_node_with_expectation(
                         ),
                     )
                 })?;
-            let expected_return_type = return_type
-                .as_ref()
-                .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
-                .transpose()?;
+            let expected_return_type = match return_type.as_ref() {
+                None | Some(FolType::None) => None,
+                Some(ty) => Some(decls::lower_type(typed, resolved, routine_scope, ty)?),
+            };
             let expected_error_type = error_type
                 .as_ref()
                 .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
@@ -276,14 +276,40 @@ pub(crate) fn type_node_with_expectation(
             };
             let body_type = type_body(typed, resolved, routine_context, body)?;
             let _ = type_body(typed, resolved, routine_context, inquiries)?;
-            if let (Some(expected), Some(actual)) = (expected_return_type, body_type.value_type) {
-                ensure_assignable(
-                    typed,
-                    expected,
-                    actual,
-                    format!("routine '{name}' body"),
-                    syntax_id.and_then(|id| origin_for(resolved, id)),
-                )?;
+            // Functions with a declared return type require explicit 'return' on all paths
+            let routine_origin = syntax_id.and_then(|id| origin_for(resolved, id));
+            if expected_return_type.is_some() && !body_type.is_never(typed) {
+                let err = TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("routine '{name}' declares a return type but not all code paths use 'return'"),
+                );
+                return Err(match routine_origin.clone() {
+                    Some(o) => err.with_fallback_origin(o),
+                    None => err,
+                });
+            }
+            // Functions with T/E must use both 'return' and 'report'
+            if expected_error_type.is_some() {
+                if !body_contains_return(body) {
+                    let err = TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("routine '{name}' declares an error type — both 'return' and 'report' are required"),
+                    );
+                    return Err(match routine_origin.clone() {
+                        Some(o) => err.with_fallback_origin(o),
+                        None => err,
+                    });
+                }
+                if !body_contains_report(body) {
+                    let err = TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("routine '{name}' declares an error type — both 'return' and 'report' are required"),
+                    );
+                    return Err(match routine_origin {
+                        Some(o) => err.with_fallback_origin(o),
+                        None => err,
+                    });
+                }
             }
             if let (Some(syntax_id), Some(type_id)) =
                 (syntax_id, expected_return_type.or(body_type.value_type))
@@ -293,6 +319,7 @@ pub(crate) fn type_node_with_expectation(
             Ok(body_type)
         }
         AstNode::AnonymousFun {
+            syntax_id,
             params,
             return_type,
             error_type,
@@ -301,6 +328,7 @@ pub(crate) fn type_node_with_expectation(
             ..
         }
         | AstNode::AnonymousPro {
+            syntax_id,
             params,
             return_type,
             error_type,
@@ -309,6 +337,7 @@ pub(crate) fn type_node_with_expectation(
             ..
         }
         | AstNode::AnonymousLog {
+            syntax_id,
             params,
             return_type,
             error_type,
@@ -319,28 +348,81 @@ pub(crate) fn type_node_with_expectation(
             if let Some(message) = decls::unsupported_routine_param_surface_message(params) {
                 return Err(unsupported_node_surface(resolved, node, message));
             }
+            let routine_scope = syntax_id
+                .and_then(|id| resolved.scope_for_syntax(id))
+                .unwrap_or(context.scope_id);
+            let mut lowered_params = Vec::with_capacity(params.len());
             for param in params {
-                let _ = decls::lower_type(typed, resolved, context.scope_id, &param.param_type)?;
+                let param_type = decls::lower_type(typed, resolved, routine_scope, &param.param_type)?;
+                if let Ok(param_symbol_id) = decls::find_symbol_id_in_scope(
+                    resolved,
+                    context.source_unit_id,
+                    routine_scope,
+                    &[fol_resolver::SymbolKind::Parameter],
+                    &param.name,
+                ) {
+                    decls::record_symbol_type(typed, param_symbol_id, param_type)?;
+                }
+                lowered_params.push(param_type);
             }
-            let expected_return_type = return_type
-                .as_ref()
-                .map(|ty| decls::lower_type(typed, resolved, context.scope_id, ty))
-                .transpose()?;
+            let expected_return_type = match return_type.as_ref() {
+                None | Some(FolType::None) => None,
+                Some(ty) => Some(decls::lower_type(typed, resolved, routine_scope, ty)?),
+            };
             let expected_error_type = error_type
                 .as_ref()
-                .map(|ty| decls::lower_type(typed, resolved, context.scope_id, ty))
+                .map(|ty| decls::lower_type(typed, resolved, routine_scope, ty))
                 .transpose()?;
             let routine_context = TypeContext {
                 source_unit_id: context.source_unit_id,
-                scope_id: context.scope_id,
+                scope_id: routine_scope,
                 routine_return_type: expected_return_type,
                 routine_error_type: expected_error_type,
                 error_call_mode: ErrorCallMode::Propagate,
             };
             let body_type = type_body(typed, resolved, routine_context, body)?;
             let _ = type_body(typed, resolved, routine_context, inquiries)?;
-            Ok(TypedExpr::maybe_value(expected_return_type.or(body_type.value_type))
-                .with_optional_effect(body_type.recoverable_effect))
+            // Anonymous routines with a declared return type require explicit 'return'
+            let anon_origin = node_origin(resolved, node);
+            if expected_return_type.is_some() && !body_type.is_never(typed) {
+                let err = TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "anonymous routine declares a return type but not all code paths use 'return'",
+                );
+                return Err(match anon_origin.clone() {
+                    Some(o) => err.with_fallback_origin(o),
+                    None => err,
+                });
+            }
+            // Anonymous routines with T/E must use both 'return' and 'report'
+            if expected_error_type.is_some() {
+                if !body_contains_return(body) {
+                    let err = TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        "anonymous routine declares an error type — both 'return' and 'report' are required",
+                    );
+                    return Err(match anon_origin.clone() {
+                        Some(o) => err.with_fallback_origin(o),
+                        None => err,
+                    });
+                }
+                if !body_contains_report(body) {
+                    let err = TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        "anonymous routine declares an error type — both 'return' and 'report' are required",
+                    );
+                    return Err(match anon_origin {
+                        Some(o) => err.with_fallback_origin(o),
+                        None => err,
+                    });
+                }
+            }
+            let routine_type_id = typed.type_table_mut().intern(CheckedType::Routine(RoutineType {
+                params: lowered_params,
+                return_type: expected_return_type,
+                error_type: expected_error_type,
+            }));
+            Ok(TypedExpr::value(routine_type_id))
         }
         AstNode::Block { statements } => type_body(typed, resolved, context, statements),
         AstNode::Program { declarations } => type_body(typed, resolved, context, declarations),
@@ -421,7 +503,7 @@ pub(crate) fn type_node_with_expectation(
         AstNode::ChannelAccess { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "channel endpoint access is part of the V3 systems milestone, not the V1 typecheck milestone",
+            "channel endpoint access is planned for a future release",
         )),
         AstNode::IndexAccess { container, index } => {
             access::type_index_access(typed, resolved, context, container, index)
@@ -441,22 +523,22 @@ pub(crate) fn type_node_with_expectation(
         ),
         AstNode::PatternAccess { .. } => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "pattern access is not part of the V1 typecheck milestone",
+            "pattern access is not yet supported",
         )),
         AstNode::Rolling { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "rolling/comprehension expressions are not part of the V1 typecheck milestone",
+            "rolling/comprehension expressions are not yet supported",
         )),
         AstNode::Range { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "range expressions are not part of the V1 typecheck milestone",
+            "range expressions are not yet supported",
         )),
         AstNode::Select { .. } => Err(unsupported_node_surface(
             resolved,
             node,
-            "select/channel semantics are part of the V3 systems milestone, not the V1 typecheck milestone",
+            "select/channel semantics are planned for a future release",
         )),
         AstNode::Return { value } => {
             controlflow::type_return(typed, resolved, context, value.as_deref())
@@ -464,14 +546,115 @@ pub(crate) fn type_node_with_expectation(
         AstNode::Break => Ok(TypedExpr::value(typed.builtin_types().never)),
         AstNode::Yield { .. } => Err(TypecheckError::new(
             TypecheckErrorKind::Unsupported,
-            "yield typing is not part of the V1 typecheck milestone",
+            "yield expressions are not yet supported",
         )),
-        _ => {
+        AstNode::Invoke { callee, args } => {
+            let callee_expr = type_node(typed, resolved, context, callee)?;
+            let callee_type_id = callee_expr.value_type.ok_or_else(|| {
+                TypecheckError::new(
+                    TypecheckErrorKind::InvalidInput,
+                    "invoke callee expression does not produce a value",
+                )
+            })?;
+            let signature = match typed.type_table().get(callee_type_id) {
+                Some(CheckedType::Routine(sig)) => sig.clone(),
+                _ => {
+                    return Err(TypecheckError::new(
+                        TypecheckErrorKind::InvalidInput,
+                        format!(
+                            "invoke callee is not a callable routine type (found {})",
+                            describe_type(typed, callee_type_id)
+                        ),
+                    ));
+                }
+            };
+            let arg_effect = calls::check_call_arguments(
+                typed,
+                resolved,
+                context,
+                &signature,
+                args,
+                "<invoke>",
+                node_origin(resolved, node),
+            )?;
+            let call_effect = helpers::merge_recoverable_effects(
+                typed,
+                node_origin(resolved, node),
+                "invoke",
+                [
+                    arg_effect,
+                    signature
+                        .error_type
+                        .map(|error_type| RecoverableCallEffect { error_type }),
+                ],
+            )?;
+            Ok(TypedExpr::maybe_value(signature.return_type).with_optional_effect(call_effect))
+        }
+        AstNode::TemplateCall { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "template instantiation is not yet supported",
+        )),
+        AstNode::AvailabilityAccess { .. } => Err(unsupported_node_surface(
+            resolved,
+            node,
+            "availability access is not yet supported",
+        )),
+        // Declaration-level constructs: type their children but produce no value.
+        AstNode::UseDecl { .. }
+        | AstNode::TypeDecl { .. }
+        | AstNode::AliasDecl { .. }
+        | AstNode::DefDecl { .. }
+        | AstNode::SegDecl { .. }
+        | AstNode::ImpDecl { .. }
+        | AstNode::StdDecl { .. }
+        | AstNode::DestructureDecl { .. }
+        | AstNode::NamedArgument { .. }
+        | AstNode::Unpack { .. }
+        | AstNode::PatternWildcard
+        | AstNode::PatternCapture { .. }
+        | AstNode::Inquiry { .. } => {
             for child in node.children() {
                 let _ = type_node(typed, resolved, context, child)?;
             }
             Ok(TypedExpr::none())
         }
+    }
+}
+
+/// Check whether an AST body contains at least one `return` statement (non-recursive into nested routines).
+fn body_contains_return(nodes: &[AstNode]) -> bool {
+    nodes.iter().any(|node| node_contains_return(node))
+}
+
+fn node_contains_return(node: &AstNode) -> bool {
+    match node {
+        AstNode::Return { .. } => true,
+        AstNode::FunDecl { .. }
+        | AstNode::ProDecl { .. }
+        | AstNode::LogDecl { .. }
+        | AstNode::AnonymousFun { .. }
+        | AstNode::AnonymousPro { .. }
+        | AstNode::AnonymousLog { .. } => false,
+        _ => node.children().iter().any(|child| node_contains_return(child)),
+    }
+}
+
+/// Check whether an AST body contains at least one `report(...)` call (non-recursive into nested routines).
+fn body_contains_report(nodes: &[AstNode]) -> bool {
+    nodes.iter().any(|node| node_contains_report(node))
+}
+
+fn node_contains_report(node: &AstNode) -> bool {
+    match node {
+        AstNode::FunctionCall { name, .. } if name == "report" => true,
+        AstNode::FunDecl { .. }
+        | AstNode::ProDecl { .. }
+        | AstNode::LogDecl { .. }
+        | AstNode::AnonymousFun { .. }
+        | AstNode::AnonymousPro { .. }
+        | AstNode::AnonymousLog { .. } => false,
+        _ => node.children().iter().any(|child| node_contains_report(child)),
     }
 }
 

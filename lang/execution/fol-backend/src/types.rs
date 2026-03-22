@@ -39,7 +39,7 @@ pub fn render_rust_type_in_workspace(
         )),
         LoweredType::Array { size: None, .. } => Err(BackendError::new(
             BackendErrorKind::Unsupported,
-            "Rust type rendering for unsized arrays is not implemented yet",
+            "unsized arrays are not supported; use vec[] for dynamic collections",
         )),
         LoweredType::Vector { element_type } => Ok(format!(
             "rt::FolVec<{}>",
@@ -56,7 +56,7 @@ pub fn render_rust_type_in_workspace(
             )),
             _ => Err(BackendError::new(
                 BackendErrorKind::Unsupported,
-                "Rust type rendering for heterogeneous set members is not implemented yet",
+                "heterogeneous sets are not supported; sets must have a single member type",
             )),
         },
         LoweredType::Map {
@@ -81,10 +81,27 @@ pub fn render_rust_type_in_workspace(
         LoweredType::Record { .. } | LoweredType::Entry { .. } => {
             render_named_runtime_type(workspace, type_id)
         }
-        other => Err(BackendError::new(
-            BackendErrorKind::Unsupported,
-            format!("Rust type rendering is not implemented yet for {other:?}"),
-        )),
+        LoweredType::Routine(routine_type) => {
+            let rendered_params = routine_type
+                .params
+                .iter()
+                .map(|param| render_rust_type_in_workspace(workspace, type_table, *param))
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            let return_section = match (routine_type.return_type, routine_type.error_type) {
+                (Some(ret), Some(err)) => format!(
+                    " -> rt::FolRecover<{}, {}>",
+                    render_rust_type_in_workspace(workspace, type_table, ret)?,
+                    render_rust_type_in_workspace(workspace, type_table, err)?
+                ),
+                (Some(ret), None) => format!(
+                    " -> {}",
+                    render_rust_type_in_workspace(workspace, type_table, ret)?
+                ),
+                (None, _) => String::new(),
+            };
+            Ok(format!("fn({rendered_params}){return_section}"))
+        }
     }
 }
 
@@ -370,8 +387,8 @@ mod tests {
     };
     use crate::testing::{package_identity, sample_lowered_workspace};
     use fol_lower::{
-        LoweredBuiltinType, LoweredFieldLayout, LoweredType, LoweredTypeDecl, LoweredTypeDeclKind,
-        LoweredTypeTable, LoweredVariantLayout,
+        LoweredBuiltinType, LoweredFieldLayout, LoweredRoutineType, LoweredType, LoweredTypeDecl,
+        LoweredTypeDeclKind, LoweredTypeTable, LoweredVariantLayout,
     };
     use fol_resolver::{PackageSourceKind, SourceUnitId, SymbolId};
 
@@ -502,7 +519,7 @@ mod tests {
         let rendered = render_record_definition(&workspace, &package_identity, &decl, &table)
             .expect("record definition should render");
 
-        assert!(rendered.contains("#[derive(Debug, Clone, PartialEq, Eq)]"));
+        assert!(rendered.contains("#[derive(Debug, Clone, PartialEq, Eq, Default)]"));
         assert!(rendered.contains("pub struct ty__pkg__entry__app__t"));
         assert!(rendered.contains("pub name: rt::FolStr,"));
         assert!(rendered.contains("pub active: rt::FolBool,"));
@@ -751,7 +768,71 @@ mod tests {
 
         assert_eq!(
             rendered,
-            "crate::packages::pkg__entry__app::root::ty__pkg__entry__app__t0__User"
+            "crate::packages::pkg__entry__app::root::ty__pkg__entry__app__t3__user"
+        );
+    }
+
+    #[test]
+    fn v1_boundary_types_produce_explicit_rejection_messages() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+
+        let unsized_array_id = table.intern(LoweredType::Array {
+            element_type: int_id,
+            size: None,
+        });
+        let heterogeneous_set_id = table.intern(LoweredType::Set {
+            member_types: vec![int_id, int_id],
+        });
+        let unsized_err = render_rust_type(&table, unsized_array_id)
+            .expect_err("unsized arrays should be rejected");
+        assert!(
+            unsized_err.message().contains("unsized arrays"),
+            "unsized array error should mention unsized arrays"
+        );
+
+        let het_set_err = render_rust_type(&table, heterogeneous_set_id)
+            .expect_err("heterogeneous sets should be rejected");
+        assert!(
+            het_set_err.message().contains("heterogeneous sets"),
+            "heterogeneous set error should mention heterogeneous sets"
+        );
+    }
+
+    #[test]
+    fn routine_type_rendering_emits_function_pointer_syntax() {
+        let mut table = LoweredTypeTable::new();
+        let int_id = table.intern_builtin(LoweredBuiltinType::Int);
+        let str_id = table.intern_builtin(LoweredBuiltinType::Str);
+        let bool_id = table.intern_builtin(LoweredBuiltinType::Bool);
+
+        let plain_fn_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![int_id, str_id],
+            return_type: Some(bool_id),
+            error_type: None,
+        }));
+        let void_fn_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![int_id],
+            return_type: None,
+            error_type: None,
+        }));
+        let recoverable_fn_id = table.intern(LoweredType::Routine(LoweredRoutineType {
+            params: vec![],
+            return_type: Some(int_id),
+            error_type: Some(str_id),
+        }));
+
+        assert_eq!(
+            render_rust_type(&table, plain_fn_id),
+            Ok("fn(rt::FolInt, rt::FolStr) -> rt::FolBool".to_string())
+        );
+        assert_eq!(
+            render_rust_type(&table, void_fn_id),
+            Ok("fn(rt::FolInt)".to_string())
+        );
+        assert_eq!(
+            render_rust_type(&table, recoverable_fn_id),
+            Ok("fn() -> rt::FolRecover<rt::FolInt, rt::FolStr>".to_string())
         );
     }
 }

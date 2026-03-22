@@ -565,3 +565,109 @@ fn index_access_lowering_emits_explicit_container_access_instructions() {
         "container index access should lower into an explicit IndexAccess instruction"
     );
 }
+
+#[test]
+fn slice_access_lowering_emits_explicit_slice_instructions() {
+    let fixture = super::safe_temp_dir().join(format!(
+        "fol_lower_slice_exprs_{}.fol",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock should be monotonic enough for tmp names")
+            .as_nanos()
+    ));
+    std::fs::write(
+        &fixture,
+        "fun[] mid(values: vec[int]): vec[int] = {\n    return values[1:3];\n};",
+    )
+    .expect("should write lowering slice fixture");
+
+    let mut stream = FileStream::from_file(fixture.to_str().expect("utf8 temp path"))
+        .expect("Should open lowering fixture");
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = AstParser::new();
+    let syntax = parser
+        .parse_package(&mut lexer)
+        .expect("Lowering fixture should parse");
+    let resolved = resolve_package_workspace(syntax).expect("Lowering fixture should resolve");
+    let typed = Typechecker::new()
+        .check_resolved_workspace(resolved)
+        .expect("Lowering fixture should typecheck");
+    let lowered = crate::LoweringSession::new(typed)
+        .lower_workspace()
+        .expect("slice access lowering should succeed");
+
+    let routine = lowered
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "mid")
+        .expect("mid routine should exist");
+
+    assert!(
+        routine
+            .instructions
+            .iter()
+            .any(|instr| matches!(instr.kind, LoweredInstrKind::SliceAccess { .. })),
+        "container slice access should lower into an explicit SliceAccess instruction"
+    );
+}
+
+#[test]
+fn procedure_style_free_call_lowering_emits_void_call_instruction() {
+    let workspace = lower_fixture_workspace(
+        "pro greet(): non = {\n    return;\n};\nfun[] main(): int = {\n    greet();\n    return 0;\n};",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+
+    let call_instrs: Vec<_> = routine
+        .instructions
+        .iter()
+        .filter(|instr| matches!(instr.kind, LoweredInstrKind::Call { .. }))
+        .collect();
+
+    assert_eq!(
+        call_instrs.len(),
+        1,
+        "procedure-style free call should produce exactly one Call instruction"
+    );
+    assert_eq!(
+        call_instrs[0].result, None,
+        "procedure-style call should have no result local"
+    );
+}
+
+#[test]
+fn procedure_style_method_call_lowering_emits_void_call_instruction() {
+    let workspace = lower_fixture_workspace(
+        "typ Box: rec = { value: int };\npro (Box)reset(): non = {\n    return;\n};\nfun[] main(b: Box): int = {\n    b.reset();\n    return 0;\n};",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+
+    let call_instrs: Vec<_> = routine
+        .instructions
+        .iter()
+        .filter(|instr| matches!(instr.kind, LoweredInstrKind::Call { .. }))
+        .collect();
+
+    assert_eq!(
+        call_instrs.len(),
+        1,
+        "procedure-style method call should produce exactly one Call instruction"
+    );
+    assert_eq!(
+        call_instrs[0].result, None,
+        "procedure-style method call should have no result local"
+    );
+}

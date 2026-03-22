@@ -178,7 +178,7 @@ mod tests {
     #[test]
     fn document_store_applies_incremental_insertions() {
         let uri = EditorDocumentUri::from_file_path(PathBuf::from("/tmp/demo.fol")).unwrap();
-        let document = EditorDocument::new(uri.clone(), 1, "fun[] main(): int = {\n    return 0\n}\n".to_string()).unwrap();
+        let document = EditorDocument::new(uri.clone(), 1, "fun[] main(): int = {\n    return 0;\n};\n".to_string()).unwrap();
         let mut store = EditorDocumentStore::default();
 
         store.open(document);
@@ -202,7 +202,7 @@ mod tests {
 
         let current = store.get(&uri).unwrap();
         assert_eq!(current.version, 2);
-        assert_eq!(current.text, "fun[] main(): int = {\n    return value + 0\n}\n");
+        assert_eq!(current.text, "fun[] main(): int = {\n    return value + 0;\n};\n");
     }
 
     #[test]
@@ -211,7 +211,7 @@ mod tests {
         let document = EditorDocument::new(
             uri.clone(),
             1,
-            "fun[] main(): int = {\n    var value: int = 7\n    return value\n}\n".to_string(),
+            "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n".to_string(),
         )
         .unwrap();
         let mut store = EditorDocumentStore::default();
@@ -237,7 +237,7 @@ mod tests {
 
         assert_eq!(
             store.get(&uri).unwrap().text,
-            "fun[] main(): int = {\n    return 9\n}\n"
+            "fun[] main(): int = {\n    return 9;\n};\n"
         );
     }
 

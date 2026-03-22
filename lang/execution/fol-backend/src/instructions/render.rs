@@ -1,8 +1,9 @@
 use crate::{BackendError, BackendErrorKind, BackendResult};
 use fol_intrinsics::intrinsic_by_id;
 use fol_lower::{
-    control::LoweredLinearKind, LoweredInstr, LoweredInstrKind, LoweredRoutine, LoweredType,
-    LoweredTypeTable, LoweredWorkspace,
+    control::{LoweredBinaryOp, LoweredLinearKind, LoweredUnaryOp},
+    LoweredInstr, LoweredInstrKind, LoweredRoutine, LoweredType, LoweredTypeTable,
+    LoweredWorkspace,
 };
 use fol_resolver::PackageIdentity;
 
@@ -74,7 +75,7 @@ pub fn render_core_instruction_in_workspace(
                 crate::mangle_global_name(global_identity, *global, &global_decl.name)
             );
             Ok(format!(
-                "*{global_path}.get_or_init(|| std::sync::Mutex::new(Default::default())).lock().expect(\"global lock\") = {value}.clone();",
+                "*{global_path}.get_or_init(|| std::sync::Mutex::new(Default::default())).lock().unwrap_or_else(|e| e.into_inner()) = {value}.clone();",
             ))
         }
         LoweredInstrKind::Call {
@@ -182,14 +183,14 @@ pub fn render_core_instruction_in_workspace(
             let result = rendered_result_local(package_identity, routine, instruction)?;
             let operand = render_local_name(package_identity, routine, *operand)?;
             Ok(format!(
-                "let {result} = {operand}.clone().into_value().expect(\"recoverable success\");"
+                "let {result} = {operand}.clone().into_value().expect(\"unwrap of recoverable value failed: result contains an error\");"
             ))
         }
         LoweredInstrKind::ExtractRecoverableError { operand } => {
             let result = rendered_result_local(package_identity, routine, instruction)?;
             let operand = render_local_name(package_identity, routine, *operand)?;
             Ok(format!(
-                "let {result} = {operand}.clone().into_error().expect(\"recoverable error\");"
+                "let {result} = {operand}.clone().into_error().expect(\"extract of recoverable error failed: result contains a value\");"
             ))
         }
         LoweredInstrKind::ConstructOptional { value, .. } => {
@@ -234,7 +235,7 @@ pub fn render_core_instruction_in_workspace(
             };
             let expression = match type_table.get(type_id) {
                 Some(LoweredType::Optional { .. }) => format!(
-                    "rt::unwrap_optional_shell({operand_name}.clone()).expect(\"optional shell\")"
+                    "rt::unwrap_optional_shell({operand_name}.clone()).unwrap()"
                 ),
                 Some(LoweredType::Error { .. }) => {
                     format!("rt::unwrap_error_shell({operand_name}.clone())")
@@ -303,21 +304,61 @@ pub fn render_core_instruction_in_workspace(
             };
             let expression = match type_table.get(type_id) {
                 Some(LoweredType::Array { .. }) => format!(
-                    "rt::index_array(&{container_name}, {index_name}.clone()).expect(\"array index\").clone()"
+                    "rt::index_array(&{container_name}, {index_name}.clone()).unwrap().clone()"
                 ),
                 Some(LoweredType::Vector { .. }) => format!(
-                    "rt::index_vec(&{container_name}, {index_name}.clone()).expect(\"vector index\").clone()"
+                    "rt::index_vec(&{container_name}, {index_name}.clone()).unwrap().clone()"
                 ),
                 Some(LoweredType::Sequence { .. }) => format!(
-                    "rt::index_seq(&{container_name}, {index_name}.clone()).expect(\"sequence index\").clone()"
+                    "rt::index_seq(&{container_name}, {index_name}.clone()).unwrap().clone()"
                 ),
                 Some(LoweredType::Map { .. }) => format!(
-                    "rt::lookup_map(&{container_name}, &{index_name}).expect(\"map key\").clone()"
+                    "rt::lookup_map(&{container_name}, &{index_name}).unwrap().clone()"
                 ),
                 other => {
                     return Err(BackendError::new(
                         BackendErrorKind::InvalidInput,
                         format!("index emission expected array/vector/sequence/map local but found {other:?}"),
+                    ))
+                }
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::SliceAccess {
+            container,
+            start,
+            end,
+        } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let container_name = render_local_name(package_identity, routine, *container)?;
+            let start_name = render_local_name(package_identity, routine, *start)?;
+            let end_name = render_local_name(package_identity, routine, *end)?;
+            let container_local = routine.locals.get(*container).ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("lowered local {:?} is missing", container),
+                )
+            })?;
+            let Some(type_id) = container_local.type_id else {
+                return Err(BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!(
+                        "slice container local {:?} does not have a lowered type",
+                        container
+                    ),
+                ));
+            };
+            let expression = match type_table.get(type_id) {
+                Some(LoweredType::Vector { .. }) => format!(
+                    "rt::slice_vec(&{container_name}, {start_name}.clone(), {end_name}.clone()).unwrap()"
+                ),
+                Some(LoweredType::Sequence { .. }) => format!(
+                    "rt::slice_seq(&{container_name}, {start_name}.clone(), {end_name}.clone()).unwrap()"
+                ),
+                other => {
+                    return Err(BackendError::new(
+                        BackendErrorKind::InvalidInput,
+                        format!("slice emission expected vector/sequence local but found {other:?}"),
                     ))
                 }
             };
@@ -358,9 +399,96 @@ pub fn render_core_instruction_in_workspace(
             };
             Ok(format!("let {result} = {expression};"))
         }
-        other => Err(BackendError::new(
-            BackendErrorKind::Unsupported,
-            format!("core instruction emission is not implemented yet for {other:?}"),
-        )),
+        LoweredInstrKind::BinaryOp { op, left, right } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let left_id = *left;
+            let left = render_local_name(package_identity, routine, left_id)?;
+            let right = render_local_name(package_identity, routine, *right)?;
+            let expression = match op {
+                LoweredBinaryOp::Add => format!("{left} + {right}"),
+                LoweredBinaryOp::Sub => format!("{left} - {right}"),
+                LoweredBinaryOp::Mul => format!("{left} * {right}"),
+                LoweredBinaryOp::Div => format!("{left} / {right}"),
+                LoweredBinaryOp::Mod => format!("{left} % {right}"),
+                LoweredBinaryOp::Pow => {
+                    let left_local = routine.locals.get(left_id).ok_or_else(|| {
+                        BackendError::new(
+                            BackendErrorKind::InvalidInput,
+                            format!("lowered local {:?} is missing", left_id),
+                        )
+                    })?;
+                    if let Some(type_id) = left_local.type_id {
+                        if matches!(type_table.get(type_id), Some(LoweredType::Builtin(fol_lower::LoweredBuiltinType::Float))) {
+                            format!("rt::pow_float({left}, {right})")
+                        } else {
+                            format!("rt::pow({left}, {right})")
+                        }
+                    } else {
+                        format!("rt::pow({left}, {right})")
+                    }
+                }
+                LoweredBinaryOp::Eq => format!("{left} == {right}"),
+                LoweredBinaryOp::Ne => format!("{left} != {right}"),
+                LoweredBinaryOp::Lt => format!("{left} < {right}"),
+                LoweredBinaryOp::Le => format!("{left} <= {right}"),
+                LoweredBinaryOp::Gt => format!("{left} > {right}"),
+                LoweredBinaryOp::Ge => format!("{left} >= {right}"),
+                LoweredBinaryOp::And => format!("{left} && {right}"),
+                LoweredBinaryOp::Or => format!("{left} || {right}"),
+                LoweredBinaryOp::Xor => format!("{left} ^ {right}"),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::UnaryOp { op, operand } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            let expression = match op {
+                LoweredUnaryOp::Neg => format!("-{operand}"),
+                LoweredUnaryOp::Not => format!("!{operand}"),
+            };
+            Ok(format!("let {result} = {expression};"))
+        }
+        LoweredInstrKind::Cast { operand, target_type } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let operand = render_local_name(package_identity, routine, *operand)?;
+            let target = crate::types::render_rust_type_in_workspace(
+                workspace, type_table, *target_type,
+            )?;
+            Ok(format!("let {result} = {operand} as {target};"))
+        }
+        LoweredInstrKind::RoutineRef { routine: callee } => {
+            let result = rendered_result_local(package_identity, routine, instruction)?;
+            let (callee_identity, callee_decl) = resolve_routine_decl(workspace, *callee)?;
+            let callee_name = render_routine_path(workspace, callee_identity, callee_decl)?;
+            let callee_signature = callee_decl.signature.ok_or_else(|| {
+                BackendError::new(
+                    BackendErrorKind::InvalidInput,
+                    format!("routine '{}' is missing a lowered signature", callee_decl.name),
+                )
+            })?;
+            let fn_type = crate::types::render_rust_type_in_workspace(
+                workspace, type_table, callee_signature,
+            )?;
+            Ok(format!("let {result} = {callee_name} as {fn_type};"))
+        }
+        LoweredInstrKind::CallIndirect {
+            callee,
+            args,
+            error_type: _,
+        } => {
+            let callee_name = render_local_name(package_identity, routine, *callee)?;
+            let rendered_args = args
+                .iter()
+                .map(|local_id| render_local_name(package_identity, routine, *local_id))
+                .collect::<BackendResult<Vec<_>>>()?
+                .join(", ");
+            match instruction.result {
+                Some(_) => {
+                    let result = rendered_result_local(package_identity, routine, instruction)?;
+                    Ok(format!("let {result} = {callee_name}({rendered_args});"))
+                }
+                None => Ok(format!("{callee_name}({rendered_args});")),
+            }
+        }
     }
 }

@@ -3,6 +3,8 @@
 //! `fol-frontend` will become the canonical command-line/workspace entrypoint
 //! above `fol-package` and the compiler pipeline.
 
+#[allow(dead_code)]
+pub(crate) mod ansi;
 mod build_route;
 mod clean;
 mod cli;
@@ -34,8 +36,8 @@ pub use cli::{
     CompletionShellArg, EditorPathCommand, EditorReferenceCommand, EditorRenameCommand,
     EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand, FetchCommand,
     FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, PackCommand,
-    PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand,
-    UpdateCommand,
+    PackSubcommand, ParseError, ParseErrorKind, RunCommand, TestCommand, ToolCommand,
+    ToolSubcommand, UnitCommand, UpdateCommand,
 };
 pub use compile::{
     build_workspace, build_workspace_for_profile_with_config, build_workspace_with_config,
@@ -58,9 +60,10 @@ pub use discovery::{
     DiscoveredRoot, PackageRoot, WorkspaceRoot, PACKAGE_FILE_NAME, WORKSPACE_FILE_NAME,
 };
 pub use editor::{
-    editor_format_command, editor_highlight_command, editor_lsp_command, editor_lsp_stdio,
-    editor_parse_command, editor_references_command, editor_rename_command,
-    editor_semantic_tokens_command, editor_symbols_command, editor_tree_generate_command,
+    editor_completion_command, editor_format_command, editor_highlight_command,
+    editor_lsp_command, editor_lsp_stdio, editor_parse_command, editor_references_command,
+    editor_rename_command, editor_semantic_tokens_command, editor_symbols_command,
+    editor_tree_generate_command,
 };
 pub use errors::{FrontendError, FrontendErrorKind, FrontendResult};
 pub use fetch::{
@@ -146,6 +149,10 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+    let args: Vec<String> = args
+        .into_iter()
+        .map(|a| a.into().into_string().unwrap_or_default())
+        .collect();
     let cli = FrontendCli::try_parse_from(args).map_err(|error| {
         FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string())
             .with_note("run `fol --help` to inspect the available workflow commands")
@@ -164,6 +171,10 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+    let args: Vec<String> = args
+        .into_iter()
+        .map(|a| a.into().into_string().unwrap_or_default())
+        .collect();
     let cli = FrontendCli::try_parse_from(args).map_err(|error| {
         FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string())
             .with_note("run `fol --help` to inspect the available workflow commands")
@@ -294,7 +305,7 @@ mod tests {
             "    graph.install(app);\n",
             "    graph.add_run(app);\n",
             "    graph.add_test({ name = \"app_test\", root = \"src/main.fol\" });\n",
-            "}\n",
+            "};\n",
         )
     }
 
@@ -317,7 +328,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0\n};\n",
         )
         .unwrap();
 
@@ -351,7 +362,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0\n};\n",
         )
         .unwrap();
 
@@ -418,7 +429,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0\n};\n",
         )
         .unwrap();
 
@@ -456,10 +467,8 @@ mod tests {
         assert_eq!(code, 0);
         assert!(stderr.is_empty());
         assert!(rendered.contains("Usage: fol code emit"));
-        assert!(rendered.contains("Commands:"));
         assert!(rendered.contains("rust"));
         assert!(rendered.contains("lowered"));
-        assert!(!rendered.contains("Run `fol <command> --help` for command-specific usage."));
     }
 
     #[test]

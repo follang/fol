@@ -153,7 +153,7 @@ mod tests {
     fn lowering_errors_lower_to_structured_diagnostics() {
         let diagnostic = LoweringError::with_origin(
             LoweringErrorKind::Unsupported,
-            "generics are not part of V1 lowering",
+            "generics are not yet supported",
             SyntaxOrigin {
                 file: Some("pkg/build.fol".to_string()),
                 line: 2,

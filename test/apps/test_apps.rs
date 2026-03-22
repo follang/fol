@@ -399,6 +399,39 @@ fn control_loop_break_fixture_compiles_and_runs() {
 }
 
 #[test]
+fn control_iteration_fixture_compiles_and_runs() {
+    let fixture = fixture_root("control_iteration");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn procedure_call_fixture_compiles_and_runs() {
+    let fixture = fixture_root("procedure_call");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn procedure_method_call_fixture_compiles_and_runs() {
+    let fixture = fixture_root("procedure_method_call");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
 fn same_folder_shared_scope_fixture_compiles_and_runs() {
     let fixture = fixture_root("same_folder_shared_scope");
 
@@ -628,6 +661,17 @@ fn container_linear_fixture_compiles_and_runs() {
 }
 
 #[test]
+fn container_slice_fixture_compiles_and_runs() {
+    let fixture = fixture_root("container_slice");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
 fn container_map_set_fixture_compiles_and_runs() {
     let fixture = fixture_root("container_map_set");
 
@@ -832,6 +876,39 @@ fn shell_vs_recoverable_boundary_fixture_compiles_and_runs() {
 }
 
 #[test]
+fn arithmetic_operators_fixture_compiles_and_runs() {
+    let fixture = fixture_root("arithmetic_operators");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn boolean_logic_fixture_compiles_and_runs() {
+    let fixture = fixture_root("boolean_logic");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn string_operations_fixture_compiles_and_runs() {
+    let fixture = fixture_root("string_operations");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
 fn fail_hidden_cross_file_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_hidden_cross_file");
 
@@ -878,6 +955,92 @@ fn fail_deferred_intrinsic_fixture_fails_cleanly() {
     let fixture = fixture_root("fail_deferred_intrinsic");
 
     let output = compile_app_expect_failure(&fixture);
-    assert_output_contains(&output, "V1");
+    assert_output_contains(&output, "not yet supported");
     assert_output_contains(&output, ".cap");
+}
+
+#[test]
+fn fail_generic_routine_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_generic_routine");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "generic");
+}
+
+#[test]
+fn fail_pointer_type_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_pointer_type");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "pointer");
+}
+
+#[test]
+fn fail_pipe_operator_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_pipe_operator");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "pipe");
+}
+
+#[test]
+fn fail_membership_operator_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_membership_operator");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "membership");
+}
+
+#[test]
+fn anonymous_routine_fixture_compiles_and_runs() {
+    let fixture = fixture_root("anonymous_routine");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn higher_order_function_fixture_compiles_and_runs() {
+    let fixture = fixture_root("higher_order_function");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn recoverable_error_propagation_fixture_compiles_and_runs() {
+    let fixture = fixture_root("recoverable_error_propagation");
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn optional_shell_check_fixture_compiles_and_runs() {
+    let fixture = fixture_root("optional_shell_check");
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn empty_containers_fixture_compiles_and_runs() {
+    let fixture = fixture_root("empty_containers");
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn nested_function_calls_fixture_compiles_and_runs() {
+    let fixture = fixture_root("nested_function_calls");
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
 }

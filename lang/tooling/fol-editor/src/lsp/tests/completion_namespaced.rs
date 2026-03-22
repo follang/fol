@@ -11,7 +11,7 @@ fn lsp_server_returns_supported_v1_dot_intrinsics() {
     let (root, uri) = sample_package_root("completion_dot_intrinsics");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return .\n}\n",
+        "fun[] main(): int = {\n    return .;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -61,7 +61,7 @@ fn lsp_server_uses_conservative_dot_fallback_for_incomplete_contexts() {
     let (root, uri) = sample_package_root("completion_dot_fallback");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return .\n}\n",
+        "fun[] main(): int = {\n    return .;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -109,7 +109,7 @@ fn lsp_server_uses_lsp_dot_trigger_when_document_text_is_not_yet_synced() {
     let (root, uri) = sample_package_root("completion_dot_lsp_context");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return \n}\n",
+        "fun[] main(): int = {\n    return \n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
@@ -157,7 +157,7 @@ fn lsp_server_locks_dot_intrinsic_completion_matrix() {
     let (root, uri) = sample_package_root("completion_dot_matrix");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return .\n}\n",
+        "fun[] main(): int = {\n    return .;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(root.join("src/main.fol")).unwrap();

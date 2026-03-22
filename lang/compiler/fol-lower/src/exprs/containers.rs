@@ -24,7 +24,7 @@ pub(crate) fn lower_record_initializer(
     let Some(type_id) = expected_type else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "record initializer lowering requires an expected record type in V1",
+            "record initializer lowering requires an expected record type",
         ));
     };
     let Some(crate::LoweredType::Record {
@@ -86,7 +86,7 @@ pub(crate) fn lower_nil_literal(
     let Some(type_id) = expected_type else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1",
+            "nil lowering requires an expected opt[...] or err[...] runtime type",
         ));
     };
     let result_local = cursor.allocate_local(type_id, None);
@@ -112,7 +112,7 @@ pub(crate) fn lower_nil_literal(
         _ => {
             return Err(LoweringError::with_kind(
                 LoweringErrorKind::Unsupported,
-                "nil lowering requires an expected opt[...] or err[...] runtime type in lowered V1",
+                "nil lowering requires an expected opt[...] or err[...] runtime type",
             ))
         }
     }
@@ -271,7 +271,7 @@ fn lower_linear_container_literal(
     )? else {
         return Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "empty linear container literals require an expected container type in lowered V1",
+            "empty linear container literals require an expected container type",
         ));
     };
 
@@ -502,6 +502,18 @@ pub(crate) fn field_access_type(
     match type_table.get(object_type) {
         Some(crate::LoweredType::Record { fields }) => fields.get(field).copied(),
         Some(crate::LoweredType::Entry { variants }) => variants.get(field).copied().flatten(),
+        _ => None,
+    }
+}
+
+pub(crate) fn slice_access_type(
+    type_table: &crate::LoweredTypeTable,
+    container_type: LoweredTypeId,
+) -> Option<LoweredTypeId> {
+    match type_table.get(container_type) {
+        Some(crate::LoweredType::Vector { .. })
+        | Some(crate::LoweredType::Sequence { .. }) => Some(container_type),
+        Some(crate::LoweredType::Array { .. }) => Some(container_type),
         _ => None,
     }
 }

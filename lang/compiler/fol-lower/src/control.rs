@@ -32,6 +32,31 @@ pub enum LoweredLinearKind {
     Sequence,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoweredBinaryOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Mod,
+    Pow,
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
+    And,
+    Or,
+    Xor,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LoweredUnaryOp {
+    Neg,
+    Not,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LoweredInstrKind {
     Const(LoweredOperand),
@@ -112,12 +137,34 @@ pub enum LoweredInstrKind {
         container: LoweredLocalId,
         index: LoweredLocalId,
     },
+    SliceAccess {
+        container: LoweredLocalId,
+        start: LoweredLocalId,
+        end: LoweredLocalId,
+    },
     Cast {
         operand: LoweredLocalId,
         target_type: LoweredTypeId,
     },
     UnwrapShell {
         operand: LoweredLocalId,
+    },
+    BinaryOp {
+        op: LoweredBinaryOp,
+        left: LoweredLocalId,
+        right: LoweredLocalId,
+    },
+    UnaryOp {
+        op: LoweredUnaryOp,
+        operand: LoweredLocalId,
+    },
+    RoutineRef {
+        routine: LoweredRoutineId,
+    },
+    CallIndirect {
+        callee: LoweredLocalId,
+        args: Vec<LoweredLocalId>,
+        error_type: Option<LoweredTypeId>,
     },
 }
 

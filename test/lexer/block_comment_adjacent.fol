@@ -1,0 +1,2 @@
+/* block */var x = 1;
+var y = /* inline */ 2;

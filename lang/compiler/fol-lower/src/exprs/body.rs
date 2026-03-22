@@ -1,6 +1,8 @@
 use super::bindings::lower_local_binding;
-use super::calls::lower_keyword_intrinsic_statement;
-use super::cursor::{RoutineCursor, WorkspaceDeclIndex};
+use super::calls::{
+    lower_keyword_intrinsic_statement, lower_statement_free_call, resolve_method_target,
+};
+use super::cursor::{LoweredValue, RoutineCursor, WorkspaceDeclIndex};
 use super::expressions::{lower_expression, lower_expression_expected};
 use super::flow::{lower_loop_statement, lower_when_statement, when_always_terminates};
 use crate::{
@@ -9,7 +11,7 @@ use crate::{
 };
 use fol_intrinsics::{select_intrinsic, IntrinsicSurface};
 use fol_parser::ast::AstNode;
-use fol_resolver::{PackageIdentity, ScopeId, SourceUnitId, SymbolKind};
+use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolKind};
 use std::collections::BTreeMap;
 
 pub(crate) fn lower_routine_bodies(
@@ -17,6 +19,7 @@ pub(crate) fn lower_routine_bodies(
     type_table: &crate::LoweredTypeTable,
     decl_index: &WorkspaceDeclIndex,
     lowered_package: &mut LoweredPackage,
+    next_routine_index: &mut usize,
 ) -> Result<(), Vec<LoweringError>> {
     let mut errors = Vec::new();
 
@@ -113,7 +116,7 @@ pub(crate) fn lower_routine_bodies(
             let Some(routine) = lowered_package.routine_decls.get_mut(&routine_id) else {
                 continue;
             };
-            if let Err(error) = lower_body_nodes(
+            match lower_body_nodes(
                 typed_package,
                 type_table,
                 &lowered_package.checked_type_map,
@@ -123,8 +126,15 @@ pub(crate) fn lower_routine_bodies(
                 source_unit_id,
                 scope_id,
                 body,
+                next_routine_index,
             ) {
-                errors.push(error);
+                Ok(anonymous_routines) => {
+                    for anon in anonymous_routines {
+                        lowered_package.routines.push(anon.id);
+                        lowered_package.routine_decls.insert(anon.id, anon);
+                    }
+                }
+                Err(error) => errors.push(error),
             }
         }
     }
@@ -146,9 +156,11 @@ fn lower_body_nodes(
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     nodes: &[AstNode],
-) -> Result<(), LoweringError> {
+    next_routine_index: &mut usize,
+) -> Result<Vec<LoweredRoutine>, LoweringError> {
     let entry_block = routine.entry_block;
     let mut cursor = RoutineCursor::new(routine, entry_block);
+    cursor.next_routine_index = *next_routine_index;
     cursor.routine.body_result = lower_body_sequence(
         typed_package,
         type_table,
@@ -162,7 +174,8 @@ fn lower_body_nodes(
     )?
     .map(|value| value.local_id);
 
-    Ok(())
+    *next_routine_index = cursor.next_routine_index;
+    Ok(cursor.anonymous_routines)
 }
 
 pub(crate) fn lower_body_sequence(
@@ -296,7 +309,7 @@ pub(crate) fn lower_body_node(
                     return Err(LoweringError::with_kind(
                         LoweringErrorKind::InvalidInput,
                         format!(
-                            "report expects exactly 1 value in lowered V1 bodies, got {}",
+                            "report expects exactly 1 value, got {}",
                             args.len()
                         ),
                     ))
@@ -326,7 +339,7 @@ pub(crate) fn lower_body_node(
                     args,
                 )
             } else {
-                lower_expression(
+                lower_statement_free_call(
                     typed_package,
                     type_table,
                     checked_type_map,
@@ -335,11 +348,27 @@ pub(crate) fn lower_body_node(
                     cursor,
                     source_unit_id,
                     scope_id,
-                    node,
+                    *syntax_id,
+                    ReferenceKind::FunctionCall,
+                    name,
+                    args,
                 )
-                .map(Some)
             }
         }
+        AstNode::QualifiedFunctionCall { path, args } => lower_statement_free_call(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            source_unit_id,
+            scope_id,
+            path.syntax_id(),
+            ReferenceKind::QualifiedFunctionCall,
+            &path.joined(),
+            args,
+        ),
         AstNode::When {
             expr,
             cases,
@@ -386,9 +415,94 @@ pub(crate) fn lower_body_node(
                 .terminate_current_block(crate::LoweredTerminator::Jump { target: exit_block })?;
             Ok(None)
         }
+        AstNode::MethodCall {
+            object,
+            method,
+            args,
+        } => {
+            let receiver = lower_expression(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                object,
+            )?;
+            let (callee, result_type, error_type) = resolve_method_target(
+                typed_package,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                method,
+                receiver.type_id,
+            )?;
+            let mut lowered_args = vec![receiver.local_id];
+            let param_types = decl_index
+                .routine_param_types(callee)
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("method '{method}' does not retain lowered parameter types"),
+                    )
+                })?
+                .to_vec();
+            lowered_args.extend(
+                args.iter()
+                    .enumerate()
+                    .map(|(index, arg)| {
+                        let expected = param_types.get(index + 1).copied();
+                        lower_expression_expected(
+                            typed_package,
+                            type_table,
+                            checked_type_map,
+                            current_identity,
+                            decl_index,
+                            cursor,
+                            source_unit_id,
+                            scope_id,
+                            expected,
+                            arg,
+                        )
+                        .map(|value| value.local_id)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
+            match result_type {
+                Some(result_type) => {
+                    let result_local = cursor.allocate_local(result_type, None);
+                    cursor.push_instr(
+                        Some(result_local),
+                        crate::control::LoweredInstrKind::Call {
+                            callee,
+                            args: lowered_args,
+                            error_type,
+                        },
+                    )?;
+                    Ok(Some(LoweredValue {
+                        local_id: result_local,
+                        type_id: result_type,
+                        recoverable_error_type: error_type,
+                    }))
+                }
+                None => {
+                    cursor.push_instr(
+                        None,
+                        crate::control::LoweredInstrKind::Call {
+                            callee,
+                            args: lowered_args,
+                            error_type,
+                        },
+                    )?;
+                    Ok(None)
+                }
+            }
+        }
         AstNode::Yield { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
-            "yield lowering is not part of the current V1 lowering milestone",
+            "yield lowering is not yet supported",
         )),
         _ => lower_expression(
             typed_package,

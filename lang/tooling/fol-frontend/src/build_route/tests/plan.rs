@@ -24,13 +24,13 @@ pub(super) fn absorbed_build_workspace_fixture(label: &str) -> FrontendWorkspace
             "pro[] build(graph: Graph): non = {\n",
             "    graph.add_exe(\"app\", \"src/main.fol\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         app.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -212,12 +212,12 @@ fn workspace_route_planner_accepts_only_semantic_members() {
     .unwrap();
     fs::write(
         modern.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
     )
     .unwrap();
     fs::write(
         modern.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -338,13 +338,13 @@ fn modern_members_plan_custom_steps_from_semantic_builds() {
             "pro[] build(graph: Graph): non = {\n",
             "    graph.step(\"docs\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -461,7 +461,7 @@ fn build_body_step_calls_flow_into_member_execution_plans() {
             "    graph.step(\"docs\");\n",
             "    graph.step(\"lint\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
@@ -500,13 +500,13 @@ fn build_body_step_dependencies_are_accepted_during_member_planning() {
             "    graph.step(\"docs\", \"gen\");\n",
             "    graph.add_run(\"run\", \"app\", \"docs\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -542,13 +542,13 @@ fn custom_build_steps_plan_as_build_execution() {
             "pro[] build(graph: Graph): non = {\n",
             "    graph.step(\"docs\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     let plan = plan_member_execution(&FrontendMemberBuildRoute {

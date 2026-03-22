@@ -1,0 +1,12 @@
+fun[] greet(name: str): str = {
+    return "hello " + name;
+};
+
+fun[] main(): int = {
+    var greeting: str = greet("world");
+    var length: int = .len(greeting);
+    when(.gt(length, 0)) {
+        case(true) { return 0; }
+        * { return 1; }
+    }
+};

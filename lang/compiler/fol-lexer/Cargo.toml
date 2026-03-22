@@ -7,5 +7,3 @@ edition = "2021"
 [dependencies]
 fol-types = { path = "../fol-types" }
 fol-stream = { path = "../fol-stream" }
-regex = "1"
-lazy_static = "1.4.0"
