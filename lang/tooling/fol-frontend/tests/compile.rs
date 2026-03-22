@@ -15,7 +15,7 @@ fn semantic_bin_build() -> &'static str {
         "    graph.install(app);\n",
         "    graph.add_run(app);\n",
         "    graph.add_test({ name = \"app_test\", root = \"src/main.fol\" });\n",
-        "}\n",
+        "};\n",
     )
 }
 
@@ -41,6 +41,20 @@ fn temp_root(label: &str) -> PathBuf {
             .expect("system time should be after epoch")
             .as_nanos()
     ))
+}
+
+fn host_machine_target() -> String {
+    FrontendConfig::host_rust_target_triple()
+        .expect("host target triple should be known")
+        .to_string()
+}
+
+fn non_host_machine_target() -> String {
+    if FrontendConfig::host_rust_target_triple() == Some("aarch64-apple-darwin") {
+        "x86_64-unknown-linux-gnu".to_string()
+    } else {
+        "aarch64-apple-darwin".to_string()
+    }
 }
 
 fn sample_workspace(root: &PathBuf) -> FrontendWorkspace {
@@ -179,6 +193,35 @@ fn build_command_reports_emitted_crate_and_binary_through_public_api() {
 }
 
 #[test]
+fn build_command_scopes_binary_outputs_by_selected_target() {
+    let root = temp_root("target_layout");
+    let workspace = sample_workspace(&root);
+    let config = FrontendConfig {
+        build_target_override: Some(host_machine_target()),
+        ..FrontendConfig::default()
+    };
+
+    let result = build_workspace_with_config(&workspace, &config).expect("build should succeed");
+    let binary = result
+        .artifacts
+        .iter()
+        .find(|artifact| artifact.kind == FrontendArtifactKind::Binary)
+        .and_then(|artifact| artifact.path.as_ref())
+        .expect("binary path should exist");
+
+    assert!(
+        binary
+            .display()
+            .to_string()
+            .contains(&format!("/bin/{}/", host_machine_target())),
+        "{}",
+        binary.display()
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn run_command_executes_single_workspace_members_through_public_api() {
     let root = temp_root("run");
     let workspace = sample_workspace(&root);
@@ -188,6 +231,24 @@ fn run_command_executes_single_workspace_members_through_public_api() {
     assert_eq!(result.command, "run");
     assert_eq!(result.artifacts.len(), 1);
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::Binary);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn run_command_rejects_non_host_targets_through_public_api() {
+    let root = temp_root("run_cross_target");
+    let workspace = sample_workspace(&root);
+    let config = FrontendConfig {
+        build_target_override: Some(non_host_machine_target()),
+        ..FrontendConfig::default()
+    };
+
+    let error = run_workspace_with_config(&workspace, &config).unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("run command cannot execute target"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -226,6 +287,24 @@ fn test_command_traverses_all_runnable_workspace_members_through_public_api() {
         .artifacts
         .iter()
         .all(|artifact| artifact.kind == FrontendArtifactKind::Binary));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn test_command_rejects_non_host_targets_through_public_api() {
+    let root = temp_root("test_cross_target");
+    let workspace = sample_workspace(&root);
+    let config = FrontendConfig {
+        build_target_override: Some(non_host_machine_target()),
+        ..FrontendConfig::default()
+    };
+
+    let error = test_workspace_with_config(&workspace, &config).unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("test command cannot execute target"));
 
     fs::remove_dir_all(root).ok();
 }
