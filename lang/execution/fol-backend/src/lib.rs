@@ -32,7 +32,9 @@ pub fn crate_name() -> &'static str {
     CRATE_NAME
 }
 
-pub use config::{BackendBuildProfile, BackendConfig, BackendMode, BackendTarget};
+pub use config::{
+    BackendBuildProfile, BackendConfig, BackendMachineTarget, BackendMode, BackendTarget,
+};
 pub use control::render_terminator;
 pub use emit::{
     backend_build_paths, build_generated_crate_with_rustc, build_runtime_rlib_with_rustc,
@@ -76,8 +78,8 @@ pub type BackendResult<T> = Result<T, BackendError>;
 mod tests {
     use super::{
         Backend, BackendArtifact, BackendBuildProfile, BackendConfig, BackendError,
-        BackendErrorKind, BackendMode, BackendResult, BackendSession, BackendTarget,
-        EmittedRustFile,
+        BackendErrorKind, BackendMachineTarget, BackendMode, BackendResult, BackendSession,
+        BackendTarget, EmittedRustFile,
     };
     use crate::testing::sample_lowered_workspace;
 
@@ -99,6 +101,7 @@ mod tests {
 
         assert_eq!(format!("{backend:?}"), "Backend");
         assert_eq!(config.target, BackendTarget::Rust);
+        assert_eq!(config.machine_target, BackendMachineTarget::Host);
         assert_eq!(config.build_profile, BackendBuildProfile::Release);
         assert_eq!(config.mode, BackendMode::BuildArtifact);
         assert_eq!(session.workspace().package_count(), 2);
