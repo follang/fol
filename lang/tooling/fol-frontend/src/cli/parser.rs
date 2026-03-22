@@ -1,4 +1,5 @@
 use crate::OutputMode;
+use crate::ansi::Colored;
 
 use super::args::*;
 
@@ -175,124 +176,222 @@ impl FrontendCli {
 fn root_help() -> String {
     format!(
         "\
-User-facing frontend for the FOL toolchain
+{title}
 
-Usage: fol [COMMAND]
+{usage} fol [COMMAND]
 
-Commands:
-  work  [aliases: w]  Workspace management
-  pack  [aliases: p]  Package management
-  code  [aliases: c]  Build, run, test, check
-  tool  [aliases: t]  Editor tools, LSP, completion
+{cmds}
+  {c_work}  {a_w}  Workspace management
+  {c_pack}  {a_p}  Package management
+  {c_code}  {a_c}  Build, run, test, check
+  {c_tool}  {a_t}  Editor tools, LSP, completion
 
-Options:
-  -h, --help     Print help
-  -V, --version  Print version
+{opts}
+  {h}, {hh}     Print help
+  {v}, {vv}  Print version
 
-{AFTER_HELP}"
+{after}",
+        title = "User-facing frontend for the FOL toolchain",
+        usage = "Usage:".yellow().bold(),
+        cmds = "Commands:".yellow().bold(),
+        opts = "Options:".yellow().bold(),
+        c_work = "work".bold(),
+        c_pack = "pack".bold(),
+        c_code = "code".bold(),
+        c_tool = "tool".bold(),
+        a_w = "[aliases: w]".dim(),
+        a_p = "[aliases: p]".dim(),
+        a_c = "[aliases: c]".dim(),
+        a_t = "[aliases: t]".dim(),
+        h = "-h".bold(),
+        hh = "--help".bold(),
+        v = "-V".bold(),
+        vv = "--version".bold(),
+        after = AFTER_HELP.dim(),
     )
 }
 
 fn work_help() -> String {
-    "\
-Usage: fol work [OPTIONS] <COMMAND>
+    format!(
+        "\
+{usage} fol work [OPTIONS] <COMMAND>
 
-Commands:
-  init    Initialize a new package or workspace
-  new     Create a new project
-  info    Show workspace info
-  list    List workspace members
-  deps    Show dependency tree
-  status  Show workspace status
+{cmds}
+  {c_init}    Initialize a new package or workspace
+  {c_new}     Create a new project
+  {c_info}    Show workspace info
+  {c_list}    List workspace members
+  {c_deps}    Show dependency tree
+  {c_status}  Show workspace status
 
-Options:
-  --output <MODE>  Select output mode [human|plain|json]
-  --path <PATH>    Override the workspace or package root
-  -h, --help       Print help"
-        .to_string()
+{opts}
+  {o_output}  Select output mode [human|plain|json]
+  {o_path}    Override the workspace or package root
+  {h}, {hh}       Print help",
+        usage = "Usage:".yellow().bold(),
+        cmds = "Commands:".yellow().bold(),
+        opts = "Options:".yellow().bold(),
+        c_init = "init  ".bold(),
+        c_new = "new   ".bold(),
+        c_info = "info  ".bold(),
+        c_list = "list  ".bold(),
+        c_deps = "deps  ".bold(),
+        c_status = "status".bold(),
+        o_output = "--output <MODE>".bold(),
+        o_path = "--path <PATH>  ".bold(),
+        h = "-h".bold(),
+        hh = "--help".bold(),
+    )
 }
 
 fn pack_help() -> String {
-    "\
-Usage: fol pack [OPTIONS] <COMMAND>
+    format!(
+        "\
+{usage} fol pack [OPTIONS] <COMMAND>
 
-Commands:
-  fetch   [aliases: f, sync]     Fetch dependencies
-  update  [aliases: u, upgrade]  Update dependencies
+{cmds}
+  {c_fetch}   {a_fetch}     Fetch dependencies
+  {c_update}  {a_update}  Update dependencies
 
-Options:
-  --output <MODE>  Select output mode [human|plain|json]
-  -h, --help       Print help"
-        .to_string()
+{opts}
+  {o_output}  Select output mode [human|plain|json]
+  {h}, {hh}       Print help",
+        usage = "Usage:".yellow().bold(),
+        cmds = "Commands:".yellow().bold(),
+        opts = "Options:".yellow().bold(),
+        c_fetch = "fetch ".bold(),
+        c_update = "update".bold(),
+        a_fetch = "[aliases: f, sync]".dim(),
+        a_update = "[aliases: u, upgrade]".dim(),
+        o_output = "--output <MODE>".bold(),
+        h = "-h".bold(),
+        hh = "--help".bold(),
+    )
 }
 
 fn code_help() -> String {
-    "\
-Usage: fol code [OPTIONS] <COMMAND>
+    format!(
+        "\
+{usage} fol code [OPTIONS] <COMMAND>
 
-Commands:
-  build  [aliases: b, make]     Build the project
-  run    [aliases: r]           Build and run the project
-  test   [aliases: t]           Run tests
-  check  [aliases: c, verify]   Check without building
-  emit   [aliases: e, gen]      Emit intermediate representations
+{cmds}
+  {c_build}  {a_build}     Build the project
+  {c_run}    {a_run}           Build and run the project
+  {c_test}   {a_test}           Run tests
+  {c_check}  {a_check}   Check without building
+  {c_emit}   {a_emit}      Emit intermediate representations
 
-Options:
-  --output <MODE>    Select output mode [human|plain|json]
-  --profile <PROF>   Select build profile [debug|release]
-  --debug            Force the debug profile
-  --release          Force the release profile
-  -h, --help         Print help"
-        .to_string()
+{opts}
+  {o_output}    Select output mode [human|plain|json]
+  {o_profile}   Select build profile [debug|release]
+  {o_debug}            Force the debug profile
+  {o_release}          Force the release profile
+  {h}, {hh}         Print help",
+        usage = "Usage:".yellow().bold(),
+        cmds = "Commands:".yellow().bold(),
+        opts = "Options:".yellow().bold(),
+        c_build = "build".bold(),
+        c_run = "run  ".bold(),
+        c_test = "test ".bold(),
+        c_check = "check".bold(),
+        c_emit = "emit ".bold(),
+        a_build = "[aliases: b, make]".dim(),
+        a_run = "[aliases: r]".dim(),
+        a_test = "[aliases: t]".dim(),
+        a_check = "[aliases: c, verify]".dim(),
+        a_emit = "[aliases: e, gen]".dim(),
+        o_output = "--output <MODE> ".bold(),
+        o_profile = "--profile <PROF>".bold(),
+        o_debug = "--debug  ".bold(),
+        o_release = "--release".bold(),
+        h = "-h".bold(),
+        hh = "--help".bold(),
+    )
 }
 
 fn tool_help() -> String {
-    "\
-Usage: fol tool [OPTIONS] <COMMAND>
+    format!(
+        "\
+{usage} fol tool [OPTIONS] <COMMAND>
 
-Commands:
-  lsp              Start the LSP server
-  format           Format a source file
-  parse            Parse and dump a source file
-  highlight        Highlight a source file
-  symbols          List symbols in a source file
-  references       Find references to a symbol
-  rename           Rename a symbol
-  complete         Get completions at a position
-  semantic-tokens  Get semantic tokens for a file
-  tree             Tree-sitter commands
-  clean            [aliases: cl, purge]  Clean build artifacts
-  completion       [aliases: completions, comp]  Generate shell completion
+{cmds}
+  {c_lsp}              Start the LSP server
+  {c_format}           Format a source file
+  {c_parse}            Parse and dump a source file
+  {c_highlight}        Highlight a source file
+  {c_symbols}          List symbols in a source file
+  {c_references}       Find references to a symbol
+  {c_rename}           Rename a symbol
+  {c_complete}         Get completions at a position
+  {c_semtok}  Get semantic tokens for a file
+  {c_tree}             Tree-sitter commands
+  {c_clean}            {a_clean}  Clean build artifacts
+  {c_completion}       {a_completion}  Generate shell completion
 
-Options:
-  --output <MODE>  Select output mode [human|plain|json]
-  -h, --help       Print help"
-        .to_string()
+{opts}
+  {o_output}  Select output mode [human|plain|json]
+  {h}, {hh}       Print help",
+        usage = "Usage:".yellow().bold(),
+        cmds = "Commands:".yellow().bold(),
+        opts = "Options:".yellow().bold(),
+        c_lsp = "lsp           ".bold(),
+        c_format = "format        ".bold(),
+        c_parse = "parse         ".bold(),
+        c_highlight = "highlight     ".bold(),
+        c_symbols = "symbols       ".bold(),
+        c_references = "references    ".bold(),
+        c_rename = "rename        ".bold(),
+        c_complete = "complete      ".bold(),
+        c_semtok = "semantic-tokens".bold(),
+        c_tree = "tree          ".bold(),
+        c_clean = "clean         ".bold(),
+        c_completion = "completion    ".bold(),
+        a_clean = "[aliases: cl, purge]".dim(),
+        a_completion = "[aliases: completions, comp]".dim(),
+        o_output = "--output <MODE>".bold(),
+        h = "-h".bold(),
+        hh = "--help".bold(),
+    )
 }
 
 fn emit_help() -> String {
-    "\
-Usage: fol code emit <COMMAND>
+    format!(
+        "\
+{usage} fol code emit <COMMAND>
 
-Commands:
-  rust     Emit generated Rust code
-  lowered  Emit lowered IR
+{cmds}
+  {c_rust}     Emit generated Rust code
+  {c_lowered}  Emit lowered IR
 
-Options:
-  -h, --help  Print help"
-        .to_string()
+{opts}
+  {h}, {hh}  Print help",
+        usage = "Usage:".yellow().bold(),
+        cmds = "Commands:".yellow().bold(),
+        opts = "Options:".yellow().bold(),
+        c_rust = "rust   ".bold(),
+        c_lowered = "lowered".bold(),
+        h = "-h".bold(),
+        hh = "--help".bold(),
+    )
 }
 
 fn tree_help() -> String {
-    "\
-Usage: fol tool tree <COMMAND>
+    format!(
+        "\
+{usage} fol tool tree <COMMAND>
 
-Commands:
-  generate  Generate tree-sitter grammar
+{cmds}
+  {c_gen}  Generate tree-sitter grammar
 
-Options:
-  -h, --help  Print help"
-        .to_string()
+{opts}
+  {h}, {hh}  Print help",
+        usage = "Usage:".yellow().bold(),
+        cmds = "Commands:".yellow().bold(),
+        opts = "Options:".yellow().bold(),
+        c_gen = "generate".bold(),
+        h = "-h".bold(),
+        hh = "--help".bold(),
+    )
 }
 
 // ---------------------------------------------------------------------------

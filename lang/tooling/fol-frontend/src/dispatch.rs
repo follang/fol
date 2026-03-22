@@ -401,6 +401,9 @@ where
         .map(|arg| arg.into().into_string().unwrap_or_default())
         .collect();
 
+    // Enable ANSI colors when stdout is a terminal (before help text is rendered).
+    crate::ansi::set_enabled(std::io::IsTerminal::is_terminal(&std::io::stdout()));
+
     match FrontendCli::try_parse_from(args.clone()) {
         Err(error) if matches!(error.kind, ParseErrorKind::Help(_) | ParseErrorKind::Version) => {
             match writeln!(stdout, "{error}") {
