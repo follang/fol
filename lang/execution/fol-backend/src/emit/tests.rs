@@ -64,6 +64,28 @@ mod tests {
         output
     }
 
+    fn build_and_run_fixture_with_rustc(source: &str) -> std::process::Output {
+        let fixture_root = temp_root("exec_rustc");
+        let fixture = write_fixture(&fixture_root, source);
+        let lowered = lowered_workspace_from_entry_path(&fixture);
+        let session = BackendSession::new(lowered);
+        let artifact = emit_generated_crate_skeleton(&session).expect("generated crate");
+        let paths = prepare_backend_build_paths(&fixture_root).expect("prepare paths");
+        let crate_root =
+            write_generated_crate(Path::new(&paths.build_root), &artifact).expect("write crate");
+        let binary = build_generated_crate_with_rustc(
+            &crate_root,
+            &paths,
+            BackendBuildProfile::Release,
+        )
+        .expect("rustc build");
+        let output = Command::new(&binary)
+            .output()
+            .expect("run rustc emitted binary");
+        let _ = fs::remove_dir_all(&fixture_root);
+        output
+    }
+
     fn build_and_run_workspace(
         entry_path: &Path,
         package_config: PackageConfig,
@@ -341,6 +363,30 @@ mod tests {
         assert!(output.status.success());
 
         let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn rustc_and_cargo_drivers_keep_scalar_program_behavior_in_sync() {
+        let source = "fun[] main(): int = {\n    return 7;\n};\n";
+
+        let cargo_output = build_and_run_fixture(source);
+        let rustc_output = build_and_run_fixture_with_rustc(source);
+
+        assert_eq!(cargo_output.status.code(), rustc_output.status.code());
+        assert_eq!(cargo_output.stdout, rustc_output.stdout);
+        assert_eq!(cargo_output.stderr, rustc_output.stderr);
+    }
+
+    #[test]
+    fn rustc_and_cargo_drivers_keep_recoverable_entry_behavior_in_sync() {
+        let source = "fun[] main(): int / str = {\n    report \"broken\";\n    return 0;\n};\n";
+
+        let cargo_output = build_and_run_fixture(source);
+        let rustc_output = build_and_run_fixture_with_rustc(source);
+
+        assert_eq!(cargo_output.status.code(), rustc_output.status.code());
+        assert_eq!(cargo_output.stdout, rustc_output.stdout);
+        assert_eq!(cargo_output.stderr, rustc_output.stderr);
     }
 
     #[test]
