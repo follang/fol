@@ -32,13 +32,14 @@ pub fn crate_name() -> &'static str {
     CRATE_NAME
 }
 
-pub use config::{BackendConfig, BackendMode, BackendTarget};
+pub use config::{BackendBuildProfile, BackendConfig, BackendMode, BackendTarget};
 pub use control::render_terminator;
 pub use emit::{
     backend_build_paths, build_generated_crate, build_generated_crate_with_cargo,
-    emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
-    emit_namespace_module_shells, emit_package_module_shells, prepare_backend_build_paths,
-    prepare_generated_build_dir, summarize_emitted_artifact, write_generated_crate,
+    build_generated_crate_with_cargo_for_profile, emit_backend_artifact, emit_cargo_toml,
+    emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
+    emit_package_module_shells, prepare_backend_build_paths, prepare_generated_build_dir,
+    summarize_emitted_artifact, write_generated_crate,
 };
 pub use error::{BackendError, BackendErrorKind};
 pub use identity::{stable_workspace_hash, BackendWorkspaceIdentity};
@@ -71,8 +72,9 @@ pub type BackendResult<T> = Result<T, BackendError>;
 #[cfg(test)]
 mod tests {
     use super::{
-        Backend, BackendArtifact, BackendConfig, BackendError, BackendErrorKind, BackendMode,
-        BackendResult, BackendSession, BackendTarget, EmittedRustFile,
+        Backend, BackendArtifact, BackendBuildProfile, BackendConfig, BackendError,
+        BackendErrorKind, BackendMode, BackendResult, BackendSession, BackendTarget,
+        EmittedRustFile,
     };
     use crate::testing::sample_lowered_workspace;
 
@@ -94,6 +96,7 @@ mod tests {
 
         assert_eq!(format!("{backend:?}"), "Backend");
         assert_eq!(config.target, BackendTarget::Rust);
+        assert_eq!(config.build_profile, BackendBuildProfile::Release);
         assert_eq!(config.mode, BackendMode::BuildArtifact);
         assert_eq!(session.workspace().package_count(), 2);
         assert!(result.is_ok());

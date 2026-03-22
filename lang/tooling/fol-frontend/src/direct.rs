@@ -43,6 +43,18 @@ pub enum DirectCompileMode {
     EmitLowered,
 }
 
+fn backend_profile_for_direct_compile(
+    frontend_config: &FrontendConfig,
+) -> fol_backend::BackendBuildProfile {
+    match frontend_config
+        .profile_override
+        .unwrap_or(crate::FrontendProfile::Release)
+    {
+        crate::FrontendProfile::Debug => fol_backend::BackendBuildProfile::Debug,
+        crate::FrontendProfile::Release => fol_backend::BackendBuildProfile::Release,
+    }
+}
+
 pub fn run_direct_compile(
     config: &DirectCompileConfig,
     frontend_config: &FrontendConfig,
@@ -125,6 +137,7 @@ pub fn run_direct_compile(
             let artifact = emit_backend_artifact(
                 &backend_session,
                 &BackendConfig {
+                    build_profile: backend_profile_for_direct_compile(frontend_config),
                     mode: if *emit_rust {
                         BackendMode::EmitSource
                     } else {
@@ -234,6 +247,7 @@ pub fn run_direct_compile(
             let artifact = emit_backend_artifact(
                 &backend_session,
                 &BackendConfig {
+                    build_profile: backend_profile_for_direct_compile(frontend_config),
                     mode: backend_mode,
                     keep_build_dir: *keep_build_dir,
                     ..BackendConfig::default()
@@ -398,6 +412,7 @@ pub fn run_direct_compile_with_io(
                     match emit_backend_artifact(
                         &backend_session,
                         &BackendConfig {
+                            build_profile: backend_profile_for_direct_compile(frontend_config),
                             mode: match config.mode {
                                 DirectCompileMode::Auto {
                                     emit_rust: true, ..

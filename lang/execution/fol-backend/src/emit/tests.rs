@@ -2,8 +2,9 @@
 mod tests {
     use crate::emit::{
         backend_build_paths, build_generated_crate, build_generated_crate_with_cargo,
-        emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
-        emit_namespace_module_shells, emit_package_module_shells,
+        build_generated_crate_with_cargo_for_profile, emit_backend_artifact, emit_cargo_toml,
+        emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
+        emit_package_module_shells,
         prepare_backend_build_paths, prepare_generated_build_dir, summarize_emitted_artifact,
         write_generated_crate,
     };
@@ -12,7 +13,7 @@ mod tests {
             lowered_workspace_from_entry_path, lowered_workspace_from_entry_path_with_config,
             sample_lowered_workspace,
         },
-        BackendArtifact, BackendConfig, BackendMode, BackendSession,
+        BackendArtifact, BackendBuildProfile, BackendConfig, BackendMode, BackendSession,
     };
     use fol_package::PackageConfig;
     use fol_resolver::ResolverConfig;
@@ -281,6 +282,26 @@ mod tests {
 
         assert!(binary.exists());
         assert!(binary.ends_with(session.workspace_identity().crate_dir_name.as_str()));
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn cargo_build_driver_supports_explicit_debug_profile_outputs() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
+        let temp_root = temp_root("cargo_debug_driver");
+        let build_root = prepare_generated_build_dir(&temp_root).expect("build root");
+        let crate_root = write_generated_crate(&build_root, &artifact).expect("write crate");
+
+        let binary = build_generated_crate_with_cargo_for_profile(
+            &crate_root,
+            BackendBuildProfile::Debug,
+        )
+        .expect("cargo debug build");
+
+        assert!(binary.exists());
+        assert!(binary.to_string_lossy().contains("/target/debug/"));
 
         let _ = fs::remove_dir_all(&temp_root);
     }

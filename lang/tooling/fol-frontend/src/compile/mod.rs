@@ -106,7 +106,7 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
         let backend_session = fol_backend::BackendSession::new(lowered);
         let artifact = fol_backend::emit_backend_artifact(
             &backend_session,
-            &backend_config(config),
+            &backend_config(config, profile),
             &output_root,
         )
         .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
@@ -403,7 +403,7 @@ pub fn emit_rust_with_config(
             &fol_backend::BackendConfig {
                 mode: fol_backend::BackendMode::EmitSource,
                 keep_build_dir: true,
-                ..backend_config(config)
+                ..backend_config(config, FrontendProfile::Release)
             },
             &output_root,
         )
@@ -604,8 +604,19 @@ fn resolver_config(
     }
 }
 
-fn backend_config(config: &FrontendConfig) -> fol_backend::BackendConfig {
+fn backend_profile(profile: FrontendProfile) -> fol_backend::BackendBuildProfile {
+    match profile {
+        FrontendProfile::Debug => fol_backend::BackendBuildProfile::Debug,
+        FrontendProfile::Release => fol_backend::BackendBuildProfile::Release,
+    }
+}
+
+fn backend_config(
+    config: &FrontendConfig,
+    profile: FrontendProfile,
+) -> fol_backend::BackendConfig {
     fol_backend::BackendConfig {
+        build_profile: backend_profile(profile),
         keep_build_dir: config.keep_build_dir,
         ..fol_backend::BackendConfig::default()
     }
@@ -661,4 +672,3 @@ fn selected_workspace_members(
         None => Ok(workspace.members.clone()),
     }
 }
-

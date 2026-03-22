@@ -1,6 +1,6 @@
 use crate::{
-    BackendArtifact, BackendBuildPaths, BackendConfig, BackendError, BackendErrorKind,
-    BackendMode, BackendResult, BackendSession,
+    BackendArtifact, BackendBuildPaths, BackendBuildProfile, BackendConfig, BackendError,
+    BackendErrorKind, BackendMode, BackendResult, BackendSession,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -98,14 +98,20 @@ pub fn prepare_generated_build_dir(output_root: &Path) -> BackendResult<PathBuf>
     Ok(PathBuf::from(prepare_backend_build_paths(output_root)?.build_root))
 }
 
-fn cargo_build_output_for_generated_crate(crate_root: &Path) -> BackendResult<Output> {
+fn cargo_build_output_for_generated_crate(
+    crate_root: &Path,
+    profile: BackendBuildProfile,
+) -> BackendResult<Output> {
     let manifest_path = crate_root.join("Cargo.toml");
-    Command::new("cargo")
+    let mut command = Command::new("cargo");
+    command
         .arg("build")
         .arg("--manifest-path")
-        .arg(&manifest_path)
-        .arg("--release")
-        .output()
+        .arg(&manifest_path);
+    if matches!(profile, BackendBuildProfile::Release) {
+        command.arg("--release");
+    }
+    command.output()
         .map_err(|error| {
             BackendError::new(
                 BackendErrorKind::BuildFailure,
@@ -117,7 +123,10 @@ fn cargo_build_output_for_generated_crate(crate_root: &Path) -> BackendResult<Ou
         })
 }
 
-fn compiled_binary_path_for_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
+fn compiled_binary_path_for_generated_crate(
+    crate_root: &Path,
+    profile: BackendBuildProfile,
+) -> BackendResult<PathBuf> {
     let package_name = crate_root
         .file_name()
         .and_then(|value| value.to_str())
@@ -130,7 +139,10 @@ fn compiled_binary_path_for_generated_crate(crate_root: &Path) -> BackendResult<
                 ),
             )
         })?;
-    let binary_path = crate_root.join("target").join("release").join(package_name);
+    let binary_path = crate_root
+        .join("target")
+        .join(profile.as_str())
+        .join(package_name);
     if !binary_path.exists() {
         return Err(BackendError::new(
             BackendErrorKind::BuildFailure,
@@ -143,9 +155,12 @@ fn compiled_binary_path_for_generated_crate(crate_root: &Path) -> BackendResult<
     Ok(binary_path)
 }
 
-pub fn build_generated_crate_with_cargo(crate_root: &Path) -> BackendResult<PathBuf> {
+pub fn build_generated_crate_with_cargo_for_profile(
+    crate_root: &Path,
+    profile: BackendBuildProfile,
+) -> BackendResult<PathBuf> {
     let manifest_path = crate_root.join("Cargo.toml");
-    let output = cargo_build_output_for_generated_crate(crate_root)?;
+    let output = cargo_build_output_for_generated_crate(crate_root, profile)?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -161,7 +176,11 @@ pub fn build_generated_crate_with_cargo(crate_root: &Path) -> BackendResult<Path
         ));
     }
 
-    compiled_binary_path_for_generated_crate(crate_root)
+    compiled_binary_path_for_generated_crate(crate_root, profile)
+}
+
+pub fn build_generated_crate_with_cargo(crate_root: &Path) -> BackendResult<PathBuf> {
+    build_generated_crate_with_cargo_for_profile(crate_root, BackendBuildProfile::Release)
 }
 
 pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
@@ -191,7 +210,7 @@ pub fn emit_backend_artifact(
         });
     }
 
-    let built_binary = build_generated_crate(&crate_root)?;
+    let built_binary = build_generated_crate_with_cargo_for_profile(&crate_root, config.build_profile)?;
     let final_binary_dir = PathBuf::from(&paths.bin_root);
     let final_binary = final_binary_dir.join(built_binary.file_name().ok_or_else(|| {
         BackendError::new(
