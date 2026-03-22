@@ -1,4 +1,5 @@
 use crate::{FrontendOutputConfig, FrontendProfile, OutputMode};
+use fol_backend::BackendMachineTarget;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,6 +46,13 @@ impl Default for FrontendConfig {
 }
 
 impl FrontendConfig {
+    pub fn backend_machine_target(&self) -> BackendMachineTarget {
+        self.build_target_override
+            .as_deref()
+            .map(BackendMachineTarget::normalize_input)
+            .unwrap_or(BackendMachineTarget::Host)
+    }
+
     pub fn from_env() -> Self {
         let mut config = Self::default();
         config.output.mode = match std::env::var("FOL_OUTPUT").ok().as_deref() {
@@ -96,6 +104,7 @@ impl FrontendConfig {
 mod tests {
     use super::FrontendConfig;
     use crate::{FrontendProfile, OutputMode};
+    use fol_backend::BackendMachineTarget;
 
     #[test]
     fn frontend_config_defaults_to_current_working_defaults() {
@@ -193,5 +202,25 @@ mod tests {
         std::env::remove_var("FOL_REFRESH");
         std::env::remove_var("FOL_OUTPUT");
         std::env::remove_var("FOL_PROFILE");
+    }
+
+    #[test]
+    fn frontend_config_reports_host_machine_target_by_default() {
+        let config = FrontendConfig::default();
+
+        assert_eq!(config.backend_machine_target(), BackendMachineTarget::Host);
+    }
+
+    #[test]
+    fn frontend_config_normalizes_machine_target_override_for_backend() {
+        let config = FrontendConfig {
+            build_target_override: Some("  aarch64-macos-gnu  ".to_string()),
+            ..FrontendConfig::default()
+        };
+
+        assert_eq!(
+            config.backend_machine_target(),
+            BackendMachineTarget::Triple("aarch64-macos-gnu".to_string())
+        );
     }
 }

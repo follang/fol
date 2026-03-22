@@ -616,6 +616,7 @@ fn backend_config(
     profile: FrontendProfile,
 ) -> fol_backend::BackendConfig {
     fol_backend::BackendConfig {
+        machine_target: config.backend_machine_target(),
         build_profile: backend_profile(profile),
         keep_build_dir: config.keep_build_dir,
         ..fol_backend::BackendConfig::default()

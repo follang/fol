@@ -1,11 +1,14 @@
 use super::{
-    build_workspace, build_workspace_for_profile_with_config, build_workspace_with_config,
-    check_workspace, emit_lowered, emit_rust, profile_build_root, run_workspace,
-    run_workspace_with_args_and_config, test_package, test_workspace,
+    backend_config, build_workspace, build_workspace_for_profile_with_config,
+    build_workspace_with_config, check_workspace, emit_lowered, emit_rust,
+    profile_build_root, run_workspace, run_workspace_with_args_and_config, test_package,
+    test_workspace,
 };
 use crate::{
-    FrontendArtifactKind, FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot,
+    FrontendArtifactKind, FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot,
+    WorkspaceRoot,
 };
+use fol_backend::BackendMachineTarget;
 use std::{fs, path::PathBuf};
 
 fn semantic_bin_build() -> &'static str {
@@ -105,6 +108,24 @@ fn build_output_roots_are_profile_scoped() {
     assert_eq!(
         profile_build_root(&workspace, FrontendProfile::Release),
         PathBuf::from("/tmp/demo/.fol/build/release")
+    );
+}
+
+#[test]
+fn backend_config_threads_frontend_machine_target_selection() {
+    let default_config = FrontendConfig::default();
+    let cross_config = FrontendConfig {
+        build_target_override: Some("aarch64-macos-gnu".to_string()),
+        ..FrontendConfig::default()
+    };
+
+    assert_eq!(
+        backend_config(&default_config, FrontendProfile::Debug).machine_target,
+        BackendMachineTarget::Host
+    );
+    assert_eq!(
+        backend_config(&cross_config, FrontendProfile::Release).machine_target,
+        BackendMachineTarget::Triple("aarch64-macos-gnu".to_string())
     );
 }
 

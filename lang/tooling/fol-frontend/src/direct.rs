@@ -137,6 +137,7 @@ pub fn run_direct_compile(
             let artifact = emit_backend_artifact(
                 &backend_session,
                 &BackendConfig {
+                    machine_target: frontend_config.backend_machine_target(),
                     build_profile: backend_profile_for_direct_compile(frontend_config),
                     mode: if *emit_rust {
                         BackendMode::EmitSource
@@ -247,6 +248,7 @@ pub fn run_direct_compile(
             let artifact = emit_backend_artifact(
                 &backend_session,
                 &BackendConfig {
+                    machine_target: frontend_config.backend_machine_target(),
                     build_profile: backend_profile_for_direct_compile(frontend_config),
                     mode: backend_mode,
                     keep_build_dir: *keep_build_dir,
@@ -412,6 +414,7 @@ pub fn run_direct_compile_with_io(
                     match emit_backend_artifact(
                         &backend_session,
                         &BackendConfig {
+                            machine_target: frontend_config.backend_machine_target(),
                             build_profile: backend_profile_for_direct_compile(frontend_config),
                             mode: match config.mode {
                                 DirectCompileMode::Auto {

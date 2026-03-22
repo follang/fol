@@ -238,7 +238,7 @@ states the selected target and the current host.
 ## Slice tracker
 
 - [x] Slice 1: define backend machine-target config and target normalization API
-- [ ] Slice 2: thread CLI/build target selection into frontend backend config
+- [x] Slice 2: thread CLI/build target selection into frontend backend config
 - [ ] Slice 3: define FOL-target to Rust-target mapping rules with tests
 - [ ] Slice 4: make backend runtime and binary output paths target-scoped
 - [ ] Slice 5: pass `--target` to rustc for runtime builds
