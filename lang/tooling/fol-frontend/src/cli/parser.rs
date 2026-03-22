@@ -442,7 +442,7 @@ fn parse_work_command(cursor: &mut ArgCursor) -> Result<FrontendCommand, ParseEr
         break;
     }
 
-    let sub = cursor.advance().ok_or_else(|| ParseError::invalid("work requires a subcommand (init, new, info, list, deps, status)"))?;
+    let sub = cursor.advance().ok_or_else(|| ParseError::help(work_help()))?;
     let subcommand = match sub {
         "init" => WorkSubcommand::Init(parse_init_command(cursor)?),
         "new" => WorkSubcommand::New(parse_new_command(cursor)?),
@@ -519,7 +519,7 @@ fn parse_pack_command(cursor: &mut ArgCursor) -> Result<FrontendCommand, ParseEr
         break;
     }
 
-    let sub = cursor.advance().ok_or_else(|| ParseError::invalid("pack requires a subcommand (fetch, update)"))?;
+    let sub = cursor.advance().ok_or_else(|| ParseError::help(pack_help()))?;
     let sub_output = env_output_args();
     let subcommand = match sub {
         "fetch" | "f" | "sync" => PackSubcommand::Fetch(parse_fetch_command(cursor, sub_output)?),
@@ -602,7 +602,7 @@ fn parse_code_command(cursor: &mut ArgCursor) -> Result<FrontendCommand, ParseEr
 
     check_profile_conflicts(&profile_args)?;
 
-    let sub = cursor.advance().ok_or_else(|| ParseError::invalid("code requires a subcommand (build, run, test, check, emit)"))?;
+    let sub = cursor.advance().ok_or_else(|| ParseError::help(code_help()))?;
     // Subcommands start with env defaults, not inheriting from group-level flags.
     let sub_output = env_output_args();
     let sub_profile = env_profile_args();
@@ -733,7 +733,7 @@ fn parse_emit_command(cursor: &mut ArgCursor) -> Result<EmitCommand, ParseError>
         break;
     }
 
-    let sub = cursor.advance().ok_or_else(|| ParseError::invalid("emit requires a subcommand (rust, lowered)"))?;
+    let sub = cursor.advance().ok_or_else(|| ParseError::help(emit_help()))?;
     let subcommand = match sub {
         "rust" => EmitSubcommand::Rust(parse_emit_rust_command(cursor)?),
         "lowered" => EmitSubcommand::Lowered(parse_emit_lowered_command(cursor)?),
@@ -820,7 +820,7 @@ fn parse_tool_command(cursor: &mut ArgCursor) -> Result<FrontendCommand, ParseEr
         break;
     }
 
-    let sub = cursor.advance().ok_or_else(|| ParseError::invalid("tool requires a subcommand"))?;
+    let sub = cursor.advance().ok_or_else(|| ParseError::help(tool_help()))?;
     let subcommand = match sub {
         "lsp" => ToolSubcommand::Lsp(UnitCommand),
         "format" => ToolSubcommand::Format(parse_editor_path_command(cursor)?),
@@ -952,7 +952,7 @@ fn parse_tree_command(cursor: &mut ArgCursor) -> Result<TreeCommand, ParseError>
         }
         break;
     }
-    let sub = cursor.advance().ok_or_else(|| ParseError::invalid("tree requires a subcommand (generate)"))?;
+    let sub = cursor.advance().ok_or_else(|| ParseError::help(tree_help()))?;
     match sub {
         "generate" => {
             let path = cursor.advance()
