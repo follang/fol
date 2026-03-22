@@ -3,14 +3,14 @@ mod tests {
     use crate::emit::{
         backend_build_paths, build_generated_crate_with_rustc, build_runtime_rlib_with_rustc,
         emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
-        emit_namespace_module_shells, emit_package_module_shells,
-        prepare_backend_runtime_build_dir, prepare_backend_build_paths,
-        prepare_generated_build_dir, summarize_emitted_artifact, write_generated_crate,
-        backend_runtime_build_dir, backend_runtime_manifest_path,
+        emit_namespace_module_shells, emit_package_module_shells, prepare_backend_runtime_build_dir,
+        prepare_backend_build_paths, prepare_generated_build_dir, summarize_emitted_artifact,
+        write_generated_crate, backend_runtime_build_dir, backend_runtime_manifest_path,
         backend_runtime_manifest_path_with_override, backend_runtime_source_entry,
         backend_runtime_source_entry_with_override, backend_runtime_source_root,
         backend_runtime_source_root_with_override,
     };
+    use super::build::configure_runtime_rustc_command;
     use crate::{
         testing::{
             lowered_workspace_from_entry_path, lowered_workspace_from_entry_path_with_config,
@@ -377,6 +377,44 @@ mod tests {
         assert!(prepared_release.exists());
 
         let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn runtime_rustc_command_uses_target_for_cross_builds() {
+        let runtime_source = PathBuf::from("/tmp/runtime/src/lib.rs");
+        let runtime_build_dir = PathBuf::from("/tmp/runtime/out");
+        let command = configure_runtime_rustc_command(
+            &runtime_source,
+            &runtime_build_dir,
+            &BackendMachineTarget::Triple("aarch64-macos-gnu".to_string()),
+            BackendBuildProfile::Release,
+        );
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert!(args.windows(2).any(|pair| {
+            pair == ["--target", "aarch64-apple-darwin"]
+        }));
+    }
+
+    #[test]
+    fn runtime_rustc_command_skips_target_for_host_builds() {
+        let runtime_source = PathBuf::from("/tmp/runtime/src/lib.rs");
+        let runtime_build_dir = PathBuf::from("/tmp/runtime/out");
+        let command = configure_runtime_rustc_command(
+            &runtime_source,
+            &runtime_build_dir,
+            &BackendMachineTarget::Host,
+            BackendBuildProfile::Debug,
+        );
+        let args = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert!(!args.iter().any(|arg| arg == "--target"));
     }
 
     #[test]

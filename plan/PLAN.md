@@ -241,7 +241,7 @@ states the selected target and the current host.
 - [x] Slice 2: thread CLI/build target selection into frontend backend config
 - [x] Slice 3: define FOL-target to Rust-target mapping rules with tests
 - [x] Slice 4: make backend runtime and binary output paths target-scoped
-- [ ] Slice 5: pass `--target` to rustc for runtime builds
+- [x] Slice 5: pass `--target` to rustc for runtime builds
 - [ ] Slice 6: pass `--target` to rustc for generated crate builds
 - [ ] Slice 7: reject non-host execution in `run` and `test` with clear diagnostics
 - [ ] Slice 8: add backend and frontend tests for target layout and diagnostics

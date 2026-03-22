@@ -107,6 +107,30 @@ fn apply_rustc_profile_args(command: &mut Command, profile: BackendBuildProfile)
     }
 }
 
+pub(crate) fn configure_runtime_rustc_command(
+    runtime_source: &Path,
+    runtime_build_dir: &Path,
+    machine_target: &BackendMachineTarget,
+    profile: BackendBuildProfile,
+) -> Command {
+    let mut command = Command::new("rustc");
+    command
+        .arg("--crate-name")
+        .arg("fol_runtime")
+        .arg("--crate-type")
+        .arg("rlib")
+        .arg("--edition=2021");
+    if let Some(target_triple) = machine_target.rust_target_triple() {
+        command.arg("--target").arg(target_triple);
+    }
+    command
+        .arg(runtime_source)
+        .arg("--out-dir")
+        .arg(runtime_build_dir);
+    apply_rustc_profile_args(&mut command, profile);
+    command
+}
+
 fn runtime_rlib_path(runtime_build_dir: &Path) -> PathBuf {
     runtime_build_dir.join("libfol_runtime.rlib")
 }
@@ -164,17 +188,12 @@ pub fn build_runtime_rlib_with_rustc(
     let runtime_source = super::runtime::backend_runtime_source_entry();
     let runtime_build_dir =
         super::runtime::prepare_backend_runtime_build_dir(paths, machine_target, profile)?;
-    let mut command = Command::new("rustc");
-    command
-        .arg("--crate-name")
-        .arg("fol_runtime")
-        .arg("--crate-type")
-        .arg("rlib")
-        .arg("--edition=2021")
-        .arg(&runtime_source)
-        .arg("--out-dir")
-        .arg(&runtime_build_dir);
-    apply_rustc_profile_args(&mut command, profile);
+    let mut command = configure_runtime_rustc_command(
+        &runtime_source,
+        &runtime_build_dir,
+        machine_target,
+        profile,
+    );
     let output = command.output().map_err(|error| {
         BackendError::new(
             BackendErrorKind::BuildFailure,
@@ -229,17 +248,12 @@ pub fn build_generated_crate_with_rustc(
     })?;
     let runtime_source = super::runtime::backend_runtime_source_entry();
     let runtime_rlib = runtime_rlib_path(&runtime_build_dir);
-    let mut runtime_command = Command::new("rustc");
-    runtime_command
-        .arg("--crate-name")
-        .arg("fol_runtime")
-        .arg("--crate-type")
-        .arg("rlib")
-        .arg("--edition=2021")
-        .arg(&runtime_source)
-        .arg("--out-dir")
-        .arg(&runtime_build_dir);
-    apply_rustc_profile_args(&mut runtime_command, profile);
+    let mut runtime_command = configure_runtime_rustc_command(
+        &runtime_source,
+        &runtime_build_dir,
+        machine_target,
+        profile,
+    );
     let runtime_output = runtime_command.output().map_err(|error| {
         BackendError::new(
             BackendErrorKind::BuildFailure,
