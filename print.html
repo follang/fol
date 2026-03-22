@@ -36,10 +36,10 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-7c648d2c.js";
+            window.path_to_searchindex_js = "searchindex-b72d7afd.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-5bc359b7.js"></script>
+        <script src="toc-58ef93fa.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -2248,6 +2248,84 @@ fol code test          # run test steps
 </ul>
 <p>Validation errors are reported as build evaluation errors before any
 compilation begins.</p>
+<div style="break-before: page; page-break-before: always;"></div>
+<h1 id="cross-compilation"><a class="header" href="#cross-compilation">Cross Compilation</a></h1>
+<p>FOL package builds now stay on one backend path:</p>
+<pre><code class="language-text">FOL source
+  -&gt; lowered FOL IR
+  -&gt; generated Rust crate
+  -&gt; rustc
+  -&gt; native binary
+</code></pre>
+<p>Normal artifact builds do not call Cargo anymore. Cargo is still useful for
+<code>fol code emit rust</code>, but <code>fol code build</code> and <code>fol code run</code> compile the
+generated crate directly with <code>rustc</code>.</p>
+<h2 id="selecting-a-target"><a class="header" href="#selecting-a-target">Selecting A Target</a></h2>
+<p>Use either:</p>
+<pre><code class="language-bash">fol code build --target aarch64-unknown-linux-gnu
+fol code build --target x86_64-pc-windows-gnu
+</code></pre>
+<p>or inside <code>build.fol</code>:</p>
+<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+    var target = graph.standard_target();
+    var app = graph.add_exe({
+        name = "app",
+        root = "src/main.fol",
+        target = target,
+    });
+    graph.install(app);
+    graph.add_run(app);
+};
+</code></pre>
+<p>Target precedence is:</p>
+<ol>
+<li><code>--target</code></li>
+<li>artifact target declared in <code>build.fol</code></li>
+<li>host default</li>
+</ol>
+<h2 id="accepted-target-spellings"><a class="header" href="#accepted-target-spellings">Accepted Target Spellings</a></h2>
+<p>The backend accepts both canonical Rust triples and the shorter FOL spellings
+already used in build code.</p>
+<p>Examples:</p>
+<ul>
+<li><code>x86_64-linux-gnu</code> -&gt; <code>x86_64-unknown-linux-gnu</code></li>
+<li><code>x86_64-linux-musl</code> -&gt; <code>x86_64-unknown-linux-musl</code></li>
+<li><code>aarch64-linux-gnu</code> -&gt; <code>aarch64-unknown-linux-gnu</code></li>
+<li><code>aarch64-linux-musl</code> -&gt; <code>aarch64-unknown-linux-musl</code></li>
+<li><code>x86_64-windows-gnu</code> -&gt; <code>x86_64-pc-windows-gnu</code></li>
+<li><code>x86_64-windows-msvc</code> -&gt; <code>x86_64-pc-windows-msvc</code></li>
+<li><code>aarch64-windows-msvc</code> -&gt; <code>aarch64-pc-windows-msvc</code></li>
+<li><code>x86_64-macos-gnu</code> -&gt; <code>x86_64-apple-darwin</code></li>
+<li><code>aarch64-macos-gnu</code> -&gt; <code>aarch64-apple-darwin</code></li>
+</ul>
+<p>Unknown spellings are rejected before the backend tries to build.</p>
+<h2 id="build-vs-run"><a class="header" href="#build-vs-run">Build vs Run</a></h2>
+<p>Cross-building and cross-running are different operations.</p>
+<ul>
+<li><code>fol code build</code> supports host and non-host targets</li>
+<li><code>fol code emit rust</code> stays available for source inspection</li>
+<li><code>fol code run</code> is host-only</li>
+<li><code>fol code test</code> is host-only</li>
+</ul>
+<p>If the selected target does not match the current machine, <code>run</code> and <code>test</code>
+fail early with a diagnostic instead of trying to execute the foreign binary.</p>
+<h2 id="output-layout"><a class="header" href="#output-layout">Output Layout</a></h2>
+<p>Compiled binaries are target-scoped so host and cross builds do not overwrite
+each other.</p>
+<p>Typical layout:</p>
+<pre><code class="language-text">.fol/build/&lt;profile&gt;/bin/&lt;target&gt;/&lt;artifact&gt;
+.fol/build/&lt;profile&gt;/fol-backend/runtime/&lt;target&gt;/&lt;profile&gt;/...
+</code></pre>
+<p>That means:</p>
+<ul>
+<li>host builds and cross builds can coexist</li>
+<li>runtime artifacts are compiled per target</li>
+<li>the generated entry crate links against the matching target runtime</li>
+</ul>
+<h2 id="emit-rust"><a class="header" href="#emit-rust"><code>emit rust</code></a></h2>
+<p><code>fol code emit rust</code> still writes a Cargo-compatible crate for debugging and
+inspection. That command is source emission, not the product binary build path.</p>
+<p>The binary build path remains direct <code>rustc</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="lexical-structure"><a class="header" href="#lexical-structure">Lexical Structure</a></h1>
 <p>This section defines the smallest syntactic building blocks of FOL source code.</p>
