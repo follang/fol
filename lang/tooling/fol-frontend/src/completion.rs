@@ -1,5 +1,4 @@
-use crate::{FrontendCli, FrontendCommandResult, FrontendError, FrontendErrorKind, FrontendResult};
-use clap_complete::{generate, Shell};
+use crate::{FrontendCommandResult, FrontendResult};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CompletionShell {
@@ -16,26 +15,267 @@ impl CompletionShell {
             Self::Fish => "fish",
         }
     }
+}
 
-    fn clap_shell(self) -> Shell {
-        match self {
-            Self::Bash => Shell::Bash,
-            Self::Zsh => Shell::Zsh,
-            Self::Fish => Shell::Fish,
-        }
+// ---------------------------------------------------------------------------
+// Static command tree for completions
+// ---------------------------------------------------------------------------
+
+struct CmdEntry {
+    name: &'static str,
+    aliases: &'static [&'static str],
+    subcommands: &'static [CmdEntry],
+    hidden: bool,
+}
+
+static COMMAND_TREE: &[CmdEntry] = &[
+    CmdEntry {
+        name: "work",
+        aliases: &["w"],
+        hidden: false,
+        subcommands: &[
+            CmdEntry { name: "init", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "new", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "info", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "list", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "deps", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "status", aliases: &[], hidden: false, subcommands: &[] },
+        ],
+    },
+    CmdEntry {
+        name: "pack",
+        aliases: &["p"],
+        hidden: false,
+        subcommands: &[
+            CmdEntry { name: "fetch", aliases: &["f", "sync"], hidden: false, subcommands: &[] },
+            CmdEntry { name: "update", aliases: &["u", "upgrade"], hidden: false, subcommands: &[] },
+        ],
+    },
+    CmdEntry {
+        name: "code",
+        aliases: &["c"],
+        hidden: false,
+        subcommands: &[
+            CmdEntry { name: "build", aliases: &["b", "make"], hidden: false, subcommands: &[] },
+            CmdEntry { name: "run", aliases: &["r"], hidden: false, subcommands: &[] },
+            CmdEntry { name: "test", aliases: &["t"], hidden: false, subcommands: &[] },
+            CmdEntry { name: "check", aliases: &["c", "verify"], hidden: false, subcommands: &[] },
+            CmdEntry {
+                name: "emit",
+                aliases: &["e", "gen"],
+                hidden: false,
+                subcommands: &[
+                    CmdEntry { name: "rust", aliases: &[], hidden: false, subcommands: &[] },
+                    CmdEntry { name: "lowered", aliases: &[], hidden: false, subcommands: &[] },
+                ],
+            },
+        ],
+    },
+    CmdEntry {
+        name: "tool",
+        aliases: &["t"],
+        hidden: false,
+        subcommands: &[
+            CmdEntry { name: "lsp", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "format", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "parse", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "highlight", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "symbols", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "references", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "rename", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "complete", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry { name: "semantic-tokens", aliases: &[], hidden: false, subcommands: &[] },
+            CmdEntry {
+                name: "tree",
+                aliases: &[],
+                hidden: false,
+                subcommands: &[
+                    CmdEntry { name: "generate", aliases: &[], hidden: false, subcommands: &[] },
+                ],
+            },
+            CmdEntry { name: "clean", aliases: &["cl", "purge"], hidden: false, subcommands: &[] },
+            CmdEntry { name: "completion", aliases: &["completions", "comp"], hidden: false, subcommands: &[] },
+        ],
+    },
+];
+
+// ---------------------------------------------------------------------------
+// Shell completion script generation
+// ---------------------------------------------------------------------------
+
+pub fn generate_completion_script(shell: CompletionShell) -> FrontendResult<String> {
+    match shell {
+        CompletionShell::Bash => Ok(generate_bash_script()),
+        CompletionShell::Zsh => Ok(generate_zsh_script()),
+        CompletionShell::Fish => Ok(generate_fish_script()),
     }
 }
 
-pub fn generate_completion_script(shell: CompletionShell) -> FrontendResult<String> {
-    let mut command = FrontendCli::command();
-    let mut out = Vec::new();
-    generate(shell.clap_shell(), &mut command, "fol", &mut out);
-    String::from_utf8(out).map_err(|error| {
-        FrontendError::new(
-            FrontendErrorKind::Internal,
-            format!("generated completion output was not valid UTF-8: {error}"),
-        )
-    })
+fn generate_bash_script() -> String {
+    r#"_fol() {
+    local cur prev words cword
+    _init_completion || return
+
+    local -a toplevel=(work w pack p code c tool t)
+    local -a work_cmds=(init new info list deps status)
+    local -a pack_cmds=(fetch f sync update u upgrade)
+    local -a code_cmds=(build b make run r test t check c verify emit e gen)
+    local -a tool_cmds=(lsp format parse highlight symbols references rename complete semantic-tokens tree clean cl purge completion completions comp)
+    local -a emit_cmds=(rust lowered)
+    local -a tree_cmds=(generate)
+
+    case "${words[1]}" in
+        work|w)
+            COMPREPLY=($(compgen -W "${work_cmds[*]}" -- "$cur"))
+            return ;;
+        pack|p)
+            COMPREPLY=($(compgen -W "${pack_cmds[*]}" -- "$cur"))
+            return ;;
+        code|c)
+            case "${words[2]}" in
+                emit|e|gen)
+                    COMPREPLY=($(compgen -W "${emit_cmds[*]}" -- "$cur"))
+                    return ;;
+                *)
+                    COMPREPLY=($(compgen -W "${code_cmds[*]}" -- "$cur"))
+                    return ;;
+            esac ;;
+        tool|t)
+            case "${words[2]}" in
+                tree)
+                    COMPREPLY=($(compgen -W "${tree_cmds[*]}" -- "$cur"))
+                    return ;;
+                *)
+                    COMPREPLY=($(compgen -W "${tool_cmds[*]}" -- "$cur"))
+                    return ;;
+            esac ;;
+    esac
+
+    COMPREPLY=($(compgen -W "${toplevel[*]}" -- "$cur"))
+}
+
+complete -F _fol -o default fol
+"#
+    .to_string()
+}
+
+fn generate_zsh_script() -> String {
+    r#"#compdef fol
+
+_fol() {
+    local -a toplevel=(
+        'work:Workspace management'
+        'pack:Package management'
+        'code:Build, run, test, check'
+        'tool:Editor tools, LSP, completion'
+    )
+    local -a work_cmds=(init new info list deps status)
+    local -a pack_cmds=(fetch update)
+    local -a code_cmds=(build run test check emit)
+    local -a tool_cmds=(lsp format parse highlight symbols references rename complete semantic-tokens tree clean completion)
+    local -a emit_cmds=(rust lowered)
+    local -a tree_cmds=(generate)
+
+    _arguments -C \
+        '(-h --help)'{-h,--help}'[Print help]' \
+        '(-V --version)'{-V,--version}'[Print version]' \
+        '1:command:->cmd' \
+        '*::arg:->args'
+
+    case $state in
+        cmd)
+            _describe 'command' toplevel ;;
+        args)
+            case ${words[1]} in
+                work|w) _describe 'subcommand' work_cmds ;;
+                pack|p) _describe 'subcommand' pack_cmds ;;
+                code|c)
+                    case ${words[2]} in
+                        emit|e|gen) _describe 'subcommand' emit_cmds ;;
+                        *) _describe 'subcommand' code_cmds ;;
+                    esac ;;
+                tool|t)
+                    case ${words[2]} in
+                        tree) _describe 'subcommand' tree_cmds ;;
+                        *) _describe 'subcommand' tool_cmds ;;
+                    esac ;;
+            esac ;;
+    esac
+}
+
+_fol "$@"
+"#
+    .to_string()
+}
+
+fn generate_fish_script() -> String {
+    let mut lines = Vec::new();
+    lines.push("# Fish completions for fol".to_string());
+    lines.push("function __fish_fol_no_subcommand".to_string());
+    lines.push("    set -l cmd (commandline -opc)".to_string());
+    lines.push("    test (count $cmd) -eq 1".to_string());
+    lines.push("end".to_string());
+    lines.push("function __fish_fol_using_subcommand".to_string());
+    lines.push("    set -l cmd (commandline -opc)".to_string());
+    lines.push("    test (count $cmd) -ge 2; and contains -- $argv[1] $cmd[2]".to_string());
+    lines.push("end".to_string());
+    lines.push(String::new());
+
+    // Top-level
+    for &(name, desc) in &[
+        ("work", "Workspace management"),
+        ("pack", "Package management"),
+        ("code", "Build, run, test, check"),
+        ("tool", "Editor tools, LSP, completion"),
+    ] {
+        lines.push(format!(
+            "complete -c fol -f -n __fish_fol_no_subcommand -a {name} -d '{desc}'"
+        ));
+    }
+    // Aliases
+    for &(alias, target) in &[("w", "work"), ("p", "pack"), ("c", "code"), ("t", "tool")] {
+        lines.push(format!(
+            "complete -c fol -f -n __fish_fol_no_subcommand -a {alias} -d 'Alias for {target}'"
+        ));
+    }
+    lines.push(String::new());
+
+    // Work subcommands
+    for name in &["init", "new", "info", "list", "deps", "status"] {
+        lines.push(format!(
+            "complete -c fol -f -n '__fish_fol_using_subcommand work' -a {name}"
+        ));
+    }
+    // Pack subcommands
+    for &(name, aliases) in &[("fetch", "f sync"), ("update", "u upgrade")] {
+        lines.push(format!(
+            "complete -c fol -f -n '__fish_fol_using_subcommand pack' -a '{name} {aliases}'"
+        ));
+    }
+    // Code subcommands
+    for &(name, aliases) in &[
+        ("build", "b make"),
+        ("run", "r"),
+        ("test", "t"),
+        ("check", "c verify"),
+        ("emit", "e gen"),
+    ] {
+        lines.push(format!(
+            "complete -c fol -f -n '__fish_fol_using_subcommand code' -a '{name} {aliases}'"
+        ));
+    }
+    // Tool subcommands
+    for name in &[
+        "lsp", "format", "parse", "highlight", "symbols", "references", "rename",
+        "complete", "semantic-tokens", "tree", "clean", "completion",
+    ] {
+        lines.push(format!(
+            "complete -c fol -f -n '__fish_fol_using_subcommand tool' -a {name}"
+        ));
+    }
+
+    lines.push(String::new());
+    lines.join("\n")
 }
 
 pub fn completion_command(shell: CompletionShell) -> FrontendResult<FrontendCommandResult> {
@@ -74,47 +314,43 @@ pub fn internal_complete_matches(tokens: &[String]) -> Vec<String> {
         Some((last, rest)) => (rest, last.as_str()),
         None => (&[][..], ""),
     };
-    let command = FrontendCli::command();
     let mut matches = Vec::new();
-    collect_matches_for_command(&command, path, prefix, &mut matches);
+    collect_matches(COMMAND_TREE, path, prefix, &mut matches);
 
     matches.sort();
     matches.dedup();
     matches
 }
 
-fn collect_matches_for_command(
-    command: &clap::Command,
+fn collect_matches(
+    entries: &[CmdEntry],
     path: &[String],
     prefix: &str,
     matches: &mut Vec<String>,
 ) {
     if let Some((head, tail)) = path.split_first() {
-        for subcommand in command.get_subcommands() {
-            if subcommand.is_hide_set() {
+        for entry in entries {
+            if entry.hidden {
                 continue;
             }
-            let name_match = subcommand.get_name() == head;
-            let alias_match = subcommand
-                .get_visible_aliases()
-                .any(|alias| alias == head.as_str());
+            let name_match = entry.name == head;
+            let alias_match = entry.aliases.iter().any(|&a| a == head.as_str());
             if name_match || alias_match {
-                collect_matches_for_command(subcommand, tail, prefix, matches);
+                collect_matches(entry.subcommands, tail, prefix, matches);
                 return;
             }
         }
         return;
     }
 
-    for subcommand in command.get_subcommands() {
-        if subcommand.is_hide_set() {
+    for entry in entries {
+        if entry.hidden {
             continue;
         }
-        let name = subcommand.get_name().to_string();
-        if name.starts_with(prefix) {
-            matches.push(name);
+        if entry.name.starts_with(prefix) {
+            matches.push(entry.name.to_string());
         }
-        for alias in subcommand.get_visible_aliases() {
+        for &alias in entry.aliases {
             if alias.starts_with(prefix) {
                 matches.push(alias.to_string());
             }
@@ -167,7 +403,7 @@ mod tests {
         let script = generate_fish_completion_script().unwrap();
 
         assert!(script.contains("complete -c fol"));
-        assert!(script.contains("__fish_use_subcommand"));
+        assert!(script.contains("__fish_fol_no_subcommand"));
     }
 
     #[test]

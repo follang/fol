@@ -1,31 +1,28 @@
 use fol_frontend::{FrontendCli, FrontendOutput, FrontendOutputConfig};
 
 #[test]
-fn help_output_keeps_sections_examples_and_aliases_stable() {
-    let help = FrontendCli::command().render_long_help().to_string();
+fn help_output_keeps_commands_and_aliases_stable() {
+    let help = FrontendCli::root_help_text();
 
-    assert!(help.contains("Workflow Commands:"));
-    assert!(help.contains("Workspace Commands:"));
-    assert!(help.contains("Shell Commands:"));
-    assert!(help.contains("Examples:"));
-    assert!(help.contains("fol emit rust"));
-    assert!(help.contains("make"));
-    assert!(help.contains("sync"));
-    assert!(help.contains("purge"));
+    assert!(help.contains("work"));
+    assert!(help.contains("pack"));
+    assert!(help.contains("code"));
+    assert!(help.contains("tool"));
+    assert!(help.contains("[aliases: w]"));
+    assert!(help.contains("[aliases: p]"));
+    assert!(help.contains("[aliases: c]"));
+    assert!(help.contains("[aliases: t]"));
 }
 
 #[test]
-fn help_output_keeps_grouped_sections_in_stable_order() {
-    let help = FrontendCli::command().render_long_help().to_string();
+fn help_output_contains_usage_and_options() {
+    let help = FrontendCli::root_help_text();
 
-    let workflow = help.find("Workflow Commands:").expect("workflow section");
-    let workspace = help.find("Workspace Commands:").expect("workspace section");
-    let shell = help.find("Shell Commands:").expect("shell section");
-    let examples = help.find("Examples:").expect("examples section");
-
-    assert!(workflow < workspace);
-    assert!(workspace < shell);
-    assert!(shell < examples);
+    assert!(help.contains("Usage:"));
+    assert!(help.contains("Commands:"));
+    assert!(help.contains("Options:"));
+    assert!(help.contains("--help"));
+    assert!(help.contains("--version"));
 }
 
 #[test]

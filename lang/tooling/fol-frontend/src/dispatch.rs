@@ -5,6 +5,7 @@ use crate::{
     FrontendWorkspace, FrontendWorkspaceBuildRequest, PackSubcommand, ToolSubcommand,
 };
 use crate::cli::{CodeSubcommand, EmitCommand, FrontendCli, FrontendCommand};
+use crate::cli::parser::ParseErrorKind;
 
 pub fn dispatch_cli(
     cli: &FrontendCli,
@@ -395,22 +396,13 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
-    let args = args
+    let args: Vec<String> = args
         .into_iter()
-        .map(|arg| arg.into())
-        .collect::<Vec<std::ffi::OsString>>();
+        .map(|arg| arg.into().into_string().unwrap_or_default())
+        .collect();
 
     match FrontendCli::try_parse_from(args.clone()) {
-        Err(error) if error.kind() == clap::error::ErrorKind::DisplayHelp => {
-            match writeln!(stdout, "{error}") {
-                Ok(()) => 0,
-                Err(render_error) => {
-                    let _ = writeln!(stderr, "FrontendInternal: {render_error}");
-                    1
-                }
-            }
-        }
-        Err(error) if error.kind() == clap::error::ErrorKind::DisplayVersion => {
+        Err(error) if matches!(error.kind, ParseErrorKind::Help(_) | ParseErrorKind::Version) => {
             match writeln!(stdout, "{error}") {
                 Ok(()) => 0,
                 Err(render_error) => {
@@ -451,8 +443,8 @@ where
             )
         }
         Ok(cli) if cli.command.is_none() => {
-            let mut command = FrontendCli::command();
-            match writeln!(stdout, "{}", command.render_long_help()) {
+            let help = FrontendCli::root_help_text();
+            match writeln!(stdout, "{help}") {
                 Ok(()) => 0,
                 Err(error) => {
                     let _ = writeln!(stderr, "FrontendInternal: {error}");

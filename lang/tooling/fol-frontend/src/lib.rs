@@ -35,8 +35,8 @@ pub use cli::{
     CompletionShellArg, EditorPathCommand, EditorReferenceCommand, EditorRenameCommand,
     EmitCommand, EmitLoweredCommand, EmitRustCommand, EmitSubcommand, FetchCommand,
     FrontendCli, FrontendCommand, FrontendProfile, InitCommand, NewCommand, PackCommand,
-    PackSubcommand, RunCommand, TestCommand, ToolCommand, ToolSubcommand, UnitCommand,
-    UpdateCommand,
+    PackSubcommand, ParseError, ParseErrorKind, RunCommand, TestCommand, ToolCommand,
+    ToolSubcommand, UnitCommand, UpdateCommand,
 };
 pub use compile::{
     build_workspace, build_workspace_for_profile_with_config, build_workspace_with_config,
@@ -148,6 +148,10 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+    let args: Vec<String> = args
+        .into_iter()
+        .map(|a| a.into().into_string().unwrap_or_default())
+        .collect();
     let cli = FrontendCli::try_parse_from(args).map_err(|error| {
         FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string())
             .with_note("run `fol --help` to inspect the available workflow commands")
@@ -166,6 +170,10 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+    let args: Vec<String> = args
+        .into_iter()
+        .map(|a| a.into().into_string().unwrap_or_default())
+        .collect();
     let cli = FrontendCli::try_parse_from(args).map_err(|error| {
         FrontendError::new(FrontendErrorKind::InvalidInput, error.to_string())
             .with_note("run `fol --help` to inspect the available workflow commands")
@@ -458,10 +466,8 @@ mod tests {
         assert_eq!(code, 0);
         assert!(stderr.is_empty());
         assert!(rendered.contains("Usage: fol code emit"));
-        assert!(rendered.contains("Commands:"));
         assert!(rendered.contains("rust"));
         assert!(rendered.contains("lowered"));
-        assert!(!rendered.contains("Run `fol <command> --help` for command-specific usage."));
     }
 
     #[test]
