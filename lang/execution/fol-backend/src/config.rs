@@ -38,6 +38,47 @@ impl BackendMachineTarget {
     pub fn is_host(&self) -> bool {
         matches!(self, Self::Host)
     }
+
+    pub fn rust_target_triple(&self) -> Option<String> {
+        match self {
+            Self::Host => None,
+            Self::Triple(triple) => map_machine_target_to_rust_target(triple),
+        }
+    }
+}
+
+fn map_machine_target_to_rust_target(raw: &str) -> Option<String> {
+    if is_known_rust_target_triple(raw) {
+        return Some(raw.to_string());
+    }
+
+    match raw {
+        "x86_64-linux-gnu" => Some("x86_64-unknown-linux-gnu".to_string()),
+        "x86_64-linux-musl" => Some("x86_64-unknown-linux-musl".to_string()),
+        "aarch64-linux-gnu" => Some("aarch64-unknown-linux-gnu".to_string()),
+        "aarch64-linux-musl" => Some("aarch64-unknown-linux-musl".to_string()),
+        "x86_64-windows-gnu" => Some("x86_64-pc-windows-gnu".to_string()),
+        "x86_64-windows-msvc" => Some("x86_64-pc-windows-msvc".to_string()),
+        "aarch64-windows-msvc" => Some("aarch64-pc-windows-msvc".to_string()),
+        "x86_64-macos-gnu" => Some("x86_64-apple-darwin".to_string()),
+        "aarch64-macos-gnu" => Some("aarch64-apple-darwin".to_string()),
+        _ => None,
+    }
+}
+
+fn is_known_rust_target_triple(raw: &str) -> bool {
+    matches!(
+        raw,
+        "x86_64-unknown-linux-gnu"
+            | "x86_64-unknown-linux-musl"
+            | "aarch64-unknown-linux-gnu"
+            | "aarch64-unknown-linux-musl"
+            | "x86_64-pc-windows-gnu"
+            | "x86_64-pc-windows-msvc"
+            | "aarch64-pc-windows-msvc"
+            | "x86_64-apple-darwin"
+            | "aarch64-apple-darwin"
+    )
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -132,5 +173,47 @@ mod tests {
         assert_eq!(host.display_name(), "host");
         assert!(!triple.is_host());
         assert_eq!(triple.display_name(), "aarch64-apple-darwin");
+    }
+
+    #[test]
+    fn machine_target_maps_fol_target_spellings_to_rust_triples() {
+        assert_eq!(
+            BackendMachineTarget::Triple("x86_64-linux-gnu".to_string()).rust_target_triple(),
+            Some("x86_64-unknown-linux-gnu".to_string())
+        );
+        assert_eq!(
+            BackendMachineTarget::Triple("aarch64-linux-musl".to_string()).rust_target_triple(),
+            Some("aarch64-unknown-linux-musl".to_string())
+        );
+        assert_eq!(
+            BackendMachineTarget::Triple("aarch64-macos-gnu".to_string()).rust_target_triple(),
+            Some("aarch64-apple-darwin".to_string())
+        );
+    }
+
+    #[test]
+    fn machine_target_keeps_known_rust_triples_stable() {
+        assert_eq!(
+            BackendMachineTarget::Triple("x86_64-unknown-linux-gnu".to_string())
+                .rust_target_triple(),
+            Some("x86_64-unknown-linux-gnu".to_string())
+        );
+        assert_eq!(
+            BackendMachineTarget::Triple("aarch64-apple-darwin".to_string()).rust_target_triple(),
+            Some("aarch64-apple-darwin".to_string())
+        );
+    }
+
+    #[test]
+    fn machine_target_rejects_unknown_target_spellings() {
+        assert_eq!(
+            BackendMachineTarget::Triple("sparc-linux-gnu".to_string()).rust_target_triple(),
+            None
+        );
+        assert_eq!(
+            BackendMachineTarget::Triple("aarch64-macos-msvc".to_string()).rust_target_triple(),
+            None
+        );
+        assert_eq!(BackendMachineTarget::Host.rust_target_triple(), None);
     }
 }
