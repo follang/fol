@@ -100,7 +100,7 @@ mod tests {
         assert_eq!(format!("{backend:?}"), "Backend");
         assert_eq!(config.target, BackendTarget::Rust);
         assert_eq!(config.build_profile, BackendBuildProfile::Release);
-        assert_eq!(config.mode, BackendMode::BuildArtifact);
+        assert_eq!(config.mode, BackendMode::BuildArtifactWithCargo);
         assert_eq!(session.workspace().package_count(), 2);
         assert!(result.is_ok());
         assert!(matches!(artifact, BackendArtifact::RustSourceCrate { .. }));

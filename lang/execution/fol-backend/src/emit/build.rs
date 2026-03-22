@@ -356,7 +356,15 @@ pub fn emit_backend_artifact(
         });
     }
 
-    let built_binary = build_generated_crate_with_cargo_for_profile(&crate_root, config.build_profile)?;
+    let built_binary = match config.mode {
+        BackendMode::EmitSource => unreachable!("emit source handled above"),
+        BackendMode::BuildArtifactWithCargo => {
+            build_generated_crate_with_cargo_for_profile(&crate_root, config.build_profile)?
+        }
+        BackendMode::BuildArtifactWithRustc => {
+            build_generated_crate_with_rustc(&crate_root, &paths, config.build_profile)?
+        }
+    };
     let final_binary_dir = PathBuf::from(&paths.bin_root);
     let final_binary = final_binary_dir.join(built_binary.file_name().ok_or_else(|| {
         BackendError::new(

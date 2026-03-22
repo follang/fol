@@ -88,7 +88,7 @@ The plan is successful when all of the following are true:
 - [x] Slice 5: compile `fol-runtime` to `.rlib` with direct `rustc`
 - [x] Slice 6: compile generated crates with direct `rustc`
 - [x] Slice 7: add rustc parity tests alongside Cargo-backed tests
-- [ ] Slice 8: introduce explicit artifact build modes for Cargo vs `rustc`
+- [x] Slice 8: introduce explicit artifact build modes for Cargo vs `rustc`
 - [ ] Slice 9: switch normal artifact builds to direct `rustc`
 - [ ] Slice 10: remove Cargo artifact-build dependency and tighten docs
 

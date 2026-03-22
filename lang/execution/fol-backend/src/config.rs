@@ -29,14 +29,16 @@ impl BackendBuildProfile {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackendMode {
     EmitSource,
-    BuildArtifact,
+    BuildArtifactWithCargo,
+    BuildArtifactWithRustc,
 }
 
 impl BackendMode {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::EmitSource => "emit-source",
-            Self::BuildArtifact => "build-artifact",
+            Self::BuildArtifactWithCargo => "build-artifact-cargo",
+            Self::BuildArtifactWithRustc => "build-artifact-rustc",
         }
     }
 }
@@ -54,7 +56,7 @@ impl Default for BackendConfig {
         Self {
             target: BackendTarget::Rust,
             build_profile: BackendBuildProfile::Release,
-            mode: BackendMode::BuildArtifact,
+            mode: BackendMode::BuildArtifactWithCargo,
             keep_build_dir: false,
         }
     }

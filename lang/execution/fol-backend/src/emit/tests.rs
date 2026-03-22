@@ -47,7 +47,7 @@ mod tests {
         let artifact = emit_backend_artifact(
             &session,
             &BackendConfig {
-                mode: BackendMode::BuildArtifact,
+                mode: BackendMode::BuildArtifactWithCargo,
                 keep_build_dir: true,
                 ..BackendConfig::default()
             },
@@ -101,7 +101,7 @@ mod tests {
         let artifact = emit_backend_artifact(
             &session,
             &BackendConfig {
-                mode: BackendMode::BuildArtifact,
+                mode: BackendMode::BuildArtifactWithCargo,
                 keep_build_dir: true,
                 ..BackendConfig::default()
             },
@@ -471,7 +471,7 @@ mod tests {
         let built = emit_backend_artifact(
             &session,
             &BackendConfig {
-                mode: BackendMode::BuildArtifact,
+                mode: BackendMode::BuildArtifactWithCargo,
                 keep_build_dir: true,
                 ..BackendConfig::default()
             },
@@ -492,7 +492,7 @@ mod tests {
         let artifact = emit_backend_artifact(
             &session,
             &BackendConfig {
-                mode: BackendMode::BuildArtifact,
+                mode: BackendMode::BuildArtifactWithCargo,
                 keep_build_dir: true,
                 ..BackendConfig::default()
             },
