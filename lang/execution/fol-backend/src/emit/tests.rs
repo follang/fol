@@ -2,9 +2,9 @@
 mod tests {
     use crate::emit::{
         backend_build_paths, build_generated_crate, build_generated_crate_with_cargo,
-        build_generated_crate_with_cargo_for_profile, build_runtime_rlib_with_rustc,
-        emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
-        emit_namespace_module_shells,
+        build_generated_crate_with_cargo_for_profile, build_generated_crate_with_rustc,
+        build_runtime_rlib_with_rustc, emit_backend_artifact, emit_cargo_toml,
+        emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
         emit_package_module_shells, prepare_backend_runtime_build_dir,
         prepare_backend_build_paths, prepare_generated_build_dir, summarize_emitted_artifact,
         write_generated_crate, backend_runtime_build_dir, backend_runtime_manifest_path,
@@ -315,6 +315,30 @@ mod tests {
         assert!(rlib.exists());
         assert!(rlib.ends_with("libfol_runtime.rlib"));
         assert!(rlib.to_string_lossy().contains("/fol-backend/runtime/release/"));
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn rustc_generated_crate_builder_produces_runnable_release_binary() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
+        let temp_root = temp_root("rustc_generated_release");
+        let paths = prepare_backend_build_paths(&temp_root).expect("prepare paths");
+        let crate_root =
+            write_generated_crate(Path::new(&paths.build_root), &artifact).expect("write crate");
+
+        let binary = build_generated_crate_with_rustc(
+            &crate_root,
+            &paths,
+            BackendBuildProfile::Release,
+        )
+        .expect("rustc build");
+        let output = Command::new(&binary).output().expect("run rustc binary");
+
+        assert!(binary.exists());
+        assert!(binary.to_string_lossy().contains("/target/release/"));
+        assert!(output.status.success());
 
         let _ = fs::remove_dir_all(&temp_root);
     }

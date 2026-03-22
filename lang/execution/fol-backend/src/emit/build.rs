@@ -136,26 +136,34 @@ fn runtime_rlib_path(runtime_build_dir: &Path) -> PathBuf {
     runtime_build_dir.join("libfol_runtime.rlib")
 }
 
+fn package_name_for_generated_crate(crate_root: &Path) -> BackendResult<&str> {
+    crate_root.file_name().and_then(|value| value.to_str()).ok_or_else(|| {
+        BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "generated crate root '{}' does not have a valid package name",
+                crate_root.display()
+            ),
+        )
+    })
+}
+
+fn built_binary_output_path(
+    crate_root: &Path,
+    profile: BackendBuildProfile,
+) -> BackendResult<PathBuf> {
+    let package_name = package_name_for_generated_crate(crate_root)?;
+    Ok(crate_root
+        .join("target")
+        .join(profile.as_str())
+        .join(package_name))
+}
+
 fn compiled_binary_path_for_generated_crate(
     crate_root: &Path,
     profile: BackendBuildProfile,
 ) -> BackendResult<PathBuf> {
-    let package_name = crate_root
-        .file_name()
-        .and_then(|value| value.to_str())
-        .ok_or_else(|| {
-            BackendError::new(
-                BackendErrorKind::BuildFailure,
-                format!(
-                    "generated crate root '{}' does not have a valid package name",
-                    crate_root.display()
-                ),
-            )
-        })?;
-    let binary_path = crate_root
-        .join("target")
-        .join(profile.as_str())
-        .join(package_name);
+    let binary_path = built_binary_output_path(crate_root, profile)?;
     if !binary_path.exists() {
         return Err(BackendError::new(
             BackendErrorKind::BuildFailure,
@@ -250,6 +258,79 @@ pub fn build_runtime_rlib_with_rustc(
         ));
     }
     Ok(rlib_path)
+}
+
+pub fn build_generated_crate_with_rustc(
+    crate_root: &Path,
+    paths: &BackendBuildPaths,
+    profile: BackendBuildProfile,
+) -> BackendResult<PathBuf> {
+    let runtime_rlib = build_runtime_rlib_with_rustc(paths, profile)?;
+    let main_rs = crate_root.join("src").join("main.rs");
+    let binary_path = built_binary_output_path(crate_root, profile)?;
+    if let Some(parent) = binary_path.parent() {
+        fs::create_dir_all(parent).map_err(|error| {
+            BackendError::new(
+                BackendErrorKind::BuildFailure,
+                format!(
+                    "failed to create generated binary dir '{}': {error}",
+                    parent.display()
+                ),
+            )
+        })?;
+    }
+    let mut command = Command::new("rustc");
+    command
+        .current_dir(crate_root)
+        .arg("--crate-name")
+        .arg(package_name_for_generated_crate(crate_root)?)
+        .arg("--edition=2021")
+        .arg(&main_rs)
+        .arg("--extern")
+        .arg(format!("fol_runtime={}", runtime_rlib.display()))
+        .arg("-L")
+        .arg(format!(
+            "dependency={}",
+            runtime_rlib
+                .parent()
+                .unwrap_or_else(|| Path::new("."))
+                .display()
+        ))
+        .arg("-o")
+        .arg(&binary_path);
+    apply_rustc_profile_args(&mut command, profile);
+    let output = command.output().map_err(|error| {
+        BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "failed to launch rustc for generated crate '{}': {error}",
+                main_rs.display()
+            ),
+        )
+    })?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Err(BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "rustc failed for generated crate '{}'\nstdout:\n{}\nstderr:\n{}",
+                main_rs.display(),
+                stdout.trim(),
+                stderr.trim()
+            ),
+        ));
+    }
+    if !binary_path.exists() {
+        return Err(BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "rustc succeeded but generated binary '{}' is missing",
+                binary_path.display()
+            ),
+        ));
+    }
+    Ok(binary_path)
 }
 
 pub fn emit_backend_artifact(
