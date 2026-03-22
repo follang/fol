@@ -180,6 +180,7 @@ pub fn run_workspace_with_args_and_config(
     config: &FrontendConfig,
     args: &[String],
 ) -> FrontendResult<FrontendCommandResult> {
+    ensure_host_runnable_target(config, "run")?;
     let built = build_workspace_with_config(workspace, config)?;
     let binaries = built
         .artifacts
@@ -238,6 +239,7 @@ pub(crate) fn run_selected_artifact_with_args_and_config(
     selection: &FrontendArtifactExecutionSelection,
     args: &[String],
 ) -> FrontendResult<FrontendCommandResult> {
+    ensure_host_runnable_target(config, "run")?;
     let built = build_selected_artifacts_for_profile_with_config(
         workspace,
         config,
@@ -314,6 +316,7 @@ pub(crate) fn test_selected_artifacts_with_config(
     profile: FrontendProfile,
     selections: &[FrontendArtifactExecutionSelection],
 ) -> FrontendResult<FrontendCommandResult> {
+    ensure_host_runnable_target(config, "test")?;
     let built =
         build_selected_artifacts_for_profile_with_config(workspace, config, profile, selections)?;
     let binaries = built
@@ -623,11 +626,29 @@ fn backend_config(
     }
 }
 
+fn ensure_host_runnable_target(config: &FrontendConfig, command: &str) -> FrontendResult<()> {
+    if config.machine_target_runs_on_host() {
+        return Ok(());
+    }
+    let machine_target = config.backend_machine_target();
+    let selected = machine_target
+        .rust_target_triple()
+        .unwrap_or_else(|| machine_target.display_name().to_string());
+    let host = FrontendConfig::host_rust_target_triple().unwrap_or("unknown-host");
+    Err(FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "{command} command cannot execute target '{selected}' on host '{host}'"
+        ),
+    ))
+}
+
 fn test_workspace_selected_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
     selected_package: Option<&str>,
 ) -> FrontendResult<FrontendCommandResult> {
+    ensure_host_runnable_target(config, "test")?;
     let selected_members = selected_workspace_members(workspace, selected_package)?;
     let mut result = FrontendCommandResult::new("test", "tested 0 workspace package(s)");
     let mut tested_count = 0usize;

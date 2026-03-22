@@ -2,7 +2,7 @@ use super::{
     backend_config, build_workspace, build_workspace_for_profile_with_config,
     build_workspace_with_config, check_workspace, emit_lowered, emit_rust,
     profile_build_root, run_workspace, run_workspace_with_args_and_config, test_package,
-    test_workspace,
+    test_workspace, test_workspace_with_config,
 };
 use crate::{
     FrontendArtifactKind, FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot,
@@ -18,8 +18,16 @@ fn semantic_bin_build() -> &'static str {
         "    graph.install(app);\n",
         "    graph.add_run(app);\n",
         "    graph.add_test({ name = \"app_test\", root = \"src/main.fol\" });\n",
-        "}\n",
+        "};\n",
     )
+}
+
+fn non_host_machine_target() -> String {
+    if FrontendConfig::host_rust_target_triple() == Some("aarch64-apple-darwin") {
+        "x86_64-unknown-linux-gnu".to_string()
+    } else {
+        "aarch64-apple-darwin".to_string()
+    }
 }
 
 #[test]
@@ -32,7 +40,7 @@ fn check_workspace_runs_the_real_pipeline_for_workspace_members() {
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -65,7 +73,7 @@ fn build_workspace_runs_the_backend_for_runnable_members() {
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -140,7 +148,7 @@ fn build_workspace_uses_profile_specific_output_roots() {
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -180,7 +188,7 @@ fn run_workspace_executes_a_single_runnable_member() {
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -219,7 +227,7 @@ fn run_workspace_passes_through_binary_arguments() {
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -247,6 +255,44 @@ fn run_workspace_passes_through_binary_arguments() {
 }
 
 #[test]
+fn run_workspace_rejects_non_host_machine_targets_before_execution() {
+    let root =
+        std::env::temp_dir().join(format!("fol_frontend_run_cross_{}", std::process::id()));
+    let app = root.join("app");
+    let src = app.join("src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+    fs::write(
+        src.join("main.fol"),
+        "fun[] main(): int = {\n    return 0\n};\n",
+    )
+    .unwrap();
+
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(app)],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+    let config = crate::FrontendConfig {
+        build_target_override: Some(non_host_machine_target()),
+        ..crate::FrontendConfig::default()
+    };
+
+    let error = run_workspace_with_args_and_config(&workspace, &config, &[]).unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("run command cannot execute target"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn build_workspace_keeps_generated_crate_dirs_when_requested() {
     let root = std::env::temp_dir().join(format!(
         "fol_frontend_keep_build_dir_{}",
@@ -259,7 +305,7 @@ fn build_workspace_keeps_generated_crate_dirs_when_requested() {
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -295,7 +341,7 @@ fn test_workspace_runs_single_workspace_members() {
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -331,7 +377,7 @@ fn test_package_selects_a_single_named_workspace_member() {
         fs::write(package.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0\n};\n",
         )
         .unwrap();
     }
@@ -356,6 +402,44 @@ fn test_package_selects_a_single_named_workspace_member() {
 }
 
 #[test]
+fn test_workspace_rejects_non_host_machine_targets_before_execution() {
+    let root =
+        std::env::temp_dir().join(format!("fol_frontend_test_cross_{}", std::process::id()));
+    let app = root.join("app");
+    let src = app.join("src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
+    fs::write(
+        src.join("main.fol"),
+        "fun[] main(): int = {\n    return 0\n};\n",
+    )
+    .unwrap();
+
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(app)],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+    let config = crate::FrontendConfig {
+        build_target_override: Some(non_host_machine_target()),
+        ..crate::FrontendConfig::default()
+    };
+
+    let error = test_workspace_with_config(&workspace, &config).unwrap_err();
+
+    assert!(error
+        .to_string()
+        .contains("test command cannot execute target"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn emit_rust_materializes_generated_crates_for_workspace_members() {
     let root =
         std::env::temp_dir().join(format!("fol_frontend_emit_rust_{}", std::process::id()));
@@ -366,7 +450,7 @@ fn emit_rust_materializes_generated_crates_for_workspace_members() {
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -408,7 +492,7 @@ fn emit_lowered_materializes_rendered_workspace_snapshots() {
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 

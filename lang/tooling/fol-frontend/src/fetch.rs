@@ -564,7 +564,7 @@ mod tests {
             "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
             "    graph.install(app);\n",
             "    graph.add_run(app);\n",
-            "}\n",
+            "};\n",
         )
     }
 
@@ -574,7 +574,7 @@ mod tests {
                 "pro[] build(graph: Graph): non = {{\n",
                 "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
                 "    graph.install(lib);\n",
-                "}}\n",
+                "}};\n",
             ),
             name = name
         )
@@ -769,7 +769,7 @@ mod tests {
         .expect("should write app manifest");
         fs::write(app.join("build.fol"), semantic_bin_build())
             .expect("should write app build");
-        fs::write(app.join("src/main.fol"), "var[exp] answer: int = 1\n")
+        fs::write(app.join("src/main.fol"), "var[exp] answer: int = 1;\n")
             .expect("should write app source");
 
         let workspace = FrontendWorkspace {
@@ -812,7 +812,7 @@ mod tests {
         .expect("package metadata should be writable");
         fs::write(root.join("build.fol"), semantic_lib_build(name))
             .expect("package build should be writable");
-        fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")
+        fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1;\n")
             .expect("package source should be writable");
         git(root, &["init"]);
         git(root, &["config", "user.name", "FOL"]);

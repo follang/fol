@@ -25,7 +25,7 @@ fn init_root_scaffolds_binary_packages_through_public_api() {
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::PackageRoot);
     assert_eq!(
         fs::read_to_string(root.join("src/main.fol")).expect("should read main"),
-        "fun[] main(): int = {\n    return 0\n}\n"
+        "fun[] main(): int = {\n    return 0\n};\n"
     );
     assert_eq!(
         fs::read_to_string(root.join("package.yaml")).expect("should read package manifest"),
@@ -83,7 +83,7 @@ fn new_project_scaffolds_library_packages_through_public_api() {
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::PackageRoot);
     assert_eq!(
         fs::read_to_string(root.join("src/lib.fol")).expect("should read lib"),
-        "fun[exp] demo(): int = {\n    return 0\n}\n"
+        "fun[exp] demo(): int = {\n    return 0\n};\n"
     );
     assert_eq!(
         fs::read_to_string(root.join("package.yaml")).expect("should read package manifest"),

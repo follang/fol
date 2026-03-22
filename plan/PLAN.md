@@ -243,7 +243,7 @@ states the selected target and the current host.
 - [x] Slice 4: make backend runtime and binary output paths target-scoped
 - [x] Slice 5: pass `--target` to rustc for runtime builds
 - [x] Slice 6: pass `--target` to rustc for generated crate builds
-- [ ] Slice 7: reject non-host execution in `run` and `test` with clear diagnostics
+- [x] Slice 7: reject non-host execution in `run` and `test` with clear diagnostics
 - [ ] Slice 8: add backend and frontend tests for target layout and diagnostics
 - [ ] Slice 9: document cross-compilation behavior in `book/`
 

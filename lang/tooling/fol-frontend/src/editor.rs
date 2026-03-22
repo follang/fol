@@ -172,7 +172,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0\n};\n",
         )
         .unwrap();
         (
@@ -291,8 +291,8 @@ mod tests {
 
         assert_eq!(tree.command, "tree generate");
         assert!(tree.summary.contains("tree-sitter bundle ready"));
-        assert!(tree.summary.contains("captures="));
-        assert!(tree.summary.contains("queries="));
+        assert!(tree.summary.contains("query_files="));
+        assert!(tree.summary.contains("corpus_files="));
 
         std::fs::remove_dir_all(tree_root).ok();
     }

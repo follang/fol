@@ -313,12 +313,12 @@ fn editor_build_file_commands_dispatch_through_public_cli() {
         .expect("should write package manifest");
     fs::write(
         &build,
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
     )
     .expect("should write build source");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .expect("should write entry source");
 
@@ -422,14 +422,14 @@ fn editor_rename_command_surfaces_safe_boundary_failures() {
         .expect("should write app package manifest");
     fs::write(
         root.join("app/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
     )
     .expect("should write app build source");
     fs::write(&root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n")
         .expect("should write shared package manifest");
     fs::write(
         root.join("shared/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
     )
     .expect("should write shared build source");
     fs::write(
@@ -477,7 +477,7 @@ fn editor_rename_command_supports_same_package_namespaced_symbols() {
         .expect("should write package manifest");
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
     )
     .expect("should write build source");
     fs::write(
@@ -537,7 +537,7 @@ fn editor_commands_do_not_require_workspace_discovery() {
     let root = temp_root("no_workspace");
     fs::create_dir_all(&root).expect("should create temp root");
     let file = root.join("sample.fol");
-    fs::write(&file, "fun[] main(): int = {\n    return 0\n}\n")
+    fs::write(&file, "fun[] main(): int = {\n    return 0\n};\n")
         .expect("should write sample source");
 
     let (_, result) = run_command_from_args_in_dir(
@@ -731,14 +731,14 @@ fn editor_rename_json_error_stays_snapshot_stable() {
         .expect("should write app package manifest");
     fs::write(
         root.join("app/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
     )
     .expect("should write app build source");
     fs::write(&root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n")
         .expect("should write shared package manifest");
     fs::write(
         root.join("shared/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
     )
     .expect("should write shared build source");
     fs::write(

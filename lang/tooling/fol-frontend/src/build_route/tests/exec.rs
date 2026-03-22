@@ -24,13 +24,13 @@ fn cli_selected_custom_graph_steps_flow_into_the_routed_member_plan() {
             "pro[] build(graph: Graph): non = {\n",
             "    graph.step(\"docs\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     let requested_step = super::super::requested_workspace_step(
@@ -69,13 +69,13 @@ fn custom_run_steps_plan_as_run_execution() {
             "    graph.add_exe(\"app\", \"src/main.fol\");\n",
             "    graph.add_run(\"serve\", \"app\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     let plan = plan_member_execution(&FrontendMemberBuildRoute {
@@ -123,18 +123,18 @@ fn explicit_named_run_steps_select_the_requested_artifact_when_multiple_runnable
             "    graph.add_run(\"serve\", \"serve_app\");\n",
             "    graph.add_run(\"admin\", \"admin_app\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         root.join("src/serve.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("src/admin.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     let plan = plan_member_execution(&FrontendMemberBuildRoute {
@@ -182,18 +182,18 @@ fn named_build_steps_can_target_matching_artifacts_when_multiple_builds_exist() 
             "    graph.step(\"serve_app\");\n",
             "    graph.step(\"admin_app\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         root.join("src/serve.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("src/admin.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -240,18 +240,18 @@ fn default_build_step_is_marked_ambiguous_when_multiple_executables_exist() {
             "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
             "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         root.join("src/serve.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("src/admin.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
 
@@ -293,18 +293,18 @@ fn ambiguous_default_multi_artifact_build_steps_fail_clearly() {
             "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
             "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         root.join("src/serve.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("src/admin.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     let workspace = FrontendWorkspace {
@@ -353,14 +353,14 @@ fn configured_executable_roots_drive_default_build_and_run_step_planning() {
             "    graph.add_exe(\"app\", \"src/app.fol\");\n",
             "    graph.add_run(\"serve\", \"app\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(root.join("src/main.fol"), "var[exp] ignored: int = 1;\n").unwrap();
     fs::write(
         root.join("src/app.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     let plan = plan_member_execution(&FrontendMemberBuildRoute {
@@ -428,14 +428,14 @@ fn object_style_artifact_build_bodies_drive_default_build_and_run_step_planning(
             "    graph.install(app);\n",
             "    graph.add_run(app);\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(root.join("src/main.fol"), "var[exp] ignored: int = 1;\n").unwrap();
     fs::write(
         root.join("src/app.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     let plan = plan_member_execution(&FrontendMemberBuildRoute {
@@ -493,13 +493,13 @@ fn workspace_route_plans_modern_build_members_through_default_graph_planning() {
             "pro[] build(graph: Graph): non = {\n",
             "    graph.add_exe(\"demo\", \"src/main.fol\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
     let plan = plan_member_execution(&FrontendMemberBuildRoute {
@@ -534,7 +534,7 @@ fn workspace_route_plans_modern_check_steps_even_without_a_runnable_binary() {
             "pro[] build(graph: Graph): non = {\n",
             "    graph.step(\"docs\");\n",
             "    return graph\n",
-            "}\n",
+            "};\n",
         ),
     )
     .unwrap();

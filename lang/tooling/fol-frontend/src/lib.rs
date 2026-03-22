@@ -305,7 +305,7 @@ mod tests {
             "    graph.install(app);\n",
             "    graph.add_run(app);\n",
             "    graph.add_test({ name = \"app_test\", root = \"src/main.fol\" });\n",
-            "}\n",
+            "};\n",
         )
     }
 
@@ -328,7 +328,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0\n};\n",
         )
         .unwrap();
 
@@ -362,7 +362,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0\n};\n",
         )
         .unwrap();
 
@@ -429,7 +429,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             src.join("main.fol"),
-            "fun[] main(): int = {\n    return 0\n}\n",
+            "fun[] main(): int = {\n    return 0\n};\n",
         )
         .unwrap();
 

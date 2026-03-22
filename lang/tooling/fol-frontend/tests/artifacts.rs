@@ -33,7 +33,7 @@ fn build_and_emit_commands_report_explicit_root_artifacts() {
     fs::write(root.join("build.fol"), semantic_bin_build()).expect("should write build");
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0\n}\n",
+        "fun[] main(): int = {\n    return 0\n};\n",
     )
     .expect("should write source");
 

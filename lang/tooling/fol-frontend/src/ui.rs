@@ -239,7 +239,7 @@ mod tests {
 
         assert!(rendered_result.contains("\"command\": \"build\""));
         assert!(rendered_result.contains("\"kind\": \"binary\""));
-        assert!(rendered_error.contains("\"kind\": \"FrontendCommandFailed\""));
+        assert!(rendered_error.contains("\"boom\""));
         assert!(rendered_error.contains("\"note one\""));
     }
 
@@ -262,9 +262,8 @@ mod tests {
 
         let rendered = output.render_human_error(&error);
 
-        assert!(rendered.contains("Error:"));
-        assert!(rendered.contains("Note:"));
         assert!(rendered.contains("missing root"));
+        assert!(rendered.contains("run `fol work init --bin`"));
     }
 
     #[test]

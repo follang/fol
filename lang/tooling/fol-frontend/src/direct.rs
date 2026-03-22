@@ -55,6 +55,22 @@ fn backend_profile_for_direct_compile(
     }
 }
 
+fn ensure_direct_target_runs_on_host(frontend_config: &FrontendConfig) -> FrontendResult<()> {
+    if frontend_config.machine_target_runs_on_host() {
+        return Ok(());
+    }
+
+    let machine_target = frontend_config.backend_machine_target();
+    let selected = machine_target
+        .rust_target_triple()
+        .unwrap_or_else(|| machine_target.display_name().to_string());
+    let host = FrontendConfig::host_rust_target_triple().unwrap_or("unknown-host");
+    Err(FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!("run command cannot execute target '{selected}' on host '{host}'"),
+    ))
+}
+
 pub fn run_direct_compile(
     config: &DirectCompileConfig,
     frontend_config: &FrontendConfig,
@@ -232,6 +248,9 @@ pub fn run_direct_compile(
         DirectCompileMode::Build { keep_build_dir }
         | DirectCompileMode::Run { keep_build_dir, .. }
         | DirectCompileMode::EmitRust { keep_build_dir } => {
+            if matches!(config.mode, DirectCompileMode::Run { .. }) {
+                ensure_direct_target_runs_on_host(frontend_config)?;
+            }
             if lowered.entry_candidates().is_empty() {
                 return Err(FrontendError::new(
                     FrontendErrorKind::InvalidInput,
@@ -409,40 +428,102 @@ pub fn run_direct_compile_with_io(
                     config.mode,
                     DirectCompileMode::Check | DirectCompileMode::EmitLowered
                 ) {
-                    let backend_session = BackendSession::new(lowered);
-                    let output_root = frontend_config.working_directory.join("target");
-                    match emit_backend_artifact(
-                        &backend_session,
-                        &BackendConfig {
-                            machine_target: frontend_config.backend_machine_target(),
-                            build_profile: backend_profile_for_direct_compile(frontend_config),
-                            mode: match config.mode {
-                                DirectCompileMode::Auto {
-                                    emit_rust: true, ..
-                                } => BackendMode::EmitSource,
-                                DirectCompileMode::EmitRust { .. } => BackendMode::EmitSource,
-                                _ => BackendMode::BuildArtifact,
-                            },
-                            keep_build_dir: match &config.mode {
-                                DirectCompileMode::Auto { keep_build_dir, .. } => *keep_build_dir,
-                                DirectCompileMode::Build { keep_build_dir }
-                                | DirectCompileMode::Run { keep_build_dir, .. }
-                                | DirectCompileMode::EmitRust { keep_build_dir } => *keep_build_dir,
-                                _ => false,
-                            },
-                            ..BackendConfig::default()
-                        },
-                        &output_root,
-                    ) {
-                        Ok(artifact) => {
-                            if frontend_config.output.mode != OutputMode::Json {
-                                let _ =
-                                    writeln!(stdout, "{}", summarize_emitted_artifact(&artifact));
-                                let _ = writeln!(stdout, "✓ Compilation successful!");
+                    match matches!(config.mode, DirectCompileMode::Run { .. }) {
+                        true => match ensure_direct_target_runs_on_host(frontend_config) {
+                            Ok(()) => {
+                                let backend_session = BackendSession::new(lowered);
+                                let output_root = frontend_config.working_directory.join("target");
+                                match emit_backend_artifact(
+                                    &backend_session,
+                                    &BackendConfig {
+                                        machine_target: frontend_config.backend_machine_target(),
+                                        build_profile: backend_profile_for_direct_compile(
+                                            frontend_config,
+                                        ),
+                                        mode: match config.mode {
+                                            DirectCompileMode::Auto {
+                                                emit_rust: true, ..
+                                            } => BackendMode::EmitSource,
+                                            DirectCompileMode::EmitRust { .. } => {
+                                                BackendMode::EmitSource
+                                            }
+                                            _ => BackendMode::BuildArtifact,
+                                        },
+                                        keep_build_dir: match &config.mode {
+                                            DirectCompileMode::Auto {
+                                                keep_build_dir, ..
+                                            } => *keep_build_dir,
+                                            DirectCompileMode::Build { keep_build_dir }
+                                            | DirectCompileMode::Run { keep_build_dir, .. }
+                                            | DirectCompileMode::EmitRust { keep_build_dir } => {
+                                                *keep_build_dir
+                                            }
+                                            _ => false,
+                                        },
+                                        ..BackendConfig::default()
+                                    },
+                                    &output_root,
+                                ) {
+                                    Ok(artifact) => {
+                                        if frontend_config.output.mode != OutputMode::Json {
+                                            let _ = writeln!(
+                                                stdout,
+                                                "{}",
+                                                summarize_emitted_artifact(&artifact)
+                                            );
+                                            let _ = writeln!(stdout, "✓ Compilation successful!");
+                                        }
+                                    }
+                                    Err(error) => {
+                                        diagnostics.add_error(error.to_string(), None);
+                                    }
+                                }
                             }
-                        }
-                        Err(error) => {
-                            diagnostics.add_error(error.to_string(), None);
+                            Err(error) => diagnostics.add_error(error.to_string(), None),
+                        },
+                        false => {
+                            let backend_session = BackendSession::new(lowered);
+                            let output_root = frontend_config.working_directory.join("target");
+                            match emit_backend_artifact(
+                                &backend_session,
+                                &BackendConfig {
+                                    machine_target: frontend_config.backend_machine_target(),
+                                    build_profile: backend_profile_for_direct_compile(
+                                        frontend_config,
+                                    ),
+                                    mode: match config.mode {
+                                        DirectCompileMode::Auto {
+                                            emit_rust: true, ..
+                                        } => BackendMode::EmitSource,
+                                        DirectCompileMode::EmitRust { .. } => BackendMode::EmitSource,
+                                        _ => BackendMode::BuildArtifact,
+                                    },
+                                    keep_build_dir: match &config.mode {
+                                        DirectCompileMode::Auto { keep_build_dir, .. } => {
+                                            *keep_build_dir
+                                        }
+                                        DirectCompileMode::Build { keep_build_dir }
+                                        | DirectCompileMode::Run { keep_build_dir, .. }
+                                        | DirectCompileMode::EmitRust { keep_build_dir } => {
+                                            *keep_build_dir
+                                        }
+                                        _ => false,
+                                    },
+                                    ..BackendConfig::default()
+                                },
+                                &output_root,
+                            ) {
+                                Ok(artifact) => {
+                                    if frontend_config.output.mode != OutputMode::Json {
+                                        let _ =
+                                            writeln!(stdout, "{}", summarize_emitted_artifact(&artifact));
+                                        let _ = writeln!(stdout, "✓ Compilation successful!");
+                                    }
+                                }
+                                Err(error) => {
+                                    diagnostics.add_error(error.to_string(), None);
+                                }
+                            }
                         }
                     }
                 }
@@ -569,5 +650,54 @@ fn render_direct_diagnostics(report: &DiagnosticReport, mode: OutputMode) -> Str
         crate::colorize::colorize_diagnostics(&rendered)
     } else {
         rendered
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{run_direct_compile, DirectCompileConfig, DirectCompileMode};
+    use crate::FrontendConfig;
+    use std::fs;
+
+    fn non_host_machine_target() -> String {
+        if FrontendConfig::host_rust_target_triple() == Some("aarch64-apple-darwin") {
+            "x86_64-unknown-linux-gnu".to_string()
+        } else {
+            "aarch64-apple-darwin".to_string()
+        }
+    }
+
+    #[test]
+    fn run_direct_compile_rejects_non_host_machine_targets() {
+        let root = std::env::temp_dir().join(format!("fol_direct_cross_run_{}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let input = root.join("main.fol");
+        fs::write(&input, "fun[] main(): int = {\n    return 0\n};\n").unwrap();
+
+        let config = DirectCompileConfig {
+            input: input.display().to_string(),
+            std_root: None,
+            package_store_root: None,
+            mode: DirectCompileMode::Run {
+                keep_build_dir: false,
+                args: Vec::new(),
+            },
+        };
+        let frontend_config = FrontendConfig {
+            build_target_override: Some(non_host_machine_target()),
+            ..FrontendConfig::default()
+        };
+
+        let error = run_direct_compile(&config, &frontend_config).unwrap_err();
+
+        assert!(
+            error
+                .to_string()
+                .contains("run command cannot execute target"),
+            "{}",
+            error
+        );
+
+        fs::remove_dir_all(root).ok();
     }
 }
