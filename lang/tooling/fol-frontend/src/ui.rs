@@ -1,4 +1,4 @@
-use crate::ansi;
+use crate::ansi::Colored;
 use crate::{FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
 use fol_diagnostics::{DiagnosticReport, OutputFormat, ToDiagnostic};
 
@@ -9,7 +9,7 @@ pub struct FrontendOutput {
 
 impl FrontendOutput {
     pub fn new(config: FrontendOutputConfig) -> Self {
-        ansi::set_enabled(matches!(config.mode, OutputMode::Human));
+        crate::ansi::set_enabled(matches!(config.mode, OutputMode::Human));
         Self { config }
     }
 
@@ -26,36 +26,19 @@ impl FrontendOutput {
     }
 
     fn styled_section(&self, title: &str) -> String {
-        if self.should_use_color() {
-            ansi::bold_cyan(title)
-        } else {
-            title.to_string()
-        }
+        format!("{}", title.cyan().bold())
     }
 
     fn styled_label(&self, label: &str, width: usize) -> String {
-        let padded = format!("{label:<width$}");
-        if self.should_use_color() {
-            ansi::bold_yellow(&padded)
-        } else {
-            padded
-        }
+        format!("{}", format!("{label:<width$}").yellow().bold())
     }
 
     fn styled_action(&self, action: &str) -> String {
-        if self.should_use_color() {
-            ansi::bold_green(action)
-        } else {
-            action.to_string()
-        }
+        format!("{}", action.green().bold())
     }
 
     fn styled_path(&self, path: &str) -> String {
-        if self.should_use_color() {
-            ansi::cyan(path)
-        } else {
-            path.to_string()
-        }
+        format!("{}", path.cyan())
     }
 
 
