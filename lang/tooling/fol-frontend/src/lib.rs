@@ -3,6 +3,7 @@
 //! `fol-frontend` will become the canonical command-line/workspace entrypoint
 //! above `fol-package` and the compiler pipeline.
 
+pub(crate) mod ansi;
 mod build_route;
 mod clean;
 mod cli;

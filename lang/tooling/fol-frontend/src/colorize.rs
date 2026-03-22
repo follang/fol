@@ -1,4 +1,4 @@
-use colored::Colorize;
+use crate::ansi;
 
 /// Apply ANSI colors to plain-text diagnostic output from `render_human`.
 ///
@@ -10,23 +10,17 @@ pub fn colorize_diagnostics(plain: &str) -> String {
     for line in plain.lines() {
         let trimmed = line.trim_start();
         if trimmed.starts_with("error[") || trimmed.starts_with("error:") {
-            output.push_str(&colorize_prefix(line, "error", |s| {
-                s.red().bold().to_string()
-            }));
+            output.push_str(&colorize_prefix(line, "error", ansi::bold_red));
         } else if trimmed.starts_with("warning[") || trimmed.starts_with("warning:") {
-            output.push_str(&colorize_prefix(line, "warning", |s| {
-                s.yellow().bold().to_string()
-            }));
+            output.push_str(&colorize_prefix(line, "warning", ansi::bold_yellow));
         } else if trimmed.starts_with("info[") || trimmed.starts_with("info:") {
-            output.push_str(&colorize_prefix(line, "info", |s| {
-                s.blue().bold().to_string()
-            }));
+            output.push_str(&colorize_prefix(line, "info", ansi::bold_blue));
         } else if trimmed.starts_with("-->") {
-            output.push_str(&line.replace("-->", &"-->".blue().bold().to_string()));
+            output.push_str(&line.replace("-->", &ansi::bold_blue("-->")));
         } else if trimmed.starts_with("note:") {
-            output.push_str(&line.replacen("note:", &"note:".blue().bold().to_string(), 1));
+            output.push_str(&line.replacen("note:", &ansi::bold_blue("note:"), 1));
         } else if trimmed.starts_with("help:") {
-            output.push_str(&line.replacen("help:", &"help:".green().bold().to_string(), 1));
+            output.push_str(&line.replacen("help:", &ansi::bold_green("help:"), 1));
         } else {
             output.push_str(line);
         }

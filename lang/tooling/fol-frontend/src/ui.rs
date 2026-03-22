@@ -1,5 +1,5 @@
+use crate::ansi;
 use crate::{FrontendCommandResult, FrontendError, FrontendOutputConfig, OutputMode};
-use colored::Colorize;
 use fol_diagnostics::{DiagnosticReport, OutputFormat, ToDiagnostic};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -9,10 +9,7 @@ pub struct FrontendOutput {
 
 impl FrontendOutput {
     pub fn new(config: FrontendOutputConfig) -> Self {
-        // Process-level setting: colored crate uses global state. This is intentional
-        // since the CLI is single-threaded at the output-config level and color mode
-        // is determined once at startup.
-        colored::control::set_override(matches!(config.mode, OutputMode::Human));
+        ansi::set_enabled(matches!(config.mode, OutputMode::Human));
         Self { config }
     }
 
@@ -30,7 +27,7 @@ impl FrontendOutput {
 
     fn styled_section(&self, title: &str) -> String {
         if self.should_use_color() {
-            title.bold().cyan().to_string()
+            ansi::bold_cyan(title)
         } else {
             title.to_string()
         }
@@ -39,7 +36,7 @@ impl FrontendOutput {
     fn styled_label(&self, label: &str, width: usize) -> String {
         let padded = format!("{label:<width$}");
         if self.should_use_color() {
-            padded.bold().yellow().to_string()
+            ansi::bold_yellow(&padded)
         } else {
             padded
         }
@@ -47,7 +44,7 @@ impl FrontendOutput {
 
     fn styled_action(&self, action: &str) -> String {
         if self.should_use_color() {
-            action.bold().green().to_string()
+            ansi::bold_green(action)
         } else {
             action.to_string()
         }
@@ -55,7 +52,7 @@ impl FrontendOutput {
 
     fn styled_path(&self, path: &str) -> String {
         if self.should_use_color() {
-            path.cyan().to_string()
+            ansi::cyan(path)
         } else {
             path.to_string()
         }

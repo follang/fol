@@ -11,7 +11,6 @@ path = "src/lib.rs"
 [dependencies]
 clap = { version = "4.0", features = ["derive", "env"] }
 clap_complete = "=4.5.1"
-colored = "2"
 serde_json = "1"
 fol-package = { path = "../../compiler/fol-package" }
 fol-stream = { path = "../../compiler/fol-stream" }
