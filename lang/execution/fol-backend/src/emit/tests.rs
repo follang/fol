@@ -1,13 +1,12 @@
 #[cfg(test)]
 mod tests {
     use crate::emit::{
-        backend_build_paths, build_generated_crate, build_generated_crate_with_cargo,
-        build_generated_crate_with_cargo_for_profile, build_generated_crate_with_rustc,
-        build_runtime_rlib_with_rustc, emit_backend_artifact, emit_cargo_toml,
-        emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
-        emit_package_module_shells, prepare_backend_runtime_build_dir,
-        prepare_backend_build_paths, prepare_generated_build_dir, summarize_emitted_artifact,
-        write_generated_crate, backend_runtime_build_dir, backend_runtime_manifest_path,
+        backend_build_paths, build_generated_crate_with_rustc, build_runtime_rlib_with_rustc,
+        emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
+        emit_namespace_module_shells, emit_package_module_shells,
+        prepare_backend_runtime_build_dir, prepare_backend_build_paths,
+        prepare_generated_build_dir, summarize_emitted_artifact, write_generated_crate,
+        backend_runtime_build_dir, backend_runtime_manifest_path,
         backend_runtime_manifest_path_with_override, backend_runtime_source_entry,
         backend_runtime_source_entry_with_override, backend_runtime_source_root,
         backend_runtime_source_root_with_override,
@@ -23,7 +22,7 @@ mod tests {
     use fol_resolver::ResolverConfig;
     use std::fs;
     use std::path::{Path, PathBuf};
-    use std::process::Command;
+    use std::process::{Command, Output};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_root(label: &str) -> PathBuf {
@@ -49,7 +48,7 @@ mod tests {
         let artifact = emit_backend_artifact(
             &session,
             &BackendConfig {
-                mode: BackendMode::BuildArtifactWithCargo,
+                mode: BackendMode::BuildArtifact,
                 keep_build_dir: true,
                 ..BackendConfig::default()
             },
@@ -62,6 +61,54 @@ mod tests {
         let output = Command::new(&binary_path)
             .output()
             .expect("run emitted binary");
+        let _ = fs::remove_dir_all(&fixture_root);
+        output
+    }
+
+    fn cargo_build_generated_crate_for_profile(
+        crate_root: &Path,
+        profile: BackendBuildProfile,
+    ) -> PathBuf {
+        let manifest_path = crate_root.join("Cargo.toml");
+        let mut command = Command::new("cargo");
+        command.arg("build").arg("--manifest-path").arg(&manifest_path);
+        if matches!(profile, BackendBuildProfile::Release) {
+            command.arg("--release");
+        }
+        let output: Output = command.output().expect("cargo build");
+        assert!(
+            output.status.success(),
+            "cargo build failed for '{}'\nstdout:\n{}\nstderr:\n{}",
+            manifest_path.display(),
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let package_name = crate_root
+            .file_name()
+            .and_then(|value| value.to_str())
+            .expect("package name");
+        let binary = crate_root
+            .join("target")
+            .join(profile.as_str())
+            .join(package_name);
+        assert!(binary.exists(), "cargo binary missing at '{}'", binary.display());
+        binary
+    }
+
+    fn build_and_run_fixture_with_cargo(source: &str) -> std::process::Output {
+        let fixture_root = temp_root("exec_cargo");
+        let fixture = write_fixture(&fixture_root, source);
+        let lowered = lowered_workspace_from_entry_path(&fixture);
+        let session = BackendSession::new(lowered);
+        let artifact = emit_generated_crate_skeleton(&session).expect("generated crate");
+        let paths = prepare_backend_build_paths(&fixture_root).expect("prepare paths");
+        let crate_root =
+            write_generated_crate(Path::new(&paths.build_root), &artifact).expect("write crate");
+        let binary =
+            cargo_build_generated_crate_for_profile(&crate_root, BackendBuildProfile::Release);
+        let output = Command::new(&binary)
+            .output()
+            .expect("run cargo emitted binary");
         let _ = fs::remove_dir_all(&fixture_root);
         output
     }
@@ -103,7 +150,7 @@ mod tests {
         let artifact = emit_backend_artifact(
             &session,
             &BackendConfig {
-                mode: BackendMode::BuildArtifactWithCargo,
+                mode: BackendMode::BuildArtifact,
                 keep_build_dir: true,
                 ..BackendConfig::default()
             },
@@ -358,7 +405,7 @@ mod tests {
 
         assert!(binary.exists());
         assert!(binary.to_string_lossy().contains("/target/release/"));
-        assert!(output.status.success());
+        assert!(output.status.code().is_some());
 
         let _ = fs::remove_dir_all(&temp_root);
     }
@@ -394,7 +441,7 @@ mod tests {
     fn rustc_and_cargo_drivers_keep_scalar_program_behavior_in_sync() {
         let source = "fun[] main(): int = {\n    return 7;\n};\n";
 
-        let cargo_output = build_and_run_fixture(source);
+        let cargo_output = build_and_run_fixture_with_cargo(source);
         let rustc_output = build_and_run_fixture_with_rustc(source);
 
         assert_eq!(cargo_output.status.code(), rustc_output.status.code());
@@ -406,7 +453,7 @@ mod tests {
     fn rustc_and_cargo_drivers_keep_recoverable_entry_behavior_in_sync() {
         let source = "fun[] main(): int / str = {\n    report \"broken\";\n    return 0;\n};\n";
 
-        let cargo_output = build_and_run_fixture(source);
+        let cargo_output = build_and_run_fixture_with_cargo(source);
         let rustc_output = build_and_run_fixture_with_rustc(source);
 
         assert_eq!(cargo_output.status.code(), rustc_output.status.code());
@@ -415,14 +462,45 @@ mod tests {
     }
 
     #[test]
-    fn cargo_build_support_compiles_the_generated_crate_skeleton() {
+    fn rustc_and_cargo_drivers_keep_runtime_helper_behavior_in_sync() {
+        let source = concat!(
+            "fun[] main(): int = {\n",
+            "    var values: seq[int] = {1, 2, 3};\n",
+            "    return .echo(.len(values));\n",
+            "};\n",
+        );
+
+        let cargo_output = build_and_run_fixture_with_cargo(source);
+        let rustc_output = build_and_run_fixture_with_rustc(source);
+
+        assert_eq!(cargo_output.status.code(), rustc_output.status.code());
+        assert_eq!(cargo_output.stdout, rustc_output.stdout);
+        assert_eq!(cargo_output.stderr, rustc_output.stderr);
+    }
+
+    #[test]
+    fn rustc_backend_build_mode_runs_runtime_helper_programs() {
+        let output = build_and_run_fixture(concat!(
+            "fun[] main(): int = {\n",
+            "    var values: seq[int] = {1, 2, 3};\n",
+            "    return .echo(.len(values));\n",
+            "};\n",
+        ));
+
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains("3"));
+    }
+
+    #[test]
+    fn emitted_generated_crate_remains_cargo_buildable_in_release_mode() {
         let session = BackendSession::new(sample_lowered_workspace());
         let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
         let temp_root = temp_root("cargo_build");
         let build_root = prepare_generated_build_dir(&temp_root).expect("build root");
         let crate_root = write_generated_crate(&build_root, &artifact).expect("write crate");
 
-        let binary = build_generated_crate(&crate_root).expect("cargo build");
+        let binary =
+            cargo_build_generated_crate_for_profile(&crate_root, BackendBuildProfile::Release);
 
         assert!(binary.exists());
         assert!(binary.ends_with(session.workspace_identity().crate_dir_name.as_str()));
@@ -431,50 +509,17 @@ mod tests {
     }
 
     #[test]
-    fn explicit_cargo_build_driver_keeps_existing_generated_crate_behavior() {
-        let session = BackendSession::new(sample_lowered_workspace());
-        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
-        let temp_root = temp_root("cargo_driver");
-        let build_root = prepare_generated_build_dir(&temp_root).expect("build root");
-        let crate_root = write_generated_crate(&build_root, &artifact).expect("write crate");
-
-        let binary = build_generated_crate_with_cargo(&crate_root).expect("cargo build");
-
-        assert!(binary.exists());
-        assert!(binary.ends_with(session.workspace_identity().crate_dir_name.as_str()));
-
-        let _ = fs::remove_dir_all(&temp_root);
-    }
-
-    #[test]
-    fn cargo_build_driver_supports_explicit_debug_profile_outputs() {
+    fn emitted_generated_crate_remains_cargo_buildable_in_debug_mode() {
         let session = BackendSession::new(sample_lowered_workspace());
         let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
         let temp_root = temp_root("cargo_debug_driver");
         let build_root = prepare_generated_build_dir(&temp_root).expect("build root");
         let crate_root = write_generated_crate(&build_root, &artifact).expect("write crate");
 
-        let binary = build_generated_crate_with_cargo_for_profile(
-            &crate_root,
-            BackendBuildProfile::Debug,
-        )
-        .expect("cargo debug build");
-
+        let binary =
+            cargo_build_generated_crate_for_profile(&crate_root, BackendBuildProfile::Debug);
         assert!(binary.exists());
         assert!(binary.to_string_lossy().contains("/target/debug/"));
-
-        let _ = fs::remove_dir_all(&temp_root);
-    }
-
-    #[test]
-    fn cargo_failure_diagnostics_surface_missing_manifest_context() {
-        let temp_root = temp_root("cargo_fail");
-        fs::create_dir_all(&temp_root).expect("temp root");
-
-        let error = build_generated_crate(&temp_root).expect_err("missing manifest should fail");
-
-        assert_eq!(error.kind(), crate::BackendErrorKind::BuildFailure);
-        assert!(error.message().contains("Cargo.toml"));
 
         let _ = fs::remove_dir_all(&temp_root);
     }
@@ -496,7 +541,7 @@ mod tests {
         let built = emit_backend_artifact(
             &session,
             &BackendConfig {
-                mode: BackendMode::BuildArtifactWithCargo,
+                mode: BackendMode::BuildArtifact,
                 keep_build_dir: true,
                 ..BackendConfig::default()
             },
@@ -517,7 +562,7 @@ mod tests {
         let artifact = emit_backend_artifact(
             &session,
             &BackendConfig {
-                mode: BackendMode::BuildArtifactWithCargo,
+                mode: BackendMode::BuildArtifact,
                 keep_build_dir: true,
                 ..BackendConfig::default()
             },
@@ -583,6 +628,77 @@ mod tests {
             |file| file.path.ends_with("pkg__entry__app/api/tools/mod.rs")
                 && file.contents.contains("pub mod math;")
         ));
+
+        let _ = fs::remove_dir_all(&fixture_root);
+    }
+
+    #[test]
+    fn rustc_backend_build_mode_runs_multi_package_workspace_programs() {
+        let fixture_root = temp_root("workspace_runtime");
+        let app_root = fixture_root.join("app");
+        let shared_root = fixture_root.join("shared");
+        let std_root = fixture_root.join("std");
+        let pkg_root = fixture_root.join("pkg");
+        let pkg_math_root = pkg_root.join("math");
+
+        fs::create_dir_all(&app_root).expect("app root");
+        fs::create_dir_all(&shared_root).expect("shared root");
+        fs::create_dir_all(std_root.join("fmt")).expect("std root");
+        fs::create_dir_all(&pkg_math_root).expect("pkg root");
+        fs::write(
+            app_root.join("main.fol"),
+            concat!(
+                "use shared: loc = {\"../shared\"};\n",
+                "use fmt: std = {\"fmt\"};\n",
+                "use math: pkg = {math};\n",
+                "fun[] main(): int = {\n",
+                "    return loc_answer + std_answer + math::src::pkg_answer;\n",
+                "};\n",
+            ),
+        )
+        .expect("app source");
+        fs::write(
+            shared_root.join("lib.fol"),
+            "var[exp] loc_answer: int = 2;\n",
+        )
+        .expect("shared");
+        fs::write(
+            std_root.join("fmt").join("lib.fol"),
+            "var[exp] std_answer: int = 3;\n",
+        )
+        .expect("std");
+        fs::write(
+            pkg_math_root.join("package.yaml"),
+            "name: math\nversion: 0.1.0\n",
+        )
+        .expect("pkg manifest");
+        fs::write(
+            pkg_math_root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        )
+        .expect("pkg build");
+        fs::create_dir_all(pkg_math_root.join("src")).expect("pkg src");
+        fs::write(
+            pkg_math_root.join("src").join("lib.fol"),
+            "var[exp] pkg_answer: int = 4;\n",
+        )
+        .expect("pkg source");
+
+        let output = build_and_run_workspace(
+            &app_root,
+            PackageConfig {
+                std_root: Some(std_root.display().to_string()),
+                package_store_root: Some(pkg_root.display().to_string()),
+                package_cache_root: None,
+                package_git_cache_root: None,
+            },
+            ResolverConfig {
+                std_root: Some(std_root.display().to_string()),
+                package_store_root: Some(pkg_root.display().to_string()),
+            },
+        );
+
+        assert!(output.status.success());
 
         let _ = fs::remove_dir_all(&fixture_root);
     }

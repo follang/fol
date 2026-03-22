@@ -36,8 +36,9 @@ Today a FOL package build works like this:
 2. the frontend selects the target artifact/root module
 3. the compiler produces lowered FOL IR
 4. `fol-backend` emits a temporary Rust crate
-5. `fol-backend` runs `cargo build --manifest-path <generated>/Cargo.toml --release`
-6. the built binary is copied into the backend output `bin/` directory
+5. `fol-backend` compiles `fol-runtime` into an `.rlib` with direct `rustc`
+6. `fol-backend` compiles the generated entry crate with direct `rustc`
+7. the built binary is copied into the backend output `bin/` directory
 
 Important repo facts that make direct `rustc` feasible:
 
@@ -90,7 +91,7 @@ The plan is successful when all of the following are true:
 - [x] Slice 7: add rustc parity tests alongside Cargo-backed tests
 - [x] Slice 8: introduce explicit artifact build modes for Cargo vs `rustc`
 - [x] Slice 9: switch normal artifact builds to direct `rustc`
-- [ ] Slice 10: remove Cargo artifact-build dependency and tighten docs
+- [x] Slice 10: remove Cargo artifact-build dependency and tighten docs
 
 ## Design rules
 
@@ -106,8 +107,8 @@ The plan is successful when all of the following are true:
    Cargo if desired.
 
 4. Product build path should not depend on Cargo.
-   Cargo may exist as a temporary fallback or developer convenience during
-   migration, but not as the final required path.
+   Cargo remains useful only for emitted-crate compatibility checks and manual
+   developer workflows, not for normal artifact builds.
 
 5. No fake "sync" with Cargo internals.
    "In sync" means same generated Rust and same observable behavior, not
@@ -138,12 +139,9 @@ Introduce a more explicit backend artifact/build model:
 - `EmitSource`
   Writes the generated Rust crate and returns its root
 
-- `BuildArtifactWithRustc`
+- `BuildArtifact`
   Writes the generated Rust crate, builds runtime support with `rustc`, then
   builds the final artifact with `rustc`
-
-- optional temporary `BuildArtifactWithCargo`
-  Exists only during migration/testing and is deleted once parity is proven
 
 ### Single source of truth
 
@@ -265,8 +263,6 @@ Tasks:
   - `fol code test`
   - direct-file build/run paths
 - keep `emit rust` unchanged as source emission
-- keep temporary Cargo fallback only behind a test-only or internal option if
-  still needed during migration
 
 Expected result:
 
@@ -427,3 +423,7 @@ This plan is complete when:
 - the backend build contract is clearer than before
 - the codebase is in a better position to add an LLVM backend later without
   first undoing Rust/Cargo build coupling
+
+Status:
+All 10 planned slices are complete. LLVM remains follow-up work, not part of
+this plan.

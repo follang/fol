@@ -4,7 +4,7 @@ use crate::{
 };
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::Command;
 
 use super::skeleton::emit_generated_crate_skeleton;
 
@@ -98,31 +98,6 @@ pub fn prepare_generated_build_dir(output_root: &Path) -> BackendResult<PathBuf>
     Ok(PathBuf::from(prepare_backend_build_paths(output_root)?.build_root))
 }
 
-fn cargo_build_output_for_generated_crate(
-    crate_root: &Path,
-    profile: BackendBuildProfile,
-) -> BackendResult<Output> {
-    let manifest_path = crate_root.join("Cargo.toml");
-    let mut command = Command::new("cargo");
-    command
-        .arg("build")
-        .arg("--manifest-path")
-        .arg(&manifest_path);
-    if matches!(profile, BackendBuildProfile::Release) {
-        command.arg("--release");
-    }
-    command.output()
-        .map_err(|error| {
-            BackendError::new(
-                BackendErrorKind::BuildFailure,
-                format!(
-                    "failed to launch cargo build for '{}': {error}",
-                    manifest_path.display()
-                ),
-            )
-        })
-}
-
 fn apply_rustc_profile_args(command: &mut Command, profile: BackendBuildProfile) {
     match profile {
         BackendBuildProfile::Debug => {}
@@ -164,64 +139,12 @@ fn rustc_crate_name_for_generated_crate(crate_root: &Path) -> BackendResult<Stri
     )?))
 }
 
-fn built_binary_output_path(
-    crate_root: &Path,
-    profile: BackendBuildProfile,
-) -> BackendResult<PathBuf> {
+fn built_binary_output_path(crate_root: &Path, profile: BackendBuildProfile) -> BackendResult<PathBuf> {
     let package_name = package_name_for_generated_crate(crate_root)?;
     Ok(crate_root
         .join("target")
         .join(profile.as_str())
         .join(package_name))
-}
-
-fn compiled_binary_path_for_generated_crate(
-    crate_root: &Path,
-    profile: BackendBuildProfile,
-) -> BackendResult<PathBuf> {
-    let binary_path = built_binary_output_path(crate_root, profile)?;
-    if !binary_path.exists() {
-        return Err(BackendError::new(
-            BackendErrorKind::BuildFailure,
-            format!(
-                "cargo build succeeded but '{}' is missing",
-                binary_path.display()
-            ),
-        ));
-    }
-    Ok(binary_path)
-}
-
-pub fn build_generated_crate_with_cargo_for_profile(
-    crate_root: &Path,
-    profile: BackendBuildProfile,
-) -> BackendResult<PathBuf> {
-    let manifest_path = crate_root.join("Cargo.toml");
-    let output = cargo_build_output_for_generated_crate(crate_root, profile)?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        return Err(BackendError::new(
-            BackendErrorKind::BuildFailure,
-            format!(
-                "cargo build failed for '{}'\nstdout:\n{}\nstderr:\n{}",
-                manifest_path.display(),
-                stdout.trim(),
-                stderr.trim()
-            ),
-        ));
-    }
-
-    compiled_binary_path_for_generated_crate(crate_root, profile)
-}
-
-pub fn build_generated_crate_with_cargo(crate_root: &Path) -> BackendResult<PathBuf> {
-    build_generated_crate_with_cargo_for_profile(crate_root, BackendBuildProfile::Release)
-}
-
-pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
-    build_generated_crate_with_cargo(crate_root)
 }
 
 pub fn build_runtime_rlib_with_rustc(
@@ -427,10 +350,7 @@ pub fn emit_backend_artifact(
 
     let built_binary = match config.mode {
         BackendMode::EmitSource => unreachable!("emit source handled above"),
-        BackendMode::BuildArtifactWithCargo => {
-            build_generated_crate_with_cargo_for_profile(&crate_root, config.build_profile)?
-        }
-        BackendMode::BuildArtifactWithRustc => {
+        BackendMode::BuildArtifact => {
             build_generated_crate_with_rustc(&crate_root, &paths, config.build_profile)?
         }
     };
