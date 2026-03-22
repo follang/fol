@@ -123,6 +123,19 @@ fn cargo_build_output_for_generated_crate(
         })
 }
 
+fn apply_rustc_profile_args(command: &mut Command, profile: BackendBuildProfile) {
+    match profile {
+        BackendBuildProfile::Debug => {}
+        BackendBuildProfile::Release => {
+            command.arg("-C").arg("opt-level=3");
+        }
+    }
+}
+
+fn runtime_rlib_path(runtime_build_dir: &Path) -> PathBuf {
+    runtime_build_dir.join("libfol_runtime.rlib")
+}
+
 fn compiled_binary_path_for_generated_crate(
     crate_root: &Path,
     profile: BackendBuildProfile,
@@ -185,6 +198,58 @@ pub fn build_generated_crate_with_cargo(crate_root: &Path) -> BackendResult<Path
 
 pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
     build_generated_crate_with_cargo(crate_root)
+}
+
+pub fn build_runtime_rlib_with_rustc(
+    paths: &BackendBuildPaths,
+    profile: BackendBuildProfile,
+) -> BackendResult<PathBuf> {
+    let runtime_source = super::runtime::backend_runtime_source_entry();
+    let runtime_build_dir = super::runtime::prepare_backend_runtime_build_dir(paths, profile)?;
+    let mut command = Command::new("rustc");
+    command
+        .arg("--crate-name")
+        .arg("fol_runtime")
+        .arg("--crate-type")
+        .arg("rlib")
+        .arg("--edition=2021")
+        .arg(&runtime_source)
+        .arg("--out-dir")
+        .arg(&runtime_build_dir);
+    apply_rustc_profile_args(&mut command, profile);
+    let output = command.output().map_err(|error| {
+        BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "failed to launch rustc for runtime '{}': {error}",
+                runtime_source.display()
+            ),
+        )
+    })?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Err(BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "rustc failed for runtime '{}'\nstdout:\n{}\nstderr:\n{}",
+                runtime_source.display(),
+                stdout.trim(),
+                stderr.trim()
+            ),
+        ));
+    }
+    let rlib_path = runtime_rlib_path(&runtime_build_dir);
+    if !rlib_path.exists() {
+        return Err(BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "rustc succeeded but runtime artifact '{}' is missing",
+                rlib_path.display()
+            ),
+        ));
+    }
+    Ok(rlib_path)
 }
 
 pub fn emit_backend_artifact(
