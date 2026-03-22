@@ -245,7 +245,7 @@ states the selected target and the current host.
 - [x] Slice 6: pass `--target` to rustc for generated crate builds
 - [x] Slice 7: reject non-host execution in `run` and `test` with clear diagnostics
 - [x] Slice 8: add backend and frontend tests for target layout and diagnostics
-- [ ] Slice 9: document cross-compilation behavior in `book/`
+- [x] Slice 9: document cross-compilation behavior in `book/`
 
 ## Phase 1: Define target ownership
 
