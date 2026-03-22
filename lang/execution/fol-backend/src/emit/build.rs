@@ -4,7 +4,7 @@ use crate::{
 };
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Output};
 
 use super::skeleton::emit_generated_crate_skeleton;
 
@@ -98,9 +98,9 @@ pub fn prepare_generated_build_dir(output_root: &Path) -> BackendResult<PathBuf>
     Ok(PathBuf::from(prepare_backend_build_paths(output_root)?.build_root))
 }
 
-pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
+fn cargo_build_output_for_generated_crate(crate_root: &Path) -> BackendResult<Output> {
     let manifest_path = crate_root.join("Cargo.toml");
-    let output = Command::new("cargo")
+    Command::new("cargo")
         .arg("build")
         .arg("--manifest-path")
         .arg(&manifest_path)
@@ -114,22 +114,10 @@ pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
                     manifest_path.display()
                 ),
             )
-        })?;
+        })
+}
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        return Err(BackendError::new(
-            BackendErrorKind::BuildFailure,
-            format!(
-                "cargo build failed for '{}'\nstdout:\n{}\nstderr:\n{}",
-                manifest_path.display(),
-                stdout.trim(),
-                stderr.trim()
-            ),
-        ));
-    }
-
+fn compiled_binary_path_for_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
     let package_name = crate_root
         .file_name()
         .and_then(|value| value.to_str())
@@ -152,8 +140,32 @@ pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
             ),
         ));
     }
-
     Ok(binary_path)
+}
+
+pub fn build_generated_crate_with_cargo(crate_root: &Path) -> BackendResult<PathBuf> {
+    let manifest_path = crate_root.join("Cargo.toml");
+    let output = cargo_build_output_for_generated_crate(crate_root)?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        return Err(BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "cargo build failed for '{}'\nstdout:\n{}\nstderr:\n{}",
+                manifest_path.display(),
+                stdout.trim(),
+                stderr.trim()
+            ),
+        ));
+    }
+
+    compiled_binary_path_for_generated_crate(crate_root)
+}
+
+pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
+    build_generated_crate_with_cargo(crate_root)
 }
 
 pub fn emit_backend_artifact(

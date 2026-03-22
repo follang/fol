@@ -82,7 +82,7 @@ The plan is successful when all of the following are true:
 ## Slice tracker
 
 - [x] Slice 1: add explicit backend build path planning
-- [ ] Slice 2: isolate Cargo build driver behind a dedicated function boundary
+- [x] Slice 2: isolate Cargo build driver behind a dedicated function boundary
 - [ ] Slice 3: add explicit backend build profile/config plumbing
 - [ ] Slice 4: add runtime source/build-root resolution helpers
 - [ ] Slice 5: compile `fol-runtime` to `.rlib` with direct `rustc`

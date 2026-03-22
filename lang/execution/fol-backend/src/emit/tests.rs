@@ -1,10 +1,11 @@
 #[cfg(test)]
 mod tests {
     use crate::emit::{
-        backend_build_paths, build_generated_crate, emit_backend_artifact, emit_cargo_toml,
-        emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
-        emit_package_module_shells, prepare_backend_build_paths, prepare_generated_build_dir,
-        summarize_emitted_artifact, write_generated_crate,
+        backend_build_paths, build_generated_crate, build_generated_crate_with_cargo,
+        emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
+        emit_namespace_module_shells, emit_package_module_shells,
+        prepare_backend_build_paths, prepare_generated_build_dir, summarize_emitted_artifact,
+        write_generated_crate,
     };
     use crate::{
         testing::{
@@ -261,6 +262,22 @@ mod tests {
         let crate_root = write_generated_crate(&build_root, &artifact).expect("write crate");
 
         let binary = build_generated_crate(&crate_root).expect("cargo build");
+
+        assert!(binary.exists());
+        assert!(binary.ends_with(session.workspace_identity().crate_dir_name.as_str()));
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn explicit_cargo_build_driver_keeps_existing_generated_crate_behavior() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
+        let temp_root = temp_root("cargo_driver");
+        let build_root = prepare_generated_build_dir(&temp_root).expect("build root");
+        let crate_root = write_generated_crate(&build_root, &artifact).expect("write crate");
+
+        let binary = build_generated_crate_with_cargo(&crate_root).expect("cargo build");
 
         assert!(binary.exists());
         assert!(binary.ends_with(session.workspace_identity().crate_dir_name.as_str()));
