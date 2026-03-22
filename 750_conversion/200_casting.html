@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-b72d7afd.js";
+            window.path_to_searchindex_js = "../searchindex-a06efcfc.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-58ef93fa.js"></script>
@@ -215,6 +215,12 @@ contract answering questions such as:</p>
 <li>whether container casts exist</li>
 <li>how aliases interact with explicit conversion</li>
 <li>how future foreign/ABI types participate in conversion</li>
+</ul>
+<p>That last point is deliberately later work:</p>
+<ul>
+<li>C ABI and Rust interop are planned <code>V4</code> features</li>
+<li>casting rules for foreign or ABI-facing types should be specified together
+with that <code>V4</code> interop contract, not guessed earlier</li>
 </ul>
 <p>Until that contract exists, <code>V1</code> treats cast syntax as parsed-but-unsupported
 instead of guessing semantics.</p>

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b72d7afd.js";
+            window.path_to_searchindex_js = "searchindex-a06efcfc.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-58ef93fa.js"></script>
@@ -4711,6 +4711,14 @@ while built-in or foreign types can be extended explicitly through <code>typ[ext
 <p>Attaching methods does not make a type into an object. It simply gives a
 routine a receiver-qualified dot-call spelling. You could still think of the
 operation procedurally as a routine that takes the value as its first input.</p>
+<p>Current milestone note:</p>
+<ul>
+<li>aliasing and extension over current <code>V1</code> built-in and declared types are part
+of the present language surface</li>
+<li>true foreign-type interop remains later work</li>
+<li>C ABI and Rust interop belong to the planned <code>V4</code> milestone, not the current
+compiler contract</li>
+</ul>
 <h2 id="extending"><a class="header" href="#extending">Extending</a></h2>
 <p>Extensions add new functionality to an existing constructs. This includes the ability to extend types for which you do not have access to the original source code (known as retroactive modeling).</p>
 <pre><code>typ[ext] type: type;
@@ -5899,7 +5907,8 @@ subset</li>
 <li>diagnostics already cover failures from each of those stages plus backend
 emission/build failures</li>
 <li>the project now does promise a finished first backend for the current <code>V1</code>
-subset, while later targets, optimizations, and C ABI work remain outside
+subset, while later targets, optimizations, C ABI work, and Rust interop
+work remain outside
 this chapter</li>
 </ul>
 <h2 id="what-diagnostics-do-not-guarantee"><a class="header" href="#what-diagnostics-do-not-guarantee">What diagnostics do not guarantee</a></h2>
@@ -5911,7 +5920,8 @@ phases.</p>
 <li><code>report</code> compatibility still belongs to later semantic work</li>
 <li>type mismatch, coercion, and conversion diagnostics are future type-checker work</li>
 <li>ownership and borrowing diagnostics are future semantic work</li>
-<li>C ABI diagnostics are future package/type/backend work</li>
+<li>C ABI diagnostics are future <code>V4</code> package/type/backend work</li>
+<li>Rust interop diagnostics are future <code>V4</code> package/type/backend work</li>
 </ul>
 <p>So the current guarantee is:</p>
 <ul>
@@ -6324,6 +6334,12 @@ contract answering questions such as:</p>
 <li>whether container casts exist</li>
 <li>how aliases interact with explicit conversion</li>
 <li>how future foreign/ABI types participate in conversion</li>
+</ul>
+<p>That last point is deliberately later work:</p>
+<ul>
+<li>C ABI and Rust interop are planned <code>V4</code> features</li>
+<li>casting rules for foreign or ABI-facing types should be specified together
+with that <code>V4</code> interop contract, not guessed earlier</li>
 </ul>
 <p>Until that contract exists, <code>V1</code> treats cast syntax as parsed-but-unsupported
 instead of guessing semantics.</p>
