@@ -173,224 +173,251 @@ impl FrontendCli {
 // Help text
 // ---------------------------------------------------------------------------
 
+/// Style a name and pad it to `width` visible characters (padding outside ANSI codes).
+fn cmd(name: &str, width: usize) -> String {
+    let spaces = width.saturating_sub(name.len());
+    format!("{}{}", name.bold(), " ".repeat(spaces))
+}
+
+/// Style an alias string with dim.
+fn alias(s: &str) -> String {
+    format!("{}", s.dim())
+}
+
+/// Style an option flag and pad to `width` visible characters.
+fn opt(flag: &str, width: usize) -> String {
+    let spaces = width.saturating_sub(flag.len());
+    format!("{}{}", flag.bold(), " ".repeat(spaces))
+}
+
+fn section(s: &str) -> String {
+    format!("{}", s.yellow().bold())
+}
+
 fn root_help() -> String {
+    let s = section;
     format!(
         "\
-{title}
+User-facing frontend for the FOL toolchain
 
 {usage} fol [COMMAND]
 
 {cmds}
-  {c_work}  {a_w}  Workspace management
-  {c_pack}  {a_p}  Package management
-  {c_code}  {a_c}  Build, run, test, check
-  {c_tool}  {a_t}  Editor tools, LSP, completion
+  {work}  {aw}  Workspace management
+  {pack}  {ap}  Package management
+  {code}  {ac}  Build, run, test, check
+  {tool}  {at}  Editor tools, LSP, completion
 
 {opts}
   {h}, {hh}     Print help
   {v}, {vv}  Print version
 
 {after}",
-        title = "User-facing frontend for the FOL toolchain",
-        usage = "Usage:".yellow().bold(),
-        cmds = "Commands:".yellow().bold(),
-        opts = "Options:".yellow().bold(),
-        c_work = "work".bold(),
-        c_pack = "pack".bold(),
-        c_code = "code".bold(),
-        c_tool = "tool".bold(),
-        a_w = "[aliases: w]".dim(),
-        a_p = "[aliases: p]".dim(),
-        a_c = "[aliases: c]".dim(),
-        a_t = "[aliases: t]".dim(),
-        h = "-h".bold(),
-        hh = "--help".bold(),
-        v = "-V".bold(),
-        vv = "--version".bold(),
-        after = AFTER_HELP.dim(),
+        usage = s("Usage:"),
+        cmds = s("Commands:"),
+        opts = s("Options:"),
+        work = cmd("work", 4),
+        pack = cmd("pack", 4),
+        code = cmd("code", 4),
+        tool = cmd("tool", 4),
+        aw = alias("[aliases: w]"),
+        ap = alias("[aliases: p]"),
+        ac = alias("[aliases: c]"),
+        at = alias("[aliases: t]"),
+        h = opt("-h", 2),
+        hh = opt("--help", 6),
+        v = opt("-V", 2),
+        vv = opt("--version", 9),
+        after = format!("{}", AFTER_HELP.dim()),
     )
 }
 
 fn work_help() -> String {
+    let s = section;
     format!(
         "\
 {usage} fol work [OPTIONS] <COMMAND>
 
 {cmds}
-  {c_init}    Initialize a new package or workspace
-  {c_new}     Create a new project
-  {c_info}    Show workspace info
-  {c_list}    List workspace members
-  {c_deps}    Show dependency tree
-  {c_status}  Show workspace status
+  {c0}  Initialize a new package or workspace
+  {c1}  Create a new project
+  {c2}  Show workspace info
+  {c3}  List workspace members
+  {c4}  Show dependency tree
+  {c5}  Show workspace status
 
 {opts}
-  {o_output}  Select output mode [human|plain|json]
-  {o_path}    Override the workspace or package root
-  {h}, {hh}       Print help",
-        usage = "Usage:".yellow().bold(),
-        cmds = "Commands:".yellow().bold(),
-        opts = "Options:".yellow().bold(),
-        c_init = "init  ".bold(),
-        c_new = "new   ".bold(),
-        c_info = "info  ".bold(),
-        c_list = "list  ".bold(),
-        c_deps = "deps  ".bold(),
-        c_status = "status".bold(),
-        o_output = "--output <MODE>".bold(),
-        o_path = "--path <PATH>  ".bold(),
-        h = "-h".bold(),
-        hh = "--help".bold(),
+  {o0}  Select output mode [human|plain|json]
+  {o1}  Override the workspace or package root
+  {o2}, {o3}  Print help",
+        usage = s("Usage:"),
+        cmds = s("Commands:"),
+        opts = s("Options:"),
+        c0 = cmd("init", 6),
+        c1 = cmd("new", 6),
+        c2 = cmd("info", 6),
+        c3 = cmd("list", 6),
+        c4 = cmd("deps", 6),
+        c5 = cmd("status", 6),
+        o0 = opt("--output <MODE>", 15),
+        o1 = opt("--path <PATH>", 15),
+        o2 = opt("-h", 2),
+        o3 = opt("--help", 6),
     )
 }
 
 fn pack_help() -> String {
+    let s = section;
     format!(
         "\
 {usage} fol pack [OPTIONS] <COMMAND>
 
 {cmds}
-  {c_fetch}   {a_fetch}     Fetch dependencies
-  {c_update}  {a_update}  Update dependencies
+  {c0}  {a0}  Fetch dependencies
+  {c1}  {a1}  Update dependencies
 
 {opts}
-  {o_output}  Select output mode [human|plain|json]
-  {h}, {hh}       Print help",
-        usage = "Usage:".yellow().bold(),
-        cmds = "Commands:".yellow().bold(),
-        opts = "Options:".yellow().bold(),
-        c_fetch = "fetch ".bold(),
-        c_update = "update".bold(),
-        a_fetch = "[aliases: f, sync]".dim(),
-        a_update = "[aliases: u, upgrade]".dim(),
-        o_output = "--output <MODE>".bold(),
-        h = "-h".bold(),
-        hh = "--help".bold(),
+  {o0}  Select output mode [human|plain|json]
+  {o1}, {o2}  Print help",
+        usage = s("Usage:"),
+        cmds = s("Commands:"),
+        opts = s("Options:"),
+        c0 = cmd("fetch", 6),
+        c1 = cmd("update", 6),
+        a0 = alias("[aliases: f, sync]   "),
+        a1 = alias("[aliases: u, upgrade]"),
+        o0 = opt("--output <MODE>", 15),
+        o1 = opt("-h", 2),
+        o2 = opt("--help", 6),
     )
 }
 
 fn code_help() -> String {
+    let s = section;
     format!(
         "\
 {usage} fol code [OPTIONS] <COMMAND>
 
 {cmds}
-  {c_build}  {a_build}     Build the project
-  {c_run}    {a_run}           Build and run the project
-  {c_test}   {a_test}           Run tests
-  {c_check}  {a_check}   Check without building
-  {c_emit}   {a_emit}      Emit intermediate representations
+  {c0}  {a0}  Build the project
+  {c1}  {a1}  Build and run the project
+  {c2}  {a2}  Run tests
+  {c3}  {a3}  Check without building
+  {c4}  {a4}  Emit intermediate representations
 
 {opts}
-  {o_output}    Select output mode [human|plain|json]
-  {o_profile}   Select build profile [debug|release]
-  {o_debug}            Force the debug profile
-  {o_release}          Force the release profile
-  {h}, {hh}         Print help",
-        usage = "Usage:".yellow().bold(),
-        cmds = "Commands:".yellow().bold(),
-        opts = "Options:".yellow().bold(),
-        c_build = "build".bold(),
-        c_run = "run  ".bold(),
-        c_test = "test ".bold(),
-        c_check = "check".bold(),
-        c_emit = "emit ".bold(),
-        a_build = "[aliases: b, make]".dim(),
-        a_run = "[aliases: r]".dim(),
-        a_test = "[aliases: t]".dim(),
-        a_check = "[aliases: c, verify]".dim(),
-        a_emit = "[aliases: e, gen]".dim(),
-        o_output = "--output <MODE> ".bold(),
-        o_profile = "--profile <PROF>".bold(),
-        o_debug = "--debug  ".bold(),
-        o_release = "--release".bold(),
-        h = "-h".bold(),
-        hh = "--help".bold(),
+  {o0}  Select output mode [human|plain|json]
+  {o1}  Select build profile [debug|release]
+  {o2}  Force the debug profile
+  {o3}  Force the release profile
+  {o4}, {o5}  Print help",
+        usage = s("Usage:"),
+        cmds = s("Commands:"),
+        opts = s("Options:"),
+        c0 = cmd("build", 5),
+        c1 = cmd("run", 5),
+        c2 = cmd("test", 5),
+        c3 = cmd("check", 5),
+        c4 = cmd("emit", 5),
+        a0 = alias("[aliases: b, make]  "),
+        a1 = alias("[aliases: r]        "),
+        a2 = alias("[aliases: t]        "),
+        a3 = alias("[aliases: c, verify]"),
+        a4 = alias("[aliases: e, gen]   "),
+        o0 = opt("--output <MODE>", 16),
+        o1 = opt("--profile <PROF>", 16),
+        o2 = opt("--debug", 16),
+        o3 = opt("--release", 16),
+        o4 = opt("-h", 2),
+        o5 = opt("--help", 6),
     )
 }
 
 fn tool_help() -> String {
+    let s = section;
     format!(
         "\
 {usage} fol tool [OPTIONS] <COMMAND>
 
 {cmds}
-  {c_lsp}              Start the LSP server
-  {c_format}           Format a source file
-  {c_parse}            Parse and dump a source file
-  {c_highlight}        Highlight a source file
-  {c_symbols}          List symbols in a source file
-  {c_references}       Find references to a symbol
-  {c_rename}           Rename a symbol
-  {c_complete}         Get completions at a position
-  {c_semtok}  Get semantic tokens for a file
-  {c_tree}             Tree-sitter commands
-  {c_clean}            {a_clean}  Clean build artifacts
-  {c_completion}       {a_completion}  Generate shell completion
+  {c0}  Start the LSP server
+  {c1}  Format a source file
+  {c2}  Parse and dump a source file
+  {c3}  Highlight a source file
+  {c4}  List symbols in a source file
+  {c5}  Find references to a symbol
+  {c6}  Rename a symbol
+  {c7}  Get completions at a position
+  {c8}  Get semantic tokens for a file
+  {c9}  Tree-sitter commands
+  {ca}  {aa}  Clean build artifacts
+  {cb}  {ab}  Generate shell completion
 
 {opts}
-  {o_output}  Select output mode [human|plain|json]
-  {h}, {hh}       Print help",
-        usage = "Usage:".yellow().bold(),
-        cmds = "Commands:".yellow().bold(),
-        opts = "Options:".yellow().bold(),
-        c_lsp = "lsp           ".bold(),
-        c_format = "format        ".bold(),
-        c_parse = "parse         ".bold(),
-        c_highlight = "highlight     ".bold(),
-        c_symbols = "symbols       ".bold(),
-        c_references = "references    ".bold(),
-        c_rename = "rename        ".bold(),
-        c_complete = "complete      ".bold(),
-        c_semtok = "semantic-tokens".bold(),
-        c_tree = "tree          ".bold(),
-        c_clean = "clean         ".bold(),
-        c_completion = "completion    ".bold(),
-        a_clean = "[aliases: cl, purge]".dim(),
-        a_completion = "[aliases: completions, comp]".dim(),
-        o_output = "--output <MODE>".bold(),
-        h = "-h".bold(),
-        hh = "--help".bold(),
+  {o0}  Select output mode [human|plain|json]
+  {o1}, {o2}  Print help",
+        usage = s("Usage:"),
+        cmds = s("Commands:"),
+        opts = s("Options:"),
+        c0 = cmd("lsp", 15),
+        c1 = cmd("format", 15),
+        c2 = cmd("parse", 15),
+        c3 = cmd("highlight", 15),
+        c4 = cmd("symbols", 15),
+        c5 = cmd("references", 15),
+        c6 = cmd("rename", 15),
+        c7 = cmd("complete", 15),
+        c8 = cmd("semantic-tokens", 15),
+        c9 = cmd("tree", 15),
+        ca = cmd("clean", 15),
+        cb = cmd("completion", 15),
+        aa = alias("[aliases: cl, purge]        "),
+        ab = alias("[aliases: completions, comp]"),
+        o0 = opt("--output <MODE>", 15),
+        o1 = opt("-h", 2),
+        o2 = opt("--help", 6),
     )
 }
 
 fn emit_help() -> String {
+    let s = section;
     format!(
         "\
 {usage} fol code emit <COMMAND>
 
 {cmds}
-  {c_rust}     Emit generated Rust code
-  {c_lowered}  Emit lowered IR
+  {c0}  Emit generated Rust code
+  {c1}  Emit lowered IR
 
 {opts}
-  {h}, {hh}  Print help",
-        usage = "Usage:".yellow().bold(),
-        cmds = "Commands:".yellow().bold(),
-        opts = "Options:".yellow().bold(),
-        c_rust = "rust   ".bold(),
-        c_lowered = "lowered".bold(),
-        h = "-h".bold(),
-        hh = "--help".bold(),
+  {o0}, {o1}  Print help",
+        usage = s("Usage:"),
+        cmds = s("Commands:"),
+        opts = s("Options:"),
+        c0 = cmd("rust", 7),
+        c1 = cmd("lowered", 7),
+        o0 = opt("-h", 2),
+        o1 = opt("--help", 6),
     )
 }
 
 fn tree_help() -> String {
+    let s = section;
     format!(
         "\
 {usage} fol tool tree <COMMAND>
 
 {cmds}
-  {c_gen}  Generate tree-sitter grammar
+  {c0}  Generate tree-sitter grammar
 
 {opts}
-  {h}, {hh}  Print help",
-        usage = "Usage:".yellow().bold(),
-        cmds = "Commands:".yellow().bold(),
-        opts = "Options:".yellow().bold(),
-        c_gen = "generate".bold(),
-        h = "-h".bold(),
-        hh = "--help".bold(),
+  {o0}, {o1}  Print help",
+        usage = s("Usage:"),
+        cmds = s("Commands:"),
+        opts = s("Options:"),
+        c0 = cmd("generate", 8),
+        o0 = opt("-h", 2),
+        o1 = opt("--help", 6),
     )
 }
 
