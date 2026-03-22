@@ -20,3 +20,7 @@
 FOL is a general-purpose, systems programming language designed for robustness, efficiency, portability, expressiveness and most importantly elegance. Heavily inspired (and shamelessly copying) from languages: rust, zig, nim, c, go, and cpp. In Albanian language "fol" means "to speak".
 
 <p align="center">  ** FOL IS IN ACTIVE DEVELOPMENT **  </p>
+
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the compiler pipeline, crate map, and how data flows from source to binary.
