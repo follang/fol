@@ -10,7 +10,9 @@ mod tests {
         backend_runtime_source_entry_with_override, backend_runtime_source_root,
         backend_runtime_source_root_with_override,
     };
-    use super::build::configure_runtime_rustc_command;
+    use super::super::build::{
+        configure_generated_crate_rustc_command, configure_runtime_rustc_command,
+    };
     use crate::{
         testing::{
             lowered_workspace_from_entry_path, lowered_workspace_from_entry_path_with_config,
@@ -391,7 +393,7 @@ mod tests {
         );
         let args = command
             .get_args()
-            .map(|arg| arg.to_string_lossy().to_string())
+            .map(|arg: &std::ffi::OsStr| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
 
         assert!(args.windows(2).any(|pair| {
@@ -411,7 +413,55 @@ mod tests {
         );
         let args = command
             .get_args()
-            .map(|arg| arg.to_string_lossy().to_string())
+            .map(|arg: &std::ffi::OsStr| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert!(!args.iter().any(|arg| arg == "--target"));
+    }
+
+    #[test]
+    fn generated_crate_rustc_command_uses_target_for_cross_builds() {
+        let crate_root = PathBuf::from("/tmp/generated/demo");
+        let main_rs = crate_root.join("src/main.rs");
+        let runtime_rlib = PathBuf::from("/tmp/runtime/libfol_runtime.rlib");
+        let binary_path = crate_root.join("target/app");
+        let command = configure_generated_crate_rustc_command(
+            &crate_root,
+            &main_rs,
+            &runtime_rlib,
+            &binary_path,
+            &BackendMachineTarget::Triple("x86_64-linux-gnu".to_string()),
+            BackendBuildProfile::Release,
+        )
+        .expect("generated rustc command");
+        let args = command
+            .get_args()
+            .map(|arg: &std::ffi::OsStr| arg.to_string_lossy().to_string())
+            .collect::<Vec<_>>();
+
+        assert!(args.windows(2).any(|pair| {
+            pair == ["--target", "x86_64-unknown-linux-gnu"]
+        }));
+    }
+
+    #[test]
+    fn generated_crate_rustc_command_skips_target_for_host_builds() {
+        let crate_root = PathBuf::from("/tmp/generated/demo");
+        let main_rs = crate_root.join("src/main.rs");
+        let runtime_rlib = PathBuf::from("/tmp/runtime/libfol_runtime.rlib");
+        let binary_path = crate_root.join("target/app");
+        let command = configure_generated_crate_rustc_command(
+            &crate_root,
+            &main_rs,
+            &runtime_rlib,
+            &binary_path,
+            &BackendMachineTarget::Host,
+            BackendBuildProfile::Debug,
+        )
+        .expect("generated rustc command");
+        let args = command
+            .get_args()
+            .map(|arg: &std::ffi::OsStr| arg.to_string_lossy().to_string())
             .collect::<Vec<_>>();
 
         assert!(!args.iter().any(|arg| arg == "--target"));
