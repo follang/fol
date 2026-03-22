@@ -368,8 +368,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Future remote or git-like locators now fail with explicit placeholder
   diagnostics instead of silently looking like valid installed-store paths.
 - Reserved native-artifact definitions such as `header`, `object`, `static_lib`,
-  and `shared_lib` are preserved as inert package-build records for future C ABI
-  work and are not active resolver semantics today.
+  and `shared_lib` are preserved as inert package-build records for future V4
+  C ABI work and are not active resolver semantics today.
 - The CLI now treats parse-clean but resolution-bad programs as failing compiles.
 - The CLI now accepts both `--std-root` and `--package-store-root` so the current
   `loc/std/pkg` resolver contract is available end to end.
@@ -419,7 +419,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - optional and error shell compatibility at the currently implemented `V1` surfaces
 - The initial `V1` operator, coercion, and cast contract is now explicit and
   test-backed.
-- `V2` and `V3` surfaces now fail explicitly during typechecking instead of
+- `V2`, `V3`, and `V4` surfaces now fail explicitly during typechecking instead of
   silently passing unchecked.
 - Ordinary typechecking now rejects `build.fol` package-definition files as out
   of scope for source-program semantics.
@@ -836,7 +836,8 @@ items block the current post-resolver phase.
 ## 9. What Is Explicitly Out Of Scope For The Current V1 Milestone
 
 - `V2` language semantics such as standards, protocols, blueprints, extensions, and generics
-- `V3` systems semantics such as ownership, borrowing, eventuals, coroutines, channels, pointers, and C ABI
+- `V3` systems semantics such as ownership, borrowing, eventuals, coroutines, channels, and pointers
+- `V4` interop semantics such as C ABI and Rust interop
 - interpreter
 - additional backends beyond the current Rust-emission backend
 - optimization

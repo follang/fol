@@ -4,15 +4,16 @@ Last updated: 2026-03-22
 
 ## Purpose
 
-This is not an implementation plan. C ABI is a V3 feature.
+This is not an implementation plan. C ABI is a V4 feature.
 
-This document exists so that V2 language features (generics, standards,
-contracts, closures, advanced enums, metaprogramming) are designed with
-eventual FFI export in mind. Every V2 feature should have a clear answer
-to: "how does this lower to something FFI-safe?"
+This document exists so that V2 and V3 language features (generics, standards,
+contracts, closures, advanced enums, metaprogramming, ownership, pointers, and
+concurrency/runtime semantics) are designed with eventual foreign-boundary work
+in mind. Every such feature should have a clear answer to: "how does this lower
+to something ABI-safe or interop-safe?"
 
-If a V2 design choice makes FFI impossible or ugly later, that is a
-problem now, not in V3.
+If a V2 or V3 design choice makes later C ABI or Rust interop impossible or
+ugly, that is a problem now, not in V4.
 
 ## The core architecture
 
@@ -47,10 +48,14 @@ This is the critical layer. It already exists as `fol-lower` producing
 `LoweredWorkspace`, but it will need to be extended as V2 features
 arrive.
 
-### Layer 3 — C ABI projection
+### Layer 3 — foreign projection
 
 Mostly mechanical translation from canonical Rust shapes to
-`extern "C"` wrappers. This is the V3 work.
+foreign-facing surfaces. This is the V4 work.
+
+For C ABI, that means `extern "C"` wrappers.
+For Rust interop, that means compiler-modeled Rust imports/exports over the
+same canonical lowered shapes.
 
 ## Canonical Rust shapes
 
@@ -189,9 +194,15 @@ directly. This is already the nicest API.
 ### 2. C ABI
 
 Generated `extern "C"` wrappers around the canonical Rust model. This
-is the V3 deliverable.
+is a V4 deliverable.
 
-### 3. Other languages
+### 3. Rust interop
+
+Foreign Rust symbols and types should also attach to the canonical Rust model
+rather than bypassing it. That keeps FOL semantics centered on one lowered
+representation instead of inventing one path for C ABI and another for Rust.
+
+### 4. Other languages
 
 Any language with C FFI (Python, Go, Zig, Swift, etc.) can bind to the
 C layer. This requires no additional compiler work — only documentation
@@ -211,7 +222,7 @@ natural place where canonical shape classification should eventually
 live.
 
 The `fol-backend` stage already emits Rust source. That is the natural
-place where C ABI wrappers would be generated in V3.
+place where C ABI wrappers and Rust interop glue would be generated in V4.
 
 No new crates are needed. The architecture is already correct.
 
@@ -353,6 +364,6 @@ So the right approach is:
 - lowering produces canonical Rust shapes — the small boring subset
 - FFI generation pattern-matches on those shapes — mostly automatic
 - V2 features must have a clear lowering path to canonical shapes
-- V3 implements the actual FFI generation
+- V4 implements the actual C ABI generation and Rust interop boundary work
 - cross-target native linking will require target-matched `.a`/`.so`
   inputs, not just target-aware Rust compilation

@@ -1,8 +1,9 @@
 # FOL Version Boundaries
 
-Last updated: 2026-03-14
+Last updated: 2026-03-22
 
-This file explains how the language should be grouped into `V1`, `V2`, and `V3`.
+This file explains how the language should be grouped into `V1`, `V2`, `V3`,
+and `V4`.
 
 It is not a task list.
 It is not a parser checklist.
@@ -63,7 +64,7 @@ conformance machinery.
 Some chapters describe systems behavior that depends on ownership, concurrency,
 foreign interfaces, packaging, linking, and backend work.
 
-That is why the language should be grouped into three semantic releases instead
+That is why the language should be grouped into four semantic releases instead
 of trying to make the whole book real at once.
 
 ## What V1 means
@@ -245,12 +246,13 @@ These are still language features, but they are not the first batch.
 
 ## What V3 means
 
-`V3` should be the systems and interop release.
+`V3` should be the systems-semantics release.
 
 This is where the compiler stops being only a typed language compiler and starts
-becoming a full systems toolchain participant.
+growing the deeper resource and runtime semantics that the language design
+already points toward.
 
-### V3 is where memory, concurrency, and foreign interop belong
+### V3 is where memory and concurrency belong
 
 The strongest candidates from the book are:
 
@@ -258,13 +260,6 @@ The strongest candidates from the book are:
 - `800_memory/200_pointers.md`
 - `900_processor/100_eventuals.md`
 - `900_processor/200_corutines.md`
-
-And outside the book-but-already-visible compiler direction:
-
-- C ABI support
-- header import/export
-- native objects and libraries
-- linker-facing build metadata
 
 ### Why ownership belongs in V3
 
@@ -306,7 +301,27 @@ either.
 
 So concurrency belongs in `V3`.
 
-### Why C ABI belongs in V3
+So memory ownership, borrowing, pointers, eventuals, coroutines, channels, and
+related runtime semantics belong in `V3`.
+
+## What V4 means
+
+`V4` should be the interop and toolchain-boundary release.
+
+This is where the compiler becomes a deliberate participant in foreign
+toolchains rather than only a native Rust-emitting compiler.
+
+### V4 is where foreign interop and ABI work belong
+
+The strongest candidates already visible in the repository direction are:
+
+- C ABI support
+- Rust interop
+- header import/export
+- native objects and libraries
+- linker-facing build metadata
+
+### Why C ABI belongs in V4
 
 Foreign interop crosses several compiler layers at once.
 
@@ -319,8 +334,22 @@ It needs:
 - symbol import/export handling
 - later linker/backend integration
 
-That is why C ABI should be a `V3` feature, not something forced into the early
+That is why C ABI should be a `V4` feature, not something forced into the early
 language milestones.
+
+### Why Rust interop belongs in V4
+
+Rust interop is not just "emit Rust" in reverse.
+
+It needs:
+
+- foreign symbol and type modeling
+- backend/linker coordination with external Rust crates
+- stable lowering rules for imported Rust functions and types
+- a clear boundary between FOL semantics and Rust-specific ownership/ABI details
+
+That makes Rust interop later than core `V3` systems semantics. It belongs in
+`V4` together with C ABI and the rest of the foreign-toolchain boundary work.
 
 ## The boundary between syntax and promise
 
@@ -358,6 +387,8 @@ That means:
   belongs in `V2`
 - if it depends on ownership, concurrency, or runtime systems behavior, it
   belongs in `V3`
+- if it depends on foreign ABI, Rust interop, or linker/build coordination, it
+  belongs in `V4`
 
 So sugar does not get a free pass just because it looks syntactically small.
 
@@ -367,7 +398,8 @@ The intended release order is:
 
 - finish `V1` all the way through binary-producing compiler support
 - then return to the `V2` language-semantics surfaces
-- then move into `V3` systems and interop work
+- then move into `V3` systems-semantics work
+- then move into `V4` interop and ABI work
 
 That means the immediate path is not:
 
@@ -388,7 +420,10 @@ probably `V1`.
 If the language needs conformance, generics, richer compile-time abstraction, or
 advanced type semantics, it is probably `V2`.
 
-If the language needs ownership, concurrency/runtime coordination, foreign
-interop, or build/linker cooperation, it is probably `V3`.
+If the language needs ownership, borrowing, pointers, concurrency/runtime
+coordination, or execution-model semantics, it is probably `V3`.
+
+If the language needs foreign interop, C ABI, Rust interop, native library
+linking, or build/linker cooperation, it is probably `V4`.
 
 That is the line this repository should keep using while the compiler grows.

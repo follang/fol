@@ -33,6 +33,14 @@ Attaching methods does not make a type into an object. It simply gives a
 routine a receiver-qualified dot-call spelling. You could still think of the
 operation procedurally as a routine that takes the value as its first input.
 
+Current milestone note:
+
+- aliasing and extension over current `V1` built-in and declared types are part
+  of the present language surface
+- true foreign-type interop remains later work
+- C ABI and Rust interop belong to the planned `V4` milestone, not the current
+  compiler contract
+
 
 ## Extending
 

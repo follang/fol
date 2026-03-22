@@ -323,7 +323,8 @@ This is the important boundary for the current compiler stage:
 - diagnostics already cover failures from each of those stages plus backend
   emission/build failures
 - the project now does promise a finished first backend for the current `V1`
-  subset, while later targets, optimizations, and C ABI work remain outside
+  subset, while later targets, optimizations, C ABI work, and Rust interop
+  work remain outside
   this chapter
 
 ## What diagnostics do not guarantee
@@ -337,7 +338,8 @@ Current limits still matter:
 - `report` compatibility still belongs to later semantic work
 - type mismatch, coercion, and conversion diagnostics are future type-checker work
 - ownership and borrowing diagnostics are future semantic work
-- C ABI diagnostics are future package/type/backend work
+- C ABI diagnostics are future `V4` package/type/backend work
+- Rust interop diagnostics are future `V4` package/type/backend work
 
 So the current guarantee is:
 
