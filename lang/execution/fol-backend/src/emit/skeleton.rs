@@ -9,6 +9,8 @@ use fol_lower::LoweredType;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use super::runtime::backend_runtime_source_root;
+
 pub fn emit_cargo_toml(session: &BackendSession) -> EmittedRustFile {
     let layout = plan_generated_crate_layout(session);
     let package_name = session.workspace_identity().crate_dir_name.clone();
@@ -202,13 +204,7 @@ fn module_name_from_relative_part(relative_part: &str) -> String {
 }
 
 pub(super) fn runtime_dependency_path() -> PathBuf {
-    if let Some(path) = std::env::var_os("FOL_BACKEND_RUNTIME_PATH") {
-        return PathBuf::from(path);
-    }
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap_or_else(|| std::path::Path::new(env!("CARGO_MANIFEST_DIR")))
-        .join("fol-runtime")
+    backend_runtime_source_root()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

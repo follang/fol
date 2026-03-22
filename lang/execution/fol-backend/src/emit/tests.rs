@@ -4,9 +4,10 @@ mod tests {
         backend_build_paths, build_generated_crate, build_generated_crate_with_cargo,
         build_generated_crate_with_cargo_for_profile, emit_backend_artifact, emit_cargo_toml,
         emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
-        emit_package_module_shells,
+        emit_package_module_shells, prepare_backend_runtime_build_dir,
         prepare_backend_build_paths, prepare_generated_build_dir, summarize_emitted_artifact,
-        write_generated_crate,
+        write_generated_crate, backend_runtime_build_dir, backend_runtime_manifest_path,
+        backend_runtime_source_entry, backend_runtime_source_root,
     };
     use crate::{
         testing::{
@@ -250,6 +251,54 @@ mod tests {
         assert!(Path::new(&paths.build_root).exists());
         assert!(Path::new(&paths.bin_root).exists());
         assert!(Path::new(&paths.runtime_root).exists());
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn runtime_source_helpers_default_to_workspace_runtime_layout() {
+        let runtime_root = backend_runtime_source_root();
+        let manifest_path = backend_runtime_manifest_path();
+        let source_entry = backend_runtime_source_entry();
+
+        assert!(runtime_root.ends_with("lang/execution/fol-runtime"));
+        assert_eq!(manifest_path, runtime_root.join("Cargo.toml"));
+        assert_eq!(source_entry, runtime_root.join("src/lib.rs"));
+    }
+
+    #[test]
+    fn runtime_source_helpers_honor_runtime_override() {
+        let temp_root = temp_root("runtime_override");
+        std::env::set_var("FOL_BACKEND_RUNTIME_PATH", &temp_root);
+
+        let runtime_root = backend_runtime_source_root();
+        let manifest_path = backend_runtime_manifest_path();
+        let source_entry = backend_runtime_source_entry();
+
+        assert_eq!(runtime_root, temp_root);
+        assert_eq!(manifest_path, temp_root.join("Cargo.toml"));
+        assert_eq!(source_entry, temp_root.join("src/lib.rs"));
+
+        std::env::remove_var("FOL_BACKEND_RUNTIME_PATH");
+    }
+
+    #[test]
+    fn runtime_build_dir_helpers_keep_profile_scoped_runtime_outputs() {
+        let temp_root = temp_root("runtime_dirs");
+        let paths = prepare_backend_build_paths(&temp_root).expect("prepare paths");
+
+        let debug_dir = backend_runtime_build_dir(&paths, BackendBuildProfile::Debug);
+        let release_dir = backend_runtime_build_dir(&paths, BackendBuildProfile::Release);
+        let prepared_release = prepare_backend_runtime_build_dir(
+            &paths,
+            BackendBuildProfile::Release,
+        )
+        .expect("prepare runtime dir");
+
+        assert!(debug_dir.ends_with("fol-backend/runtime/debug"));
+        assert!(release_dir.ends_with("fol-backend/runtime/release"));
+        assert_eq!(prepared_release, release_dir);
+        assert!(prepared_release.exists());
 
         let _ = fs::remove_dir_all(&temp_root);
     }
