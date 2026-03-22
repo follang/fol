@@ -1,12 +1,38 @@
 use crate::{
-    BackendArtifact, BackendConfig, BackendError, BackendErrorKind, BackendMode, BackendResult,
-    BackendSession,
+    BackendArtifact, BackendBuildPaths, BackendConfig, BackendError, BackendErrorKind,
+    BackendMode, BackendResult, BackendSession,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use super::skeleton::emit_generated_crate_skeleton;
+
+pub fn backend_build_paths(output_root: &Path) -> BackendBuildPaths {
+    BackendBuildPaths {
+        output_root: output_root.display().to_string(),
+        build_root: output_root.join("fol-backend").display().to_string(),
+        bin_root: output_root.join("bin").display().to_string(),
+        runtime_root: output_root
+            .join("fol-backend")
+            .join("runtime")
+            .display()
+            .to_string(),
+    }
+}
+
+pub fn prepare_backend_build_paths(output_root: &Path) -> BackendResult<BackendBuildPaths> {
+    let paths = backend_build_paths(output_root);
+    for dir in [&paths.build_root, &paths.bin_root, &paths.runtime_root] {
+        fs::create_dir_all(dir).map_err(|error| {
+            BackendError::new(
+                BackendErrorKind::EmissionFailure,
+                format!("failed to create backend output dir '{}': {error}", dir),
+            )
+        })?;
+    }
+    Ok(paths)
+}
 
 pub fn write_generated_crate(
     output_root: &Path,
@@ -69,17 +95,7 @@ pub fn write_generated_crate(
 }
 
 pub fn prepare_generated_build_dir(output_root: &Path) -> BackendResult<PathBuf> {
-    let build_root = output_root.join("fol-backend");
-    fs::create_dir_all(&build_root).map_err(|error| {
-        BackendError::new(
-            BackendErrorKind::EmissionFailure,
-            format!(
-                "failed to create backend build root '{}': {error}",
-                build_root.display()
-            ),
-        )
-    })?;
-    Ok(build_root)
+    Ok(PathBuf::from(prepare_backend_build_paths(output_root)?.build_root))
 }
 
 pub fn build_generated_crate(crate_root: &Path) -> BackendResult<PathBuf> {
@@ -145,7 +161,8 @@ pub fn emit_backend_artifact(
     config: &BackendConfig,
     output_root: &Path,
 ) -> BackendResult<BackendArtifact> {
-    let build_root = prepare_generated_build_dir(output_root)?;
+    let paths = prepare_backend_build_paths(output_root)?;
+    let build_root = PathBuf::from(&paths.build_root);
     let source_artifact = emit_generated_crate_skeleton(session)?;
     let crate_root = write_generated_crate(&build_root, &source_artifact)?;
 
@@ -163,16 +180,7 @@ pub fn emit_backend_artifact(
     }
 
     let built_binary = build_generated_crate(&crate_root)?;
-    let final_binary_dir = output_root.join("bin");
-    fs::create_dir_all(&final_binary_dir).map_err(|error| {
-        BackendError::new(
-            BackendErrorKind::BuildFailure,
-            format!(
-                "failed to create backend binary dir '{}': {error}",
-                final_binary_dir.display()
-            ),
-        )
-    })?;
+    let final_binary_dir = PathBuf::from(&paths.bin_root);
     let final_binary = final_binary_dir.join(built_binary.file_name().ok_or_else(|| {
         BackendError::new(
             BackendErrorKind::BuildFailure,

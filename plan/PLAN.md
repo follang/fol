@@ -1,111 +1,429 @@
-# Replace clap with manual arg parsing
+# Replace Cargo Artifact Builds With Direct `rustc`
 
 Last updated: 2026-03-22
 
 ## Goal
 
-Remove `clap`, `clap_derive`, `clap_complete` and their 14 transitive crates by
-replacing the derive-based CLI parser with a hand-written argument parser. This
-cuts the external dependency count from ~24 to ~10 (serde ecosystem only).
+Stop using Cargo as the executable build driver for generated FOL program
+artifacts.
 
-## Crates eliminated
+The short-term target is:
 
-clap, clap_builder, clap_derive, clap_lex, clap_complete, anstyle,
-anstyle-parse, anstyle-query, anstream, colorchoice, is_terminal_polyfill,
-strsim, utf8parse, heck
+- keep the current Rust backend
+- keep one Rust codegen pipeline
+- compile generated binaries with direct `rustc`
+- keep `emit rust` as the human/debug/export workflow
 
-## Constraints
+The long-term target is:
 
-- All ~30 existing CLI tests must keep passing (adapted to new parser)
-- All ~1700+ workspace tests must keep passing
-- Env var defaults (FOL_OUTPUT, FOL_PROFILE) must still work
-- Conflict detection (--debug/--release/--profile, --bin/--lib) must still work
-- Aliases (w→work, p→pack, c→code, t→tool, b→build, etc.) must still work
-- Shell completion scripts (bash/zsh/fish) must still be generated
-- Internal completion (_complete) must still work
-- Help text and version display must still work
-- `--` separator for passthrough args in `run` must still work
+- keep backend interfaces clean enough that an LLVM backend can later be added
+- avoid deepening Cargo coupling while the Rust backend still exists
 
-## Files touched
+## Non-goals
 
-- `lang/tooling/fol-frontend/Cargo.toml` — remove clap, clap_complete deps
-- `lang/tooling/fol-frontend/src/output.rs` — remove `clap::ValueEnum` derive
-- `lang/tooling/fol-frontend/src/cli/args.rs` — remove all clap derives, keep plain structs
-- `lang/tooling/fol-frontend/src/cli/parser.rs` — replace with hand-written parser
-- `lang/tooling/fol-frontend/src/cli/tests.rs` — adapt to new parser API
-- `lang/tooling/fol-frontend/src/completion.rs` — replace clap_complete with hand-written scripts
-- `lang/tooling/fol-frontend/src/dispatch.rs` — remove clap error kind handling
-- `lang/tooling/fol-frontend/src/lib.rs` — update parse error mapping
+- Do not embed `rustc` internals into `fol`
+- Do not build a new LLVM backend in this plan
+- Do not maintain two different Rust code generators
+- Do not attempt to reproduce Cargo's internal rustc command lines exactly
+- Do not preserve Cargo as the product build authority once direct `rustc`
+  parity is established
 
----
+## Current state
 
-## Phase 1: Strip clap derives from data structs
+Today a FOL package build works like this:
 
-Remove all `#[derive(Args)]`, `#[derive(Subcommand)]`, `#[derive(Parser)]`,
-`#[derive(ValueEnum)]`, `#[arg(...)]`, `#[command(...)]` attributes. Keep the
-structs and enums exactly as they are — they become plain Rust types.
+1. `build.fol` is evaluated into a build graph
+2. the frontend selects the target artifact/root module
+3. the compiler produces lowered FOL IR
+4. `fol-backend` emits a temporary Rust crate
+5. `fol-backend` runs `cargo build --manifest-path <generated>/Cargo.toml --release`
+6. the built binary is copied into the backend output `bin/` directory
 
-Files: `args.rs`, `output.rs`
+Important repo facts that make direct `rustc` feasible:
 
-## Phase 2: Write the manual parser
+- generated artifact crates currently depend only on `fol-runtime`
+- `fol-runtime` currently has no third-party Cargo dependencies
+- there is no obvious proc-macro/build-script/native-library complexity in this
+  artifact build path
+- the generated Rust crate layout is already deterministic and backend-owned
 
-Replace `parser.rs` with a hand-written `parse(args: &[String]) -> Result<FrontendCli, ParseError>`.
+## Product direction
 
-The parser is a simple state machine:
-1. Consume global flags from the front (--output, --json, --profile, etc.)
-2. Match first positional to a command group (work/w, pack/p, code/c, tool/t, _complete)
-3. If no group match, treat it as a direct file/folder input
-4. Within each group, consume group-level flags (--output, --profile for code)
-5. Match next positional to subcommand (build/b/make, run/r, etc.)
-6. Within subcommand, consume subcommand-specific flags
-7. Remaining positionals become positional args (path, name, etc.)
+The project should treat Rust emission as the current backend language, not as
+the final architectural destination.
 
-Must handle:
-- `--flag value` and `--flag=value` forms
-- `-D value` short flag with append semantics
-- `--` separator for trailing args
-- Env var fallbacks for `--output` and `--profile`
-- Conflict checks (--debug vs --release vs --profile, --bin vs --lib)
+That means:
 
-## Phase 3: Write help and version output
+- near term: Rust backend, built directly with `rustc`
+- medium term: backend build orchestration fully owned by `fol-backend`
+- long term: optional LLVM backend beside or instead of the Rust backend
 
-Hand-write help text matching the current format:
-- `fol --help` shows root help with command groups and aliases
-- `fol <group> --help` shows group help with subcommands
-- `fol <group> <command> --help` shows command help with flags
-- `fol --version` shows `fol-frontend 0.1.4`
+This separates two concerns cleanly:
 
-## Phase 4: Replace shell completion generation
+- build driver choice: Cargo vs `rustc`
+- backend choice: Rust vs LLVM
 
-Replace `clap_complete::generate()` with hand-written completion scripts for
-bash, zsh, fish. These are static strings with the command tree baked in.
+Replacing Cargo with `rustc` is a build-system/backend-integration task.
+Replacing Rust with LLVM is a compiler-backend task.
 
-Replace `internal_complete_matches` (currently walks `clap::Command` tree) with
-a hand-written function that walks a static command/alias table.
+## Success criteria
 
-## Phase 5: Update dispatch and lib.rs
+The plan is successful when all of the following are true:
 
-- Remove `clap::error::ErrorKind::DisplayHelp` / `DisplayVersion` handling
-- Replace with the new parser's error types (Help, Version, ParseError)
-- Remove `FrontendCli::command()` (was for clap's CommandFactory)
-- Update `run_command_from_args` and `run_from_args_with_io_inner`
+- `fol code build` does not invoke Cargo for generated program artifacts
+- `fol code run` and `fol code test` also avoid Cargo through the same artifact
+  build path
+- `fol code emit rust` still writes a valid Cargo-compatible crate to disk
+- generated Rust source stays the single source of truth for the Rust backend
+- backend tests validate that direct `rustc` builds run the same fixtures that
+  previously passed under Cargo
+- backend architecture is cleaner after the change, not more entangled
 
-## Phase 6: Remove clap from Cargo.toml
+## Slice tracker
 
-Remove `clap` and `clap_complete` from `[dependencies]`.
-Run `cargo build` and `cargo test` to verify clean compile and all tests pass.
+- [x] Slice 1: add explicit backend build path planning
+- [ ] Slice 2: isolate Cargo build driver behind a dedicated function boundary
+- [ ] Slice 3: add explicit backend build profile/config plumbing
+- [ ] Slice 4: add runtime source/build-root resolution helpers
+- [ ] Slice 5: compile `fol-runtime` to `.rlib` with direct `rustc`
+- [ ] Slice 6: compile generated crates with direct `rustc`
+- [ ] Slice 7: add rustc parity tests alongside Cargo-backed tests
+- [ ] Slice 8: introduce explicit artifact build modes for Cargo vs `rustc`
+- [ ] Slice 9: switch normal artifact builds to direct `rustc`
+- [ ] Slice 10: remove Cargo artifact-build dependency and tighten docs
 
-## Phase 7: Adapt tests
+## Design rules
 
-Update `cli/tests.rs` to use the new parser API instead of clap's `parse_from`
-/ `try_parse_from`. The test assertions (struct equality checks) should remain
-identical since the data types haven't changed.
+1. One Rust code generator only.
+   The same emitted Rust files must drive both `emit rust` and binary builds.
 
----
+2. Backend-owned compilation.
+   `fol-backend` should explicitly compile support/runtime artifacts and then
+   compile the generated entry crate.
+
+3. Cargo-compatible emission remains available.
+   `emit rust` should keep producing a crate a human can inspect or build with
+   Cargo if desired.
+
+4. Product build path should not depend on Cargo.
+   Cargo may exist as a temporary fallback or developer convenience during
+   migration, but not as the final required path.
+
+5. No fake "sync" with Cargo internals.
+   "In sync" means same generated Rust and same observable behavior, not
+   byte-for-byte reproduction of Cargo's private rustc flag selection.
+
+## Proposed architecture
+
+### Backend layers
+
+Split the backend into three explicit responsibilities:
+
+1. Rust emission
+   Input: lowered workspace
+   Output: emitted Rust file set and crate layout metadata
+
+2. Rust artifact preparation
+   Input: emitted file set
+   Output: materialized crate root on disk, runtime build directory, output dir
+
+3. Rust compilation driver
+   Input: crate roots, runtime crate source, target/profile config
+   Output: native executable path
+
+### Backend modes
+
+Introduce a more explicit backend artifact/build model:
+
+- `EmitSource`
+  Writes the generated Rust crate and returns its root
+
+- `BuildArtifactWithRustc`
+  Writes the generated Rust crate, builds runtime support with `rustc`, then
+  builds the final artifact with `rustc`
+
+- optional temporary `BuildArtifactWithCargo`
+  Exists only during migration/testing and is deleted once parity is proven
+
+### Single source of truth
+
+The emitted Rust crate contents remain authoritative:
+
+- `src/main.rs`
+- `src/packages/...`
+- the crate name/layout chosen by the backend
+- runtime import contract through `fol_runtime`
+
+`Cargo.toml` is output metadata for Cargo-facing workflows, not the build graph
+authority for product builds.
+
+## Phase 1: Refactor backend build responsibilities
+
+Goal:
+Make the current Cargo path structurally replaceable before changing behavior.
+
+Tasks:
+
+- extract "emit generated files to disk" from "compile generated crate"
+- define a dedicated backend build context with:
+  - output root
+  - build root
+  - bin root
+  - generated crate root
+  - runtime build root
+  - selected profile
+  - optional target triple
+- isolate current Cargo invocation behind an internal build-driver function
+- keep all external behavior unchanged in this phase
+
+Expected result:
+
+- the backend can materialize the generated crate without immediately deciding
+  how it is compiled
+- the compilation driver becomes a pluggable internal detail
+
+## Phase 2: Add direct `rustc` compilation for `fol-runtime`
+
+Goal:
+Compile `fol-runtime` explicitly as a backend-owned support artifact.
+
+Tasks:
+
+- add a backend function to compile `lang/execution/fol-runtime/src/lib.rs`
+  into an `.rlib`
+- choose a deterministic backend-owned output path, for example:
+  - `<output>/fol-backend/runtime/<profile>/libfol_runtime.rlib`
+- pass at minimum:
+  - `--crate-name fol_runtime`
+  - `--crate-type rlib`
+  - `--edition=2021`
+  - optimization/profile flags
+  - `--out-dir <runtime-output-dir>`
+- make runtime source discovery explicit instead of Cargo-manifest-driven
+- preserve the existing runtime path override behavior where sensible, but
+  redefine it in terms of source/build input rather than Cargo path dependency
+
+Expected result:
+
+- the backend can produce a reusable `fol-runtime` library artifact without
+  invoking Cargo
+
+## Phase 3: Add direct `rustc` compilation for generated binaries
+
+Goal:
+Compile the emitted Rust entry crate directly with `rustc`.
+
+Tasks:
+
+- compile generated `src/main.rs` with:
+  - `--crate-name <generated-name>`
+  - `--edition=2021`
+  - `--extern fol_runtime=<path-to-built-runtime-rlib>`
+  - profile flags
+  - output path under backend `bin/`
+- ensure module resolution works from the generated crate root
+- ensure crate and output naming remain deterministic
+- return the final native binary path through the existing backend artifact API
+
+Expected result:
+
+- the backend can produce a working native executable using only `rustc` plus
+  the system linker/toolchain
+
+## Phase 4: Define explicit profile and target policy
+
+Goal:
+Replace Cargo's implicit defaults with backend-owned policy.
+
+Tasks:
+
+- define profile mappings:
+  - debug -> no/low optimization, debuginfo policy as chosen
+  - release -> optimized build policy
+- define the initial target support contract:
+  - first milestone: host-only builds are acceptable
+  - later milestone: explicit `--target <triple>` support
+- thread selected target/profile from frontend build options into backend build
+  driver config
+- reject unsupported target configurations with backend-owned diagnostics
+
+Expected result:
+
+- `fol-backend` is the authority on how build profile and target affect Rust
+  compilation
+
+## Phase 5: Switch product artifact builds to `rustc`
+
+Goal:
+Make direct `rustc` the default artifact build path.
+
+Tasks:
+
+- change backend build mode used by:
+  - `fol code build`
+  - `fol code run`
+  - `fol code test`
+  - direct-file build/run paths
+- keep `emit rust` unchanged as source emission
+- keep temporary Cargo fallback only behind a test-only or internal option if
+  still needed during migration
+
+Expected result:
+
+- normal user-facing binary builds no longer invoke Cargo
+
+## Phase 6: Establish parity tests
+
+Goal:
+Prove that direct `rustc` is behaviorally equivalent to the prior Cargo path
+for the current backend scope.
+
+Tasks:
+
+- add backend integration tests that:
+  - build a fixture with direct `rustc`
+  - run the produced binary
+  - assert expected output/exit status
+- during migration, add comparison tests that run the same emitted program
+  through both Cargo and `rustc`
+- validate:
+  - scalar programs
+  - recoverable entrypoints
+  - runtime helpers such as `.echo` and `.len`
+  - multi-package workspace graphs
+  - container/runtime-backed values
+- validate emitted source still remains Cargo-buildable for `emit rust`
+
+Expected result:
+
+- removal of Cargo is justified by test evidence instead of assumption
+
+## Phase 7: Remove Cargo from artifact build mode
+
+Goal:
+Delete the old artifact-build path once direct `rustc` is proven.
+
+Tasks:
+
+- remove `cargo build` invocation from `fol-backend`
+- delete temporary dual-path logic
+- simplify backend diagnostics around build failures to talk in terms of
+  explicit `rustc` and linker execution
+- keep `Cargo.toml` generation only if still useful for `emit rust`
+
+Expected result:
+
+- the product build path is simpler and fully backend-owned
+
+## Phase 8: Clean up runtime and emission contracts
+
+Goal:
+Use the migration to make later backend work easier.
+
+Tasks:
+
+- make runtime-path discovery explicit and backend-owned
+- document the runtime ABI expected by emitted Rust code
+- document the exact emitted crate invariants relied on by direct `rustc`
+- avoid sneaking Cargo assumptions back into generated-crate layout
+
+Expected result:
+
+- future backend work starts from a cleaner contract boundary
+
+## Known risks
+
+### Risk 1: Linker/platform differences
+
+Cargo currently hides some toolchain selection and linker behavior.
+
+Mitigation:
+
+- support host-only builds first
+- keep diagnostics precise when `rustc` or linker execution fails
+- defer full cross-target support until the host path is stable
+
+### Risk 2: Runtime artifact management
+
+Building `fol-runtime` manually means the backend owns caching and output paths.
+
+Mitigation:
+
+- start with a simple deterministic rebuild policy
+- add caching only after correctness is established
+
+### Risk 3: Hidden future dependencies
+
+If `fol-runtime` later gains external crates, the direct build path becomes more
+complex.
+
+Mitigation:
+
+- treat `fol-runtime` dependency growth as an architectural decision
+- if the runtime must stay directly buildable with `rustc`, keep its dependency
+  surface intentionally minimal
+
+### Risk 4: False sense of completion
+
+Replacing Cargo with `rustc` does not make the backend "LLVM-based" or "native"
+in the architectural sense.
+
+Mitigation:
+
+- document clearly that this is a build-driver change, not a non-Rust backend
+
+## LLVM follow-up plan
+
+LLVM is a separate roadmap and should only begin after the `rustc` migration is
+stable.
+
+The intended sequence is:
+
+1. own the artifact build path with `rustc`
+2. stabilize backend/runtime contracts
+3. define a backend-agnostic artifact interface
+4. prototype an LLVM backend beside the Rust backend
+5. compare semantics and runtime ABI behavior
+6. decide whether Rust emission remains as:
+   - a reference backend
+   - an `emit rust` debug/export backend
+   - or a removable transitional backend
+
+## Explicit recommendation
+
+Do this work now:
+
+- Cargo artifact build removal
+- direct `rustc` build driver
+- backend contract cleanup
+
+Do not do this work in the same project slice:
+
+- embedded `rustc`
+- compiler-internal `rustc_driver` integration
+- LLVM backend implementation
 
 ## Execution order
 
-Phases 1-2 are the core work. Phase 7 happens alongside phase 2 (tests drive the
-parser). Phases 3-4 can be done in parallel. Phase 5-6 are the final cleanup.
+Recommended order:
 
-Build and test after each phase. Commit after each phase.
+1. Phase 1: refactor backend build responsibilities
+2. Phase 2: build `fol-runtime` with direct `rustc`
+3. Phase 3: build generated artifacts with direct `rustc`
+4. Phase 4: make profile/target policy explicit
+5. Phase 6: add parity tests while Cargo path still exists
+6. Phase 5: switch product artifact builds to `rustc`
+7. Phase 7: delete Cargo artifact build mode
+8. Phase 8: clean up contracts and docs
+9. only then start LLVM follow-up work
+
+## Definition of done
+
+This plan is complete when:
+
+- generated FOL program binaries are built through direct `rustc`
+- `emit rust` still produces a valid inspectable Cargo-compatible crate
+- Cargo is no longer required for normal program binary builds
+- the backend build contract is clearer than before
+- the codebase is in a better position to add an LLVM backend later without
+  first undoing Rust/Cargo build coupling

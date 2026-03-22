@@ -35,9 +35,10 @@ pub fn crate_name() -> &'static str {
 pub use config::{BackendConfig, BackendMode, BackendTarget};
 pub use control::render_terminator;
 pub use emit::{
-    build_generated_crate, emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton,
-    emit_main_rs, emit_namespace_module_shells, emit_package_module_shells,
-    prepare_generated_build_dir, summarize_emitted_artifact, write_generated_crate,
+    backend_build_paths, build_generated_crate, emit_backend_artifact, emit_cargo_toml,
+    emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
+    emit_package_module_shells, prepare_backend_build_paths, prepare_generated_build_dir,
+    summarize_emitted_artifact, write_generated_crate,
 };
 pub use error::{BackendError, BackendErrorKind};
 pub use identity::{stable_workspace_hash, BackendWorkspaceIdentity};
@@ -50,7 +51,7 @@ pub use mangle::{
     mangle_global_name, mangle_local_name, mangle_package_module_name, mangle_routine_name,
     mangle_type_name, sanitize_backend_ident,
 };
-pub use model::{BackendArtifact, EmittedRustFile};
+pub use model::{BackendArtifact, BackendBuildPaths, EmittedRustFile};
 pub use session::BackendSession;
 pub use signatures::{
     render_global_declaration, render_routine_definition, render_routine_shell,

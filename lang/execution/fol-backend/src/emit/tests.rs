@@ -1,10 +1,10 @@
 #[cfg(test)]
 mod tests {
     use crate::emit::{
-        build_generated_crate, emit_backend_artifact, emit_cargo_toml,
+        backend_build_paths, build_generated_crate, emit_backend_artifact, emit_cargo_toml,
         emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
-        emit_package_module_shells, prepare_generated_build_dir, summarize_emitted_artifact,
-        write_generated_crate,
+        emit_package_module_shells, prepare_backend_build_paths, prepare_generated_build_dir,
+        summarize_emitted_artifact, write_generated_crate,
     };
     use crate::{
         testing::{
@@ -223,6 +223,31 @@ mod tests {
 
         assert!(build_root.ends_with("fol-backend"));
         assert!(build_root.exists());
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn backend_build_paths_keep_backend_roots_stable() {
+        let temp_root = temp_root("paths");
+
+        let paths = backend_build_paths(&temp_root);
+
+        assert_eq!(paths.output_root, temp_root.display().to_string());
+        assert!(paths.build_root.ends_with("fol-backend"));
+        assert!(paths.bin_root.ends_with("bin"));
+        assert!(paths.runtime_root.ends_with("fol-backend/runtime"));
+    }
+
+    #[test]
+    fn prepare_backend_build_paths_materializes_backend_directories() {
+        let temp_root = temp_root("prepared_paths");
+
+        let paths = prepare_backend_build_paths(&temp_root).expect("prepare paths");
+
+        assert!(Path::new(&paths.build_root).exists());
+        assert!(Path::new(&paths.bin_root).exists());
+        assert!(Path::new(&paths.runtime_root).exists());
 
         let _ = fs::remove_dir_all(&temp_root);
     }

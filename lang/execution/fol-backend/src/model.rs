@@ -6,6 +6,14 @@ pub struct EmittedRustFile {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BackendBuildPaths {
+    pub output_root: String,
+    pub build_root: String,
+    pub bin_root: String,
+    pub runtime_root: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum BackendArtifact {
     RustSourceCrate {
         root: String,
