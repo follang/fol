@@ -1,4 +1,7 @@
-use crate::{BackendBuildPaths, BackendBuildProfile, BackendError, BackendErrorKind, BackendResult};
+use crate::{
+    BackendBuildPaths, BackendBuildProfile, BackendError, BackendErrorKind, BackendMachineTarget,
+    BackendResult,
+};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -49,16 +52,23 @@ pub fn backend_runtime_manifest_path() -> PathBuf {
 
 pub fn backend_runtime_build_dir(
     paths: &BackendBuildPaths,
+    machine_target: &BackendMachineTarget,
     profile: BackendBuildProfile,
 ) -> PathBuf {
-    PathBuf::from(&paths.runtime_root).join(profile.as_str())
+    let target_dir = machine_target
+        .rust_target_triple()
+        .unwrap_or_else(|| machine_target.display_name().to_string());
+    PathBuf::from(&paths.runtime_root)
+        .join(target_dir)
+        .join(profile.as_str())
 }
 
 pub fn prepare_backend_runtime_build_dir(
     paths: &BackendBuildPaths,
+    machine_target: &BackendMachineTarget,
     profile: BackendBuildProfile,
 ) -> BackendResult<PathBuf> {
-    let runtime_dir = backend_runtime_build_dir(paths, profile);
+    let runtime_dir = backend_runtime_build_dir(paths, machine_target, profile);
     fs::create_dir_all(&runtime_dir).map_err(|error| {
         BackendError::new(
             BackendErrorKind::EmissionFailure,

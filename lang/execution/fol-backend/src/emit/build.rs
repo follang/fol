@@ -1,6 +1,6 @@
 use crate::{
     BackendArtifact, BackendBuildPaths, BackendBuildProfile, BackendConfig, BackendError,
-    BackendErrorKind, BackendMode, BackendResult, BackendSession,
+    BackendErrorKind, BackendMachineTarget, BackendMode, BackendResult, BackendSession,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -113,11 +113,12 @@ fn runtime_rlib_path(runtime_build_dir: &Path) -> PathBuf {
 
 fn runtime_build_dir_for_generated_crate(
     paths: &BackendBuildPaths,
+    machine_target: &BackendMachineTarget,
     profile: BackendBuildProfile,
     crate_root: &Path,
 ) -> BackendResult<PathBuf> {
     let crate_dir_name = package_name_for_generated_crate(crate_root)?;
-    Ok(super::runtime::backend_runtime_build_dir(paths, profile)
+    Ok(super::runtime::backend_runtime_build_dir(paths, machine_target, profile)
         .join(crate::sanitize_backend_ident(crate_dir_name)))
 }
 
@@ -139,20 +140,30 @@ fn rustc_crate_name_for_generated_crate(crate_root: &Path) -> BackendResult<Stri
     )?))
 }
 
-fn built_binary_output_path(crate_root: &Path, profile: BackendBuildProfile) -> BackendResult<PathBuf> {
+fn built_binary_output_path(
+    crate_root: &Path,
+    machine_target: &BackendMachineTarget,
+    profile: BackendBuildProfile,
+) -> BackendResult<PathBuf> {
     let package_name = package_name_for_generated_crate(crate_root)?;
+    let target_dir = machine_target
+        .rust_target_triple()
+        .unwrap_or_else(|| machine_target.display_name().to_string());
     Ok(crate_root
         .join("target")
+        .join(target_dir)
         .join(profile.as_str())
         .join(package_name))
 }
 
 pub fn build_runtime_rlib_with_rustc(
     paths: &BackendBuildPaths,
+    machine_target: &BackendMachineTarget,
     profile: BackendBuildProfile,
 ) -> BackendResult<PathBuf> {
     let runtime_source = super::runtime::backend_runtime_source_entry();
-    let runtime_build_dir = super::runtime::prepare_backend_runtime_build_dir(paths, profile)?;
+    let runtime_build_dir =
+        super::runtime::prepare_backend_runtime_build_dir(paths, machine_target, profile)?;
     let mut command = Command::new("rustc");
     command
         .arg("--crate-name")
@@ -202,9 +213,11 @@ pub fn build_runtime_rlib_with_rustc(
 pub fn build_generated_crate_with_rustc(
     crate_root: &Path,
     paths: &BackendBuildPaths,
+    machine_target: &BackendMachineTarget,
     profile: BackendBuildProfile,
 ) -> BackendResult<PathBuf> {
-    let runtime_build_dir = runtime_build_dir_for_generated_crate(paths, profile, crate_root)?;
+    let runtime_build_dir =
+        runtime_build_dir_for_generated_crate(paths, machine_target, profile, crate_root)?;
     fs::create_dir_all(&runtime_build_dir).map_err(|error| {
         BackendError::new(
             BackendErrorKind::BuildFailure,
@@ -259,7 +272,7 @@ pub fn build_generated_crate_with_rustc(
         ));
     }
     let main_rs = crate_root.join("src").join("main.rs");
-    let binary_path = built_binary_output_path(crate_root, profile)?;
+    let binary_path = built_binary_output_path(crate_root, machine_target, profile)?;
     if let Some(parent) = binary_path.parent() {
         fs::create_dir_all(parent).map_err(|error| {
             BackendError::new(
@@ -351,10 +364,29 @@ pub fn emit_backend_artifact(
     let built_binary = match config.mode {
         BackendMode::EmitSource => unreachable!("emit source handled above"),
         BackendMode::BuildArtifact => {
-            build_generated_crate_with_rustc(&crate_root, &paths, config.build_profile)?
+            build_generated_crate_with_rustc(
+                &crate_root,
+                &paths,
+                &config.machine_target,
+                config.build_profile,
+            )?
         }
     };
     let final_binary_dir = PathBuf::from(&paths.bin_root);
+    let target_dir = config
+        .machine_target
+        .rust_target_triple()
+        .unwrap_or_else(|| config.machine_target.display_name().to_string());
+    let final_binary_dir = final_binary_dir.join(target_dir);
+    fs::create_dir_all(&final_binary_dir).map_err(|error| {
+        BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "failed to create target-scoped binary dir '{}': {error}",
+                final_binary_dir.display()
+            ),
+        )
+    })?;
     let final_binary = final_binary_dir.join(built_binary.file_name().ok_or_else(|| {
         BackendError::new(
             BackendErrorKind::BuildFailure,

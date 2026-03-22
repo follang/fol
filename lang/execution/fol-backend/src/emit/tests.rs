@@ -16,7 +16,8 @@ mod tests {
             lowered_workspace_from_entry_path, lowered_workspace_from_entry_path_with_config,
             sample_lowered_workspace,
         },
-        BackendArtifact, BackendBuildProfile, BackendConfig, BackendMode, BackendSession,
+        BackendArtifact, BackendBuildProfile, BackendConfig, BackendMachineTarget, BackendMode,
+        BackendSession,
     };
     use fol_package::PackageConfig;
     use fol_resolver::ResolverConfig;
@@ -125,6 +126,7 @@ mod tests {
         let binary = build_generated_crate_with_rustc(
             &crate_root,
             &paths,
+            &BackendMachineTarget::Host,
             BackendBuildProfile::Release,
         )
         .expect("rustc build");
@@ -355,16 +357,22 @@ mod tests {
         let temp_root = temp_root("runtime_dirs");
         let paths = prepare_backend_build_paths(&temp_root).expect("prepare paths");
 
-        let debug_dir = backend_runtime_build_dir(&paths, BackendBuildProfile::Debug);
-        let release_dir = backend_runtime_build_dir(&paths, BackendBuildProfile::Release);
+        let debug_dir =
+            backend_runtime_build_dir(&paths, &BackendMachineTarget::Host, BackendBuildProfile::Debug);
+        let release_dir = backend_runtime_build_dir(
+            &paths,
+            &BackendMachineTarget::Host,
+            BackendBuildProfile::Release,
+        );
         let prepared_release = prepare_backend_runtime_build_dir(
             &paths,
+            &BackendMachineTarget::Host,
             BackendBuildProfile::Release,
         )
         .expect("prepare runtime dir");
 
-        assert!(debug_dir.ends_with("fol-backend/runtime/debug"));
-        assert!(release_dir.ends_with("fol-backend/runtime/release"));
+        assert!(debug_dir.ends_with("fol-backend/runtime/host/debug"));
+        assert!(release_dir.ends_with("fol-backend/runtime/host/release"));
         assert_eq!(prepared_release, release_dir);
         assert!(prepared_release.exists());
 
@@ -376,12 +384,18 @@ mod tests {
         let temp_root = temp_root("runtime_rlib_release");
         let paths = prepare_backend_build_paths(&temp_root).expect("prepare paths");
 
-        let rlib = build_runtime_rlib_with_rustc(&paths, BackendBuildProfile::Release)
-            .expect("build runtime rlib");
+        let rlib = build_runtime_rlib_with_rustc(
+            &paths,
+            &BackendMachineTarget::Host,
+            BackendBuildProfile::Release,
+        )
+        .expect("build runtime rlib");
 
         assert!(rlib.exists());
         assert!(rlib.ends_with("libfol_runtime.rlib"));
-        assert!(rlib.to_string_lossy().contains("/fol-backend/runtime/release/"));
+        assert!(rlib
+            .to_string_lossy()
+            .contains("/fol-backend/runtime/host/release/"));
 
         let _ = fs::remove_dir_all(&temp_root);
     }
@@ -398,13 +412,14 @@ mod tests {
         let binary = build_generated_crate_with_rustc(
             &crate_root,
             &paths,
+            &BackendMachineTarget::Host,
             BackendBuildProfile::Release,
         )
         .expect("rustc build");
         let output = Command::new(&binary).output().expect("run rustc binary");
 
         assert!(binary.exists());
-        assert!(binary.to_string_lossy().contains("/target/release/"));
+        assert!(binary.to_string_lossy().contains("/target/host/release/"));
         assert!(output.status.code().is_some());
 
         let _ = fs::remove_dir_all(&temp_root);
@@ -427,6 +442,7 @@ mod tests {
         let binary = build_generated_crate_with_rustc(
             &renamed_root,
             &paths,
+            &BackendMachineTarget::Host,
             BackendBuildProfile::Release,
         )
         .expect("rustc build");
@@ -520,6 +536,50 @@ mod tests {
             cargo_build_generated_crate_for_profile(&crate_root, BackendBuildProfile::Debug);
         assert!(binary.exists());
         assert!(binary.to_string_lossy().contains("/target/debug/"));
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn target_scoped_runtime_and_binary_outputs_use_resolved_machine_target_dirs() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
+        let temp_root = temp_root("cross_target_layout");
+        let paths = prepare_backend_build_paths(&temp_root).expect("prepare paths");
+        let crate_root =
+            write_generated_crate(Path::new(&paths.build_root), &artifact).expect("write crate");
+        let machine_target =
+            BackendMachineTarget::Triple("aarch64-macos-gnu".to_string());
+
+        let runtime_dir =
+            backend_runtime_build_dir(&paths, &machine_target, BackendBuildProfile::Release);
+        let binary = build_generated_crate_with_rustc(
+            &crate_root,
+            &paths,
+            &machine_target,
+            BackendBuildProfile::Release,
+        )
+        .expect("rustc build");
+        let emitted = emit_backend_artifact(
+            &session,
+            &BackendConfig {
+                machine_target,
+                mode: BackendMode::BuildArtifact,
+                keep_build_dir: true,
+                ..BackendConfig::default()
+            },
+            &temp_root,
+        )
+        .expect("build artifact");
+
+        assert!(runtime_dir.ends_with("fol-backend/runtime/aarch64-apple-darwin/release"));
+        assert!(binary
+            .to_string_lossy()
+            .contains("/target/aarch64-apple-darwin/release/"));
+        let BackendArtifact::CompiledBinary { binary_path, .. } = emitted else {
+            panic!("expected compiled binary artifact");
+        };
+        assert!(binary_path.contains("/bin/aarch64-apple-darwin/"));
 
         let _ = fs::remove_dir_all(&temp_root);
     }
