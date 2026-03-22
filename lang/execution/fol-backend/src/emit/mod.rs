@@ -11,7 +11,9 @@ pub use build::{
 };
 pub use runtime::{
     backend_runtime_build_dir, backend_runtime_manifest_path, backend_runtime_source_entry,
-    backend_runtime_source_root, prepare_backend_runtime_build_dir,
+    backend_runtime_source_root, backend_runtime_manifest_path_with_override,
+    backend_runtime_source_entry_with_override, backend_runtime_source_root_with_override,
+    prepare_backend_runtime_build_dir,
 };
 pub use skeleton::{
     emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,

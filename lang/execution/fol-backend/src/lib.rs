@@ -41,8 +41,10 @@ pub use emit::{
     emit_generated_crate_skeleton, emit_main_rs, emit_namespace_module_shells,
     emit_package_module_shells, prepare_backend_build_paths, prepare_backend_runtime_build_dir,
     prepare_generated_build_dir, summarize_emitted_artifact, write_generated_crate,
-    backend_runtime_build_dir, backend_runtime_manifest_path, backend_runtime_source_entry,
-    backend_runtime_source_root,
+    backend_runtime_build_dir, backend_runtime_manifest_path,
+    backend_runtime_manifest_path_with_override, backend_runtime_source_entry,
+    backend_runtime_source_entry_with_override, backend_runtime_source_root,
+    backend_runtime_source_root_with_override,
 };
 pub use error::{BackendError, BackendErrorKind};
 pub use identity::{stable_workspace_hash, BackendWorkspaceIdentity};
@@ -100,7 +102,7 @@ mod tests {
         assert_eq!(format!("{backend:?}"), "Backend");
         assert_eq!(config.target, BackendTarget::Rust);
         assert_eq!(config.build_profile, BackendBuildProfile::Release);
-        assert_eq!(config.mode, BackendMode::BuildArtifactWithCargo);
+        assert_eq!(config.mode, BackendMode::BuildArtifactWithRustc);
         assert_eq!(session.workspace().package_count(), 2);
         assert!(result.is_ok());
         assert!(matches!(artifact, BackendArtifact::RustSourceCrate { .. }));

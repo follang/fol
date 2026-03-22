@@ -8,7 +8,9 @@ mod tests {
         emit_package_module_shells, prepare_backend_runtime_build_dir,
         prepare_backend_build_paths, prepare_generated_build_dir, summarize_emitted_artifact,
         write_generated_crate, backend_runtime_build_dir, backend_runtime_manifest_path,
-        backend_runtime_source_entry, backend_runtime_source_root,
+        backend_runtime_manifest_path_with_override, backend_runtime_source_entry,
+        backend_runtime_source_entry_with_override, backend_runtime_source_root,
+        backend_runtime_source_root_with_override,
     };
     use crate::{
         testing::{
@@ -290,19 +292,15 @@ mod tests {
     }
 
     #[test]
-    fn runtime_source_helpers_honor_runtime_override() {
+    fn runtime_source_helpers_honor_explicit_runtime_override_without_mutating_env() {
         let temp_root = temp_root("runtime_override");
-        std::env::set_var("FOL_BACKEND_RUNTIME_PATH", &temp_root);
-
-        let runtime_root = backend_runtime_source_root();
-        let manifest_path = backend_runtime_manifest_path();
-        let source_entry = backend_runtime_source_entry();
+        let runtime_root = backend_runtime_source_root_with_override(Some(&temp_root));
+        let manifest_path = backend_runtime_manifest_path_with_override(Some(&temp_root));
+        let source_entry = backend_runtime_source_entry_with_override(Some(&temp_root));
 
         assert_eq!(runtime_root, temp_root);
         assert_eq!(manifest_path, temp_root.join("Cargo.toml"));
         assert_eq!(source_entry, temp_root.join("src/lib.rs"));
-
-        std::env::remove_var("FOL_BACKEND_RUNTIME_PATH");
     }
 
     #[test]
@@ -361,6 +359,33 @@ mod tests {
         assert!(binary.exists());
         assert!(binary.to_string_lossy().contains("/target/release/"));
         assert!(output.status.success());
+
+        let _ = fs::remove_dir_all(&temp_root);
+    }
+
+    #[test]
+    fn rustc_generated_crate_builder_sanitizes_hyphenated_crate_dir_names() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let artifact = emit_generated_crate_skeleton(&session).expect("artifact");
+        let temp_root = temp_root("rustc_hyphenated_release");
+        let paths = prepare_backend_build_paths(&temp_root).expect("prepare paths");
+        let crate_root =
+            write_generated_crate(Path::new(&paths.build_root), &artifact).expect("write crate");
+        let renamed_root = crate_root
+            .parent()
+            .expect("crate parent")
+            .join("demo-with-hyphen");
+        fs::rename(&crate_root, &renamed_root).expect("rename crate root");
+
+        let binary = build_generated_crate_with_rustc(
+            &renamed_root,
+            &paths,
+            BackendBuildProfile::Release,
+        )
+        .expect("rustc build");
+
+        assert!(binary.exists());
+        assert!(binary.ends_with("demo-with-hyphen"));
 
         let _ = fs::remove_dir_all(&temp_root);
     }

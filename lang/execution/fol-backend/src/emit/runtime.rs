@@ -2,22 +2,49 @@ use crate::{BackendBuildPaths, BackendBuildProfile, BackendError, BackendErrorKi
 use std::fs;
 use std::path::{Path, PathBuf};
 
+pub fn backend_runtime_source_root_with_override(override_path: Option<&Path>) -> PathBuf {
+    override_path
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| {
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .parent()
+                .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")))
+                .join("fol-runtime")
+        })
+}
+
 pub fn backend_runtime_source_root() -> PathBuf {
-    if let Some(path) = std::env::var_os("FOL_BACKEND_RUNTIME_PATH") {
-        return PathBuf::from(path);
-    }
-    Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")))
-        .join("fol-runtime")
+    backend_runtime_source_root_with_override(
+        std::env::var_os("FOL_BACKEND_RUNTIME_PATH")
+            .as_deref()
+            .map(Path::new),
+    )
+}
+
+pub fn backend_runtime_source_entry_with_override(override_path: Option<&Path>) -> PathBuf {
+    backend_runtime_source_root_with_override(override_path)
+        .join("src")
+        .join("lib.rs")
 }
 
 pub fn backend_runtime_source_entry() -> PathBuf {
-    backend_runtime_source_root().join("src").join("lib.rs")
+    backend_runtime_source_entry_with_override(
+        std::env::var_os("FOL_BACKEND_RUNTIME_PATH")
+            .as_deref()
+            .map(Path::new),
+    )
+}
+
+pub fn backend_runtime_manifest_path_with_override(override_path: Option<&Path>) -> PathBuf {
+    backend_runtime_source_root_with_override(override_path).join("Cargo.toml")
 }
 
 pub fn backend_runtime_manifest_path() -> PathBuf {
-    backend_runtime_source_root().join("Cargo.toml")
+    backend_runtime_manifest_path_with_override(
+        std::env::var_os("FOL_BACKEND_RUNTIME_PATH")
+            .as_deref()
+            .map(Path::new),
+    )
 }
 
 pub fn backend_runtime_build_dir(

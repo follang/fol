@@ -141,7 +141,7 @@ pub fn run_direct_compile(
                     mode: if *emit_rust {
                         BackendMode::EmitSource
                     } else {
-                        BackendMode::BuildArtifactWithCargo
+                        BackendMode::BuildArtifactWithRustc
                     },
                     keep_build_dir: *keep_build_dir,
                     ..BackendConfig::default()
@@ -242,7 +242,7 @@ pub fn run_direct_compile(
             let output_root = frontend_config.working_directory.join("target");
             let backend_mode = match config.mode {
                 DirectCompileMode::EmitRust { .. } => BackendMode::EmitSource,
-                _ => BackendMode::BuildArtifactWithCargo,
+                _ => BackendMode::BuildArtifactWithRustc,
             };
             let artifact = emit_backend_artifact(
                 &backend_session,
@@ -418,7 +418,7 @@ pub fn run_direct_compile_with_io(
                                     emit_rust: true, ..
                                 } => BackendMode::EmitSource,
                                 DirectCompileMode::EmitRust { .. } => BackendMode::EmitSource,
-                                _ => BackendMode::BuildArtifactWithCargo,
+                                _ => BackendMode::BuildArtifactWithRustc,
                             },
                             keep_build_dir: match &config.mode {
                                 DirectCompileMode::Auto { keep_build_dir, .. } => *keep_build_dir,

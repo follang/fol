@@ -56,7 +56,7 @@ impl Default for BackendConfig {
         Self {
             target: BackendTarget::Rust,
             build_profile: BackendBuildProfile::Release,
-            mode: BackendMode::BuildArtifactWithCargo,
+            mode: BackendMode::BuildArtifactWithRustc,
             keep_build_dir: false,
         }
     }

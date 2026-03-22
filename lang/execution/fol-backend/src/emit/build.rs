@@ -136,6 +136,16 @@ fn runtime_rlib_path(runtime_build_dir: &Path) -> PathBuf {
     runtime_build_dir.join("libfol_runtime.rlib")
 }
 
+fn runtime_build_dir_for_generated_crate(
+    paths: &BackendBuildPaths,
+    profile: BackendBuildProfile,
+    crate_root: &Path,
+) -> BackendResult<PathBuf> {
+    let crate_dir_name = package_name_for_generated_crate(crate_root)?;
+    Ok(super::runtime::backend_runtime_build_dir(paths, profile)
+        .join(crate::sanitize_backend_ident(crate_dir_name)))
+}
+
 fn package_name_for_generated_crate(crate_root: &Path) -> BackendResult<&str> {
     crate_root.file_name().and_then(|value| value.to_str()).ok_or_else(|| {
         BackendError::new(
@@ -146,6 +156,12 @@ fn package_name_for_generated_crate(crate_root: &Path) -> BackendResult<&str> {
             ),
         )
     })
+}
+
+fn rustc_crate_name_for_generated_crate(crate_root: &Path) -> BackendResult<String> {
+    Ok(crate::sanitize_backend_ident(package_name_for_generated_crate(
+        crate_root,
+    )?))
 }
 
 fn built_binary_output_path(
@@ -265,7 +281,60 @@ pub fn build_generated_crate_with_rustc(
     paths: &BackendBuildPaths,
     profile: BackendBuildProfile,
 ) -> BackendResult<PathBuf> {
-    let runtime_rlib = build_runtime_rlib_with_rustc(paths, profile)?;
+    let runtime_build_dir = runtime_build_dir_for_generated_crate(paths, profile, crate_root)?;
+    fs::create_dir_all(&runtime_build_dir).map_err(|error| {
+        BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "failed to create generated runtime dir '{}': {error}",
+                runtime_build_dir.display()
+            ),
+        )
+    })?;
+    let runtime_source = super::runtime::backend_runtime_source_entry();
+    let runtime_rlib = runtime_rlib_path(&runtime_build_dir);
+    let mut runtime_command = Command::new("rustc");
+    runtime_command
+        .arg("--crate-name")
+        .arg("fol_runtime")
+        .arg("--crate-type")
+        .arg("rlib")
+        .arg("--edition=2021")
+        .arg(&runtime_source)
+        .arg("--out-dir")
+        .arg(&runtime_build_dir);
+    apply_rustc_profile_args(&mut runtime_command, profile);
+    let runtime_output = runtime_command.output().map_err(|error| {
+        BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "failed to launch rustc for runtime '{}': {error}",
+                runtime_source.display()
+            ),
+        )
+    })?;
+    if !runtime_output.status.success() {
+        let stderr = String::from_utf8_lossy(&runtime_output.stderr);
+        let stdout = String::from_utf8_lossy(&runtime_output.stdout);
+        return Err(BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "rustc failed for runtime '{}'\nstdout:\n{}\nstderr:\n{}",
+                runtime_source.display(),
+                stdout.trim(),
+                stderr.trim()
+            ),
+        ));
+    }
+    if !runtime_rlib.exists() {
+        return Err(BackendError::new(
+            BackendErrorKind::BuildFailure,
+            format!(
+                "rustc succeeded but runtime artifact '{}' is missing",
+                runtime_rlib.display()
+            ),
+        ));
+    }
     let main_rs = crate_root.join("src").join("main.rs");
     let binary_path = built_binary_output_path(crate_root, profile)?;
     if let Some(parent) = binary_path.parent() {
@@ -283,7 +352,7 @@ pub fn build_generated_crate_with_rustc(
     command
         .current_dir(crate_root)
         .arg("--crate-name")
-        .arg(package_name_for_generated_crate(crate_root)?)
+        .arg(rustc_crate_name_for_generated_crate(crate_root)?)
         .arg("--edition=2021")
         .arg(&main_rs)
         .arg("--extern")
