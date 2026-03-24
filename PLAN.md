@@ -105,7 +105,7 @@ Keep one runtime crate and make the model ownership explicit inside it.
   - `core` module owns the no-heap, no-OS base
   - `alloc` module may build on `core`
   - `std` module may build on `core` and `alloc`
-- [ ] Slice 7. Add smoke tests proving `fol-runtime` exposes the model modules
+- [x] Slice 7. Add smoke tests proving `fol-runtime` exposes the model modules
   and the workspace build remains green.
 
 ### Exit criteria
