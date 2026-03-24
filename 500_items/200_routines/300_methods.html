@@ -35,10 +35,10 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-112ad5fd.js";
+            window.path_to_searchindex_js = "../../searchindex-b19a3ca7.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc-58ef93fa.js"></script>
+        <script src="../../toc-aca3346a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -224,6 +224,31 @@ var msg: str = tool.parse_msg(10)
 </code></pre>
 <p>This is equivalent in meaning to passing <code>tool</code> as the first routine argument.
 The dot form is only the call-site spelling.</p>
+<p>Method calls use the same <code>V1</code> call-binding rules as free routine calls:</p>
+<ul>
+<li>ordinary positional arguments may appear before named arguments</li>
+<li>named arguments bind by declared parameter name</li>
+<li>defaulted parameters may be omitted</li>
+<li>a final variadic parameter may collect trailing arguments</li>
+<li><code>...sequence</code> may appear after named arguments when it feeds that final
+variadic parameter</li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-fol">typ Counter: rec = {
+    total: int
+};
+
+fun (Counter)shift(step: int = 2, extras: ... int): int = {
+    return step;
+}
+
+fun[] run(current: Counter, extras: seq[int]): int = {
+    return current.shift(step = 3, ...extras);
+}
+</code></pre>
+<p><code>V1</code> does not support indexed pseudo-arguments such as
+<code>current.shift(extras[0] = 1, ...extras)</code>. That spelling looks like assignment,
+not call binding, so the language keeps variadic binding explicit and simple.</p>
 <p>For record-focused V1 code, the intended reading is:</p>
 <ul>
 <li>records hold data</li>

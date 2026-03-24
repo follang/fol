@@ -35,10 +35,10 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-112ad5fd.js";
+            window.path_to_searchindex_js = "../../searchindex-b19a3ca7.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc-58ef93fa.js"></script>
+        <script src="../../toc-aca3346a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -256,7 +256,13 @@ pro main: int = {
 }
 </code></pre>
 <h4 id="mixed-parameters"><a class="header" href="#mixed-parameters">Mixed parameters</a></h4>
-<p>Keyword and positional arguments can be used at the same time too. The only restriction with this approach is that after a keyword parameter appears in the list, all remaining parameters must be keyworded. This restriction is necessary because a position may no longer be well defined after a keyword parameter has appeared.</p>
+<p>Keyword and positional arguments can be used at the same time too. In <code>V1</code>,
+ordinary positional arguments must come before named arguments. After a named
+argument appears, later ordinary arguments are rejected because position is no
+longer well defined.</p>
+<p>The one supported exception is call-site unpack for the final variadic
+parameter. <code>...items</code> may appear after named arguments when it is feeding that
+final variadic input.</p>
 <pre><code>fun[] calc(el1, el2, el3: int, el4, el5: flt): int = { result[0] = ((el1 + el2) * el4 ) - (el3 ** el5);  }
 
 pro main: int = {
@@ -264,18 +270,43 @@ pro main: int = {
                                                             // its positional place is taken by keyword argument $el5
 }
 </code></pre>
+<p>This remains invalid:</p>
+<pre><code class="language-fol">calc(el3 = 5, 4, el1 = 3)
+</code></pre>
+<p>But this is valid in <code>V1</code> when the last parameter is variadic:</p>
+<pre><code class="language-fol">fun[] score(base: int, step: int = 2, extras: ... int): int = {
+    return base;
+}
+
+fun[] run(): int = {
+    var extras: seq[int] = {4, 5};
+    return score(base = 3, ...extras);
+}
+</code></pre>
 <h3 id="default-arguments"><a class="header" href="#default-arguments">Default arguments</a></h3>
-<p>Formal parameters can have default values too. A default value is used if no actual parameter is passed to the formal parameter. The default parameter is assigned directly after the formal parameter declaration. The compiler converts the list of arguments to an array implicitly. The number of parameters needs to be known at compile time.</p>
-<pre><code>fun[] calc(el1, el2, el3: rise: bool = true): int = { result[0] = el1 + el2 * el3 | this | el1 + el2;  }
+<p>Formal parameters can have default values too. A default value is used if no
+actual parameter is passed to the formal parameter.</p>
+<p>In <code>V1</code>:</p>
+<ul>
+<li>omitted parameters use their declared default</li>
+<li>named arguments may skip over defaulted parameters</li>
+<li>defaults can coexist with a final variadic parameter</li>
+</ul>
+<pre><code>fun[] calc(el1, el2, el3: int, rise: bool = true): int = { result[0] = el1 + el2 * el3 | this | el1 + el2;  }
 
 pro main: int = {
     calc(3,3,2);                                            // this returns 6, last positional parameter is not passed but 
                                                             // the default `true` is used from the routine declaration
     calc(3,3,2,false)                                       // this returns 12
+    calc(el1 = 3, el2 = 3, el3 = 2)                         // named arguments may also rely on the default
 }
 </code></pre>
 <h3 id="variadic-routine"><a class="header" href="#variadic-routine">Variadic routine</a></h3>
-<p>The use of <code>...</code> as the type of argument at the end of the argument list declares the routine as variadic. This must appear as the last argument of the routine. When variadic routine is used, the default arguments can not be used at the same time.</p>
+<p>The use of <code>...</code> as the type of argument at the end of the argument list
+declares the routine as variadic. This must appear as the last argument of the
+routine.</p>
+<p>In <code>V1</code>, the final variadic parameter is bound as a <code>seq[...]</code> value. Extra
+trailing call arguments are collected into that sequence.</p>
 <pre><code>fun[] calc(rise: bool; ints: ... int): int = { result[0] = ints[0] + ints[1] + ints[2] * ints[3] | this | ints[0] + ints[1];  }
 
 pro main: int = {
@@ -284,7 +315,33 @@ pro main: int = {
                                                             // and we have given only three (thus the forth is initialized as zero)
 }
 </code></pre>
-<p><code>...</code> is called unpack operator - just like in Golang. In the routine above, you see <code>...</code>, which means pack all incoming arguments into <code>seq[int]</code> after the first argument. The sequence then is turned into a list at compile time.</p>
+<p>Call-site unpack is the companion feature to variadics. It forwards an existing
+sequence into the final variadic parameter:</p>
+<pre><code class="language-fol">fun[] calc(rise: bool; ints: ... int): int = {
+    return ints[0];
+}
+
+fun[] run(values: seq[int]): int = {
+    return calc(true, ...values);
+}
+</code></pre>
+<p>This also works after named arguments:</p>
+<pre><code class="language-fol">fun[] score(base: int, step: int = 2, extras: ... int): int = {
+    return base;
+}
+
+fun[] run(values: seq[int]): int = {
+    return score(base = 3, ...values);
+}
+</code></pre>
+<p><code>V1</code> intentionally does not support pseudo-arguments such as
+<code>extras[0] = 1</code> at call sites. Variadic inputs are still just routine
+parameters, so call binding stays limited to:</p>
+<ul>
+<li>ordinary positional arguments</li>
+<li>named arguments by declared parameter name</li>
+<li>one final <code>...sequence</code> unpack for the variadic tail</li>
+</ul>
 <p>{{% notice warn %}}</p>
 <p>Nested procedures don’t have access to the outer scope, while nested function have but can’t change the state of it.</p>
 <p>{{% /notice %}}</p>
