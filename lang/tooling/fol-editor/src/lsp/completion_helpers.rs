@@ -2,6 +2,11 @@ use crate::{EditorDocument, LspCompletionContext, LspPosition};
 
 use super::types::EditorCompletionItem;
 
+pub(super) const FALLBACK_ROUTINE_PREFIXES: &[&str] =
+    &["fun[] ", "fun[", "log[] ", "log[", "pro[] ", "pro["];
+pub(super) const FALLBACK_TYPE_PREFIXES: &[&str] = &["typ[] ", "typ[", "typ "];
+pub(super) const FALLBACK_ALIAS_PREFIXES: &[&str] = &["ali[] ", "ali[", "ali "];
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum CompletionContext {
     Plain,
@@ -151,18 +156,13 @@ pub(super) fn collect_fallback_items_from_dir(
         };
         for line in text.lines() {
             let trimmed = line.trim();
-            if let Some(name) = fallback_decl_name(trimmed, &["fun[exp] ", "fun["]) {
+            if let Some(name) =
+                fallback_decl_name(trimmed, &["fun[exp] ", "fun[", "log[exp] ", "log[", "pro[exp] ", "pro["])
+            {
                 items.push(EditorCompletionItem {
                     label: name,
                     kind: 3,
                     detail: Some("routine".to_string()),
-                    insert_text: None,
-                });
-            } else if let Some(name) = fallback_decl_name(trimmed, &["def[exp] ", "def["]) {
-                items.push(EditorCompletionItem {
-                    label: name,
-                    kind: 12,
-                    detail: Some("definition".to_string()),
                     insert_text: None,
                 });
             } else if let Some(name) = fallback_decl_name(trimmed, &["typ[exp] ", "typ["]) {
@@ -269,7 +269,9 @@ fn completion_item_detail_priority(item: &EditorCompletionItem) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::{
-        completion_context_with_lsp, dedupe_completion_items, CompletionContext,
+        completion_context_with_lsp, dedupe_completion_items, fallback_decl_name,
+        FALLBACK_ALIAS_PREFIXES, FALLBACK_ROUTINE_PREFIXES, FALLBACK_TYPE_PREFIXES,
+        CompletionContext,
         EditorCompletionItem,
     };
     use crate::{EditorDocument, EditorDocumentUri, LspCompletionContext, LspPosition};
@@ -316,6 +318,17 @@ mod tests {
         );
 
         assert_eq!(context, CompletionContext::DotTrigger);
+    }
+
+    #[test]
+    fn fallback_prefix_tables_match_current_v1_declaration_surface() {
+        assert_eq!(
+            FALLBACK_ROUTINE_PREFIXES,
+            &["fun[] ", "fun[", "log[] ", "log[", "pro[] ", "pro["]
+        );
+        assert_eq!(FALLBACK_TYPE_PREFIXES, &["typ[] ", "typ[", "typ "]);
+        assert_eq!(FALLBACK_ALIAS_PREFIXES, &["ali[] ", "ali[", "ali "]);
+        assert!(fallback_decl_name("def[] old(): int = {", FALLBACK_ROUTINE_PREFIXES).is_none());
     }
 }
 

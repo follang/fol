@@ -325,7 +325,7 @@ Audit and remove manual editor registries that can be replaced with
   - must stay manual
   - can become compiler-backed
   - can become generated
-- [ ] Slice 32. Replace at least the low-risk manual registries first:
+- [x] Slice 32. Replace at least the low-risk manual registries first:
   - intrinsic labels
   - builtin type suggestions
   - keyword family lists

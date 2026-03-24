@@ -41,6 +41,10 @@ use std::sync::Arc;
 use transport::from_params;
 use crate::workspace::discover_workspace_roots;
 
+pub(crate) fn semantic_token_type_names() -> &'static [&'static str] {
+    semantic::semantic_token_types()
+}
+
 pub struct EditorLspServer {
     pub session: EditorSession,
 }

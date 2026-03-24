@@ -20,6 +20,7 @@ use super::completion_helpers::{
     current_routine_name, dedupe_completion_items, fallback_decl_name,
     fallback_items_from_package_dir, position_to_offset, render_checked_type, render_symbol_kind,
     symbol_kind_code, symbol_visibility_matches_namespace_root, CompletionContext,
+    FALLBACK_ALIAS_PREFIXES, FALLBACK_ROUTINE_PREFIXES, FALLBACK_TYPE_PREFIXES,
 };
 use super::types::{
     EditorCompletionItem, LspDocumentSymbol, LspHover, LspParameterInformation, LspSignatureHelp,
@@ -661,7 +662,7 @@ impl SemanticSnapshot {
         items
     }
 
-    // FALLBACK: text-matches `fun[`, `pro[`, `typ[`, `ali[`, `def[` prefixes
+    // FALLBACK: text-matches current V1 declaration heads when resolver data is absent.
     // when resolver data is absent. Required for broken documents.
     fn fallback_current_package_top_level_items(
         &self,
@@ -672,10 +673,7 @@ impl SemanticSnapshot {
         let current_routine = current_routine_name(&document.text, position);
         for line in document.text.lines() {
             let trimmed = line.trim();
-            if let Some(name) = fallback_decl_name(
-                trimmed,
-                &["fun[] ", "fun[", "log[] ", "log[", "pro[] ", "pro["],
-            ) {
+            if let Some(name) = fallback_decl_name(trimmed, FALLBACK_ROUTINE_PREFIXES) {
                 if current_routine.as_deref() == Some(name.as_str()) {
                     continue;
                 }
@@ -685,21 +683,14 @@ impl SemanticSnapshot {
                     detail: Some("routine".to_string()),
                     insert_text: None,
                 });
-            } else if let Some(name) = fallback_decl_name(trimmed, &["def[] ", "def["]) {
-                items.push(EditorCompletionItem {
-                    label: name,
-                    kind: 12,
-                    detail: Some("definition".to_string()),
-                    insert_text: None,
-                });
-            } else if let Some(name) = fallback_decl_name(trimmed, &["typ[] ", "typ[", "typ "]) {
+            } else if let Some(name) = fallback_decl_name(trimmed, FALLBACK_TYPE_PREFIXES) {
                 items.push(EditorCompletionItem {
                     label: name,
                     kind: 22,
                     detail: Some("type".to_string()),
                     insert_text: None,
                 });
-            } else if let Some(name) = fallback_decl_name(trimmed, &["ali[] ", "ali[", "ali "]) {
+            } else if let Some(name) = fallback_decl_name(trimmed, FALLBACK_ALIAS_PREFIXES) {
                 items.push(EditorCompletionItem {
                     label: name,
                     kind: 22,

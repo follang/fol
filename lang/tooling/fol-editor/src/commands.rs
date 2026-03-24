@@ -59,6 +59,24 @@ fn sorted_query_captures(query: &str) -> Vec<String> {
     captures
 }
 
+fn compiler_import_kinds_csv() -> String {
+    fol_typecheck::editor_source_kind_names().join(",")
+}
+
+fn compiler_dot_intrinsic_names_csv() -> String {
+    let mut names = fol_typecheck::editor_implemented_intrinsics()
+        .into_iter()
+        .filter(|entry| entry.surface == fol_intrinsics::IntrinsicSurface::DotRootCall)
+        .map(|entry| entry.name.to_string())
+        .collect::<Vec<_>>();
+    names.sort();
+    names.join(",")
+}
+
+fn semantic_token_legend_csv() -> String {
+    crate::lsp::semantic_token_type_names().join(",")
+}
+
 pub fn editor_parse_file(path: &Path) -> EditorResult<EditorCommandSummary> {
     let source = std::fs::read_to_string(path).map_err(|error| {
         EditorError::new(
@@ -111,8 +129,11 @@ pub fn editor_highlight_file(path: &Path) -> EditorResult<EditorCommandSummary> 
     .with_detail(format!("query_bytes={}", query.len()))
     .with_detail(format!("capture_count={}", captures.len()))
     .with_detail(format!("captures={}", captures.join(",")))
-    .with_detail("import_kinds=loc,pkg,std")
-    .with_detail("intrinsic_names=echo,eq,ge,gt,le,len,lt,not,nq"))
+    .with_detail(format!("import_kinds={}", compiler_import_kinds_csv()))
+    .with_detail(format!(
+        "intrinsic_names={}",
+        compiler_dot_intrinsic_names_csv()
+    )))
 }
 
 pub fn editor_symbols_file(path: &Path) -> EditorResult<EditorCommandSummary> {
@@ -201,7 +222,7 @@ pub fn editor_semantic_tokens_file(path: &Path) -> EditorResult<EditorCommandSum
     .with_detail(format!("lines={}", source_line_count(&source)))
     .with_detail(format!("token_count={token_count}"))
     .with_detail(format!("encoded_entries={encoded_entries}"))
-    .with_detail("legend=namespace,type,function,parameter,variable"))
+    .with_detail(format!("legend={}", semantic_token_legend_csv())))
 }
 
 pub fn editor_references_file(
@@ -671,6 +692,13 @@ mod tests {
             .details
             .iter()
             .any(|detail| detail.contains("captures=")));
+        assert!(highlight
+            .details
+            .iter()
+            .any(|detail| detail == &format!("import_kinds={}", compiler_import_kinds_csv())));
+        assert!(highlight.details.iter().any(|detail| {
+            detail == &format!("intrinsic_names={}", compiler_dot_intrinsic_names_csv())
+        }));
         assert!(symbols
             .details
             .iter()
@@ -682,7 +710,7 @@ mod tests {
         assert!(semantic_tokens
             .details
             .iter()
-            .any(|detail| detail == "legend=namespace,type,function,parameter,variable"));
+            .any(|detail| detail == &format!("legend={}", semantic_token_legend_csv())));
         assert!(references
             .details
             .iter()
@@ -773,8 +801,8 @@ mod tests {
                 ),
                 format!("capture_count={}", highlight_captures.len()),
                 format!("captures={}", highlight_captures.join(",")),
-                "import_kinds=loc,pkg,std".to_string(),
-                "intrinsic_names=echo,eq,ge,gt,le,len,lt,not,nq".to_string(),
+                format!("import_kinds={}", compiler_import_kinds_csv()),
+                format!("intrinsic_names={}", compiler_dot_intrinsic_names_csv()),
             ]
         );
         let package_text = std::fs::read_to_string(&package).unwrap();
@@ -813,7 +841,7 @@ mod tests {
         assert_eq!(encoded_entries, token_count * 5);
         assert_eq!(
             semantic_tokens.details[4],
-            "legend=namespace,type,function,parameter,variable"
+            format!("legend={}", semantic_token_legend_csv())
         );
         assert_eq!(references.command, "references");
         assert_eq!(references.details[0], format!("path={}", package.display()));
