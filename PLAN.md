@@ -98,7 +98,7 @@ Keep one runtime crate and make the model ownership explicit inside it.
 
 - [x] Slice 4. Remove the abandoned multi-crate split and keep `fol-runtime` as
   the only runtime crate.
-- [ ] Slice 5. Add explicit `core`, `alloc`, and `std` module boundaries inside
+- [x] Slice 5. Add explicit `core`, `alloc`, and `std` module boundaries inside
   `fol-runtime`, with minimal marker APIs and unit tests.
 - [ ] Slice 6. Define dependency direction inside `fol-runtime` modules and
   enforce it in code:
