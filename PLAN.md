@@ -103,7 +103,7 @@ Introduce the physical runtime split without yet moving every implementation.
   with minimal `Cargo.toml` and `lib.rs` surfaces.
 - [x] Slice 5. Wire the workspace manifests so the new crates build in the
   workspace and are visible to the backend build path.
-- [ ] Slice 6. Define crate dependency direction and enforce it in code:
+- [x] Slice 6. Define crate dependency direction and enforce it in code:
   - `fol-core` depends on nothing from `fol-alloc` or `fol-std`
   - `fol-alloc` may depend on `fol-core`
   - `fol-std` may depend on `fol-core` and `fol-alloc`
