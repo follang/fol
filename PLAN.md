@@ -198,13 +198,13 @@ Make `core` useful and honest for embedded-first work.
   imports of hosted or heap-backed support.
 - [x] Slice 24. Add explicit backend tests that `core` artifacts emit without
   importing alloc/std runtime modules.
-- [ ] Slice 25. Add example artifacts for `core` that use only:
+- [x] Slice 25. Add example artifacts for `core` that use only:
   - scalars
   - arrays
   - records
   - control flow
   - `defer`
-- [ ] Slice 26. Add negative example fixtures for forbidden `core` surfaces:
+- [x] Slice 26. Add negative example fixtures for forbidden `core` surfaces:
   - `str`
   - `seq`
   - `vec`

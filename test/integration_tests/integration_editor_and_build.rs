@@ -661,6 +661,75 @@ fn strip_ansi(value: &str) -> String {
     }
 
     #[test]
+    fn test_build_fixture_core_model_supports_foundation_surface() {
+        let root = build_fixture_root("model_core_foundation");
+
+        let build = run_fol_in_dir(&root, &["code", "build"]);
+        assert!(
+            build.status.success(),
+            "core foundation fixture should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
+            "core foundation fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixtures_core_model_reject_forbidden_surfaces() {
+        let cases = [
+            (
+                "model_core_reject_str",
+                "str requires heap support and is unavailable in 'fol_model = core'",
+            ),
+            (
+                "model_core_reject_seq",
+                "seq[...] requires heap support and is unavailable in 'fol_model = core'",
+            ),
+            (
+                "model_core_reject_vec",
+                "vec[...] requires heap support and is unavailable in 'fol_model = core'",
+            ),
+            (
+                "model_core_reject_set",
+                "set[...] requires heap support and is unavailable in 'fol_model = core'",
+            ),
+            (
+                "model_core_reject_map",
+                "map[...] requires heap support and is unavailable in 'fol_model = core'",
+            ),
+            (
+                "model_core_reject_echo",
+                "'.echo(...)' requires 'fol_model = std'",
+            ),
+        ];
+
+        for (fixture, needle) in cases {
+            let root = build_fixture_root(fixture);
+            let build = run_fol_in_dir(&root, &["code", "build"]);
+            let stderr = String::from_utf8_lossy(&build.stderr);
+            assert!(
+                !build.status.success(),
+                "core forbidden-surface fixture should fail for {}: stdout=\n{}\nstderr=\n{}",
+                fixture,
+                String::from_utf8_lossy(&build.stdout),
+                stderr
+            );
+            assert!(
+                stderr.contains(needle),
+                "core forbidden-surface fixture should report the expected diagnostic for {}: stdout=\n{}\nstderr=\n{}",
+                fixture,
+                String::from_utf8_lossy(&build.stdout),
+                stderr
+            );
+        }
+    }
+
+    #[test]
     fn test_cli_code_build_rejects_old_root_build_syntax() {
         let root = unique_temp_root("old_root_build_syntax");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
