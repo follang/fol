@@ -454,6 +454,7 @@ pub fn canonical_artifact_config_shapes() -> Vec<BuildSemanticRecordShape> {
     let base_fields = vec![
         BuildSemanticRecordField::required("name"),
         BuildSemanticRecordField::required("root"),
+        BuildSemanticRecordField::optional("fol_model"),
         BuildSemanticRecordField::optional("target"),
         BuildSemanticRecordField::optional("optimize"),
     ];
@@ -826,6 +827,18 @@ mod tests {
                 .fields
                 .iter()
                 .any(|field| field.name == "root" && field.required));
+        }
+    }
+
+    #[test]
+    fn canonical_artifact_config_shapes_allow_optional_fol_model_field() {
+        let shapes = canonical_artifact_config_shapes();
+
+        for shape in shapes {
+            assert!(shape
+                .fields
+                .iter()
+                .any(|field| field.name == "fol_model" && !field.required));
         }
     }
 
