@@ -60,12 +60,22 @@ That means a `V1` compiler can still have multiple runtime models. The version
 answers “which language semantics are implemented end to end,” while the model
 answers “which runtime capabilities this artifact is allowed to use.”
 
-For the planned split:
+For the runtime split:
 
 - arrays, scalars, records, routines, control flow, `defer`, and
   `opt[...]`/`err[...]` belong to `core`
 - heap-backed `str`, `vec`, `seq`, `set`, and `map` belong to `alloc`
 - `.echo(...)` and hosted process/runtime behavior belong to `std`
+
+Current contract:
+
+- `core` means no heap and no OS/runtime services
+- `alloc` means heap-backed runtime facilities without hosted process/OS
+  services
+- `std` means hosted runtime services on top of `alloc`
+
+This split is a runtime capability boundary, not an object-model feature and
+not a source-file pragma.
 
 ## How to read the book through versions
 

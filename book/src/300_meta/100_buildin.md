@@ -18,6 +18,9 @@ FOL currently keeps three layers separate:
   hosted/runtime services on top of `alloc`, such as console, filesystem,
   networking, serialization, and other richer services
 
+This split is not a source-level import trick and not an object-system feature.
+It is an artifact runtime model selected through `build.fol`.
+
 If an operation can live as an ordinary library API, that is usually the better
 home for it. Intrinsics are reserved for surfaces the compiler must understand
 directly.
@@ -69,8 +72,8 @@ The current compiler implements this subset end to end through type checking and
 lowering.
 
 For current `V1`, backend execution of the implemented intrinsic set still goes
-through the current runtime layer where policy matters. The runtime is being
-split by `fol-model`, so the long-term rule is:
+through the current runtime layer where policy matters. The runtime contract is
+being split by `fol-model`, so the rule is:
 
 - `core` artifacts must not rely on heap-backed or hosted facilities
 - `alloc` artifacts may use heap-backed facilities but not hosted services
@@ -131,7 +134,7 @@ Current `V1` rule:
   - `map[...]`
 
 In the current compiler, `.len(...)` is the only implemented query intrinsic.
-Under the planned model split, array `.len(...)` belongs to `core`, while
+Under the runtime model split, array `.len(...)` belongs to `core`, while
 string and dynamic-container `.len(...)` belongs to `alloc`/`std`.
 
 ### Diagnostic
@@ -143,10 +146,10 @@ string and dynamic-container `.len(...)` belongs to `alloc`/`std`.
 Current `V1` rule:
 
 - `.echo(...)` accepts exactly one argument
-- it emits the value through the `fol-runtime` debug hook
+- it emits the value through the current hosted runtime hook
 - it then forwards the same value unchanged
 
-Under the planned model split, `.echo(...)` belongs to `std`, not `core`.
+`.echo(...)` belongs to `std`, not `core` or `alloc`.
 
 So this is valid:
 

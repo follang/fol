@@ -38,6 +38,16 @@ package root.
 
 For the staged rollout, omitted `fol_model` behaves like `std`.
 
+The important boundary is semantic and runtime-facing:
+
+- `core` artifacts must not use heap-backed `str`, `vec`, `seq`, `set`, or
+  `map`
+- `core` artifacts may still use arrays, records, routines, control flow, and
+  `defer`
+- `alloc` artifacts may use heap-backed runtime types but not hosted services
+- `std` artifacts are the only artifacts that may use hosted services such as
+  `.echo(...)` and ordinary host-executed `run` / `test`
+
 ### `graph.add_static_lib`
 
 Adds a static library artifact.
