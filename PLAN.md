@@ -144,7 +144,7 @@ Create one compiler-backed metadata surface that `fol-editor` can consume.
   - shell type names
   - source kind names
   - implemented intrinsic names grouped by surface
-- [ ] Slice 5. Extend that metadata API to carry `fol_model` capability facts:
+- [x] Slice 5. Extend that metadata API to carry `fol_model` capability facts:
   - whether a type family is legal in `core`
   - whether an intrinsic is legal in `core`
   - whether an intrinsic is `std`-only
