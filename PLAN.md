@@ -6,7 +6,7 @@ Last updated: 2026-03-24
 
 - [x] Slice 1. Land the documentation checkpoint for `fol-model`, `core`,
   `alloc`, and `std`, and rewrite this plan as a commit-by-commit tracker.
-- [ ] Slice 2. Add a shared `BuildArtifactFolModel` enum and artifact target
+- [x] Slice 2. Add a shared `BuildArtifactFolModel` enum and artifact target
   config support in `fol-build`, with unit tests.
 - [ ] Slice 3. Extend build semantic artifact config shapes so `fol_model` is a
   first-class artifact field, with semantic tests.

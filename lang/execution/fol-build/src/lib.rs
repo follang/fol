@@ -26,10 +26,10 @@ pub use api::{
     TestArtifactRequest, UserOption, UserOptionRequest,
 };
 pub use artifact::{
-    project_graph_artifacts, BuildArtifactDefinition, BuildArtifactLinkage, BuildArtifactModelKind,
-    BuildArtifactModuleConfig, BuildArtifactOutput, BuildArtifactPipelinePlan,
-    BuildArtifactPipelineStage, BuildArtifactReport, BuildArtifactRootSource, BuildArtifactSet,
-    BuildArtifactTargetConfig,
+    project_graph_artifacts, BuildArtifactDefinition, BuildArtifactFolModel,
+    BuildArtifactLinkage, BuildArtifactModelKind, BuildArtifactModuleConfig,
+    BuildArtifactOutput, BuildArtifactPipelinePlan, BuildArtifactPipelineStage,
+    BuildArtifactReport, BuildArtifactRootSource, BuildArtifactSet, BuildArtifactTargetConfig,
 };
 pub use codegen::{
     CodegenKind, CodegenRequest, CodegenResult, GeneratedFileAction, GeneratedFileDefinition,

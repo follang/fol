@@ -15,6 +15,33 @@ pub enum BuildArtifactLinkage {
     Shared,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BuildArtifactFolModel {
+    Core,
+    Alloc,
+    #[default]
+    Std,
+}
+
+impl BuildArtifactFolModel {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Core => "core",
+            Self::Alloc => "alloc",
+            Self::Std => "std",
+        }
+    }
+
+    pub fn parse(raw: &str) -> Option<Self> {
+        match raw {
+            "core" => Some(Self::Core),
+            "alloc" => Some(Self::Alloc),
+            "std" => Some(Self::Std),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildArtifactRootSource {
     pub path: String,
@@ -27,6 +54,7 @@ pub struct BuildArtifactModuleConfig {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildArtifactTargetConfig {
+    pub fol_model: BuildArtifactFolModel,
     pub target: Option<String>,
     pub optimize: Option<String>,
 }
@@ -34,6 +62,7 @@ pub struct BuildArtifactTargetConfig {
 impl BuildArtifactTargetConfig {
     pub fn apply_resolved_options(&self, resolved: &ResolvedBuildOptionSet) -> Self {
         Self {
+            fol_model: self.fol_model,
             target: resolved
                 .get("target")
                 .map(str::to_string)
@@ -155,6 +184,7 @@ pub fn project_graph_artifacts(graph: &BuildGraph) -> Vec<BuildArtifactDefinitio
                 }
             },
             target: BuildArtifactTargetConfig {
+                fol_model: BuildArtifactFolModel::default(),
                 target: None,
                 optimize: None,
             },
@@ -197,7 +227,8 @@ impl BuildArtifactSet {
 #[cfg(test)]
 mod tests {
     use super::{
-        project_graph_artifacts, BuildArtifactDefinition, BuildArtifactLinkage,
+        project_graph_artifacts, BuildArtifactDefinition, BuildArtifactFolModel,
+        BuildArtifactLinkage,
         BuildArtifactModelKind, BuildArtifactModuleConfig, BuildArtifactNativeAttachmentSet,
         BuildArtifactOutput, BuildArtifactPipelinePlan, BuildArtifactPipelineStage,
         BuildArtifactReport, BuildArtifactRootSource, BuildArtifactSet, BuildArtifactTargetConfig,
@@ -231,6 +262,7 @@ mod tests {
             output_name: "app".to_string(),
             linkage: BuildArtifactLinkage::Executable,
             target: BuildArtifactTargetConfig {
+                fol_model: BuildArtifactFolModel::Std,
                 target: None,
                 optimize: None,
             },
@@ -270,6 +302,7 @@ mod tests {
             output_name: "fol_plugin".to_string(),
             linkage: BuildArtifactLinkage::Shared,
             target: BuildArtifactTargetConfig {
+                fol_model: BuildArtifactFolModel::Alloc,
                 target: Some("x86_64-linux-gnu".to_string()),
                 optimize: Some("release".to_string()),
             },
@@ -303,6 +336,7 @@ mod tests {
         assert_eq!(definition.modules.roots.len(), 2);
         assert_eq!(definition.output_name, "fol_plugin");
         assert_eq!(definition.linkage, BuildArtifactLinkage::Shared);
+        assert_eq!(definition.target.fol_model, BuildArtifactFolModel::Alloc);
         assert_eq!(
             definition.target.target.as_deref(),
             Some("x86_64-linux-gnu")
@@ -320,13 +354,40 @@ mod tests {
         resolved.insert("optimize", "release-fast");
 
         let config = BuildArtifactTargetConfig {
+            fol_model: BuildArtifactFolModel::Core,
             target: Some("x86_64-linux-gnu".to_string()),
             optimize: Some("debug".to_string()),
         }
         .apply_resolved_options(&resolved);
 
+        assert_eq!(config.fol_model, BuildArtifactFolModel::Core);
         assert_eq!(config.target.as_deref(), Some("aarch64-macos-gnu"));
         assert_eq!(config.optimize.as_deref(), Some("release-fast"));
+    }
+
+    #[test]
+    fn artifact_fol_models_parse_and_render_canonically() {
+        assert_eq!(BuildArtifactFolModel::parse("core"), Some(BuildArtifactFolModel::Core));
+        assert_eq!(
+            BuildArtifactFolModel::parse("alloc"),
+            Some(BuildArtifactFolModel::Alloc)
+        );
+        assert_eq!(BuildArtifactFolModel::parse("std"), Some(BuildArtifactFolModel::Std));
+        assert_eq!(BuildArtifactFolModel::parse("hosted"), None);
+        assert_eq!(BuildArtifactFolModel::Core.as_str(), "core");
+        assert_eq!(BuildArtifactFolModel::Alloc.as_str(), "alloc");
+        assert_eq!(BuildArtifactFolModel::Std.as_str(), "std");
+    }
+
+    #[test]
+    fn artifact_target_config_defaults_to_std_model() {
+        let config = BuildArtifactTargetConfig {
+            fol_model: BuildArtifactFolModel::default(),
+            target: None,
+            optimize: None,
+        };
+
+        assert_eq!(config.fol_model, BuildArtifactFolModel::Std);
     }
 
     #[test]
