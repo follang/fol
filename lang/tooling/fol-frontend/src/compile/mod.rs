@@ -15,6 +15,25 @@ pub(crate) struct FrontendArtifactExecutionSelection {
     pub fol_model: fol_backend::BackendFolModel,
 }
 
+fn summarize_fol_models<I>(models: I) -> String
+where
+    I: IntoIterator<Item = fol_backend::BackendFolModel>,
+{
+    let mut models = models.into_iter().collect::<Vec<_>>();
+    models.sort_by_key(|model| match model {
+        fol_backend::BackendFolModel::Core => 0,
+        fol_backend::BackendFolModel::Alloc => 1,
+        fol_backend::BackendFolModel::Std => 2,
+    });
+    models.dedup();
+    let rendered = models
+        .into_iter()
+        .map(|model| model.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("fol_model={rendered}")
+}
+
 pub fn check_workspace_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
@@ -151,8 +170,9 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
         .filter(|artifact| artifact.kind == FrontendArtifactKind::Binary)
         .count();
     result.summary = format!(
-        "built {binary_count} workspace package(s) into {}",
-        output_root.display()
+        "built {binary_count} workspace package(s) into {} ({})",
+        output_root.display(),
+        summarize_fol_models(selections.iter().map(|selection| selection.fol_model))
     );
     Ok(result)
 }
@@ -226,7 +246,14 @@ pub fn run_workspace_with_args_and_config(
         ));
     }
 
-    let mut result = FrontendCommandResult::new("run", format!("ran {}", binary.display()));
+    let mut result = FrontendCommandResult::new(
+        "run",
+        format!(
+            "ran {} ({})",
+            binary.display(),
+            summarize_fol_models([fol_backend::BackendFolModel::Std])
+        ),
+    );
     result.artifacts.push(FrontendArtifactSummary::new(
         FrontendArtifactKind::Binary,
         "binary",
@@ -291,7 +318,14 @@ pub(crate) fn run_selected_artifact_with_args_and_config(
         ));
     }
 
-    let mut result = FrontendCommandResult::new("run", format!("ran {}", binary.display()));
+    let mut result = FrontendCommandResult::new(
+        "run",
+        format!(
+            "ran {} ({})",
+            binary.display(),
+            summarize_fol_models([selection.fol_model])
+        ),
+    );
     result.artifacts.push(FrontendArtifactSummary::new(
         FrontendArtifactKind::Binary,
         selection.label.clone(),
@@ -359,7 +393,11 @@ pub(crate) fn test_selected_artifacts_with_config(
 
     let mut result = FrontendCommandResult::new(
         "test",
-        format!("tested {} workspace artifact(s)", binaries.len()),
+        format!(
+            "tested {} workspace artifact(s) ({})",
+            binaries.len(),
+            summarize_fol_models(selections.iter().map(|selection| selection.fol_model))
+        ),
     );
     for binary in binaries {
         result.artifacts.push(FrontendArtifactSummary::new(
@@ -733,7 +771,10 @@ fn test_workspace_selected_with_config(
         tested_count += 1;
     }
 
-    result.summary = format!("tested {tested_count} workspace package(s)");
+    result.summary = format!(
+        "tested {tested_count} workspace package(s) ({})",
+        summarize_fol_models([fol_backend::BackendFolModel::Std])
+    );
     Ok(result)
 }
 

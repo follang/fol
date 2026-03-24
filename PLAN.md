@@ -228,7 +228,7 @@ Make the model visible and obvious at the artifact/build level.
 
 ### Slice Tracker
 
-- [ ] Slice 28. Improve frontend summaries and emitted metadata so build output
+- [x] Slice 28. Improve frontend summaries and emitted metadata so build output
   shows the selected `fol_model`.
 - [ ] Slice 29. Add build-route tests for mixed-model workspaces:
   - `core` static lib

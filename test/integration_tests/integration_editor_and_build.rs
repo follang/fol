@@ -575,6 +575,12 @@ fn strip_ansi(value: &str) -> String {
             String::from_utf8_lossy(&build.stdout),
             String::from_utf8_lossy(&build.stderr)
         );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("fol_model=alloc"),
+            "alloc string fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
     }
 
     #[test]
@@ -674,6 +680,12 @@ fn strip_ansi(value: &str) -> String {
         assert!(
             String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
             "core foundation fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("fol_model=core"),
+            "core foundation fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&build.stdout),
             String::from_utf8_lossy(&build.stderr)
         );
