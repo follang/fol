@@ -20,7 +20,7 @@ Last updated: 2026-03-24
   emitted trace metadata.
 - [x] Slice 8. Add the initial semantic capability model in the compiler and
   wire artifact `fol_model` into it.
-- [ ] Slice 9. Gate std-only intrinsics first: move `.echo(...)` behind
+- [x] Slice 9. Gate std-only intrinsics first: move `.echo(...)` behind
   `fol-model = std`, with diagnostics and tests.
 - [ ] Slice 10. Gate heap-backed families first: reject `str`, `vec`, `seq`,
   `set`, and `map` in `core`, with diagnostics and tests.

@@ -391,6 +391,18 @@ fn type_echo_intrinsic(
     _expected_type: Option<crate::CheckedTypeId>,
 ) -> Result<TypedExpr, TypecheckError> {
     let origin = origin_for(resolved, syntax_id);
+    if typed.capability_model() != crate::TypecheckCapabilityModel::Std {
+        let message = format!(
+            "'.echo(...)' requires 'fol_model = std'; current artifact model is '{}'",
+            typed.capability_model().as_str()
+        );
+        return Err(match origin {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
+        });
+    }
     if args.len() != 1 {
         return Err(match origin {
             Some(origin) => TypecheckError::with_origin(

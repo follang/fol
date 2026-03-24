@@ -1,4 +1,5 @@
 use super::*;
+use fol_typecheck::TypecheckCapabilityModel;
 
 #[test]
 fn typechecker_foundation_smoke_constructs_public_api() {
@@ -1166,6 +1167,46 @@ fn expression_typing_accepts_unpack_for_variadic_method_calls() {
             .and_then(|type_id| typed.type_table().get(type_id)),
         Some(&CheckedType::Builtin(BuiltinType::Int))
     );
+}
+
+#[test]
+fn echo_intrinsic_requires_std_fol_model_in_core() {
+    let errors = typecheck_fixture_folder_errors_with_config(
+        &[(
+            "main.fol",
+            "fun[] main(): int = {\n    return .echo(1);\n};\n",
+        )],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Core,
+        },
+    );
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].kind(), TypecheckErrorKind::Unsupported);
+    assert!(errors[0]
+        .message()
+        .contains("'.echo(...)' requires 'fol_model = std'"));
+    assert!(errors[0].message().contains("current artifact model is 'core'"));
+}
+
+#[test]
+fn echo_intrinsic_requires_std_fol_model_in_alloc() {
+    let errors = typecheck_fixture_folder_errors_with_config(
+        &[(
+            "main.fol",
+            "fun[] main(): int = {\n    return .echo(1);\n};\n",
+        )],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Alloc,
+        },
+    );
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].kind(), TypecheckErrorKind::Unsupported);
+    assert!(errors[0]
+        .message()
+        .contains("'.echo(...)' requires 'fol_model = std'"));
+    assert!(errors[0].message().contains("current artifact model is 'alloc'"));
 }
 
 #[test]

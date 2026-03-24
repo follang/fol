@@ -28,7 +28,8 @@ impl TypecheckSession {
         &mut self,
         resolved: fol_resolver::ResolvedProgram,
     ) -> TypecheckResult<TypedProgram> {
-        let mut typed = TypedProgram::from_resolved(resolved);
+        let mut typed =
+            TypedProgram::from_resolved_with_model(resolved, self.config.capability_model);
         decls::lower_declaration_signatures(&mut typed)?;
         exprs::type_program(&mut typed)?;
         Ok(typed)
@@ -121,7 +122,10 @@ impl TypecheckSession {
         }
 
         if errors.is_empty() {
-            let mut typed = TypedProgram::from_resolved(package.program.clone());
+            let mut typed = TypedProgram::from_resolved_with_model(
+                package.program.clone(),
+                self.config.capability_model,
+            );
             if let Err(mut package_errors) = decls::lower_declaration_signatures(&mut typed) {
                 errors.append(&mut package_errors);
             } else if let Err(mut package_errors) =

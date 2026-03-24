@@ -56,6 +56,7 @@ pub struct TypedReference {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedProgram {
+    capability_model: TypecheckCapabilityModel,
     resolved: fol_resolver::ResolvedProgram,
     type_table: TypeTable,
     builtins: BuiltinTypeIds,
@@ -153,6 +154,13 @@ impl TypedWorkspace {
 
 impl TypedProgram {
     pub fn from_resolved(resolved: fol_resolver::ResolvedProgram) -> Self {
+        Self::from_resolved_with_model(resolved, TypecheckCapabilityModel::Std)
+    }
+
+    pub(crate) fn from_resolved_with_model(
+        resolved: fol_resolver::ResolvedProgram,
+        capability_model: TypecheckCapabilityModel,
+    ) -> Self {
         let mut type_table = TypeTable::new();
         let builtins = BuiltinTypeIds::install(&mut type_table);
         let source_units = resolved
@@ -220,6 +228,7 @@ impl TypedProgram {
             .collect::<BTreeMap<_, _>>();
 
         Self {
+            capability_model,
             resolved,
             type_table,
             builtins,
@@ -233,6 +242,10 @@ impl TypedProgram {
 
     pub fn package_name(&self) -> &str {
         self.resolved.package_name()
+    }
+
+    pub fn capability_model(&self) -> TypecheckCapabilityModel {
+        self.capability_model
     }
 
     pub fn resolved(&self) -> &fol_resolver::ResolvedProgram {
@@ -414,6 +427,19 @@ mod tests {
         assert_eq!(workspace.capability_model(), TypecheckCapabilityModel::Core);
         assert_eq!(workspace.entry_identity(), &identity);
         assert_eq!(workspace.package_count(), 0);
+    }
+
+    #[test]
+    fn typed_program_defaults_to_std_capability_model() {
+        let program = TypedProgram::from_resolved(fol_resolver::ResolvedProgram::new(
+            fol_parser::ast::ParsedPackage {
+                package: "demo".to_string(),
+                source_units: Vec::new(),
+                syntax_index: fol_parser::ast::SyntaxIndex::default(),
+            },
+        ));
+
+        assert_eq!(program.capability_model(), TypecheckCapabilityModel::Std);
     }
 }
 
