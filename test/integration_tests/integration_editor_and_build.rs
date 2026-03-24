@@ -884,6 +884,85 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     }
 
     #[test]
+    fn test_cli_example_build_summaries_surface_expected_models() {
+        let cases = [
+            ("examples/core_blink_shape", "fol_model=core"),
+            ("examples/core_records", "fol_model=core"),
+            ("examples/alloc_containers", "fol_model=alloc"),
+            ("examples/alloc_collections", "fol_model=alloc"),
+            ("examples/std_cli", "fol_model=std"),
+            ("examples/std_named_calls", "fol_model=std"),
+        ];
+
+        for (path, expected_model) in cases {
+            let root = temp_example_root(path);
+            let build = run_fol_in_dir(&root, &["code", "build"]);
+            let stdout = String::from_utf8_lossy(&build.stdout);
+            assert!(
+                build.status.success(),
+                "example '{path}' should build: stdout=\n{}\nstderr=\n{}",
+                stdout,
+                String::from_utf8_lossy(&build.stderr)
+            );
+            assert!(
+                stdout.contains(expected_model),
+                "example '{path}' should surface '{expected_model}' in the build summary: stdout=\n{}\nstderr=\n{}",
+                stdout,
+                String::from_utf8_lossy(&build.stderr)
+            );
+        }
+    }
+
+    #[test]
+    fn test_cli_std_examples_run_and_print_expected_output() {
+        let cases = [
+            ("examples/std_cli", "std-ready"),
+            ("examples/std_named_calls", "host-ok-ready"),
+        ];
+
+        for (path, expected_text) in cases {
+            let root = temp_example_root(path);
+            let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+            let build_stdout = String::from_utf8_lossy(&build.stdout);
+            assert!(
+                build.status.success(),
+                "std example '{path}' should build: stdout=\n{}\nstderr=\n{}",
+                build_stdout,
+                String::from_utf8_lossy(&build.stderr)
+            );
+            let binary = build_stdout
+                .lines()
+                .find_map(|line| {
+                    let plain = strip_ansi(line);
+                    if plain.contains("binary") {
+                        plain.split_whitespace().last().map(str::to_string)
+                    } else {
+                        None
+                    }
+                })
+                .expect("std example build should report a binary path")
+                .trim()
+                .to_string();
+            let run = std::process::Command::new(&binary)
+                .output()
+                .expect("built std example should execute");
+            let stdout = String::from_utf8_lossy(&run.stdout);
+            assert!(
+                run.status.success(),
+                "std example '{path}' binary should run: stdout=\n{}\nstderr=\n{}",
+                stdout,
+                String::from_utf8_lossy(&run.stderr)
+            );
+            assert!(
+                stdout.contains(expected_text),
+                "std example '{path}' should print '{expected_text}': stdout=\n{}\nstderr=\n{}",
+                stdout,
+                String::from_utf8_lossy(&run.stderr)
+            );
+        }
+    }
+
+    #[test]
     fn test_cli_build_and_run_mixed_model_example_workspace() {
         let root = temp_example_root("examples/mixed_models_workspace");
 
