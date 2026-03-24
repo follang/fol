@@ -2,10 +2,12 @@
 mod tests {
     use crate::emit::{
         backend_build_paths, build_generated_crate_with_rustc, build_runtime_rlib_with_rustc,
-        emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
-        emit_namespace_module_shells, emit_package_module_shells, prepare_backend_runtime_build_dir,
-        prepare_backend_build_paths, prepare_generated_build_dir, summarize_emitted_artifact,
-        write_generated_crate, backend_runtime_build_dir, backend_runtime_manifest_path,
+        emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton,
+        emit_generated_crate_skeleton_for_config, emit_main_rs, emit_main_rs_for_config,
+        emit_namespace_module_shells, emit_namespace_module_shells_for_config,
+        emit_package_module_shells, prepare_backend_runtime_build_dir, prepare_backend_build_paths,
+        prepare_generated_build_dir, summarize_emitted_artifact, write_generated_crate,
+        backend_runtime_build_dir, backend_runtime_manifest_path,
         backend_runtime_manifest_path_with_override, backend_runtime_source_entry,
         backend_runtime_source_entry_with_override, backend_runtime_source_root,
         backend_runtime_source_root_with_override,
@@ -18,8 +20,8 @@ mod tests {
             lowered_workspace_from_entry_path, lowered_workspace_from_entry_path_with_config,
             sample_lowered_workspace,
         },
-        BackendArtifact, BackendBuildProfile, BackendConfig, BackendMachineTarget, BackendMode,
-        BackendSession,
+        BackendArtifact, BackendBuildProfile, BackendConfig, BackendFolModel,
+        BackendMachineTarget, BackendMode, BackendSession,
     };
     use fol_package::PackageConfig;
     use fol_resolver::ResolverConfig;
@@ -199,9 +201,42 @@ mod tests {
         assert_eq!(emitted.path, "src/main.rs");
         assert_eq!(emitted.module_name, "main");
         assert!(emitted.contents.contains("use fol_runtime::prelude as rt;"));
+        assert!(emitted.contents.contains("use fol_runtime::std as rt_model;"));
         assert!(emitted.contents.contains("mod packages;"));
         assert!(emitted.contents.contains("let _entry_package = \"app\";"));
         assert!(emitted.contents.contains("let _entry_name = \"main\";"));
+    }
+
+    #[test]
+    fn main_rs_emission_uses_runtime_tier_specific_model_imports() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let core_emitted = emit_main_rs_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Core,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("core main");
+        let alloc_emitted = emit_main_rs_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Alloc,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("alloc main");
+
+        assert!(core_emitted
+            .contents
+            .contains("use fol_runtime::core as rt_model;"));
+        assert!(alloc_emitted
+            .contents
+            .contains("use fol_runtime::alloc as rt_model;"));
+        assert!(core_emitted
+            .contents
+            .contains("let _runtime_tier = rt_model::tier_name();"));
     }
 
     #[test]
@@ -235,6 +270,9 @@ mod tests {
             .contains("use fol_runtime::prelude as rt;"));
         assert!(emitted[0]
             .contents
+            .contains("use fol_runtime::std as rt_model;"));
+        assert!(emitted[0]
+            .contents
             .contains("NAMESPACE_NAME: &str = \"app\""));
         assert!(emitted[0]
             .contents
@@ -247,6 +285,25 @@ mod tests {
         assert!(emitted[3]
             .contents
             .contains("NAMESPACE_NAME: &str = \"shared::util\""));
+    }
+
+    #[test]
+    fn namespace_module_shell_emission_uses_runtime_tier_specific_model_imports() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let emitted = emit_namespace_module_shells_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Core,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("core namespace shells");
+
+        assert!(emitted[0]
+            .contents
+            .contains("use fol_runtime::core as rt_model;"));
+        assert!(emitted[0].contents.contains("rt_model::tier_name()"));
     }
 
     #[test]
@@ -273,8 +330,43 @@ mod tests {
         assert!(snapshot.contains("== src/packages/pkg__entry__app/mod.rs =="));
         assert!(snapshot.contains("== src/packages/pkg__local__shared/root.rs =="));
         assert!(snapshot.contains("use fol_runtime::prelude as rt;"));
+        assert!(snapshot.contains("use fol_runtime::std as rt_model;"));
         assert!(snapshot.contains("pub mod pkg__entry__app;"));
         assert!(snapshot.contains("NAMESPACE_NAME: &str = \"shared::util\""));
+    }
+
+    #[test]
+    fn generated_crate_skeleton_uses_runtime_tier_specific_model_modules() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let artifact = emit_generated_crate_skeleton_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Alloc,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("artifact");
+
+        let BackendArtifact::RustSourceCrate { files, .. } = artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+
+        let main_rs = files
+            .iter()
+            .find(|file| file.path == "src/main.rs")
+            .expect("main rs");
+        let root_namespace = files
+            .iter()
+            .find(|file| file.path == "src/packages/pkg__entry__app/root.rs")
+            .expect("root namespace");
+
+        assert!(main_rs
+            .contents
+            .contains("use fol_runtime::alloc as rt_model;"));
+        assert!(root_namespace
+            .contents
+            .contains("use fol_runtime::alloc as rt_model;"));
     }
 
     #[test]

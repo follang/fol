@@ -39,13 +39,15 @@ pub use config::{
 pub use control::render_terminator;
 pub use emit::{
     backend_build_paths, build_generated_crate_with_rustc, build_runtime_rlib_with_rustc,
-    emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
-    emit_namespace_module_shells, emit_package_module_shells, prepare_backend_build_paths,
-    prepare_backend_runtime_build_dir, prepare_generated_build_dir,
-    summarize_emitted_artifact, write_generated_crate, backend_runtime_build_dir,
-    backend_runtime_manifest_path, backend_runtime_manifest_path_with_override,
-    backend_runtime_source_entry, backend_runtime_source_entry_with_override,
-    backend_runtime_source_root, backend_runtime_source_root_with_override,
+    emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton,
+    emit_generated_crate_skeleton_for_config, emit_main_rs, emit_main_rs_for_config,
+    emit_namespace_module_shells, emit_namespace_module_shells_for_config,
+    emit_package_module_shells, prepare_backend_build_paths, prepare_backend_runtime_build_dir,
+    prepare_generated_build_dir, summarize_emitted_artifact, write_generated_crate,
+    backend_runtime_build_dir, backend_runtime_manifest_path,
+    backend_runtime_manifest_path_with_override, backend_runtime_source_entry,
+    backend_runtime_source_entry_with_override, backend_runtime_source_root,
+    backend_runtime_source_root_with_override,
 };
 pub use error::{BackendError, BackendErrorKind};
 pub use identity::{stable_workspace_hash, BackendWorkspaceIdentity};

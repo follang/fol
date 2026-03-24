@@ -6,7 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::skeleton::emit_generated_crate_skeleton;
+use super::skeleton::emit_generated_crate_skeleton_for_config;
 
 pub fn backend_build_paths(output_root: &Path) -> BackendBuildPaths {
     BackendBuildPaths {
@@ -382,7 +382,7 @@ pub fn emit_backend_artifact(
 ) -> BackendResult<BackendArtifact> {
     let paths = prepare_backend_build_paths(output_root)?;
     let build_root = PathBuf::from(&paths.build_root);
-    let source_artifact = emit_generated_crate_skeleton(session)?;
+    let source_artifact = emit_generated_crate_skeleton_for_config(session, config)?;
     let crate_root = write_generated_crate(&build_root, &source_artifact)?;
 
     if matches!(config.mode, BackendMode::EmitSource) {
