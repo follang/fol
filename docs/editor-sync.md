@@ -58,6 +58,17 @@ That means:
 - completion should hide surfaces that are invalid for the active model
 - mixed-model workspaces should not silently bleed one model into another
 
+## Model matrix
+
+| Model | Type completion | Intrinsic completion | Diagnostics focus | Example packages |
+|-------|-----------------|----------------------|-------------------|------------------|
+| `core` | scalar, array, record, entry, shell surfaces only | no `std`-only intrinsics, no heap-only guidance | reject `str`, dynamic containers, dynamic `.len(...)`, `.echo(...)` | `examples/core_blink_shape`, `examples/core_defer`, `examples/core_records` |
+| `alloc` | `core` types plus `str`, `vec`, `seq`, `set`, `map` | no `std`-only intrinsics | reject `.echo(...)`; allow heap-backed strings and containers | `examples/alloc_defaults`, `examples/alloc_containers`, `examples/alloc_collections` |
+| `std` | all currently implemented type surfaces | all currently implemented V1 intrinsics valid for host artifacts | ordinary semantic/type diagnostics plus hosted-runtime behavior | `examples/std_cli`, `examples/std_echo_min`, `examples/std_named_calls` |
+
+For mixed-model workspaces, editor tests should also cover
+`examples/mixed_models_workspace`.
+
 ## Test gates
 
 The minimum test gates for editor sync are:

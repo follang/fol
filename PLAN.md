@@ -118,7 +118,7 @@ Write down exactly what is compiler-owned, what remains manual, and where
   - generated editor data
   - manual editor data
   - test gates that prevent drift
-- [ ] Slice 3. Add a matrix to the doc for `core`, `alloc`, `std`:
+- [x] Slice 3. Add a matrix to the doc for `core`, `alloc`, `std`:
   - which type surfaces should appear in completion
   - which intrinsics should appear in completion
   - which diagnostics should be shown by analysis
