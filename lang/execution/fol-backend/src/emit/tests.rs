@@ -309,7 +309,76 @@ mod tests {
         assert!(emitted[0]
             .contents
             .contains("use fol_runtime::core as rt_model;"));
+        assert!(emitted[0].contents.contains("use fol_runtime::core as rt;"));
+        assert!(!emitted[0].contents.contains("use fol_runtime::alloc"));
+        assert!(!emitted[0].contents.contains("use fol_runtime::std"));
         assert!(emitted[0].contents.contains("rt_model::tier_name()"));
+    }
+
+    #[test]
+    fn generated_crate_skeleton_keeps_core_artifacts_off_alloc_and_std_imports() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let artifact = emit_generated_crate_skeleton_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Core,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("core artifact");
+
+        let BackendArtifact::RustSourceCrate { files, .. } = artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+
+        for file in files {
+            if !file.path.ends_with(".rs") {
+                continue;
+            }
+            assert!(
+                !file.contents.contains("use fol_runtime::alloc"),
+                "core artifact should not import alloc runtime paths in {}:\n{}",
+                file.path,
+                file.contents
+            );
+            assert!(
+                !file.contents.contains("use fol_runtime::std"),
+                "core artifact should not import std runtime paths in {}:\n{}",
+                file.path,
+                file.contents
+            );
+        }
+    }
+
+    #[test]
+    fn generated_crate_skeleton_keeps_alloc_artifacts_off_std_imports() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let artifact = emit_generated_crate_skeleton_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Alloc,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("alloc artifact");
+
+        let BackendArtifact::RustSourceCrate { files, .. } = artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+
+        for file in files {
+            if !file.path.ends_with(".rs") {
+                continue;
+            }
+            assert!(
+                !file.contents.contains("use fol_runtime::std"),
+                "alloc artifact should not import std runtime paths in {}:\n{}",
+                file.path,
+                file.contents
+            );
+        }
     }
 
     #[test]

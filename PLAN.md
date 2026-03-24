@@ -196,7 +196,7 @@ Make `core` useful and honest for embedded-first work.
 
 - [x] Slice 23. Audit the backend-emitted `core` crate root and remove accidental
   imports of hosted or heap-backed support.
-- [ ] Slice 24. Add explicit backend tests that `core` artifacts emit without
+- [x] Slice 24. Add explicit backend tests that `core` artifacts emit without
   importing alloc/std runtime modules.
 - [ ] Slice 25. Add example artifacts for `core` that use only:
   - scalars
