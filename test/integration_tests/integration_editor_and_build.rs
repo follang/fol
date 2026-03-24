@@ -1061,8 +1061,8 @@ fn strip_ansi(value: &str) -> String {
     }
 
     #[test]
-    fn test_cli_code_build_and_run_keep_std_hosted_runtime_path() {
-        let temp_root = unique_temp_root("build_std_hosted_runtime");
+    fn test_cli_code_build_and_run_keep_std_model_runtime_path() {
+        let temp_root = unique_temp_root("build_std_model_runtime");
         let root = temp_root.join("demo");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
         std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
@@ -1097,13 +1097,13 @@ fn strip_ansi(value: &str) -> String {
         let build_stdout = String::from_utf8_lossy(&build.stdout);
         assert!(
             build.status.success(),
-            "std hosted build should succeed: stdout=\n{}\nstderr=\n{}",
+            "std model build should succeed: stdout=\n{}\nstderr=\n{}",
             build_stdout,
             String::from_utf8_lossy(&build.stderr)
         );
         assert!(
             build_stdout.contains("built 1 workspace package(s)"),
-            "std hosted build should report a build summary: stdout=\n{}\nstderr=\n{}",
+            "std model build should report a build summary: stdout=\n{}\nstderr=\n{}",
             build_stdout,
             String::from_utf8_lossy(&build.stderr)
         );
@@ -1112,19 +1112,19 @@ fn strip_ansi(value: &str) -> String {
         let run_stdout = String::from_utf8_lossy(&run.stdout);
         assert!(
             run.status.success(),
-            "std hosted run should succeed: stdout=\n{}\nstderr=\n{}",
+            "std model run should succeed: stdout=\n{}\nstderr=\n{}",
             run_stdout,
             String::from_utf8_lossy(&run.stderr)
         );
         assert!(
             run_stdout.contains("7"),
-            "std hosted run should execute through runtime std path: stdout=\n{}\nstderr=\n{}",
+            "std model run should execute through runtime std path: stdout=\n{}\nstderr=\n{}",
             run_stdout,
             String::from_utf8_lossy(&run.stderr)
         );
         assert!(
             run_stdout.contains("ran "),
-            "std hosted run should report a run summary: stdout=\n{}\nstderr=\n{}",
+            "std model run should report a run summary: stdout=\n{}\nstderr=\n{}",
             run_stdout,
             String::from_utf8_lossy(&run.stderr)
         );

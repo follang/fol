@@ -193,7 +193,7 @@ mod tests {
     }
 
     #[test]
-    fn main_rs_emission_keeps_runtime_import_and_entry_metadata_shell() {
+    fn main_rs_emission_keeps_std_model_import_and_entry_metadata() {
         let session = BackendSession::new(sample_lowered_workspace());
 
         let emitted = emit_main_rs(&session).expect("main.rs");
@@ -246,7 +246,7 @@ mod tests {
     }
 
     #[test]
-    fn package_module_shell_emission_keeps_package_and_namespace_module_tree() {
+    fn package_module_emission_keeps_package_and_namespace_module_tree() {
         let session = BackendSession::new(sample_lowered_workspace());
 
         let emitted = emit_package_module_shells(&session);
@@ -919,7 +919,7 @@ mod tests {
     }
 
     #[test]
-    fn package_module_shell_emission_adds_nested_mod_files_for_deep_namespaces() {
+    fn package_module_emission_adds_nested_mod_files_for_deep_namespaces() {
         let fixture_root = temp_root("deep_namespace_layout");
         let app_root = fixture_root.join("app");
         fs::create_dir_all(app_root.join("api/tools/math")).expect("nested namespace root");
