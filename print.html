@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b19a3ca7.js";
+            window.path_to_searchindex_js = "searchindex-f252c68b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-aca3346a.js"></script>
@@ -1560,20 +1560,78 @@ construction goes through method calls on it.</p>
 <pre><code class="language-fol">var app = graph.add_exe({
     name     = "app",
     root     = "src/main.fol",
+    fol_model = "std",   // spell this explicitly for each artifact
     target   = target,    // optional
     optimize = optimize,  // optional
 });
 </code></pre>
 <p>Returns an <code>Artifact</code> handle.</p>
 <p>Required fields: <code>name</code>, <code>root</code>.
-Optional fields: <code>target</code>, <code>optimize</code>.</p>
+Optional fields: <code>fol_model</code>, <code>target</code>, <code>optimize</code>.</p>
 <p><code>root</code> is the path to the entry-point <code>.fol</code> source file relative to the
 package root.</p>
+<p><code>fol_model</code> selects the runtime capability tier for the artifact:</p>
+<ul>
+<li><code>core</code>
+no heap, no OS/runtime services</li>
+<li><code>alloc</code>
+heap-backed facilities, still no OS/runtime services</li>
+<li><code>std</code>
+hosted/runtime services on top of <code>alloc</code></li>
+</ul>
+<p>If omitted today, <code>fol_model</code> behaves like <code>std</code>, but the recommended style is
+to spell it explicitly so the artifact contract is visible in <code>build.fol</code>.</p>
+<p>The important boundary is semantic and runtime-facing:</p>
+<ul>
+<li><code>core</code> artifacts must not use heap-backed <code>str</code>, <code>vec</code>, <code>seq</code>, <code>set</code>, or
+<code>map</code></li>
+<li><code>core</code> artifacts may still use arrays, records, routines, control flow, and
+<code>defer</code></li>
+<li><code>alloc</code> artifacts may use heap-backed runtime types but not hosted services</li>
+<li><code>std</code> artifacts are the only artifacts that may use hosted services such as
+<code>.echo(...)</code> and ordinary host-executed <code>run</code> / <code>test</code></li>
+</ul>
+<p>Current implementation note:</p>
+<ul>
+<li><code>core</code> already means “no heap and no OS/runtime services” at the language and
+runtime-contract level</li>
+<li><code>core</code> artifacts are still emitted through the current Rust backend pipeline</li>
+<li>that means <code>core</code> is ready for semantic/runtime restriction work now, but it
+should not yet be read as “finished embedded backend support”</li>
+</ul>
+<p>Mixed-model example:</p>
+<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+    var corelib = graph.add_static_lib({
+        name = "corelib",
+        root = "core/lib.fol",
+        fol_model = "core",
+    });
+    var alloclib = graph.add_static_lib({
+        name = "alloclib",
+        root = "alloc/lib.fol",
+        fol_model = "alloc",
+    });
+    var tool = graph.add_exe({
+        name = "tool",
+        root = "app/main.fol",
+        fol_model = "std",
+    });
+
+    graph.install(tool);
+    graph.add_run(tool);
+};
+</code></pre>
 <h3 id="graphadd_static_lib"><a class="header" href="#graphadd_static_lib"><code>graph.add_static_lib</code></a></h3>
 <p>Adds a static library artifact.</p>
 <pre><code class="language-fol">var core = graph.add_static_lib({ name = "core", root = "src/core/lib.fol" });
 </code></pre>
 <p>Returns an <code>Artifact</code> handle.</p>
+<p>Library and test artifact config records follow the same optional fields:</p>
+<ul>
+<li><code>fol_model</code></li>
+<li><code>target</code></li>
+<li><code>optimize</code></li>
+</ul>
 <h3 id="graphadd_shared_lib"><a class="header" href="#graphadd_shared_lib"><code>graph.add_shared_lib</code></a></h3>
 <p>Adds a shared (dynamic) library artifact.</p>
 <pre><code class="language-fol">var sdk = graph.add_shared_lib({ name = "sdk", root = "src/sdk/lib.fol" });
@@ -3279,11 +3337,15 @@ operator <code>.</code>:</p>
 compiler-owned operations such as <code>.eq(...)</code>, <code>.len(...)</code>, <code>check(...)</code>, and
 <code>panic(...)</code></li>
 <li><code>core</code>:
-ordinary foundational library code that should work across targets</li>
+the minimal runtime model with no heap and no OS/runtime services</li>
+<li><code>alloc</code>:
+heap-backed library/runtime support without OS/runtime services</li>
 <li><code>std</code>:
-broader library code such as filesystem, networking, serialization, and other
-richer services</li>
+hosted/runtime services on top of <code>alloc</code>, such as console, filesystem,
+networking, serialization, and other richer services</li>
 </ul>
+<p>This split is not a source-level import trick and not an object-system feature.
+It is an artifact runtime model selected through <code>build.fol</code>.</p>
 <p>If an operation can live as an ordinary library API, that is usually the better
 home for it. Intrinsics are reserved for surfaces the compiler must understand
 directly.</p>
@@ -3314,9 +3376,15 @@ compiler.</p>
 <h2 id="current-v1-implemented-intrinsics"><a class="header" href="#current-v1-implemented-intrinsics">Current <code>V1</code> implemented intrinsics</a></h2>
 <p>The current compiler implements this subset end to end through type checking and
 lowering.</p>
-<p>For current <code>V1</code>, backend execution of the implemented intrinsic set is
-expected to go through <code>fol-runtime</code> where policy matters. In practice that
-means:</p>
+<p>For current <code>V1</code>, backend execution of the implemented intrinsic set still goes
+through the current runtime layer where policy matters. The runtime contract is
+being split by <code>fol-model</code>, so the rule is:</p>
+<ul>
+<li><code>core</code> artifacts must not rely on heap-backed or hosted facilities</li>
+<li><code>alloc</code> artifacts may use heap-backed facilities but not hosted services</li>
+<li><code>std</code> artifacts may use hosted services</li>
+</ul>
+<p>In the current implementation that means:</p>
 <ul>
 <li><code>.len(...)</code> uses the runtime length helper</li>
 <li><code>.echo(...)</code> uses the runtime echo hook and formatting contract</li>
@@ -3363,16 +3431,19 @@ families, the compiler reports an intrinsic-specific type error.</p>
 </ul>
 </li>
 </ul>
-<p>In the current compiler, <code>.len(...)</code> is the only implemented query intrinsic.</p>
+<p>In the current compiler, <code>.len(...)</code> is the only implemented query intrinsic.
+Under the runtime model split, array <code>.len(...)</code> belongs to <code>core</code>, while
+string and dynamic-container <code>.len(...)</code> belongs to <code>alloc</code>/<code>std</code>.</p>
 <h3 id="diagnostic"><a class="header" href="#diagnostic">Diagnostic</a></h3>
 <pre><code class="language-fol">.echo(value)
 </code></pre>
 <p>Current <code>V1</code> rule:</p>
 <ul>
 <li><code>.echo(...)</code> accepts exactly one argument</li>
-<li>it emits the value through the <code>fol-runtime</code> debug hook</li>
+<li>it emits the value through the <code>std</code> runtime hook</li>
 <li>it then forwards the same value unchanged</li>
 </ul>
+<p><code>.echo(...)</code> belongs to <code>std</code>, not <code>core</code> or <code>alloc</code>.</p>
 <p>So this is valid:</p>
 <pre><code class="language-fol">fun[] main(flag: bol): bol = {
     return .echo(flag)
