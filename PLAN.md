@@ -320,7 +320,7 @@ Audit and remove manual editor registries that can be replaced with
 
 ### Slice Tracker
 
-- [ ] Slice 31. Audit all completion/hover/navigation helper tables in
+- [x] Slice 31. Audit all completion/hover/navigation helper tables in
   `fol-editor` and classify each one:
   - must stay manual
   - can become compiler-backed

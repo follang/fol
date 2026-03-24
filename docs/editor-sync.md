@@ -48,6 +48,54 @@ These still need hand maintenance:
 - symbols query structure
 - LSP UX details such as ranking and presentation
 
+## Registry Audit
+
+The current editor registry surface is split like this.
+
+### Must stay manual
+
+These encode editor UX or structural syntax intent, not language-name facts:
+
+| Area | Location | Why it stays manual |
+|------|----------|---------------------|
+| tree-sitter grammar structure | `lang/tooling/fol-editor/tree-sitter/grammar.js` | grammar shape is structural and cannot be usefully derived from compiler registries |
+| structural highlight captures | `lang/tooling/fol-editor/queries/fol/highlights.base.scm` | capture layout is editor-facing presentation logic |
+| locals/symbols query structure | `lang/tooling/fol-editor/queries/fol/locals.scm`, `lang/tooling/fol-editor/queries/fol/symbols.scm` | scope/symbol capture shapes are structural tree-sitter authoring |
+| completion ranking and tie-breaking | `lang/tooling/fol-editor/src/lsp/completion_helpers.rs` | ordering and UX priority are editor policy |
+| semantic token kind mapping | `lang/tooling/fol-editor/src/lsp/semantic.rs` | token categories are an editor-facing legend, not a compiler registry |
+
+### Should be compiler-backed
+
+These are language-name families and should not stay duplicated:
+
+| Area | Location | Canonical source |
+|------|----------|------------------|
+| builtin type suggestions | `lang/tooling/fol-editor/src/lsp/semantic.rs` | `fol_typecheck::editor_builtin_type_names()` |
+| container/shell type suggestions | `lang/tooling/fol-editor/src/lsp/semantic.rs` | `fol_typecheck::editor_container_type_names()`, `fol_typecheck::editor_shell_type_names()` |
+| dot intrinsic completion names | `lang/tooling/fol-editor/src/lsp/semantic.rs` | `fol_typecheck::editor_implemented_intrinsics()` |
+| `fol_model` availability filtering | `lang/tooling/fol-editor/src/lsp/semantic.rs` | `fol_typecheck::editor_intrinsic_available_in_model()` and `editor_type_family_available_in_model()` |
+| command summaries for source kinds and intrinsic families | `lang/tooling/fol-editor/src/commands.rs` | compiler-owned editor metadata |
+
+### Can become generated or centrally assembled
+
+These should be rendered from one canonical helper instead of repeated string
+lists:
+
+| Area | Location | End state |
+|------|----------|-----------|
+| checked-in `highlights.scm` name families | `lang/tooling/fol-editor/src/tree_sitter.rs`, `queries/fol/highlights.scm` | generated from compiler metadata |
+| command summary detail strings | `lang/tooling/fol-editor/src/commands.rs` | assembled from shared metadata helpers |
+| editor sync regression snapshots | `lang/tooling/fol-editor/src/tree_sitter.rs`, `test/run_tests.rs` | compare against canonical rendered metadata instead of copied strings |
+
+### Intentional leftovers after this plan
+
+If a registry is still manual after the plan completes, it should be manual for
+one of these reasons:
+
+- it defines tree-sitter structure, not a compiler name family
+- it defines editor ranking or rendering policy
+- it describes a token/UX vocabulary that is intentionally editor-owned
+
 ## `fol_model` contract
 
 The editor must treat `fol_model` as a real semantic boundary.
