@@ -350,7 +350,7 @@ Finish with an editor pipeline that is hard to drift accidentally.
   - tree-sitter bundle validation
   - LSP diagnostics by model
   - LSP completion by model
-- [ ] Slice 35. Remove stale manual comments/docs that imply editor updates are
+- [x] Slice 35. Remove stale manual comments/docs that imply editor updates are
   mostly hand-maintained.
 - [ ] Slice 36. Add a contributor-facing doc section:
   - "if you add a language feature, these editor sync tests must pass"

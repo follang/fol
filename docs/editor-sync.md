@@ -5,7 +5,8 @@ tree-sitter assets aligned.
 
 ## Intent
 
-The editor layer should not become a second language implementation.
+The editor layer should not become a second language implementation, and it
+should not depend on copied compiler name lists.
 
 The intended split is:
 
@@ -40,7 +41,7 @@ These should be generated or assembled from compiler-owned data where possible:
 
 ### Manual editor data
 
-These still need hand maintenance:
+These are the intentional manual surfaces that remain after sync automation:
 
 - tree-sitter grammar structure
 - highlight capture structure

@@ -1,7 +1,9 @@
 //! Editor tooling foundations for the FOL language.
 //!
-//! `fol-editor` will host both the Tree-sitter-facing editor syntax layer and
-//! the compiler-backed language-server layer.
+//! `fol-editor` hosts the hand-authored tree-sitter structure layer and the
+//! compiler-backed language-server layer. Name families and capability-aware
+//! editor facts should come from compiler-owned metadata instead of copied
+//! editor registries.
 
 mod commands;
 mod convert;
