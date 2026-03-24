@@ -129,7 +129,7 @@ mod tests {
         render_entry, render_entry_debug, render_record, render_record_debug, FolEntry,
         FolNamedValue, FolRecord,
     };
-    use crate::builtins::render_echo;
+    use crate::std::render_echo;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
     struct DemoPoint {

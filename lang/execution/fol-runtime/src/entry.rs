@@ -16,7 +16,7 @@
 //! assert_eq!(printable_outcome_message(&failure), Some("broken"));
 //! ```
 
-use crate::{abi::FolRecover, builtins::FolEchoFormat};
+use crate::{abi::FolRecover, std::FolEchoFormat};
 
 pub const FOL_EXIT_SUCCESS: i32 = 0;
 pub const FOL_EXIT_FAILURE: i32 = 1;

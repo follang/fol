@@ -144,7 +144,7 @@ Remove hosted process/runtime assumptions from the shared runtime surface.
 
 ### Slice Tracker
 
-- [ ] Slice 12. Move `.echo(...)` implementation ownership into the `std`
+- [x] Slice 12. Move `.echo(...)` implementation ownership into the `std`
   module inside `fol-runtime`.
 - [ ] Slice 13. Move process outcome and executable entry helpers into
 - the `std` module inside `fol-runtime`.
