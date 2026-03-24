@@ -1028,6 +1028,51 @@ mod tests {
     }
 
     #[test]
+    fn executable_backend_std_model_main_runs_hosted_entry_after_runtime_move() {
+        let fixture_root = temp_root("std_hosted_entry");
+        let fixture = write_fixture(
+            &fixture_root,
+            concat!(
+                "fun[] main(): int = {\n",
+                "    .echo(\"std-hosted\");\n",
+                "    return 0;\n",
+                "};\n",
+            ),
+        );
+        let lowered = lowered_workspace_from_entry_path(&fixture);
+        let session = BackendSession::new(lowered);
+        let artifact = emit_backend_artifact(
+            &session,
+            &BackendConfig {
+                mode: BackendMode::BuildArtifact,
+                keep_build_dir: true,
+                fol_model: BackendFolModel::Std,
+                ..BackendConfig::default()
+            },
+            &fixture_root,
+        )
+        .expect("backend std artifact");
+        let BackendArtifact::CompiledBinary {
+            binary_path,
+            emitted_crate_root,
+        } = artifact
+        else {
+            panic!("expected compiled binary artifact");
+        };
+        let main_rs =
+            fs::read_to_string(emitted_crate_root.join("src/main.rs")).expect("generated main.rs");
+        let output = Command::new(&binary_path)
+            .output()
+            .expect("run emitted std binary");
+        let _ = fs::remove_dir_all(&fixture_root);
+
+        assert!(main_rs.contains("use fol_runtime::std as rt;"));
+        assert!(main_rs.contains("use fol_runtime::std as rt_model;"));
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains("std-hosted"));
+    }
+
+    #[test]
     fn executable_backend_runs_check_programs() {
         let output = build_and_run_fixture(concat!(
             "fun[] load(): int / str = {\n",

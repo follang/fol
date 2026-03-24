@@ -805,6 +805,78 @@ use fol_editor::{LspDefinitionParams, LspHover, LspHoverParams, LspLocation};
     }
 
     #[test]
+    fn test_cli_code_build_and_run_keep_std_hosted_runtime_path() {
+        let temp_root = unique_temp_root("build_std_hosted_runtime");
+        let root = temp_root.join("demo");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "        fol_model = \"std\",\n",
+                "    });\n",
+                "    graph.install(app);\n",
+                "    graph.add_run(app);\n",
+                "    return graph\n",
+                "};\n",
+            ),
+        )
+        .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            concat!(
+                "fun[] main(): int = {\n",
+                "    return .echo(7);\n",
+                "};\n",
+            ),
+        )
+        .expect("should write app source");
+
+        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        let build_stdout = String::from_utf8_lossy(&build.stdout);
+        assert!(
+            build.status.success(),
+            "std hosted build should succeed: stdout=\n{}\nstderr=\n{}",
+            build_stdout,
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            build_stdout.contains("built 1 workspace package(s)"),
+            "std hosted build should report a build summary: stdout=\n{}\nstderr=\n{}",
+            build_stdout,
+            String::from_utf8_lossy(&build.stderr)
+        );
+
+        let run = run_fol_in_dir(&root, &["code", "run"]);
+        let run_stdout = String::from_utf8_lossy(&run.stdout);
+        assert!(
+            run.status.success(),
+            "std hosted run should succeed: stdout=\n{}\nstderr=\n{}",
+            run_stdout,
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(
+            run_stdout.contains("7"),
+            "std hosted run should execute through runtime std path: stdout=\n{}\nstderr=\n{}",
+            run_stdout,
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(
+            run_stdout.contains("ran "),
+            "std hosted run should report a run summary: stdout=\n{}\nstderr=\n{}",
+            run_stdout,
+            String::from_utf8_lossy(&run.stderr)
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_lsp_unknown_method_returns_method_not_found_error() {
         let mut server = EditorLspServer::new(EditorConfig::default());
 

@@ -840,6 +840,7 @@ fn loc_call_binding_stress_fixture_compiles_and_runs() {
     assert_output_contains(&run_output, "55");
 }
 
+
 #[test]
 fn container_linear_fixture_compiles_and_runs() {
     let fixture = fixture_root("container_linear");

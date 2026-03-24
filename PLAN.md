@@ -152,7 +152,7 @@ Remove hosted process/runtime assumptions from the shared runtime surface.
   entry and hosted execution support.
 - [x] Slice 15. Remove the old shared runtime ownership for those services
   instead of keeping fallback exports.
-- [ ] Slice 16. Add backend and app-level example tests for hosted `std`
+- [x] Slice 16. Add backend and app-level example tests for hosted `std`
   execution after the move.
 
 ### Exit criteria
