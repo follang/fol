@@ -27,6 +27,15 @@ use super::*;
     }
 
     #[test]
+    fn test_runtime_split_crates_compile_through_root_integration_graph() {
+        assert_eq!(fol_core::crate_name(), "fol-core");
+        assert_eq!(fol_alloc::crate_name(), "fol-alloc");
+        assert_eq!(fol_alloc::parent_runtime(), "fol-core");
+        assert_eq!(fol_std::crate_name(), "fol-std");
+        assert_eq!(fol_std::parent_runtimes(), ("fol-core", "fol-alloc"));
+    }
+
+    #[test]
     fn test_stream_to_lexer_order_stays_stable_across_multiple_files() {
         use fol_lexer::lexer::stage3::Elements;
         use fol_lexer::token::KEYWORD;
@@ -248,4 +257,3 @@ use super::*;
 
         fs::remove_dir_all(&temp_root).ok();
     }
-

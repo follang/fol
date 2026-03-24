@@ -107,7 +107,7 @@ Introduce the physical runtime split without yet moving every implementation.
   - `fol-core` depends on nothing from `fol-alloc` or `fol-std`
   - `fol-alloc` may depend on `fol-core`
   - `fol-std` may depend on `fol-core` and `fol-alloc`
-- [ ] Slice 7. Add smoke tests proving the new crates compile and the workspace
+- [x] Slice 7. Add smoke tests proving the new crates compile and the workspace
   build remains green.
 
 ### Exit criteria
