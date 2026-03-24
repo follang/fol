@@ -168,7 +168,7 @@ Make heap-backed runtime data structures physically belong to `alloc`.
 ### Slice Tracker
 
 - [x] Slice 17. Move string runtime support into `fol-runtime::alloc`.
-- [ ] Slice 18. Move `vec` and `seq` runtime support into `fol-runtime::alloc`.
+- [x] Slice 18. Move `vec` and `seq` runtime support into `fol-runtime::alloc`.
 - [ ] Slice 19. Move `set` and `map` runtime support into `fol-runtime::alloc`, or, if
   one of them is not yet stable enough, explicitly defer it in the docs and
   keep the plan honest.

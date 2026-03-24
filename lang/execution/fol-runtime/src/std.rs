@@ -2,8 +2,8 @@
 
 use crate::{
     abi::FolRecover,
-    alloc::FolStr,
-    containers::{FolArray, FolMap, FolSeq, FolSet, FolVec},
+    alloc::{FolSeq, FolStr, FolVec},
+    containers::{FolArray, FolMap, FolSet},
     core::RuntimeTier,
     shell::{FolError, FolOption},
 };
