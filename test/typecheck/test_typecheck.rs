@@ -59,6 +59,13 @@ fn unique_temp_dir_produces_distinct_paths_for_rapid_calls() {
 }
 
 fn typecheck_fixture_folder(files: &[(&str, &str)]) -> fol_typecheck::TypedProgram {
+    typecheck_fixture_folder_with_config(files, TypecheckConfig::default())
+}
+
+fn typecheck_fixture_folder_with_config(
+    files: &[(&str, &str)],
+    config: TypecheckConfig,
+) -> fol_typecheck::TypedProgram {
     let root = unique_temp_dir("package");
     create_dir_all(&root).expect("Fixture root should be creatable");
     write_fixture_files(&root, files);
@@ -72,7 +79,7 @@ fn typecheck_fixture_folder(files: &[(&str, &str)]) -> fol_typecheck::TypedProgr
         .expect("Fixture folder should parse as a package");
     let resolved = resolve_package(syntax).expect("Fixture folder should resolve cleanly");
 
-    Typechecker::new()
+    Typechecker::with_config(config)
         .check_resolved_program(resolved)
         .expect("Fixture folder should typecheck declaration signatures")
 }

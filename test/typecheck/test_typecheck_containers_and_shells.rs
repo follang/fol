@@ -618,6 +618,65 @@ fn intrinsic_query_typing_covers_full_v1_length_family_matrix() {
 }
 
 #[test]
+fn core_model_keeps_array_length_queries_available() {
+    let typed = typecheck_fixture_folder_with_config(
+        &[(
+            "main.fol",
+            concat!(
+                "fun[] arr_len(items: arr[int, 3]): int = {\n",
+                "    return .len(items);\n",
+                "};\n",
+            ),
+        )],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Core,
+        },
+    );
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "arr_len");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int)),
+        "Expected array .len(...) to remain available in 'fol_model = core'",
+    );
+}
+
+#[test]
+fn alloc_model_accepts_dynamic_length_queries() {
+    let typed = typecheck_fixture_folder_with_config(
+        &[(
+            "main.fol",
+            concat!(
+                "fun[] text_len(): int = {\n",
+                "    return .len(\"Ada\");\n",
+                "};\n",
+                "fun[] seq_len(items: seq[int]): int = {\n",
+                "    return .len(items);\n",
+                "};\n",
+            ),
+        )],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Alloc,
+        },
+    );
+
+    for name in ["text_len", "seq_len"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Int)),
+            "Expected {name} to retain dynamic .len(...) support in 'fol_model = alloc'",
+        );
+    }
+}
+
+#[test]
 fn intrinsic_query_typing_rejects_non_query_receiver_families() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",

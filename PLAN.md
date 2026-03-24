@@ -26,7 +26,7 @@ Last updated: 2026-03-24
   `set`, and `map` in `core`, with diagnostics and tests.
 - [x] Slice 11. Extend this plan for Phase 2 and document the next enforced
   capability boundaries after the initial `core` gate.
-- [ ] Slice 12. Gate dynamic `.len(...)` so `str`, `vec`, `seq`, `set`, and
+- [x] Slice 12. Gate dynamic `.len(...)` so `str`, `vec`, `seq`, `set`, and
   `map` require `fol-model = alloc` or `std`, while `arr[...]` stays valid in
   `core`.
 - [ ] Slice 13. Reject `run` and `test` execution for selected non-`std`
