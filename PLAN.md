@@ -189,7 +189,7 @@ Stop offering completion items that are invalid for the current model.
 
 ### Slice Tracker
 
-- [ ] Slice 11. Move intrinsic completion sources to use compiler-owned editor
+- [x] Slice 11. Move intrinsic completion sources to use compiler-owned editor
   metadata instead of hand-maintained item lists.
 - [ ] Slice 12. Filter completion items by active `fol_model`:
   - hide `std`-only intrinsics in `core` and `alloc`

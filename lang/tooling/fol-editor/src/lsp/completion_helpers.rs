@@ -1,5 +1,4 @@
 use crate::{EditorDocument, LspCompletionContext, LspPosition};
-use fol_intrinsics::IntrinsicEntry;
 
 use super::types::EditorCompletionItem;
 
@@ -338,12 +337,12 @@ pub(super) fn completion_namespace_item(label: String) -> EditorCompletionItem {
     }
 }
 
-pub(super) fn completion_intrinsic_item(entry: &IntrinsicEntry) -> EditorCompletionItem {
+pub(super) fn completion_intrinsic_item(label: &str) -> EditorCompletionItem {
     EditorCompletionItem {
-        label: entry.name.to_string(),
+        label: label.to_string(),
         kind: 2,
-        detail: Some(format!("intrinsic {}", entry.category.as_str())),
-        insert_text: Some(entry.name.to_string()),
+        detail: Some("intrinsic".to_string()),
+        insert_text: Some(label.to_string()),
     }
 }
 

@@ -3,11 +3,9 @@ use crate::{
     EditorResult, LspDiagnostic, LspLocation, LspPosition, LspRange, LspTextEdit,
     LspWorkspaceEdit,
 };
-use fol_intrinsics::{
-    intrinsic_registry, IntrinsicAvailability, IntrinsicStatus, IntrinsicSurface,
-};
+use fol_intrinsics::IntrinsicSurface;
 use fol_parser::ast::{AstNode, SyntaxNodeId};
-use fol_typecheck::TypecheckCapabilityModel;
+use fol_typecheck::{editor_builtin_type_names, editor_implemented_intrinsics, TypecheckCapabilityModel};
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -394,7 +392,7 @@ impl SemanticSnapshot {
     }
 
     fn builtin_type_completion_items(&self) -> Vec<EditorCompletionItem> {
-        fol_typecheck::BuiltinType::ALL_NAMES
+        editor_builtin_type_names()
             .iter()
             .map(|name| completion_builtin_type_item(name))
             .collect()
@@ -477,12 +475,10 @@ impl SemanticSnapshot {
 
     // COMPILER-BACKED: intrinsic registry is the canonical source
     fn dot_intrinsic_fallback_completion_items(&self) -> Vec<EditorCompletionItem> {
-        intrinsic_registry()
+        editor_implemented_intrinsics()
             .iter()
             .filter(|entry| entry.surface == IntrinsicSurface::DotRootCall)
-            .filter(|entry| entry.availability == IntrinsicAvailability::V1)
-            .filter(|entry| entry.status == IntrinsicStatus::Implemented)
-            .map(completion_intrinsic_item)
+            .map(|entry| completion_intrinsic_item(entry.name))
             .collect()
     }
 
