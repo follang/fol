@@ -46,6 +46,13 @@ Forbidden surface:
 - `.echo(...)`
 - hosted process-entry assumptions
 
+Choose `core` when:
+
+- the artifact must avoid heap allocation completely
+- the artifact should be valid for embedded-first targets
+- arrays and plain records are enough
+- console/process services are not part of the contract
+
 ### `alloc`
 
 Meaning:
@@ -68,6 +75,12 @@ Still forbidden:
 - hosted `run` / `test` execution semantics
 - process/console/filesystem/network services
 
+Choose `alloc` when:
+
+- the artifact needs strings or dynamic containers
+- the artifact still should not depend on hosted OS/runtime services
+- you want to keep heap usage explicit in `build.fol`
+
 ### `std`
 
 Meaning:
@@ -80,6 +93,29 @@ Adds:
 - hosted process outcome behavior
 - ordinary host-executed `run` / `test`
 - future OS/runtime services
+
+Choose `std` when:
+
+- the artifact is a normal host tool or CLI
+- the artifact needs `.echo(...)`
+- the artifact is expected to run through `fol code run` or routed `test`
+
+## Quick selection rule
+
+- pick `core` first if the artifact can stay array-only and no-heap
+- move to `alloc` only when you actually need `str` or dynamic containers
+- move to `std` only when you actually need hosted runtime behavior
+
+The intent is to keep capability growth explicit. `std` is not the semantic
+baseline for every artifact just because the current backend is hosted Rust.
+
+## Guarantees by model
+
+| Model   | Heap | Hosted runtime | Typical artifact shape |
+|---------|------|----------------|------------------------|
+| `core`  | no   | no             | embedded logic, fixed-shape libs |
+| `alloc` | yes  | no             | heap utilities, container-heavy libs |
+| `std`   | yes  | yes            | CLIs, host tools, integration executables |
 
 ## Current implementation status
 
@@ -121,3 +157,10 @@ pro[] build(graph: Graph): non = {
     });
 }
 ```
+
+## Example packages
+
+- `examples/core_blink_shape`
+- `examples/alloc_containers`
+- `examples/std_cli`
+- `examples/mixed_models_workspace`

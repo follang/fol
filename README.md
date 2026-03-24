@@ -24,3 +24,14 @@ FOL is a general-purpose, systems programming language designed for robustness, 
 ## Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the compiler pipeline, crate map, and how data flows from source to binary.
+
+## Runtime Models
+
+FOL artifacts now declare `fol_model` in `build.fol`:
+
+- `core`: no heap, no hosted runtime services
+- `alloc`: heap-enabled, still no hosted runtime services
+- `std`: hosted runtime services on top of `alloc`
+
+Use the smallest model that matches the artifact contract. The practical guide
+and examples are in [docs/runtime-models.md](docs/runtime-models.md).

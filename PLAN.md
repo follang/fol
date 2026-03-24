@@ -278,7 +278,7 @@ Prove the split holds under normal project use.
 - [x] Slice 37. Add CLI integration tests compiling and emitting each example.
 - [x] Slice 38. Add one workspace example mixing all three models in one build
   graph.
-- [ ] Slice 39. Add developer docs for how to choose a model and what each tier
+- [x] Slice 39. Add developer docs for how to choose a model and what each tier
   guarantees.
 - [ ] Slice 40. Do a final language/docs audit so no chapter still implies the
   old unsplit hosted runtime story.
