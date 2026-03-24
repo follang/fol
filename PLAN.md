@@ -201,7 +201,7 @@ Stop offering completion items that are invalid for the current model.
   - `std` does suggest `.echo`
   - `core` does not suggest `str`, `seq`, `vec`, `set`, `map` as normal type
     surfaces
-- [ ] Slice 14. Add completion tests for mixed-model workspaces so package-local
+- [x] Slice 14. Add completion tests for mixed-model workspaces so package-local
   artifact context does not bleed across unrelated members.
 
 ### Exit criteria
