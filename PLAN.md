@@ -256,7 +256,7 @@ Finish the transition instead of keeping parallel ownership.
   so the crate becomes the model crate rather than a monolithic dump.
 - [x] Slice 33. Remove old backend references to the unsplit runtime path.
 - [x] Slice 34. Remove stale tests that assume one hosted runtime surface.
-- [ ] Slice 35. Add a final regression pass across backend emission, frontend
+- [x] Slice 35. Add a final regression pass across backend emission, frontend
   routing, example apps, and docs.
 
 ### Exit criteria

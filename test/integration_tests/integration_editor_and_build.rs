@@ -22,6 +22,22 @@ fn strip_ansi(value: &str) -> String {
     stripped
 }
 
+fn find_file_by_name(root: &std::path::Path, target_name: &str) -> Option<std::path::PathBuf> {
+    let entries = std::fs::read_dir(root).ok()?;
+    for entry in entries {
+        let entry = entry.ok()?;
+        let path = entry.path();
+        if path.is_dir() {
+            if let Some(found) = find_file_by_name(&path, target_name) {
+                return Some(found);
+            }
+        } else if path.file_name().and_then(|name| name.to_str()) == Some(target_name) {
+            return Some(path);
+        }
+    }
+    None
+}
+
     #[test]
     fn test_editor_file_commands_cover_build_fol_entry_files() {
         let parse = run_fol(&[
@@ -741,6 +757,68 @@ fn strip_ansi(value: &str) -> String {
             String::from_utf8_lossy(&run.stdout),
             String::from_utf8_lossy(&run.stderr)
         );
+    }
+
+    #[test]
+    fn test_build_fixtures_emit_runtime_imports_for_each_model() {
+        let cases = [
+            ("core", "fun[] main(): int = {\n    return 7;\n};\n"),
+            (
+                "alloc",
+                "fun[] main(): str = {\n    return \"alloc-ready\";\n};\n",
+            ),
+            ("std", "fun[] main(): int = {\n    return .echo(7);\n};\n"),
+        ];
+
+        for (model, main_source) in cases {
+            let temp_root = unique_temp_root(&format!("build_runtime_import_{model}"));
+            let root = temp_root.join("demo");
+            std::fs::create_dir_all(root.join("src")).expect("should create source root");
+            std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+                .expect("should write package metadata");
+            std::fs::write(
+                root.join("build.fol"),
+                format!(
+                    concat!(
+                        "pro[] build(graph: Graph): non = {{\n",
+                        "    var app = graph.add_exe({{\n",
+                        "        name = \"demo\",\n",
+                        "        root = \"src/main.fol\",\n",
+                        "        fol_model = \"{}\",\n",
+                        "    }});\n",
+                        "    graph.install(app);\n",
+                        "    return graph\n",
+                        "}};\n",
+                    ),
+                    model
+                ),
+            )
+            .expect("should write build file");
+            std::fs::write(root.join("src/main.fol"), main_source).expect("should write source");
+
+            let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+            assert!(
+                build.status.success(),
+                "model '{model}' should build: stdout=\n{}\nstderr=\n{}",
+                String::from_utf8_lossy(&build.stdout),
+                String::from_utf8_lossy(&build.stderr)
+            );
+
+            let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+                .expect("generated backend source should exist");
+            let source =
+                std::fs::read_to_string(&generated).expect("generated backend source should load");
+            let expected_import = format!("use fol_runtime::{model} as rt;");
+
+            assert!(
+                source.contains(&expected_import),
+                "model '{model}' should emit '{expected_import}' in {:?}:\n{}",
+                generated,
+                source
+            );
+
+            std::fs::remove_dir_all(&temp_root).ok();
+        }
     }
 
     #[test]
