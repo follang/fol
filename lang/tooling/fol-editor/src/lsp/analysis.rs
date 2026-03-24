@@ -8,7 +8,7 @@ use fol_package::{PackageSession, PackageSourceKind};
 use fol_parser::ast::AstParser;
 use fol_resolver::Resolver;
 use fol_stream::{FileStream, Source, SourceType};
-use fol_typecheck::Typechecker;
+use fol_typecheck::{TypecheckConfig, Typechecker};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -195,7 +195,9 @@ pub(super) fn analyze_document_semantics(
             }
         };
 
-        let mut typechecker = Typechecker::new();
+        let mut typechecker = Typechecker::with_config(TypecheckConfig {
+            capability_model: mapping.active_fol_model.unwrap_or_default(),
+        });
         #[cfg(test)]
         TYPECHECK_WORKSPACE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         match typechecker.check_resolved_workspace(resolved.clone()) {

@@ -2594,6 +2594,90 @@ fn lsp_server_handles_hover_definition_and_document_symbols() {
 }
 
 #[test]
+fn lsp_server_surfaces_alloc_echo_model_diagnostics_from_open_documents() {
+    let (root, uri) = sample_package_root("typecheck_alloc_echo_diag");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = "fun[] main(): int = {\n    return .echo(1);\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, text);
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0]
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic
+            .message
+            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'alloc'")));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_surfaces_core_string_model_diagnostics_from_open_documents() {
+    let (root, uri) = sample_package_root("typecheck_core_string_diag");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = "fun[] main(): str = {\n    return \"ok\";\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, text);
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0]
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic
+            .message
+            .contains("str requires heap support and is unavailable in 'fol_model = core'")));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_surfaces_core_heap_literal_boundary_from_open_documents() {
+    let (root, uri) = sample_package_root("typecheck_core_len_diag");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = "fun[] main(): int = {\n    return .len(\"Ada\");\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, text);
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0]
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains(
+            "string literals require heap support and are unavailable in 'fol_model = core'",
+        )));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_diagnostics_include_code_in_message() {
     let (root, uri) = sample_package_root("diag_code_msg");
     let mut server = EditorLspServer::new(EditorConfig::default());

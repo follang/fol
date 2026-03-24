@@ -169,7 +169,7 @@ using and reports boundaries consistently.
   `fol_model` for the opened package or routed artifact.
 - [x] Slice 8. Thread `fol_model` into semantic snapshots and editor workspace
   caches.
-- [ ] Slice 9. Add tests proving LSP diagnostics for:
+- [x] Slice 9. Add tests proving LSP diagnostics for:
   - `.echo(...)` in `alloc`
   - `str` in `core`
   - dynamic `.len(...)` in `core`
