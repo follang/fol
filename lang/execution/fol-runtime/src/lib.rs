@@ -47,13 +47,13 @@
 //! - `.not`
 //!   - lower to native Rust boolean negation
 //! - `.len`
-//!   - lower through [`prelude::len`]
+//!   - lower through the active model module's `len(...)`
 //! - `.echo`
-//!   - lower through [`prelude::echo`]
+//!   - lower through [`std::echo`]
 //! - `check`
-//!   - lower through [`prelude::check_recoverable`]
+//!   - lower through the active model module's `check_recoverable(...)`
 //! - recoverable top-level result handling
-//!   - lower through [`prelude::outcome_from_recoverable`]
+//!   - lower through [`std::outcome_from_recoverable`]
 //!
 //! The backend should not reimplement `.len` or `.echo` inline. Those are part
 //! of the runtime contract so later backends can share the same behavior.
@@ -77,11 +77,11 @@
 //! Runtime-backed instructions or lowered surfaces:
 //!
 //! - `LengthOf`
-//!   - must call [`prelude::len`]
+//!   - must call the active model module's `len(...)`
 //! - `RuntimeHook`
-//!   - currently `.echo(...)`, which must call [`prelude::echo`]
+//!   - currently `.echo(...)`, which must call [`std::echo`]
 //! - `CheckRecoverable`
-//!   - must inspect [`abi::FolRecover`] through [`prelude::check_recoverable`]
+//!   - must inspect [`abi::FolRecover`] through the active model module
 //! - `UnwrapRecoverable`
 //!   - must unwrap the success lane of [`abi::FolRecover`]
 //! - `ExtractRecoverableError`
@@ -123,8 +123,9 @@
 //! - declare a dependency on the package named `fol-runtime`
 //! - import runtime items through `fol_runtime`, matching Rust's crate-name
 //!   hyphen-to-underscore rule
-//! - prefer one stable prelude alias per emitted module, such as
-//!   `use fol_runtime::prelude as rt;`
+//! - prefer one stable model alias per emitted module, such as
+//!   `use fol_runtime::core as rt;`
+//!   - or `alloc` / `std` depending on the artifact's `fol_model`
 //! - use fully qualified imports for less-common runtime modules when needed,
 //!   for example:
 //!   - `fol_runtime::alloc::FolSeq`
@@ -151,8 +152,8 @@
 //! 1. Lower a full workspace through `fol-lower` and treat that lowered
 //!    workspace as the only backend input.
 //! 2. Create one generated Rust crate for that lowered workspace.
-//! 3. Add `fol-runtime` as a dependency and import `fol_runtime::prelude as rt`
-//!    in each emitted module.
+//! 3. Add `fol-runtime` as a dependency and import the artifact's model module
+//!    as `rt` in each emitted module.
 //! 4. Emit backend-authored Rust structs and enums for lowered records and
 //!    entries, then implement [`aggregate::FolRecord`] or [`aggregate::FolEntry`]
 //!    where runtime formatting needs to stay stable.
@@ -165,7 +166,7 @@
 //!    - [`shell::FolOption`]
 //!    - [`shell::FolError`]
 //!    - [`abi::FolRecover`]
-//! 6. Lower builtin/runtime-sensitive operations through the prelude helpers
+//! 6. Lower builtin/runtime-sensitive operations through the model helpers
 //!    instead of inlining policy:
 //!    - `rt::len(...)`
 //!    - `rt::echo(...)`
@@ -190,7 +191,6 @@ pub mod builtins;
 pub mod containers;
 pub mod core;
 pub mod error;
-pub mod prelude;
 pub mod shell;
 pub mod std;
 pub mod value;
@@ -224,7 +224,6 @@ mod tests {
         assert_eq!(shell::module_name(), "shell");
         assert_eq!(std::module_name(), "std");
         assert_eq!(value::module_name(), "value");
-        assert_eq!(prelude::crate_name(), "fol-runtime");
     }
 
     #[test]
@@ -254,62 +253,52 @@ mod tests {
     }
 
     #[test]
-    fn public_recoverable_abi_freezes_success_path_through_prelude() {
-        let value = prelude::FolRecover::<prelude::FolInt, prelude::FolStr>::ok(7);
+    fn public_recoverable_abi_freezes_success_path_through_model_modules() {
+        let value = alloc::FolRecover::<alloc::FolInt, alloc::FolStr>::ok(7);
 
-        assert!(!prelude::check_recoverable(&value));
-        assert!(prelude::recoverable_succeeded(&value));
+        assert!(!alloc::check_recoverable(&value));
+        assert!(alloc::recoverable_succeeded(&value));
         assert_eq!(value.value_ref(), Some(&7));
-        assert_eq!(
-            Result::<prelude::FolInt, prelude::FolStr>::from(value),
-            Ok(7)
-        );
+        assert_eq!(Result::<alloc::FolInt, alloc::FolStr>::from(value), Ok(7));
     }
 
     #[test]
-    fn public_recoverable_abi_freezes_failure_path_through_prelude() {
-        let value = prelude::FolRecover::<prelude::FolInt, prelude::FolStr>::err(
-            prelude::FolStr::from("bad-input"),
+    fn public_recoverable_abi_freezes_failure_path_through_model_modules() {
+        let value = alloc::FolRecover::<alloc::FolInt, alloc::FolStr>::err(
+            alloc::FolStr::from("bad-input"),
         );
 
-        assert!(prelude::check_recoverable(&value));
-        assert!(!prelude::recoverable_succeeded(&value));
+        assert!(alloc::check_recoverable(&value));
+        assert!(!alloc::recoverable_succeeded(&value));
         assert_eq!(
             value.error_ref().map(|error| error.as_str()),
             Some("bad-input")
         );
-        assert_eq!(
-            Result::<prelude::FolInt, prelude::FolStr>::from(value),
-            Err(prelude::FolStr::from("bad-input"))
-        );
+        assert_eq!(Result::<alloc::FolInt, alloc::FolStr>::from(value), Err(alloc::FolStr::from("bad-input")));
     }
 
     #[test]
     fn public_shell_values_stay_distinct_from_recoverable_results() {
-        let optional = prelude::FolOption::some(7);
-        let error_shell = prelude::FolError::new(prelude::FolStr::from("broken"));
-        let recoverable = prelude::FolRecover::<prelude::FolInt, prelude::FolStr>::err(
-            prelude::FolStr::from("broken"),
-        );
+        let optional = alloc::FolOption::some(7);
+        let error_shell = alloc::FolError::new(alloc::FolStr::from("broken"));
+        let recoverable =
+            alloc::FolRecover::<alloc::FolInt, alloc::FolStr>::err(alloc::FolStr::from("broken"));
 
         assert_eq!(
-            std::any::type_name::<prelude::FolOption<prelude::FolInt>>(),
+            ::std::any::type_name::<alloc::FolOption<alloc::FolInt>>(),
             "fol_runtime::shell::FolOption<i64>"
         );
         assert_eq!(
-            std::any::type_name::<prelude::FolError<prelude::FolStr>>(),
+            ::std::any::type_name::<alloc::FolError<alloc::FolStr>>(),
             "fol_runtime::shell::FolError<fol_runtime::alloc::FolStr>"
         );
         assert_eq!(
-            std::any::type_name::<prelude::FolRecover<prelude::FolInt, prelude::FolStr>>(),
+            ::std::any::type_name::<alloc::FolRecover<alloc::FolInt, alloc::FolStr>>(),
             "fol_runtime::abi::FolRecover<i64, fol_runtime::alloc::FolStr>"
         );
 
-        assert_eq!(prelude::unwrap_optional_shell(optional), Ok(7));
-        assert_eq!(
-            prelude::unwrap_error_shell(error_shell),
-            prelude::FolStr::from("broken")
-        );
-        assert!(prelude::check_recoverable(&recoverable));
+        assert_eq!(alloc::unwrap_optional_shell(optional), Ok(7));
+        assert_eq!(alloc::unwrap_error_shell(error_shell), alloc::FolStr::from("broken"));
+        assert!(alloc::check_recoverable(&recoverable));
     }
 }

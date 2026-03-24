@@ -252,7 +252,7 @@ Finish the transition instead of keeping parallel ownership.
 
 ### Slice Tracker
 
-- [ ] Slice 32. Delete or radically shrink the old unsplit `fol-runtime` surface
+- [x] Slice 32. Delete or radically shrink the old unsplit `fol-runtime` surface
   so the crate becomes the model crate rather than a monolithic dump.
 - [ ] Slice 33. Remove old backend references to the unsplit runtime path.
 - [ ] Slice 34. Remove stale tests that assume one hosted runtime surface.

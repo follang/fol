@@ -9,7 +9,9 @@
 //! Minimal pattern:
 //!
 //! ```no_run
-//! use fol_runtime::prelude::*;
+//! use fol_runtime::alloc::{
+//!     render_record, FolEchoFormat, FolInt, FolNamedValue, FolRecord,
+//! };
 //!
 //! struct Point {
 //!     x: FolInt,
@@ -346,8 +348,8 @@ mod tests {
     }
 
     #[test]
-    fn prelude_example_shapes_show_backend_authorship_pattern() {
-        use crate::prelude::{
+    fn model_module_example_shapes_show_backend_authorship_pattern() {
+        use crate::alloc::{
             render_entry, render_record, FolEchoFormat, FolEntry, FolInt, FolNamedValue, FolRecord,
         };
 
