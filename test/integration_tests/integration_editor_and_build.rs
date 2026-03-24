@@ -822,6 +822,40 @@ fn find_file_by_name(root: &std::path::Path, target_name: &str) -> Option<std::p
     }
 
     #[test]
+    fn test_cli_build_emits_rust_for_model_examples() {
+        let cases = [
+            ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
+            ("examples/alloc_containers", "use fol_runtime::alloc as rt;"),
+            ("examples/std_cli", "use fol_runtime::std as rt;"),
+        ];
+
+        for (path, expected_import) in cases {
+            let root = repo_root().join(path);
+            std::fs::remove_dir_all(root.join(".fol/build")).ok();
+
+            let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+            assert!(
+                build.status.success(),
+                "example '{path}' should build: stdout=\n{}\nstderr=\n{}",
+                String::from_utf8_lossy(&build.stdout),
+                String::from_utf8_lossy(&build.stderr)
+            );
+
+            let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+                .expect("generated example backend source should exist");
+            let source =
+                std::fs::read_to_string(&generated).expect("generated example source should load");
+
+            assert!(
+                source.contains(expected_import),
+                "example '{path}' should emit '{expected_import}' in {:?}:\n{}",
+                generated,
+                source
+            );
+        }
+    }
+
+    #[test]
     fn test_build_fixtures_core_model_reject_forbidden_surfaces() {
         let cases = [
             (

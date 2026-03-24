@@ -4,5 +4,7 @@ fun[] greet(prefix: str = "std", extras: ... str): str = {
 
 fun[] main(): int = {
     var values: seq[str] = {"-ready"};
-    return .echo(greet(...values));
+    var message: str = greet(...values);
+    var shown: str = .echo(message);
+    return 7;
 };
