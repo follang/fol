@@ -40,7 +40,7 @@ Secondary follow-up niceties, only after the above are stable:
 
 - [x] Slice 1: rewrite `book/src/500_items/200_routines/300_methods.md` to make the procedural receiver-sugar model explicit and remove conflicting wording
 - [x] Slice 2: rewrite `book/src/500_items/300_constructs/200_structs.md` so records are documented strictly as data plus receiver-qualified routines
-- [ ] Slice 3: rewrite `book/src/500_items/300_constructs/100_aliases.md` so alias/extension examples stay procedural and non-OOP
+- [x] Slice 3: rewrite `book/src/500_items/300_constructs/100_aliases.md` so alias/extension examples stay procedural and non-OOP
 - [ ] Slice 4: clean `book/src/200_expressions/300_exp/400_access.md`, `book/src/500_items/400_standards.md`, and `book/src/500_items/500_generics.md` of conflicting OOP/dispatch wording
 - [ ] Slice 5: harden record-method semantic coverage for local receiver-qualified routines
 - [ ] Slice 6: harden record-method semantic coverage for imported and qualified receiver-qualified routines plus diagnostics
