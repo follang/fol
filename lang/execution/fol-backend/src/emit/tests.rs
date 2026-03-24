@@ -233,13 +233,13 @@ mod tests {
             .contains("use fol_runtime::core as rt_model;"));
         assert!(core_emitted
             .contents
-            .contains("use fol_runtime::prelude as rt;"));
+            .contains("use fol_runtime::core as rt;"));
         assert!(alloc_emitted
             .contents
             .contains("use fol_runtime::alloc as rt_model;"));
         assert!(alloc_emitted
             .contents
-            .contains("use fol_runtime::prelude as rt;"));
+            .contains("use fol_runtime::alloc as rt;"));
         assert!(core_emitted
             .contents
             .contains("let _runtime_tier = rt_model::tier_name();"));
@@ -273,7 +273,7 @@ mod tests {
         assert_eq!(emitted[0].path, "src/packages/pkg__entry__app/root.rs");
         assert!(emitted[0]
             .contents
-            .contains("use fol_runtime::prelude as rt;"));
+            .contains("use fol_runtime::std as rt;"));
         assert!(emitted[0]
             .contents
             .contains("use fol_runtime::std as rt_model;"));
@@ -369,7 +369,7 @@ mod tests {
 
         assert!(main_rs
             .contents
-            .contains("use fol_runtime::prelude as rt;"));
+            .contains("use fol_runtime::alloc as rt;"));
         assert!(main_rs
             .contents
             .contains("use fol_runtime::alloc as rt_model;"));

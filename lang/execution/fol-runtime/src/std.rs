@@ -1,33 +1,28 @@
 //! Hosted runtime tier surface, including console-facing formatting hooks.
 
-use crate::{
-    abi::FolRecover,
-    containers::FolArray,
-    core::RuntimeTier,
-    shell::{FolError, FolOption},
-};
+use crate::core::RuntimeTier;
 
 pub use crate::{crate_name, CRATE_NAME};
 pub use crate::alloc::{FolMap, FolSeq, FolSet, FolStr, FolVec};
+pub use crate::abi::{check_recoverable, recoverable_succeeded, FolRecover};
+pub use crate::aggregate::{
+    render_echo, render_entry, render_entry_debug, render_record, render_record_debug,
+    FolEchoFormat, FolEntry, FolNamedValue, FolRecord,
+};
+pub use crate::builtins::{len, pow, pow_float, FolLength};
+pub use crate::containers::{
+    index_array, index_seq, index_vec, lookup_map, render_array, render_map, render_seq,
+    render_set, render_vec, slice_seq, slice_vec, FolArray,
+};
+pub use crate::shell::{
+    unwrap_error_shell, unwrap_error_shell_ref, unwrap_optional_shell, unwrap_optional_shell_ref,
+    FolError, FolOption,
+};
+pub use crate::value::{impossible, FolBool, FolChar, FolFloat, FolInt, FolNever};
 
 pub const HAS_HEAP: bool = true;
 pub const HAS_OS: bool = true;
 pub const TIER: RuntimeTier = RuntimeTier::new("std", HAS_HEAP, HAS_OS);
-
-pub trait FolEchoFormat {
-    fn fol_echo_format(&self) -> String;
-}
-
-fn join_echo<I>(items: I) -> String
-where
-    I: IntoIterator<Item = String>,
-{
-    items.into_iter().collect::<Vec<_>>().join(", ")
-}
-
-pub fn render_echo<T: FolEchoFormat + ?Sized>(value: &T) -> String {
-    value.fol_echo_format()
-}
 
 pub fn echo<T: FolEchoFormat>(value: T) -> T {
     println!("{}", value.fol_echo_format());
@@ -85,88 +80,6 @@ pub fn outcome_from_recoverable<T, E: FolEchoFormat>(value: FolRecover<T, E>) ->
     match value {
         FolRecover::Ok(_) => FolProcessOutcome::success(),
         FolRecover::Err(error) => failure_outcome_from_error(error),
-    }
-}
-
-impl FolEchoFormat for i64 {
-    fn fol_echo_format(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl FolEchoFormat for f64 {
-    fn fol_echo_format(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl FolEchoFormat for bool {
-    fn fol_echo_format(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl FolEchoFormat for char {
-    fn fol_echo_format(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl FolEchoFormat for FolStr {
-    fn fol_echo_format(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl<T: FolEchoFormat, const N: usize> FolEchoFormat for FolArray<T, N> {
-    fn fol_echo_format(&self) -> String {
-        format!("arr[{}]", join_echo(self.iter().map(render_echo)))
-    }
-}
-
-impl<T: FolEchoFormat> FolEchoFormat for FolVec<T> {
-    fn fol_echo_format(&self) -> String {
-        format!("vec[{}]", join_echo(self.as_slice().iter().map(render_echo)))
-    }
-}
-
-impl<T: FolEchoFormat> FolEchoFormat for FolSeq<T> {
-    fn fol_echo_format(&self) -> String {
-        format!("seq[{}]", join_echo(self.as_slice().iter().map(render_echo)))
-    }
-}
-
-impl<T: FolEchoFormat + Ord> FolEchoFormat for FolSet<T> {
-    fn fol_echo_format(&self) -> String {
-        format!("set{{{}}}", join_echo(self.as_set().iter().map(render_echo)))
-    }
-}
-
-impl<K: FolEchoFormat + Ord, V: FolEchoFormat> FolEchoFormat for FolMap<K, V> {
-    fn fol_echo_format(&self) -> String {
-        format!(
-            "map{{{}}}",
-            join_echo(self.as_map().iter().map(|(key, value)| format!(
-                "{}: {}",
-                render_echo(key),
-                render_echo(value)
-            )))
-        )
-    }
-}
-
-impl<T: FolEchoFormat> FolEchoFormat for FolOption<T> {
-    fn fol_echo_format(&self) -> String {
-        match self {
-            FolOption::Some(value) => format!("some({})", render_echo(value)),
-            FolOption::Nil => "nil".to_string(),
-        }
-    }
-}
-
-impl<T: FolEchoFormat> FolEchoFormat for FolError<T> {
-    fn fol_echo_format(&self) -> String {
-        format!("err({})", render_echo(self.as_ref()))
     }
 }
 

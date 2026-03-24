@@ -55,7 +55,9 @@ impl BackendRuntimeTier {
 
     pub fn prelude_module_path(self) -> &'static str {
         match self {
-            Self::Core | Self::Alloc | Self::Std => "fol_runtime::prelude",
+            Self::Core => "fol_runtime::core",
+            Self::Alloc => "fol_runtime::alloc",
+            Self::Std => "fol_runtime::std",
         }
     }
 }

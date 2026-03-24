@@ -1,5 +1,22 @@
 //! Heap-enabled, OS-free runtime tier surface.
 
+pub use crate::abi::{check_recoverable, recoverable_succeeded, FolRecover};
+pub use crate::aggregate::{
+    render_echo, render_entry, render_entry_debug, render_record, render_record_debug,
+    FolEchoFormat, FolEntry, FolNamedValue, FolRecord,
+};
+pub use crate::builtins::{len, pow, pow_float, FolLength};
+pub use crate::containers::{
+    index_array, index_seq, index_vec, lookup_map, render_array, render_map, render_seq,
+    render_set, render_vec, slice_seq, slice_vec, FolArray,
+};
+pub use crate::shell::{
+    unwrap_error_shell, unwrap_error_shell_ref, unwrap_optional_shell, unwrap_optional_shell_ref,
+    FolError, FolOption,
+};
+pub use crate::value::{impossible, FolBool, FolChar, FolFloat, FolInt, FolNever};
+pub use crate::{crate_name, CRATE_NAME};
+
 use crate::core::{self, RuntimeTier};
 use std::{
     borrow::Borrow,

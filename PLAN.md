@@ -194,7 +194,7 @@ Make `core` useful and honest for embedded-first work.
 
 ### Slice Tracker
 
-- [ ] Slice 23. Audit the backend-emitted `core` crate root and remove accidental
+- [x] Slice 23. Audit the backend-emitted `core` crate root and remove accidental
   imports of hosted or heap-backed support.
 - [ ] Slice 24. Add explicit backend tests that `core` artifacts emit without
   importing alloc/std runtime modules.
