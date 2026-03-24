@@ -368,6 +368,10 @@ mod integration_tests {
     mod editor_and_build;
 
     #[cfg(test)]
+    #[path = "integration_editor_sync.rs"]
+    mod editor_sync;
+
+    #[cfg(test)]
     #[path = "integration_diagnostics_pipeline.rs"]
     mod diagnostics_pipeline;
 

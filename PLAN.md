@@ -344,7 +344,7 @@ Finish with an editor pipeline that is hard to drift accidentally.
 
 ### Slice Tracker
 
-- [ ] Slice 34. Add a top-level "editor sync" test suite that exercises:
+- [x] Slice 34. Add a top-level "editor sync" test suite that exercises:
   - compiler metadata export
   - generated query fragments
   - tree-sitter bundle validation
