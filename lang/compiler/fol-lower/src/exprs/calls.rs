@@ -7,22 +7,26 @@ use crate::{
     LoweringError, LoweringErrorKind,
 };
 use fol_intrinsics::{select_intrinsic, IntrinsicEntry, IntrinsicSurface};
-use fol_parser::ast::AstNode;
+use fol_parser::ast::{AstNode, ContainerType};
 use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
 
 pub(crate) enum BoundLoweredCallArg<'a> {
     Explicit(&'a AstNode),
     Default(usize),
+    VariadicPack(Vec<&'a AstNode>),
+    VariadicUnpack(&'a AstNode),
 }
 
 pub(crate) fn bind_lowered_call_arguments<'a>(
     args: &'a [AstNode],
     param_names: &[String],
     param_defaults: &[Option<AstNode>],
+    variadic_index: Option<usize>,
     display_name: &str,
 ) -> Result<Vec<BoundLoweredCallArg<'a>>, LoweringError> {
     let mut ordered_args = vec![None; param_names.len()];
+    let mut variadic_trailing = Vec::new();
     let mut next_positional = 0usize;
     let mut seen_named = false;
 
@@ -45,10 +49,22 @@ pub(crate) fn bind_lowered_call_arguments<'a>(
                 ordered_args[index] = Some(value.as_ref());
             }
             AstNode::Unpack { .. } => {
-                return Err(LoweringError::with_kind(
-                    LoweringErrorKind::InvalidInput,
-                    "call-site unpack is not yet supported in V1",
-                ));
+                let Some(index) = variadic_index else {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        "call-site unpack is only supported for variadic calls in V1",
+                    ));
+                };
+                if index + 1 != param_names.len()
+                    || ordered_args[index].is_some()
+                    || !variadic_trailing.is_empty()
+                {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        "call-site unpack cannot be combined with other variadic arguments in V1",
+                    ));
+                }
+                ordered_args[index] = Some(arg);
             }
             _ => {
                 if seen_named {
@@ -56,6 +72,10 @@ pub(crate) fn bind_lowered_call_arguments<'a>(
                         LoweringErrorKind::InvalidInput,
                         format!("call to '{display_name}' cannot place positional arguments after named arguments"),
                     ));
+                }
+                if variadic_index.is_some_and(|index| next_positional >= index) {
+                    variadic_trailing.push(arg);
+                    continue;
                 }
                 if next_positional >= ordered_args.len() {
                     return Err(LoweringError::with_kind(
@@ -73,10 +93,27 @@ pub(crate) fn bind_lowered_call_arguments<'a>(
         }
     }
 
+    if let Some(index) = variadic_index {
+        if ordered_args[index].is_none() && !variadic_trailing.is_empty() {
+            ordered_args[index] = Some(variadic_trailing[0]);
+        }
+    }
+
     let mut bound_args = Vec::with_capacity(ordered_args.len());
     for (index, arg) in ordered_args.into_iter().enumerate() {
         match arg {
+            Some(AstNode::Unpack { value }) if variadic_index == Some(index) => {
+                bound_args.push(BoundLoweredCallArg::VariadicUnpack(value.as_ref()));
+            }
+            Some(arg) if variadic_index == Some(index) && !variadic_trailing.is_empty() => {
+                let mut packed = vec![arg];
+                packed.extend(variadic_trailing.iter().skip(1).copied());
+                bound_args.push(BoundLoweredCallArg::VariadicPack(packed));
+            }
             Some(arg) => bound_args.push(BoundLoweredCallArg::Explicit(arg)),
+            None if variadic_index == Some(index) => {
+                bound_args.push(BoundLoweredCallArg::VariadicPack(Vec::new()));
+            }
             None if matches!(param_defaults.get(index), Some(Some(_))) => {
                 bound_args.push(BoundLoweredCallArg::Default(index));
             }
@@ -792,7 +829,7 @@ pub(crate) fn lower_function_call(
         })?;
     let param_defaults = decl_index
         .routine_param_defaults(callee)
-        .map(|defaults| defaults.defaults.as_slice())
+        .cloned()
         .ok_or_else(|| {
             LoweringError::with_kind(
                 LoweringErrorKind::InvalidInput,
@@ -800,7 +837,13 @@ pub(crate) fn lower_function_call(
             )
         })?;
     let ordered_args =
-        bind_lowered_call_arguments(args, param_names, param_defaults, display_name)?;
+        bind_lowered_call_arguments(
+            args,
+            param_names,
+            param_defaults.defaults.as_slice(),
+            param_defaults.variadic_index,
+            display_name,
+        )?;
     let lowered_args = ordered_args
         .iter()
         .enumerate()
@@ -828,6 +871,36 @@ pub(crate) fn lower_function_call(
                     *param_index,
                     expected,
                 ),
+                BoundLoweredCallArg::VariadicUnpack(arg) => lower_expression_expected(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    expected,
+                    arg,
+                ),
+                BoundLoweredCallArg::VariadicPack(args) => {
+                    let packed = AstNode::ContainerLiteral {
+                        container_type: ContainerType::Sequence,
+                        elements: args.iter().map(|arg| (*arg).clone()).collect(),
+                    };
+                    lower_expression_expected(
+                        typed_package,
+                        type_table,
+                        checked_type_map,
+                        current_identity,
+                        decl_index,
+                        cursor,
+                        source_unit_id,
+                        scope_id,
+                        expected,
+                        &packed,
+                    )
+                }
             }
             .map(|value| value.local_id)
         })
@@ -897,7 +970,7 @@ pub(crate) fn lower_statement_free_call(
         })?;
     let param_defaults = decl_index
         .routine_param_defaults(callee)
-        .map(|defaults| defaults.defaults.as_slice())
+        .cloned()
         .ok_or_else(|| {
             LoweringError::with_kind(
                 LoweringErrorKind::InvalidInput,
@@ -905,7 +978,13 @@ pub(crate) fn lower_statement_free_call(
             )
         })?;
     let ordered_args =
-        bind_lowered_call_arguments(args, param_names, param_defaults, display_name)?;
+        bind_lowered_call_arguments(
+            args,
+            param_names,
+            param_defaults.defaults.as_slice(),
+            param_defaults.variadic_index,
+            display_name,
+        )?;
     let lowered_args = ordered_args
         .iter()
         .enumerate()
@@ -933,6 +1012,36 @@ pub(crate) fn lower_statement_free_call(
                     *param_index,
                     expected,
                 ),
+                BoundLoweredCallArg::VariadicUnpack(arg) => lower_expression_expected(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    expected,
+                    arg,
+                ),
+                BoundLoweredCallArg::VariadicPack(args) => {
+                    let packed = AstNode::ContainerLiteral {
+                        container_type: ContainerType::Sequence,
+                        elements: args.iter().map(|arg| (*arg).clone()).collect(),
+                    };
+                    lower_expression_expected(
+                        typed_package,
+                        type_table,
+                        checked_type_map,
+                        current_identity,
+                        decl_index,
+                        cursor,
+                        source_unit_id,
+                        scope_id,
+                        expected,
+                        &packed,
+                    )
+                }
             }
             .map(|value| value.local_id)
         })

@@ -856,42 +856,94 @@ pub(crate) fn check_call_arguments(
 
     let mut arg_effects = Vec::new();
     for (expected, arg) in signature.params.iter().zip(ordered_args.iter()) {
-        let BoundCallArg::Explicit(arg) = arg else {
-            continue;
-        };
-        let actual_expr =
-            type_node_with_expectation(typed, resolved, context, arg, Some(*expected)).map_err(
-                |error| {
+        match arg {
+            BoundCallArg::Explicit(arg) | BoundCallArg::VariadicUnpack(arg) => {
+                let actual_expr = type_node_with_expectation(
+                    typed,
+                    resolved,
+                    context,
+                    arg,
+                    Some(*expected),
+                )
+                .map_err(|error| {
                     origin
                         .clone()
                         .or_else(|| node_origin(resolved, arg))
                         .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
-                },
-            )?;
-        reject_recoverable_error_shell_conversion(
-            typed,
-            *expected,
-            &actual_expr,
-            origin.clone().or_else(|| node_origin(resolved, arg)),
-            format!("call to '{callee}'"),
-        )?;
-        let actual_expr = plain_value_expr(
-            typed,
-            context,
-            actual_expr,
-            origin.clone().or_else(|| node_origin(resolved, arg)),
-            format!("call to '{callee}'"),
-        )?;
-        let actual =
-            actual_expr.required_value(format!("argument for '{callee}' does not have a type"))?;
-        arg_effects.push(actual_expr.recoverable_effect);
-        ensure_assignable(
-            typed,
-            *expected,
-            actual,
-            format!("call to '{callee}'"),
-            origin.clone(),
-        )?;
+                })?;
+                reject_recoverable_error_shell_conversion(
+                    typed,
+                    *expected,
+                    &actual_expr,
+                    origin.clone().or_else(|| node_origin(resolved, arg)),
+                    format!("call to '{callee}'"),
+                )?;
+                let actual_expr = plain_value_expr(
+                    typed,
+                    context,
+                    actual_expr,
+                    origin.clone().or_else(|| node_origin(resolved, arg)),
+                    format!("call to '{callee}'"),
+                )?;
+                let actual = actual_expr
+                    .required_value(format!("argument for '{callee}' does not have a type"))?;
+                arg_effects.push(actual_expr.recoverable_effect);
+                ensure_assignable(
+                    typed,
+                    *expected,
+                    actual,
+                    format!("call to '{callee}'"),
+                    origin.clone(),
+                )?;
+            }
+            BoundCallArg::VariadicPack(args) => {
+                let element_type = match typed.type_table().get(*expected) {
+                    Some(crate::CheckedType::Sequence { element_type }) => *element_type,
+                    _ => {
+                        return Err(TypecheckError::new(
+                            TypecheckErrorKind::Internal,
+                            format!(
+                                "variadic call to '{callee}' lost its sequence parameter type"
+                            ),
+                        ))
+                    }
+                };
+                for arg in args {
+                    let actual_expr = type_node_with_expectation(
+                        typed,
+                        resolved,
+                        context,
+                        arg,
+                        Some(element_type),
+                    )
+                    .map_err(|error| {
+                        origin
+                            .clone()
+                            .or_else(|| node_origin(resolved, arg))
+                            .map_or(error.clone(), |origin| error.with_fallback_origin(origin))
+                    })?;
+                    let actual_expr = plain_value_expr(
+                        typed,
+                        context,
+                        actual_expr,
+                        origin.clone().or_else(|| node_origin(resolved, arg)),
+                        format!("call to '{callee}'"),
+                    )?;
+                    let actual = actual_expr.required_value(format!(
+                        "variadic argument for '{callee}' does not have a type"
+                    ))?;
+                    arg_effects.push(actual_expr.recoverable_effect);
+                    ensure_assignable(
+                        typed,
+                        element_type,
+                        actual,
+                        format!("call to '{callee}'"),
+                        origin.clone(),
+                    )?;
+                }
+            }
+            BoundCallArg::Default => {}
+        }
     }
 
     merge_recoverable_effects(typed, origin, "call arguments", arg_effects)
@@ -900,6 +952,8 @@ pub(crate) fn check_call_arguments(
 enum BoundCallArg<'a> {
     Explicit(&'a AstNode),
     Default,
+    VariadicPack(Vec<&'a AstNode>),
+    VariadicUnpack(&'a AstNode),
 }
 
 fn bind_call_arguments<'a>(
@@ -918,6 +972,7 @@ fn bind_call_arguments<'a>(
     }
     if args.len() < signature.params.len()
         && !has_named_args
+        && signature.variadic_index.is_none()
         && signature
             .param_defaults
             .iter()
@@ -928,8 +983,10 @@ fn bind_call_arguments<'a>(
     }
 
     let mut ordered_args = vec![None; signature.params.len()];
+    let mut variadic_trailing = Vec::new();
     let mut next_positional = 0usize;
     let mut seen_named = false;
+    let variadic_index = signature.variadic_index;
 
     for arg in args {
         match arg {
@@ -974,16 +1031,34 @@ fn bind_call_arguments<'a>(
                 ordered_args[index] = Some(value.as_ref());
             }
             AstNode::Unpack { .. } => {
-                return Err(TypecheckError::with_origin(
-                    TypecheckErrorKind::InvalidInput,
-                    "call-site unpack is not yet supported in V1",
-                    origin.clone().unwrap_or(SyntaxOrigin {
-                        file: None,
-                        line: 1,
-                        column: 1,
-                        length: 3,
-                    }),
-                ));
+                let Some(index) = variadic_index else {
+                    return Err(TypecheckError::with_origin(
+                        TypecheckErrorKind::InvalidInput,
+                        "call-site unpack is only supported for variadic calls in V1",
+                        origin.clone().unwrap_or(SyntaxOrigin {
+                            file: None,
+                            line: 1,
+                            column: 1,
+                            length: 3,
+                        }),
+                    ));
+                };
+                if index + 1 != signature.params.len()
+                    || ordered_args[index].is_some()
+                    || !variadic_trailing.is_empty()
+                {
+                    return Err(TypecheckError::with_origin(
+                        TypecheckErrorKind::InvalidInput,
+                        "call-site unpack cannot be combined with other variadic arguments in V1",
+                        origin.clone().unwrap_or(SyntaxOrigin {
+                            file: None,
+                            line: 1,
+                            column: 1,
+                            length: 3,
+                        }),
+                    ));
+                }
+                ordered_args[index] = Some(arg);
             }
             _ => {
                 if seen_named {
@@ -998,6 +1073,10 @@ fn bind_call_arguments<'a>(
                         }),
                     ));
                 }
+                if variadic_index.is_some_and(|index| next_positional >= index) {
+                    variadic_trailing.push(arg);
+                    continue;
+                }
                 if next_positional >= ordered_args.len() {
                     return Err(call_arity_error(signature.params.len(), args.len(), callee, origin));
                 }
@@ -1007,10 +1086,27 @@ fn bind_call_arguments<'a>(
         }
     }
 
+    if let Some(index) = variadic_index {
+        if ordered_args[index].is_none() && !variadic_trailing.is_empty() {
+            ordered_args[index] = Some(variadic_trailing[0]);
+        }
+    }
+
     let mut bound_args = Vec::with_capacity(ordered_args.len());
     for (index, arg) in ordered_args.into_iter().enumerate() {
         match arg {
+            Some(AstNode::Unpack { value }) if variadic_index == Some(index) => {
+                bound_args.push(BoundCallArg::VariadicUnpack(value.as_ref()));
+            }
+            Some(arg) if variadic_index == Some(index) && !variadic_trailing.is_empty() => {
+                let mut packed = vec![arg];
+                packed.extend(variadic_trailing.iter().skip(1).copied());
+                bound_args.push(BoundCallArg::VariadicPack(packed));
+            }
             Some(arg) => bound_args.push(BoundCallArg::Explicit(arg)),
+            None if variadic_index == Some(index) => {
+                bound_args.push(BoundCallArg::VariadicPack(Vec::new()));
+            }
             None if allow_defaults && matches!(signature.param_defaults.get(index), Some(Some(_))) => {
                 bound_args.push(BoundCallArg::Default);
             }

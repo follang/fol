@@ -422,6 +422,11 @@ pub(crate) fn type_node_with_expectation(
             let routine_type_id = typed.type_table_mut().intern(CheckedType::Routine(RoutineType {
                 param_names: vec![String::new(); lowered_params.len()],
                 param_defaults: vec![None; lowered_params.len()],
+                variadic_index: params.iter().enumerate().find_map(|(index, param)| {
+                    (index + 1 == params.len()
+                        && matches!(param.param_type, FolType::Sequence { .. }))
+                    .then_some(index)
+                }),
                 params: lowered_params,
                 return_type: expected_return_type,
                 error_type: expected_error_type,

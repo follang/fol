@@ -448,6 +448,11 @@ fn lower_named_routine_signature(
         .intern(CheckedType::Routine(RoutineType {
             param_names: params.iter().map(|param| param.name.clone()).collect(),
             param_defaults: params.iter().map(|param| param.default.clone()).collect(),
+            variadic_index: params.iter().enumerate().find_map(|(index, param)| {
+                (index + 1 == params.len()
+                    && matches!(param.param_type, FolType::Sequence { .. }))
+                .then_some(index)
+            }),
             params: lowered_params,
             return_type: lowered_return,
             error_type: lowered_error,
@@ -580,6 +585,7 @@ pub(crate) fn lower_type(
                 crate::types::RoutineType {
                     param_names: vec![String::new(); lowered_params.len()],
                     param_defaults: vec![None; lowered_params.len()],
+                    variadic_index: None,
                     params: lowered_params,
                     return_type: Some(lowered_return),
                     error_type: None,

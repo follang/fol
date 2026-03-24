@@ -361,18 +361,20 @@ pub(crate) fn lower_expression_observed(
                         format!("method '{method}' does not retain lowered parameter names"),
                     )
                 })?;
+            let param_defaults = decl_index
+                .routine_param_defaults(callee)
+                .cloned()
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("method '{method}' does not retain lowered default arguments"),
+                    )
+                })?;
             let ordered_args = super::calls::bind_lowered_call_arguments(
                 args,
                 param_names.get(1..).unwrap_or(&[]),
-                decl_index
-                    .routine_param_defaults(callee)
-                    .map(|defaults| defaults.defaults.get(1..).unwrap_or(&[]))
-                    .ok_or_else(|| {
-                        LoweringError::with_kind(
-                            LoweringErrorKind::InvalidInput,
-                            format!("method '{method}' does not retain lowered default arguments"),
-                        )
-                    })?,
+                param_defaults.defaults.get(1..).unwrap_or(&[]),
+                param_defaults.variadic_index.map(|index| index.saturating_sub(1)),
                 method,
             )?;
             lowered_args.extend(
@@ -405,6 +407,38 @@ pub(crate) fn lower_expression_observed(
                                     callee,
                                     param_index + 1,
                                     expected,
+                                )
+                            }
+                            super::calls::BoundLoweredCallArg::VariadicUnpack(arg) => {
+                                lower_expression_expected(
+                                    typed_package,
+                                    type_table,
+                                    checked_type_map,
+                                    current_identity,
+                                    decl_index,
+                                    cursor,
+                                    source_unit_id,
+                                    scope_id,
+                                    expected,
+                                    arg,
+                                )
+                            }
+                            super::calls::BoundLoweredCallArg::VariadicPack(args) => {
+                                let packed = AstNode::ContainerLiteral {
+                                    container_type: fol_parser::ast::ContainerType::Sequence,
+                                    elements: args.iter().map(|arg| (*arg).clone()).collect(),
+                                };
+                                lower_expression_expected(
+                                    typed_package,
+                                    type_table,
+                                    checked_type_map,
+                                    current_identity,
+                                    decl_index,
+                                    cursor,
+                                    source_unit_id,
+                                    scope_id,
+                                    expected,
+                                    &packed,
                                 )
                             }
                         }

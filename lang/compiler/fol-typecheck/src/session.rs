@@ -561,6 +561,7 @@ impl TypecheckSession {
                     .intern(CheckedType::Routine(crate::RoutineType {
                         param_names: signature.param_names.clone(),
                         param_defaults: signature.param_defaults.clone(),
+                        variadic_index: signature.variadic_index,
                         params,
                         return_type,
                         error_type,

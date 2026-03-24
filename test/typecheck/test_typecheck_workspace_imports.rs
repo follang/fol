@@ -224,6 +224,46 @@ fn workspace_expression_typing_accepts_imported_default_parameters_for_method_ca
 }
 
 #[test]
+fn workspace_expression_typing_accepts_imported_variadic_free_calls() {
+    let root = unique_temp_dir("workspace_imported_variadic_free_call");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "fun[exp] sum(head: int, tail: ... int): int = {\n",
+                    "    return head;\n",
+                    "};\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return sum(1, 2, 3, 4);\n",
+                    "};\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should accept imported variadic free calls through typed package facts");
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
 fn workspace_expression_typing_accepts_imported_default_parameters_for_free_calls() {
     let root = unique_temp_dir("workspace_imported_default_free_call");
     create_dir_all(&root).expect("Fixture root should be creatable");

@@ -31,6 +31,7 @@ pub(crate) struct RoutineDefaultLowering {
     pub source_unit_id: SourceUnitId,
     pub scope_id: fol_resolver::ScopeId,
     pub defaults: Vec<Option<AstNode>>,
+    pub variadic_index: Option<usize>,
 }
 
 #[derive(Debug, Default)]
@@ -113,8 +114,10 @@ impl WorkspaceDeclIndex {
                     }) {
                         if let fol_typecheck::CheckedType::Routine(signature) = signature_type {
                             let mut defaults = signature.param_defaults.clone();
+                            let mut variadic_index = signature.variadic_index;
                             if typed_symbol.receiver_type.is_some() {
                                 defaults.insert(0, None);
+                                variadic_index = variadic_index.map(|index| index + 1);
                             }
                             self.routine_param_defaults.insert(
                                 routine.id,
@@ -123,6 +126,7 @@ impl WorkspaceDeclIndex {
                                     source_unit_id: typed_symbol.source_unit_id,
                                     scope_id: typed_symbol.scope_id,
                                     defaults,
+                                    variadic_index,
                                 },
                             );
                         }

@@ -46,6 +46,7 @@ pub enum DeclaredTypeKind {
 pub struct RoutineType {
     pub param_names: Vec<String>,
     pub param_defaults: Vec<Option<AstNode>>,
+    pub variadic_index: Option<usize>,
     pub params: Vec<CheckedTypeId>,
     pub return_type: Option<CheckedTypeId>,
     pub error_type: Option<CheckedTypeId>,
@@ -271,6 +272,7 @@ mod tests {
         let routine = table.intern(CheckedType::Routine(RoutineType {
             param_names: vec!["point".to_string(), "count".to_string()],
             param_defaults: vec![None, None],
+            variadic_index: None,
             params: vec![declared, int_id],
             return_type: Some(declared),
             error_type: None,
@@ -334,6 +336,7 @@ mod tests {
         let routine_id = table.intern(CheckedType::Routine(RoutineType {
             param_names: vec!["left".to_string(), "right".to_string()],
             param_defaults: vec![None, None],
+            variadic_index: None,
             params: vec![int_id, str_id],
             return_type: Some(int_id),
             error_type: None,
