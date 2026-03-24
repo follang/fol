@@ -657,6 +657,58 @@ fn expression_typing_accepts_named_arguments_for_method_calls() {
 }
 
 #[test]
+fn expression_typing_accepts_default_parameters_for_method_calls() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         fun (Counter)shift(by: int, step: int = 2): int = {\n\
+             return by;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.shift(1);\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_accepts_named_method_calls_that_skip_defaulted_parameters() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         fun (Counter)shift(by: int, step: int = 2): int = {\n\
+             return by;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.shift(by = 1);\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
 fn expression_typing_rejects_unknown_named_arguments_for_method_calls() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",

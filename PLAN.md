@@ -47,7 +47,7 @@ Secondary follow-up niceties, only after the above are stable:
 - [x] Slice 7: implement named arguments for free calls
 - [x] Slice 8: implement named arguments for method calls
 - [x] Slice 9: implement default parameters for free calls
-- [ ] Slice 10: implement default parameters for method calls
+- [x] Slice 10: implement default parameters for method calls
 - [ ] Slice 11: implement variadic calls and call-site unpack for free calls
 - [ ] Slice 12: implement variadic calls and call-site unpack for method calls
 

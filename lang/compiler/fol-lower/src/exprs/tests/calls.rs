@@ -341,6 +341,60 @@ fn free_call_lowering_synthesizes_default_arguments() {
 }
 
 #[test]
+fn method_call_lowering_synthesizes_default_arguments_after_the_receiver() {
+    let workspace = lower_fixture_workspace(
+        "typ Counter: rec = { value: int };\n\
+         fun (Counter)shift(by: int, step: int = 2): int = {\n\
+             return by;\n\
+         };\n\
+         fun[] main(current: Counter): int = {\n\
+             return current.shift(1);\n\
+         };",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let call_args = routine
+        .instructions
+        .iter()
+        .find_map(|instr| match &instr.kind {
+            LoweredInstrKind::Call { args, .. } => Some(args.clone()),
+            _ => None,
+        })
+        .expect("main routine should contain a lowered method call");
+
+    assert_eq!(call_args.len(), 3, "method default call should lower receiver plus two explicit args");
+
+    let lowered_arg_constants = call_args[1..]
+        .iter()
+        .map(|local_id| {
+            routine
+                .instructions
+                .iter()
+                .find_map(|instr| match (&instr.result, &instr.kind) {
+                    (Some(result), LoweredInstrKind::Const(LoweredOperand::Int(value)))
+                        if result == local_id =>
+                    {
+                        Some(*value)
+                    }
+                    _ => None,
+                })
+                .expect("defaulted method-call args should lower from integer constants")
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        lowered_arg_constants,
+        vec![1, 2],
+        "omitted method defaults should lower after the receiver in declared parameter order"
+    );
+}
+
+#[test]
 fn errorful_call_lowering_retains_explicit_error_type_metadata() {
     let lowered = lower_fixture_workspace(
         "fun[] load(): int / str = {\n\
