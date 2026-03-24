@@ -622,3 +622,65 @@ fn execute_workspace_build_route_rejects_echo_for_core_model_artifacts() {
 
     fs::remove_dir_all(root).ok();
 }
+
+#[test]
+fn execute_workspace_build_route_rejects_heap_backed_types_for_core_model_artifacts() {
+    let root = std::env::temp_dir().join(format!(
+        "fol_frontend_build_route_core_heap_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("src")).unwrap();
+    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({\n",
+            "        name = \"demo\",\n",
+            "        root = \"src/main.fol\",\n",
+            "        fol_model = \"core\",\n",
+            "    });\n",
+            "    graph.install(app);\n",
+            "    return graph\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): str = {\n    return \"ok\";\n};\n",
+    )
+    .unwrap();
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let error = execute_workspace_build_route(
+        &workspace,
+        &FrontendConfig::default(),
+        &FrontendWorkspaceBuildRequest {
+            requested_step: "build".to_string(),
+            profile: FrontendProfile::Debug,
+            run_args: Vec::new(),
+        },
+    )
+    .expect_err("core-model heap-backed types should be rejected during routed build execution");
+
+    assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
+    assert_eq!(error.diagnostics().len(), 1);
+    assert!(error.diagnostics()[0]
+        .message
+        .contains("str requires heap support and is unavailable in 'fol_model = core'"));
+
+    fs::remove_dir_all(root).ok();
+}

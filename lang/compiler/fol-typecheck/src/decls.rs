@@ -473,7 +473,10 @@ pub(crate) fn lower_type(
         FolType::Float { .. } => Ok(typed.builtin_types().float),
         FolType::Bool => Ok(typed.builtin_types().bool_),
         FolType::Char { .. } => Ok(typed.builtin_types().char_),
-        typ if typ.is_builtin_str() => Ok(typed.builtin_types().str_),
+        typ if typ.is_builtin_str() => {
+            reject_heap_backed_type_in_core(typed, resolved, typ, "str")?;
+            Ok(typed.builtin_types().str_)
+        }
         FolType::Never => Ok(typed.builtin_types().never),
         FolType::Named { name, syntax_id } => {
             let symbol_id = resolved_symbol_for_syntax(
@@ -501,18 +504,21 @@ pub(crate) fn lower_type(
             }))
         }
         FolType::Vector { element_type } => {
+            reject_heap_backed_type_in_core(typed, resolved, typ, "vec[...]")?;
             let element_type = lower_type(typed, resolved, scope_id, element_type)?;
             Ok(typed
                 .type_table_mut()
                 .intern(CheckedType::Vector { element_type }))
         }
         FolType::Sequence { element_type } => {
+            reject_heap_backed_type_in_core(typed, resolved, typ, "seq[...]")?;
             let element_type = lower_type(typed, resolved, scope_id, element_type)?;
             Ok(typed
                 .type_table_mut()
                 .intern(CheckedType::Sequence { element_type }))
         }
         FolType::Set { types } => {
+            reject_heap_backed_type_in_core(typed, resolved, typ, "set[...]")?;
             let mut member_types = Vec::new();
             for member in types {
                 member_types.push(lower_type(typed, resolved, scope_id, member)?);
@@ -525,6 +531,7 @@ pub(crate) fn lower_type(
             key_type,
             value_type,
         } => {
+            reject_heap_backed_type_in_core(typed, resolved, typ, "map[...]")?;
             let key_type = lower_type(typed, resolved, scope_id, key_type)?;
             let value_type = lower_type(typed, resolved, scope_id, value_type)?;
             Ok(typed.type_table_mut().intern(CheckedType::Map {
@@ -594,6 +601,27 @@ pub(crate) fn lower_type(
         }
         unsupported => Err(unsupported_type_error(resolved, unsupported)),
     }
+}
+
+fn reject_heap_backed_type_in_core(
+    typed: &TypedProgram,
+    resolved: &ResolvedProgram,
+    typ: &FolType,
+    label: &str,
+) -> Result<(), TypecheckError> {
+    if typed.capability_model() != crate::TypecheckCapabilityModel::Core {
+        return Ok(());
+    }
+
+    let message = format!(
+        "{label} requires heap support and is unavailable in 'fol_model = core'"
+    );
+    Err(match type_origin(resolved, typ) {
+        Some(origin) => {
+            TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin)
+        }
+        None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
+    })
 }
 
 fn lower_declared_symbol(
