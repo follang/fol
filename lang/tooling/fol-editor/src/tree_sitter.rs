@@ -221,6 +221,24 @@ mod tests {
     }
 
     #[test]
+    fn grammar_and_highlights_cover_compiler_declaration_keywords() {
+        let grammar = fol_tree_sitter_grammar();
+        let query = fol_tree_sitter_highlights_query();
+        for keyword in fol_typecheck::editor_declaration_keywords() {
+            let decl_rule = format!("{keyword}_decl");
+            let quoted = format!("\"{keyword}\"");
+            assert!(
+                grammar.contains(&decl_rule) || grammar.contains(&quoted),
+                "grammar is missing declaration keyword coverage for '{keyword}'"
+            );
+            assert!(
+                query.contains(&quoted),
+                "highlight query is missing declaration keyword coverage for '{keyword}'"
+            );
+        }
+    }
+
+    #[test]
     fn highlight_query_covers_declarations_keywords_and_literals() {
         let query = fol_tree_sitter_highlights_query();
         for needle in [
@@ -851,6 +869,53 @@ mod tests {
                 showcase.contains(needle),
                 "showcase fixture lost container/shell/intrinsic capture: {needle}\n{showcase}"
             );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn tree_sitter_bundle_exercises_v1_niceties_and_model_examples() {
+        let root = build_bundle_root("v1_niceties_and_models");
+        let cases = [
+            (
+                repo_root().join("test/apps/fixtures/defer_scope_exit/main.fol"),
+                ["keyword.exception", "punctuation.bracket"].as_slice(),
+            ),
+            (
+                repo_root().join("test/apps/fixtures/call_binding_stress/main.fol"),
+                ["punctuation.delimiter", "function"].as_slice(),
+            ),
+            (
+                repo_root().join("examples/core_defer/src/main.fol"),
+                ["keyword.exception", "type.builtin"].as_slice(),
+            ),
+            (
+                repo_root().join("examples/std_echo_min/src/main.fol"),
+                ["function.builtin", "operator"].as_slice(),
+            ),
+        ];
+
+        for (path, needles) in cases {
+            let output =
+                run_tree_sitter_query(&root, &root.join("queries/fol/highlights.scm"), &path);
+            assert!(
+                output.status.success(),
+                "tree-sitter query failed for '{}':\nstdout:\n{}\nstderr:\n{}",
+                path.display(),
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for needle in needles {
+                assert!(
+                    stdout.contains(needle),
+                    "fixture '{}' lost capture '{}':\n{}",
+                    path.display(),
+                    needle,
+                    stdout
+                );
+            }
         }
 
         std::fs::remove_dir_all(root).ok();

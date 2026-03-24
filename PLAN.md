@@ -250,9 +250,9 @@ Turn more classes of editor drift into obvious test failures.
   - symbols query expectations where declaration families are compiler-known
 - [ ] Slice 20. Add tests that fail if new implemented dot intrinsics exist in
   the compiler but are absent from tree-sitter highlight coverage.
-- [ ] Slice 21. Add tests that fail if new declaration heads/keywords exist in
+- [x] Slice 21. Add tests that fail if new declaration heads/keywords exist in
   compiler constants but are absent from grammar/query coverage.
-- [ ] Slice 22. Add tests for `defer`, named args, variadics, and `fol_model`
+- [x] Slice 22. Add tests for `defer`, named args, variadics, and `fol_model`
   example packages so real syntax fixtures exercise the tree-sitter bundle.
 
 ### Exit criteria
