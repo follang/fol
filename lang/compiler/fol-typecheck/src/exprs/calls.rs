@@ -663,7 +663,7 @@ pub(crate) fn type_method_call(
     let object_type = receiver_expr.required_value(format!(
         "method receiver for '{method}' does not have a type"
     ))?;
-    let origin = node_origin(resolved, node);
+    let origin = node_origin(resolved, node).or_else(|| node_origin(resolved, object));
     let signature = routine_signature_for_method(typed, method, object_type, origin.clone())?;
     let arg_effect = check_call_arguments(
         typed,

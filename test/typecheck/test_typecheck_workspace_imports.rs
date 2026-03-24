@@ -180,6 +180,68 @@ fn workspace_expression_typing_types_qualified_imported_method_calls() {
 }
 
 #[test]
+fn workspace_expression_typing_selects_imported_method_overloads_by_record_receiver_type() {
+    let root = unique_temp_dir("workspace_imported_method_overloads");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] Counter: rec = {\n",
+                    "    value: int;\n",
+                    "};\n",
+                    "typ[exp] Meter: rec = {\n",
+                    "    value: int;\n",
+                    "};\n",
+                    "var[exp] current_counter: Counter;\n",
+                    "var[exp] current_meter: Meter;\n",
+                    "fun[exp] (Counter)read(): int = {\n",
+                    "    return 1;\n",
+                    "};\n",
+                    "fun[exp] (Meter)read(): bol = {\n",
+                    "    return true;\n",
+                    "};\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] read_counter(): int = {\n",
+                    "    return current_counter.read();\n",
+                    "};\n",
+                    "fun[] read_meter(): bol = {\n",
+                    "    return shared::current_meter.read();\n",
+                    "};\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should select imported method overloads by receiver type");
+    let counter_syntax_id = find_named_routine_syntax_id(&typed, "read_counter");
+    let meter_syntax_id = find_named_routine_syntax_id(&typed, "read_meter");
+
+    assert_eq!(
+        typed
+            .typed_node(counter_syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+    assert_eq!(
+        typed
+            .typed_node(meter_syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Bool))
+    );
+}
+
+#[test]
 fn workspace_expression_typing_expands_imported_alias_record_shells_for_field_access() {
     let root = unique_temp_dir("workspace_imported_alias_record_field_access");
     create_dir_all(&root).expect("Fixture root should be creatable");
@@ -218,6 +280,57 @@ fn workspace_expression_typing_expands_imported_alias_record_shells_for_field_ac
             .and_then(|node| node.inferred_type)
             .and_then(|type_id| typed.type_table().get(type_id)),
         Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn reopened_v1_imported_missing_method_diagnostics_keep_call_site_locations() {
+    let root = unique_temp_dir("reopened_imported_missing_method_locations");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] User: rec = {\n",
+                    "    count: int;\n",
+                    "};\n",
+                    "var[exp] current: User;\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return current.bump();\n",
+                    "};\n",
+                ),
+            ),
+        ],
+    );
+
+    let errors =
+        typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+            .expect_err("Workspace entry typing should reject missing imported methods");
+    let error = errors
+        .iter()
+        .find(|error| {
+            error
+                .message()
+                .contains("method 'bump' is not available for the receiver type in V1")
+        })
+        .expect("Expected missing imported-method diagnostic");
+
+    assert_eq!(
+        error.diagnostic_location(),
+        Some(DiagnosticLocation {
+            file: Some(root.join("app/main.fol").display().to_string()),
+            line: 3,
+            column: 12,
+            length: Some(7),
+        })
     );
 }
 
