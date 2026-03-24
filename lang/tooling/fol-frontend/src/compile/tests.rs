@@ -2,13 +2,13 @@ use super::{
     backend_config, build_workspace, build_workspace_for_profile_with_config,
     build_workspace_with_config, check_workspace, emit_lowered, emit_rust,
     profile_build_root, run_workspace, run_workspace_with_args_and_config, test_package,
-    test_workspace, test_workspace_with_config,
+    test_workspace, test_workspace_with_config, typecheck_capability_model,
 };
 use crate::{
     FrontendArtifactKind, FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot,
     WorkspaceRoot,
 };
-use fol_backend::BackendMachineTarget;
+use fol_backend::{BackendFolModel, BackendMachineTarget};
 use std::{fs, path::PathBuf};
 
 fn semantic_bin_build() -> &'static str {
@@ -153,6 +153,22 @@ fn backend_config_threads_frontend_machine_target_selection() {
         )
         .fol_model,
         fol_backend::BackendFolModel::Core
+    );
+}
+
+#[test]
+fn frontend_maps_backend_fol_models_into_typecheck_models() {
+    assert_eq!(
+        typecheck_capability_model(BackendFolModel::Core),
+        fol_typecheck::TypecheckCapabilityModel::Core
+    );
+    assert_eq!(
+        typecheck_capability_model(BackendFolModel::Alloc),
+        fol_typecheck::TypecheckCapabilityModel::Alloc
+    );
+    assert_eq!(
+        typecheck_capability_model(BackendFolModel::Std),
+        fol_typecheck::TypecheckCapabilityModel::Std
     );
 }
 

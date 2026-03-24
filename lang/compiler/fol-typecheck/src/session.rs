@@ -1,16 +1,27 @@
 use crate::{
-    decls, exprs, CheckedType, CheckedTypeId, TypecheckError, TypecheckErrorKind, TypecheckResult,
-    TypedExportMount, TypedPackage, TypedProgram, TypedWorkspace,
+    decls, exprs, CheckedType, CheckedTypeId, TypecheckConfig, TypecheckError,
+    TypecheckErrorKind, TypecheckResult, TypedExportMount, TypedPackage, TypedProgram,
+    TypedWorkspace,
 };
 use fol_resolver::{MountedSymbolProvenance, PackageIdentity, SymbolId};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Default)]
-pub struct TypecheckSession;
+pub struct TypecheckSession {
+    config: TypecheckConfig,
+}
 
 impl TypecheckSession {
     pub fn new() -> Self {
-        Self
+        Self::with_config(TypecheckConfig::default())
+    }
+
+    pub fn with_config(config: TypecheckConfig) -> Self {
+        Self { config }
+    }
+
+    pub fn config(&self) -> TypecheckConfig {
+        self.config
     }
 
     pub fn check_resolved_program(
@@ -48,6 +59,7 @@ impl TypecheckSession {
 
         if errors.is_empty() {
             Ok(TypedWorkspace::new(
+                self.config.capability_model,
                 resolved.entry_identity().clone(),
                 typed_packages,
             ))

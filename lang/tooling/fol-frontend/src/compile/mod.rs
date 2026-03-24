@@ -101,6 +101,7 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
             config,
             &selection.package_root,
             selection.root_module.as_deref(),
+            selection.fol_model,
         )?;
         if lowered.entry_candidates().is_empty() {
             continue;
@@ -511,6 +512,20 @@ pub fn compile_member_workspace(
     config: &FrontendConfig,
     package_root: &Path,
 ) -> FrontendResult<fol_lower::LoweredWorkspace> {
+    compile_member_workspace_for_model(
+        workspace,
+        config,
+        package_root,
+        fol_backend::BackendFolModel::Std,
+    )
+}
+
+fn compile_member_workspace_for_model(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    package_root: &Path,
+    fol_model: fol_backend::BackendFolModel,
+) -> FrontendResult<fol_lower::LoweredWorkspace> {
     let display_name = package_root
         .file_name()
         .and_then(|name| name.to_str())
@@ -530,7 +545,9 @@ pub fn compile_member_workspace(
         resolver_config(workspace, config),
     )
     .map_err(FrontendError::from_errors)?;
-    let typed = fol_typecheck::Typechecker::new()
+    let typed = fol_typecheck::Typechecker::with_config(fol_typecheck::TypecheckConfig {
+        capability_model: typecheck_capability_model(fol_model),
+    })
         .check_resolved_workspace(resolved)
         .map_err(FrontendError::from_errors)?;
     fol_lower::Lowerer::new()
@@ -543,8 +560,9 @@ fn compile_member_workspace_targeted(
     config: &FrontendConfig,
     package_root: &Path,
     root_module: Option<&str>,
+    fol_model: fol_backend::BackendFolModel,
 ) -> FrontendResult<fol_lower::LoweredWorkspace> {
-    let lowered = compile_member_workspace(workspace, config, package_root)?;
+    let lowered = compile_member_workspace_for_model(workspace, config, package_root, fol_model)?;
     let Some(root_module) = root_module else {
         return Ok(lowered);
     };
@@ -617,6 +635,16 @@ fn backend_profile(profile: FrontendProfile) -> fol_backend::BackendBuildProfile
     match profile {
         FrontendProfile::Debug => fol_backend::BackendBuildProfile::Debug,
         FrontendProfile::Release => fol_backend::BackendBuildProfile::Release,
+    }
+}
+
+fn typecheck_capability_model(
+    fol_model: fol_backend::BackendFolModel,
+) -> fol_typecheck::TypecheckCapabilityModel {
+    match fol_model {
+        fol_backend::BackendFolModel::Core => fol_typecheck::TypecheckCapabilityModel::Core,
+        fol_backend::BackendFolModel::Alloc => fol_typecheck::TypecheckCapabilityModel::Alloc,
+        fol_backend::BackendFolModel::Std => fol_typecheck::TypecheckCapabilityModel::Std,
     }
 }
 

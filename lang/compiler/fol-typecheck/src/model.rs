@@ -1,4 +1,4 @@
-use crate::{BuiltinTypeIds, CheckedTypeId, TypeTable};
+use crate::{BuiltinTypeIds, CheckedTypeId, TypeTable, TypecheckCapabilityModel};
 use fol_intrinsics::IntrinsicId;
 use fol_parser::ast::{ParsedSourceUnitKind, SyntaxNodeId};
 use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
@@ -89,6 +89,7 @@ impl TypedPackage {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedWorkspace {
+    capability_model: TypecheckCapabilityModel,
     entry_identity: PackageIdentity,
     packages: BTreeMap<PackageIdentity, TypedPackage>,
 }
@@ -101,19 +102,26 @@ impl TypedWorkspace {
             TypedPackage::new(entry_identity.clone(), Vec::new(), entry_program),
         );
         Self {
+            capability_model: TypecheckCapabilityModel::Std,
             entry_identity,
             packages,
         }
     }
 
     pub(crate) fn new(
+        capability_model: TypecheckCapabilityModel,
         entry_identity: PackageIdentity,
         packages: BTreeMap<PackageIdentity, TypedPackage>,
     ) -> Self {
         Self {
+            capability_model,
             entry_identity,
             packages,
         }
+    }
+
+    pub fn capability_model(&self) -> TypecheckCapabilityModel {
+        self.capability_model
     }
 
     pub fn entry_identity(&self) -> &PackageIdentity {
@@ -376,6 +384,36 @@ impl TypedProgram {
 
     pub(crate) fn apparent_type_override(&self, type_id: CheckedTypeId) -> Option<CheckedTypeId> {
         self.apparent_type_overrides.get(&type_id).copied()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TypedWorkspace;
+    use crate::TypecheckCapabilityModel;
+    use fol_resolver::{PackageIdentity, PackageSourceKind};
+    use std::collections::BTreeMap;
+
+    fn package_identity(name: &str) -> PackageIdentity {
+        PackageIdentity {
+            source_kind: PackageSourceKind::Entry,
+            canonical_root: format!("/tmp/{name}"),
+            display_name: name.to_string(),
+        }
+    }
+
+    #[test]
+    fn typed_workspace_retains_capability_model() {
+        let identity = package_identity("demo");
+        let workspace = TypedWorkspace::new(
+            TypecheckCapabilityModel::Core,
+            identity.clone(),
+            BTreeMap::new(),
+        );
+
+        assert_eq!(workspace.capability_model(), TypecheckCapabilityModel::Core);
+        assert_eq!(workspace.entry_identity(), &identity);
+        assert_eq!(workspace.package_count(), 0);
     }
 }
 
