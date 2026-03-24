@@ -484,6 +484,43 @@ fn method_call_lowering_packs_variadic_arguments_after_the_receiver() {
 }
 
 #[test]
+fn method_call_lowering_passes_unpack_sequences_after_the_receiver() {
+    let workspace = lower_fixture_workspace(
+        "typ Counter: rec = { value: int };\n\
+         fun (Counter)shift(values: ... int): int = {\n\
+             return 0;\n\
+         };\n\
+         fun[] main(current: Counter, values: seq[int]): int = {\n\
+             return current.shift(...values);\n\
+         };",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let call_args = routine
+        .instructions
+        .iter()
+        .find_map(|instr| match &instr.kind {
+            LoweredInstrKind::Call { args, .. } => Some(args.clone()),
+            _ => None,
+        })
+        .expect("main routine should contain a lowered variadic unpack method call");
+
+    assert_eq!(call_args.len(), 2, "unpacked method call should lower receiver plus one sequence arg");
+    assert!(
+        routine.instructions.iter().all(|instr| match (&instr.result, &instr.kind) {
+            (Some(result), LoweredInstrKind::ConstructLinear { .. }) => *result != call_args[1],
+            _ => true,
+        }),
+        "method unpack should pass the existing sequence through without repacking it"
+    );
+}
+
+#[test]
 fn errorful_call_lowering_retains_explicit_error_type_metadata() {
     let lowered = lower_fixture_workspace(
         "fun[] load(): int / str = {\n\
