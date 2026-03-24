@@ -149,7 +149,7 @@ Create one compiler-backed metadata surface that `fol-editor` can consume.
   - whether an intrinsic is legal in `core`
   - whether an intrinsic is `std`-only
   - whether a completion item should be suppressed by model
-- [ ] Slice 6. Add unit tests proving the metadata API is canonical and matches
+- [x] Slice 6. Add unit tests proving the metadata API is canonical and matches
   existing compiler registries exactly.
 
 ### Exit criteria

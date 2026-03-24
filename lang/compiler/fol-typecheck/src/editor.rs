@@ -107,10 +107,13 @@ pub fn editor_intrinsic_available_in_model(
 mod tests {
     use super::{
         editor_builtin_type_names, editor_container_type_names, editor_declaration_keywords,
-        editor_implemented_intrinsics, editor_model_capability, editor_shell_type_names,
-        editor_source_kind_names, editor_type_family_available_in_model, EditorTypeFamily,
+        editor_implemented_intrinsics, editor_intrinsic_available_in_model, editor_model_capability,
+        editor_shell_type_names, editor_source_kind_names, editor_type_family_available_in_model,
+        EditorIntrinsicInfo, EditorTypeFamily,
     };
     use crate::TypecheckCapabilityModel;
+    use fol_intrinsics::{intrinsic_registry, IntrinsicStatus, IntrinsicSurface};
+    use std::collections::BTreeSet;
 
     #[test]
     fn editor_metadata_api_exposes_nonempty_language_facts() {
@@ -152,6 +155,64 @@ mod tests {
         assert!(editor_type_family_available_in_model(
             TypecheckCapabilityModel::Alloc,
             EditorTypeFamily::String
+        ));
+    }
+
+    #[test]
+    fn editor_keyword_and_type_facts_match_compiler_constants_exactly() {
+        assert_eq!(
+            editor_declaration_keywords(),
+            fol_lexer::token::buildin::DECLARATION_KEYWORDS
+        );
+        assert_eq!(editor_builtin_type_names(), crate::BuiltinType::ALL_NAMES);
+        assert_eq!(editor_container_type_names(), fol_parser::CONTAINER_TYPE_NAMES);
+        assert_eq!(editor_shell_type_names(), fol_parser::SHELL_TYPE_NAMES);
+        assert_eq!(editor_source_kind_names(), fol_parser::SOURCE_KIND_NAMES);
+    }
+
+    #[test]
+    fn editor_intrinsic_facts_match_implemented_registry_entries_exactly() {
+        let from_editor: BTreeSet<_> = editor_implemented_intrinsics()
+            .into_iter()
+            .collect();
+        let from_registry: BTreeSet<_> = intrinsic_registry()
+            .iter()
+            .filter(|entry| entry.status == IntrinsicStatus::Implemented)
+            .map(|entry| EditorIntrinsicInfo {
+                name: entry.name,
+                surface: entry.surface,
+            })
+            .collect();
+        assert_eq!(from_editor, from_registry);
+    }
+
+    #[test]
+    fn editor_intrinsic_model_policy_keeps_echo_std_only() {
+        let echo = EditorIntrinsicInfo {
+            name: "echo",
+            surface: IntrinsicSurface::DotRootCall,
+        };
+        let len = EditorIntrinsicInfo {
+            name: "len",
+            surface: IntrinsicSurface::DotRootCall,
+        };
+
+        assert!(!editor_intrinsic_available_in_model(
+            TypecheckCapabilityModel::Core,
+            echo
+        ));
+        assert!(!editor_intrinsic_available_in_model(
+            TypecheckCapabilityModel::Alloc,
+            echo
+        ));
+        assert!(editor_intrinsic_available_in_model(
+            TypecheckCapabilityModel::Std,
+            echo
+        ));
+
+        assert!(editor_intrinsic_available_in_model(
+            TypecheckCapabilityModel::Core,
+            len
         ));
     }
 }
