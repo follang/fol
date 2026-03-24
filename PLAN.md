@@ -14,7 +14,7 @@ Last updated: 2026-03-24
   executor and carry it through evaluated build programs.
 - [x] Slice 5. Add positive build-source tests for `fol_model` on executable,
   library, and test artifacts.
-- [ ] Slice 6. Add explicit invalid-`fol_model` diagnostics in build
+- [x] Slice 6. Add explicit invalid-`fol_model` diagnostics in build
   evaluation, with negative tests.
 - [ ] Slice 7. Carry `fol_model` into frontend/backend compile configuration and
   emitted trace metadata.

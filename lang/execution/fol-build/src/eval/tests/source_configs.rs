@@ -1,5 +1,6 @@
 use super::super::{
-    evaluate_build_source, BuildEvaluationInputs, BuildEvaluationRequest,
+    evaluate_build_source, BuildEvaluationErrorKind, BuildEvaluationInputs,
+    BuildEvaluationRequest,
 };
 use crate::artifact::BuildArtifactFolModel;
 use crate::option::{BuildOptimizeMode, BuildTargetTriple};
@@ -114,6 +115,34 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
     assert_eq!(
         evaluated.evaluated.artifacts[3].kind,
         crate::runtime::BuildRuntimeArtifactKind::Test
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_unknown_artifact_fol_models() {
+    let source = concat!(
+        "pro[] build(graph: Graph): non = {\n",
+        "    graph.add_exe({ name = \"app\", root = \"src/app.fol\", fol_model = \"hosted\" });\n",
+        "    return graph\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("unknown fol_model values should fail build evaluation");
+
+    assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
+    assert_eq!(
+        error.message(),
+        "artifact fol_model must be one of: core, alloc, std (got 'hosted')"
     );
 }
 
