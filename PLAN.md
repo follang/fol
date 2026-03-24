@@ -191,11 +191,11 @@ Stop offering completion items that are invalid for the current model.
 
 - [x] Slice 11. Move intrinsic completion sources to use compiler-owned editor
   metadata instead of hand-maintained item lists.
-- [ ] Slice 12. Filter completion items by active `fol_model`:
+- [x] Slice 12. Filter completion items by active `fol_model`:
   - hide `std`-only intrinsics in `core` and `alloc`
   - hide heap-backed type families in `core`
   - keep `alloc` items visible in `std`
-- [ ] Slice 13. Add completion tests for:
+- [x] Slice 13. Add completion tests for:
   - `core` does not suggest `.echo`
   - `alloc` does not suggest `.echo`
   - `std` does suggest `.echo`

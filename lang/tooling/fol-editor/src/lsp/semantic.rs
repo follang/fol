@@ -5,7 +5,11 @@ use crate::{
 };
 use fol_intrinsics::IntrinsicSurface;
 use fol_parser::ast::{AstNode, SyntaxNodeId};
-use fol_typecheck::{editor_builtin_type_names, editor_implemented_intrinsics, TypecheckCapabilityModel};
+use fol_typecheck::{
+    editor_builtin_type_names, editor_container_type_names, editor_implemented_intrinsics,
+    editor_intrinsic_available_in_model, editor_shell_type_names,
+    editor_type_family_available_in_model, EditorTypeFamily, TypecheckCapabilityModel,
+};
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -337,7 +341,7 @@ impl SemanticSnapshot {
         match context {
             CompletionContext::Plain => {}
             CompletionContext::TypePosition => {
-                let mut items = self.builtin_type_completion_items();
+                let mut items = self.type_surface_completion_items();
                 items.extend(self.visible_named_type_completion_items());
                 return dedupe_completion_items(items);
             }
@@ -364,7 +368,7 @@ impl SemanticSnapshot {
                 self.fallback_qualified_completion_items(&qualifier)
             }
             CompletionContext::TypePosition => {
-                let mut items = self.builtin_type_completion_items();
+                let mut items = self.type_surface_completion_items();
                 items.extend(self.fallback_local_named_type_items(document));
                 items.extend(self.fallback_imported_named_type_items(document));
                 dedupe_completion_items(items)
@@ -391,11 +395,34 @@ impl SemanticSnapshot {
         }
     }
 
-    fn builtin_type_completion_items(&self) -> Vec<EditorCompletionItem> {
-        editor_builtin_type_names()
+    fn active_model(&self) -> TypecheckCapabilityModel {
+        self.active_fol_model.unwrap_or_default()
+    }
+
+    fn type_surface_completion_items(&self) -> Vec<EditorCompletionItem> {
+        let model = self.active_model();
+        let mut items = editor_builtin_type_names()
             .iter()
+            .filter(|name| {
+                editor_type_family_available_in_model(model, builtin_type_family(name))
+            })
             .map(|name| completion_builtin_type_item(name))
-            .collect()
+            .collect::<Vec<_>>();
+        items.extend(
+            editor_container_type_names()
+                .iter()
+                .filter(|name| {
+                    editor_type_family_available_in_model(model, container_type_family(name))
+                })
+                .map(|name| completion_builtin_type_item(name)),
+        );
+        items.extend(
+            editor_shell_type_names()
+                .iter()
+                .filter(|name| editor_type_family_available_in_model(model, shell_type_family(name)))
+                .map(|name| completion_builtin_type_item(name)),
+        );
+        items
     }
 
     // COMPILER-BACKED: reads from resolved all_symbols
@@ -475,9 +502,11 @@ impl SemanticSnapshot {
 
     // COMPILER-BACKED: intrinsic registry is the canonical source
     fn dot_intrinsic_fallback_completion_items(&self) -> Vec<EditorCompletionItem> {
+        let model = self.active_model();
         editor_implemented_intrinsics()
             .iter()
             .filter(|entry| entry.surface == IntrinsicSurface::DotRootCall)
+            .filter(|entry| editor_intrinsic_available_in_model(model, **entry))
             .map(|entry| completion_intrinsic_item(entry.name))
             .collect()
     }
@@ -1259,6 +1288,32 @@ impl SemanticSnapshot {
             .source_units
             .iter()
             .find(move |unit| unit.path == path_text)
+    }
+}
+
+fn builtin_type_family(name: &str) -> EditorTypeFamily {
+    match name {
+        "str" => EditorTypeFamily::String,
+        _ => EditorTypeFamily::Scalar,
+    }
+}
+
+fn container_type_family(name: &str) -> EditorTypeFamily {
+    match name {
+        "arr" => EditorTypeFamily::Array,
+        "vec" => EditorTypeFamily::Vector,
+        "seq" => EditorTypeFamily::Sequence,
+        "set" => EditorTypeFamily::Set,
+        "map" => EditorTypeFamily::Map,
+        _ => EditorTypeFamily::RecordLike,
+    }
+}
+
+fn shell_type_family(name: &str) -> EditorTypeFamily {
+    match name {
+        "opt" => EditorTypeFamily::OptionalShell,
+        "err" => EditorTypeFamily::ErrorShell,
+        _ => EditorTypeFamily::RecordLike,
     }
 }
 
