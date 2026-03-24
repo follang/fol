@@ -372,9 +372,24 @@ mod tests {
         let query = fol_tree_sitter_highlights_query();
         assert!(query.contains("(dot_intrinsic \".\" @operator)"));
         assert!(query.contains("(dot_intrinsic name: (identifier) @function.builtin"));
-        assert!(query.contains("^(len|echo|eq|nq|lt|gt|le|ge|not)$"));
+        assert!(query.contains("#match? @function.builtin \"^("));
         assert!(query.contains("(qualified_path"));
         assert!(query.contains("@namespace"));
+    }
+
+    #[test]
+    fn highlight_query_mentions_every_implemented_dot_intrinsic_name() {
+        let query = fol_tree_sitter_highlights_query();
+        for intrinsic in fol_typecheck::editor_implemented_intrinsics()
+            .into_iter()
+            .filter(|entry| entry.surface == fol_intrinsics::IntrinsicSurface::DotRootCall)
+        {
+            assert!(
+                query.contains(intrinsic.name),
+                "highlight query is missing implemented dot intrinsic '{}'",
+                intrinsic.name
+            );
+        }
     }
 
     #[test]
@@ -530,6 +545,30 @@ mod tests {
     }
 
     #[test]
+    fn locals_query_covers_named_declaration_families_from_compiler_surface() {
+        let query = fol_tree_sitter_locals_query();
+        for needle in [
+            "(fun_decl declaration: (plain_fun_decl name: (identifier) @local.definition.function))",
+            "(fun_decl declaration: (method_decl name: (identifier) @local.definition.method))",
+            "(log_decl declaration: (plain_log_decl name: (identifier) @local.definition.function))",
+            "(log_decl declaration: (method_decl name: (identifier) @local.definition.method))",
+            "(typ_decl name: (identifier) @local.definition.type)",
+            "(ali_decl name: (identifier) @local.definition.type)",
+        ] {
+            assert!(
+                query.contains(needle),
+                "locals query lost declaration-family capture: {needle}"
+            );
+        }
+        for keyword in ["fun", "log", "typ", "ali", "var"] {
+            assert!(
+                fol_typecheck::editor_declaration_keywords().contains(&keyword),
+                "compiler declaration keyword surface drifted away from locals expectation for '{keyword}'"
+            );
+        }
+    }
+
+    #[test]
     fn symbols_query_captures_types_functions_bindings_and_namespaces() {
         let query = fol_tree_sitter_symbols_query();
         for needle in [
@@ -542,6 +581,32 @@ mod tests {
             assert!(
                 query.contains(needle),
                 "missing symbol capture marker: {needle}"
+            );
+        }
+    }
+
+    #[test]
+    fn symbols_query_covers_named_declaration_families_from_compiler_surface() {
+        let query = fol_tree_sitter_symbols_query();
+        for needle in [
+            "(fun_decl declaration: (plain_fun_decl name: (identifier) @symbol.function))",
+            "(fun_decl declaration: (method_decl name: (identifier) @symbol.method))",
+            "(log_decl declaration: (plain_log_decl name: (identifier) @symbol.function))",
+            "(log_decl declaration: (method_decl name: (identifier) @symbol.method))",
+            "(typ_decl name: (identifier) @symbol.type)",
+            "(ali_decl name: (identifier) @symbol.type)",
+            "(var_decl (typed_binding name: (identifier) @symbol.variable))",
+            "(use_decl name: (identifier) @symbol.namespace)",
+        ] {
+            assert!(
+                query.contains(needle),
+                "symbols query lost declaration-family capture: {needle}"
+            );
+        }
+        for keyword in ["fun", "log", "typ", "ali", "var", "use"] {
+            assert!(
+                fol_typecheck::editor_declaration_keywords().contains(&keyword),
+                "compiler declaration keyword surface drifted away from symbols expectation for '{keyword}'"
             );
         }
     }
@@ -592,6 +657,54 @@ mod tests {
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(stdout.contains("function"));
         assert!(stdout.contains("attribute"));
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn generated_bundle_locals_query_captures_real_example_bindings_and_methods() {
+        let root = build_bundle_root("locals_real_examples");
+        let output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/locals.scm"),
+            &repo_root().join("examples/core_records/src/main.fol"),
+        );
+
+        assert!(
+            output.status.success(),
+            "tree-sitter locals query failed:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("@local.definition.type"));
+        assert!(stdout.contains("@local.definition.method"));
+        assert!(stdout.contains("@local.definition.function"));
+        assert!(stdout.contains("@local.definition"));
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn generated_bundle_symbols_query_captures_real_example_symbols() {
+        let root = build_bundle_root("symbols_real_examples");
+        let output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/symbols.scm"),
+            &repo_root().join("examples/core_records/src/main.fol"),
+        );
+
+        assert!(
+            output.status.success(),
+            "tree-sitter symbols query failed:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("@symbol.type"));
+        assert!(stdout.contains("@symbol.method"));
+        assert!(stdout.contains("@symbol.function"));
+        assert!(stdout.contains("@symbol.variable"));
 
         std::fs::remove_dir_all(root).ok();
     }

@@ -245,10 +245,10 @@ Turn more classes of editor drift into obvious test failures.
 
 ### Slice Tracker
 
-- [ ] Slice 19. Expand sync tests beyond `highlights.scm` to cover:
+- [x] Slice 19. Expand sync tests beyond `highlights.scm` to cover:
   - locals query expectations where compiler data can define them
   - symbols query expectations where declaration families are compiler-known
-- [ ] Slice 20. Add tests that fail if new implemented dot intrinsics exist in
+- [x] Slice 20. Add tests that fail if new implemented dot intrinsics exist in
   the compiler but are absent from tree-sitter highlight coverage.
 - [x] Slice 21. Add tests that fail if new declaration heads/keywords exist in
   compiler constants but are absent from grammar/query coverage.
@@ -267,16 +267,16 @@ Use real example packages to lock editor behavior by model.
 
 ### Slice Tracker
 
-- [ ] Slice 23. Add `fol-editor` integration fixtures for:
+- [x] Slice 23. Add `fol-editor` integration fixtures for:
   - `core` example package
   - `alloc` example package
   - `std` example package
-- [ ] Slice 24. Add LSP diagnostics tests over those packages:
+- [x] Slice 24. Add LSP diagnostics tests over those packages:
   - legal surfaces stay quiet
   - forbidden surfaces produce exact model-aware errors
-- [ ] Slice 25. Add semantic token tests over those same packages so model
+- [x] Slice 25. Add semantic token tests over those same packages so model
   examples also harden highlighting and tokenization paths.
-- [ ] Slice 26. Add completion tests opened against those package roots, not
+- [x] Slice 26. Add completion tests opened against those package roots, not
   just synthetic one-file snippets.
 
 ### Exit criteria
@@ -292,19 +292,19 @@ Make the editor understand routed build artifacts instead of only package-wide
 
 ### Slice Tracker
 
-- [ ] Slice 27. Teach editor workspace mapping to inspect `build.fol` routed
+- [x] Slice 27. Teach editor workspace mapping to inspect `build.fol` routed
   artifacts and recover the artifact model for the current file where possible.
-- [ ] Slice 28. Add tests for mixed-model workspaces where:
+- [x] Slice 28. Add tests for mixed-model workspaces where:
   - one member contains `core`
   - one member contains `alloc`
   - one member contains `std`
   and the editor chooses the right model per opened file/package.
-- [ ] Slice 29. Define and document fallback behavior when the editor cannot map
+- [x] Slice 29. Define and document fallback behavior when the editor cannot map
   a file to a specific routed artifact:
   - whether to use package default
   - whether to use conservative model intersection
   - whether to show "unknown model context" notes
-- [ ] Slice 30. Add tests for that fallback policy so ambiguous editor context
+- [x] Slice 30. Add tests for that fallback policy so ambiguous editor context
   behaves deterministically.
 
 ### Exit criteria

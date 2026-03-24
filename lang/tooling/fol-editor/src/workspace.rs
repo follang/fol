@@ -324,7 +324,7 @@ mod tests {
     use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
     use fol_typecheck::TypecheckCapabilityModel;
     use std::fs;
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     fn temp_root(label: &str) -> PathBuf {
         std::env::temp_dir().join(format!(
@@ -334,8 +334,33 @@ mod tests {
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .expect("system time should be after epoch")
-                .as_nanos()
+            .as_nanos()
         ))
+    }
+
+    fn copy_dir_all(src: &Path, dst: &Path) {
+        fs::create_dir_all(dst).unwrap();
+        for entry in fs::read_dir(src).unwrap() {
+            let entry = entry.unwrap();
+            let from = entry.path();
+            let to = dst.join(entry.file_name());
+            if entry.file_type().unwrap().is_dir() {
+                copy_dir_all(&from, &to);
+            } else {
+                fs::copy(&from, &to).unwrap();
+            }
+        }
+    }
+
+    fn copied_example_root(example_path: &str) -> PathBuf {
+        let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../..")
+            .join(example_path)
+            .canonicalize()
+            .expect("checked-in example path should canonicalize");
+        let root = temp_root(&format!("example_copy_{}", example_path.replace('/', "_")));
+        copy_dir_all(&source, &root);
+        root
     }
 
     #[test]
@@ -432,6 +457,97 @@ mod tests {
         assert_eq!(src_mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
         assert_eq!(test_mapping.active_fol_model, Some(TypecheckCapabilityModel::Core));
         assert_eq!(build_mapping.active_fol_model, None);
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_mapping_recovers_routed_models_from_real_mixed_example_workspace() {
+        let root = copied_example_root("examples/mixed_models_workspace");
+        let app_mapping =
+            map_document_workspace(&root.join("app/main.fol"), &EditorConfig::default()).unwrap();
+        let core_mapping =
+            map_document_workspace(&root.join("core/lib.fol"), &EditorConfig::default()).unwrap();
+        let alloc_mapping =
+            map_document_workspace(&root.join("alloc/lib.fol"), &EditorConfig::default()).unwrap();
+
+        assert_eq!(app_mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
+        assert_eq!(core_mapping.active_fol_model, Some(TypecheckCapabilityModel::Core));
+        assert_eq!(alloc_mapping.active_fol_model, Some(TypecheckCapabilityModel::Alloc));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_mapping_uses_uniform_package_model_for_unmapped_files() {
+        let root = temp_root("uniform_unmapped_model");
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
+                "};\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): str = {\n    return \"ok\";\n};\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("notes.fol"),
+            "fun[] helper(): int = {\n    return 7;\n};\n",
+        )
+        .unwrap();
+
+        let mapping = map_document_workspace(&root.join("notes.fol"), &EditorConfig::default())
+            .expect("mapping should succeed for package-local helper file");
+        assert_eq!(mapping.active_fol_model, Some(TypecheckCapabilityModel::Alloc));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_mapping_returns_unknown_model_for_ambiguous_unmapped_files() {
+        let root = temp_root("ambiguous_unmapped_model");
+        let src = root.join("src");
+        let tests = root.join("test");
+        fs::create_dir_all(&src).unwrap();
+        fs::create_dir_all(&tests).unwrap();
+        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+                "    graph.add_test({ name = \"suite\", root = \"test/app.fol\", fol_model = \"core\" });\n",
+                "};\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 7;\n};\n",
+        )
+        .unwrap();
+        fs::write(
+            tests.join("app.fol"),
+            "fun[] main(): int = {\n    return 9;\n};\n",
+        )
+        .unwrap();
+        fs::write(
+            root.join("notes.fol"),
+            "fun[] helper(): int = {\n    return 1;\n};\n",
+        )
+        .unwrap();
+
+        let mapping = map_document_workspace(&root.join("notes.fol"), &EditorConfig::default())
+            .expect("mapping should succeed for package-local helper file");
+        assert_eq!(mapping.active_fol_model, None);
 
         fs::remove_dir_all(root).ok();
     }

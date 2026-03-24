@@ -69,6 +69,21 @@ That means:
 For mixed-model workspaces, editor tests should also cover
 `examples/mixed_models_workspace`.
 
+## Routed artifact fallback
+
+When the editor can map an opened file to one routed artifact root from
+`build.fol`, it should use that artifact's `fol_model`.
+
+When the file does not map to one specific routed artifact:
+
+- if every routed artifact in the package uses the same `fol_model`, the editor
+  should reuse that uniform package model
+- if routed artifacts disagree, the editor should keep the model unknown rather
+  than guessing
+
+That keeps mixed-model packages deterministic and avoids silently bleeding one
+artifact model into unrelated helper files.
+
 ## Test gates
 
 The minimum test gates for editor sync are:
