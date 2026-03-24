@@ -119,20 +119,16 @@ baseline for every artifact just because the current backend is hosted Rust.
 
 ## Current implementation status
 
-Already enforced semantically:
+Implemented today:
 
 - `.echo(...)` requires `std`
 - `str`, `vec`, `seq`, `set`, and `map` are rejected in `core`
 - array `.len(...)` stays valid in `core`
 - dynamic/string `.len(...)` requires `alloc` or `std`
 - routed `run` / `test` reject non-`std` artifacts
-
-Still in progress:
-
-- turning `fol-runtime` into the one model crate with internal
-  `core` / `alloc` / `std` ownership
-- backend linkage by runtime tier
-- deleting the old unsplit runtime ownership path
+- emitted Rust imports the matching `fol_runtime::{core,alloc,std}` module
+- `fol-runtime` is the single runtime crate with internal `core` / `alloc` /
+  `std` ownership
 
 ## Build example
 

@@ -13,7 +13,7 @@ Adds an executable artifact.
 var app = graph.add_exe({
     name     = "app",
     root     = "src/main.fol",
-    fol_model = "std",   // optional, defaults to "std" for now
+    fol_model = "std",   // spell this explicitly for each artifact
     target   = target,    // optional
     optimize = optimize,  // optional
 });
@@ -36,7 +36,8 @@ package root.
 - `std`
   hosted/runtime services on top of `alloc`
 
-For the staged rollout, omitted `fol_model` behaves like `std`.
+If omitted today, `fol_model` behaves like `std`, but the recommended style is
+to spell it explicitly so the artifact contract is visible in `build.fol`.
 
 The important boundary is semantic and runtime-facing:
 

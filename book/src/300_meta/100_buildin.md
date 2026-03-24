@@ -146,7 +146,7 @@ string and dynamic-container `.len(...)` belongs to `alloc`/`std`.
 Current `V1` rule:
 
 - `.echo(...)` accepts exactly one argument
-- it emits the value through the current hosted runtime hook
+- it emits the value through the `std` runtime hook
 - it then forwards the same value unchanged
 
 `.echo(...)` belongs to `std`, not `core` or `alloc`.
