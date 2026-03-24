@@ -150,7 +150,7 @@ Remove hosted process/runtime assumptions from the shared runtime surface.
 - the `std` module inside `fol-runtime`.
 - [x] Slice 14. Make backend-generated `std` artifacts use `fol-runtime::std` for main
   entry and hosted execution support.
-- [ ] Slice 15. Remove the old shared runtime ownership for those services
+- [x] Slice 15. Remove the old shared runtime ownership for those services
   instead of keeping fallback exports.
 - [ ] Slice 16. Add backend and app-level example tests for hosted `std`
   execution after the move.

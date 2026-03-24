@@ -112,7 +112,7 @@
 //! Backend-authored records and entries may compile into plain Rust structs and
 //! enums, but their public formatting behavior should still follow
 //! [`aggregate::FolRecord`], [`aggregate::render_record`], and
-//! [`entry::FolEntry`] so generated `.echo(...)` output stays stable.
+//! [`aggregate::FolEntry`] so generated `.echo(...)` output stays stable.
 //!
 //! # Backend Mapping: Generated Crate Names And Imports
 //!
@@ -155,7 +155,7 @@
 //! 3. Add `fol-runtime` as a dependency and import `fol_runtime::prelude as rt`
 //!    in each emitted module.
 //! 4. Emit backend-authored Rust structs and enums for lowered records and
-//!    entries, then implement [`aggregate::FolRecord`] or [`entry::FolEntry`]
+//!    entries, then implement [`aggregate::FolRecord`] or [`aggregate::FolEntry`]
 //!    where runtime formatting needs to stay stable.
 //! 5. Map lowered container, shell, and recoverable shapes onto the public
 //!    runtime types:
@@ -175,7 +175,7 @@
 //! 7. Keep pure scalar comparison and boolean negation native in the emitted
 //!    Rust where possible.
 //! 8. Lower top-level entry routines so recoverable outcomes become
-//!    [`entry::FolProcessOutcome`] values with the documented exit-code policy.
+//!    [`std::FolProcessOutcome`] values with the documented exit-code policy.
 //! 9. Only after emitted Rust typechecks against `fol-runtime` should the
 //!    backend invoke `cargo build` or `rustc`.
 //!
@@ -190,7 +190,6 @@ pub mod aggregate;
 pub mod builtins;
 pub mod containers;
 pub mod core;
-pub mod entry;
 pub mod error;
 pub mod prelude;
 pub mod shell;
@@ -223,7 +222,6 @@ mod tests {
         assert_eq!(builtins::module_name(), "builtins");
         assert_eq!(containers::module_name(), "containers");
         assert_eq!(core::module_name(), "core");
-        assert_eq!(entry::module_name(), "entry");
         assert_eq!(error::module_name(), "error");
         assert_eq!(shell::module_name(), "shell");
         assert_eq!(std::module_name(), "std");
