@@ -4,7 +4,7 @@ fun[] banner(prefix: str = "std", extras: ... str): str = {
 
 fun[] main(): int = {
     var parts: seq[str] = {"-tool"};
-    var text: str = banner(...parts);
+    var text: str = banner("std", ...parts);
     var shown: str = .echo(text);
     return 7;
 };

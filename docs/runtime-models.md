@@ -157,6 +157,9 @@ pro[] build(graph: Graph): non = {
 ## Example packages
 
 - `examples/core_blink_shape`
+- `examples/core_records`
 - `examples/alloc_containers`
+- `examples/alloc_collections`
 - `examples/std_cli`
+- `examples/std_named_calls`
 - `examples/mixed_models_workspace`

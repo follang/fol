@@ -1,4 +1,4 @@
-use fol_runtime::prelude as rt;
+use fol_runtime::std as rt;
 use fol_runtime::std as rt_model;
 
 pub(crate) const NAMESPACE_NAME: &str = "model_std_echo::src";
