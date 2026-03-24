@@ -1,10 +1,13 @@
 # Methods
 
-A method is a routine associated with a receiver type. In FOL, methods can be declared as either `fun` or `pro` and called with dot syntax (`value.method(...)`).
+A method is a routine associated with a receiver type. In FOL, methods can be
+declared as either `fun` or `pro` and called with dot syntax
+(`value.method(...)`).
 
-Methods in FOL are procedural, not object-oriented. A method call is just sugar
-for calling a routine whose first explicit input is the receiver value. In
-other words:
+Methods in FOL are procedural sugar, not object-oriented behavior.
+
+A method call is just sugar for calling a routine whose first explicit input is
+the receiver value. In other words:
 
 ```fol
 tool.parse_msg(10)
@@ -16,8 +19,14 @@ should be read as the procedural call:
 parse_msg(tool, 10)
 ```
 
-There is no separate object-method runtime model implied by the syntax. `typ`
-declares data. Receiver-qualified routines are still routines.
+This syntax does not introduce:
+
+- classes
+- inheritance
+- object-owned method bodies
+- object-method dispatch as a separate runtime model
+
+`typ` declares data. Receiver-qualified routines are still ordinary routines.
 
 Current parser-supported receiver declaration syntax is:
 
@@ -36,11 +45,10 @@ The receiver type appears in parentheses right after `fun` or `pro`, followed by
 That receiver clause does not move the routine "inside" the type. It only says
 which type may be used in dot-call form for that routine.
 
-Current parser-supported receiver syntax is intentionally broader than a named-only rule.
-At parse time, receiver positions accept named, qualified, builtin-scalar, and
-bracketed/composite type references. This keeps extension-style examples such as
-`typ[ext] int: int; pro (int)print(): non = { ... }` and dispatch examples on extended
-builtin aliases in scope for the front-end.
+The current parser accepts a broader receiver syntax than the final V1
+semantic subset. At parse time, receiver positions can still accept named,
+qualified, builtin-scalar, and bracketed/composite type references. That is a
+parser fact, not an object model.
 
 The dedicated parser-level rejection in this hardening phase is still for special
 builtin forms such as `any`, `none`, and `non`.
@@ -64,6 +72,12 @@ var msg: str = tool.parse_msg(10)
 
 This is equivalent in meaning to passing `tool` as the first routine argument.
 The dot form is only the call-site spelling.
+
+For record-focused V1 code, the intended reading is:
+
+- records hold data
+- routines stay separate
+- the receiver clause only enables `value.method(...)` spelling
 
 Custom error routines also support reporting method call results when receiver-qualified signatures are available:
 
