@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TreeSitterCorpusCase {
     pub name: &'static str,
@@ -13,7 +15,7 @@ pub struct TreeSitterQuerySnapshot {
 const GRAMMAR_SOURCE: &str = include_str!("../tree-sitter/grammar.js");
 const TREE_SITTER_CONFIG: &str = include_str!("../tree-sitter/tree-sitter.json");
 const HIGHLIGHTS_QUERY_BASE: &str = include_str!("../queries/fol/highlights.base.scm");
-const HIGHLIGHTS_QUERY: &str = include_str!("../queries/fol/highlights.scm");
+const CHECKED_IN_HIGHLIGHTS_QUERY: &str = include_str!("../queries/fol/highlights.scm");
 const LOCALS_QUERY: &str = include_str!("../queries/fol/locals.scm");
 const SYMBOLS_QUERY: &str = include_str!("../queries/fol/symbols.scm");
 const CORPUS_DECLARATIONS: &str = include_str!("../tree-sitter/test/corpus/declarations.txt");
@@ -21,6 +23,8 @@ const CORPUS_EXPRESSIONS: &str = include_str!("../tree-sitter/test/corpus/expres
 const CORPUS_RECOVERABLE: &str = include_str!("../tree-sitter/test/corpus/recoverable.txt");
 const CORPUS_SHOWCASE: &str =
     include_str!("../../../../test/apps/showcases/full_v1_showcase/app/main.fol");
+static GENERATED_HIGHLIGHTS_QUERY: OnceLock<String> = OnceLock::new();
+static QUERY_SNAPSHOTS: OnceLock<[TreeSitterQuerySnapshot; 3]> = OnceLock::new();
 
 pub fn fol_tree_sitter_grammar() -> &'static str {
     GRAMMAR_SOURCE
@@ -31,7 +35,9 @@ pub fn fol_tree_sitter_config() -> &'static str {
 }
 
 pub fn fol_tree_sitter_highlights_query() -> &'static str {
-    HIGHLIGHTS_QUERY
+    GENERATED_HIGHLIGHTS_QUERY
+        .get_or_init(generate_highlights_query)
+        .as_str()
 }
 
 pub fn fol_tree_sitter_locals_query() -> &'static str {
@@ -64,20 +70,73 @@ pub fn fol_tree_sitter_corpus() -> &'static [TreeSitterCorpusCase] {
 }
 
 pub fn fol_tree_sitter_query_snapshots() -> &'static [TreeSitterQuerySnapshot] {
-    &[
-        TreeSitterQuerySnapshot {
-            name: "highlights",
-            query: HIGHLIGHTS_QUERY,
-        },
-        TreeSitterQuerySnapshot {
-            name: "locals",
-            query: LOCALS_QUERY,
-        },
-        TreeSitterQuerySnapshot {
-            name: "symbols",
-            query: SYMBOLS_QUERY,
-        },
-    ]
+    QUERY_SNAPSHOTS
+        .get_or_init(|| {
+            [
+                TreeSitterQuerySnapshot {
+                    name: "highlights",
+                    query: fol_tree_sitter_highlights_query(),
+                },
+                TreeSitterQuerySnapshot {
+                    name: "locals",
+                    query: LOCALS_QUERY,
+                },
+                TreeSitterQuerySnapshot {
+                    name: "symbols",
+                    query: SYMBOLS_QUERY,
+                },
+            ]
+        })
+        .as_slice()
+}
+
+fn generate_highlights_query() -> String {
+    HIGHLIGHTS_QUERY_BASE
+        .replace("__FOL_SOURCE_KIND_LINES__", &render_source_kind_lines())
+        .replace("__FOL_CONTAINER_TYPE_LINES__", &render_container_type_lines())
+        .replace("__FOL_SHELL_TYPE_LINES__", &render_shell_type_lines())
+        .replace(
+            "__FOL_BUILTIN_TYPE_REGEX__",
+            &render_group_regex(fol_typecheck::editor_builtin_type_names().iter().copied()),
+        )
+        .replace(
+            "__FOL_DOT_INTRINSIC_REGEX__",
+            &render_group_regex(
+                fol_typecheck::editor_implemented_intrinsics()
+                    .into_iter()
+                    .filter(|entry| entry.surface == fol_intrinsics::IntrinsicSurface::DotRootCall)
+                    .map(|entry| entry.name),
+            ),
+        )
+}
+
+fn render_group_regex<'a>(names: impl IntoIterator<Item = &'a str>) -> String {
+    let joined = names.into_iter().collect::<Vec<_>>().join("|");
+    format!("^({joined})$")
+}
+
+fn render_source_kind_lines() -> String {
+    fol_typecheck::editor_source_kind_names()
+        .iter()
+        .map(|name| format!("(use_decl source_kind: (source_kind \"{name}\" @keyword.import))"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_container_type_lines() -> String {
+    fol_typecheck::editor_container_type_names()
+        .iter()
+        .map(|name| format!("(container_type \"{name}\" @type.builtin)"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_shell_type_lines() -> String {
+    fol_typecheck::editor_shell_type_names()
+        .iter()
+        .map(|name| format!("(shell_type \"{name}\" @type.builtin)"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
@@ -85,7 +144,8 @@ mod tests {
     use super::{
         fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
         fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query,
-        fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query, HIGHLIGHTS_QUERY_BASE,
+        fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
+        CHECKED_IN_HIGHLIGHTS_QUERY, HIGHLIGHTS_QUERY_BASE,
     };
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -283,6 +343,28 @@ mod tests {
                 "base highlight template is missing placeholder: {needle}"
             );
         }
+    }
+
+    #[test]
+    fn generated_highlight_query_resolves_all_placeholders() {
+        let query = fol_tree_sitter_highlights_query();
+        for needle in [
+            "__FOL_SOURCE_KIND_LINES__",
+            "__FOL_CONTAINER_TYPE_LINES__",
+            "__FOL_SHELL_TYPE_LINES__",
+            "__FOL_BUILTIN_TYPE_REGEX__",
+            "__FOL_DOT_INTRINSIC_REGEX__",
+        ] {
+            assert!(
+                !query.contains(needle),
+                "generated highlight query still contains placeholder: {needle}"
+            );
+        }
+    }
+
+    #[test]
+    fn checked_in_highlight_query_matches_generated_output() {
+        assert_eq!(CHECKED_IN_HIGHLIGHTS_QUERY, fol_tree_sitter_highlights_query());
     }
 
     #[test]

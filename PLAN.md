@@ -220,17 +220,17 @@ Reduce manual drift in tree-sitter queries without pretending grammar structure
 - [x] Slice 15. Split query content into:
   - hand-written structural query bodies
   - generated/compiler-derived regex fragments for names and symbol families
-- [ ] Slice 16. Add a small generation step or checked-in generator that writes
+- [x] Slice 16. Add a small generation step or checked-in generator that writes
   canonical fragments for:
   - builtin type names
   - implemented dot intrinsics
   - source kinds
   - container type names
   - shell type names
-- [ ] Slice 17. Change `highlights.scm` consumption so those compiler-derived
+- [x] Slice 17. Change `highlights.scm` consumption so those compiler-derived
   fragments are included from generated files or composed deterministically at
   bundle-generation time.
-- [ ] Slice 18. Add tests proving generated fragments are stable and do not
+- [x] Slice 18. Add tests proving generated fragments are stable and do not
   require hand edits when compiler registries change.
 
 ### Exit criteria
