@@ -136,7 +136,7 @@ Create one compiler-backed metadata surface that `fol-editor` can consume.
 
 ### Slice Tracker
 
-- [ ] Slice 4. Add a compiler-owned editor metadata API, probably in an existing
+- [x] Slice 4. Add a compiler-owned editor metadata API, probably in an existing
   compiler crate or a new small compiler-side module, exposing:
   - declaration keywords
   - builtin type names
