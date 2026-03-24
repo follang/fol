@@ -1,0 +1,10 @@
+pro[] build(graph: Graph): non = {
+    var app = graph.add_exe({
+        name = "model_std_echo",
+        root = "src/main.fol",
+        fol_model = "std",
+    });
+
+    graph.install(app);
+    graph.add_run(app);
+};

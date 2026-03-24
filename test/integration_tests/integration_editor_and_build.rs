@@ -1,6 +1,27 @@
 use super::*;
 use fol_editor::{LspDefinitionParams, LspHover, LspHoverParams, LspLocation};
 
+fn strip_ansi(value: &str) -> String {
+    let mut stripped = String::with_capacity(value.len());
+    let mut chars = value.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\u{1b}' && matches!(chars.peek(), Some('[')) {
+            chars.next();
+            for next in chars.by_ref() {
+                if next.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+            continue;
+        }
+
+        stripped.push(ch);
+    }
+
+    stripped
+}
+
     #[test]
     fn test_editor_file_commands_cover_build_fol_entry_files() {
         let parse = run_fol(&[
@@ -534,6 +555,108 @@ use fol_editor::{LspDefinitionParams, LspHover, LspHoverParams, LspLocation};
         assert!(
             options.iter().any(|o| o.name == "root"),
             "d_options should declare the root user option"
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_alloc_model_supports_string_values() {
+        let root = build_fixture_root("model_alloc_str");
+
+        let build = run_fol_in_dir(&root, &["code", "build"]);
+        assert!(
+            build.status.success(),
+            "alloc string fixture should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
+            "alloc string fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_alloc_model_supports_sequences() {
+        let root = build_fixture_root("model_alloc_seq");
+
+        let build = run_fol_in_dir(&root, &["code", "build"]);
+        assert!(
+            build.status.success(),
+            "alloc sequence fixture should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
+            "alloc sequence fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_std_model_runs_echo_programs() {
+        let root = build_fixture_root("model_std_echo");
+
+        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        assert!(
+            build.status.success(),
+            "std echo fixture should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        let build_stdout = String::from_utf8_lossy(&build.stdout);
+        let binary = build_stdout
+            .lines()
+            .find_map(|line| {
+                let plain = strip_ansi(line);
+                if plain.contains("binary") {
+                    plain.split_whitespace().last().map(str::to_string)
+                } else {
+                    None
+                }
+            })
+            .expect("std echo build should report a binary path")
+            .trim()
+            .to_string();
+
+        let run = Command::new(&binary)
+            .output()
+            .expect("std echo fixture binary should execute");
+        assert!(
+            run.status.success(),
+            "std echo fixture binary should run: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&run.stdout);
+        assert!(
+            stdout.contains("std-ready"),
+            "std echo fixture should print through the std model binary: stdout=\n{}\nstderr=\n{}",
+            stdout,
+            String::from_utf8_lossy(&run.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_core_model_rejects_heap_backed_surfaces() {
+        let root = build_fixture_root("model_core_heap_reject");
+
+        let build = run_fol_in_dir(&root, &["code", "build"]);
+        assert!(
+            !build.status.success(),
+            "core heap fixture should fail: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        let stderr = String::from_utf8_lossy(&build.stderr);
+        assert!(
+            stderr.contains("seq[...] requires heap support and is unavailable in 'fol_model = core'"),
+            "core heap fixture should keep the model diagnostic: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            stderr
         );
     }
 

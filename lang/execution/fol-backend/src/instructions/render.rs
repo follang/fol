@@ -158,7 +158,7 @@ pub fn render_core_instruction_in_workspace(
             match (entry.name, args.as_slice()) {
                 ("echo", [value]) => {
                     let value = render_local_name(package_identity, routine, *value)?;
-                    let rendered = format!("rt::echo({value})");
+                    let rendered = format!("rt::echo({value}.clone())");
                     match instruction.result {
                         Some(_) => {
                             let result =
