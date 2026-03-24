@@ -300,7 +300,7 @@ pub fn render_operand(operand: &LoweredOperand) -> BackendResult<String> {
         LoweredOperand::Float(bits) => Ok(format!("f64::from_bits({bits})")),
         LoweredOperand::Bool(value) => Ok(value.to_string()),
         LoweredOperand::Char(value) => Ok(format!("{value:?}")),
-        LoweredOperand::Str(value) => Ok(format!("rt::FolStr::from({value:?})")),
+        LoweredOperand::Str(value) => Ok(format!("rt_model::FolStr::from({value:?})")),
         LoweredOperand::Nil => Ok("rt::FolOption::nil()".to_string()),
     }
 }

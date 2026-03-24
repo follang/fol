@@ -113,11 +113,11 @@ fn aggregate_and_container_rendering_emits_vector_and_sequence_runtime_construct
 
     assert_eq!(
         vec_rendered,
-        "let l__pkg__entry__app__r17__l2__vec = rt::FolVec::from_items(vec![l__pkg__entry__app__r17__l0__a.clone(), l__pkg__entry__app__r17__l1__b.clone()]);"
+        "let l__pkg__entry__app__r17__l2__vec = rt_model::FolVec::from_items(vec![l__pkg__entry__app__r17__l0__a.clone(), l__pkg__entry__app__r17__l1__b.clone()]);"
     );
     assert_eq!(
         seq_rendered,
-        "let l__pkg__entry__app__r17__l3__seq = rt::FolSeq::from_items(vec![l__pkg__entry__app__r17__l0__a.clone(), l__pkg__entry__app__r17__l1__b.clone()]);"
+        "let l__pkg__entry__app__r17__l3__seq = rt_model::FolSeq::from_items(vec![l__pkg__entry__app__r17__l0__a.clone(), l__pkg__entry__app__r17__l1__b.clone()]);"
     );
 }
 
@@ -178,11 +178,11 @@ fn aggregate_and_container_rendering_emits_set_and_map_runtime_constructors() {
 
     assert_eq!(
         set_rendered,
-        "let l__pkg__entry__app__r18__l2__set = rt::FolSet::from_items(vec![l__pkg__entry__app__r18__l0__a.clone(), l__pkg__entry__app__r18__l1__b.clone()]);"
+        "let l__pkg__entry__app__r18__l2__set = rt_model::FolSet::from_items(vec![l__pkg__entry__app__r18__l0__a.clone(), l__pkg__entry__app__r18__l1__b.clone()]);"
     );
     assert_eq!(
         map_rendered,
-        "let l__pkg__entry__app__r18__l3__map = rt::FolMap::from_pairs(vec![(l__pkg__entry__app__r18__l0__a.clone(), l__pkg__entry__app__r18__l1__b.clone()), (l__pkg__entry__app__r18__l1__b.clone(), l__pkg__entry__app__r18__l0__a.clone())]);"
+        "let l__pkg__entry__app__r18__l3__map = rt_model::FolMap::from_pairs(vec![(l__pkg__entry__app__r18__l0__a.clone(), l__pkg__entry__app__r18__l1__b.clone()), (l__pkg__entry__app__r18__l1__b.clone(), l__pkg__entry__app__r18__l0__a.clone())]);"
     );
 }
 
@@ -559,10 +559,10 @@ fn aggregate_and_container_snapshot_stays_stable() {
         rendered,
         concat!(
             "let l__pkg__entry__app__r20__l2__arr = [l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()];\n",
-            "let l__pkg__entry__app__r20__l3__vec = rt::FolVec::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
-            "let l__pkg__entry__app__r20__l4__seq = rt::FolSeq::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
-            "let l__pkg__entry__app__r20__l5__set = rt::FolSet::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
-            "let l__pkg__entry__app__r20__l6__map = rt::FolMap::from_pairs(vec![(l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone())]);\n",
+            "let l__pkg__entry__app__r20__l3__vec = rt_model::FolVec::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
+            "let l__pkg__entry__app__r20__l4__seq = rt_model::FolSeq::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
+            "let l__pkg__entry__app__r20__l5__set = rt_model::FolSet::from_items(vec![l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone()]);\n",
+            "let l__pkg__entry__app__r20__l6__map = rt_model::FolMap::from_pairs(vec![(l__pkg__entry__app__r20__l0__a.clone(), l__pkg__entry__app__r20__l1__b.clone())]);\n",
             "let l__pkg__entry__app__r20__l7__out = rt::index_vec(&l__pkg__entry__app__r20__l3__vec, l__pkg__entry__app__r20__l0__a.clone()).unwrap().clone();"
         )
     );

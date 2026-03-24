@@ -2,13 +2,13 @@
 
 use crate::{
     abi::FolRecover,
-    alloc::{FolMap, FolSeq, FolSet, FolStr, FolVec},
     containers::FolArray,
     core::RuntimeTier,
     shell::{FolError, FolOption},
 };
 
 pub use crate::{crate_name, CRATE_NAME};
+pub use crate::alloc::{FolMap, FolSeq, FolSet, FolStr, FolVec};
 
 pub const HAS_HEAP: bool = true;
 pub const HAS_OS: bool = true;

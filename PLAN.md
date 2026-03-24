@@ -172,7 +172,7 @@ Make heap-backed runtime data structures physically belong to `alloc`.
 - [x] Slice 19. Move `set` and `map` runtime support into `fol-runtime::alloc`, or, if
   one of them is not yet stable enough, explicitly defer it in the docs and
   keep the plan honest.
-- [ ] Slice 20. Update backend emission so `alloc` and `std` artifacts import
+- [x] Slice 20. Update backend emission so `alloc` and `std` artifacts import
   those types from the `alloc` module in `fol-runtime`.
 - [ ] Slice 21. Delete the old unsplit ownership path for those heap-backed
   types inside `fol-runtime`.

@@ -28,7 +28,7 @@ pub fn render_rust_type_in_workspace(
     };
 
     match ty {
-        LoweredType::Builtin(LoweredBuiltinType::Str) => Ok("rt::FolStr".to_string()),
+        LoweredType::Builtin(LoweredBuiltinType::Str) => Ok("rt_model::FolStr".to_string()),
         LoweredType::Builtin(builtin) => Ok(render_builtin_type(*builtin)?.to_string()),
         LoweredType::Array {
             element_type,
@@ -42,16 +42,16 @@ pub fn render_rust_type_in_workspace(
             "unsized arrays are not supported; use vec[] for dynamic collections",
         )),
         LoweredType::Vector { element_type } => Ok(format!(
-            "rt::FolVec<{}>",
+            "rt_model::FolVec<{}>",
             render_rust_type_in_workspace(workspace, type_table, *element_type)?
         )),
         LoweredType::Sequence { element_type } => Ok(format!(
-            "rt::FolSeq<{}>",
+            "rt_model::FolSeq<{}>",
             render_rust_type_in_workspace(workspace, type_table, *element_type)?
         )),
         LoweredType::Set { member_types } => match member_types.as_slice() {
             [member_type] => Ok(format!(
-                "rt::FolSet<{}>",
+                "rt_model::FolSet<{}>",
                 render_rust_type_in_workspace(workspace, type_table, *member_type)?
             )),
             _ => Err(BackendError::new(
@@ -63,7 +63,7 @@ pub fn render_rust_type_in_workspace(
             key_type,
             value_type,
         } => Ok(format!(
-            "rt::FolMap<{}, {}>",
+            "rt_model::FolMap<{}, {}>",
             render_rust_type_in_workspace(workspace, type_table, *key_type)?,
             render_rust_type_in_workspace(workspace, type_table, *value_type)?
         )),
@@ -452,7 +452,7 @@ mod tests {
 
         assert_eq!(
             render_rust_type(&table, str_id),
-            Ok("rt::FolStr".to_string())
+            Ok("rt_model::FolStr".to_string())
         );
         assert_eq!(
             render_rust_type(&table, array_id),
@@ -460,19 +460,19 @@ mod tests {
         );
         assert_eq!(
             render_rust_type(&table, vec_id),
-            Ok("rt::FolVec<rt::FolInt>".to_string())
+            Ok("rt_model::FolVec<rt::FolInt>".to_string())
         );
         assert_eq!(
             render_rust_type(&table, seq_id),
-            Ok("rt::FolSeq<rt::FolStr>".to_string())
+            Ok("rt_model::FolSeq<rt_model::FolStr>".to_string())
         );
         assert_eq!(
             render_rust_type(&table, set_id),
-            Ok("rt::FolSet<rt::FolInt>".to_string())
+            Ok("rt_model::FolSet<rt::FolInt>".to_string())
         );
         assert_eq!(
             render_rust_type(&table, map_id),
-            Ok("rt::FolMap<rt::FolStr, rt::FolInt>".to_string())
+            Ok("rt_model::FolMap<rt_model::FolStr, rt::FolInt>".to_string())
         );
         assert_eq!(
             render_rust_type(&table, option_id),
@@ -521,7 +521,7 @@ mod tests {
 
         assert!(rendered.contains("#[derive(Debug, Clone, PartialEq, Eq, Default)]"));
         assert!(rendered.contains("pub struct ty__pkg__entry__app__t"));
-        assert!(rendered.contains("pub name: rt::FolStr,"));
+        assert!(rendered.contains("pub name: rt_model::FolStr,"));
         assert!(rendered.contains("pub active: rt::FolBool,"));
     }
 
@@ -610,7 +610,7 @@ mod tests {
         assert!(rendered.contains("#[derive(Debug, Clone, PartialEq, Eq)]"));
         assert!(rendered.contains("pub enum ty__pkg__entry__app__t"));
         assert!(rendered.contains("Ok(rt::FolInt),"));
-        assert!(rendered.contains("Err(rt::FolStr),"));
+        assert!(rendered.contains("Err(rt_model::FolStr),"));
         assert!(rendered.contains("Empty,"));
     }
 
@@ -741,7 +741,7 @@ mod tests {
 
         assert!(snapshot.contains("pub struct ty__pkg__entry__app__t"));
         assert!(snapshot.contains("pub enum ty__pkg__entry__app__t"));
-        assert!(snapshot.contains("pub name: rt::FolStr,"));
+        assert!(snapshot.contains("pub name: rt_model::FolStr,"));
         assert!(snapshot.contains("Ok(rt::FolInt),"));
         assert!(snapshot.contains("impl rt::FolRecord"));
         assert!(snapshot.contains("impl rt::FolEntry"));
@@ -824,7 +824,7 @@ mod tests {
 
         assert_eq!(
             render_rust_type(&table, plain_fn_id),
-            Ok("fn(rt::FolInt, rt::FolStr) -> rt::FolBool".to_string())
+            Ok("fn(rt::FolInt, rt_model::FolStr) -> rt::FolBool".to_string())
         );
         assert_eq!(
             render_rust_type(&table, void_fn_id),
@@ -832,7 +832,7 @@ mod tests {
         );
         assert_eq!(
             render_rust_type(&table, recoverable_fn_id),
-            Ok("fn() -> rt::FolRecover<rt::FolInt, rt::FolStr>".to_string())
+            Ok("fn() -> rt::FolRecover<rt::FolInt, rt_model::FolStr>".to_string())
         );
     }
 }
