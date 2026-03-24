@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-a06efcfc.js";
+            window.path_to_searchindex_js = "../../searchindex-112ad5fd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-58ef93fa.js"></script>
@@ -192,11 +192,11 @@
     var active: bol;
 };
 </code></pre>
-<h4 id="records-are-data-not-classes"><a class="header" href="#records-are-data-not-classes">Records are data, not classes</a></h4>
+<h4 id="records-are-data-not-objects"><a class="header" href="#records-are-data-not-objects">Records are data, not objects</a></h4>
 <p><code>typ ...: rec = { ... }</code> declares a data type. FOL does not treat records as
-classes with hidden object state or class-owned method bodies. If a record has
-operations associated with it, those operations are still declared as ordinary
-receiver-qualified routines outside the record body.</p>
+objects with hidden behavior, inheritance, or class-owned method bodies. If a
+record has operations associated with it, those operations are still declared
+as ordinary receiver-qualified routines outside the record body.</p>
 <pre><code class="language-fol">typ computer: rec = {
     brand: str;
     memory: int
@@ -210,7 +210,7 @@ var laptop: computer = { brand = "acme", memory = 16 }
 .echo(laptop.get_type())
 </code></pre>
 <p>The call <code>laptop.get_type()</code> is procedural sugar for calling the receiver
-routine with <code>laptop</code> as its first input.</p>
+routine with <code>laptop</code> as its first explicit input.</p>
 <p>Current <code>V1</code> backend/runtime note:</p>
 <ul>
 <li>backends may emit records and entries as plain target-language structs/enums</li>
@@ -319,14 +319,14 @@ var mint: rgb = { 153, 255, 187 }
 </code></pre>
 <h2 id="methods"><a class="header" href="#methods">Methods</a></h2>
 <p>A record may have receiver-qualified routines associated with it. This does not
-turn the record into an object-oriented type. It only means a routine may use
-dot-call syntax when its first input is a value of that record type. To create
+turn the record into an object model. It only means a routine may use dot-call
+syntax when its first explicit input is a value of that record type. To create
 such a routine for a record, declare the receiver type on the routine itself:</p>
 <pre><code>fun (recieverRecord)someFunction(): str = { self.somestring; };
 </code></pre>
 <p>After declaring the record receiver, the routine body may refer to that input
 through <code>self</code>. A receiver is simply the explicit first input that enables
-dot-call syntax.</p>
+dot-call syntax. The data and the routine remain separate declarations.</p>
 <pre><code>typ user: rec = {
     var username: str;
     var email: str;
@@ -341,7 +341,14 @@ calls: they let the call site read <code>value.method(...)</code>. In the same p
 multiple routines may still share the same method name if the receiver types
 are different.</p>
 <p>Each record value can therefore use the dot form, but the underlying model
-remains procedural.</p>
+remains procedural:</p>
+<pre><code class="language-fol">user1.getName()
+</code></pre>
+<p>should be read as:</p>
+<pre><code class="language-fol">getName(user1)
+</code></pre>
+<p>There is no hidden record-owned method table in that spelling.</p>
+<p>The routine itself is still declared separately:</p>
 <pre><code>var[mut] user1: user = { email = "someone@example.com", username = "someusername123", active = true, sign_in_count = 1 }
 
 .echo(user1.getName());

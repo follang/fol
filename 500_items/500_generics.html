@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-a06efcfc.js";
+            window.path_to_searchindex_js = "../searchindex-112ad5fd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-58ef93fa.js"></script>
@@ -184,25 +184,29 @@ compiler behavior.</p>
 <li>examples here should be read as future <code>V2</code> design</li>
 </ul>
 <h2 id="types"><a class="header" href="#types">Types</a></h2>
-<h3 id="generic-functions---lifting"><a class="header" href="#generic-functions---lifting">Generic functions - lifting</a></h3>
-<p>The generic programming process focuses on finding commonality among similar implementations of the same algorithm, then providing suitable abstractions so that a single, generic algorithm can cover many concrete implementations. This process, called lifting, is repeated until the generic algorithm has reached a suitable level of abstraction, where it provides maximal reusability while still yielding efficient, concrete implementations. The abstractions themselves are expressed as requirements on the parameters to the generic algorithm.</p>
+<h3 id="generic-functions"><a class="header" href="#generic-functions">Generic Functions</a></h3>
+<p>Generic programming aims to express one routine over a family of concrete
+types, with the requirements written explicitly in the signature.</p>
 <pre><code>pro max[T: gen](a, b: T): T = {
 	result =  a | a &lt; b | b;
 };
 fun biggerFloat(a, b: flt[32]): flt[32] = { max(a, b) }
 fun biggerInteger(a, b: int[64]): int[64] = { max(a, b) }
 </code></pre>
-<h3 id="generic-types---concepts"><a class="header" href="#generic-types---concepts">Generic types - concepts</a></h3>
-<p>Once many algorithms within a given problem domain have been lifted, we start to see patterns among the requirements. It is common for the same set of requirements to be required by several different algorithms. When this occurs, each set of requirements is bundled into a concept. A concept contains a set of requirements that describe a family of abstractions, typically data types. Examples of concepts include Input Iterator, Graph, and Equality Comparable. When the generic programming process is carefully followed, the concepts that emerge tend to describe the abstractions within the problem domain in some logical way.</p>
+<h3 id="generic-types"><a class="header" href="#generic-types">Generic Types</a></h3>
+<p>Generic type surfaces are later-milestone design only. They are shown here as
+future syntax, not current <code>V1</code> behavior.</p>
 <pre><code>typ container[T: gen, N: int](): obj = {
 	var anarray: arr[T,N];
 	+fun getsize(): num = { result = N; }
 };
 var aContainer: container[int, 5] = { anarray = {zero, one, two, three, four}; };
 </code></pre>
-<h2 id="dispach"><a class="header" href="#dispach">Dispach</a></h2>
-<p>Static dispatch (or early binding) happens when compiler knows at compile time which function body will be executed when I call a method. In contrast, dynamic dispatch (or run-time dispatch or virtual method call or late binding) happens when compiler defers that decision to run time. This runtime dispatch requires either an indirect call through a function pointer, or a name-based method lookup.</p>
-<pre><code>std foo: pro = { fun bar(); }
+<h2 id="generic-calls"><a class="header" href="#generic-calls">Generic Calls</a></h2>
+<p>This chapter does not define an object-dispatch system. If generics later use
+receiver-qualified routine syntax, that would still be procedural call binding,
+not virtual methods or inheritance.</p>
+<pre><code class="language-fol">std foo: pro = { fun bar(); }
 
 typ[ext] int, str: int, str;
 

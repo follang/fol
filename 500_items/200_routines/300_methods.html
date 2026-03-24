@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-a06efcfc.js";
+            window.path_to_searchindex_js = "../../searchindex-112ad5fd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-58ef93fa.js"></script>
@@ -175,17 +175,25 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="methods"><a class="header" href="#methods">Methods</a></h1>
-<p>A method is a routine associated with a receiver type. In FOL, methods can be declared as either <code>fun</code> or <code>pro</code> and called with dot syntax (<code>value.method(...)</code>).</p>
-<p>Methods in FOL are procedural, not object-oriented. A method call is just sugar
-for calling a routine whose first explicit input is the receiver value. In
-other words:</p>
+<p>A method is a routine associated with a receiver type. In FOL, methods can be
+declared as either <code>fun</code> or <code>pro</code> and called with dot syntax
+(<code>value.method(...)</code>).</p>
+<p>Methods in FOL are procedural sugar, not object-oriented behavior.</p>
+<p>A method call is just sugar for calling a routine whose first explicit input is
+the receiver value. In other words:</p>
 <pre><code class="language-fol">tool.parse_msg(10)
 </code></pre>
 <p>should be read as the procedural call:</p>
 <pre><code class="language-fol">parse_msg(tool, 10)
 </code></pre>
-<p>There is no separate object-method runtime model implied by the syntax. <code>typ</code>
-declares data. Receiver-qualified routines are still routines.</p>
+<p>This syntax does not introduce:</p>
+<ul>
+<li>classes</li>
+<li>inheritance</li>
+<li>object-owned method bodies</li>
+<li>object-method dispatch as a separate runtime model</li>
+</ul>
+<p><code>typ</code> declares data. Receiver-qualified routines are still ordinary routines.</p>
 <p>Current parser-supported receiver declaration syntax is:</p>
 <pre><code class="language-fol">fun (parser)parse_msg(code: int): str = {
     return "ok";
@@ -198,11 +206,10 @@ pro (parser)update(code: int): int = {
 <p>The receiver type appears in parentheses right after <code>fun</code> or <code>pro</code>, followed by the method name.</p>
 <p>That receiver clause does not move the routine “inside” the type. It only says
 which type may be used in dot-call form for that routine.</p>
-<p>Current parser-supported receiver syntax is intentionally broader than a named-only rule.
-At parse time, receiver positions accept named, qualified, builtin-scalar, and
-bracketed/composite type references. This keeps extension-style examples such as
-<code>typ[ext] int: int; pro (int)print(): non = { ... }</code> and dispatch examples on extended
-builtin aliases in scope for the front-end.</p>
+<p>The current parser accepts a broader receiver syntax than the final V1
+semantic subset. At parse time, receiver positions can still accept named,
+qualified, builtin-scalar, and bracketed/composite type references. That is a
+parser fact, not an object model.</p>
 <p>The dedicated parser-level rejection in this hardening phase is still for special
 builtin forms such as <code>any</code>, <code>none</code>, and <code>non</code>.</p>
 <p>Invalid example:</p>
@@ -217,6 +224,12 @@ var msg: str = tool.parse_msg(10)
 </code></pre>
 <p>This is equivalent in meaning to passing <code>tool</code> as the first routine argument.
 The dot form is only the call-site spelling.</p>
+<p>For record-focused V1 code, the intended reading is:</p>
+<ul>
+<li>records hold data</li>
+<li>routines stay separate</li>
+<li>the receiver clause only enables <code>value.method(...)</code> spelling</li>
+</ul>
 <p>Custom error routines also support reporting method call results when receiver-qualified signatures are available:</p>
 <pre><code class="language-fol">fun (parser)parse_err(code: int): str = {
     return "bad-input";

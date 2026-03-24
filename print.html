@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a06efcfc.js";
+            window.path_to_searchindex_js = "searchindex-112ad5fd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-58ef93fa.js"></script>
@@ -3076,42 +3076,42 @@ return [Rect]{pos = {min.x, min.y}, size = {max.x - max.y, max.y - max.y}}
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="access"><a class="header" href="#access">Access</a></h1>
-<p>There are four access expresions:</p>
+<p>There are four access expressions:</p>
 <ul>
 <li>namespace member access</li>
-<li>routine member access</li>
-<li>container memeber access</li>
+<li>receiver-qualified routine access</li>
+<li>container member access</li>
 <li>field member access</li>
 </ul>
-<h2 id="subprogram-access"><a class="header" href="#subprogram-access">Subprogram access</a></h2>
-<p>One access form is the receiver-style routine call, often called a
-“method-call expression” in other languages. In FOL this is still procedural
-syntax: the receiver value is the first routine input, and dot-call form is
-just sugar at the call site.</p>
-<p>A method call consists of an expression (the receiver) followed by a single dot
-<code>.</code>, an expression path segment, and a parenthesized expression-list:</p>
-<pre><code>"3.14".cast(float).pow(2);                  // casting a numbered string to float, then rising it to power of 2
+<h2 id="receiver-qualified-routine-access"><a class="header" href="#receiver-qualified-routine-access">Receiver-Qualified Routine Access</a></h2>
+<p>One access form is the receiver-style routine call. In FOL this remains
+procedural syntax: the receiver value is the first routine input, and the dot
+form is only call-site sugar.</p>
+<p>A receiver-qualified call consists of an expression (the receiver), followed by
+a single dot <code>.</code>, a routine name, and a parenthesized expression list:</p>
+<pre><code class="language-fol">"3.14".cast(float).pow(2);
 </code></pre>
 <p>Read:</p>
 <pre><code class="language-fol">value.method(arg1, arg2)
 </code></pre>
-<p>as the procedural idea:</p>
+<p>as:</p>
 <pre><code class="language-fol">method(value, arg1, arg2)
 </code></pre>
-<p>The syntax does not introduce classes or object-owned method dispatch by
-itself.</p>
-<h2 id="namespaces-access"><a class="header" href="#namespaces-access">Namespaces access</a></h2>
-<p>Accesing namespaces is done through double colon operator <code>::</code>:</p>
-<pre><code>use log: std = {"fmt/log"};                 // using the log namespace of fmt
-io::console::write_out.echo();              // echoing out
+<p>This spelling does not create classes, objects, inheritance, or runtime method
+ownership. It is just a shorter way to call a receiver-qualified routine.</p>
+<h2 id="namespace-access"><a class="header" href="#namespace-access">Namespace Access</a></h2>
+<p>Accessing namespaces is done through the double-colon operator <code>::</code>:</p>
+<pre><code class="language-fol">use log: std = {"fmt/log"};
+io::console::write_out.echo();
 </code></pre>
-<h2 id="container-access"><a class="header" href="#container-access">Container access</a></h2>
+<h2 id="container-access"><a class="header" href="#container-access">Container Access</a></h2>
 <h3 id="array-vectors-sequences-sets"><a class="header" href="#array-vectors-sequences-sets">Array, Vectors, Sequences, Sets</a></h3>
-<p>Containers can be indexed by writing a square-bracket-enclosed expression of type <code>int[arch]</code> (the index) after them.</p>
-<pre><code>var collection: int = { 5, 4, 8, 3, 9, 0, 1, 2, 7, 6 }
+<p>Containers can be indexed by writing a square-bracket-enclosed expression of
+type <code>int[arch]</code> after them.</p>
+<pre><code class="language-fol">var collection: int = { 5, 4, 8, 3, 9, 0, 1, 2, 7, 6 }
 
-collection[5]                               // get the 5th element staring from front (this case is 0)
-collection[-2]                              // get the 3th element starting from back (this case is 1)
+collection[5]
+collection[-2]
 </code></pre>
 <p>Containers can be accessed with a specified range too, by using colon within a square-bracket-enclosed:</p>
 <div class="table-wrapper">
@@ -3127,7 +3127,7 @@ collection[-2]                              // get the 3th element starting from
 </tbody>
 </table>
 </div>
-<pre><code>collection[-0]                              // last item in the array
+<pre><code class="language-fol">collection[-0]                              // last item in the array
 { 6 }
 collection[-1:]                             // last two items in the array
 { 7, 6 }
@@ -3148,7 +3148,7 @@ collection[:-2]                             // everything except the last two it
 </tbody>
 </table>
 </div>
-<pre><code>collection[::]                              // all items in the array, reversed
+<pre><code class="language-fol">collection[::]                              // all items in the array, reversed
 { 6, 7, 2, 1, 0, 9, 3, 8, 4, 5 }
 collection[2::]                             // the first two items, reversed
 { 4, 5 }
@@ -3157,37 +3157,36 @@ collection[-2::]                            // the last two items, reversed
 collection[::-3]                            // everything except the last three items, reversed
 { 2, 1, 0, 9, 3, 8, 4, 5 }
 </code></pre>
-<h3 id="matrixes"><a class="header" href="#matrixes">Matrixes</a></h3>
-<p>Matrixes are 2D+ arrays, thus they have a bit more complex acces way:</p>
-<pre><code>var aMat = mat[int, int] = { {1,2,3}, {4,5,6}, {7,8,9} };
+<h3 id="matrices"><a class="header" href="#matrices">Matrices</a></h3>
+<p>Matrices are 2D+ arrays, so they use nested index access:</p>
+<pre><code class="language-fol">var aMat = mat[int, int] = { {1,2,3}, {4,5,6}, {7,8,9} };
 
-nMat[[1][0]]                                // this will return 4
-                                            // first [] accesses the first dimension, then second [] accesses the second
+nMat[[1][0]]
 </code></pre>
-<p>All other operations are the same like arrays.</p>
+<p>All other access forms behave like arrays.</p>
 <h3 id="maps"><a class="header" href="#maps">Maps</a></h3>
-<p>Accesing maps is donw by using the key within square-bracket-enclosed:</p>
-<pre><code>var someMap: map[str, int] = { {"prolog", 1}, {"lisp", 2}, {"c", 3} }
-someMap["lisp"]                             // will return 2
+<p>Accessing maps is done by using the key inside square brackets:</p>
+<pre><code class="language-fol">var someMap: map[str, int] = { {"prolog", 1}, {"lisp", 2}, {"c", 3} }
+someMap["lisp"]
 </code></pre>
 <h3 id="axioms"><a class="header" href="#axioms">Axioms</a></h3>
-<p>Accesing axioms is more or less like accessing maps, but more verbose and matching through <strong>backtracing</strong>, and the return is always a vector of elements (empty if no elements are found):</p>
-<pre><code>var parent: axi[str, str] = { {"albert","bob"}, {"alice","bob"}, {"bob","carl"}, {"bob","tom"} };
+<p>Accessing axioms is similar to accessing maps, but matching is broader and the
+result is always a vector of matches:</p>
+<pre><code class="language-fol">var parent: axi[str, str] = { {"albert","bob"}, {"alice","bob"}, {"bob","carl"}, {"bob","tom"} };
 
-parent["albert",*]                          // this will return strng vector: {"bob"}
-parent["bob",*]                             // this will return strng vector: {"carl","tom"}
+parent["albert",*]
+parent["bob",*]
 
-parent[*,_]                                 // this will match to {"albert", "alice", "bob"}
+parent[*,_]
 </code></pre>
 <p>Matching can be with a vector too:</p>
-<pre><code>var parent: axi[str, str] = { {"albert","bob"}, {"alice","bob"}, {"bob","carl"}, {"bob","tom"}, {"maggie","bill"} };
+<pre><code class="language-fol">var parent: axi[str, str] = { {"albert","bob"}, {"alice","bob"}, {"bob","carl"}, {"bob","tom"}, {"maggie","bill"} };
 var aVec: vec[str] = { "tom", "bob" };
 
-parent[*,aVec]                              // will match all possible values that have "tom" ot "bob" as second element
-                                            // in this case will be a strng vector: {"albert", "alice", "bob"}
+parent[*,aVec]
 </code></pre>
-<p>a more complex matching:</p>
-<pre><code>var class: axi;
+<p>A more complex matching example:</p>
+<pre><code class="language-fol">var class: axi;
 class.add({"cs340","spring",{"tue","thur"},{12,13},"john","coor_5"})
 class.add({"cs340","winter",{"tue","fri"},{12,13},"mike","coor_5"})
 class.add({"cs340",winter,{"wed","fri"},{15,16},"bruce","coor_3"})
@@ -3195,39 +3194,38 @@ class.add({"cs101",winter,{"mon","wed"},{10,12},"james","coor_1"})
 class.add({"cs101",spring,{"tue","tue"},{16,18},"tom","coor_1"})
 
 var aClass = "cs340"
-class[aClass,_,[_,"fri"],_,*,_]             // this will return string vector: {"mike", bruce}
-                                            // it matches everything that has aClass ad "fri" within
-                                            // and ignore ones with meh symbol
+class[aClass,_,[_,"fri"],_,*,_]
 </code></pre>
-<h3 id="avaliability"><a class="header" href="#avaliability">Avaliability</a></h3>
-<p>To check if an element exists, we add <code>:</code> before accessing with []. Thus this will return <code>true</code> if element exists.</p>
-<pre><code>var val: vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+<h3 id="availability"><a class="header" href="#availability">Availability</a></h3>
+<p>To check whether an element exists, add <code>:</code> before <code>[]</code>. The result is <code>true</code>
+when the element exists.</p>
+<pre><code class="language-fol">var val: vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 
-val:[5]                                     // returns true
-val:[15]                                    // returns false
+val:[5]
+val:[15]
 
 
 var likes: axi[str, str] = { {"bob","alice"} , {"alice","bob"}, {"dan","sally"} };
 
-likes["bob","alice"]:                       // will return true
-likes["sally","dan"]:                       // will return false
+likes["bob","alice"]:
+likes["sally","dan"]:
 </code></pre>
-<h3 id="in-place-assignment"><a class="header" href="#in-place-assignment">In-Place assignment</a></h3>
-<p>One of the features that is very important in arrays is that they can assign variables immediately:</p>
-<pre><code>var val: vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+<h3 id="in-place-assignment"><a class="header" href="#in-place-assignment">In-Place Assignment</a></h3>
+<p>Some access forms can bind a value while matching:</p>
+<pre><code class="language-fol">var val: vec = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 var even: vec = {2, 4, 6, 8, 10, 12, 14, 16, 18, 20}
-val[even =&gt; Y]                              // this equals to {2, 4, 6, 8, 10} and same time assign to Y
-.echo(Y)                                    // will print {2, 4, 6, 8, 10}
+val[even =&gt; Y]
+.echo(Y)
 </code></pre>
-<p>This dows not look very much interesting here, you can just as easy assign the whole filtered array to a variable, but it gets interesting for axioms:</p>
-<pre><code>var parent: axi[str, str] = { {"albert","bob"}, {"alice","bob"}, {"bob","carl"}, {"bob","tom"}, {"maggie","bill"} };
+<p>This is more useful with axioms:</p>
+<pre><code class="language-fol">var parent: axi[str, str] = { {"albert","bob"}, {"alice","bob"}, {"bob","carl"}, {"bob","tom"}, {"maggie","bill"} };
 
-parent:[* =&gt; Y,"bob"]                       // this one returns true if we find a parent of "bob"
-                                            // same time it assigns parent to a string vector `Y`
+parent:[* =&gt; Y,"bob"]
 </code></pre>
-<h2 id="field-access"><a class="header" href="#field-access">Field access</a></h2>
-<p>Field access expressoin accesses fields inside constructs. Here is a recorcalled <code>user</code>:</p>
-<pre><code>var user1: user = {
+<h2 id="field-access"><a class="header" href="#field-access">Field Access</a></h2>
+<p>Field access expressions access stored data inside record-like values. Here is
+an example record <code>user</code>:</p>
+<pre><code class="language-fol">var user1: user = {
     email = "someone@example.com",
     username = "someusername123",
     active = true,
@@ -3236,26 +3234,26 @@ parent:[* =&gt; Y,"bob"]                       // this one returns true if we fi
 
 fun (user)getName(): str = { result = self.username; };
 </code></pre>
-<p>There are two types of fields that can be accesed within constructs:</p>
+<p>There are two things you may access on such a value:</p>
 <ul>
-<li>methods</li>
-<li>data</li>
+<li>receiver-qualified routines</li>
+<li>data fields</li>
 </ul>
-<h3 id="methods"><a class="header" href="#methods">Methods</a></h3>
-<p>Methods are accessed with the same dot form as routine member access, but they
-remain receiver-qualified routines rather than object-owned behavior.</p>
-<pre><code>user1.getName()
+<h3 id="receiver-qualified-routines"><a class="header" href="#receiver-qualified-routines">Receiver-Qualified Routines</a></h3>
+<p>The same dot spelling is used for receiver-qualified routines, but they remain
+ordinary routines rather than object-owned behavior:</p>
+<pre><code class="language-fol">user1.getName()
 </code></pre>
 <h3 id="data"><a class="header" href="#data">Data</a></h3>
-<p>There are multiple ways to acces data within the construct. The easiest one is by dot operator <code>.</code>:</p>
-<pre><code>user1.email                                 // accessing the field through dot-accesed-memeber
+<p>There are multiple ways to access stored data. The simplest is the dot
+operator <code>.</code>:</p>
+<pre><code class="language-fol">user1.email
 </code></pre>
 <p>Another way is by using square bracket enclosed by name:</p>
-<pre><code>user1[email]                                // accessing the field through square-bracket-enclosed by name
+<pre><code class="language-fol">user1[email]
 </code></pre>
 <p>And lastly, by square bracket enclosed by index:</p>
-<pre><code>user1[0]                                    // accessing the field through square-bracket-enclosed by index
-
+<pre><code class="language-fol">user1[0]
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="metaprogramming"><a class="header" href="#metaprogramming">Metaprogramming</a></h1>
@@ -4465,18 +4463,26 @@ fun[] add2(): {fun (x: int): int} = {
 }
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
-<h1 id="methods-1"><a class="header" href="#methods-1">Methods</a></h1>
-<p>A method is a routine associated with a receiver type. In FOL, methods can be declared as either <code>fun</code> or <code>pro</code> and called with dot syntax (<code>value.method(...)</code>).</p>
-<p>Methods in FOL are procedural, not object-oriented. A method call is just sugar
-for calling a routine whose first explicit input is the receiver value. In
-other words:</p>
+<h1 id="methods"><a class="header" href="#methods">Methods</a></h1>
+<p>A method is a routine associated with a receiver type. In FOL, methods can be
+declared as either <code>fun</code> or <code>pro</code> and called with dot syntax
+(<code>value.method(...)</code>).</p>
+<p>Methods in FOL are procedural sugar, not object-oriented behavior.</p>
+<p>A method call is just sugar for calling a routine whose first explicit input is
+the receiver value. In other words:</p>
 <pre><code class="language-fol">tool.parse_msg(10)
 </code></pre>
 <p>should be read as the procedural call:</p>
 <pre><code class="language-fol">parse_msg(tool, 10)
 </code></pre>
-<p>There is no separate object-method runtime model implied by the syntax. <code>typ</code>
-declares data. Receiver-qualified routines are still routines.</p>
+<p>This syntax does not introduce:</p>
+<ul>
+<li>classes</li>
+<li>inheritance</li>
+<li>object-owned method bodies</li>
+<li>object-method dispatch as a separate runtime model</li>
+</ul>
+<p><code>typ</code> declares data. Receiver-qualified routines are still ordinary routines.</p>
 <p>Current parser-supported receiver declaration syntax is:</p>
 <pre><code class="language-fol">fun (parser)parse_msg(code: int): str = {
     return "ok";
@@ -4489,11 +4495,10 @@ pro (parser)update(code: int): int = {
 <p>The receiver type appears in parentheses right after <code>fun</code> or <code>pro</code>, followed by the method name.</p>
 <p>That receiver clause does not move the routine “inside” the type. It only says
 which type may be used in dot-call form for that routine.</p>
-<p>Current parser-supported receiver syntax is intentionally broader than a named-only rule.
-At parse time, receiver positions accept named, qualified, builtin-scalar, and
-bracketed/composite type references. This keeps extension-style examples such as
-<code>typ[ext] int: int; pro (int)print(): non = { ... }</code> and dispatch examples on extended
-builtin aliases in scope for the front-end.</p>
+<p>The current parser accepts a broader receiver syntax than the final V1
+semantic subset. At parse time, receiver positions can still accept named,
+qualified, builtin-scalar, and bracketed/composite type references. That is a
+parser fact, not an object model.</p>
 <p>The dedicated parser-level rejection in this hardening phase is still for special
 builtin forms such as <code>any</code>, <code>none</code>, and <code>non</code>.</p>
 <p>Invalid example:</p>
@@ -4508,6 +4513,12 @@ var msg: str = tool.parse_msg(10)
 </code></pre>
 <p>This is equivalent in meaning to passing <code>tool</code> as the first routine argument.
 The dot form is only the call-site spelling.</p>
+<p>For record-focused V1 code, the intended reading is:</p>
+<ul>
+<li>records hold data</li>
+<li>routines stay separate</li>
+<li>the receiver clause only enables <code>value.method(...)</code> spelling</li>
+</ul>
 <p>Custom error routines also support reporting method call results when receiver-qualified signatures are available:</p>
 <pre><code class="language-fol">fun (parser)parse_err(code: int): str = {
     return "bad-input";
@@ -4687,30 +4698,33 @@ log instructor(class: str): vec[str] = {
 <p>These chapters describe how named data models are introduced, how members are declared, and how construct values are initialized and accessed.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="aliases"><a class="header" href="#aliases">Aliases</a></h1>
-<p>An alias declaration binds an identifier to an existing type. All the properties of the existing type are bound to the alias too.</p>
-<p>There are two type of aliasing:</p>
+<p>An alias declaration gives a new name to an existing type surface. The alias
+does not create a new object model. It gives the type a stable name that can
+be reused in declarations, signatures, and receiver-qualified routines.</p>
+<p>There are two related forms:</p>
 <ul>
 <li>aliasing</li>
 <li>extending</li>
 </ul>
 <h2 id="aliasing"><a class="header" href="#aliasing">Aliasing</a></h2>
-<pre><code>typ[ali] I5: arr[int, 5];
+<pre><code class="language-fol">typ[ali] I5: arr[int, 5];
 </code></pre>
-<p>So now the in the code, instead of writing <code>arr[int, 5]</code> we could use <code>I5</code>:</p>
-<pre><code>~var[exp] fiveIntigers: I5 = { 0, 1, 2, 3, 4, 5 }
+<p>Now code can use <code>I5</code> instead of repeating <code>arr[int, 5]</code>:</p>
+<pre><code class="language-fol">var fiveIntegers: I5 = { 0, 1, 2, 3, 4 };
 </code></pre>
-<p>Another example is creating a <code>rgb</code> type that can have numbers only form 0 to 255:</p>
-<pre><code>typ[ali] rgb: int[8][.range(255)] ;                        // we create a type that holds only number from 0 to 255
-typ[ali] rgbSet: set[rgb, rgb, rgb];                       // then we create a type holding the `rgb` type
+<p>Another example is naming a constrained color component type:</p>
+<pre><code class="language-fol">typ[ali] rgb: int[8][.range(255)];
+typ[ali] rgbSet: set[rgb, rgb, rgb];
 </code></pre>
-<p>Alias declaration are created because they can simplify using them multiple times,
-their identifier (their name) may be expressive in other contexts, and-most
-importantly-so that you can define receiver-qualified routines on a named type
-surface. Anonymous types still need a named alias or extension surface first,
-while built-in or foreign types can be extended explicitly through <code>typ[ext]</code>.</p>
-<p>Attaching methods does not make a type into an object. It simply gives a
-routine a receiver-qualified dot-call spelling. You could still think of the
-operation procedurally as a routine that takes the value as its first input.</p>
+<p>Aliases are useful because:</p>
+<ul>
+<li>they avoid repeating long type expressions</li>
+<li>they give a type surface a meaningful name</li>
+<li>they provide a named receiver surface for receiver-qualified routines</li>
+</ul>
+<p>Receiver-qualified routines remain procedural. If a value is written as
+<code>value.method(arg)</code>, read that as call-site sugar for <code>method(value, arg)</code>.
+The routine is still separate from the data declaration.</p>
 <p>Current milestone note:</p>
 <ul>
 <li>aliasing and extension over current <code>V1</code> built-in and declared types are part
@@ -4720,36 +4734,39 @@ of the present language surface</li>
 compiler contract</li>
 </ul>
 <h2 id="extending"><a class="header" href="#extending">Extending</a></h2>
-<p>Extensions add new functionality to an existing constructs. This includes the ability to extend types for which you do not have access to the original source code (known as retroactive modeling).</p>
-<pre><code>typ[ext] type: type;
+<p>Extensions expose an existing type under an explicit receiver surface so that
+new receiver-qualified routines can be declared for it.</p>
+<pre><code class="language-fol">typ[ext] type: type;
 </code></pre>
-<p>For example, adding a <code>print</code> function to the default integer type <code>int</code>:</p>
-<pre><code>typ[ext] int: int;
+<p>This is still procedural. It does not turn the type into an object or create
+inheritance. It only allows routines to be written against that receiver
+surface.</p>
+<p>For example, an explicit receiver surface for <code>int</code>:</p>
+<pre><code class="language-fol">typ[ext] int: int;
 
 pro (int)print(): non = {
     .echo(self)
 }
 
-pro main: int = {
-    5.print()                   // method print on int
+pro main(): non = {
+    5.print()
 }
 </code></pre>
-<p>Or turning a string <code>str</code> into a vector of characters:</p>
-<pre><code>typ[ext] str: str;
+<p>The call <code>5.print()</code> is still just receiver sugar for <code>print(5)</code>.</p>
+<p>Another example turns a string into a vector of characters through a
+receiver-qualified routine:</p>
+<pre><code class="language-fol">typ[ext] str: str;
 
 fun (str)to_array(): vec[chr] = {
-    loop(x in self){
-        yield x; 
+    loop(x in self) {
+        yield x;
     }
 }
 
-
-pro main(): int = {
+pro main(): non = {
     var characters: vec[chr] = "a random str".to_array();
-
-    .echo(characters)           // will print: {"a"," ","r","a","n","d","o","m"," ","s","t","r"}
+    .echo(characters)
 }
-
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="structs"><a class="header" href="#structs">Structs</a></h1>
@@ -4770,11 +4787,11 @@ pro main(): int = {
     var active: bol;
 };
 </code></pre>
-<h4 id="records-are-data-not-classes"><a class="header" href="#records-are-data-not-classes">Records are data, not classes</a></h4>
+<h4 id="records-are-data-not-objects"><a class="header" href="#records-are-data-not-objects">Records are data, not objects</a></h4>
 <p><code>typ ...: rec = { ... }</code> declares a data type. FOL does not treat records as
-classes with hidden object state or class-owned method bodies. If a record has
-operations associated with it, those operations are still declared as ordinary
-receiver-qualified routines outside the record body.</p>
+objects with hidden behavior, inheritance, or class-owned method bodies. If a
+record has operations associated with it, those operations are still declared
+as ordinary receiver-qualified routines outside the record body.</p>
 <pre><code class="language-fol">typ computer: rec = {
     brand: str;
     memory: int
@@ -4788,7 +4805,7 @@ var laptop: computer = { brand = "acme", memory = 16 }
 .echo(laptop.get_type())
 </code></pre>
 <p>The call <code>laptop.get_type()</code> is procedural sugar for calling the receiver
-routine with <code>laptop</code> as its first input.</p>
+routine with <code>laptop</code> as its first explicit input.</p>
 <p>Current <code>V1</code> backend/runtime note:</p>
 <ul>
 <li>backends may emit records and entries as plain target-language structs/enums</li>
@@ -4895,16 +4912,16 @@ var mint: rgb = { 153, 255, 187 }
 
 var mint: rgb = { 153, 255, 187 }
 </code></pre>
-<h2 id="methods-2"><a class="header" href="#methods-2">Methods</a></h2>
+<h2 id="methods-1"><a class="header" href="#methods-1">Methods</a></h2>
 <p>A record may have receiver-qualified routines associated with it. This does not
-turn the record into an object-oriented type. It only means a routine may use
-dot-call syntax when its first input is a value of that record type. To create
+turn the record into an object model. It only means a routine may use dot-call
+syntax when its first explicit input is a value of that record type. To create
 such a routine for a record, declare the receiver type on the routine itself:</p>
 <pre><code>fun (recieverRecord)someFunction(): str = { self.somestring; };
 </code></pre>
 <p>After declaring the record receiver, the routine body may refer to that input
 through <code>self</code>. A receiver is simply the explicit first input that enables
-dot-call syntax.</p>
+dot-call syntax. The data and the routine remain separate declarations.</p>
 <pre><code>typ user: rec = {
     var username: str;
     var email: str;
@@ -4919,53 +4936,52 @@ calls: they let the call site read <code>value.method(...)</code>. In the same p
 multiple routines may still share the same method name if the receiver types
 are different.</p>
 <p>Each record value can therefore use the dot form, but the underlying model
-remains procedural.</p>
+remains procedural:</p>
+<pre><code class="language-fol">user1.getName()
+</code></pre>
+<p>should be read as:</p>
+<pre><code class="language-fol">getName(user1)
+</code></pre>
+<p>There is no hidden record-owned method table in that spelling.</p>
+<p>The routine itself is still declared separately:</p>
 <pre><code>var[mut] user1: user = { email = "someone@example.com", username = "someusername123", active = true, sign_in_count = 1 }
 
 .echo(user1.getName());
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="standards"><a class="header" href="#standards">Standards</a></h1>
-<p>This chapter describes <code>V2</code> contract/conformance design rather than current
+<p>This chapter describes later <code>V2</code> contract and conformance design, not current
 <code>V1</code> compiler behavior.</p>
 <p>Current milestone note:</p>
 <ul>
 <li>standards are not part of the implemented <code>V1</code> typechecker</li>
 <li>blueprints and extensions are not part of the implemented <code>V1</code> typechecker</li>
-<li>examples here are semantic design examples for a later milestone</li>
+<li>examples here are future design sketches only</li>
 </ul>
-<h2 id="satndard"><a class="header" href="#satndard">Satndard</a></h2>
-<p>A standard is an established norm or requirement for a repeatable technical task. It is usually a formal declaration that establishes uniform technical criteria, methods, processes, and practices.</p>
-<p>S, what is a to be considered a standard:</p>
-<ul>
-<li>A standard specification is an explicit set of requirements for an item, object or service. It is often used to formalize the technical aspects of a procurement agreement or contract.</li>
-<li>A standard test method describes a definitive procedure that produces a test result. It may involve making a careful personal observation or conducting a highly technical measurement.</li>
-<li>A standard procedure gives a set of instructions for performing operations or functions.</li>
-<li>A standard guide is general information or options that do not require a specific course of action.</li>
-<li>A standard definition is formally established terminology.</li>
-</ul>
-<p>In FOL, standards are named collections of receiver-qualified routine
-signatures and/or required data, created with <code>std</code>. They are not class
-hierarchies. They are procedural/data contracts:</p>
-<pre><code>std geometry: pro = {
+<p>The intent of standards is procedural and data-oriented. They are not class
+hierarchies, inheritance trees, or object systems.</p>
+<h2 id="standard"><a class="header" href="#standard">Standard</a></h2>
+<p>In later milestones, a standard is intended to be a named collection of
+required receiver-qualified routine signatures and/or required data, created
+with <code>std</code>.</p>
+<pre><code class="language-fol">std geometry: pro = {
     fun area(): flt[64];
     fun perim(): flt[64];
 };
 </code></pre>
-<p>There are three types of standards,</p>
+<p>The planned forms are:</p>
 <ul>
-<li>protocol <code>pro[]</code> that enforce just function implementation</li>
-<li>blueprint <code>blu[]</code> that enforces just data implementation</li>
-<li>extended <code>ext[]</code>, that enforces function and data:</li>
+<li>protocol <code>pro[]</code> for required routines</li>
+<li>blueprint <code>blu[]</code> for required data</li>
+<li>extended <code>ext[]</code> for routines plus data</li>
 </ul>
-<pre><code>std geometry: pro = {
+<pre><code class="language-fol">std geometry: pro = {
     fun area(): flt[64];
     fun perim(): flt[64];
 };
 
-
 std geometry: blu = {
-    var color: rgb; 
+    var color: rgb;
     var size: int;
 };
 
@@ -4977,69 +4993,26 @@ std geometry: ext = {
 };
 </code></pre>
 <h2 id="contract"><a class="header" href="#contract">Contract</a></h2>
-<p>A contract is a legally binding agreement that recognises and governs the rights and duties of the parties to the agreement. A contract is enforceable because it meets the requirements and approval of an higher authority. An agreement typically involves a written declaration given in exchange for something of value that binds the maker to do. Its an specific act which gives to the person to whom the declaration is made the right to expect and enforce performance. In the event of breach of contract, the higher authority will refrain the contract from acting.</p>
-<p>In fol contracts are used to bind a type to a standard. If a type declares to use a standard, it is the job of the contract (compiler internally) to see the standard full-filled.</p>
-<pre><code>std geo: pro = {
+<p>Later milestones may allow a type to declare that it satisfies a standard. The
+compiler would then check that the required data and receiver-qualified
+routines exist.</p>
+<pre><code class="language-fol">std geo: pro = {
     fun area(): flt[64];
     fun perim(): flt[64];
 };
 
-std rect(geo): rec[] = {                                             // this type makes a contract to use the geometry standard
+std rect(geo): rec[] = {
     width: int[64];
     heigh: int[64];
 }
-
 </code></pre>
-<p>Now we can make <code>rect</code> records, but we have to respect the contract. If we
-don’t implement the required receiver-qualified routines, the compiler should
-reject uses that require that contract.</p>
-<pre><code>var aRectangle: rect = { width = 5, heigh = 6 }                      // this throws an error, we haven't fullfill the ocntract
-</code></pre>
-<p>To do so, we need first to create the required <code>rect</code> receiver-qualified
-routines, then instantiate a record value:</p>
-<pre><code>fun (rect)area(): flt[64] = { result = self.width + self.heigh }
+<p>Under that design, <code>rect</code> would need matching receiver-qualified routines such
+as:</p>
+<pre><code class="language-fol">fun (rect)area(): flt[64] = { result = self.width + self.heigh }
 fun (rect)perim(): flt[64] = { result = 2 * self.width + 2 * self.heigh }
-
-var aRectangle: rect = { width = 5, heigh = 6 }                     // this from here on will work
 </code></pre>
-<p>The benefit of standards is that a routine parameter may require a standard
-contract, and then any type that satisfies that contract may be used there:</p>
-<pre><code>std geo: pro = {
-    fun area(): flt[64];
-    fun perim(): flt[64];
-};
-
-typ rect(geo): rec[] = {                                            // this type makes a contract to use the geometry standard
-    width: int[64]; 
-    heigh: int[64]; 
-}
-fun (rect)area(): flt[64] = { result = self.width + self.heigh }
-fun (rect)perim(): flt[64] = { result = 2 * self.width + 2 * self.heigh }
-
-typ circle(geo): rec[] = {                                          // another type makes a contract to use the geometry standard
-    radius: int[64]; 
-}
-fun (circle)area(): flt[64] = { result = math::const.pi * self.radius ** 2 }
-fun (circle)perim(): flt[64] = { result = 2 * math::const.pi * self.radius}
-
-typ square: rec[] = {                                               // this type does not make contract with `geo`
-    heigh: int[64] 
-}
-
-pro measure( shape: geo) { .echo(shape.area() + "m2") }        // a siple method to print the standard's area
-
-// instantiate two record values
-var aRectangle: rect = { width = 5, heigh = 6 }                      // creating a new rectangle
-var aCircle: circle = { radius = 5 }                                 // creating a new rectangle
-var aSquare: square = { heigh = 6 }                                  // creating a new square
-
-
-// to call the measure function that rpints the surface
-measure(aRectangle)                                                  // this prints: 30m2
-measure(aSquare)                                                     // this throws error, square does not satisfy the contract
-measure(aCircle)                                                     // this prints: 78m2
-
-</code></pre>
+<p>The goal is still procedural. A call like <code>shape.area()</code> would remain sugar
+for a receiver-qualified routine call, not an object-owned virtual method.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="generics-1"><a class="header" href="#generics-1">Generics</a></h1>
 <p>This chapter describes later generic-language design rather than current <code>V1</code>
@@ -5051,25 +5024,29 @@ compiler behavior.</p>
 <li>examples here should be read as future <code>V2</code> design</li>
 </ul>
 <h2 id="types-2"><a class="header" href="#types-2">Types</a></h2>
-<h3 id="generic-functions---lifting"><a class="header" href="#generic-functions---lifting">Generic functions - lifting</a></h3>
-<p>The generic programming process focuses on finding commonality among similar implementations of the same algorithm, then providing suitable abstractions so that a single, generic algorithm can cover many concrete implementations. This process, called lifting, is repeated until the generic algorithm has reached a suitable level of abstraction, where it provides maximal reusability while still yielding efficient, concrete implementations. The abstractions themselves are expressed as requirements on the parameters to the generic algorithm.</p>
+<h3 id="generic-functions"><a class="header" href="#generic-functions">Generic Functions</a></h3>
+<p>Generic programming aims to express one routine over a family of concrete
+types, with the requirements written explicitly in the signature.</p>
 <pre><code>pro max[T: gen](a, b: T): T = {
 	result =  a | a &lt; b | b;
 };
 fun biggerFloat(a, b: flt[32]): flt[32] = { max(a, b) }
 fun biggerInteger(a, b: int[64]): int[64] = { max(a, b) }
 </code></pre>
-<h3 id="generic-types---concepts"><a class="header" href="#generic-types---concepts">Generic types - concepts</a></h3>
-<p>Once many algorithms within a given problem domain have been lifted, we start to see patterns among the requirements. It is common for the same set of requirements to be required by several different algorithms. When this occurs, each set of requirements is bundled into a concept. A concept contains a set of requirements that describe a family of abstractions, typically data types. Examples of concepts include Input Iterator, Graph, and Equality Comparable. When the generic programming process is carefully followed, the concepts that emerge tend to describe the abstractions within the problem domain in some logical way.</p>
+<h3 id="generic-types"><a class="header" href="#generic-types">Generic Types</a></h3>
+<p>Generic type surfaces are later-milestone design only. They are shown here as
+future syntax, not current <code>V1</code> behavior.</p>
 <pre><code>typ container[T: gen, N: int](): obj = {
 	var anarray: arr[T,N];
 	+fun getsize(): num = { result = N; }
 };
 var aContainer: container[int, 5] = { anarray = {zero, one, two, three, four}; };
 </code></pre>
-<h2 id="dispach"><a class="header" href="#dispach">Dispach</a></h2>
-<p>Static dispatch (or early binding) happens when compiler knows at compile time which function body will be executed when I call a method. In contrast, dynamic dispatch (or run-time dispatch or virtual method call or late binding) happens when compiler defers that decision to run time. This runtime dispatch requires either an indirect call through a function pointer, or a name-based method lookup.</p>
-<pre><code>std foo: pro = { fun bar(); }
+<h2 id="generic-calls"><a class="header" href="#generic-calls">Generic Calls</a></h2>
+<p>This chapter does not define an object-dispatch system. If generics later use
+receiver-qualified routine syntax, that would still be procedural call binding,
+not virtual methods or inheritance.</p>
+<pre><code class="language-fol">std foo: pro = { fun bar(); }
 
 typ[ext] int, str: int, str;
 

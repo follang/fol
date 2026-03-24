@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-a06efcfc.js";
+            window.path_to_searchindex_js = "../../searchindex-112ad5fd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-58ef93fa.js"></script>
@@ -175,30 +175,33 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="aliases"><a class="header" href="#aliases">Aliases</a></h1>
-<p>An alias declaration binds an identifier to an existing type. All the properties of the existing type are bound to the alias too.</p>
-<p>There are two type of aliasing:</p>
+<p>An alias declaration gives a new name to an existing type surface. The alias
+does not create a new object model. It gives the type a stable name that can
+be reused in declarations, signatures, and receiver-qualified routines.</p>
+<p>There are two related forms:</p>
 <ul>
 <li>aliasing</li>
 <li>extending</li>
 </ul>
 <h2 id="aliasing"><a class="header" href="#aliasing">Aliasing</a></h2>
-<pre><code>typ[ali] I5: arr[int, 5];
+<pre><code class="language-fol">typ[ali] I5: arr[int, 5];
 </code></pre>
-<p>So now the in the code, instead of writing <code>arr[int, 5]</code> we could use <code>I5</code>:</p>
-<pre><code>~var[exp] fiveIntigers: I5 = { 0, 1, 2, 3, 4, 5 }
+<p>Now code can use <code>I5</code> instead of repeating <code>arr[int, 5]</code>:</p>
+<pre><code class="language-fol">var fiveIntegers: I5 = { 0, 1, 2, 3, 4 };
 </code></pre>
-<p>Another example is creating a <code>rgb</code> type that can have numbers only form 0 to 255:</p>
-<pre><code>typ[ali] rgb: int[8][.range(255)] ;                        // we create a type that holds only number from 0 to 255
-typ[ali] rgbSet: set[rgb, rgb, rgb];                       // then we create a type holding the `rgb` type
+<p>Another example is naming a constrained color component type:</p>
+<pre><code class="language-fol">typ[ali] rgb: int[8][.range(255)];
+typ[ali] rgbSet: set[rgb, rgb, rgb];
 </code></pre>
-<p>Alias declaration are created because they can simplify using them multiple times,
-their identifier (their name) may be expressive in other contexts, and-most
-importantly-so that you can define receiver-qualified routines on a named type
-surface. Anonymous types still need a named alias or extension surface first,
-while built-in or foreign types can be extended explicitly through <code>typ[ext]</code>.</p>
-<p>Attaching methods does not make a type into an object. It simply gives a
-routine a receiver-qualified dot-call spelling. You could still think of the
-operation procedurally as a routine that takes the value as its first input.</p>
+<p>Aliases are useful because:</p>
+<ul>
+<li>they avoid repeating long type expressions</li>
+<li>they give a type surface a meaningful name</li>
+<li>they provide a named receiver surface for receiver-qualified routines</li>
+</ul>
+<p>Receiver-qualified routines remain procedural. If a value is written as
+<code>value.method(arg)</code>, read that as call-site sugar for <code>method(value, arg)</code>.
+The routine is still separate from the data declaration.</p>
 <p>Current milestone note:</p>
 <ul>
 <li>aliasing and extension over current <code>V1</code> built-in and declared types are part
@@ -208,36 +211,39 @@ of the present language surface</li>
 compiler contract</li>
 </ul>
 <h2 id="extending"><a class="header" href="#extending">Extending</a></h2>
-<p>Extensions add new functionality to an existing constructs. This includes the ability to extend types for which you do not have access to the original source code (known as retroactive modeling).</p>
-<pre><code>typ[ext] type: type;
+<p>Extensions expose an existing type under an explicit receiver surface so that
+new receiver-qualified routines can be declared for it.</p>
+<pre><code class="language-fol">typ[ext] type: type;
 </code></pre>
-<p>For example, adding a <code>print</code> function to the default integer type <code>int</code>:</p>
-<pre><code>typ[ext] int: int;
+<p>This is still procedural. It does not turn the type into an object or create
+inheritance. It only allows routines to be written against that receiver
+surface.</p>
+<p>For example, an explicit receiver surface for <code>int</code>:</p>
+<pre><code class="language-fol">typ[ext] int: int;
 
 pro (int)print(): non = {
     .echo(self)
 }
 
-pro main: int = {
-    5.print()                   // method print on int
+pro main(): non = {
+    5.print()
 }
 </code></pre>
-<p>Or turning a string <code>str</code> into a vector of characters:</p>
-<pre><code>typ[ext] str: str;
+<p>The call <code>5.print()</code> is still just receiver sugar for <code>print(5)</code>.</p>
+<p>Another example turns a string into a vector of characters through a
+receiver-qualified routine:</p>
+<pre><code class="language-fol">typ[ext] str: str;
 
 fun (str)to_array(): vec[chr] = {
-    loop(x in self){
-        yield x; 
+    loop(x in self) {
+        yield x;
     }
 }
 
-
-pro main(): int = {
+pro main(): non = {
     var characters: vec[chr] = "a random str".to_array();
-
-    .echo(characters)           // will print: {"a"," ","r","a","n","d","o","m"," ","s","t","r"}
+    .echo(characters)
 }
-
 </code></pre>
 
                     </main>
