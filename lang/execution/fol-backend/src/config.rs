@@ -53,13 +53,6 @@ impl BackendRuntimeTier {
         }
     }
 
-    pub fn prelude_module_path(self) -> &'static str {
-        match self {
-            Self::Core => "fol_runtime::core",
-            Self::Alloc => "fol_runtime::alloc",
-            Self::Std => "fol_runtime::std",
-        }
-    }
 }
 
 impl From<BackendFolModel> for BackendRuntimeTier {
@@ -311,10 +304,6 @@ mod tests {
         assert_eq!(
             BackendRuntimeTier::from(BackendFolModel::Std).runtime_module_path(),
             "fol_runtime::std"
-        );
-        assert_eq!(
-            BackendRuntimeTier::from(BackendFolModel::Core).prelude_module_path(),
-            "fol_runtime::prelude"
         );
     }
 }

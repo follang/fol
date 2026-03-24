@@ -235,17 +235,17 @@ pub(super) fn runtime_dependency_path() -> PathBuf {
 fn runtime_use_block(runtime_tier: BackendRuntimeTier) -> String {
     format!(
         "use {} as rt;\nuse {} as rt_model;",
-        runtime_tier.prelude_module_path(),
+        runtime_tier.runtime_module_path(),
         runtime_tier.runtime_module_path()
     )
 }
 
 fn runtime_main_use_block(runtime_tier: BackendRuntimeTier) -> String {
-    let rt_path = match runtime_tier {
-        BackendRuntimeTier::Std => runtime_tier.runtime_module_path(),
-        BackendRuntimeTier::Core | BackendRuntimeTier::Alloc => runtime_tier.prelude_module_path(),
-    };
-    format!("use {} as rt;\nuse {} as rt_model;", rt_path, runtime_tier.runtime_module_path())
+    format!(
+        "use {} as rt;\nuse {} as rt_model;",
+        runtime_tier.runtime_module_path(),
+        runtime_tier.runtime_module_path()
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
