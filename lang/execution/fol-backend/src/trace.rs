@@ -115,10 +115,12 @@ pub fn build_backend_trace(
         package_identity: Some(session.entry_identity().clone()),
         symbol: None,
         detail: format!(
-            "target={} profile={} fol_model={}",
+            "target={} profile={} fol_model={} runtime_tier={} runtime_module={}",
             config.machine_target.display_name(),
             config.build_profile.as_str(),
-            config.fol_model.as_str()
+            config.fol_model.as_str(),
+            config.runtime_tier().as_str(),
+            config.runtime_tier().runtime_module_path()
         ),
     });
     for package in session.workspace().packages() {
@@ -266,6 +268,10 @@ mod tests {
         assert!(!trace.records().is_empty());
         assert_eq!(trace.records()[0].kind, BackendTraceKind::Session);
         assert!(trace.records()[0].detail.contains("fol_model=core"));
+        assert!(trace.records()[0].detail.contains("runtime_tier=core"));
+        assert!(trace.records()[0]
+            .detail
+            .contains("runtime_module=fol_runtime::core"));
         assert!(trace
             .records()
             .iter()

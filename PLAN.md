@@ -125,7 +125,7 @@ Make backend emission reflect `fol_model` structurally, not only semantically.
 - [x] Slice 9. Update emitted Rust crate generation so `core`, `alloc`, and
   `std` artifacts import different `fol-runtime` model modules while still
   linking one runtime crate.
-- [ ] Slice 10. Add backend trace metadata tests to prove emitted artifacts
+- [x] Slice 10. Add backend trace metadata tests to prove emitted artifacts
   record the selected runtime tier and emitted runtime module surface.
 - [ ] Slice 11. Add frontend integration tests proving:
   - `fol_model = core` emits against `fol-runtime::core`
