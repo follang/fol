@@ -880,6 +880,28 @@ mod tests {
     }
 
     #[test]
+    fn command_summary_metadata_helpers_stay_in_sync_with_compiler_facts() {
+        let expected_import_kinds = fol_typecheck::editor_source_kind_names().join(",");
+        assert_eq!(compiler_import_kinds_csv(), expected_import_kinds);
+
+        let mut expected_intrinsics = fol_typecheck::editor_implemented_intrinsics()
+            .into_iter()
+            .filter(|entry| entry.surface == fol_intrinsics::IntrinsicSurface::DotRootCall)
+            .map(|entry| entry.name.to_string())
+            .collect::<Vec<_>>();
+        expected_intrinsics.sort();
+        assert_eq!(
+            compiler_dot_intrinsic_names_csv(),
+            expected_intrinsics.join(",")
+        );
+
+        assert_eq!(
+            semantic_token_legend_csv(),
+            crate::lsp::semantic_token_type_names().join(",")
+        );
+    }
+
+    #[test]
     fn tree_generate_bundle_writes_editor_consumable_assets() {
         let root = std::env::temp_dir().join(format!(
             "fol_editor_tree_bundle_{}_{}",

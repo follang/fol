@@ -329,7 +329,7 @@ Audit and remove manual editor registries that can be replaced with
   - intrinsic labels
   - builtin type suggestions
   - keyword family lists
-- [ ] Slice 33. Add regression tests proving compiler-backed LSP registries stay
+- [x] Slice 33. Add regression tests proving compiler-backed LSP registries stay
   synchronized without hand editing.
 
 ### Exit criteria
