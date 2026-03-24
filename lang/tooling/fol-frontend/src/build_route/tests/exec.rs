@@ -744,3 +744,128 @@ fn execute_workspace_build_route_accepts_dynamic_len_for_alloc_model_artifacts()
 
     fs::remove_dir_all(root).ok();
 }
+
+#[test]
+fn execute_workspace_build_route_rejects_run_for_selected_core_model_artifacts() {
+    let root = std::env::temp_dir().join(format!(
+        "fol_frontend_build_route_core_run_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("src")).unwrap();
+    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({\n",
+            "        name = \"demo\",\n",
+            "        root = \"src/main.fol\",\n",
+            "        fol_model = \"core\",\n",
+            "    });\n",
+            "    graph.add_run(\"serve\", app);\n",
+            "    return graph\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .unwrap();
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let error = execute_workspace_build_route(
+        &workspace,
+        &FrontendConfig::default(),
+        &FrontendWorkspaceBuildRequest {
+            requested_step: "serve".to_string(),
+            profile: FrontendProfile::Debug,
+            run_args: Vec::new(),
+        },
+    )
+    .expect_err("core-model selected run should be rejected during routed execution");
+
+    assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
+    assert!(error
+        .message()
+        .contains("run command requires 'fol_model = std'"));
+    assert!(error.message().contains("'demo'"));
+    assert!(error.message().contains("'core'"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn execute_workspace_build_route_rejects_test_for_selected_alloc_model_artifacts() {
+    let root = std::env::temp_dir().join(format!(
+        "fol_frontend_build_route_alloc_test_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("src")).unwrap();
+    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    graph.add_test({\n",
+            "        name = \"demo_test\",\n",
+            "        root = \"src/main.fol\",\n",
+            "        fol_model = \"alloc\",\n",
+            "    });\n",
+            "    return graph\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .unwrap();
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let error = execute_workspace_build_route(
+        &workspace,
+        &FrontendConfig::default(),
+        &FrontendWorkspaceBuildRequest {
+            requested_step: "test".to_string(),
+            profile: FrontendProfile::Debug,
+            run_args: Vec::new(),
+        },
+    )
+    .expect_err("alloc-model selected test should be rejected during routed execution");
+
+    assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
+    assert!(error
+        .message()
+        .contains("test command requires 'fol_model = std'"));
+    assert!(error.message().contains("'demo_test'"));
+    assert!(error.message().contains("'alloc'"));
+
+    fs::remove_dir_all(root).ok();
+}

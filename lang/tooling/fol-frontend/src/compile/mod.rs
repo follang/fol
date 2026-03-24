@@ -243,6 +243,7 @@ pub(crate) fn run_selected_artifact_with_args_and_config(
     args: &[String],
 ) -> FrontendResult<FrontendCommandResult> {
     ensure_host_runnable_target(config, "run")?;
+    ensure_std_execution_selection(selection, "run")?;
     let built = build_selected_artifacts_for_profile_with_config(
         workspace,
         config,
@@ -320,6 +321,7 @@ pub(crate) fn test_selected_artifacts_with_config(
     selections: &[FrontendArtifactExecutionSelection],
 ) -> FrontendResult<FrontendCommandResult> {
     ensure_host_runnable_target(config, "test")?;
+    ensure_std_execution_selections(selections, "test")?;
     let built =
         build_selected_artifacts_for_profile_with_config(workspace, config, profile, selections)?;
     let binaries = built
@@ -677,6 +679,33 @@ fn ensure_host_runnable_target(config: &FrontendConfig, command: &str) -> Fronte
             "{command} command cannot execute target '{selected}' on host '{host}'"
         ),
     ))
+}
+
+fn ensure_std_execution_selection(
+    selection: &FrontendArtifactExecutionSelection,
+    command: &str,
+) -> FrontendResult<()> {
+    if selection.fol_model == fol_backend::BackendFolModel::Std {
+        return Ok(());
+    }
+    Err(FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "{command} command requires 'fol_model = std' for artifact '{}' but resolved '{}'",
+            selection.label,
+            selection.fol_model.as_str()
+        ),
+    ))
+}
+
+fn ensure_std_execution_selections(
+    selections: &[FrontendArtifactExecutionSelection],
+    command: &str,
+) -> FrontendResult<()> {
+    for selection in selections {
+        ensure_std_execution_selection(selection, command)?;
+    }
+    Ok(())
 }
 
 fn test_workspace_selected_with_config(

@@ -29,7 +29,7 @@ Last updated: 2026-03-24
 - [x] Slice 12. Gate dynamic `.len(...)` so `str`, `vec`, `seq`, `set`, and
   `map` require `fol-model = alloc` or `std`, while `arr[...]` stays valid in
   `core`.
-- [ ] Slice 13. Reject `run` and `test` execution for selected non-`std`
+- [x] Slice 13. Reject `run` and `test` execution for selected non-`std`
   artifacts in the frontend route, with clear diagnostics and tests.
 - [ ] Slice 14. Reject workspace-wide `run` and `test` when the resolved build
   route only exposes non-`std` runnable artifacts, with route-level tests.
