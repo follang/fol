@@ -8,6 +8,8 @@ use crate::{
     core::RuntimeTier,
 };
 
+pub use crate::{crate_name, CRATE_NAME};
+
 pub const HAS_HEAP: bool = true;
 pub const HAS_OS: bool = true;
 pub const TIER: RuntimeTier = RuntimeTier::new("std", HAS_HEAP, HAS_OS);

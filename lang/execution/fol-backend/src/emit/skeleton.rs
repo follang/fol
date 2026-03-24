@@ -53,7 +53,7 @@ pub fn emit_main_rs_for_config(
         module_name: "main".to_string(),
         contents: format!(
             "{}\n\nmod packages;\n\nfn main() {{\n    let _runtime = rt::crate_name();\n    let _runtime_tier = rt_model::tier_name();\n    let _entry_package = \"{entry_name}\";\n    let _entry_name = \"{}\";\n    let _ = (&_runtime, &_runtime_tier, &_entry_package, &_entry_name);\n{entry_wrapper}\n}}\n",
-            runtime_use_block(runtime_tier),
+            runtime_main_use_block(runtime_tier),
             entry_candidate.name
         ),
     })
@@ -238,6 +238,14 @@ fn runtime_use_block(runtime_tier: BackendRuntimeTier) -> String {
         runtime_tier.prelude_module_path(),
         runtime_tier.runtime_module_path()
     )
+}
+
+fn runtime_main_use_block(runtime_tier: BackendRuntimeTier) -> String {
+    let rt_path = match runtime_tier {
+        BackendRuntimeTier::Std => runtime_tier.runtime_module_path(),
+        BackendRuntimeTier::Core | BackendRuntimeTier::Alloc => runtime_tier.prelude_module_path(),
+    };
+    format!("use {} as rt;\nuse {} as rt_model;", rt_path, runtime_tier.runtime_module_path())
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

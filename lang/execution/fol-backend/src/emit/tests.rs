@@ -200,7 +200,7 @@ mod tests {
 
         assert_eq!(emitted.path, "src/main.rs");
         assert_eq!(emitted.module_name, "main");
-        assert!(emitted.contents.contains("use fol_runtime::prelude as rt;"));
+        assert!(emitted.contents.contains("use fol_runtime::std as rt;"));
         assert!(emitted.contents.contains("use fol_runtime::std as rt_model;"));
         assert!(emitted.contents.contains("mod packages;"));
         assert!(emitted.contents.contains("let _entry_package = \"app\";"));
@@ -231,9 +231,15 @@ mod tests {
         assert!(core_emitted
             .contents
             .contains("use fol_runtime::core as rt_model;"));
+        assert!(core_emitted
+            .contents
+            .contains("use fol_runtime::prelude as rt;"));
         assert!(alloc_emitted
             .contents
             .contains("use fol_runtime::alloc as rt_model;"));
+        assert!(alloc_emitted
+            .contents
+            .contains("use fol_runtime::prelude as rt;"));
         assert!(core_emitted
             .contents
             .contains("let _runtime_tier = rt_model::tier_name();"));
@@ -329,7 +335,7 @@ mod tests {
         assert!(snapshot.contains("== src/packages/mod.rs =="));
         assert!(snapshot.contains("== src/packages/pkg__entry__app/mod.rs =="));
         assert!(snapshot.contains("== src/packages/pkg__local__shared/root.rs =="));
-        assert!(snapshot.contains("use fol_runtime::prelude as rt;"));
+        assert!(snapshot.contains("use fol_runtime::std as rt;"));
         assert!(snapshot.contains("use fol_runtime::std as rt_model;"));
         assert!(snapshot.contains("pub mod pkg__entry__app;"));
         assert!(snapshot.contains("NAMESPACE_NAME: &str = \"shared::util\""));
@@ -361,6 +367,9 @@ mod tests {
             .find(|file| file.path == "src/packages/pkg__entry__app/root.rs")
             .expect("root namespace");
 
+        assert!(main_rs
+            .contents
+            .contains("use fol_runtime::prelude as rt;"));
         assert!(main_rs
             .contents
             .contains("use fol_runtime::alloc as rt_model;"));
