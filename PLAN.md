@@ -234,7 +234,7 @@ Make the model visible and obvious at the artifact/build level.
   - `core` static lib
   - `alloc` helper lib
   - `std` host tool
-- [ ] Slice 30. Add scaffold support or examples that generate clear
+- [x] Slice 30. Add scaffold support or examples that generate clear
   `fol_model` usage in `build.fol`.
 - [ ] Slice 31. Add validation diagnostics for inconsistent build intent where
   relevant, for example if a route expects host execution but the artifact model

@@ -56,6 +56,31 @@ Current implementation note:
 - that means `core` is ready for semantic/runtime restriction work now, but it
   should not yet be read as “finished embedded backend support”
 
+Mixed-model example:
+
+```fol
+pro[] build(graph: Graph): non = {
+    var corelib = graph.add_static_lib({
+        name = "corelib",
+        root = "core/lib.fol",
+        fol_model = "core",
+    });
+    var alloclib = graph.add_static_lib({
+        name = "alloclib",
+        root = "alloc/lib.fol",
+        fol_model = "alloc",
+    });
+    var tool = graph.add_exe({
+        name = "tool",
+        root = "app/main.fol",
+        fol_model = "std",
+    });
+
+    graph.install(tool);
+    graph.add_run(tool);
+};
+```
+
 ### `graph.add_static_lib`
 
 Adds a static library artifact.
