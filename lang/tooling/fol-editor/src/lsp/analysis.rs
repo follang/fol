@@ -127,6 +127,7 @@ pub(super) fn analyze_document_semantics(
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
                 source_document_path: mapping.document_path.clone(),
                 source_package_root: mapping.package_root.clone(),
+                active_fol_model: mapping.active_fol_model,
                 compiler_diagnostics: parser_diags,
                 diagnostics: parser_lsp_diags,
                 resolved_workspace: None,
@@ -156,6 +157,7 @@ pub(super) fn analyze_document_semantics(
                         analyzed_path: Some(overlay.document_path().to_path_buf()),
                         source_document_path: mapping.document_path.clone(),
                         source_package_root: mapping.package_root.clone(),
+                        active_fol_model: mapping.active_fol_model,
                         compiler_diagnostics: vec![diagnostic.clone()],
                         diagnostics: lsp_diags,
                         resolved_workspace: None,
@@ -178,6 +180,7 @@ pub(super) fn analyze_document_semantics(
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
                     source_document_path: mapping.document_path.clone(),
                     source_package_root: mapping.package_root.clone(),
+                    active_fol_model: mapping.active_fol_model,
                     compiler_diagnostics: diagnostics.clone(),
                     diagnostics: diagnostics
                         .iter()
@@ -200,6 +203,7 @@ pub(super) fn analyze_document_semantics(
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
                 source_document_path: mapping.document_path.clone(),
                 source_package_root: mapping.package_root.clone(),
+                active_fol_model: mapping.active_fol_model,
                 compiler_diagnostics: Vec::new(),
                 diagnostics: Vec::new(),
                 resolved_workspace: Some(resolved),
@@ -214,6 +218,7 @@ pub(super) fn analyze_document_semantics(
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
                     source_document_path: mapping.document_path.clone(),
                     source_package_root: mapping.package_root.clone(),
+                    active_fol_model: mapping.active_fol_model,
                     compiler_diagnostics: diagnostics.clone(),
                     diagnostics: diagnostics
                         .iter()
@@ -233,6 +238,7 @@ pub(super) fn analyze_document_semantics(
             analyzed_path: Some(mapping.document_path.clone()),
             source_document_path: mapping.document_path.clone(),
             source_package_root: mapping.package_root.clone(),
+            active_fol_model: mapping.active_fol_model,
             compiler_diagnostics: diagnostics.clone(),
             diagnostics: diagnostics
                 .into_iter()

@@ -640,6 +640,60 @@ fn lsp_server_maps_document_roots_and_surfaces_resolver_diagnostics() {
 }
 
 #[test]
+fn lsp_server_keeps_active_fol_model_in_semantic_snapshots() {
+    let (root, uri) = sample_package_root("semantic_model_cache");
+    let text = "fun[] main(): int = {\n    return 0;\n};\n";
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    let open = open_document(&mut server, uri.clone(), text);
+    assert_eq!(open.len(), 1);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(701),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 1,
+                        character: 4,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _completion: LspCompletionList =
+        serde_json::from_value(completion.result.unwrap()).unwrap();
+
+    let snapshot = server
+        .session
+        .semantic_snapshots
+        .get(uri.as_str())
+        .expect("semantic snapshot should be cached after a semantic request");
+    assert_eq!(
+        snapshot.snapshot.active_fol_model,
+        Some(fol_typecheck::TypecheckCapabilityModel::Core)
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
     let (root, uri) = sample_package_root("semantic_cache");
     let text = "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n";

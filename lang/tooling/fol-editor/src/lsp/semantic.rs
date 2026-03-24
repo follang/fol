@@ -7,6 +7,7 @@ use fol_intrinsics::{
     intrinsic_registry, IntrinsicAvailability, IntrinsicStatus, IntrinsicSurface,
 };
 use fol_parser::ast::{AstNode, SyntaxNodeId};
+use fol_typecheck::TypecheckCapabilityModel;
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -34,6 +35,7 @@ pub(crate) struct SemanticSnapshot {
     pub(super) analyzed_path: Option<PathBuf>,
     pub(super) source_document_path: PathBuf,
     pub(super) source_package_root: Option<PathBuf>,
+    pub(super) active_fol_model: Option<TypecheckCapabilityModel>,
     pub(super) compiler_diagnostics: Vec<fol_diagnostics::Diagnostic>,
     pub(super) diagnostics: Vec<LspDiagnostic>,
     pub(super) resolved_workspace: Option<fol_resolver::ResolvedWorkspace>,
