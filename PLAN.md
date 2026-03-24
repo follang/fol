@@ -1,333 +1,390 @@
-# PLAN: Runtime Split for `fol-model`
+# PLAN: Compiler-Backed Editor Sync
 
 Last updated: 2026-03-24
 
 ## Intent
 
-This plan replaces the current compiler-only `fol_model` enforcement with a
-real architecture split:
+This plan replaces the current "remember to update `fol-editor` manually"
+workflow with a stricter model:
 
-- `core`
-  no heap, no OS
-- `alloc`
-  heap yes, OS no
-- `std`
-  heap yes, OS yes
+- LSP semantic behavior should come from the real compiler pipeline whenever
+  possible.
+- `fol_model` awareness must be visible in editor diagnostics, hover,
+  completion, and semantic analysis.
+- tree-sitter should not be fully generated from the compiler, but all
+  repetitive editor registries and query fragments that can be derived from
+  compiler-owned data should become generated or compiler-backed.
+- drift between compiler features and editor syntax assets should become a test
+  failure, not tribal knowledge.
 
 The end state is not:
 
-- one large runtime with conditional checks
-- frontend-only policy
-- backend-only policy
-- import-name conventions
+- fully hand-maintained editor metadata forever
+- a second language implementation inside `fol-editor`
+- full tree-sitter grammar generation from the parser
+- "maybe update the editor later"
 
 The end state is:
 
-- `build.fol` chooses `fol_model` per artifact
-- typecheck enforces the language surface for that artifact
-- backend links the correct runtime crate set
-- the runtime implementation is physically split
-- docs match the real behavior
+- compiler-owned semantic truth
+- model-aware LSP behavior
+- generated or compiler-derived editor registries where practical
+- manual grammar/query work only where structure really must stay hand-authored
+- aggressive sync tests that fail when compiler and editor drift
 
-## Rules
+## Core Principles
 
-- Every slice must stay commit-sized.
-- Every slice that changes behavior must include tests in the same commit.
-- After each slice:
+1. `fol-editor` should consume compiler-owned facts before inventing editor-only
+   ones.
+2. `fol_model = core | alloc | std` must affect editor diagnostics and semantic
+   tooling exactly the same way it affects `fol code build`.
+3. Manual grammar authoring is acceptable.
+4. Manual keyword/type/intrinsic lists are not acceptable if they can be
+   derived from compiler registries.
+5. No compatibility editor paths for stale syntax once a new syntax form is
+   chosen.
+6. Every behavior-changing slice includes tests in the same change.
+
+## Current Baseline
+
+Already true today:
+
+- `fol-editor` LSP semantic analysis reuses parser, package loading, resolver,
+  and typechecker from the real compiler.
+- tree-sitter sync tests already compare some editor assets against compiler
+  constants:
+  - builtin types
+  - implemented dot intrinsics
+  - container type names
+  - shell type names
+  - source kinds
+- tree-sitter assets live in one place:
+  - `lang/tooling/fol-editor/tree-sitter/grammar.js`
+  - `lang/tooling/fol-editor/queries/fol/*.scm`
+
+Not good enough yet:
+
+- editor behavior is not explicitly `fol_model` aware in all user-facing areas
+- completions and some query families still rely on hand-maintained surfaces
+- tree-sitter query files still embed lists that can drift from compiler data
+- feature additions can still succeed in the compiler while the editor layer
+  silently lags
+- there is no canonical generated editor-metadata pipeline
+
+## Boundaries
+
+Things this plan should automate:
+
+- keyword/type/intrinsic registries used by editor features
+- model-aware completion and diagnostics policy
+- query fragment generation for regex-like name sets
+- test enforcement that editor assets match compiler data
+
+Things this plan should not try to automate fully:
+
+- complete tree-sitter grammar generation from the parser
+- all highlight capture structure
+- all LSP UX behavior
+- formatter policy
+
+## Required Workflow
+
+For every implementation slice:
+
+- keep the slice commit-sized
+- if behavior changes, add tests in the same slice
+- after each slice:
   - run `make build`
   - run `make test`
   - if both pass:
     - mark the slice complete here
     - commit it
-- No compatibility layer for the old monolithic runtime model once the new path
-  is chosen for a subsystem.
 
-## Current baseline
-
-Already complete before this plan:
-
-- `build.fol` accepts `fol_model`
-- frontend carries `fol_model`
-- typecheck gates:
-  - `.echo(...)` behind `std`
-  - heap-backed type surfaces out of `core`
-  - dynamic `.len(...)` out of `core`
-- routed `run` / `test` reject non-`std` execution
-
-Not complete:
-
-- single-crate runtime model ownership inside `fol-runtime`
-- backend linking by runtime tier
-- runtime code movement into `core` / `alloc` / `std` modules inside `fol-runtime`
-- crate-level ownership of string/container/runtime/process services
-- docs for the full split
-
-## Epoch 1: Freeze The Model Contract
+## Epoch 1: Freeze The Editor Contract
 
 Goal:
-Lock down the contract before moving code.
+Write down exactly what is compiler-owned, what remains manual, and where
+`fol_model` must surface in editor behavior.
 
 ### Slice Tracker
 
-- [x] Slice 1. Rewrite the book and version docs so `core`, `alloc`, and `std`
-  are described as runtime tiers, and explicitly state:
-  - `str` is not `core`
-  - dynamic containers are not `core`
-  - `.echo(...)` is `std`
-  - process-entry behavior is `std`
-- [x] Slice 2. Add a single canonical feature matrix document, probably
-  `docs/runtime-models.md`, that maps language features, intrinsics, and runtime
-  services into `core`, `alloc`, and `std`.
-- [x] Slice 3. Add tests that lock the intended language boundary text into CLI
-  and structured diagnostics for:
-  - `str` in `core`
+- [x] Slice 1. Replace or expand editor docs so they explicitly state:
+  - LSP semantic truth comes from compiler analysis
+  - tree-sitter grammar stays manual
+  - query fragments and registries should be compiler-derived where possible
+  - `fol_model` must affect editor diagnostics and completion
+- [ ] Slice 2. Add a canonical doc, likely `docs/editor-sync.md`, covering:
+  - compiler-owned editor data
+  - generated editor data
+  - manual editor data
+  - test gates that prevent drift
+- [ ] Slice 3. Add a matrix to the doc for `core`, `alloc`, `std`:
+  - which type surfaces should appear in completion
+  - which intrinsics should appear in completion
+  - which diagnostics should be shown by analysis
+  - which example packages should exercise each mode
+
+### Exit criteria
+
+- The intended editor architecture is written down.
+- `fol_model` expectations are explicit before code changes start.
+
+## Epoch 2: Introduce Compiler-Owned Editor Metadata
+
+Goal:
+Create one compiler-backed metadata surface that `fol-editor` can consume.
+
+### Slice Tracker
+
+- [ ] Slice 4. Add a compiler-owned editor metadata API, probably in an existing
+  compiler crate or a new small compiler-side module, exposing:
+  - declaration keywords
+  - builtin type names
+  - container type names
+  - shell type names
+  - source kind names
+  - implemented intrinsic names grouped by surface
+- [ ] Slice 5. Extend that metadata API to carry `fol_model` capability facts:
+  - whether a type family is legal in `core`
+  - whether an intrinsic is legal in `core`
+  - whether an intrinsic is `std`-only
+  - whether a completion item should be suppressed by model
+- [ ] Slice 6. Add unit tests proving the metadata API is canonical and matches
+  existing compiler registries exactly.
+
+### Exit criteria
+
+- Editor-relevant language facts have one compiler-owned source.
+- `fol_model` capability facts exist in machine-readable form.
+
+## Epoch 3: Make LSP Model-Aware
+
+Goal:
+Ensure editor semantic analysis knows which model the current artifact/package is
+using and reports boundaries consistently.
+
+### Slice Tracker
+
+- [ ] Slice 7. Extend editor workspace analysis so it can recover the active
+  `fol_model` for the opened package or routed artifact.
+- [ ] Slice 8. Thread `fol_model` into semantic snapshots and editor workspace
+  caches.
+- [ ] Slice 9. Add tests proving LSP diagnostics for:
   - `.echo(...)` in `alloc`
+  - `str` in `core`
   - dynamic `.len(...)` in `core`
+  match build-mode diagnostics for the same package.
+- [ ] Slice 10. Add hover or symbol-surface tests proving model context is not
+  lost when analyzing package files under `core`, `alloc`, and `std`.
 
 ### Exit criteria
 
-- The intended split is documented in one place and referenced by the book.
-- Diagnostics reflect the language model consistently.
+- LSP analysis is explicitly aware of `fol_model`.
+- Editor diagnostics agree with compiler/build diagnostics for model boundaries.
 
-## Epoch 2: Turn `fol-runtime` Into The Model Crate
+## Epoch 4: Make Completion Model-Aware
 
 Goal:
-Keep one runtime crate and make the model ownership explicit inside it.
+Stop offering completion items that are invalid for the current model.
 
 ### Slice Tracker
 
-- [x] Slice 4. Remove the abandoned multi-crate split and keep `fol-runtime` as
-  the only runtime crate.
-- [x] Slice 5. Add explicit `core`, `alloc`, and `std` module boundaries inside
-  `fol-runtime`, with minimal marker APIs and unit tests.
-- [x] Slice 6. Define dependency direction inside `fol-runtime` modules and
-  enforce it in code:
-  - `core` module owns the no-heap, no-OS base
-  - `alloc` module may build on `core`
-  - `std` module may build on `core` and `alloc`
-- [x] Slice 7. Add smoke tests proving `fol-runtime` exposes the model modules
-  and the workspace build remains green.
+- [ ] Slice 11. Move intrinsic completion sources to use compiler-owned editor
+  metadata instead of hand-maintained item lists.
+- [ ] Slice 12. Filter completion items by active `fol_model`:
+  - hide `std`-only intrinsics in `core` and `alloc`
+  - hide heap-backed type families in `core`
+  - keep `alloc` items visible in `std`
+- [ ] Slice 13. Add completion tests for:
+  - `core` does not suggest `.echo`
+  - `alloc` does not suggest `.echo`
+  - `std` does suggest `.echo`
+  - `core` does not suggest `str`, `seq`, `vec`, `set`, `map` as normal type
+    surfaces
+- [ ] Slice 14. Add completion tests for mixed-model workspaces so package-local
+  artifact context does not bleed across unrelated members.
 
 ### Exit criteria
 
-- `fol-runtime` is the single model crate.
-- The internal module direction is explicit and tested.
+- Completion is generated from compiler-backed facts where practical.
+- Completion respects `fol_model`.
 
-## Epoch 3: Backend Learns Runtime Tier Linking
+## Epoch 5: Generate Query Fragments From Compiler Metadata
 
 Goal:
-Make backend emission reflect `fol_model` structurally, not only semantically.
+Reduce manual drift in tree-sitter queries without pretending grammar structure
+ can be generated.
 
 ### Slice Tracker
 
-- [x] Slice 8. Add backend runtime-tier selection by `BackendFolModel` with a
-  small internal abstraction such as `BackendRuntimeTier`.
-- [x] Slice 9. Update emitted Rust crate generation so `core`, `alloc`, and
-  `std` artifacts import different `fol-runtime` model modules while still
-  linking one runtime crate.
-- [x] Slice 10. Add backend trace metadata tests to prove emitted artifacts
-  record the selected runtime tier and emitted runtime module surface.
-- [x] Slice 11. Add frontend integration tests proving:
-  - `fol_model = core` emits against `fol-runtime::core`
-  - `fol_model = alloc` emits against `fol-runtime::alloc`
-  - `fol_model = std` emits against `fol-runtime::std`
+- [ ] Slice 15. Split query content into:
+  - hand-written structural query bodies
+  - generated/compiler-derived regex fragments for names and symbol families
+- [ ] Slice 16. Add a small generation step or checked-in generator that writes
+  canonical fragments for:
+  - builtin type names
+  - implemented dot intrinsics
+  - source kinds
+  - container type names
+  - shell type names
+- [ ] Slice 17. Change `highlights.scm` consumption so those compiler-derived
+  fragments are included from generated files or composed deterministically at
+  bundle-generation time.
+- [ ] Slice 18. Add tests proving generated fragments are stable and do not
+  require hand edits when compiler registries change.
 
 ### Exit criteria
 
-- Backend-emitted runtime usage differs by model.
-- This is visible in emitted source or trace metadata and locked by tests.
+- Repetitive query name lists are compiler-derived.
+- Manual query maintenance is reduced to structural capture logic.
 
-## Epoch 4: Move Process And Console Services Into `std`
+## Epoch 6: Tighten Tree-Sitter Sync Gates
 
 Goal:
-Remove hosted process/runtime assumptions from the shared runtime surface.
+Turn more classes of editor drift into obvious test failures.
 
 ### Slice Tracker
 
-- [x] Slice 12. Move `.echo(...)` implementation ownership into the `std`
-  module inside `fol-runtime`.
-- [x] Slice 13. Move process outcome and executable entry helpers into
-- the `std` module inside `fol-runtime`.
-- [x] Slice 14. Make backend-generated `std` artifacts use `fol-runtime::std` for main
-  entry and hosted execution support.
-- [x] Slice 15. Remove the old shared runtime ownership for those services
-  instead of keeping fallback exports.
-- [x] Slice 16. Add backend and app-level example tests for hosted `std`
-  execution after the move.
+- [ ] Slice 19. Expand sync tests beyond `highlights.scm` to cover:
+  - locals query expectations where compiler data can define them
+  - symbols query expectations where declaration families are compiler-known
+- [ ] Slice 20. Add tests that fail if new implemented dot intrinsics exist in
+  the compiler but are absent from tree-sitter highlight coverage.
+- [ ] Slice 21. Add tests that fail if new declaration heads/keywords exist in
+  compiler constants but are absent from grammar/query coverage.
+- [ ] Slice 22. Add tests for `defer`, named args, variadics, and `fol_model`
+  example packages so real syntax fixtures exercise the tree-sitter bundle.
 
 ### Exit criteria
 
-- Console and process behavior live in `fol-runtime::std`.
-- No shared fallback path remains for those services.
+- Common "forgot to update tree-sitter" failures are caught automatically.
+- Real checked-in examples participate in syntax coverage.
 
-## Epoch 5: Move Heap Types Into `alloc`
+## Epoch 7: Add Editor Model Fixtures
 
 Goal:
-Make heap-backed runtime data structures physically belong to `alloc`.
+Use real example packages to lock editor behavior by model.
 
 ### Slice Tracker
 
-- [x] Slice 17. Move string runtime support into `fol-runtime::alloc`.
-- [x] Slice 18. Move `vec` and `seq` runtime support into `fol-runtime::alloc`.
-- [x] Slice 19. Move `set` and `map` runtime support into `fol-runtime::alloc`, or, if
-  one of them is not yet stable enough, explicitly defer it in the docs and
-  keep the plan honest.
-- [x] Slice 20. Update backend emission so `alloc` and `std` artifacts import
-  those types from the `alloc` module in `fol-runtime`.
-- [x] Slice 21. Delete the old unsplit ownership path for those heap-backed
-  types inside `fol-runtime`.
-- [x] Slice 22. Add end-to-end fixtures for:
-  - `alloc` artifact using `str`
-  - `alloc` artifact using `seq`
-  - `std` artifact using `str` + `.echo(...)`
-  - `core` artifact still rejecting the same surfaces
+- [ ] Slice 23. Add `fol-editor` integration fixtures for:
+  - `core` example package
+  - `alloc` example package
+  - `std` example package
+- [ ] Slice 24. Add LSP diagnostics tests over those packages:
+  - legal surfaces stay quiet
+  - forbidden surfaces produce exact model-aware errors
+- [ ] Slice 25. Add semantic token tests over those same packages so model
+  examples also harden highlighting and tokenization paths.
+- [ ] Slice 26. Add completion tests opened against those package roots, not
+  just synthetic one-file snippets.
 
 ### Exit criteria
 
-- Heap-backed runtime types physically live in `fol-runtime::alloc`.
-- Backend emission for `alloc` and `std` points to that module.
+- Real model examples drive editor integration coverage.
+- LSP and tree-sitter are tested against the same example family users read.
 
-## Epoch 6: Establish `core` As A Real No-Heap Tier
+## Epoch 8: Build-System Awareness In The Editor
 
 Goal:
-Make `core` useful and honest for embedded-first work.
+Make the editor understand routed build artifacts instead of only package-wide
+ assumptions.
 
 ### Slice Tracker
 
-- [x] Slice 23. Audit the backend-emitted `core` crate root and remove accidental
-  imports of hosted or heap-backed support.
-- [x] Slice 24. Add explicit backend tests that `core` artifacts emit without
-  importing alloc/std runtime modules.
-- [x] Slice 25. Add example artifacts for `core` that use only:
-  - scalars
-  - arrays
-  - records
-  - control flow
-  - `defer`
-- [x] Slice 26. Add negative example fixtures for forbidden `core` surfaces:
-  - `str`
-  - `seq`
-  - `vec`
-  - `set`
-  - `map`
-  - `.echo(...)`
-- [x] Slice 27. Document the exact current embedded meaning of `core`:
-  “no heap and no OS at language/runtime level, still emitted through the
-  current Rust backend pipeline.”
+- [ ] Slice 27. Teach editor workspace mapping to inspect `build.fol` routed
+  artifacts and recover the artifact model for the current file where possible.
+- [ ] Slice 28. Add tests for mixed-model workspaces where:
+  - one member contains `core`
+  - one member contains `alloc`
+  - one member contains `std`
+  and the editor chooses the right model per opened file/package.
+- [ ] Slice 29. Define and document fallback behavior when the editor cannot map
+  a file to a specific routed artifact:
+  - whether to use package default
+  - whether to use conservative model intersection
+  - whether to show "unknown model context" notes
+- [ ] Slice 30. Add tests for that fallback policy so ambiguous editor context
+  behaves deterministically.
 
 ### Exit criteria
 
-- `core` has a tested positive surface.
-- `core` has a tested negative surface.
-- Docs do not overclaim embedded backend maturity.
+- Editor model awareness is based on build reality, not guesswork.
+- Mixed-model workspaces behave deterministically in LSP.
 
-## Epoch 7: Tighten Frontend And Build-System UX
+## Epoch 9: Reduce Remaining Hand-Written LSP Registries
 
 Goal:
-Make the model visible and obvious at the artifact/build level.
+Audit and remove manual editor registries that can be replaced with
+ compiler-owned data.
 
 ### Slice Tracker
 
-- [x] Slice 28. Improve frontend summaries and emitted metadata so build output
-  shows the selected `fol_model`.
-- [x] Slice 29. Add build-route tests for mixed-model workspaces:
-  - `core` static lib
-  - `alloc` helper lib
-  - `std` host tool
-- [x] Slice 30. Add scaffold support or examples that generate clear
-  `fol_model` usage in `build.fol`.
-- [x] Slice 31. Add validation diagnostics for inconsistent build intent where
-  relevant, for example if a route expects host execution but the artifact model
-  is non-`std`.
+- [ ] Slice 31. Audit all completion/hover/navigation helper tables in
+  `fol-editor` and classify each one:
+  - must stay manual
+  - can become compiler-backed
+  - can become generated
+- [ ] Slice 32. Replace at least the low-risk manual registries first:
+  - intrinsic labels
+  - builtin type suggestions
+  - keyword family lists
+- [ ] Slice 33. Add regression tests proving compiler-backed LSP registries stay
+  synchronized without hand editing.
 
 ### Exit criteria
 
-- The build UX makes model selection obvious.
-- Mixed-model workspaces are tested.
+- Obvious duplicated registries are gone.
+- Remaining manual registries are intentional and documented.
 
-## Epoch 8: Remove The Old Unsplit Runtime Surface
+## Epoch 10: Final Hardening And Removal Of Weak Paths
 
 Goal:
-Finish the transition instead of keeping parallel ownership.
+Finish with an editor pipeline that is hard to drift accidentally.
 
 ### Slice Tracker
 
-- [x] Slice 32. Delete or radically shrink the old unsplit `fol-runtime` surface
-  so the crate becomes the model crate rather than a monolithic dump.
-- [x] Slice 33. Remove old backend references to the unsplit runtime path.
-- [x] Slice 34. Remove stale tests that assume one hosted runtime surface.
-- [x] Slice 35. Add a final regression pass across backend emission, frontend
-  routing, example apps, and docs.
+- [ ] Slice 34. Add a top-level "editor sync" test suite that exercises:
+  - compiler metadata export
+  - generated query fragments
+  - tree-sitter bundle validation
+  - LSP diagnostics by model
+  - LSP completion by model
+- [ ] Slice 35. Remove stale manual comments/docs that imply editor updates are
+  mostly hand-maintained.
+- [ ] Slice 36. Add a contributor-facing doc section:
+  - "if you add a language feature, these editor sync tests must pass"
+  - "if the feature changes syntax shape, update grammar/query structure"
+  - "if the feature only adds names or registries, generation should cover it"
+- [ ] Slice 37. Run a full repo audit and close any remaining drift holes found
+  during implementation.
 
 ### Exit criteria
 
-- There is no parallel runtime implementation path left.
-- Runtime ownership is unambiguous.
+- Editor sync expectations are explicit for contributors.
+- The remaining manual surfaces are the ones that should stay manual.
 
-## Epoch 9: Post-Split Hardening
+## Expected End State
 
-Goal:
-Prove the split holds under normal project use.
+When this plan is complete:
 
-### Slice Tracker
+- adding a new implemented intrinsic should usually require:
+  - compiler change
+  - maybe structural query update if syntax shape changed
+  - no hand-edited duplicate intrinsic lists
+- adding a new builtin/type family should usually require:
+  - compiler change
+  - generated metadata/query fragments update automatically or through one
+    canonical generator
+- opening a package in the editor should surface `core` / `alloc` / `std`
+  boundaries through the real compiler pipeline
+- mixed-model workspaces should behave predictably in LSP
+- tree-sitter grammar will still be hand-authored, but compiler-driven drift in
+  query-name families will be minimized and test-guarded
 
-- [x] Slice 36. Add full example packages:
-  - `examples/core-blink-shape`
-  - `examples/alloc-containers`
-  - `examples/std-cli`
-- [x] Slice 37. Add CLI integration tests compiling and emitting each example.
-- [x] Slice 38. Add one workspace example mixing all three models in one build
-  graph.
-- [x] Slice 39. Add developer docs for how to choose a model and what each tier
-  guarantees.
-- [x] Slice 40. Do a final language/docs audit so no chapter still implies the
-  old unsplit hosted runtime story.
+## Non-Goals
 
-### Exit criteria
-
-- Users can see and run concrete examples for each model.
-- Documentation no longer conflicts with implementation.
-
-## Recommended execution order
-
-Do not reorder casually.
-
-Recommended order:
-
-1. Epoch 1
-2. Epoch 2
-3. Epoch 3
-4. Epoch 4
-5. Epoch 5
-6. Epoch 6
-7. Epoch 7
-8. Epoch 8
-9. Epoch 9
-
-This order matters because:
-
-- docs and contract should settle before moving code
-- backend linkage must exist before runtime movement is safe
-- hosted services should move before deleting the old runtime
-- `core` must be tested as a real tier before cleanup is declared done
-
-## High-risk points
-
-These are the places most likely to break during implementation:
-
-- backend emitted Rust import paths
-- executable entrypoint ownership
-- string/container runtime assumptions hidden in lowering or backend helpers
-- tests that assume all runnable artifacts are `std`
-- accidental parallel exports from both old and new runtime crates
-
-## Definition of done
-
-This plan is only done when all of the following are true:
-
-- `fol_model` changes both semantics and linked runtime structure
-- `core` artifacts do not pull heap or OS runtime code
-- `alloc` artifacts can use heap-backed types without `std`
-- `std` artifacts own hosted execution/runtime services
-- the old unsplit runtime path is gone
-- docs, examples, tests, and backend output all match that reality
+- Generate the entire tree-sitter grammar from the parser.
+- Replace all `fol-editor` logic with compiler internals.
+- Hide model ambiguity by guessing silently.
+- Keep old manual registries if a compiler-backed source is available.

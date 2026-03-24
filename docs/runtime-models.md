@@ -130,6 +130,23 @@ Implemented today:
 - `fol-runtime` is the single runtime crate with internal `core` / `alloc` /
   `std` ownership
 
+## Editor note
+
+The editor should follow the same model split.
+
+The intended contract is:
+
+- LSP semantic diagnostics should come from the real compiler pipeline
+- `fol_model` should affect editor diagnostics and completion the same way it
+  affects `fol code build`
+- tree-sitter grammar stays hand-authored
+- repetitive editor name lists should be compiler-derived instead of manually
+  copied
+
+This means adding a language feature should not require a second semantic
+implementation in `fol-editor`, but syntax assets and editor UX may still need
+targeted updates where structure changes.
+
 ## Build example
 
 ```fol
