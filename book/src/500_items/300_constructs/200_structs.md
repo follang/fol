@@ -23,12 +23,12 @@ typ user: rec = {
 };
 ```
 
-#### Records are data, not classes
+#### Records are data, not objects
 
 `typ ...: rec = { ... }` declares a data type. FOL does not treat records as
-classes with hidden object state or class-owned method bodies. If a record has
-operations associated with it, those operations are still declared as ordinary
-receiver-qualified routines outside the record body.
+objects with hidden behavior, inheritance, or class-owned method bodies. If a
+record has operations associated with it, those operations are still declared
+as ordinary receiver-qualified routines outside the record body.
 
 ```fol
 typ computer: rec = {
@@ -45,7 +45,7 @@ var laptop: computer = { brand = "acme", memory = 16 }
 ```
 
 The call `laptop.get_type()` is procedural sugar for calling the receiver
-routine with `laptop` as its first input.
+routine with `laptop` as its first explicit input.
 
 Current `V1` backend/runtime note:
 
@@ -186,8 +186,8 @@ var mint: rgb = { 153, 255, 187 }
 ## Methods
 
 A record may have receiver-qualified routines associated with it. This does not
-turn the record into an object-oriented type. It only means a routine may use
-dot-call syntax when its first input is a value of that record type. To create
+turn the record into an object model. It only means a routine may use dot-call
+syntax when its first explicit input is a value of that record type. To create
 such a routine for a record, declare the receiver type on the routine itself:
 ```
 fun (recieverRecord)someFunction(): str = { self.somestring; };
@@ -195,7 +195,7 @@ fun (recieverRecord)someFunction(): str = { self.somestring; };
 
 After declaring the record receiver, the routine body may refer to that input
 through `self`. A receiver is simply the explicit first input that enables
-dot-call syntax.
+dot-call syntax. The data and the routine remain separate declarations.
 ```
 typ user: rec = {
     var username: str;
@@ -213,7 +213,21 @@ multiple routines may still share the same method name if the receiver types
 are different.
 
 Each record value can therefore use the dot form, but the underlying model
-remains procedural.
+remains procedural:
+
+```fol
+user1.getName()
+```
+
+should be read as:
+
+```fol
+getName(user1)
+```
+
+There is no hidden record-owned method table in that spelling.
+
+The routine itself is still declared separately:
 ```
 var[mut] user1: user = { email = "someone@example.com", username = "someusername123", active = true, sign_in_count = 1 }
 
