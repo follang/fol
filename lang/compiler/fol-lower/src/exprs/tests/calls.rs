@@ -439,6 +439,78 @@ fn free_call_lowering_packs_variadic_arguments_into_a_sequence() {
 }
 
 #[test]
+fn free_call_lowering_passes_unpack_sequences_without_repacking() {
+    let workspace = lower_fixture_workspace(
+        "fun[] sum(head: int, tail: ... int): int = {\n\
+             return head;\n\
+         };\n\
+         fun[] main(values: seq[int]): int = {\n\
+             return sum(1, ...values);\n\
+         };",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let call_args = routine
+        .instructions
+        .iter()
+        .find_map(|instr| match &instr.kind {
+            LoweredInstrKind::Call { args, .. } => Some(args.clone()),
+            _ => None,
+        })
+        .expect("main routine should contain a lowered variadic unpack free call");
+
+    assert_eq!(call_args.len(), 2, "unpacked free call should lower fixed args plus one sequence arg");
+    assert!(
+        routine.instructions.iter().all(|instr| match (&instr.result, &instr.kind) {
+            (Some(result), LoweredInstrKind::ConstructLinear { .. }) => *result != call_args[1],
+            _ => true,
+        }),
+        "free-call unpack should pass the existing sequence through without repacking it"
+    );
+}
+
+#[test]
+fn free_call_lowering_passes_named_unpack_sequences_without_repacking() {
+    let workspace = lower_fixture_workspace(
+        "fun[] score(base: int, step: int = 2, tail: ... int): int = {\n\
+             return base;\n\
+         };\n\
+         fun[] main(values: seq[int]): int = {\n\
+             return score(base = 1, ...values);\n\
+         };",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let call_args = routine
+        .instructions
+        .iter()
+        .find_map(|instr| match &instr.kind {
+            LoweredInstrKind::Call { args, .. } => Some(args.clone()),
+            _ => None,
+        })
+        .expect("main routine should contain a lowered named variadic unpack free call");
+
+    assert_eq!(call_args.len(), 3, "named unpack free call should lower explicit args plus one sequence arg");
+    assert!(
+        routine.instructions.iter().all(|instr| match (&instr.result, &instr.kind) {
+            (Some(result), LoweredInstrKind::ConstructLinear { .. }) => *result != call_args[2],
+            _ => true,
+        }),
+        "named free-call unpack should pass the existing sequence through without repacking it"
+    );
+}
+
+#[test]
 fn method_call_lowering_packs_variadic_arguments_after_the_receiver() {
     let workspace = lower_fixture_workspace(
         "typ Counter: rec = { value: int };\n\
@@ -481,6 +553,43 @@ fn method_call_lowering_packs_variadic_arguments_after_the_receiver() {
         .expect("variadic method args should lower into a sequence construction");
 
     assert_eq!(packed_sequence, (crate::LoweredLinearKind::Sequence, 3));
+}
+
+#[test]
+fn method_call_lowering_passes_named_unpack_sequences_after_the_receiver() {
+    let workspace = lower_fixture_workspace(
+        "typ Counter: rec = { value: int };\n\
+         fun (Counter)shift(step: int = 2, values: ... int): int = {\n\
+             return 0;\n\
+         };\n\
+         fun[] main(current: Counter, values: seq[int]): int = {\n\
+             return current.shift(step = 3, ...values);\n\
+         };",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let call_args = routine
+        .instructions
+        .iter()
+        .find_map(|instr| match &instr.kind {
+            LoweredInstrKind::Call { args, .. } => Some(args.clone()),
+            _ => None,
+        })
+        .expect("main routine should contain a lowered named variadic unpack method call");
+
+    assert_eq!(call_args.len(), 3, "named unpack method call should lower receiver, explicit args, and one sequence arg");
+    assert!(
+        routine.instructions.iter().all(|instr| match (&instr.result, &instr.kind) {
+            (Some(result), LoweredInstrKind::ConstructLinear { .. }) => *result != call_args[2],
+            _ => true,
+        }),
+        "named method unpack should pass the existing sequence through without repacking it"
+    );
 }
 
 #[test]

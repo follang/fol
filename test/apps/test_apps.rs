@@ -650,6 +650,42 @@ fn method_flow_fixture_compiles_and_runs() {
 }
 
 #[test]
+fn call_niceties_fixture_compiles_and_runs() {
+    let fixture = fixture_root("call_niceties");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+    assert_output_contains(&run_output, "19");
+}
+
+#[test]
+fn method_call_niceties_fixture_compiles_and_runs() {
+    let fixture = fixture_root("method_call_niceties");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+    assert_output_contains(&run_output, "19");
+}
+
+#[test]
+fn loc_call_niceties_fixture_compiles_and_runs() {
+    let fixture = fixture_root("loc_call_niceties").join("app");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+    assert_output_contains(&run_output, "28");
+}
+
+#[test]
 fn container_linear_fixture_compiles_and_runs() {
     let fixture = fixture_root("container_linear");
 
@@ -985,6 +1021,52 @@ fn fail_membership_operator_fixture_rejects_cleanly() {
     let fixture = fixture_root("fail_membership_operator");
     let output = compile_app_expect_failure(&fixture);
     assert_output_contains(&output, "membership");
+}
+
+#[test]
+fn fail_named_unpack_with_extra_variadic_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_named_unpack_after_named");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "Positional call arguments are not allowed after named arguments");
+}
+
+#[test]
+fn fail_unknown_named_method_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_unknown_named_method");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "does not have a parameter named 'missing'");
+}
+
+#[test]
+fn fail_duplicate_named_free_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_duplicate_named_free");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "supplies parameter 'left' more than once");
+}
+
+#[test]
+fn fail_unpack_non_sequence_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_unpack_non_sequence");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "call to 'sum' expects");
+    assert_output_contains(&output, "Sequence");
+    assert_output_contains(&output, "Builtin(Int)");
+}
+
+#[test]
+fn fail_variadic_method_type_mismatch_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_variadic_method_type_mismatch");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "call to 'shift' expects");
+    assert_output_contains(&output, "Builtin(Int)");
+    assert_output_contains(&output, "Builtin(Str)");
+}
+
+#[test]
+fn fail_missing_required_named_arg_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_missing_required_named_arg");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "missing required argument 'right'");
 }
 
 #[test]

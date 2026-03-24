@@ -652,6 +652,52 @@ fn expression_typing_accepts_unpack_for_variadic_free_calls() {
 }
 
 #[test]
+fn expression_typing_accepts_defaulted_variadic_free_calls_with_unpack() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "var nums: seq[int];\n\
+         fun[] score(base: int, step: int = 2, extras: ... int): int = {\n\
+             return base;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return score(1, ...nums);\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_accepts_named_unpack_calls_that_use_defaulted_free_parameters() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "var nums: seq[int];\n\
+         fun[] score(base: int, step: int = 2, extras: ... int): int = {\n\
+             return base;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return score(base = 1, ...nums);\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
 fn expression_typing_types_method_calls_against_explicit_receiver_routines() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
@@ -664,6 +710,60 @@ fn expression_typing_types_method_calls_against_explicit_receiver_routines() {
          };\n\
          fun[] demo(): int = {\n\
              return current.read();\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_accepts_named_unpack_method_calls_that_use_defaulted_parameters() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         var nums: seq[int];\n\
+         fun (Counter)shift(step: int = 2, values: ... int): int = {\n\
+             return step;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.shift(step = 3, ...nums);\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_accepts_defaulted_variadic_method_calls_with_unpack() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         var nums: seq[int];\n\
+         fun (Counter)shift(step: int = 2, values: ... int): int = {\n\
+             return step;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.shift(...nums);\n\
          };\n",
     )]);
 
