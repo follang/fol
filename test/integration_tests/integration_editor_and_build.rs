@@ -692,6 +692,58 @@ fn strip_ansi(value: &str) -> String {
     }
 
     #[test]
+    fn test_build_fixture_mixed_models_workspace_keeps_per_artifact_models() {
+        let root = build_fixture_root("mixed_models_workspace");
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path)
+            .expect("mixed-model fixture should keep a build.fol");
+
+        let request = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let evaluated = evaluate_build_source(&request, &build_path, &source)
+            .expect("mixed-model fixture should evaluate")
+            .expect("mixed-model fixture should produce a graph");
+
+        let artifacts = &evaluated.evaluated.artifacts;
+        let core = artifacts.iter().find(|a| a.name == "corelib").expect("corelib");
+        let alloc = artifacts.iter().find(|a| a.name == "alloclib").expect("alloclib");
+        let tool = artifacts.iter().find(|a| a.name == "tool").expect("tool");
+
+        assert_eq!(
+            core.fol_model,
+            fol_package::build_artifact::BuildArtifactFolModel::Core
+        );
+        assert_eq!(
+            alloc.fol_model,
+            fol_package::build_artifact::BuildArtifactFolModel::Alloc
+        );
+        assert_eq!(
+            tool.fol_model,
+            fol_package::build_artifact::BuildArtifactFolModel::Std
+        );
+
+        let run = run_fol_in_dir(&root, &["code", "run"]);
+        assert!(
+            run.status.success(),
+            "mixed-model fixture should still run its std tool: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&run.stdout).contains("fol_model=std"),
+            "mixed-model routed run should keep the std model summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+    }
+
+    #[test]
     fn test_build_fixtures_core_model_reject_forbidden_surfaces() {
         let cases = [
             (
