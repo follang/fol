@@ -11,6 +11,24 @@ impl BackendTarget {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BackendFolModel {
+    Core,
+    Alloc,
+    #[default]
+    Std,
+}
+
+impl BackendFolModel {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Core => "core",
+            Self::Alloc => "alloc",
+            Self::Std => "std",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum BackendMachineTarget {
     #[default]
@@ -114,6 +132,7 @@ impl BackendMode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BackendConfig {
     pub target: BackendTarget,
+    pub fol_model: BackendFolModel,
     pub machine_target: BackendMachineTarget,
     pub build_profile: BackendBuildProfile,
     pub mode: BackendMode,
@@ -124,6 +143,7 @@ impl Default for BackendConfig {
     fn default() -> Self {
         Self {
             target: BackendTarget::Rust,
+            fol_model: BackendFolModel::Std,
             machine_target: BackendMachineTarget::Host,
             build_profile: BackendBuildProfile::Release,
             mode: BackendMode::BuildArtifact,
@@ -134,7 +154,7 @@ impl Default for BackendConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::BackendMachineTarget;
+    use super::{BackendConfig, BackendFolModel, BackendMachineTarget};
 
     #[test]
     fn machine_target_normalization_keeps_host_aliases_canonical() {
@@ -215,5 +235,13 @@ mod tests {
             None
         );
         assert_eq!(BackendMachineTarget::Host.rust_target_triple(), None);
+    }
+
+    #[test]
+    fn backend_config_defaults_to_std_fol_model() {
+        assert_eq!(BackendConfig::default().fol_model, BackendFolModel::Std);
+        assert_eq!(BackendFolModel::Core.as_str(), "core");
+        assert_eq!(BackendFolModel::Alloc.as_str(), "alloc");
+        assert_eq!(BackendFolModel::Std.as_str(), "std");
     }
 }

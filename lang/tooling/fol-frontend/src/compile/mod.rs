@@ -12,6 +12,7 @@ pub(crate) struct FrontendArtifactExecutionSelection {
     pub package_root: std::path::PathBuf,
     pub label: String,
     pub root_module: Option<String>,
+    pub fol_model: fol_backend::BackendFolModel,
 }
 
 pub fn check_workspace_with_config(
@@ -71,6 +72,7 @@ pub fn build_workspace_for_profile_with_config(
                 .unwrap_or("package")
                 .to_string(),
             root_module: None,
+            fol_model: fol_backend::BackendFolModel::Std,
         })
         .collect::<Vec<_>>();
     build_selected_artifacts_for_profile_with_config(workspace, config, profile, &selections)
@@ -106,7 +108,7 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
         let backend_session = fol_backend::BackendSession::new(lowered);
         let artifact = fol_backend::emit_backend_artifact(
             &backend_session,
-            &backend_config(config, profile),
+            &backend_config(config, profile, selection.fol_model),
             &output_root,
         )
         .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
@@ -406,7 +408,11 @@ pub fn emit_rust_with_config(
             &fol_backend::BackendConfig {
                 mode: fol_backend::BackendMode::EmitSource,
                 keep_build_dir: true,
-                ..backend_config(config, FrontendProfile::Release)
+                ..backend_config(
+                    config,
+                    FrontendProfile::Release,
+                    fol_backend::BackendFolModel::Std,
+                )
             },
             &output_root,
         )
@@ -617,8 +623,10 @@ fn backend_profile(profile: FrontendProfile) -> fol_backend::BackendBuildProfile
 fn backend_config(
     config: &FrontendConfig,
     profile: FrontendProfile,
+    fol_model: fol_backend::BackendFolModel,
 ) -> fol_backend::BackendConfig {
     fol_backend::BackendConfig {
+        fol_model,
         machine_target: config.backend_machine_target(),
         build_profile: backend_profile(profile),
         keep_build_dir: config.keep_build_dir,

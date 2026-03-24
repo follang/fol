@@ -468,6 +468,17 @@ fn artifact_selection(
         package_root: member.member_root.clone(),
         label: artifact.name.clone(),
         root_module: Some(artifact.root_module.clone()),
+        fol_model: match artifact.fol_model {
+            fol_package::build_artifact::BuildArtifactFolModel::Core => {
+                fol_backend::BackendFolModel::Core
+            }
+            fol_package::build_artifact::BuildArtifactFolModel::Alloc => {
+                fol_backend::BackendFolModel::Alloc
+            }
+            fol_package::build_artifact::BuildArtifactFolModel::Std => {
+                fol_backend::BackendFolModel::Std
+            }
+        },
     }
 }
 

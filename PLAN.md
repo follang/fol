@@ -16,7 +16,7 @@ Last updated: 2026-03-24
   library, and test artifacts.
 - [x] Slice 6. Add explicit invalid-`fol_model` diagnostics in build
   evaluation, with negative tests.
-- [ ] Slice 7. Carry `fol_model` into frontend/backend compile configuration and
+- [x] Slice 7. Carry `fol_model` into frontend/backend compile configuration and
   emitted trace metadata.
 - [ ] Slice 8. Add the initial semantic capability model in the compiler and
   wire artifact `fol_model` into it.

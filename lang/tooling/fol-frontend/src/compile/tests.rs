@@ -128,12 +128,31 @@ fn backend_config_threads_frontend_machine_target_selection() {
     };
 
     assert_eq!(
-        backend_config(&default_config, FrontendProfile::Debug).machine_target,
+        backend_config(
+            &default_config,
+            FrontendProfile::Debug,
+            fol_backend::BackendFolModel::Std,
+        )
+        .machine_target,
         BackendMachineTarget::Host
     );
     assert_eq!(
-        backend_config(&cross_config, FrontendProfile::Release).machine_target,
+        backend_config(
+            &cross_config,
+            FrontendProfile::Release,
+            fol_backend::BackendFolModel::Core,
+        )
+        .machine_target,
         BackendMachineTarget::Triple("aarch64-macos-gnu".to_string())
+    );
+    assert_eq!(
+        backend_config(
+            &cross_config,
+            FrontendProfile::Release,
+            fol_backend::BackendFolModel::Core,
+        )
+        .fol_model,
+        fol_backend::BackendFolModel::Core
     );
 }
 
