@@ -3,6 +3,7 @@
 use crate::core::{self, RuntimeTier};
 use std::{
     borrow::Borrow,
+    collections::{BTreeMap, BTreeSet},
     fmt,
     ops::{Add, Deref},
 };
@@ -195,6 +196,98 @@ impl<T> From<FolSeq<T>> for Vec<T> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[repr(transparent)]
+pub struct FolSet<T>(BTreeSet<T>);
+
+impl<T: Ord> FolSet<T> {
+    pub fn new(values: BTreeSet<T>) -> Self {
+        Self(values)
+    }
+
+    pub fn from_items(values: Vec<T>) -> Self {
+        Self(values.into_iter().collect())
+    }
+
+    pub fn as_set(&self) -> &BTreeSet<T> {
+        &self.0
+    }
+
+    pub fn into_set(self) -> BTreeSet<T> {
+        self.0
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn contains(&self, value: &T) -> bool {
+        self.0.contains(value)
+    }
+}
+
+impl<T: Ord> From<BTreeSet<T>> for FolSet<T> {
+    fn from(values: BTreeSet<T>) -> Self {
+        Self::new(values)
+    }
+}
+
+impl<T: Ord> From<FolSet<T>> for BTreeSet<T> {
+    fn from(values: FolSet<T>) -> Self {
+        values.into_set()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[repr(transparent)]
+pub struct FolMap<K, V>(BTreeMap<K, V>);
+
+impl<K: Ord, V> FolMap<K, V> {
+    pub fn new(values: BTreeMap<K, V>) -> Self {
+        Self(values)
+    }
+
+    pub fn from_pairs(values: Vec<(K, V)>) -> Self {
+        Self(values.into_iter().collect())
+    }
+
+    pub fn as_map(&self) -> &BTreeMap<K, V> {
+        &self.0
+    }
+
+    pub fn into_map(self) -> BTreeMap<K, V> {
+        self.0
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn get(&self, key: &K) -> Option<&V> {
+        self.0.get(key)
+    }
+}
+
+impl<K: Ord, V> From<BTreeMap<K, V>> for FolMap<K, V> {
+    fn from(values: BTreeMap<K, V>) -> Self {
+        Self::new(values)
+    }
+}
+
+impl<K: Ord, V> From<FolMap<K, V>> for BTreeMap<K, V> {
+    fn from(values: FolMap<K, V>) -> Self {
+        values.into_map()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -279,5 +372,56 @@ mod tests {
         let values = FolSeq::from_items(vec![3, 1, 2]);
 
         assert_eq!(values.as_slice(), &[3, 1, 2]);
+    }
+
+    #[test]
+    fn fol_set_wraps_deterministic_ordered_storage() {
+        let values = FolSet::new(BTreeSet::from([3, 1, 2]));
+
+        assert_eq!(values.len(), 3);
+        assert!(values.contains(&2));
+        assert_eq!(
+            values.as_set().iter().copied().collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+        assert_eq!(
+            BTreeSet::from(values).into_iter().collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+    }
+
+    #[test]
+    fn fol_set_deterministic_constructor_sorts_and_dedupes() {
+        let values = FolSet::from_items(vec![3, 1, 2, 2]);
+
+        assert_eq!(
+            values.as_set().iter().copied().collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+    }
+
+    #[test]
+    fn fol_map_wraps_deterministic_key_ordered_storage() {
+        let values = FolMap::new(BTreeMap::from([("lin", 2), ("ada", 1)]));
+
+        assert_eq!(values.len(), 2);
+        assert!(!values.is_empty());
+        assert_eq!(values.get(&"ada"), Some(&1));
+        assert_eq!(
+            values.as_map().keys().copied().collect::<Vec<_>>(),
+            vec!["ada", "lin"]
+        );
+        assert_eq!(BTreeMap::from(values).get("lin"), Some(&2));
+    }
+
+    #[test]
+    fn fol_map_deterministic_constructor_orders_keys_and_keeps_last_value() {
+        let values = FolMap::from_pairs(vec![("lin", 2), ("ada", 1), ("lin", 4)]);
+
+        assert_eq!(
+            values.as_map().keys().copied().collect::<Vec<_>>(),
+            vec!["ada", "lin"]
+        );
+        assert_eq!(values.get(&"lin"), Some(&4));
     }
 }
