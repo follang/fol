@@ -8,6 +8,28 @@ use fol_resolver::{resolve_package_workspace, SymbolKind};
 use fol_stream::FileStream;
 use fol_typecheck::Typechecker;
 
+fn int_constants_for_args(
+    routine: &crate::LoweredRoutine,
+    args: &[crate::LoweredLocalId],
+) -> Vec<i64> {
+    args.iter()
+        .map(|local_id| {
+            routine
+                .instructions
+                .iter()
+                .find_map(|instr| match (&instr.result, &instr.kind) {
+                    (Some(result), LoweredInstrKind::Const(LoweredOperand::Int(value)))
+                        if result == local_id =>
+                    {
+                        Some(*value)
+                    }
+                    _ => None,
+                })
+                .expect("call args should lower from integer constants in this fixture")
+        })
+        .collect()
+}
+
 #[test]
 fn routine_body_lowering_keeps_local_initializers_and_final_expression_results() {
     let fixture = super::safe_temp_dir().join(format!(
@@ -261,29 +283,47 @@ fn method_call_lowering_reorders_named_arguments_after_the_receiver() {
 
     assert!(call_result.is_some(), "expression-style method call should keep a result local");
     assert_eq!(call_args.len(), 3, "method call should lower receiver plus two explicit args");
-
-    let lowered_arg_constants = call_args[1..]
-        .iter()
-        .map(|local_id| {
-            routine
-                .instructions
-                .iter()
-                .find_map(|instr| match (&instr.result, &instr.kind) {
-                    (Some(result), LoweredInstrKind::Const(LoweredOperand::Int(value)))
-                        if result == local_id =>
-                    {
-                        Some(*value)
-                    }
-                    _ => None,
-                })
-                .expect("named method args should lower from integer constants")
-        })
-        .collect::<Vec<_>>();
+    let lowered_arg_constants = int_constants_for_args(routine, &call_args[1..]);
 
     assert_eq!(
         lowered_arg_constants,
         vec![1, 2],
         "named method arguments should lower in declared parameter order after the receiver"
+    );
+}
+
+#[test]
+fn free_call_lowering_reorders_named_arguments_in_declared_parameter_order() {
+    let workspace = lower_fixture_workspace(
+        "fun[] pair(left: int, right: int): int = {\n\
+             return left;\n\
+         };\n\
+         fun[] main(): int = {\n\
+             return pair(right = 2, left = 1);\n\
+         };",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let (call_result, call_args) = routine
+        .instructions
+        .iter()
+        .find_map(|instr| match &instr.kind {
+            LoweredInstrKind::Call { args, .. } => Some((instr.result, args.clone())),
+            _ => None,
+        })
+        .expect("method body should contain a lowered call");
+
+    assert!(call_result.is_some(), "expression-style free call should keep a result local");
+    assert_eq!(call_args.len(), 2, "free named call should lower both declared params");
+    assert_eq!(
+        int_constants_for_args(routine, &call_args),
+        vec![1, 2],
+        "named free-call arguments should lower in declared parameter order"
     );
 }
 
@@ -315,23 +355,7 @@ fn free_call_lowering_synthesizes_default_arguments() {
 
     assert_eq!(call_args.len(), 2, "defaulted free call should lower a full argument list");
 
-    let lowered_arg_constants = call_args
-        .iter()
-        .map(|local_id| {
-            routine
-                .instructions
-                .iter()
-                .find_map(|instr| match (&instr.result, &instr.kind) {
-                    (Some(result), LoweredInstrKind::Const(LoweredOperand::Int(value)))
-                        if result == local_id =>
-                    {
-                        Some(*value)
-                    }
-                    _ => None,
-                })
-                .expect("defaulted free-call args should lower from integer constants")
-        })
-        .collect::<Vec<_>>();
+    let lowered_arg_constants = int_constants_for_args(routine, &call_args);
 
     assert_eq!(
         lowered_arg_constants,
@@ -369,23 +393,7 @@ fn method_call_lowering_synthesizes_default_arguments_after_the_receiver() {
 
     assert_eq!(call_args.len(), 3, "method default call should lower receiver plus two explicit args");
 
-    let lowered_arg_constants = call_args[1..]
-        .iter()
-        .map(|local_id| {
-            routine
-                .instructions
-                .iter()
-                .find_map(|instr| match (&instr.result, &instr.kind) {
-                    (Some(result), LoweredInstrKind::Const(LoweredOperand::Int(value)))
-                        if result == local_id =>
-                    {
-                        Some(*value)
-                    }
-                    _ => None,
-                })
-                .expect("defaulted method-call args should lower from integer constants")
-        })
-        .collect::<Vec<_>>();
+    let lowered_arg_constants = int_constants_for_args(routine, &call_args[1..]);
 
     assert_eq!(
         lowered_arg_constants,
@@ -554,6 +562,7 @@ fn method_call_lowering_packs_variadic_arguments_after_the_receiver() {
 
     assert_eq!(packed_sequence, (crate::LoweredLinearKind::Sequence, 3));
 }
+
 
 #[test]
 fn method_call_lowering_passes_named_unpack_sequences_after_the_receiver() {

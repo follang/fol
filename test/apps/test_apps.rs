@@ -269,6 +269,30 @@ fn call_binding_v1_showcase_example_compiles_and_runs() {
 }
 
 #[test]
+fn call_binding_stress_fixture_compiles_and_runs() {
+    let fixture = fixture_root("call_binding_stress");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+    assert_output_contains(&run_output, "50");
+}
+
+#[test]
+fn method_call_binding_stress_fixture_compiles_and_runs() {
+    let fixture = fixture_root("method_call_binding_stress");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+    assert_output_contains(&run_output, "47");
+}
+
+#[test]
 fn defer_v1_showcase_example_compiles_and_runs() {
     let entry = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("test/apps/showcases/defer_v1_showcase/app");
@@ -805,6 +829,18 @@ fn loc_call_niceties_fixture_compiles_and_runs() {
 }
 
 #[test]
+fn loc_call_binding_stress_fixture_compiles_and_runs() {
+    let fixture = fixture_root("loc_call_binding_stress").join("app");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+    assert_output_contains(&run_output, "55");
+}
+
+#[test]
 fn container_linear_fixture_compiles_and_runs() {
     let fixture = fixture_root("container_linear");
 
@@ -1173,10 +1209,24 @@ fn fail_unknown_named_method_fixture_rejects_cleanly() {
 }
 
 #[test]
+fn fail_unknown_named_free_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_unknown_named_free");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "does not have a parameter named 'missing'");
+}
+
+#[test]
 fn fail_duplicate_named_free_fixture_rejects_cleanly() {
     let fixture = fixture_root("fail_duplicate_named_free");
     let output = compile_app_expect_failure(&fixture);
     assert_output_contains(&output, "supplies parameter 'left' more than once");
+}
+
+#[test]
+fn fail_duplicate_named_method_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_duplicate_named_method");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "supplies parameter 'by' more than once");
 }
 
 #[test]
@@ -1186,6 +1236,13 @@ fn fail_unpack_non_sequence_fixture_rejects_cleanly() {
     assert_output_contains(&output, "call to 'sum' expects");
     assert_output_contains(&output, "Sequence");
     assert_output_contains(&output, "Builtin(Int)");
+}
+
+#[test]
+fn fail_unpack_non_variadic_free_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_unpack_non_variadic_free");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "call-site unpack is only supported for variadic calls in V1");
 }
 
 #[test]
@@ -1212,10 +1269,24 @@ fn fail_double_unpack_free_fixture_rejects_cleanly() {
 }
 
 #[test]
+fn fail_double_unpack_method_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_double_unpack_method");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "call-site unpack cannot be combined with other variadic arguments in V1");
+}
+
+#[test]
 fn fail_unpack_non_variadic_method_fixture_rejects_cleanly() {
     let fixture = fixture_root("fail_unpack_non_variadic_method");
     let output = compile_app_expect_failure(&fixture);
     assert_output_contains(&output, "call-site unpack is only supported for variadic calls in V1");
+}
+
+#[test]
+fn fail_missing_required_method_arg_fixture_rejects_cleanly() {
+    let fixture = fixture_root("fail_missing_required_method_arg");
+    let output = compile_app_expect_failure(&fixture);
+    assert_output_contains(&output, "missing required argument 'by'");
 }
 
 #[test]

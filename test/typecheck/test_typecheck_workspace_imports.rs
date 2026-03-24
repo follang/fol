@@ -520,6 +520,137 @@ fn workspace_expression_typing_accepts_imported_default_parameters_for_free_call
 }
 
 #[test]
+fn workspace_expression_typing_rejects_unknown_named_imported_free_calls() {
+    let root = unique_temp_dir("workspace_unknown_named_imported_free_call");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "fun[exp] pair(left: int, right: int): int = {\n",
+                    "    return left;\n",
+                    "};\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return pair(missing = 1, left = 2);\n",
+                    "};\n",
+                ),
+            ),
+        ],
+    );
+
+    let errors =
+        typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+            .expect_err("Workspace entry typing should reject unknown named imported free-call args");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("does not have a parameter named 'missing'")
+        }),
+        "Expected an unknown named imported free-call diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn workspace_expression_typing_rejects_duplicate_named_imported_method_calls() {
+    let root = unique_temp_dir("workspace_duplicate_named_imported_method_call");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] Counter: rec = {\n",
+                    "    value: int;\n",
+                    "};\n",
+                    "var[exp] current: Counter;\n",
+                    "fun[exp] (Counter)shift(by: int, step: int): int = {\n",
+                    "    return by;\n",
+                    "};\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return current.shift(by = 1, by = 2);\n",
+                    "};\n",
+                ),
+            ),
+        ],
+    );
+
+    let errors =
+        typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+            .expect_err("Workspace entry typing should reject duplicate named imported method args");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("supplies parameter 'by' more than once")
+        }),
+        "Expected a duplicate named imported method-call diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn workspace_expression_typing_rejects_unpack_for_imported_non_variadic_free_calls() {
+    let root = unique_temp_dir("workspace_unpack_non_variadic_imported_free_call");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "var[exp] nums: seq[int];\n",
+                    "fun[exp] pair(left: int): int = {\n",
+                    "    return left;\n",
+                    "};\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return pair(...nums);\n",
+                    "};\n",
+                ),
+            ),
+        ],
+    );
+
+    let errors =
+        typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+            .expect_err("Workspace entry typing should reject unpack on imported non-variadic free calls");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("call-site unpack is only supported for variadic calls in V1")
+        }),
+        "Expected an imported non-variadic unpack diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn workspace_expression_typing_types_qualified_imported_method_calls() {
     let root = unique_temp_dir("workspace_qualified_imported_method_calls");
     create_dir_all(&root).expect("Fixture root should be creatable");

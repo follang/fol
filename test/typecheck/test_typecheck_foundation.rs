@@ -665,6 +665,58 @@ fn expression_typing_rejects_duplicate_named_arguments_for_free_calls() {
 }
 
 #[test]
+fn expression_typing_rejects_missing_required_arguments_for_method_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         fun (Counter)shift(by: int, step: int = 2): int = {\n\
+             return by;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.shift(step = 3);\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains("missing required argument 'by'")
+        }),
+        "Expected a missing required method-argument diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn expression_typing_rejects_duplicate_named_arguments_for_method_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         fun (Counter)shift(by: int, step: int): int = {\n\
+             return by;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.shift(by = 1, by = 2);\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("supplies parameter 'by' more than once")
+        }),
+        "Expected a duplicate named-argument diagnostic for method call, got: {errors:?}"
+    );
+}
+
+#[test]
 fn expression_typing_accepts_default_parameters_for_free_calls() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
