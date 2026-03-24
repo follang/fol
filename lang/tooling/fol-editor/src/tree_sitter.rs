@@ -12,6 +12,7 @@ pub struct TreeSitterQuerySnapshot {
 
 const GRAMMAR_SOURCE: &str = include_str!("../tree-sitter/grammar.js");
 const TREE_SITTER_CONFIG: &str = include_str!("../tree-sitter/tree-sitter.json");
+const HIGHLIGHTS_QUERY_BASE: &str = include_str!("../queries/fol/highlights.base.scm");
 const HIGHLIGHTS_QUERY: &str = include_str!("../queries/fol/highlights.scm");
 const LOCALS_QUERY: &str = include_str!("../queries/fol/locals.scm");
 const SYMBOLS_QUERY: &str = include_str!("../queries/fol/symbols.scm");
@@ -84,7 +85,7 @@ mod tests {
     use super::{
         fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
         fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query,
-        fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
+        fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query, HIGHLIGHTS_QUERY_BASE,
     };
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -264,6 +265,22 @@ mod tests {
             assert!(
                 query.contains(needle),
                 "missing highlight capture: {needle}"
+            );
+        }
+    }
+
+    #[test]
+    fn highlight_query_base_template_keeps_generation_placeholders() {
+        for needle in [
+            "__FOL_SOURCE_KIND_LINES__",
+            "__FOL_CONTAINER_TYPE_LINES__",
+            "__FOL_SHELL_TYPE_LINES__",
+            "__FOL_BUILTIN_TYPE_REGEX__",
+            "__FOL_DOT_INTRINSIC_REGEX__",
+        ] {
+            assert!(
+                HIGHLIGHTS_QUERY_BASE.contains(needle),
+                "base highlight template is missing placeholder: {needle}"
             );
         }
     }

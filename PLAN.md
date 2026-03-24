@@ -217,7 +217,7 @@ Reduce manual drift in tree-sitter queries without pretending grammar structure
 
 ### Slice Tracker
 
-- [ ] Slice 15. Split query content into:
+- [x] Slice 15. Split query content into:
   - hand-written structural query bodies
   - generated/compiler-derived regex fragments for names and symbol families
 - [ ] Slice 16. Add a small generation step or checked-in generator that writes
