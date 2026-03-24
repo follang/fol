@@ -126,6 +126,7 @@ fn semantic_type_table_covers_declared_and_structural_shapes() {
     fields.insert("value".to_string(), alias_id);
     let record = table.intern(CheckedType::Record { fields });
     let routine = table.intern(CheckedType::Routine(RoutineType {
+        param_names: vec!["value".to_string()],
         params: vec![alias_id],
         return_type: Some(int_id),
         error_type: None,
@@ -186,6 +187,7 @@ fn render_type_handles_routines() {
     let int_id = table.intern_builtin(BuiltinType::Int);
     let str_id = table.intern_builtin(BuiltinType::Str);
     let routine_id = table.intern(CheckedType::Routine(RoutineType {
+        param_names: vec!["left".to_string(), "right".to_string()],
         params: vec![int_id, str_id],
         return_type: Some(int_id),
         error_type: None,
@@ -485,6 +487,74 @@ fn expression_typing_rejects_free_call_arity_mismatches() {
                 && error.message().contains("expects 1 args but got 0")
         }),
         "Expected an arity diagnostic for free call mismatch, got: {errors:?}"
+    );
+}
+
+#[test]
+fn expression_typing_accepts_named_arguments_for_free_calls() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] pair(left: int, right: int): int = {\n\
+             return left;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return pair(right = 2, left = 1);\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_rejects_unknown_named_arguments_for_free_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] pair(left: int, right: int): int = {\n\
+             return left;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return pair(other = 1, left = 2);\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("does not have a parameter named 'other'")
+        }),
+        "Expected an unknown named-argument diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn expression_typing_rejects_duplicate_named_arguments_for_free_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] pair(left: int, right: int): int = {\n\
+             return left;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return pair(left = 1, left = 2);\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("supplies parameter 'left' more than once")
+        }),
+        "Expected a duplicate named-argument diagnostic, got: {errors:?}"
     );
 }
 

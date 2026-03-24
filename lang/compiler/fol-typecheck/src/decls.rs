@@ -446,6 +446,7 @@ fn lower_named_routine_signature(
     let routine_type = typed
         .type_table_mut()
         .intern(CheckedType::Routine(RoutineType {
+            param_names: params.iter().map(|param| param.name.clone()).collect(),
             params: lowered_params,
             return_type: lowered_return,
             error_type: lowered_error,
@@ -576,6 +577,7 @@ pub(crate) fn lower_type(
             let lowered_return = lower_type(typed, resolved, scope_id, return_type)?;
             Ok(typed.type_table_mut().intern(CheckedType::Routine(
                 crate::types::RoutineType {
+                    param_names: vec![String::new(); lowered_params.len()],
                     params: lowered_params,
                     return_type: Some(lowered_return),
                     error_type: None,

@@ -48,6 +48,7 @@ pub(crate) fn type_function_call(
         args,
         name,
         origin_for(resolved, syntax_id),
+        true,
     )?;
     let call_effect = merge_recoverable_effects(
         typed,
@@ -616,6 +617,7 @@ pub(crate) fn type_qualified_function_call(
         args,
         &path.joined(),
         origin_for(resolved, syntax_id),
+        true,
     )?;
     let call_effect = merge_recoverable_effects(
         typed,
@@ -673,6 +675,7 @@ pub(crate) fn type_method_call(
         args,
         method,
         origin.clone(),
+        false,
     )?;
     let merged = merge_recoverable_effects(
         typed,
@@ -836,26 +839,12 @@ pub(crate) fn check_call_arguments(
     args: &[AstNode],
     callee: &str,
     origin: Option<SyntaxOrigin>,
+    allow_named: bool,
 ) -> Result<Option<RecoverableCallEffect>, TypecheckError> {
-    if signature.params.len() != args.len() {
-        return Err(TypecheckError::with_origin(
-            TypecheckErrorKind::InvalidInput,
-            format!(
-                "call to '{callee}' expects {} args but got {}",
-                signature.params.len(),
-                args.len()
-            ),
-            origin.unwrap_or(SyntaxOrigin {
-                file: None,
-                line: 1,
-                column: 1,
-                length: callee.len(),
-            }),
-        ));
-    }
+    let ordered_args = bind_call_arguments(signature, args, callee, origin.clone(), allow_named)?;
 
     let mut arg_effects = Vec::new();
-    for (expected, arg) in signature.params.iter().zip(args) {
+    for (expected, arg) in signature.params.iter().zip(ordered_args.iter()) {
         let actual_expr =
             type_node_with_expectation(typed, resolved, context, arg, Some(*expected)).map_err(
                 |error| {
@@ -892,6 +881,150 @@ pub(crate) fn check_call_arguments(
     }
 
     merge_recoverable_effects(typed, origin, "call arguments", arg_effects)
+}
+
+fn bind_call_arguments<'a>(
+    signature: &RoutineType,
+    args: &'a [AstNode],
+    callee: &str,
+    origin: Option<SyntaxOrigin>,
+    allow_named: bool,
+) -> Result<Vec<&'a AstNode>, TypecheckError> {
+    if !allow_named {
+        if let Some(named_arg) = args.iter().find(|arg| matches!(arg, AstNode::NamedArgument { .. })) {
+            return Err(TypecheckError::with_origin(
+                TypecheckErrorKind::InvalidInput,
+                "named arguments are not yet supported for method calls in V1",
+                origin.unwrap_or(SyntaxOrigin {
+                    file: None,
+                    line: 1,
+                    column: 1,
+                    length: match named_arg {
+                        AstNode::NamedArgument { name, .. } => name.len(),
+                        _ => callee.len(),
+                    },
+                }),
+            ));
+        }
+    }
+
+    if signature.params.len() != args.len() && !args.iter().any(|arg| matches!(arg, AstNode::NamedArgument { .. })) {
+        return Err(call_arity_error(signature.params.len(), args.len(), callee, origin));
+    }
+
+    let mut ordered_args = vec![None; signature.params.len()];
+    let mut next_positional = 0usize;
+    let mut seen_named = false;
+
+    for arg in args {
+        match arg {
+            AstNode::NamedArgument { name, value } => {
+                if !allow_named {
+                    unreachable!("named arguments should have returned above");
+                }
+                seen_named = true;
+                let Some(index) = signature.param_names.iter().position(|param| param == name) else {
+                    return Err(TypecheckError::with_origin(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("call to '{callee}' does not have a parameter named '{name}'"),
+                        origin.clone().unwrap_or(SyntaxOrigin {
+                            file: None,
+                            line: 1,
+                            column: 1,
+                            length: name.len(),
+                        }),
+                    ));
+                };
+                if ordered_args[index].is_some() {
+                    return Err(TypecheckError::with_origin(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("call to '{callee}' supplies parameter '{name}' more than once"),
+                        origin.clone().unwrap_or(SyntaxOrigin {
+                            file: None,
+                            line: 1,
+                            column: 1,
+                            length: name.len(),
+                        }),
+                    ));
+                }
+                ordered_args[index] = Some(value.as_ref());
+            }
+            AstNode::Unpack { .. } => {
+                return Err(TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    "call-site unpack is not yet supported in V1",
+                    origin.clone().unwrap_or(SyntaxOrigin {
+                        file: None,
+                        line: 1,
+                        column: 1,
+                        length: 3,
+                    }),
+                ));
+            }
+            _ => {
+                if seen_named {
+                    return Err(TypecheckError::with_origin(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("call to '{callee}' cannot place positional arguments after named arguments"),
+                        origin.clone().unwrap_or(SyntaxOrigin {
+                            file: None,
+                            line: 1,
+                            column: 1,
+                            length: callee.len(),
+                        }),
+                    ));
+                }
+                if next_positional >= ordered_args.len() {
+                    return Err(call_arity_error(signature.params.len(), args.len(), callee, origin));
+                }
+                ordered_args[next_positional] = Some(arg);
+                next_positional += 1;
+            }
+        }
+    }
+
+    if ordered_args.iter().any(Option::is_none) {
+        let missing_index = ordered_args
+            .iter()
+            .position(Option::is_none)
+            .expect("missing slot should exist");
+        let missing_name = signature
+            .param_names
+            .get(missing_index)
+            .filter(|name| !name.is_empty())
+            .cloned()
+            .unwrap_or_else(|| format!("#{missing_index}"));
+        return Err(TypecheckError::with_origin(
+            TypecheckErrorKind::InvalidInput,
+            format!("call to '{callee}' is missing required argument '{missing_name}'"),
+            origin.unwrap_or(SyntaxOrigin {
+                file: None,
+                line: 1,
+                column: 1,
+                length: callee.len(),
+            }),
+        ));
+    }
+
+    Ok(ordered_args.into_iter().map(|arg| arg.expect("all args should be bound")).collect())
+}
+
+fn call_arity_error(
+    expected: usize,
+    actual: usize,
+    callee: &str,
+    origin: Option<SyntaxOrigin>,
+) -> TypecheckError {
+    TypecheckError::with_origin(
+        TypecheckErrorKind::InvalidInput,
+        format!("call to '{callee}' expects {expected} args but got {actual}"),
+        origin.unwrap_or(SyntaxOrigin {
+            file: None,
+            line: 1,
+            column: 1,
+            length: callee.len(),
+        }),
+    )
 }
 
 pub(crate) fn type_for_reference(

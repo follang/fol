@@ -11,6 +11,80 @@ use fol_parser::ast::AstNode;
 use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
 
+fn bind_lowered_call_arguments<'a>(
+    args: &'a [AstNode],
+    param_names: &[String],
+    display_name: &str,
+) -> Result<Vec<&'a AstNode>, LoweringError> {
+    let mut ordered_args = vec![None; param_names.len()];
+    let mut next_positional = 0usize;
+    let mut seen_named = false;
+
+    for arg in args {
+        match arg {
+            AstNode::NamedArgument { name, value } => {
+                seen_named = true;
+                let Some(index) = param_names.iter().position(|param| param == name) else {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("call to '{display_name}' does not have a parameter named '{name}'"),
+                    ));
+                };
+                if ordered_args[index].is_some() {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("call to '{display_name}' supplies parameter '{name}' more than once"),
+                    ));
+                }
+                ordered_args[index] = Some(value.as_ref());
+            }
+            AstNode::Unpack { .. } => {
+                return Err(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    "call-site unpack is not yet supported in V1",
+                ));
+            }
+            _ => {
+                if seen_named {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("call to '{display_name}' cannot place positional arguments after named arguments"),
+                    ));
+                }
+                if next_positional >= ordered_args.len() {
+                    return Err(LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!(
+                            "call to '{display_name}' expects {} args but got {}",
+                            param_names.len(),
+                            args.len()
+                        ),
+                    ));
+                }
+                ordered_args[next_positional] = Some(arg);
+                next_positional += 1;
+            }
+        }
+    }
+
+    if ordered_args.iter().any(Option::is_none) {
+        let missing_index = ordered_args
+            .iter()
+            .position(Option::is_none)
+            .expect("missing slot should exist");
+        let missing_name = param_names
+            .get(missing_index)
+            .cloned()
+            .unwrap_or_else(|| format!("#{missing_index}"));
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("call to '{display_name}' is missing required argument '{missing_name}'"),
+        ));
+    }
+
+    Ok(ordered_args.into_iter().map(|arg| arg.expect("all args should be bound")).collect())
+}
+
 pub(crate) fn lower_dot_intrinsic_call(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
@@ -644,7 +718,16 @@ pub(crate) fn lower_function_call(
             )
         })?
         .to_vec();
-    let lowered_args = args
+    let param_names = decl_index
+        .routine_param_names(callee)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("call target '{display_name}' does not retain lowered parameter names"),
+            )
+        })?;
+    let ordered_args = bind_lowered_call_arguments(args, param_names, display_name)?;
+    let lowered_args = ordered_args
         .iter()
         .enumerate()
         .map(|(index, arg)| {
@@ -719,7 +802,16 @@ pub(crate) fn lower_statement_free_call(
             )
         })?
         .to_vec();
-    let lowered_args = args
+    let param_names = decl_index
+        .routine_param_names(callee)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("call target '{display_name}' does not retain lowered parameter names"),
+            )
+        })?;
+    let ordered_args = bind_lowered_call_arguments(args, param_names, display_name)?;
+    let lowered_args = ordered_args
         .iter()
         .enumerate()
         .map(|(index, arg)| {

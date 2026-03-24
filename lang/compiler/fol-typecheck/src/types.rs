@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{cmp::Ordering, collections::BTreeMap, hash::{Hash, Hasher}};
 
 use fol_resolver::SymbolId;
 
@@ -37,11 +37,46 @@ pub enum DeclaredTypeKind {
     GenericParameter,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone)]
 pub struct RoutineType {
+    pub param_names: Vec<String>,
     pub params: Vec<CheckedTypeId>,
     pub return_type: Option<CheckedTypeId>,
     pub error_type: Option<CheckedTypeId>,
+}
+
+impl PartialEq for RoutineType {
+    fn eq(&self, other: &Self) -> bool {
+        self.params == other.params
+            && self.return_type == other.return_type
+            && self.error_type == other.error_type
+    }
+}
+
+impl Eq for RoutineType {}
+
+impl PartialOrd for RoutineType {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for RoutineType {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (&self.params, self.return_type, self.error_type).cmp(&(
+            &other.params,
+            other.return_type,
+            other.error_type,
+        ))
+    }
+}
+
+impl Hash for RoutineType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.params.hash(state);
+        self.return_type.hash(state);
+        self.error_type.hash(state);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -228,6 +263,7 @@ mod tests {
         });
         let record_second = table.intern(CheckedType::Record { fields });
         let routine = table.intern(CheckedType::Routine(RoutineType {
+            param_names: vec!["point".to_string(), "count".to_string()],
             params: vec![declared, int_id],
             return_type: Some(declared),
             error_type: None,
@@ -289,6 +325,7 @@ mod tests {
         let int_id = table.intern_builtin(BuiltinType::Int);
         let str_id = table.intern_builtin(BuiltinType::Str);
         let routine_id = table.intern(CheckedType::Routine(RoutineType {
+            param_names: vec!["left".to_string(), "right".to_string()],
             params: vec![int_id, str_id],
             return_type: Some(int_id),
             error_type: None,

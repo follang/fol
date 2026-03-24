@@ -30,6 +30,7 @@ pub(crate) struct WorkspaceDeclIndex {
     globals: BTreeMap<(PackageIdentity, SymbolId), LoweredGlobalId>,
     routines: BTreeMap<(PackageIdentity, SymbolId), LoweredRoutineId>,
     routine_params: BTreeMap<LoweredRoutineId, Vec<LoweredTypeId>>,
+    routine_param_names: BTreeMap<LoweredRoutineId, Vec<String>>,
     entry_variants: BTreeMap<(PackageIdentity, SymbolId, String), EntryVariantLowering>,
 }
 
@@ -68,7 +69,13 @@ impl WorkspaceDeclIndex {
                     .iter()
                     .filter_map(|param| routine.locals.get(*param).and_then(|local| local.type_id))
                     .collect::<Vec<_>>();
+                let param_names = routine
+                    .params
+                    .iter()
+                    .filter_map(|param| routine.locals.get(*param).and_then(|local| local.name.clone()))
+                    .collect::<Vec<_>>();
                 index.routine_params.insert(routine.id, params);
+                index.routine_param_names.insert(routine.id, param_names);
             }
         }
         index
@@ -93,7 +100,13 @@ impl WorkspaceDeclIndex {
                 .iter()
                 .filter_map(|param| routine.locals.get(*param).and_then(|local| local.type_id))
                 .collect::<Vec<_>>();
+            let param_names = routine
+                .params
+                .iter()
+                .filter_map(|param| routine.locals.get(*param).and_then(|local| local.name.clone()))
+                .collect::<Vec<_>>();
             self.routine_params.insert(routine.id, params);
+            self.routine_param_names.insert(routine.id, param_names);
         }
         self.extend_entry_variants(typed_package, package);
     }
@@ -119,6 +132,10 @@ impl WorkspaceDeclIndex {
         routine_id: LoweredRoutineId,
     ) -> Option<&[LoweredTypeId]> {
         self.routine_params.get(&routine_id).map(Vec::as_slice)
+    }
+
+    pub(crate) fn routine_param_names(&self, routine_id: LoweredRoutineId) -> Option<&[String]> {
+        self.routine_param_names.get(&routine_id).map(Vec::as_slice)
     }
 
     pub(crate) fn entry_variant(

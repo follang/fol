@@ -418,6 +418,7 @@ pub(crate) fn type_node_with_expectation(
                 }
             }
             let routine_type_id = typed.type_table_mut().intern(CheckedType::Routine(RoutineType {
+                param_names: vec![String::new(); lowered_params.len()],
                 params: lowered_params,
                 return_type: expected_return_type,
                 error_type: expected_error_type,
@@ -576,6 +577,7 @@ pub(crate) fn type_node_with_expectation(
                 args,
                 "<invoke>",
                 node_origin(resolved, node),
+                false,
             )?;
             let call_effect = helpers::merge_recoverable_effects(
                 typed,

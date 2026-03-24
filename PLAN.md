@@ -44,7 +44,7 @@ Secondary follow-up niceties, only after the above are stable:
 - [x] Slice 4: clean `book/src/200_expressions/300_exp/400_access.md`, `book/src/500_items/400_standards.md`, and `book/src/500_items/500_generics.md` of conflicting OOP/dispatch wording
 - [x] Slice 5: harden record-method semantic coverage for local receiver-qualified routines
 - [x] Slice 6: harden record-method semantic coverage for imported and qualified receiver-qualified routines plus diagnostics
-- [ ] Slice 7: implement named arguments for free calls
+- [x] Slice 7: implement named arguments for free calls
 - [ ] Slice 8: implement named arguments for method calls
 - [ ] Slice 9: implement default parameters for free calls
 - [ ] Slice 10: implement default parameters for method calls
