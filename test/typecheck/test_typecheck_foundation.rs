@@ -540,6 +540,105 @@ fn expression_typing_rejects_method_call_arity_mismatches() {
 }
 
 #[test]
+fn expression_typing_selects_method_overloads_by_record_receiver_type() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         typ Meter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current_counter: Counter;\n\
+         var current_meter: Meter;\n\
+         fun (Counter)read(): int = {\n\
+             return 1;\n\
+         };\n\
+         fun (Meter)read(): bol = {\n\
+             return true;\n\
+         };\n\
+         fun[] read_counter(): int = {\n\
+             return current_counter.read();\n\
+         };\n\
+         fun[] read_meter(): bol = {\n\
+             return current_meter.read();\n\
+         };\n",
+    )]);
+
+    let counter_syntax_id = find_named_routine_syntax_id(&typed, "read_counter");
+    let meter_syntax_id = find_named_routine_syntax_id(&typed, "read_meter");
+
+    assert_eq!(
+        typed
+            .typed_node(counter_syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+    assert_eq!(
+        typed
+            .typed_node(meter_syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Bool))
+    );
+}
+
+#[test]
+fn expression_typing_rejects_missing_methods_on_record_receivers() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         fun[] demo(): int = {\n\
+             return current.missing();\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("method 'missing' is not available for the receiver type in V1")
+        }),
+        "Expected a missing-method diagnostic for record receiver, got: {errors:?}"
+    );
+}
+
+#[test]
+fn expression_typing_rejects_methods_for_the_wrong_record_receiver_type() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         typ Meter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         fun (Meter)read(): int = {\n\
+             return 1;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.read();\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("method 'read' is not available for the receiver type in V1")
+        }),
+        "Expected a wrong-receiver method diagnostic for record receiver, got: {errors:?}"
+    );
+}
+
+#[test]
 fn expression_typing_types_field_access_against_named_record_receivers() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",

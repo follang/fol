@@ -413,7 +413,7 @@ fn lower_named_routine_signature(
     return_type: Option<&FolType>,
     error_type: Option<&FolType>,
 ) -> Result<ScopeId, TypecheckError> {
-    let symbol_id = find_symbol_id(resolved, source_unit_id, &[SymbolKind::Routine], name)?;
+    let symbol_id = find_routine_symbol_id(resolved, source_unit_id, name, receiver_type, params)?;
     let signature_scope = syntax_id
         .and_then(|id| resolved.scope_for_syntax(id))
         .or_else(|| resolved.symbol(symbol_id).map(|symbol| symbol.scope))
@@ -672,6 +672,43 @@ fn find_symbol_id(
         })
 }
 
+fn find_routine_symbol_id(
+    resolved: &ResolvedProgram,
+    source_unit_id: SourceUnitId,
+    name: &str,
+    receiver_type: Option<&FolType>,
+    params: &[Parameter],
+) -> Result<SymbolId, TypecheckError> {
+    let canonical_name = canonical_identifier_key(name);
+    let receiver = receiver_type
+        .map(routine_type_key)
+        .unwrap_or_else(|| "_".to_string());
+    let params = params
+        .iter()
+        .map(|param| routine_type_key(&param.param_type))
+        .collect::<Vec<_>>()
+        .join(",");
+    let duplicate_key = format!("routine#{canonical_name}#{receiver}#{params}");
+
+    resolved
+        .symbols
+        .iter_with_ids()
+        .find(|(_, symbol)| {
+            symbol.source_unit == source_unit_id
+                && symbol.kind == SymbolKind::Routine
+                && symbol.duplicate_key == duplicate_key
+        })
+        .map(|(symbol_id, _)| symbol_id)
+        .ok_or_else(|| {
+            internal_error(
+                format!(
+                    "resolved routine symbol '{name}' with duplicate key '{duplicate_key}' is missing from typed lowering"
+                ),
+                None,
+            )
+        })
+}
+
 pub(crate) fn find_symbol_id_in_scope(
     resolved: &ResolvedProgram,
     source_unit_id: SourceUnitId,
@@ -698,6 +735,35 @@ pub(crate) fn find_symbol_id_in_scope(
                 None,
             )
         })
+}
+
+fn routine_type_key(typ: &FolType) -> String {
+    match typ {
+        FolType::Named { name, .. } => canonical_identifier_key(name),
+        FolType::QualifiedNamed { path } => path
+            .segments
+            .iter()
+            .map(|segment| canonical_identifier_key(segment))
+            .collect::<Vec<_>>()
+            .join("::"),
+        other => other
+            .named_text()
+            .map(|text| canonical_identifier_key(&text))
+            .unwrap_or_else(|| format!("{other:?}")),
+    }
+}
+
+fn canonical_identifier_key(name: &str) -> String {
+    name.chars()
+        .filter(|ch| *ch != '_')
+        .map(|ch| {
+            if ch.is_ascii() {
+                ch.to_ascii_lowercase()
+            } else {
+                ch
+            }
+        })
+        .collect()
 }
 
 pub(crate) fn record_symbol_type(
