@@ -679,6 +679,132 @@ use fol_editor::{LspDefinitionParams, LspHover, LspHoverParams, LspLocation};
     }
 
     #[test]
+    fn test_cli_code_build_keeps_core_string_boundary_diagnostic() {
+        let temp_root = unique_temp_root("build_core_string_boundary");
+        let root = temp_root.join("demo");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "        fol_model = \"core\",\n",
+                "    });\n",
+                "    graph.install(app);\n",
+                "    return graph\n",
+                "};\n",
+            ),
+        )
+        .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): str = {\n    return \"ok\";\n};\n",
+        )
+        .expect("should write app source");
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(!output.status.success(), "core string boundary should fail");
+        assert!(
+            stderr.contains("str requires heap support and is unavailable in 'fol_model = core'"),
+            "CLI should preserve the core string boundary wording: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_code_build_keeps_alloc_echo_boundary_diagnostic() {
+        let temp_root = unique_temp_root("build_alloc_echo_boundary");
+        let root = temp_root.join("demo");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "        fol_model = \"alloc\",\n",
+                "    });\n",
+                "    graph.install(app);\n",
+                "    return graph\n",
+                "};\n",
+            ),
+        )
+        .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return .echo(1);\n};\n",
+        )
+        .expect("should write app source");
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(!output.status.success(), "alloc echo boundary should fail");
+        assert!(
+            stderr.contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'alloc'"),
+            "CLI should preserve the alloc echo boundary wording: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_code_build_keeps_core_dynamic_len_boundary_diagnostic() {
+        let temp_root = unique_temp_root("build_core_len_boundary");
+        let root = temp_root.join("demo");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "        fol_model = \"core\",\n",
+                "    });\n",
+                "    graph.install(app);\n",
+                "    return graph\n",
+                "};\n",
+            ),
+        )
+        .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return .len(\"Ada\");\n};\n",
+        )
+        .expect("should write app source");
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(!output.status.success(), "core dynamic len boundary should fail");
+        assert!(
+            stderr.contains("string literals require heap support and are unavailable in 'fol_model = core'"),
+            "CLI should preserve the core dynamic len boundary wording: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_lsp_unknown_method_returns_method_not_found_error() {
         let mut server = EditorLspServer::new(EditorConfig::default());
 

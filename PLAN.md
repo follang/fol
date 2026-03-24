@@ -78,7 +78,7 @@ Lock down the contract before moving code.
 - [x] Slice 2. Add a single canonical feature matrix document, probably
   `docs/runtime-models.md`, that maps language features, intrinsics, and runtime
   services into `core`, `alloc`, and `std`.
-- [ ] Slice 3. Add tests that lock the intended language boundary text into CLI
+- [x] Slice 3. Add tests that lock the intended language boundary text into CLI
   and structured diagnostics for:
   - `str` in `core`
   - `.echo(...)` in `alloc`
