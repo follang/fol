@@ -113,7 +113,7 @@ Write down exactly what is compiler-owned, what remains manual, and where
   - tree-sitter grammar stays manual
   - query fragments and registries should be compiler-derived where possible
   - `fol_model` must affect editor diagnostics and completion
-- [ ] Slice 2. Add a canonical doc, likely `docs/editor-sync.md`, covering:
+- [x] Slice 2. Add a canonical doc, likely `docs/editor-sync.md`, covering:
   - compiler-owned editor data
   - generated editor data
   - manual editor data
