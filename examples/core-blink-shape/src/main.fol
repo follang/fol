@@ -1,0 +1,16 @@
+typ BlinkFrame: rec = {
+    pins: arr[int, 3],
+    active: bol,
+};
+
+fun (BlinkFrame)checksum(seed: int): int = {
+    return seed + .len(receiver.pins) + receiver.pins[0] + receiver.pins[1] + receiver.pins[2];
+};
+
+fun[] main(): int = {
+    var frame: BlinkFrame = {
+        pins = {1, 0, 1},
+        active = true,
+    };
+    return frame.checksum(4);
+};

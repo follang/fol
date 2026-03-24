@@ -271,7 +271,7 @@ Prove the split holds under normal project use.
 
 ### Slice Tracker
 
-- [ ] Slice 36. Add full example packages:
+- [x] Slice 36. Add full example packages:
   - `examples/core-blink-shape`
   - `examples/alloc-containers`
   - `examples/std-cli`
