@@ -100,7 +100,7 @@ Keep one runtime crate and make the model ownership explicit inside it.
   the only runtime crate.
 - [x] Slice 5. Add explicit `core`, `alloc`, and `std` module boundaries inside
   `fol-runtime`, with minimal marker APIs and unit tests.
-- [ ] Slice 6. Define dependency direction inside `fol-runtime` modules and
+- [x] Slice 6. Define dependency direction inside `fol-runtime` modules and
   enforce it in code:
   - `core` module owns the no-heap, no-OS base
   - `alloc` module may build on `core`
