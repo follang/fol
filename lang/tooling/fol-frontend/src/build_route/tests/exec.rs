@@ -1071,9 +1071,9 @@ fn execute_workspace_build_route_rejects_run_for_selected_core_model_artifacts()
     assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
     assert!(error
         .message()
-        .contains("run command requires 'fol_model = std'"));
-    assert!(error.message().contains("'demo'"));
-    assert!(error.message().contains("'core'"));
+        .contains("workspace build step 'serve' resolves artifact 'demo'"));
+    assert!(error.message().contains("'fol_model = core'"));
+    assert!(error.message().contains("run requires 'fol_model = std'"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -1133,9 +1133,75 @@ fn execute_workspace_build_route_rejects_test_for_selected_alloc_model_artifacts
     assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
     assert!(error
         .message()
-        .contains("test command requires 'fol_model = std'"));
-    assert!(error.message().contains("'demo_test'"));
-    assert!(error.message().contains("'alloc'"));
+        .contains("workspace build step 'test' resolves artifact 'demo_test'"));
+    assert!(error.message().contains("'fol_model = alloc'"));
+    assert!(error.message().contains("test requires 'fol_model = std'"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn execute_workspace_build_route_keeps_step_specific_model_diagnostics_in_mixed_routes() {
+    let root = std::env::temp_dir().join(format!(
+        "fol_frontend_build_route_mixed_model_step_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("app")).unwrap();
+    fs::create_dir_all(root.join("core")).unwrap();
+    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var host = graph.add_exe({ name = \"host\", root = \"app/main.fol\", fol_model = \"std\" });\n",
+            "    var blink = graph.add_exe({ name = \"blink\", root = \"core/main.fol\", fol_model = \"core\" });\n",
+            "    graph.add_run(\"host_run\", host);\n",
+            "    graph.add_run(\"blink_run\", blink);\n",
+            "    return graph\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("app/main.fol"),
+        "fun[] main(): int = {\n    return .echo(7);\n};\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("core/main.fol"),
+        "fun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .unwrap();
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let error = execute_workspace_build_route(
+        &workspace,
+        &FrontendConfig::default(),
+        &FrontendWorkspaceBuildRequest {
+            requested_step: "blink_run".to_string(),
+            profile: FrontendProfile::Debug,
+            run_args: Vec::new(),
+        },
+    )
+    .expect_err("non-std custom run step should be rejected with the step name");
+
+    assert!(error
+        .message()
+        .contains("workspace build step 'blink_run' resolves artifact 'blink'"));
+    assert!(error.message().contains("'fol_model = core'"));
+    assert!(error.message().contains("run requires 'fol_model = std'"));
 
     fs::remove_dir_all(root).ok();
 }

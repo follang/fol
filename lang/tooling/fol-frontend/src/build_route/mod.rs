@@ -186,13 +186,16 @@ pub fn execute_workspace_build_route(
                 ensure_std_workspace_route_models("run", &resolved.available_models)?;
                 crate::run_workspace_with_args_and_config(workspace, config, &request.run_args)
             }
-            [selection] => crate::compile::run_selected_artifact_with_args_and_config(
-                workspace,
-                config,
-                request.profile,
-                selection,
-                &request.run_args,
-            ),
+            [selection] => {
+                ensure_std_workspace_step_selection("run", requested_step, selection)?;
+                crate::compile::run_selected_artifact_with_args_and_config(
+                    workspace,
+                    config,
+                    request.profile,
+                    selection,
+                    &request.run_args,
+                )
+            }
             selections => Err(FrontendError::new(
                 FrontendErrorKind::InvalidInput,
                 format!(
@@ -207,6 +210,7 @@ pub fn execute_workspace_build_route(
                 ensure_std_workspace_route_models("test", &resolved.available_models)?;
                 crate::test_workspace_with_config(workspace, config)
             } else {
+                ensure_std_workspace_step_selections("test", requested_step, &resolved.selections)?;
                 crate::compile::test_selected_artifacts_with_config(
                     workspace,
                     config,
@@ -687,6 +691,35 @@ fn ensure_std_workspace_route_models(
             "{command} command requires 'fol_model = std' for workspace-routed execution but resolved model(s): {resolved}"
         ),
     ))
+}
+
+fn ensure_std_workspace_step_selection(
+    command: &str,
+    step_name: &str,
+    selection: &crate::compile::FrontendArtifactExecutionSelection,
+) -> FrontendResult<()> {
+    if selection.fol_model == fol_backend::BackendFolModel::Std {
+        return Ok(());
+    }
+    Err(FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "workspace build step '{step_name}' resolves artifact '{}' with 'fol_model = {}', but {command} requires 'fol_model = std'",
+            selection.label,
+            selection.fol_model.as_str()
+        ),
+    ))
+}
+
+fn ensure_std_workspace_step_selections(
+    command: &str,
+    step_name: &str,
+    selections: &[crate::compile::FrontendArtifactExecutionSelection],
+) -> FrontendResult<()> {
+    for selection in selections {
+        ensure_std_workspace_step_selection(command, step_name, selection)?;
+    }
+    Ok(())
 }
 
 fn unknown_workspace_build_step_error(
