@@ -15,6 +15,7 @@ pub struct TreeSitterQuerySnapshot {
 const GRAMMAR_SOURCE: &str = include_str!("../tree-sitter/grammar.js");
 const TREE_SITTER_CONFIG: &str = include_str!("../tree-sitter/tree-sitter.json");
 const HIGHLIGHTS_QUERY_BASE: &str = include_str!("../queries/fol/highlights.base.scm");
+#[cfg(test)]
 const CHECKED_IN_HIGHLIGHTS_QUERY: &str = include_str!("../queries/fol/highlights.scm");
 const LOCALS_QUERY: &str = include_str!("../queries/fol/locals.scm");
 const SYMBOLS_QUERY: &str = include_str!("../queries/fol/symbols.scm");

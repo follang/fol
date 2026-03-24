@@ -356,7 +356,7 @@ Finish with an editor pipeline that is hard to drift accidentally.
   - "if you add a language feature, these editor sync tests must pass"
   - "if the feature changes syntax shape, update grammar/query structure"
   - "if the feature only adds names or registries, generation should cover it"
-- [ ] Slice 37. Run a full repo audit and close any remaining drift holes found
+- [x] Slice 37. Run a full repo audit and close any remaining drift holes found
   during implementation.
 
 ### Exit criteria

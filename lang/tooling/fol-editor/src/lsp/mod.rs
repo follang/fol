@@ -572,7 +572,15 @@ impl EditorLspServer {
     }
 
     fn cached_document_mapping(&mut self, path: &std::path::Path) -> EditorResult<EditorWorkspaceMapping> {
-        crate::map_document_workspace(path, &self.session.config)
+        let absolute = crate::workspace::canonical_document_path(path)?;
+        let directory = absolute.parent().ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::InvalidDocumentPath,
+                format!("document '{}' has no parent directory", absolute.display()),
+            )
+        })?;
+        let _ = self.cached_workspace_roots(directory);
+        crate::map_document_workspace(&absolute, &self.session.config)
     }
 
     fn cached_workspace_roots(
