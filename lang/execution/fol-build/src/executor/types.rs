@@ -1,3 +1,4 @@
+use crate::artifact::BuildArtifactFolModel;
 use crate::runtime::{BuildRuntimeGeneratedFileKind};
 
 // ---- Extraction output types (public so eval.rs can build EvaluatedBuildProgram) ---
@@ -31,6 +32,7 @@ impl ExecConfigValue {
 pub struct ExecArtifact {
     pub name: String,
     pub root_module: ExecConfigValue,
+    pub fol_model: BuildArtifactFolModel,
     pub target: Option<ExecConfigValue>,
     pub optimize: Option<ExecConfigValue>,
 }

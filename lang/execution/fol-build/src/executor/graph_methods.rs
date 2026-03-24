@@ -2,6 +2,7 @@ use crate::api::{
     CopyFileRequest, DependencyRequest, ExecutableRequest, InstallDirRequest, InstallFileRequest,
     SharedLibraryRequest, StaticLibraryRequest, TestArtifactRequest, WriteFileRequest,
 };
+use crate::artifact::BuildArtifactFolModel;
 use crate::codegen::{CodegenRequest, SystemToolRequest};
 use crate::eval::{
     BuildEvaluationError, BuildEvaluationErrorKind, BuildEvaluationInstallArtifactRequest,
@@ -469,7 +470,7 @@ impl BuildBodyExecutor {
         args: &[AstNode],
         origin: Option<fol_parser::ast::SyntaxOrigin>,
     ) -> Result<Option<ExecValue>, BuildEvaluationError> {
-        let (name, root_module, target, optimize) = match args {
+        let (name, root_module, fol_model, target, optimize) = match args {
             [AstNode::RecordInit { fields, .. }] => {
                 let name = self
                     .resolve_field_string(fields, "name")
@@ -483,11 +484,28 @@ impl BuildBodyExecutor {
                     .iter()
                     .find(|f| f.name == "target")
                     .and_then(|f| self.parse_config_value(&f.value, &["target", "string"]));
+                let fol_model = match fields.iter().find(|f| f.name == "fol_model") {
+                    Some(field) => {
+                        let raw = self
+                            .resolve_string(&field.value)
+                            .ok_or_else(|| self.unsupported(method))?;
+                        BuildArtifactFolModel::parse(raw.as_str()).ok_or_else(|| {
+                            BuildEvaluationError::new(
+                                BuildEvaluationErrorKind::InvalidInput,
+                                format!(
+                                    "artifact fol_model must be one of: core, alloc, std (got '{}')",
+                                    raw
+                                ),
+                            )
+                        })?
+                    }
+                    None => BuildArtifactFolModel::Std,
+                };
                 let optimize = fields
                     .iter()
                     .find(|f| f.name == "optimize")
                     .and_then(|f| self.parse_config_value(&f.value, &["optimize", "string"]));
-                (name, root_module, target, optimize)
+                (name, root_module, fol_model, target, optimize)
             }
             [name_arg, root_arg] => {
                 let name = self
@@ -496,7 +514,7 @@ impl BuildBodyExecutor {
                 let root_module = self
                     .parse_config_value(root_arg, &["path", "string"])
                     .ok_or_else(|| self.unsupported(method))?;
-                (name, root_module, None, None)
+                (name, root_module, BuildArtifactFolModel::Std, None, None)
             }
             _ => return Err(self.unsupported(method)),
         };
@@ -504,6 +522,7 @@ impl BuildBodyExecutor {
         let artifact = ExecArtifact {
             name: name.clone(),
             root_module: root_module.clone(),
+            fol_model,
             target: target.clone(),
             optimize: optimize.clone(),
         };

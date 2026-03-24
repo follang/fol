@@ -87,6 +87,7 @@ pub(super) fn build_evaluated_program(
                 BuildRuntimeArtifactKind::Executable,
                 artifact.root_module.resolve(&result.resolved_options),
             )
+            .with_fol_model(artifact.fol_model)
             .with_target_config(
                 artifact
                     .target
@@ -104,6 +105,7 @@ pub(super) fn build_evaluated_program(
                 BuildRuntimeArtifactKind::Test,
                 artifact.root_module.resolve(&result.resolved_options),
             )
+            .with_fol_model(artifact.fol_model)
             .with_target_config(
                 artifact
                     .target

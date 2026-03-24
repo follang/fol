@@ -1,6 +1,7 @@
 use super::super::{
     evaluate_build_source, BuildEvaluationInputs, BuildEvaluationRequest,
 };
+use crate::artifact::BuildArtifactFolModel;
 use crate::option::{BuildOptimizeMode, BuildTargetTriple};
 use crate::runtime::{BuildRuntimeDependencyQueryKind, BuildRuntimeGeneratedFileKind};
 use std::{
@@ -58,6 +59,40 @@ fn build_source_evaluator_supports_object_style_dependency_configs() {
     );
     assert_eq!(evaluated.evaluated.dependencies.len(), 1);
     assert_eq!(evaluated.evaluated.dependencies[0].alias, "core");
+}
+
+#[test]
+fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
+    let source = concat!(
+        "pro[] build(graph: Graph): non = {\n",
+        "    graph.add_exe({ name = \"app\", root = \"src/app.fol\", fol_model = \"core\" });\n",
+        "    graph.add_test({ name = \"tests\", root = \"test/app.fol\", fol_model = \"alloc\" });\n",
+        "    return graph\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("artifact fol_model configs should evaluate")
+        .expect("build body should produce a graph");
+
+    assert_eq!(evaluated.evaluated.artifacts.len(), 2);
+    assert_eq!(
+        evaluated.evaluated.artifacts[0].fol_model,
+        BuildArtifactFolModel::Core
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[1].fol_model,
+        BuildArtifactFolModel::Alloc
+    );
 }
 
 #[test]

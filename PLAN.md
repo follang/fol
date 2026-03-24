@@ -10,7 +10,7 @@ Last updated: 2026-03-24
   config support in `fol-build`, with unit tests.
 - [x] Slice 3. Extend build semantic artifact config shapes so `fol_model` is a
   first-class artifact field, with semantic tests.
-- [ ] Slice 4. Parse `fol_model` from `build.fol` artifact records in the build
+- [x] Slice 4. Parse `fol_model` from `build.fol` artifact records in the build
   executor and carry it through evaluated build programs.
 - [ ] Slice 5. Add positive build-source tests for `fol_model` on executable,
   library, and test artifacts.
