@@ -11,7 +11,7 @@
 //! Current `V1` runtime scope:
 //!
 //! - builtin scalar support
-//! - runtime strings
+//! - alloc-tier strings
 //! - runtime containers
 //! - optional/error shells
 //! - recoverable routine results
@@ -194,7 +194,6 @@ pub mod error;
 pub mod prelude;
 pub mod shell;
 pub mod std;
-pub mod strings;
 pub mod value;
 
 pub const CRATE_NAME: &str = "fol-runtime";
@@ -225,7 +224,6 @@ mod tests {
         assert_eq!(error::module_name(), "error");
         assert_eq!(shell::module_name(), "shell");
         assert_eq!(std::module_name(), "std");
-        assert_eq!(strings::module_name(), "strings");
         assert_eq!(value::module_name(), "value");
         assert_eq!(prelude::crate_name(), "fol-runtime");
     }
@@ -301,11 +299,11 @@ mod tests {
         );
         assert_eq!(
             std::any::type_name::<prelude::FolError<prelude::FolStr>>(),
-            "fol_runtime::shell::FolError<fol_runtime::strings::FolStr>"
+            "fol_runtime::shell::FolError<fol_runtime::alloc::FolStr>"
         );
         assert_eq!(
             std::any::type_name::<prelude::FolRecover<prelude::FolInt, prelude::FolStr>>(),
-            "fol_runtime::abi::FolRecover<i64, fol_runtime::strings::FolStr>"
+            "fol_runtime::abi::FolRecover<i64, fol_runtime::alloc::FolStr>"
         );
 
         assert_eq!(prelude::unwrap_optional_shell(optional), Ok(7));

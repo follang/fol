@@ -2,10 +2,10 @@
 
 use crate::{
     abi::FolRecover,
+    alloc::FolStr,
     containers::{FolArray, FolMap, FolSeq, FolSet, FolVec},
-    shell::{FolError, FolOption},
-    strings::FolStr,
     core::RuntimeTier,
+    shell::{FolError, FolOption},
 };
 
 pub use crate::{crate_name, CRATE_NAME};

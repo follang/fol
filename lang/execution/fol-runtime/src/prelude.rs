@@ -18,6 +18,6 @@ pub use crate::shell::{
     unwrap_error_shell, unwrap_error_shell_ref, unwrap_optional_shell, unwrap_optional_shell_ref,
     FolError, FolOption,
 };
-pub use crate::strings::FolStr;
+pub use crate::alloc::FolStr;
 pub use crate::value::{impossible, FolBool, FolChar, FolFloat, FolInt, FolNever};
 pub use crate::{crate_name, CRATE_NAME};
