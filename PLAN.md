@@ -146,7 +146,7 @@ Remove hosted process/runtime assumptions from the shared runtime surface.
 
 - [x] Slice 12. Move `.echo(...)` implementation ownership into the `std`
   module inside `fol-runtime`.
-- [ ] Slice 13. Move process outcome and executable entry helpers into
+- [x] Slice 13. Move process outcome and executable entry helpers into
 - the `std` module inside `fol-runtime`.
 - [ ] Slice 14. Make backend-generated `std` artifacts use `fol-runtime::std` for main
   entry and hosted execution support.
