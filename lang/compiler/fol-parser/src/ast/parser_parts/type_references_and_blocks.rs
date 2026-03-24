@@ -455,9 +455,13 @@ impl AstParser {
                 "Expected '{' to start block".to_string(),
             ));
         }
+        let syntax_id = self.record_syntax_origin(&open);
         let _ = tokens.bump();
         let statements = self.parse_block_body(tokens, "Expected '}' to close block")?;
-        Ok(AstNode::Block { statements })
+        Ok(AstNode::Block {
+            syntax_id,
+            statements,
+        })
     }
 
     pub(super) fn parse_return_stmt(
@@ -564,6 +568,7 @@ impl AstParser {
                 "'defer' is only allowed inside routines".to_string(),
             ));
         }
+        let syntax_id = self.record_syntax_origin(&defer_token);
 
         let _ = tokens.bump();
         self.skip_ignorable(tokens)?;
@@ -576,6 +581,6 @@ impl AstParser {
         }
         let _ = tokens.bump();
         let body = self.parse_block_body(tokens, "Expected '}' to close deferred block")?;
-        Ok(AstNode::Defer { body })
+        Ok(AstNode::Defer { syntax_id, body })
     }
 }

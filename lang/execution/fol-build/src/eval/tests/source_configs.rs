@@ -1,6 +1,8 @@
 use super::super::{
-    evaluate_build_source, BuildEvaluationInputs, BuildEvaluationRequest,
+    evaluate_build_source, BuildEvaluationErrorKind, BuildEvaluationInputs,
+    BuildEvaluationRequest,
 };
+use crate::artifact::BuildArtifactFolModel;
 use crate::option::{BuildOptimizeMode, BuildTargetTriple};
 use crate::runtime::{BuildRuntimeDependencyQueryKind, BuildRuntimeGeneratedFileKind};
 use std::{
@@ -58,6 +60,90 @@ fn build_source_evaluator_supports_object_style_dependency_configs() {
     );
     assert_eq!(evaluated.evaluated.dependencies.len(), 1);
     assert_eq!(evaluated.evaluated.dependencies[0].alias, "core");
+}
+
+#[test]
+fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
+    let source = concat!(
+        "pro[] build(graph: Graph): non = {\n",
+        "    graph.add_exe({ name = \"app\", root = \"src/app.fol\", fol_model = \"core\" });\n",
+        "    graph.add_static_lib({ name = \"corelib\", root = \"src/lib.fol\", fol_model = \"alloc\" });\n",
+        "    graph.add_shared_lib({ name = \"plugin\", root = \"src/plugin.fol\", fol_model = \"std\" });\n",
+        "    graph.add_test({ name = \"tests\", root = \"test/app.fol\", fol_model = \"alloc\" });\n",
+        "    return graph\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("artifact fol_model configs should evaluate")
+        .expect("build body should produce a graph");
+
+    assert_eq!(evaluated.evaluated.artifacts.len(), 4);
+    assert_eq!(
+        evaluated.evaluated.artifacts[0].fol_model,
+        BuildArtifactFolModel::Core
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[1].fol_model,
+        BuildArtifactFolModel::Alloc
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[2].fol_model,
+        BuildArtifactFolModel::Std
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[3].fol_model,
+        BuildArtifactFolModel::Alloc
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[1].kind,
+        crate::runtime::BuildRuntimeArtifactKind::StaticLibrary
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[2].kind,
+        crate::runtime::BuildRuntimeArtifactKind::SharedLibrary
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[3].kind,
+        crate::runtime::BuildRuntimeArtifactKind::Test
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_unknown_artifact_fol_models() {
+    let source = concat!(
+        "pro[] build(graph: Graph): non = {\n",
+        "    graph.add_exe({ name = \"app\", root = \"src/app.fol\", fol_model = \"hosted\" });\n",
+        "    return graph\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("unknown fol_model values should fail build evaluation");
+
+    assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
+    assert_eq!(
+        error.message(),
+        "artifact fol_model must be one of: core, alloc, std (got 'hosted')"
+    );
 }
 
 #[test]

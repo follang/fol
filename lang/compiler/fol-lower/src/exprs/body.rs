@@ -266,6 +266,42 @@ fn lower_deferred_entries(
     Ok(())
 }
 
+fn nested_scope_for_syntax(
+    typed_package: &fol_typecheck::TypedPackage,
+    syntax_id: Option<fol_parser::ast::syntax::SyntaxNodeId>,
+    parent_scope_id: ScopeId,
+    construct_name: &str,
+) -> Result<ScopeId, LoweringError> {
+    let Some(syntax_id) = syntax_id else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("{construct_name} is missing syntax identity for lowering"),
+        ));
+    };
+    let Some(scope_id) = typed_package.program.resolved().scope_for_syntax(syntax_id) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("{construct_name} is missing a resolved block scope for lowering"),
+        ));
+    };
+    let Some(scope) = typed_package.program.resolved().scope(scope_id) else {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("{construct_name} resolved to unknown scope {}", scope_id.0),
+        ));
+    };
+    if scope.parent != Some(parent_scope_id) {
+        return Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!(
+                "{construct_name} resolved scope {} does not belong to parent scope {}",
+                scope_id.0, parent_scope_id.0
+            ),
+        ));
+    }
+    Ok(scope_id)
+}
+
 fn lower_all_active_defers(
     typed_package: &fol_typecheck::TypedPackage,
     type_table: &crate::LoweredTypeTable,
@@ -601,11 +637,18 @@ pub(crate) fn lower_body_node(
                 .terminate_current_block(crate::LoweredTerminator::Jump { target: exit_block })?;
             Ok(None)
         }
-        AstNode::Defer { body } => {
-            cursor.register_defer(source_unit_id, scope_id, body)?;
+        AstNode::Defer { syntax_id, body } => {
+            let deferred_scope_id =
+                nested_scope_for_syntax(typed_package, *syntax_id, scope_id, "defer block")?;
+            cursor.register_defer(source_unit_id, deferred_scope_id, body)?;
             Ok(None)
         }
-        AstNode::Block { statements } => {
+        AstNode::Block {
+            syntax_id,
+            statements,
+        } => {
+            let block_scope_id =
+                nested_scope_for_syntax(typed_package, *syntax_id, scope_id, "block")?;
             let _ = lower_body_sequence(
                 typed_package,
                 type_table,
@@ -614,7 +657,7 @@ pub(crate) fn lower_body_node(
                 decl_index,
                 cursor,
                 source_unit_id,
-                scope_id,
+                block_scope_id,
                 statements,
                 DeferScopeKind::Ordinary,
             )?;

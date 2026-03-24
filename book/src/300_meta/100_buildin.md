@@ -11,10 +11,15 @@ FOL currently keeps three layers separate:
   compiler-owned operations such as `.eq(...)`, `.len(...)`, `check(...)`, and
   `panic(...)`
 - `core`:
-  ordinary foundational library code that should work across targets
+  the minimal runtime model with no heap and no OS/runtime services
+- `alloc`:
+  heap-backed library/runtime support without OS/runtime services
 - `std`:
-  broader library code such as filesystem, networking, serialization, and other
-  richer services
+  hosted/runtime services on top of `alloc`, such as console, filesystem,
+  networking, serialization, and other richer services
+
+This split is not a source-level import trick and not an object-system feature.
+It is an artifact runtime model selected through `build.fol`.
 
 If an operation can live as an ordinary library API, that is usually the better
 home for it. Intrinsics are reserved for surfaces the compiler must understand
@@ -66,9 +71,15 @@ compiler.
 The current compiler implements this subset end to end through type checking and
 lowering.
 
-For current `V1`, backend execution of the implemented intrinsic set is
-expected to go through `fol-runtime` where policy matters. In practice that
-means:
+For current `V1`, backend execution of the implemented intrinsic set still goes
+through the current runtime layer where policy matters. The runtime contract is
+being split by `fol-model`, so the rule is:
+
+- `core` artifacts must not rely on heap-backed or hosted facilities
+- `alloc` artifacts may use heap-backed facilities but not hosted services
+- `std` artifacts may use hosted services
+
+In the current implementation that means:
 
 - `.len(...)` uses the runtime length helper
 - `.echo(...)` uses the runtime echo hook and formatting contract
@@ -123,6 +134,8 @@ Current `V1` rule:
   - `map[...]`
 
 In the current compiler, `.len(...)` is the only implemented query intrinsic.
+Under the runtime model split, array `.len(...)` belongs to `core`, while
+string and dynamic-container `.len(...)` belongs to `alloc`/`std`.
 
 ### Diagnostic
 
@@ -133,8 +146,10 @@ In the current compiler, `.len(...)` is the only implemented query intrinsic.
 Current `V1` rule:
 
 - `.echo(...)` accepts exactly one argument
-- it emits the value through the `fol-runtime` debug hook
+- it emits the value through the `std` runtime hook
 - it then forwards the same value unchanged
+
+`.echo(...)` belongs to `std`, not `core` or `alloc`.
 
 So this is valid:
 

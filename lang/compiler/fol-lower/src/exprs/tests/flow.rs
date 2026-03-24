@@ -195,6 +195,32 @@ fn defer_lowering_runs_registered_bodies_before_return_in_reverse_order() {
 }
 
 #[test]
+fn defer_lowering_keeps_local_bindings_inside_deferred_blocks() {
+    let lowered = lower_fixture_workspace(concat!(
+        "fun[] main(): int = {\n",
+        "    defer {\n",
+        "        var done: int = 1;\n",
+        "        .echo(done);\n",
+        "    };\n",
+        "    return 7\n",
+        "};\n",
+    ));
+
+    let routine = lowered
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+
+    assert_eq!(
+        collect_echoed_ints(routine),
+        vec![1],
+        "deferred blocks should lower using their own typed scope so local bindings remain available"
+    );
+}
+
+#[test]
 fn defer_lowering_runs_inner_scope_cleanup_before_outer_scope_cleanup() {
     let lowered = lower_fixture_workspace(concat!(
         "fun[] main(): int = {\n",

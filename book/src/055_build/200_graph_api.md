@@ -13,6 +13,7 @@ Adds an executable artifact.
 var app = graph.add_exe({
     name     = "app",
     root     = "src/main.fol",
+    fol_model = "std",   // spell this explicitly for each artifact
     target   = target,    // optional
     optimize = optimize,  // optional
 });
@@ -21,10 +22,65 @@ var app = graph.add_exe({
 Returns an `Artifact` handle.
 
 Required fields: `name`, `root`.
-Optional fields: `target`, `optimize`.
+Optional fields: `fol_model`, `target`, `optimize`.
 
 `root` is the path to the entry-point `.fol` source file relative to the
 package root.
+
+`fol_model` selects the runtime capability tier for the artifact:
+
+- `core`
+  no heap, no OS/runtime services
+- `alloc`
+  heap-backed facilities, still no OS/runtime services
+- `std`
+  hosted/runtime services on top of `alloc`
+
+If omitted today, `fol_model` behaves like `std`, but the recommended style is
+to spell it explicitly so the artifact contract is visible in `build.fol`.
+
+The important boundary is semantic and runtime-facing:
+
+- `core` artifacts must not use heap-backed `str`, `vec`, `seq`, `set`, or
+  `map`
+- `core` artifacts may still use arrays, records, routines, control flow, and
+  `defer`
+- `alloc` artifacts may use heap-backed runtime types but not hosted services
+- `std` artifacts are the only artifacts that may use hosted services such as
+  `.echo(...)` and ordinary host-executed `run` / `test`
+
+Current implementation note:
+
+- `core` already means “no heap and no OS/runtime services” at the language and
+  runtime-contract level
+- `core` artifacts are still emitted through the current Rust backend pipeline
+- that means `core` is ready for semantic/runtime restriction work now, but it
+  should not yet be read as “finished embedded backend support”
+
+Mixed-model example:
+
+```fol
+pro[] build(graph: Graph): non = {
+    var corelib = graph.add_static_lib({
+        name = "corelib",
+        root = "core/lib.fol",
+        fol_model = "core",
+    });
+    var alloclib = graph.add_static_lib({
+        name = "alloclib",
+        root = "alloc/lib.fol",
+        fol_model = "alloc",
+    });
+    var tool = graph.add_exe({
+        name = "tool",
+        root = "app/main.fol",
+        fol_model = "std",
+    });
+
+    graph.install(tool);
+    graph.add_run(tool);
+};
+```
 
 ### `graph.add_static_lib`
 
@@ -35,6 +91,12 @@ var core = graph.add_static_lib({ name = "core", root = "src/core/lib.fol" });
 ```
 
 Returns an `Artifact` handle.
+
+Library and test artifact config records follow the same optional fields:
+
+- `fol_model`
+- `target`
+- `optimize`
 
 ### `graph.add_shared_lib`
 

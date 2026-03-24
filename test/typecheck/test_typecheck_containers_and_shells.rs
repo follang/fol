@@ -1,4 +1,5 @@
 use super::*;
+use fol_typecheck::TypecheckCapabilityModel;
 
 #[test]
 fn workspace_entry_value_typing_accepts_imported_named_entry_contexts() {
@@ -207,6 +208,65 @@ fn shell_typing_rejects_pointer_surfaces_as_v3_only() {
         }),
         "Expected a V3 pointer-boundary diagnostic, got: {errors:?}"
     );
+}
+
+#[test]
+fn core_model_rejects_heap_backed_type_surfaces() {
+    let errors = typecheck_fixture_folder_errors_with_config(
+        &[(
+            "main.fol",
+            concat!(
+                "ali Label: str;\n",
+                "ali Numbers: vec[int];\n",
+                "ali Steps: seq[int];\n",
+                "ali Names: set[str];\n",
+                "ali Scores: map[str, int];\n",
+            ),
+        )],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Core,
+        },
+    );
+
+    let messages = errors.iter().map(|error| error.message()).collect::<Vec<_>>();
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("str requires heap support")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("vec[...] requires heap support")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("seq[...] requires heap support")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("set[...] requires heap support")));
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("map[...] requires heap support")));
+}
+
+#[test]
+fn core_model_rejects_inferred_string_literals() {
+    let errors = typecheck_fixture_folder_errors_with_config(
+        &[(
+            "main.fol",
+            concat!(
+                "fun[] text(): int = {\n",
+                "    var label = \"ok\";\n",
+                "    return 0;\n",
+                "};\n",
+            ),
+        )],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Core,
+        },
+    );
+
+    let messages = errors.iter().map(|error| error.message()).collect::<Vec<_>>();
+    assert!(messages
+        .iter()
+        .any(|message| message.contains("string literals require heap support")));
 }
 
 #[test]
@@ -558,6 +618,65 @@ fn intrinsic_query_typing_covers_full_v1_length_family_matrix() {
 }
 
 #[test]
+fn core_model_keeps_array_length_queries_available() {
+    let typed = typecheck_fixture_folder_with_config(
+        &[(
+            "main.fol",
+            concat!(
+                "fun[] arr_len(items: arr[int, 3]): int = {\n",
+                "    return .len(items);\n",
+                "};\n",
+            ),
+        )],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Core,
+        },
+    );
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "arr_len");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int)),
+        "Expected array .len(...) to remain available in 'fol_model = core'",
+    );
+}
+
+#[test]
+fn alloc_model_accepts_dynamic_length_queries() {
+    let typed = typecheck_fixture_folder_with_config(
+        &[(
+            "main.fol",
+            concat!(
+                "fun[] text_len(): int = {\n",
+                "    return .len(\"Ada\");\n",
+                "};\n",
+                "fun[] seq_len(items: seq[int]): int = {\n",
+                "    return .len(items);\n",
+                "};\n",
+            ),
+        )],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Alloc,
+        },
+    );
+
+    for name in ["text_len", "seq_len"] {
+        let syntax_id = find_named_routine_syntax_id(&typed, name);
+        assert_eq!(
+            typed
+                .typed_node(syntax_id)
+                .and_then(|node| node.inferred_type)
+                .and_then(|type_id| typed.type_table().get(type_id)),
+            Some(&CheckedType::Builtin(BuiltinType::Int)),
+            "Expected {name} to retain dynamic .len(...) support in 'fol_model = alloc'",
+        );
+    }
+}
+
+#[test]
 fn intrinsic_query_typing_rejects_non_query_receiver_families() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",
@@ -864,4 +983,3 @@ fn coercion_policy_rejects_implicit_int_float_cross_family_conversions() {
         "Expected a report coercion diagnostic, got: {errors:?}"
     );
 }
-

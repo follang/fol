@@ -1,0 +1,4 @@
+fun[] main(): int = {
+    var shown: str = .echo("std-ready");
+    return .len(shown) - .len(shown);
+};

@@ -1,6 +1,69 @@
 use super::*;
 use fol_editor::{LspDefinitionParams, LspHover, LspHoverParams, LspLocation};
 
+fn strip_ansi(value: &str) -> String {
+    let mut stripped = String::with_capacity(value.len());
+    let mut chars = value.chars().peekable();
+
+    while let Some(ch) = chars.next() {
+        if ch == '\u{1b}' && matches!(chars.peek(), Some('[')) {
+            chars.next();
+            for next in chars.by_ref() {
+                if next.is_ascii_alphabetic() {
+                    break;
+                }
+            }
+            continue;
+        }
+
+        stripped.push(ch);
+    }
+
+    stripped
+}
+
+fn find_file_by_name(root: &std::path::Path, target_name: &str) -> Option<std::path::PathBuf> {
+    let entries = std::fs::read_dir(root).ok()?;
+    for entry in entries {
+        let entry = entry.ok()?;
+        let path = entry.path();
+        if path.is_dir() {
+            if let Some(found) = find_file_by_name(&path, target_name) {
+                return Some(found);
+            }
+        } else if path.file_name().and_then(|name| name.to_str()) == Some(target_name) {
+            return Some(path);
+        }
+    }
+    None
+}
+
+fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) {
+    std::fs::create_dir_all(dst).expect("should create destination directory");
+    for entry in std::fs::read_dir(src).expect("should read source directory") {
+        let entry = entry.expect("should read source entry");
+        let file_type = entry.file_type().expect("should read source file type");
+        let from = entry.path();
+        let to = dst.join(entry.file_name());
+        if file_type.is_dir() {
+            copy_dir_all(&from, &to);
+        } else {
+            std::fs::copy(&from, &to).expect("should copy source file");
+        }
+    }
+}
+
+fn temp_example_root(example_path: &str) -> std::path::PathBuf {
+    let source = repo_root().join(example_path);
+    let temp_root = unique_temp_root(&format!(
+        "example_copy_{}",
+        example_path.replace('/', "_")
+    ));
+    let target = temp_root.join("workspace");
+    copy_dir_all(&source, &target);
+    target
+}
+
     #[test]
     fn test_editor_file_commands_cover_build_fol_entry_files() {
         let parse = run_fol(&[
@@ -538,6 +601,664 @@ use fol_editor::{LspDefinitionParams, LspHover, LspHoverParams, LspLocation};
     }
 
     #[test]
+    fn test_build_fixture_alloc_model_supports_string_values() {
+        let root = build_fixture_root("model_alloc_str");
+
+        let build = run_fol_in_dir(&root, &["code", "build"]);
+        assert!(
+            build.status.success(),
+            "alloc string fixture should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
+            "alloc string fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("fol_model=alloc"),
+            "alloc string fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_alloc_model_supports_sequences() {
+        let root = build_fixture_root("model_alloc_seq");
+
+        let build = run_fol_in_dir(&root, &["code", "build"]);
+        assert!(
+            build.status.success(),
+            "alloc sequence fixture should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
+            "alloc sequence fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_std_model_runs_echo_programs() {
+        let root = build_fixture_root("model_std_echo");
+
+        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        assert!(
+            build.status.success(),
+            "std echo fixture should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        let build_stdout = String::from_utf8_lossy(&build.stdout);
+        let binary = build_stdout
+            .lines()
+            .find_map(|line| {
+                let plain = strip_ansi(line);
+                if plain.contains("binary") {
+                    plain.split_whitespace().last().map(str::to_string)
+                } else {
+                    None
+                }
+            })
+            .expect("std echo build should report a binary path")
+            .trim()
+            .to_string();
+
+        let run = Command::new(&binary)
+            .output()
+            .expect("std echo fixture binary should execute");
+        assert!(
+            run.status.success(),
+            "std echo fixture binary should run: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&run.stdout);
+        assert!(
+            stdout.contains("std-ready"),
+            "std echo fixture should print through the std model binary: stdout=\n{}\nstderr=\n{}",
+            stdout,
+            String::from_utf8_lossy(&run.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_core_model_rejects_heap_backed_surfaces() {
+        let root = build_fixture_root("model_core_heap_reject");
+
+        let build = run_fol_in_dir(&root, &["code", "build"]);
+        assert!(
+            !build.status.success(),
+            "core heap fixture should fail: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        let stderr = String::from_utf8_lossy(&build.stderr);
+        assert!(
+            stderr.contains("seq[...] requires heap support and is unavailable in 'fol_model = core'"),
+            "core heap fixture should keep the model diagnostic: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            stderr
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_core_model_supports_foundation_surface() {
+        let root = build_fixture_root("model_core_foundation");
+
+        let build = run_fol_in_dir(&root, &["code", "build"]);
+        assert!(
+            build.status.success(),
+            "core foundation fixture should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
+            "core foundation fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&build.stdout).contains("fol_model=core"),
+            "core foundation fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixture_mixed_models_workspace_keeps_per_artifact_models() {
+        let root = build_fixture_root("mixed_models_workspace");
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path)
+            .expect("mixed-model fixture should keep a build.fol");
+
+        let request = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let evaluated = evaluate_build_source(&request, &build_path, &source)
+            .expect("mixed-model fixture should evaluate")
+            .expect("mixed-model fixture should produce a graph");
+
+        let artifacts = &evaluated.evaluated.artifacts;
+        let core = artifacts.iter().find(|a| a.name == "corelib").expect("corelib");
+        let alloc = artifacts.iter().find(|a| a.name == "alloclib").expect("alloclib");
+        let tool = artifacts.iter().find(|a| a.name == "tool").expect("tool");
+
+        assert_eq!(
+            core.fol_model,
+            fol_package::build_artifact::BuildArtifactFolModel::Core
+        );
+        assert_eq!(
+            alloc.fol_model,
+            fol_package::build_artifact::BuildArtifactFolModel::Alloc
+        );
+        assert_eq!(
+            tool.fol_model,
+            fol_package::build_artifact::BuildArtifactFolModel::Std
+        );
+
+        let run = run_fol_in_dir(&root, &["code", "run"]);
+        assert!(
+            run.status.success(),
+            "mixed-model fixture should still run its std tool: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&run.stdout).contains("fol_model=std"),
+            "mixed-model routed run should keep the std model summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+    }
+
+    #[test]
+    fn test_build_fixtures_emit_runtime_imports_for_each_model() {
+        let cases = [
+            ("core", "fun[] main(): int = {\n    return 7;\n};\n"),
+            (
+                "alloc",
+                "fun[] main(): str = {\n    return \"alloc-ready\";\n};\n",
+            ),
+            ("std", "fun[] main(): int = {\n    return .echo(7);\n};\n"),
+        ];
+
+        for (model, main_source) in cases {
+            let temp_root = unique_temp_root(&format!("build_runtime_import_{model}"));
+            let root = temp_root.join("demo");
+            std::fs::create_dir_all(root.join("src")).expect("should create source root");
+            std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+                .expect("should write package metadata");
+            std::fs::write(
+                root.join("build.fol"),
+                format!(
+                    concat!(
+                        "pro[] build(graph: Graph): non = {{\n",
+                        "    var app = graph.add_exe({{\n",
+                        "        name = \"demo\",\n",
+                        "        root = \"src/main.fol\",\n",
+                        "        fol_model = \"{}\",\n",
+                        "    }});\n",
+                        "    graph.install(app);\n",
+                        "    return graph\n",
+                        "}};\n",
+                    ),
+                    model
+                ),
+            )
+            .expect("should write build file");
+            std::fs::write(root.join("src/main.fol"), main_source).expect("should write source");
+
+            let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+            assert!(
+                build.status.success(),
+                "model '{model}' should build: stdout=\n{}\nstderr=\n{}",
+                String::from_utf8_lossy(&build.stdout),
+                String::from_utf8_lossy(&build.stderr)
+            );
+
+            let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+                .expect("generated backend source should exist");
+            let source =
+                std::fs::read_to_string(&generated).expect("generated backend source should load");
+            let expected_import = format!("use fol_runtime::{model} as rt;");
+
+            assert!(
+                source.contains(&expected_import),
+                "model '{model}' should emit '{expected_import}' in {:?}:\n{}",
+                generated,
+                source
+            );
+
+            std::fs::remove_dir_all(&temp_root).ok();
+        }
+    }
+
+    #[test]
+    fn test_cli_build_emits_rust_for_model_examples() {
+        let cases = [
+            ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
+            ("examples/core_defer", "use fol_runtime::core as rt;"),
+            ("examples/core_records", "use fol_runtime::core as rt;"),
+            ("examples/alloc_defaults", "use fol_runtime::alloc as rt;"),
+            ("examples/alloc_containers", "use fol_runtime::alloc as rt;"),
+            ("examples/alloc_collections", "use fol_runtime::alloc as rt;"),
+            ("examples/std_cli", "use fol_runtime::std as rt;"),
+            ("examples/std_echo_min", "use fol_runtime::std as rt;"),
+            ("examples/std_named_calls", "use fol_runtime::std as rt;"),
+        ];
+
+        for (path, expected_import) in cases {
+            let root = temp_example_root(path);
+
+            let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+            assert!(
+                build.status.success(),
+                "example '{path}' should build: stdout=\n{}\nstderr=\n{}",
+                String::from_utf8_lossy(&build.stdout),
+                String::from_utf8_lossy(&build.stderr)
+            );
+
+            let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+                .expect("generated example backend source should exist");
+            let source =
+                std::fs::read_to_string(&generated).expect("generated example source should load");
+
+            assert!(
+                source.contains(expected_import),
+                "example '{path}' should emit '{expected_import}' in {:?}:\n{}",
+                generated,
+                source
+            );
+        }
+    }
+
+    #[test]
+    fn test_cli_example_build_summaries_surface_expected_models() {
+        let cases = [
+            ("examples/core_blink_shape", "fol_model=core"),
+            ("examples/core_defer", "fol_model=core"),
+            ("examples/core_records", "fol_model=core"),
+            ("examples/alloc_defaults", "fol_model=alloc"),
+            ("examples/alloc_containers", "fol_model=alloc"),
+            ("examples/alloc_collections", "fol_model=alloc"),
+            ("examples/std_cli", "fol_model=std"),
+            ("examples/std_echo_min", "fol_model=std"),
+            ("examples/std_named_calls", "fol_model=std"),
+        ];
+
+        for (path, expected_model) in cases {
+            let root = temp_example_root(path);
+            let build = run_fol_in_dir(&root, &["code", "build"]);
+            let stdout = String::from_utf8_lossy(&build.stdout);
+            assert!(
+                build.status.success(),
+                "example '{path}' should build: stdout=\n{}\nstderr=\n{}",
+                stdout,
+                String::from_utf8_lossy(&build.stderr)
+            );
+            assert!(
+                stdout.contains(expected_model),
+                "example '{path}' should surface '{expected_model}' in the build summary: stdout=\n{}\nstderr=\n{}",
+                stdout,
+                String::from_utf8_lossy(&build.stderr)
+            );
+        }
+    }
+
+    #[test]
+    fn test_cli_std_examples_run_and_print_expected_output() {
+        let cases = [
+            ("examples/std_cli", "std-ready"),
+            ("examples/std_echo_min", "9"),
+            ("examples/std_named_calls", "host-ok-ready"),
+        ];
+
+        for (path, expected_text) in cases {
+            let root = temp_example_root(path);
+            let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+            let build_stdout = String::from_utf8_lossy(&build.stdout);
+            assert!(
+                build.status.success(),
+                "std example '{path}' should build: stdout=\n{}\nstderr=\n{}",
+                build_stdout,
+                String::from_utf8_lossy(&build.stderr)
+            );
+            let binary = build_stdout
+                .lines()
+                .find_map(|line| {
+                    let plain = strip_ansi(line);
+                    if plain.contains("binary") {
+                        plain.split_whitespace().last().map(str::to_string)
+                    } else {
+                        None
+                    }
+                })
+                .expect("std example build should report a binary path")
+                .trim()
+                .to_string();
+            let run = std::process::Command::new(&binary)
+                .output()
+                .expect("built std example should execute");
+            let stdout = String::from_utf8_lossy(&run.stdout);
+            assert!(
+                run.status.success(),
+                "std example '{path}' binary should run: stdout=\n{}\nstderr=\n{}",
+                stdout,
+                String::from_utf8_lossy(&run.stderr)
+            );
+            assert!(
+                stdout.contains(expected_text),
+                "std example '{path}' should print '{expected_text}': stdout=\n{}\nstderr=\n{}",
+                stdout,
+                String::from_utf8_lossy(&run.stderr)
+            );
+        }
+    }
+
+    #[test]
+    fn test_cli_build_and_run_mixed_model_example_workspace() {
+        let root = temp_example_root("examples/mixed_models_workspace");
+
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path)
+            .expect("mixed example should keep a build.fol");
+        let request = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let evaluated = evaluate_build_source(&request, &build_path, &source)
+            .expect("mixed example should evaluate")
+            .expect("mixed example should produce a graph");
+        let artifacts = &evaluated.evaluated.artifacts;
+        assert!(artifacts.iter().any(|a| {
+            a.name == "corelib"
+                && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Core
+        }));
+        assert!(artifacts.iter().any(|a| {
+            a.name == "alloclib"
+                && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Alloc
+        }));
+        assert!(artifacts.iter().any(|a| {
+            a.name == "tool"
+                && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Std
+        }));
+
+        let build = run_fol_in_dir(&root, &["code", "build"]);
+        assert!(
+            build.status.success(),
+            "mixed-model example should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+
+        let run = run_fol_in_dir(&root, &["code", "run"]);
+        assert!(
+            run.status.success(),
+            "mixed-model example should run its std tool: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(String::from_utf8_lossy(&run.stdout).contains("ran "));
+    }
+
+    #[test]
+    fn test_cli_run_rejects_core_example_route() {
+        let temp_root = unique_temp_root("run_core_route_reject");
+        let root = temp_root.join("demo");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "        fol_model = \"core\",\n",
+                "    });\n",
+                "    graph.add_run(app);\n",
+                "    return graph\n",
+                "};\n",
+            ),
+        )
+        .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 7;\n};\n",
+        )
+        .expect("should write source");
+
+        let run = run_fol_in_dir(&root, &["code", "run"]);
+        let stderr = String::from_utf8_lossy(&run.stderr);
+        assert!(!run.status.success(), "core route should be rejected");
+        assert!(stderr.contains("fol_model = core"));
+        assert!(stderr.contains("run requires 'fol_model = std'"));
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_run_rejects_alloc_example_route() {
+        let temp_root = unique_temp_root("run_alloc_route_reject");
+        let root = temp_root.join("demo");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "        fol_model = \"alloc\",\n",
+                "    });\n",
+                "    graph.add_run(app);\n",
+                "    return graph\n",
+                "};\n",
+            ),
+        )
+        .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): str = {\n    return \"alloc\";\n};\n",
+        )
+        .expect("should write source");
+
+        let run = run_fol_in_dir(&root, &["code", "run"]);
+        let stderr = String::from_utf8_lossy(&run.stderr);
+        assert!(!run.status.success(), "alloc route should be rejected");
+        assert!(stderr.contains("fol_model = alloc"));
+        assert!(stderr.contains("run requires 'fol_model = std'"));
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
+        let cases = [
+            ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
+            ("examples/core_defer", "use fol_runtime::core as rt;"),
+            ("examples/alloc_collections", "use fol_runtime::alloc as rt;"),
+            ("examples/alloc_defaults", "use fol_runtime::alloc as rt;"),
+            ("examples/std_cli", "use fol_runtime::std as rt;"),
+            ("examples/std_echo_min", "use fol_runtime::std as rt;"),
+        ];
+
+        for (path, expected_import) in cases {
+            let root = temp_example_root(path);
+
+            let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+            assert!(
+                build.status.success(),
+                "example '{path}' should build: stdout=\n{}\nstderr=\n{}",
+                String::from_utf8_lossy(&build.stdout),
+                String::from_utf8_lossy(&build.stderr)
+            );
+
+            let generated = find_file_by_name(&root.join(".fol/build"), "src.rs")
+                .expect("generated package source should exist");
+            let source =
+                std::fs::read_to_string(&generated).expect("generated package source should load");
+
+            assert!(
+                source.contains(expected_import),
+                "example '{path}' package source should emit '{expected_import}' in {:?}:\n{}",
+                generated,
+                source
+            );
+        }
+    }
+
+    #[test]
+    fn test_mixed_model_example_keeps_graph_models_and_std_emission() {
+        let root = temp_example_root("examples/mixed_models_workspace");
+
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path)
+            .expect("mixed example should keep a build.fol");
+        let request = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let evaluated = evaluate_build_source(&request, &build_path, &source)
+            .expect("mixed example should evaluate")
+            .expect("mixed example should produce a graph");
+        let artifacts = &evaluated.evaluated.artifacts;
+        assert!(artifacts.iter().any(|a| {
+            a.name == "corelib"
+                && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Core
+        }));
+        assert!(artifacts.iter().any(|a| {
+            a.name == "alloclib"
+                && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Alloc
+        }));
+        assert!(artifacts.iter().any(|a| {
+            a.name == "tool"
+                && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Std
+        }));
+
+        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        assert!(
+            build.status.success(),
+            "mixed-model example should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+
+        let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+            .expect("mixed example should emit main.rs");
+        let emitted = std::fs::read_to_string(&generated).expect("generated main should load");
+        assert!(emitted.contains("use fol_runtime::std as rt;"));
+    }
+
+    #[test]
+    fn test_runtime_model_docs_reference_real_example_packages() {
+        let docs = std::fs::read_to_string(repo_root().join("docs/runtime-models.md"))
+            .expect("runtime model docs should exist");
+        let examples = [
+            "examples/core_blink_shape",
+            "examples/core_defer",
+            "examples/core_records",
+            "examples/alloc_defaults",
+            "examples/alloc_containers",
+            "examples/alloc_collections",
+            "examples/std_cli",
+            "examples/std_echo_min",
+            "examples/std_named_calls",
+            "examples/mixed_models_workspace",
+        ];
+
+        for example in examples {
+            assert!(
+                repo_root().join(example).exists(),
+                "documented example path should exist: {example}"
+            );
+        }
+
+        assert!(docs.contains("examples/core_blink_shape"));
+        assert!(docs.contains("examples/core_defer"));
+        assert!(docs.contains("examples/alloc_defaults"));
+        assert!(docs.contains("examples/alloc_containers"));
+        assert!(docs.contains("examples/std_cli"));
+        assert!(docs.contains("examples/std_echo_min"));
+        assert!(docs.contains("examples/mixed_models_workspace"));
+    }
+
+    #[test]
+    fn test_build_fixtures_core_model_reject_forbidden_surfaces() {
+        let cases = [
+            (
+                "model_core_reject_str",
+                "str requires heap support and is unavailable in 'fol_model = core'",
+            ),
+            (
+                "model_core_reject_seq",
+                "seq[...] requires heap support and is unavailable in 'fol_model = core'",
+            ),
+            (
+                "model_core_reject_vec",
+                "vec[...] requires heap support and is unavailable in 'fol_model = core'",
+            ),
+            (
+                "model_core_reject_set",
+                "set[...] requires heap support and is unavailable in 'fol_model = core'",
+            ),
+            (
+                "model_core_reject_map",
+                "map[...] requires heap support and is unavailable in 'fol_model = core'",
+            ),
+            (
+                "model_core_reject_echo",
+                "'.echo(...)' requires 'fol_model = std'",
+            ),
+        ];
+
+        for (fixture, needle) in cases {
+            let root = build_fixture_root(fixture);
+            let build = run_fol_in_dir(&root, &["code", "build"]);
+            let stderr = String::from_utf8_lossy(&build.stderr);
+            assert!(
+                !build.status.success(),
+                "core forbidden-surface fixture should fail for {}: stdout=\n{}\nstderr=\n{}",
+                fixture,
+                String::from_utf8_lossy(&build.stdout),
+                stderr
+            );
+            assert!(
+                stderr.contains(needle),
+                "core forbidden-surface fixture should report the expected diagnostic for {}: stdout=\n{}\nstderr=\n{}",
+                fixture,
+                String::from_utf8_lossy(&build.stdout),
+                stderr
+            );
+        }
+    }
+
+    #[test]
     fn test_cli_code_build_rejects_old_root_build_syntax() {
         let root = unique_temp_root("old_root_build_syntax");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
@@ -676,6 +1397,204 @@ use fol_editor::{LspDefinitionParams, LspHover, LspHoverParams, LspLocation};
         );
 
         std::fs::remove_dir_all(&root).ok();
+    }
+
+    #[test]
+    fn test_cli_code_build_keeps_core_string_boundary_diagnostic() {
+        let temp_root = unique_temp_root("build_core_string_boundary");
+        let root = temp_root.join("demo");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "        fol_model = \"core\",\n",
+                "    });\n",
+                "    graph.install(app);\n",
+                "    return graph\n",
+                "};\n",
+            ),
+        )
+        .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): str = {\n    return \"ok\";\n};\n",
+        )
+        .expect("should write app source");
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(!output.status.success(), "core string boundary should fail");
+        assert!(
+            stderr.contains("str requires heap support and is unavailable in 'fol_model = core'"),
+            "CLI should preserve the core string boundary wording: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_code_build_keeps_alloc_echo_boundary_diagnostic() {
+        let temp_root = unique_temp_root("build_alloc_echo_boundary");
+        let root = temp_root.join("demo");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "        fol_model = \"alloc\",\n",
+                "    });\n",
+                "    graph.install(app);\n",
+                "    return graph\n",
+                "};\n",
+            ),
+        )
+        .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return .echo(1);\n};\n",
+        )
+        .expect("should write app source");
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(!output.status.success(), "alloc echo boundary should fail");
+        assert!(
+            stderr.contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'alloc'"),
+            "CLI should preserve the alloc echo boundary wording: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_code_build_keeps_core_dynamic_len_boundary_diagnostic() {
+        let temp_root = unique_temp_root("build_core_len_boundary");
+        let root = temp_root.join("demo");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "        fol_model = \"core\",\n",
+                "    });\n",
+                "    graph.install(app);\n",
+                "    return graph\n",
+                "};\n",
+            ),
+        )
+        .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return .len(\"Ada\");\n};\n",
+        )
+        .expect("should write app source");
+
+        let output = run_fol_in_dir(&root, &["code", "build"]);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        assert!(!output.status.success(), "core dynamic len boundary should fail");
+        assert!(
+            stderr.contains("string literals require heap support and are unavailable in 'fol_model = core'"),
+            "CLI should preserve the core dynamic len boundary wording: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            stderr
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
+    fn test_cli_code_build_and_run_keep_std_model_runtime_path() {
+        let temp_root = unique_temp_root("build_std_model_runtime");
+        let root = temp_root.join("demo");
+        std::fs::create_dir_all(root.join("src")).expect("should create source root");
+        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+            .expect("should write package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "        fol_model = \"std\",\n",
+                "    });\n",
+                "    graph.install(app);\n",
+                "    graph.add_run(app);\n",
+                "    return graph\n",
+                "};\n",
+            ),
+        )
+        .expect("should write build file");
+        std::fs::write(
+            root.join("src/main.fol"),
+            concat!(
+                "fun[] main(): int = {\n",
+                "    return .echo(7);\n",
+                "};\n",
+            ),
+        )
+        .expect("should write app source");
+
+        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        let build_stdout = String::from_utf8_lossy(&build.stdout);
+        assert!(
+            build.status.success(),
+            "std model build should succeed: stdout=\n{}\nstderr=\n{}",
+            build_stdout,
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert!(
+            build_stdout.contains("built 1 workspace package(s)"),
+            "std model build should report a build summary: stdout=\n{}\nstderr=\n{}",
+            build_stdout,
+            String::from_utf8_lossy(&build.stderr)
+        );
+
+        let run = run_fol_in_dir(&root, &["code", "run"]);
+        let run_stdout = String::from_utf8_lossy(&run.stdout);
+        assert!(
+            run.status.success(),
+            "std model run should succeed: stdout=\n{}\nstderr=\n{}",
+            run_stdout,
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(
+            run_stdout.contains("7"),
+            "std model run should execute through runtime std path: stdout=\n{}\nstderr=\n{}",
+            run_stdout,
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(
+            run_stdout.contains("ran "),
+            "std model run should report a run summary: stdout=\n{}\nstderr=\n{}",
+            run_stdout,
+            String::from_utf8_lossy(&run.stderr)
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
     }
 
     #[test]

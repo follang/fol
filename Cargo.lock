@@ -14,6 +14,7 @@ dependencies = [
  "fol-package",
  "fol-parser",
  "fol-resolver",
+ "fol-runtime",
  "fol-stream",
  "fol-typecheck",
  "fol-types",

@@ -68,7 +68,7 @@ fn runtime_shaped_instruction_rendering_emits_echo_via_runtime_hook() {
 
     assert_eq!(
         rendered,
-        "let l__pkg__entry__app__r8__l1__shown = rt::echo(l__pkg__entry__app__r8__l0__value);"
+        "let l__pkg__entry__app__r8__l1__shown = rt::echo(l__pkg__entry__app__r8__l0__value.clone());"
     );
 }
 
@@ -434,7 +434,7 @@ fn runtime_shaped_instruction_snapshot_stays_stable() {
         rendered,
         concat!(
             "let l__pkg__entry__app__r15__l4__count = rt::len(&l__pkg__entry__app__r15__l2__maybe);\n",
-            "let l__pkg__entry__app__r15__l5__shown = rt::echo(l__pkg__entry__app__r15__l0__value);\n",
+            "let l__pkg__entry__app__r15__l5__shown = rt::echo(l__pkg__entry__app__r15__l0__value.clone());\n",
             "let l__pkg__entry__app__r15__l6__failed = rt::check_recoverable(&l__pkg__entry__app__r15__l1__recover);\n",
             "let l__pkg__entry__app__r15__l7__ok = l__pkg__entry__app__r15__l1__recover.clone().into_value().expect(\"unwrap of recoverable value failed: result contains an error\");\n",
             "let l__pkg__entry__app__r15__l8__bad = l__pkg__entry__app__r15__l1__recover.clone().into_error().expect(\"extract of recoverable error failed: result contains a value\");\n",
@@ -444,4 +444,3 @@ fn runtime_shaped_instruction_snapshot_stays_stable() {
         )
     );
 }
-

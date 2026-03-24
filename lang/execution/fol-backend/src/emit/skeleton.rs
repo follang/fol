@@ -2,8 +2,8 @@ use crate::{
     mangle_package_module_name, plan_generated_crate_layout, plan_namespace_layouts,
     plan_package_layouts, render_entry_definition, render_entry_trait_impl,
     render_global_declaration, render_record_definition, render_record_trait_impl,
-    render_routine_definition, render_routine_shell, BackendArtifact,
-    BackendResult, BackendSession, EmittedRustFile,
+    render_routine_definition, render_routine_shell, BackendArtifact, BackendConfig,
+    BackendResult, BackendRuntimeTier, BackendSession, EmittedRustFile,
 };
 use fol_lower::LoweredType;
 use std::collections::BTreeMap;
@@ -26,7 +26,10 @@ pub fn emit_cargo_toml(session: &BackendSession) -> EmittedRustFile {
     }
 }
 
-pub fn emit_main_rs(session: &BackendSession) -> BackendResult<EmittedRustFile> {
+pub fn emit_main_rs_for_config(
+    session: &BackendSession,
+    config: &BackendConfig,
+) -> BackendResult<EmittedRustFile> {
     let layout = plan_generated_crate_layout(session);
     let entry_candidate = session.select_buildable_entry_candidate()?;
     let entry_name = &session.entry_identity().display_name;
@@ -43,15 +46,21 @@ pub fn emit_main_rs(session: &BackendSession) -> BackendResult<EmittedRustFile> 
         ),
         None => "    let _entry_name = \"placeholder\";".to_string(),
     };
+    let runtime_tier = config.runtime_tier();
 
     Ok(EmittedRustFile {
         path: layout.main_rs_path,
         module_name: "main".to_string(),
         contents: format!(
-            "use fol_runtime::prelude as rt;\n\nmod packages;\n\nfn main() {{\n    let _runtime = rt::crate_name();\n    let _entry_package = \"{entry_name}\";\n    let _entry_name = \"{}\";\n    let _ = (&_runtime, &_entry_package, &_entry_name);\n{entry_wrapper}\n}}\n",
+            "{}\n\nmod packages;\n\nfn main() {{\n    let _runtime = rt::crate_name();\n    let _runtime_tier = rt_model::tier_name();\n    let _entry_package = \"{entry_name}\";\n    let _entry_name = \"{}\";\n    let _ = (&_runtime, &_runtime_tier, &_entry_package, &_entry_name);\n{entry_wrapper}\n}}\n",
+            runtime_main_use_block(runtime_tier),
             entry_candidate.name
         ),
     })
+}
+
+pub fn emit_main_rs(session: &BackendSession) -> BackendResult<EmittedRustFile> {
+    emit_main_rs_for_config(session, &BackendConfig::default())
 }
 
 pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFile> {
@@ -148,14 +157,17 @@ pub fn emit_package_module_shells(session: &BackendSession) -> Vec<EmittedRustFi
     files
 }
 
-pub fn emit_namespace_module_shells(
+pub fn emit_namespace_module_shells_for_config(
     session: &BackendSession,
+    config: &BackendConfig,
 ) -> BackendResult<Vec<EmittedRustFile>> {
     let mut files = Vec::new();
+    let runtime_tier = config.runtime_tier();
     for namespace_plan in plan_namespace_layouts(session) {
         let emitted_items = render_namespace_items(session, &namespace_plan)?;
         let mut contents = format!(
-                "use fol_runtime::prelude as rt;\n\npub(crate) const NAMESPACE_NAME: &str = \"{}\";\npub(crate) const SOURCE_UNIT_IDS: &[usize] = &[{}];\n\npub(crate) fn namespace_runtime_marker() -> &'static str {{\n    let _ = rt::crate_name();\n    NAMESPACE_NAME\n}}\n",
+                "{}\n\npub(crate) const NAMESPACE_NAME: &str = \"{}\";\npub(crate) const SOURCE_UNIT_IDS: &[usize] = &[{}];\n\npub(crate) fn namespace_runtime_marker() -> &'static str {{\n    let _ = rt::crate_name();\n    let _ = rt_model::tier_name();\n    NAMESPACE_NAME\n}}\n",
+                runtime_use_block(runtime_tier),
                 namespace_plan.full_namespace,
                 namespace_plan
                     .source_unit_ids
@@ -181,19 +193,32 @@ pub fn emit_namespace_module_shells(
     Ok(files)
 }
 
-pub fn emit_generated_crate_skeleton(session: &BackendSession) -> BackendResult<BackendArtifact> {
+pub fn emit_namespace_module_shells(
+    session: &BackendSession,
+) -> BackendResult<Vec<EmittedRustFile>> {
+    emit_namespace_module_shells_for_config(session, &BackendConfig::default())
+}
+
+pub fn emit_generated_crate_skeleton_for_config(
+    session: &BackendSession,
+    config: &BackendConfig,
+) -> BackendResult<BackendArtifact> {
     let layout = plan_generated_crate_layout(session);
     let mut files = Vec::new();
     files.push(emit_cargo_toml(session));
-    files.push(emit_main_rs(session)?);
+    files.push(emit_main_rs_for_config(session, config)?);
     files.extend(emit_package_module_shells(session));
-    files.extend(emit_namespace_module_shells(session)?);
+    files.extend(emit_namespace_module_shells_for_config(session, config)?);
     files.sort_by(|left, right| left.path.cmp(&right.path));
 
     Ok(BackendArtifact::RustSourceCrate {
         root: layout.crate_dir_name,
         files,
     })
+}
+
+pub fn emit_generated_crate_skeleton(session: &BackendSession) -> BackendResult<BackendArtifact> {
+    emit_generated_crate_skeleton_for_config(session, &BackendConfig::default())
 }
 
 fn module_name_from_relative_part(relative_part: &str) -> String {
@@ -205,6 +230,22 @@ fn module_name_from_relative_part(relative_part: &str) -> String {
 
 pub(super) fn runtime_dependency_path() -> PathBuf {
     backend_runtime_source_root()
+}
+
+fn runtime_use_block(runtime_tier: BackendRuntimeTier) -> String {
+    format!(
+        "use {} as rt;\nuse {} as rt_model;",
+        runtime_tier.runtime_module_path(),
+        runtime_tier.runtime_module_path()
+    )
+}
+
+fn runtime_main_use_block(runtime_tier: BackendRuntimeTier) -> String {
+    format!(
+        "use {} as rt;\nuse {} as rt_model;",
+        runtime_tier.runtime_module_path(),
+        runtime_tier.runtime_module_path()
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

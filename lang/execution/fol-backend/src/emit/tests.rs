@@ -2,10 +2,12 @@
 mod tests {
     use crate::emit::{
         backend_build_paths, build_generated_crate_with_rustc, build_runtime_rlib_with_rustc,
-        emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton, emit_main_rs,
-        emit_namespace_module_shells, emit_package_module_shells, prepare_backend_runtime_build_dir,
-        prepare_backend_build_paths, prepare_generated_build_dir, summarize_emitted_artifact,
-        write_generated_crate, backend_runtime_build_dir, backend_runtime_manifest_path,
+        emit_backend_artifact, emit_cargo_toml, emit_generated_crate_skeleton,
+        emit_generated_crate_skeleton_for_config, emit_main_rs, emit_main_rs_for_config,
+        emit_namespace_module_shells, emit_namespace_module_shells_for_config,
+        emit_package_module_shells, prepare_backend_runtime_build_dir, prepare_backend_build_paths,
+        prepare_generated_build_dir, summarize_emitted_artifact, write_generated_crate,
+        backend_runtime_build_dir, backend_runtime_manifest_path,
         backend_runtime_manifest_path_with_override, backend_runtime_source_entry,
         backend_runtime_source_entry_with_override, backend_runtime_source_root,
         backend_runtime_source_root_with_override,
@@ -18,8 +20,8 @@ mod tests {
             lowered_workspace_from_entry_path, lowered_workspace_from_entry_path_with_config,
             sample_lowered_workspace,
         },
-        BackendArtifact, BackendBuildProfile, BackendConfig, BackendMachineTarget, BackendMode,
-        BackendSession,
+        BackendArtifact, BackendBuildProfile, BackendConfig, BackendFolModel,
+        BackendMachineTarget, BackendMode, BackendSession,
     };
     use fol_package::PackageConfig;
     use fol_resolver::ResolverConfig;
@@ -191,21 +193,60 @@ mod tests {
     }
 
     #[test]
-    fn main_rs_emission_keeps_runtime_import_and_entry_metadata_shell() {
+    fn main_rs_emission_keeps_std_model_import_and_entry_metadata() {
         let session = BackendSession::new(sample_lowered_workspace());
 
         let emitted = emit_main_rs(&session).expect("main.rs");
 
         assert_eq!(emitted.path, "src/main.rs");
         assert_eq!(emitted.module_name, "main");
-        assert!(emitted.contents.contains("use fol_runtime::prelude as rt;"));
+        assert!(emitted.contents.contains("use fol_runtime::std as rt;"));
+        assert!(emitted.contents.contains("use fol_runtime::std as rt_model;"));
         assert!(emitted.contents.contains("mod packages;"));
         assert!(emitted.contents.contains("let _entry_package = \"app\";"));
         assert!(emitted.contents.contains("let _entry_name = \"main\";"));
     }
 
     #[test]
-    fn package_module_shell_emission_keeps_package_and_namespace_module_tree() {
+    fn main_rs_emission_uses_runtime_tier_specific_model_imports() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let core_emitted = emit_main_rs_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Core,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("core main");
+        let alloc_emitted = emit_main_rs_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Alloc,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("alloc main");
+
+        assert!(core_emitted
+            .contents
+            .contains("use fol_runtime::core as rt_model;"));
+        assert!(core_emitted
+            .contents
+            .contains("use fol_runtime::core as rt;"));
+        assert!(alloc_emitted
+            .contents
+            .contains("use fol_runtime::alloc as rt_model;"));
+        assert!(alloc_emitted
+            .contents
+            .contains("use fol_runtime::alloc as rt;"));
+        assert!(core_emitted
+            .contents
+            .contains("let _runtime_tier = rt_model::tier_name();"));
+    }
+
+    #[test]
+    fn package_module_emission_keeps_package_and_namespace_module_tree() {
         let session = BackendSession::new(sample_lowered_workspace());
 
         let emitted = emit_package_module_shells(&session);
@@ -232,7 +273,10 @@ mod tests {
         assert_eq!(emitted[0].path, "src/packages/pkg__entry__app/root.rs");
         assert!(emitted[0]
             .contents
-            .contains("use fol_runtime::prelude as rt;"));
+            .contains("use fol_runtime::std as rt;"));
+        assert!(emitted[0]
+            .contents
+            .contains("use fol_runtime::std as rt_model;"));
         assert!(emitted[0]
             .contents
             .contains("NAMESPACE_NAME: &str = \"app\""));
@@ -247,6 +291,94 @@ mod tests {
         assert!(emitted[3]
             .contents
             .contains("NAMESPACE_NAME: &str = \"shared::util\""));
+    }
+
+    #[test]
+    fn namespace_module_shell_emission_uses_runtime_tier_specific_model_imports() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let emitted = emit_namespace_module_shells_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Core,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("core namespace shells");
+
+        assert!(emitted[0]
+            .contents
+            .contains("use fol_runtime::core as rt_model;"));
+        assert!(emitted[0].contents.contains("use fol_runtime::core as rt;"));
+        assert!(!emitted[0].contents.contains("use fol_runtime::alloc"));
+        assert!(!emitted[0].contents.contains("use fol_runtime::std"));
+        assert!(emitted[0].contents.contains("rt_model::tier_name()"));
+    }
+
+    #[test]
+    fn generated_crate_skeleton_keeps_core_artifacts_off_alloc_and_std_imports() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let artifact = emit_generated_crate_skeleton_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Core,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("core artifact");
+
+        let BackendArtifact::RustSourceCrate { files, .. } = artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+
+        for file in files {
+            if !file.path.ends_with(".rs") {
+                continue;
+            }
+            assert!(
+                !file.contents.contains("use fol_runtime::alloc"),
+                "core artifact should not import alloc runtime paths in {}:\n{}",
+                file.path,
+                file.contents
+            );
+            assert!(
+                !file.contents.contains("use fol_runtime::std"),
+                "core artifact should not import std runtime paths in {}:\n{}",
+                file.path,
+                file.contents
+            );
+        }
+    }
+
+    #[test]
+    fn generated_crate_skeleton_keeps_alloc_artifacts_off_std_imports() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let artifact = emit_generated_crate_skeleton_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Alloc,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("alloc artifact");
+
+        let BackendArtifact::RustSourceCrate { files, .. } = artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+
+        for file in files {
+            if !file.path.ends_with(".rs") {
+                continue;
+            }
+            assert!(
+                !file.contents.contains("use fol_runtime::std"),
+                "alloc artifact should not import std runtime paths in {}:\n{}",
+                file.path,
+                file.contents
+            );
+        }
     }
 
     #[test]
@@ -272,9 +404,47 @@ mod tests {
         assert!(snapshot.contains("== src/packages/mod.rs =="));
         assert!(snapshot.contains("== src/packages/pkg__entry__app/mod.rs =="));
         assert!(snapshot.contains("== src/packages/pkg__local__shared/root.rs =="));
-        assert!(snapshot.contains("use fol_runtime::prelude as rt;"));
+        assert!(snapshot.contains("use fol_runtime::std as rt;"));
+        assert!(snapshot.contains("use fol_runtime::std as rt_model;"));
         assert!(snapshot.contains("pub mod pkg__entry__app;"));
         assert!(snapshot.contains("NAMESPACE_NAME: &str = \"shared::util\""));
+    }
+
+    #[test]
+    fn generated_crate_skeleton_uses_runtime_tier_specific_model_modules() {
+        let session = BackendSession::new(sample_lowered_workspace());
+
+        let artifact = emit_generated_crate_skeleton_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Alloc,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("artifact");
+
+        let BackendArtifact::RustSourceCrate { files, .. } = artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+
+        let main_rs = files
+            .iter()
+            .find(|file| file.path == "src/main.rs")
+            .expect("main rs");
+        let root_namespace = files
+            .iter()
+            .find(|file| file.path == "src/packages/pkg__entry__app/root.rs")
+            .expect("root namespace");
+
+        assert!(main_rs
+            .contents
+            .contains("use fol_runtime::alloc as rt;"));
+        assert!(main_rs
+            .contents
+            .contains("use fol_runtime::alloc as rt_model;"));
+        assert!(root_namespace
+            .contents
+            .contains("use fol_runtime::alloc as rt_model;"));
     }
 
     #[test]
@@ -749,7 +919,7 @@ mod tests {
     }
 
     #[test]
-    fn package_module_shell_emission_adds_nested_mod_files_for_deep_namespaces() {
+    fn package_module_emission_adds_nested_mod_files_for_deep_namespaces() {
         let fixture_root = temp_root("deep_namespace_layout");
         let app_root = fixture_root.join("app");
         fs::create_dir_all(app_root.join("api/tools/math")).expect("nested namespace root");
@@ -924,6 +1094,51 @@ mod tests {
 
         assert!(output.status.success());
         assert!(String::from_utf8_lossy(&output.stdout).contains("0"));
+    }
+
+    #[test]
+    fn executable_backend_std_model_main_runs_hosted_entry_after_runtime_move() {
+        let fixture_root = temp_root("std_hosted_entry");
+        let fixture = write_fixture(
+            &fixture_root,
+            concat!(
+                "fun[] main(): int = {\n",
+                "    .echo(\"std-hosted\");\n",
+                "    return 0;\n",
+                "};\n",
+            ),
+        );
+        let lowered = lowered_workspace_from_entry_path(&fixture);
+        let session = BackendSession::new(lowered);
+        let artifact = emit_backend_artifact(
+            &session,
+            &BackendConfig {
+                mode: BackendMode::BuildArtifact,
+                keep_build_dir: true,
+                fol_model: BackendFolModel::Std,
+                ..BackendConfig::default()
+            },
+            &fixture_root,
+        )
+        .expect("backend std artifact");
+        let BackendArtifact::CompiledBinary {
+            binary_path,
+            emitted_crate_root,
+        } = artifact
+        else {
+            panic!("expected compiled binary artifact");
+        };
+        let main_rs =
+            fs::read_to_string(emitted_crate_root.join("src/main.rs")).expect("generated main.rs");
+        let output = Command::new(&binary_path)
+            .output()
+            .expect("run emitted std binary");
+        let _ = fs::remove_dir_all(&fixture_root);
+
+        assert!(main_rs.contains("use fol_runtime::std as rt;"));
+        assert!(main_rs.contains("use fol_runtime::std as rt_model;"));
+        assert!(output.status.success());
+        assert!(String::from_utf8_lossy(&output.stdout).contains("std-hosted"));
     }
 
     #[test]

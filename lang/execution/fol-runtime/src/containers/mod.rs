@@ -1,20 +1,11 @@
-//! Runtime container families used by executable FOL V1 programs.
-
-mod map;
-mod sequence;
-mod set;
-mod vector;
+//! Runtime container helper functions used by executable FOL V1 programs.
 
 use crate::{
+    alloc::{FolMap, FolSeq, FolSet, FolVec},
     error::{RuntimeError, RuntimeErrorKind},
     value::FolInt,
 };
 use std::fmt::Display;
-
-pub use map::FolMap;
-pub use sequence::FolSeq;
-pub use set::FolSet;
-pub use vector::FolVec;
 
 /// Fixed-size array strategy for FOL `arr[...]`.
 ///
@@ -154,8 +145,9 @@ pub fn module_name() -> &'static str {
 mod tests {
     use super::{
         index_array, index_seq, index_vec, lookup_map, render_array, render_map, render_seq,
-        render_set, render_vec, slice_seq, slice_vec, FolArray, FolMap, FolSeq, FolSet, FolVec,
+        render_set, render_vec, slice_seq, slice_vec, FolArray,
     };
+    use crate::alloc::{FolMap, FolSeq, FolSet, FolVec};
     use crate::error::RuntimeErrorKind;
 
     #[test]
@@ -169,28 +161,28 @@ mod tests {
     }
 
     #[test]
-    fn vector_module_exports_runtime_vector_type() {
+    fn linear_heap_vectors_stay_available_through_alloc() {
         let values = FolVec::new(vec![1, 2, 3]);
 
         assert_eq!(values.len(), 3);
     }
 
     #[test]
-    fn sequence_module_exports_runtime_sequence_type() {
+    fn linear_heap_sequences_stay_available_through_alloc() {
         let values = FolSeq::new(vec![1, 2, 3]);
 
         assert_eq!(values.len(), 3);
     }
 
     #[test]
-    fn set_module_exports_runtime_set_type() {
+    fn ordered_heap_sets_stay_available_through_alloc() {
         let values = FolSet::new(std::collections::BTreeSet::from([1, 2, 3]));
 
         assert_eq!(values.len(), 3);
     }
 
     #[test]
-    fn map_module_exports_runtime_map_type() {
+    fn ordered_heap_maps_stay_available_through_alloc() {
         let values = FolMap::new(std::collections::BTreeMap::from([("ada", 1), ("lin", 2)]));
 
         assert_eq!(values.len(), 2);

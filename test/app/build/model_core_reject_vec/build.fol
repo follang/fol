@@ -1,0 +1,9 @@
+pro[] build(graph: Graph): non = {
+    var app = graph.add_exe({
+        name = "model_core_reject_vec",
+        root = "src/main.fol",
+        fol_model = "core",
+    });
+
+    graph.install(app);
+};

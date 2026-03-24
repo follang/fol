@@ -551,7 +551,7 @@ fn test_binding_alternatives_parse_in_nested_blocks() {
                     AstNode::FunDecl { body, .. }
                     if body.iter().any(|stmt| matches!(
                         stmt,
-                        AstNode::Block { statements }
+                        AstNode::Block { statements, .. }
                         if statements.iter().any(|nested| matches!(
                             nested,
                             AstNode::VarDecl { name, options, .. }

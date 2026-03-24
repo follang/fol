@@ -12,6 +12,26 @@ pub(crate) struct FrontendArtifactExecutionSelection {
     pub package_root: std::path::PathBuf,
     pub label: String,
     pub root_module: Option<String>,
+    pub fol_model: fol_backend::BackendFolModel,
+}
+
+fn summarize_fol_models<I>(models: I) -> String
+where
+    I: IntoIterator<Item = fol_backend::BackendFolModel>,
+{
+    let mut models = models.into_iter().collect::<Vec<_>>();
+    models.sort_by_key(|model| match model {
+        fol_backend::BackendFolModel::Core => 0,
+        fol_backend::BackendFolModel::Alloc => 1,
+        fol_backend::BackendFolModel::Std => 2,
+    });
+    models.dedup();
+    let rendered = models
+        .into_iter()
+        .map(|model| model.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!("fol_model={rendered}")
 }
 
 pub fn check_workspace_with_config(
@@ -71,6 +91,7 @@ pub fn build_workspace_for_profile_with_config(
                 .unwrap_or("package")
                 .to_string(),
             root_module: None,
+            fol_model: fol_backend::BackendFolModel::Std,
         })
         .collect::<Vec<_>>();
     build_selected_artifacts_for_profile_with_config(workspace, config, profile, &selections)
@@ -99,6 +120,7 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
             config,
             &selection.package_root,
             selection.root_module.as_deref(),
+            selection.fol_model,
         )?;
         if lowered.entry_candidates().is_empty() {
             continue;
@@ -106,7 +128,7 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
         let backend_session = fol_backend::BackendSession::new(lowered);
         let artifact = fol_backend::emit_backend_artifact(
             &backend_session,
-            &backend_config(config, profile),
+            &backend_config(config, profile, selection.fol_model),
             &output_root,
         )
         .map_err(|error| FrontendError::new(FrontendErrorKind::CommandFailed, error.to_string()))?;
@@ -148,8 +170,9 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
         .filter(|artifact| artifact.kind == FrontendArtifactKind::Binary)
         .count();
     result.summary = format!(
-        "built {binary_count} workspace package(s) into {}",
-        output_root.display()
+        "built {binary_count} workspace package(s) into {} ({})",
+        output_root.display(),
+        summarize_fol_models(selections.iter().map(|selection| selection.fol_model))
     );
     Ok(result)
 }
@@ -223,7 +246,14 @@ pub fn run_workspace_with_args_and_config(
         ));
     }
 
-    let mut result = FrontendCommandResult::new("run", format!("ran {}", binary.display()));
+    let mut result = FrontendCommandResult::new(
+        "run",
+        format!(
+            "ran {} ({})",
+            binary.display(),
+            summarize_fol_models([fol_backend::BackendFolModel::Std])
+        ),
+    );
     result.artifacts.push(FrontendArtifactSummary::new(
         FrontendArtifactKind::Binary,
         "binary",
@@ -240,6 +270,7 @@ pub(crate) fn run_selected_artifact_with_args_and_config(
     args: &[String],
 ) -> FrontendResult<FrontendCommandResult> {
     ensure_host_runnable_target(config, "run")?;
+    ensure_std_execution_selection(selection, "run")?;
     let built = build_selected_artifacts_for_profile_with_config(
         workspace,
         config,
@@ -287,7 +318,14 @@ pub(crate) fn run_selected_artifact_with_args_and_config(
         ));
     }
 
-    let mut result = FrontendCommandResult::new("run", format!("ran {}", binary.display()));
+    let mut result = FrontendCommandResult::new(
+        "run",
+        format!(
+            "ran {} ({})",
+            binary.display(),
+            summarize_fol_models([selection.fol_model])
+        ),
+    );
     result.artifacts.push(FrontendArtifactSummary::new(
         FrontendArtifactKind::Binary,
         selection.label.clone(),
@@ -317,6 +355,7 @@ pub(crate) fn test_selected_artifacts_with_config(
     selections: &[FrontendArtifactExecutionSelection],
 ) -> FrontendResult<FrontendCommandResult> {
     ensure_host_runnable_target(config, "test")?;
+    ensure_std_execution_selections(selections, "test")?;
     let built =
         build_selected_artifacts_for_profile_with_config(workspace, config, profile, selections)?;
     let binaries = built
@@ -354,7 +393,11 @@ pub(crate) fn test_selected_artifacts_with_config(
 
     let mut result = FrontendCommandResult::new(
         "test",
-        format!("tested {} workspace artifact(s)", binaries.len()),
+        format!(
+            "tested {} workspace artifact(s) ({})",
+            binaries.len(),
+            summarize_fol_models(selections.iter().map(|selection| selection.fol_model))
+        ),
     );
     for binary in binaries {
         result.artifacts.push(FrontendArtifactSummary::new(
@@ -406,7 +449,11 @@ pub fn emit_rust_with_config(
             &fol_backend::BackendConfig {
                 mode: fol_backend::BackendMode::EmitSource,
                 keep_build_dir: true,
-                ..backend_config(config, FrontendProfile::Release)
+                ..backend_config(
+                    config,
+                    FrontendProfile::Release,
+                    fol_backend::BackendFolModel::Std,
+                )
             },
             &output_root,
         )
@@ -505,6 +552,20 @@ pub fn compile_member_workspace(
     config: &FrontendConfig,
     package_root: &Path,
 ) -> FrontendResult<fol_lower::LoweredWorkspace> {
+    compile_member_workspace_for_model(
+        workspace,
+        config,
+        package_root,
+        fol_backend::BackendFolModel::Std,
+    )
+}
+
+fn compile_member_workspace_for_model(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    package_root: &Path,
+    fol_model: fol_backend::BackendFolModel,
+) -> FrontendResult<fol_lower::LoweredWorkspace> {
     let display_name = package_root
         .file_name()
         .and_then(|name| name.to_str())
@@ -524,7 +585,9 @@ pub fn compile_member_workspace(
         resolver_config(workspace, config),
     )
     .map_err(FrontendError::from_errors)?;
-    let typed = fol_typecheck::Typechecker::new()
+    let typed = fol_typecheck::Typechecker::with_config(fol_typecheck::TypecheckConfig {
+        capability_model: typecheck_capability_model(fol_model),
+    })
         .check_resolved_workspace(resolved)
         .map_err(FrontendError::from_errors)?;
     fol_lower::Lowerer::new()
@@ -537,8 +600,9 @@ fn compile_member_workspace_targeted(
     config: &FrontendConfig,
     package_root: &Path,
     root_module: Option<&str>,
+    fol_model: fol_backend::BackendFolModel,
 ) -> FrontendResult<fol_lower::LoweredWorkspace> {
-    let lowered = compile_member_workspace(workspace, config, package_root)?;
+    let lowered = compile_member_workspace_for_model(workspace, config, package_root, fol_model)?;
     let Some(root_module) = root_module else {
         return Ok(lowered);
     };
@@ -614,11 +678,23 @@ fn backend_profile(profile: FrontendProfile) -> fol_backend::BackendBuildProfile
     }
 }
 
+fn typecheck_capability_model(
+    fol_model: fol_backend::BackendFolModel,
+) -> fol_typecheck::TypecheckCapabilityModel {
+    match fol_model {
+        fol_backend::BackendFolModel::Core => fol_typecheck::TypecheckCapabilityModel::Core,
+        fol_backend::BackendFolModel::Alloc => fol_typecheck::TypecheckCapabilityModel::Alloc,
+        fol_backend::BackendFolModel::Std => fol_typecheck::TypecheckCapabilityModel::Std,
+    }
+}
+
 fn backend_config(
     config: &FrontendConfig,
     profile: FrontendProfile,
+    fol_model: fol_backend::BackendFolModel,
 ) -> fol_backend::BackendConfig {
     fol_backend::BackendConfig {
+        fol_model,
         machine_target: config.backend_machine_target(),
         build_profile: backend_profile(profile),
         keep_build_dir: config.keep_build_dir,
@@ -641,6 +717,33 @@ fn ensure_host_runnable_target(config: &FrontendConfig, command: &str) -> Fronte
             "{command} command cannot execute target '{selected}' on host '{host}'"
         ),
     ))
+}
+
+fn ensure_std_execution_selection(
+    selection: &FrontendArtifactExecutionSelection,
+    command: &str,
+) -> FrontendResult<()> {
+    if selection.fol_model == fol_backend::BackendFolModel::Std {
+        return Ok(());
+    }
+    Err(FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "{command} command requires 'fol_model = std' for artifact '{}' but resolved '{}'",
+            selection.label,
+            selection.fol_model.as_str()
+        ),
+    ))
+}
+
+fn ensure_std_execution_selections(
+    selections: &[FrontendArtifactExecutionSelection],
+    command: &str,
+) -> FrontendResult<()> {
+    for selection in selections {
+        ensure_std_execution_selection(selection, command)?;
+    }
+    Ok(())
 }
 
 fn test_workspace_selected_with_config(
@@ -668,7 +771,10 @@ fn test_workspace_selected_with_config(
         tested_count += 1;
     }
 
-    result.summary = format!("tested {tested_count} workspace package(s)");
+    result.summary = format!(
+        "tested {tested_count} workspace package(s) ({})",
+        summarize_fol_models([fol_backend::BackendFolModel::Std])
+    );
     Ok(result)
 }
 

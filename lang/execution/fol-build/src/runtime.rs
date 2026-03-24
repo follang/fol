@@ -1,3 +1,4 @@
+use crate::artifact::BuildArtifactFolModel;
 use crate::dependency::DependencyBuildEvaluationMode;
 use std::collections::BTreeMap;
 
@@ -42,6 +43,7 @@ pub struct BuildRuntimeArtifact {
     pub name: String,
     pub kind: BuildRuntimeArtifactKind,
     pub root_module: String,
+    pub fol_model: BuildArtifactFolModel,
     pub target: Option<String>,
     pub optimize: Option<String>,
 }
@@ -77,9 +79,15 @@ impl BuildRuntimeArtifact {
             name: name.into(),
             kind,
             root_module: root_module.into(),
+            fol_model: BuildArtifactFolModel::Std,
             target: None,
             optimize: None,
         }
+    }
+
+    pub fn with_fol_model(mut self, fol_model: BuildArtifactFolModel) -> Self {
+        self.fol_model = fol_model;
+        self
     }
 
     pub fn with_target_config(
@@ -325,6 +333,7 @@ mod tests {
         BuildRuntimeRecordField, BuildRuntimeStepBinding, BuildRuntimeStepBindingKind,
         BuildRuntimeStmt, BuildRuntimeValue,
     };
+    use crate::artifact::BuildArtifactFolModel;
     use crate::dependency::DependencyBuildEvaluationMode;
 
     #[test]
@@ -346,6 +355,7 @@ mod tests {
 
         assert_eq!(exe.kind, BuildRuntimeArtifactKind::Executable);
         assert_eq!(exe.root_module, "src/app.fol");
+        assert_eq!(exe.fol_model, BuildArtifactFolModel::Std);
         assert_eq!(exe.target, None);
         assert_eq!(exe.optimize, None);
         assert_eq!(test.kind, BuildRuntimeArtifactKind::Test);
@@ -372,11 +382,13 @@ mod tests {
     }
 
     #[test]
-    fn runtime_artifacts_can_carry_target_and_optimize_metadata() {
+    fn runtime_artifacts_can_carry_fol_model_target_and_optimize_metadata() {
         let artifact =
             BuildRuntimeArtifact::new("app", BuildRuntimeArtifactKind::Executable, "src/app.fol")
+                .with_fol_model(BuildArtifactFolModel::Core)
                 .with_target_config(Some("x86_64-linux-gnu"), Some("release-fast"));
 
+        assert_eq!(artifact.fol_model, BuildArtifactFolModel::Core);
         assert_eq!(artifact.target.as_deref(), Some("x86_64-linux-gnu"));
         assert_eq!(artifact.optimize.as_deref(), Some("release-fast"));
     }

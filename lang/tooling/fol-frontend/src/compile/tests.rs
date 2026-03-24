@@ -2,13 +2,13 @@ use super::{
     backend_config, build_workspace, build_workspace_for_profile_with_config,
     build_workspace_with_config, check_workspace, emit_lowered, emit_rust,
     profile_build_root, run_workspace, run_workspace_with_args_and_config, test_package,
-    test_workspace, test_workspace_with_config,
+    test_workspace, test_workspace_with_config, typecheck_capability_model,
 };
 use crate::{
     FrontendArtifactKind, FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot,
     WorkspaceRoot,
 };
-use fol_backend::BackendMachineTarget;
+use fol_backend::{BackendFolModel, BackendMachineTarget};
 use std::{fs, path::PathBuf};
 
 fn semantic_bin_build() -> &'static str {
@@ -93,6 +93,7 @@ fn build_workspace_runs_the_backend_for_runnable_members() {
     assert!(result
         .summary
         .contains("built 1 workspace package(s) into "));
+    assert!(result.summary.contains("fol_model=std"));
     assert_eq!(result.artifacts.len(), 2);
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
     assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::Binary);
@@ -128,12 +129,47 @@ fn backend_config_threads_frontend_machine_target_selection() {
     };
 
     assert_eq!(
-        backend_config(&default_config, FrontendProfile::Debug).machine_target,
+        backend_config(
+            &default_config,
+            FrontendProfile::Debug,
+            fol_backend::BackendFolModel::Std,
+        )
+        .machine_target,
         BackendMachineTarget::Host
     );
     assert_eq!(
-        backend_config(&cross_config, FrontendProfile::Release).machine_target,
+        backend_config(
+            &cross_config,
+            FrontendProfile::Release,
+            fol_backend::BackendFolModel::Core,
+        )
+        .machine_target,
         BackendMachineTarget::Triple("aarch64-macos-gnu".to_string())
+    );
+    assert_eq!(
+        backend_config(
+            &cross_config,
+            FrontendProfile::Release,
+            fol_backend::BackendFolModel::Core,
+        )
+        .fol_model,
+        fol_backend::BackendFolModel::Core
+    );
+}
+
+#[test]
+fn frontend_maps_backend_fol_models_into_typecheck_models() {
+    assert_eq!(
+        typecheck_capability_model(BackendFolModel::Core),
+        fol_typecheck::TypecheckCapabilityModel::Core
+    );
+    assert_eq!(
+        typecheck_capability_model(BackendFolModel::Alloc),
+        fol_typecheck::TypecheckCapabilityModel::Alloc
+    );
+    assert_eq!(
+        typecheck_capability_model(BackendFolModel::Std),
+        fol_typecheck::TypecheckCapabilityModel::Std
     );
 }
 
@@ -358,7 +394,7 @@ fn test_workspace_runs_single_workspace_members() {
     let result = test_workspace(&workspace).unwrap();
 
     assert_eq!(result.command, "test");
-    assert_eq!(result.summary, "tested 1 workspace package(s)");
+    assert_eq!(result.summary, "tested 1 workspace package(s) (fol_model=std)");
     assert_eq!(result.artifacts.len(), 1);
 
     fs::remove_dir_all(root).ok();
@@ -395,7 +431,7 @@ fn test_package_selects_a_single_named_workspace_member() {
     let result = test_package(&workspace, "lib").unwrap();
 
     assert_eq!(result.command, "test");
-    assert_eq!(result.summary, "tested 1 workspace package(s)");
+    assert_eq!(result.summary, "tested 1 workspace package(s) (fol_model=std)");
     assert_eq!(result.artifacts.len(), 1);
 
     fs::remove_dir_all(root).ok();

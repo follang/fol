@@ -48,6 +48,7 @@ struct FrontendMemberPlannedStep {
     execution: Option<FrontendStepExecutionKind>,
     selection: Option<crate::compile::FrontendArtifactExecutionSelection>,
     ambiguous_selection: bool,
+    available_models: Vec<fol_backend::BackendFolModel>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,6 +63,7 @@ enum FrontendStepExecutionKind {
 struct ResolvedWorkspaceStepExecution {
     execution: FrontendStepExecutionKind,
     selections: Vec<crate::compile::FrontendArtifactExecutionSelection>,
+    available_models: Vec<fol_backend::BackendFolModel>,
 }
 
 impl FrontendBuildWorkflowMode {
@@ -180,14 +182,20 @@ pub fn execute_workspace_build_route(
         }
         FrontendStepExecutionKind::Check => crate::check_workspace_with_config(workspace, config),
         FrontendStepExecutionKind::Run => match resolved.selections.as_slice() {
-            [] => crate::run_workspace_with_args_and_config(workspace, config, &request.run_args),
-            [selection] => crate::compile::run_selected_artifact_with_args_and_config(
-                workspace,
-                config,
-                request.profile,
-                selection,
-                &request.run_args,
-            ),
+            [] => {
+                ensure_std_workspace_route_models("run", &resolved.available_models)?;
+                crate::run_workspace_with_args_and_config(workspace, config, &request.run_args)
+            }
+            [selection] => {
+                ensure_std_workspace_step_selection("run", requested_step, selection)?;
+                crate::compile::run_selected_artifact_with_args_and_config(
+                    workspace,
+                    config,
+                    request.profile,
+                    selection,
+                    &request.run_args,
+                )
+            }
             selections => Err(FrontendError::new(
                 FrontendErrorKind::InvalidInput,
                 format!(
@@ -199,8 +207,10 @@ pub fn execute_workspace_build_route(
         },
         FrontendStepExecutionKind::Test => {
             if resolved.selections.is_empty() {
+                ensure_std_workspace_route_models("test", &resolved.available_models)?;
                 crate::test_workspace_with_config(workspace, config)
             } else {
+                ensure_std_workspace_step_selections("test", requested_step, &resolved.selections)?;
                 crate::compile::test_selected_artifacts_with_config(
                     workspace,
                     config,
@@ -287,6 +297,7 @@ pub(crate) fn plan_member_execution_from_graph(
         .map(|step| FrontendMemberPlannedStep {
             selection: selection_for_step(member, evaluated, &step.name, step.default_kind),
             ambiguous_selection: step_has_ambiguous_default_selection(evaluated, step.default_kind),
+            available_models: models_for_step(evaluated, &step.name, step.default_kind),
             name: step.name,
             execution: step.default_kind.and_then(step_execution_kind_from_default),
         })
@@ -304,6 +315,7 @@ pub(crate) fn plan_member_execution_from_graph(
             execution: Some(FrontendStepExecutionKind::Check),
             selection: None,
             ambiguous_selection: false,
+            available_models: Vec::new(),
         });
     }
     if steps.is_empty() {
@@ -386,12 +398,20 @@ fn synthesized_default_steps(
             execution: Some(FrontendStepExecutionKind::Build),
             selection: selection.clone(),
             ambiguous_selection: executable_count > 1,
+            available_models: artifact_models(
+                evaluated,
+                fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+            ),
         });
         steps.push(FrontendMemberPlannedStep {
             name: "run".to_string(),
             execution: Some(FrontendStepExecutionKind::Run),
             selection,
             ambiguous_selection: executable_count > 1,
+            available_models: artifact_models(
+                evaluated,
+                fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+            ),
         });
     }
     let test_count = artifact_count(
@@ -409,6 +429,10 @@ fn synthesized_default_steps(
             execution: Some(FrontendStepExecutionKind::Test),
             selection,
             ambiguous_selection: test_count > 1,
+            available_models: artifact_models(
+                evaluated,
+                fol_package::build_runtime::BuildRuntimeArtifactKind::Test,
+            ),
         });
     }
     steps
@@ -447,6 +471,65 @@ fn artifact_count(
         .count()
 }
 
+fn artifact_models(
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
+    kind: fol_package::build_runtime::BuildRuntimeArtifactKind,
+) -> Vec<fol_backend::BackendFolModel> {
+    let mut models = evaluated
+        .artifacts
+        .iter()
+        .filter(|artifact| artifact.kind == kind)
+        .map(|artifact| backend_fol_model(artifact.fol_model))
+        .collect::<Vec<_>>();
+    models.sort_by_key(|model| match model {
+        fol_backend::BackendFolModel::Core => 0,
+        fol_backend::BackendFolModel::Alloc => 1,
+        fol_backend::BackendFolModel::Std => 2,
+    });
+    models.dedup();
+    models
+}
+
+fn models_for_step(
+    evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
+    step_name: &str,
+    default_kind: Option<fol_package::BuildDefaultStepKind>,
+) -> Vec<fol_backend::BackendFolModel> {
+    if let Some(binding) = evaluated
+        .step_bindings
+        .iter()
+        .find(|binding| binding.step_name == step_name)
+    {
+        if let Some(artifact_name) = &binding.artifact_name {
+            return evaluated
+                .artifacts
+                .iter()
+                .find(|artifact| artifact.name == *artifact_name)
+                .map(|artifact| vec![backend_fol_model(artifact.fol_model)])
+                .unwrap_or_default();
+        }
+    }
+    if let Some(artifact) = evaluated
+        .artifacts
+        .iter()
+        .find(|artifact| artifact.name == step_name)
+    {
+        return vec![backend_fol_model(artifact.fol_model)];
+    }
+    match default_kind {
+        Some(fol_package::BuildDefaultStepKind::Build)
+        | Some(fol_package::BuildDefaultStepKind::Run) => artifact_models(
+            evaluated,
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Executable,
+        ),
+        Some(fol_package::BuildDefaultStepKind::Test) => artifact_models(
+            evaluated,
+            fol_package::build_runtime::BuildRuntimeArtifactKind::Test,
+        ),
+        _ => Vec::new(),
+    }
+}
+
 fn single_selection(
     member: &FrontendMemberBuildRoute,
     evaluated: &fol_package::build_eval::EvaluatedBuildProgram,
@@ -468,6 +551,23 @@ fn artifact_selection(
         package_root: member.member_root.clone(),
         label: artifact.name.clone(),
         root_module: Some(artifact.root_module.clone()),
+        fol_model: backend_fol_model(artifact.fol_model),
+    }
+}
+
+fn backend_fol_model(
+    model: fol_package::build_artifact::BuildArtifactFolModel,
+) -> fol_backend::BackendFolModel {
+    match model {
+        fol_package::build_artifact::BuildArtifactFolModel::Core => {
+            fol_backend::BackendFolModel::Core
+        }
+        fol_package::build_artifact::BuildArtifactFolModel::Alloc => {
+            fol_backend::BackendFolModel::Alloc
+        }
+        fol_package::build_artifact::BuildArtifactFolModel::Std => {
+            fol_backend::BackendFolModel::Std
+        }
     }
 }
 
@@ -489,6 +589,7 @@ fn resolve_requested_step_execution(
 ) -> FrontendResult<ResolvedWorkspaceStepExecution> {
     let mut resolved = None;
     let mut selections = Vec::new();
+    let mut available_models = Vec::new();
     let mut saw_untargeted = false;
     for step in member_plans
         .iter()
@@ -533,6 +634,11 @@ fn resolve_requested_step_execution(
                     ));
                 }
                 saw_untargeted = true;
+                for model in &step.available_models {
+                    if !available_models.contains(model) {
+                        available_models.push(*model);
+                    }
+                }
             }
         }
         match resolved {
@@ -554,6 +660,7 @@ fn resolve_requested_step_execution(
         .map(|execution| ResolvedWorkspaceStepExecution {
             execution,
             selections,
+            available_models,
         })
         .ok_or_else(|| {
             FrontendError::new(
@@ -561,6 +668,58 @@ fn resolve_requested_step_execution(
                 format!("workspace build execution does not support step '{requested_step}'"),
             )
         })
+}
+
+fn ensure_std_workspace_route_models(
+    command: &str,
+    models: &[fol_backend::BackendFolModel],
+) -> FrontendResult<()> {
+    if models
+        .iter()
+        .all(|model| *model == fol_backend::BackendFolModel::Std)
+    {
+        return Ok(());
+    }
+    let resolved = models
+        .iter()
+        .map(|model| model.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+    Err(FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "{command} command requires 'fol_model = std' for workspace-routed execution but resolved model(s): {resolved}"
+        ),
+    ))
+}
+
+fn ensure_std_workspace_step_selection(
+    command: &str,
+    step_name: &str,
+    selection: &crate::compile::FrontendArtifactExecutionSelection,
+) -> FrontendResult<()> {
+    if selection.fol_model == fol_backend::BackendFolModel::Std {
+        return Ok(());
+    }
+    Err(FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "workspace build step '{step_name}' resolves artifact '{}' with 'fol_model = {}', but {command} requires 'fol_model = std'",
+            selection.label,
+            selection.fol_model.as_str()
+        ),
+    ))
+}
+
+fn ensure_std_workspace_step_selections(
+    command: &str,
+    step_name: &str,
+    selections: &[crate::compile::FrontendArtifactExecutionSelection],
+) -> FrontendResult<()> {
+    for selection in selections {
+        ensure_std_workspace_step_selection(command, step_name, selection)?;
+    }
+    Ok(())
 }
 
 fn unknown_workspace_build_step_error(

@@ -19,7 +19,10 @@ pub(crate) fn type_literal(
     Ok(match literal {
         Literal::Integer(_) => typed.builtin_types().int,
         Literal::Float(_) => typed.builtin_types().float,
-        Literal::String(_) => typed.builtin_types().str_,
+        Literal::String(_) => {
+            reject_heap_backed_literal_in_core(typed, resolved, node, "string literals")?;
+            typed.builtin_types().str_
+        }
         Literal::Character(_) => typed.builtin_types().char_,
         Literal::Boolean(_) => typed.builtin_types().bool_,
         Literal::Nil => {
@@ -118,6 +121,7 @@ pub(crate) fn type_container_literal(
         .unwrap_or(container_type);
     match container_kind {
         ContainerType::Array | ContainerType::Vector | ContainerType::Sequence => {
+            reject_heap_backed_container_kind_in_core(typed, resolved, elements, &container_kind)?;
             Ok(TypedExpr::maybe_value(type_linear_container_literal(
                 typed,
                 resolved,
@@ -127,20 +131,73 @@ pub(crate) fn type_container_literal(
                 expected_container.as_ref(),
             )?))
         }
-        ContainerType::Set => Ok(TypedExpr::maybe_value(type_set_literal(
-            typed,
-            resolved,
-            context,
-            elements,
-            expected_container.as_ref(),
-        )?)),
-        ContainerType::Map => Ok(TypedExpr::maybe_value(type_map_literal(
-            typed,
-            resolved,
-            context,
-            elements,
-            expected_container.as_ref(),
-        )?)),
+        ContainerType::Set => {
+            reject_heap_backed_container_kind_in_core(typed, resolved, elements, &container_kind)?;
+            Ok(TypedExpr::maybe_value(type_set_literal(
+                typed,
+                resolved,
+                context,
+                elements,
+                expected_container.as_ref(),
+            )?))
+        }
+        ContainerType::Map => {
+            reject_heap_backed_container_kind_in_core(typed, resolved, elements, &container_kind)?;
+            Ok(TypedExpr::maybe_value(type_map_literal(
+                typed,
+                resolved,
+                context,
+                elements,
+                expected_container.as_ref(),
+            )?))
+        }
+    }
+}
+
+fn reject_heap_backed_literal_in_core(
+    typed: &TypedProgram,
+    resolved: &ResolvedProgram,
+    node: &AstNode,
+    label: &str,
+) -> Result<(), TypecheckError> {
+    if typed.capability_model() != crate::TypecheckCapabilityModel::Core {
+        return Ok(());
+    }
+
+    Err(with_node_origin(
+        resolved,
+        node,
+        TypecheckErrorKind::Unsupported,
+        format!("{label} require heap support and are unavailable in 'fol_model = core'"),
+    ))
+}
+
+fn reject_heap_backed_container_kind_in_core(
+    typed: &TypedProgram,
+    resolved: &ResolvedProgram,
+    elements: &[AstNode],
+    kind: &ContainerType,
+) -> Result<(), TypecheckError> {
+    if typed.capability_model() != crate::TypecheckCapabilityModel::Core {
+        return Ok(());
+    }
+
+    let label = match kind {
+        ContainerType::Array => return Ok(()),
+        ContainerType::Vector => "vec[...] literals",
+        ContainerType::Sequence => "seq[...] literals",
+        ContainerType::Set => "set[...] literals",
+        ContainerType::Map => "map[...] literals",
+    };
+    let message = format!("{label} require heap support and are unavailable in 'fol_model = core'");
+    if let Some(origin) = elements.first().and_then(|node| node_origin(resolved, node)) {
+        Err(TypecheckError::with_origin(
+            TypecheckErrorKind::Unsupported,
+            message,
+            origin,
+        ))
+    } else {
+        Err(TypecheckError::new(TypecheckErrorKind::Unsupported, message))
     }
 }
 

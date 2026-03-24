@@ -5,6 +5,7 @@
 //! grow semantic types, typed results, and diagnostics incrementally.
 
 pub mod builtins;
+pub mod config;
 pub mod decls;
 pub mod errors;
 pub mod exprs;
@@ -13,6 +14,7 @@ pub mod session;
 pub mod types;
 
 pub use builtins::BuiltinTypeIds;
+pub use config::{TypecheckCapabilityModel, TypecheckConfig};
 pub use errors::{TypecheckError, TypecheckErrorKind};
 pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use model::{
@@ -26,31 +28,44 @@ pub use types::{
 pub type TypecheckResult<T> = Result<T, Vec<TypecheckError>>;
 
 #[derive(Debug, Default)]
-pub struct Typechecker;
+pub struct Typechecker {
+    config: TypecheckConfig,
+}
 
 impl Typechecker {
     pub fn new() -> Self {
-        Self
+        Self::with_config(TypecheckConfig::default())
+    }
+
+    pub fn with_config(config: TypecheckConfig) -> Self {
+        Self { config }
+    }
+
+    pub fn config(&self) -> TypecheckConfig {
+        self.config
     }
 
     pub fn check_resolved_program(
         &mut self,
         resolved: fol_resolver::ResolvedProgram,
     ) -> TypecheckResult<TypedProgram> {
-        session::TypecheckSession::new().check_resolved_program(resolved)
+        session::TypecheckSession::with_config(self.config).check_resolved_program(resolved)
     }
 
     pub fn check_resolved_workspace(
         &mut self,
         resolved: fol_resolver::ResolvedWorkspace,
     ) -> TypecheckResult<TypedWorkspace> {
-        session::TypecheckSession::new().check_resolved_workspace(resolved)
+        session::TypecheckSession::with_config(self.config).check_resolved_workspace(resolved)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{ParsedSourceUnitKind, TypecheckError, TypecheckErrorKind, Typechecker};
+    use super::{
+        ParsedSourceUnitKind, TypecheckCapabilityModel, TypecheckConfig, TypecheckError,
+        TypecheckErrorKind, Typechecker,
+    };
     use fol_parser::ast::SyntaxOrigin;
     use fol_resolver::resolve_package;
     use fol_stream::FileStream;
@@ -58,6 +73,14 @@ mod tests {
     #[test]
     fn typechecker_foundation_can_be_constructed() {
         let _ = Typechecker::new();
+        let configured = Typechecker::with_config(TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Core,
+        });
+
+        assert_eq!(
+            configured.config().capability_model,
+            TypecheckCapabilityModel::Core
+        );
     }
 
     #[test]

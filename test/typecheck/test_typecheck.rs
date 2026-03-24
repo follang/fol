@@ -5,7 +5,7 @@ use fol_resolver::{ReferenceKind, ResolverConfig, SourceUnitId, SymbolId, Symbol
 use fol_stream::FileStream;
 use fol_typecheck::{
     BuiltinType, BuiltinTypeIds, CheckedType, DeclaredTypeKind, RoutineType, TypeTable,
-    TypecheckError, TypecheckErrorKind, Typechecker,
+    TypecheckConfig, TypecheckError, TypecheckErrorKind, Typechecker,
 };
 use std::collections::BTreeMap;
 use std::fs::{create_dir_all, write};
@@ -59,6 +59,13 @@ fn unique_temp_dir_produces_distinct_paths_for_rapid_calls() {
 }
 
 fn typecheck_fixture_folder(files: &[(&str, &str)]) -> fol_typecheck::TypedProgram {
+    typecheck_fixture_folder_with_config(files, TypecheckConfig::default())
+}
+
+fn typecheck_fixture_folder_with_config(
+    files: &[(&str, &str)],
+    config: TypecheckConfig,
+) -> fol_typecheck::TypedProgram {
     let root = unique_temp_dir("package");
     create_dir_all(&root).expect("Fixture root should be creatable");
     write_fixture_files(&root, files);
@@ -72,12 +79,19 @@ fn typecheck_fixture_folder(files: &[(&str, &str)]) -> fol_typecheck::TypedProgr
         .expect("Fixture folder should parse as a package");
     let resolved = resolve_package(syntax).expect("Fixture folder should resolve cleanly");
 
-    Typechecker::new()
+    Typechecker::with_config(config)
         .check_resolved_program(resolved)
         .expect("Fixture folder should typecheck declaration signatures")
 }
 
 fn typecheck_fixture_folder_errors(files: &[(&str, &str)]) -> Vec<TypecheckError> {
+    typecheck_fixture_folder_errors_with_config(files, TypecheckConfig::default())
+}
+
+fn typecheck_fixture_folder_errors_with_config(
+    files: &[(&str, &str)],
+    config: TypecheckConfig,
+) -> Vec<TypecheckError> {
     let root = unique_temp_dir("package_errors");
     create_dir_all(&root).expect("Fixture root should be creatable");
     write_fixture_files(&root, files);
@@ -91,7 +105,7 @@ fn typecheck_fixture_folder_errors(files: &[(&str, &str)]) -> Vec<TypecheckError
         .expect("Fixture folder should parse as a package");
     let resolved = resolve_package(syntax).expect("Fixture folder should resolve cleanly");
 
-    Typechecker::new()
+    Typechecker::with_config(config)
         .check_resolved_program(resolved)
         .expect_err("Fixture folder should fail typechecking")
 }
@@ -121,6 +135,15 @@ fn typecheck_fixture_workspace_with_config(
     entry: &str,
     config: ResolverConfig,
 ) -> Result<fol_typecheck::TypedWorkspace, Vec<TypecheckError>> {
+    typecheck_fixture_workspace_with_models(root, entry, config, TypecheckConfig::default())
+}
+
+fn typecheck_fixture_workspace_with_models(
+    root: &Path,
+    entry: &str,
+    config: ResolverConfig,
+    typecheck_config: TypecheckConfig,
+) -> Result<fol_typecheck::TypedWorkspace, Vec<TypecheckError>> {
     let entry_root = root.join(entry);
     let mut stream =
         FileStream::from_folder(entry_root.to_str().expect("fixture path should be utf8"))
@@ -133,7 +156,7 @@ fn typecheck_fixture_workspace_with_config(
     let resolved = resolve_package_workspace_with_config(syntax, config)
         .expect("Fixture folder should resolve cleanly as a workspace");
 
-    Typechecker::new().check_resolved_workspace(resolved)
+    Typechecker::with_config(typecheck_config).check_resolved_workspace(resolved)
 }
 
 fn typecheck_fixture_workspace_entry_with_config(

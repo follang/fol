@@ -333,12 +333,13 @@ pub fn traverse_node(
         | AstNode::Break
         | AstNode::AsyncStage
         | AstNode::AwaitStage => {}
-        AstNode::Defer { body } => {
+        AstNode::Defer { syntax_id, body } => {
             traverse_block_body(
                 session,
                 program,
                 source_unit_id,
                 scope_id,
+                *syntax_id,
                 body,
                 routine_context,
             )?;
@@ -757,12 +758,16 @@ pub fn traverse_node(
                 )?;
             }
         }
-        AstNode::Block { statements } => {
+        AstNode::Block {
+            syntax_id,
+            statements,
+        } => {
             traverse_block_body(
                 session,
                 program,
                 source_unit_id,
                 scope_id,
+                *syntax_id,
                 statements,
                 routine_context,
             )?;
@@ -912,10 +917,12 @@ pub fn traverse_block_body(
     program: &mut ResolvedProgram,
     source_unit_id: SourceUnitId,
     parent_scope: ScopeId,
+    syntax_id: Option<fol_parser::ast::syntax::SyntaxNodeId>,
     statements: &[AstNode],
     routine_context: Option<RoutineContext>,
 ) -> Result<(), ResolverError> {
     let block_scope = program.add_scope(ScopeKind::Block, parent_scope, source_unit_id);
+    program.record_scope_for_syntax(syntax_id, block_scope);
     for statement in statements {
         traverse_node(
             session,

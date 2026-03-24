@@ -5,7 +5,10 @@ impl AstParser {
         if nodes.len() == 1 {
             nodes.into_iter().next().expect("one node")
         } else {
-            AstNode::Block { statements: nodes }
+            AstNode::Block {
+                syntax_id: None,
+                statements: nodes,
+            }
         }
     }
 

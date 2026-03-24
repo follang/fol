@@ -376,6 +376,28 @@ fn type_query_intrinsic(
         });
     }
 
+    let core_dynamic_length_query = typed.capability_model() == crate::TypecheckCapabilityModel::Core
+        && matches!(
+            typed.type_table().get(operand_apparent),
+            Some(CheckedType::Builtin(crate::BuiltinType::Str))
+                | Some(CheckedType::Vector { .. })
+                | Some(CheckedType::Sequence { .. })
+                | Some(CheckedType::Set { .. })
+                | Some(CheckedType::Map { .. })
+        );
+    if core_dynamic_length_query {
+        let message = format!(
+            "'.len(...)' over heap-backed strings and containers requires 'fol_model = alloc' or 'std'; current artifact model is '{}'",
+            typed.capability_model().as_str()
+        );
+        return Err(match origin {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
+        });
+    }
+
     typed.record_node_type(syntax_id, context.source_unit_id, typed.builtin_types().int)?;
     Ok(TypedExpr::value(typed.builtin_types().int)
         .with_optional_effect(operand_expr.recoverable_effect))
@@ -391,6 +413,18 @@ fn type_echo_intrinsic(
     _expected_type: Option<crate::CheckedTypeId>,
 ) -> Result<TypedExpr, TypecheckError> {
     let origin = origin_for(resolved, syntax_id);
+    if typed.capability_model() != crate::TypecheckCapabilityModel::Std {
+        let message = format!(
+            "'.echo(...)' requires 'fol_model = std'; current artifact model is '{}'",
+            typed.capability_model().as_str()
+        );
+        return Err(match origin {
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin)
+            }
+            None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
+        });
+    }
     if args.len() != 1 {
         return Err(match origin {
             Some(origin) => TypecheckError::with_origin(

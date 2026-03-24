@@ -158,7 +158,7 @@ pub fn render_core_instruction_in_workspace(
             match (entry.name, args.as_slice()) {
                 ("echo", [value]) => {
                     let value = render_local_name(package_identity, routine, *value)?;
-                    let rendered = format!("rt::echo({value})");
+                    let rendered = format!("rt::echo({value}.clone())");
                     match instruction.result {
                         Some(_) => {
                             let result =
@@ -254,8 +254,12 @@ pub fn render_core_instruction_in_workspace(
             let elements = render_local_list(package_identity, routine, elements)?;
             let expression = match kind {
                 LoweredLinearKind::Array => format!("[{elements}]"),
-                LoweredLinearKind::Vector => format!("rt::FolVec::from_items(vec![{elements}])"),
-                LoweredLinearKind::Sequence => format!("rt::FolSeq::from_items(vec![{elements}])"),
+                LoweredLinearKind::Vector => {
+                    format!("rt_model::FolVec::from_items(vec![{elements}])")
+                }
+                LoweredLinearKind::Sequence => {
+                    format!("rt_model::FolSeq::from_items(vec![{elements}])")
+                }
             };
             Ok(format!("let {result} = {expression};"))
         }
@@ -263,7 +267,7 @@ pub fn render_core_instruction_in_workspace(
             let result = rendered_result_local(package_identity, routine, instruction)?;
             let members = render_local_list(package_identity, routine, members)?;
             Ok(format!(
-                "let {result} = rt::FolSet::from_items(vec![{members}]);"
+                "let {result} = rt_model::FolSet::from_items(vec![{members}]);"
             ))
         }
         LoweredInstrKind::ConstructMap { entries, .. } => {
@@ -280,7 +284,7 @@ pub fn render_core_instruction_in_workspace(
                 .collect::<BackendResult<Vec<_>>>()?
                 .join(", ");
             Ok(format!(
-                "let {result} = rt::FolMap::from_pairs(vec![{entries}]);"
+                "let {result} = rt_model::FolMap::from_pairs(vec![{entries}]);"
             ))
         }
         LoweredInstrKind::IndexAccess { container, index } => {

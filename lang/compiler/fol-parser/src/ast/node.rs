@@ -389,11 +389,13 @@ pub enum AstNode {
 
     /// Defer statement: defer { body }
     Defer {
+        syntax_id: Option<SyntaxNodeId>,
         body: Vec<AstNode>,
     },
 
     /// Block: { statements }
     Block {
+        syntax_id: Option<SyntaxNodeId>,
         statements: Vec<AstNode>,
     },
 
@@ -453,7 +455,9 @@ impl AstNode {
             | AstNode::UseDecl { syntax_id, .. }
             | AstNode::Identifier { syntax_id, .. }
             | AstNode::FunctionCall { syntax_id, .. }
-            | AstNode::RecordInit { syntax_id, .. } => *syntax_id,
+            | AstNode::RecordInit { syntax_id, .. }
+            | AstNode::Defer { syntax_id, .. }
+            | AstNode::Block { syntax_id, .. } => *syntax_id,
             AstNode::Commented { node, .. } => node.syntax_id(),
             _ => None,
         }
@@ -747,7 +751,7 @@ impl AstNode {
                 children.extend(body.iter());
                 children
             }
-            AstNode::Block { statements } => statements.iter().collect(),
+            AstNode::Block { statements, .. } => statements.iter().collect(),
             AstNode::Program { declarations } => declarations.iter().collect(),
             AstNode::Comment { .. } => vec![],
             AstNode::Commented {
@@ -814,7 +818,7 @@ impl AstNode {
             AstNode::Yield { value } => {
                 vec![value.as_ref()]
             }
-            AstNode::Defer { body } => body.iter().collect(),
+            AstNode::Defer { body, .. } => body.iter().collect(),
             AstNode::Range { start, end, .. } => {
                 let mut children = Vec::new();
                 if let Some(s) = start {

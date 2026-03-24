@@ -1,4 +1,5 @@
 use fol_parser::ast::{AstNode, Literal, RecordInitField};
+use crate::artifact::BuildArtifactFolModel;
 
 use super::core::BuildBodyExecutor;
 use super::types::{ExecArtifact, ExecConfigValue, ExecValue};
@@ -45,6 +46,7 @@ impl BuildBodyExecutor {
             AstNode::Literal(Literal::String(s)) => Some(ExecArtifact {
                 name: s.clone(),
                 root_module: ExecConfigValue::Literal(String::new()),
+                fol_model: BuildArtifactFolModel::Std,
                 target: None,
                 optimize: None,
             }),

@@ -15,7 +15,10 @@ impl AstParser {
         if statements.len() == 1 {
             Ok(statements.into_iter().next().expect("one statement"))
         } else {
-            Ok(AstNode::Block { statements })
+            Ok(AstNode::Block {
+                syntax_id: None,
+                statements,
+            })
         }
     }
 

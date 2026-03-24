@@ -487,7 +487,7 @@ mod tests {
             .expect("signature");
 
         assert!(rendered.contains("pub fn r__pkg__entry__app__r2__load()"));
-        assert!(rendered.ends_with(" -> rt::FolRecover<rt::FolInt, rt::FolStr>"));
+        assert!(rendered.ends_with(" -> rt::FolRecover<rt::FolInt, rt_model::FolStr>"));
     }
 
     #[test]
@@ -573,7 +573,7 @@ mod tests {
 
         assert!(snapshot.contains("g__pkg__entry__app__g0__answer"));
         assert!(snapshot.contains("r__pkg__entry__app__r4__load"));
-        assert!(snapshot.contains("rt::FolRecover<rt::FolInt, rt::FolStr>"));
+        assert!(snapshot.contains("rt::FolRecover<rt::FolInt, rt_model::FolStr>"));
         assert!(snapshot.contains("l__pkg__entry__app__r4__l0__flag: rt::FolBool"));
         assert!(snapshot.contains(
             "let mut l__pkg__entry__app__r4__l1__value: rt::FolInt = Default::default();"
