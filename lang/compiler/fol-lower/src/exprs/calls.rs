@@ -11,7 +11,7 @@ use fol_parser::ast::AstNode;
 use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
 
-fn bind_lowered_call_arguments<'a>(
+pub(crate) fn bind_lowered_call_arguments<'a>(
     args: &'a [AstNode],
     param_names: &[String],
     display_name: &str,

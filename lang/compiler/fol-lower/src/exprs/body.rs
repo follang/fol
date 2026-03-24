@@ -449,8 +449,22 @@ pub(crate) fn lower_body_node(
                     )
                 })?
                 .to_vec();
+            let param_names = decl_index
+                .routine_param_names(callee)
+                .ok_or_else(|| {
+                    LoweringError::with_kind(
+                        LoweringErrorKind::InvalidInput,
+                        format!("method '{method}' does not retain lowered parameter names"),
+                    )
+                })?;
+            let ordered_args = super::calls::bind_lowered_call_arguments(
+                args,
+                param_names.get(1..).unwrap_or(&[]),
+                method,
+            )?;
             lowered_args.extend(
-                args.iter()
+                ordered_args
+                    .iter()
                     .enumerate()
                     .map(|(index, arg)| {
                         let expected = param_types.get(index + 1).copied();

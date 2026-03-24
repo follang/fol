@@ -136,6 +136,50 @@ fn workspace_expression_typing_types_plain_imported_method_calls() {
 }
 
 #[test]
+fn workspace_expression_typing_accepts_named_imported_method_calls() {
+    let root = unique_temp_dir("workspace_named_imported_method_calls");
+    create_dir_all(&root).expect("Fixture root should be creatable");
+    write_fixture_files(
+        &root,
+        &[
+            (
+                "shared/lib.fol",
+                concat!(
+                    "typ[exp] Counter: rec = {\n",
+                    "    value: int;\n",
+                    "};\n",
+                    "var[exp] current: Counter;\n",
+                    "fun[exp] (Counter)shift(by: int, step: int): int = {\n",
+                    "    return by;\n",
+                    "};\n",
+                ),
+            ),
+            (
+                "app/main.fol",
+                concat!(
+                    "use shared: loc = {\"../shared\"};\n",
+                    "fun[] main(): int = {\n",
+                    "    return current.shift(step = 2, by = 1);\n",
+                    "};\n",
+                ),
+            ),
+        ],
+    );
+
+    let typed = typecheck_fixture_workspace_entry_with_config(&root, "app", ResolverConfig::default())
+        .expect("Workspace entry typing should accept named imported method calls through typed package facts");
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
 fn workspace_expression_typing_types_qualified_imported_method_calls() {
     let root = unique_temp_dir("workspace_qualified_imported_method_calls");
     create_dir_all(&root).expect("Fixture root should be creatable");

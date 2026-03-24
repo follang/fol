@@ -675,7 +675,7 @@ pub(crate) fn type_method_call(
         args,
         method,
         origin.clone(),
-        false,
+        true,
     )?;
     let merged = merge_recoverable_effects(
         typed,
@@ -890,24 +890,6 @@ fn bind_call_arguments<'a>(
     origin: Option<SyntaxOrigin>,
     allow_named: bool,
 ) -> Result<Vec<&'a AstNode>, TypecheckError> {
-    if !allow_named {
-        if let Some(named_arg) = args.iter().find(|arg| matches!(arg, AstNode::NamedArgument { .. })) {
-            return Err(TypecheckError::with_origin(
-                TypecheckErrorKind::InvalidInput,
-                "named arguments are not yet supported for method calls in V1",
-                origin.unwrap_or(SyntaxOrigin {
-                    file: None,
-                    line: 1,
-                    column: 1,
-                    length: match named_arg {
-                        AstNode::NamedArgument { name, .. } => name.len(),
-                        _ => callee.len(),
-                    },
-                }),
-            ));
-        }
-    }
-
     if signature.params.len() != args.len() && !args.iter().any(|arg| matches!(arg, AstNode::NamedArgument { .. })) {
         return Err(call_arity_error(signature.params.len(), args.len(), callee, origin));
     }
@@ -920,7 +902,16 @@ fn bind_call_arguments<'a>(
         match arg {
             AstNode::NamedArgument { name, value } => {
                 if !allow_named {
-                    unreachable!("named arguments should have returned above");
+                    return Err(TypecheckError::with_origin(
+                        TypecheckErrorKind::InvalidInput,
+                        format!("named arguments are not supported for call to '{callee}'"),
+                        origin.clone().unwrap_or(SyntaxOrigin {
+                            file: None,
+                            line: 1,
+                            column: 1,
+                            length: name.len(),
+                        }),
+                    ));
                 }
                 seen_named = true;
                 let Some(index) = signature.param_names.iter().position(|param| param == name) else {

@@ -585,6 +585,59 @@ fn expression_typing_types_method_calls_against_explicit_receiver_routines() {
 }
 
 #[test]
+fn expression_typing_accepts_named_arguments_for_method_calls() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         fun (Counter)shift(by: int, step: int): int = {\n\
+             return by;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.shift(step = 2, by = 1);\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "demo");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_rejects_unknown_named_arguments_for_method_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         fun (Counter)shift(by: int, step: int): int = {\n\
+             return by;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.shift(missing = 2, by = 1);\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("does not have a parameter named 'missing'")
+        }),
+        "Expected an unknown named-argument diagnostic for method call, got: {errors:?}"
+    );
+}
+
+#[test]
 fn expression_typing_rejects_method_call_arity_mismatches() {
     let errors = typecheck_fixture_folder_errors(&[(
         "main.fol",

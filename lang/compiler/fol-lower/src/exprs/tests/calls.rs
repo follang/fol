@@ -233,6 +233,61 @@ fn method_call_lowering_rewrites_receivers_into_direct_call_arguments() {
 }
 
 #[test]
+fn method_call_lowering_reorders_named_arguments_after_the_receiver() {
+    let workspace = lower_fixture_workspace(
+        "typ Counter: rec = { value: int };\n\
+         fun (Counter)shift(by: int, step: int): int = {\n\
+             return by;\n\
+         };\n\
+         fun[] main(current: Counter): int = {\n\
+             return current.shift(step = 2, by = 1);\n\
+         };",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let (call_result, call_args) = routine
+        .instructions
+        .iter()
+        .find_map(|instr| match &instr.kind {
+            LoweredInstrKind::Call { args, .. } => Some((instr.result, args.clone())),
+            _ => None,
+        })
+        .expect("method body should contain a lowered call");
+
+    assert!(call_result.is_some(), "expression-style method call should keep a result local");
+    assert_eq!(call_args.len(), 3, "method call should lower receiver plus two explicit args");
+
+    let lowered_arg_constants = call_args[1..]
+        .iter()
+        .map(|local_id| {
+            routine
+                .instructions
+                .iter()
+                .find_map(|instr| match (&instr.result, &instr.kind) {
+                    (Some(result), LoweredInstrKind::Const(LoweredOperand::Int(value)))
+                        if result == local_id =>
+                    {
+                        Some(*value)
+                    }
+                    _ => None,
+                })
+                .expect("named method args should lower from integer constants")
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        lowered_arg_constants,
+        vec![1, 2],
+        "named method arguments should lower in declared parameter order after the receiver"
+    );
+}
+
+#[test]
 fn errorful_call_lowering_retains_explicit_error_type_metadata() {
     let lowered = lower_fixture_workspace(
         "fun[] load(): int / str = {\n\
