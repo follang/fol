@@ -120,7 +120,7 @@ Make backend emission reflect `fol_model` structurally, not only semantically.
 
 ### Slice Tracker
 
-- [ ] Slice 8. Add backend runtime-tier selection by `BackendFolModel` with a
+- [x] Slice 8. Add backend runtime-tier selection by `BackendFolModel` with a
   small internal abstraction such as `BackendRuntimeTier`.
 - [ ] Slice 9. Update emitted Rust crate generation so `core`, `alloc`, and
   `std` artifacts import different `fol-runtime` model modules while still

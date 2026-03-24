@@ -29,6 +29,47 @@ impl BackendFolModel {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BackendRuntimeTier {
+    Core,
+    Alloc,
+    Std,
+}
+
+impl BackendRuntimeTier {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Core => "core",
+            Self::Alloc => "alloc",
+            Self::Std => "std",
+        }
+    }
+
+    pub fn runtime_module_path(self) -> &'static str {
+        match self {
+            Self::Core => "fol_runtime::core",
+            Self::Alloc => "fol_runtime::alloc",
+            Self::Std => "fol_runtime::std",
+        }
+    }
+
+    pub fn prelude_module_path(self) -> &'static str {
+        match self {
+            Self::Core | Self::Alloc | Self::Std => "fol_runtime::prelude",
+        }
+    }
+}
+
+impl From<BackendFolModel> for BackendRuntimeTier {
+    fn from(value: BackendFolModel) -> Self {
+        match value {
+            BackendFolModel::Core => Self::Core,
+            BackendFolModel::Alloc => Self::Alloc,
+            BackendFolModel::Std => Self::Std,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum BackendMachineTarget {
     #[default]
@@ -152,9 +193,15 @@ impl Default for BackendConfig {
     }
 }
 
+impl BackendConfig {
+    pub fn runtime_tier(&self) -> BackendRuntimeTier {
+        self.fol_model.into()
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{BackendConfig, BackendFolModel, BackendMachineTarget};
+    use super::{BackendConfig, BackendFolModel, BackendMachineTarget, BackendRuntimeTier};
 
     #[test]
     fn machine_target_normalization_keeps_host_aliases_canonical() {
@@ -243,5 +290,29 @@ mod tests {
         assert_eq!(BackendFolModel::Core.as_str(), "core");
         assert_eq!(BackendFolModel::Alloc.as_str(), "alloc");
         assert_eq!(BackendFolModel::Std.as_str(), "std");
+        assert_eq!(
+            BackendConfig::default().runtime_tier(),
+            BackendRuntimeTier::Std
+        );
+    }
+
+    #[test]
+    fn backend_runtime_tier_tracks_fol_model_and_module_paths() {
+        assert_eq!(
+            BackendRuntimeTier::from(BackendFolModel::Core).runtime_module_path(),
+            "fol_runtime::core"
+        );
+        assert_eq!(
+            BackendRuntimeTier::from(BackendFolModel::Alloc).runtime_module_path(),
+            "fol_runtime::alloc"
+        );
+        assert_eq!(
+            BackendRuntimeTier::from(BackendFolModel::Std).runtime_module_path(),
+            "fol_runtime::std"
+        );
+        assert_eq!(
+            BackendRuntimeTier::from(BackendFolModel::Core).prelude_module_path(),
+            "fol_runtime::prelude"
+        );
     }
 }

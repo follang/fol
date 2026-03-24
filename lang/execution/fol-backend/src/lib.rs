@@ -34,7 +34,7 @@ pub fn crate_name() -> &'static str {
 
 pub use config::{
     BackendBuildProfile, BackendConfig, BackendFolModel, BackendMachineTarget, BackendMode,
-    BackendTarget,
+    BackendRuntimeTier, BackendTarget,
 };
 pub use control::render_terminator;
 pub use emit::{
@@ -80,7 +80,7 @@ mod tests {
     use super::{
         Backend, BackendArtifact, BackendBuildProfile, BackendConfig, BackendError,
         BackendErrorKind, BackendFolModel, BackendMachineTarget, BackendMode, BackendResult,
-        BackendSession, BackendTarget, EmittedRustFile,
+        BackendRuntimeTier, BackendSession, BackendTarget, EmittedRustFile,
     };
     use crate::testing::sample_lowered_workspace;
 
@@ -103,6 +103,7 @@ mod tests {
         assert_eq!(format!("{backend:?}"), "Backend");
         assert_eq!(config.target, BackendTarget::Rust);
         assert_eq!(config.fol_model, BackendFolModel::Std);
+        assert_eq!(config.runtime_tier(), BackendRuntimeTier::Std);
         assert_eq!(config.machine_target, BackendMachineTarget::Host);
         assert_eq!(config.build_profile, BackendBuildProfile::Release);
         assert_eq!(config.mode, BackendMode::BuildArtifact);
