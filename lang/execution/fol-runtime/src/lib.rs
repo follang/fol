@@ -12,7 +12,7 @@
 //!
 //! - builtin scalar support
 //! - alloc-tier strings
-//! - runtime containers
+//! - alloc-tier heap containers and container helpers
 //! - optional/error shells
 //! - recoverable routine results
 //! - backend-facing runtime hooks such as `.echo(...)`
@@ -23,9 +23,8 @@
 //! - [`alloc`]
 //! - [`std`]
 //!
-//! Those tiers currently begin as module boundaries and marker APIs. Later
-//! slices move concrete ownership into those modules and delete the old shared
-//! surface.
+//! The heap-backed runtime families now belong to [`alloc`], while [`containers`]
+//! remains the helper layer for indexing, slicing, and rendering.
 //!
 //! Explicitly out of scope for this milestone:
 //!
@@ -88,12 +87,12 @@
 //! - `ExtractRecoverableError`
 //!   - must extract the error lane of [`abi::FolRecover`]
 //! - `ConstructLinear`
-//!   - sequence and vector lowering must map to [`containers::FolSeq`] and
-//!     [`containers::FolVec`]
+//!   - sequence and vector lowering must map to [`alloc::FolSeq`] and
+//!     [`alloc::FolVec`]
 //! - `ConstructSet`
-//!   - must map to [`containers::FolSet`] to preserve deterministic ordering
+//!   - must map to [`alloc::FolSet`] to preserve deterministic ordering
 //! - `ConstructMap`
-//!   - must map to [`containers::FolMap`] to preserve deterministic ordering
+//!   - must map to [`alloc::FolMap`] to preserve deterministic ordering
 //! - `ConstructOptional`
 //!   - must map to [`shell::FolOption`]
 //! - `ConstructError`
@@ -128,7 +127,7 @@
 //!   `use fol_runtime::prelude as rt;`
 //! - use fully qualified imports for less-common runtime modules when needed,
 //!   for example:
-//!   - `fol_runtime::containers::FolSeq`
+//!   - `fol_runtime::alloc::FolSeq`
 //!   - `fol_runtime::shell::FolOption`
 //!   - `fol_runtime::abi::FolRecover`
 //!
@@ -159,10 +158,10 @@
 //!    where runtime formatting needs to stay stable.
 //! 5. Map lowered container, shell, and recoverable shapes onto the public
 //!    runtime types:
-//!    - [`containers::FolVec`]
-//!    - [`containers::FolSeq`]
-//!    - [`containers::FolSet`]
-//!    - [`containers::FolMap`]
+//!    - [`alloc::FolVec`]
+//!    - [`alloc::FolSeq`]
+//!    - [`alloc::FolSet`]
+//!    - [`alloc::FolMap`]
 //!    - [`shell::FolOption`]
 //!    - [`shell::FolError`]
 //!    - [`abi::FolRecover`]

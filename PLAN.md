@@ -174,7 +174,7 @@ Make heap-backed runtime data structures physically belong to `alloc`.
   keep the plan honest.
 - [x] Slice 20. Update backend emission so `alloc` and `std` artifacts import
   those types from the `alloc` module in `fol-runtime`.
-- [ ] Slice 21. Delete the old unsplit ownership path for those heap-backed
+- [x] Slice 21. Delete the old unsplit ownership path for those heap-backed
   types inside `fol-runtime`.
 - [ ] Slice 22. Add end-to-end fixtures for:
   - `alloc` artifact using `str`
