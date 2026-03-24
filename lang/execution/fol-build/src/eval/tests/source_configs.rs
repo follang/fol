@@ -66,6 +66,8 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
     let source = concat!(
         "pro[] build(graph: Graph): non = {\n",
         "    graph.add_exe({ name = \"app\", root = \"src/app.fol\", fol_model = \"core\" });\n",
+        "    graph.add_static_lib({ name = \"corelib\", root = \"src/lib.fol\", fol_model = \"alloc\" });\n",
+        "    graph.add_shared_lib({ name = \"plugin\", root = \"src/plugin.fol\", fol_model = \"std\" });\n",
         "    graph.add_test({ name = \"tests\", root = \"test/app.fol\", fol_model = \"alloc\" });\n",
         "    return graph\n",
         "}\n",
@@ -84,7 +86,7 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
         .expect("artifact fol_model configs should evaluate")
         .expect("build body should produce a graph");
 
-    assert_eq!(evaluated.evaluated.artifacts.len(), 2);
+    assert_eq!(evaluated.evaluated.artifacts.len(), 4);
     assert_eq!(
         evaluated.evaluated.artifacts[0].fol_model,
         BuildArtifactFolModel::Core
@@ -92,6 +94,26 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
     assert_eq!(
         evaluated.evaluated.artifacts[1].fol_model,
         BuildArtifactFolModel::Alloc
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[2].fol_model,
+        BuildArtifactFolModel::Std
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[3].fol_model,
+        BuildArtifactFolModel::Alloc
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[1].kind,
+        crate::runtime::BuildRuntimeArtifactKind::StaticLibrary
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[2].kind,
+        crate::runtime::BuildRuntimeArtifactKind::SharedLibrary
+    );
+    assert_eq!(
+        evaluated.evaluated.artifacts[3].kind,
+        crate::runtime::BuildRuntimeArtifactKind::Test
     );
 }
 

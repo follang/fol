@@ -9,6 +9,8 @@ use super::types::ExecArtifact;
 pub struct ExecutionOutput {
     pub operations: Vec<BuildEvaluationOperation>,
     pub executable_artifacts: Vec<ExecArtifact>,
+    pub static_library_artifacts: Vec<ExecArtifact>,
+    pub shared_library_artifacts: Vec<ExecArtifact>,
     pub test_artifacts: Vec<ExecArtifact>,
     pub generated_files: Vec<BuildRuntimeGeneratedFile>,
     pub dependency_queries: Vec<BuildRuntimeDependencyQuery>,

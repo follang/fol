@@ -540,6 +540,7 @@ impl BuildBodyExecutor {
                 });
             }
             "add_static_lib" => {
+                self.output.static_library_artifacts.push(artifact.clone());
                 self.output.operations.push(BuildEvaluationOperation {
                     origin,
                     kind: BuildEvaluationOperationKind::AddStaticLib(StaticLibraryRequest {
@@ -549,6 +550,7 @@ impl BuildBodyExecutor {
                 });
             }
             "add_shared_lib" => {
+                self.output.shared_library_artifacts.push(artifact.clone());
                 self.output.operations.push(BuildEvaluationOperation {
                     origin,
                     kind: BuildEvaluationOperationKind::AddSharedLib(SharedLibraryRequest {

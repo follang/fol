@@ -12,7 +12,7 @@ Last updated: 2026-03-24
   first-class artifact field, with semantic tests.
 - [x] Slice 4. Parse `fol_model` from `build.fol` artifact records in the build
   executor and carry it through evaluated build programs.
-- [ ] Slice 5. Add positive build-source tests for `fol_model` on executable,
+- [x] Slice 5. Add positive build-source tests for `fol_model` on executable,
   library, and test artifacts.
 - [ ] Slice 6. Add explicit invalid-`fol_model` diagnostics in build
   evaluation, with negative tests.

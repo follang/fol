@@ -99,6 +99,42 @@ pub(super) fn build_evaluated_program(
                     .map(|v| v.resolve(&result.resolved_options)),
             )
         })
+        .chain(exec_output.static_library_artifacts.iter().map(|artifact| {
+            BuildRuntimeArtifact::new(
+                artifact.name.clone(),
+                BuildRuntimeArtifactKind::StaticLibrary,
+                artifact.root_module.resolve(&result.resolved_options),
+            )
+            .with_fol_model(artifact.fol_model)
+            .with_target_config(
+                artifact
+                    .target
+                    .as_ref()
+                    .map(|v| v.resolve(&result.resolved_options)),
+                artifact
+                    .optimize
+                    .as_ref()
+                    .map(|v| v.resolve(&result.resolved_options)),
+            )
+        }))
+        .chain(exec_output.shared_library_artifacts.iter().map(|artifact| {
+            BuildRuntimeArtifact::new(
+                artifact.name.clone(),
+                BuildRuntimeArtifactKind::SharedLibrary,
+                artifact.root_module.resolve(&result.resolved_options),
+            )
+            .with_fol_model(artifact.fol_model)
+            .with_target_config(
+                artifact
+                    .target
+                    .as_ref()
+                    .map(|v| v.resolve(&result.resolved_options)),
+                artifact
+                    .optimize
+                    .as_ref()
+                    .map(|v| v.resolve(&result.resolved_options)),
+            )
+        }))
         .chain(exec_output.test_artifacts.iter().map(|artifact| {
             BuildRuntimeArtifact::new(
                 artifact.name.clone(),
