@@ -40,6 +40,33 @@ So:
 
 This matters because FOL should be honest about what each release guarantees.
 
+## Runtime model note
+
+The language version and the runtime capability model are different axes.
+
+FOL is moving toward a build-selected runtime model:
+
+- `core`
+  no heap, no OS
+- `alloc`
+  adds heap-backed facilities, still no OS
+- `std`
+  adds OS/runtime services
+
+This model should be selected per build artifact through `build.fol`, not by a
+source-file pragma.
+
+That means a `V1` compiler can still have multiple runtime models. The version
+answers “which language semantics are implemented end to end,” while the model
+answers “which runtime capabilities this artifact is allowed to use.”
+
+For the planned split:
+
+- arrays, scalars, records, routines, control flow, `defer`, and
+  `opt[...]`/`err[...]` belong to `core`
+- heap-backed `str`, `vec`, `seq`, `set`, and `map` belong to `alloc`
+- `.echo(...)` and hosted process/runtime behavior belong to `std`
+
 ## How to read the book through versions
 
 The book is a language-design document. It covers:

@@ -13,6 +13,7 @@ Adds an executable artifact.
 var app = graph.add_exe({
     name     = "app",
     root     = "src/main.fol",
+    fol_model = "std",   // optional, defaults to "std" for now
     target   = target,    // optional
     optimize = optimize,  // optional
 });
@@ -21,10 +22,21 @@ var app = graph.add_exe({
 Returns an `Artifact` handle.
 
 Required fields: `name`, `root`.
-Optional fields: `target`, `optimize`.
+Optional fields: `fol_model`, `target`, `optimize`.
 
 `root` is the path to the entry-point `.fol` source file relative to the
 package root.
+
+`fol_model` selects the runtime capability tier for the artifact:
+
+- `core`
+  no heap, no OS/runtime services
+- `alloc`
+  heap-backed facilities, still no OS/runtime services
+- `std`
+  hosted/runtime services on top of `alloc`
+
+For the staged rollout, omitted `fol_model` behaves like `std`.
 
 ### `graph.add_static_lib`
 
@@ -35,6 +47,12 @@ var core = graph.add_static_lib({ name = "core", root = "src/core/lib.fol" });
 ```
 
 Returns an `Artifact` handle.
+
+Library and test artifact config records follow the same optional fields:
+
+- `fol_model`
+- `target`
+- `optimize`
 
 ### `graph.add_shared_lib`
 
