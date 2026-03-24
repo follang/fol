@@ -96,7 +96,7 @@ Introduce the physical runtime split without yet moving every implementation.
 
 ### Slice Tracker
 
-- [ ] Slice 4. Add new crates:
+- [x] Slice 4. Add new crates:
   - `lang/execution/fol-core`
   - `lang/execution/fol-alloc`
   - `lang/execution/fol-std`

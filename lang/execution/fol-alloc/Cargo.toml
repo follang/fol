@@ -1,0 +1,8 @@
+[package]
+name = "fol-alloc"
+version = "0.1.4"
+edition = "2021"
+
+[lib]
+name = "fol_alloc"
+path = "src/lib.rs"

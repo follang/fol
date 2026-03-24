@@ -1,0 +1,8 @@
+[package]
+name = "fol-std"
+version = "0.1.4"
+edition = "2021"
+
+[lib]
+name = "fol_std"
+path = "src/lib.rs"
