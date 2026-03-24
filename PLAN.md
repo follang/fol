@@ -211,7 +211,7 @@ Make `core` useful and honest for embedded-first work.
   - `set`
   - `map`
   - `.echo(...)`
-- [ ] Slice 27. Document the exact current embedded meaning of `core`:
+- [x] Slice 27. Document the exact current embedded meaning of `core`:
   “no heap and no OS at language/runtime level, still emitted through the
   current Rust backend pipeline.”
 

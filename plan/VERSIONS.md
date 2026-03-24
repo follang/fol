@@ -74,6 +74,13 @@ Current contract:
   services
 - `std` means hosted runtime services on top of `alloc`
 
+Current implementation honesty note:
+
+- `core` is already enforced as a language/runtime capability boundary
+- `core` still goes through the current Rust backend pipeline today
+- so `core` should be read as “no heap, no OS/runtime services” rather than as
+  “embedded backend complete”
+
 This split is a runtime capability boundary, not an object-model feature and
 not a source-file pragma.
 

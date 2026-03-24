@@ -48,6 +48,14 @@ The important boundary is semantic and runtime-facing:
 - `std` artifacts are the only artifacts that may use hosted services such as
   `.echo(...)` and ordinary host-executed `run` / `test`
 
+Current implementation note:
+
+- `core` already means “no heap and no OS/runtime services” at the language and
+  runtime-contract level
+- `core` artifacts are still emitted through the current Rust backend pipeline
+- that means `core` is ready for semantic/runtime restriction work now, but it
+  should not yet be read as “finished embedded backend support”
+
 ### `graph.add_static_lib`
 
 Adds a static library artifact.
