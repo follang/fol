@@ -7,7 +7,7 @@ use super::containers::{
     apply_expected_shell_wrap, field_access_type, index_access_type, lower_container_literal,
     lower_nil_literal, lower_record_initializer, slice_access_type,
 };
-use super::cursor::{LoweredValue, RoutineCursor, WorkspaceDeclIndex};
+use super::cursor::{DeferScopeKind, LoweredValue, RoutineCursor, WorkspaceDeclIndex};
 use super::flow::lower_when_expression;
 use super::helpers::{
     describe_binary_operator, describe_unary_operator,
@@ -933,6 +933,10 @@ pub(crate) fn lower_expression_observed(
             LoweringErrorKind::InvalidInput,
             "break statement should not appear in expression lowering",
         )),
+        AstNode::Defer { .. } => Err(LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            "defer statement should not appear in expression lowering",
+        )),
         AstNode::Inquiry { .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::InvalidInput,
             "inquiry clause should not appear in expression lowering",
@@ -1213,6 +1217,7 @@ fn lower_anonymous_routine(
         source_unit_id,
         scope_id,
         body,
+        DeferScopeKind::Ordinary,
     )?
     .map(|value| value.local_id);
     cursor.next_routine_index = anon_cursor.next_routine_index;

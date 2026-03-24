@@ -333,6 +333,16 @@ pub fn traverse_node(
         | AstNode::Break
         | AstNode::AsyncStage
         | AstNode::AwaitStage => {}
+        AstNode::Defer { body } => {
+            traverse_block_body(
+                session,
+                program,
+                source_unit_id,
+                scope_id,
+                body,
+                routine_context,
+            )?;
+        }
         AstNode::MethodCall { object, args, .. } => {
             traverse_node(
                 session,

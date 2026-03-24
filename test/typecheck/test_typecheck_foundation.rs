@@ -79,6 +79,108 @@ fn builtin_type_tables_install_v1_scalar_types_canonically() {
 }
 
 #[test]
+fn defer_blocks_typecheck_as_scope_exit_statements() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] main(): int = {\n\
+             defer {\n\
+                 .echo(1);\n\
+             };\n\
+             return 7;\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int)),
+        "Expected defer-bearing routine to keep its declared return type",
+    );
+}
+
+#[test]
+fn defer_blocks_reject_break_in_v1() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_break(): int = {\n\
+             loop(true) {\n\
+                 defer {\n\
+                     break;\n\
+                 };\n\
+                 break;\n\
+             }\n\
+             return 0;\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("break is not allowed inside deferred blocks in V1")
+        }),
+        "Expected deferred break rejection, got: {errors:?}"
+    );
+}
+
+#[test]
+fn defer_blocks_reject_nested_return_in_v1() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] bad_return(): int = {\n\
+             defer {\n\
+                 when(true) {\n\
+                     case(true) {\n\
+                         return 1;\n\
+                     }\n\
+                 }\n\
+             };\n\
+             return 0;\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("return is not allowed inside deferred blocks in V1")
+        }),
+        "Expected deferred nested return rejection, got: {errors:?}"
+    );
+}
+
+#[test]
+fn defer_blocks_allow_report_statements_in_error_routines() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "fun[] main(flag: bol): int / str = {\n\
+             defer {\n\
+                 when(flag) {\n\
+                     case(true) { report \"cleanup-bad\"; }\n\
+                     * { .echo(1); }\n\
+                 }\n\
+             };\n\
+             return 7;\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "main");
+    assert_eq!(
+        typed
+            .typed_node(syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int)),
+        "Expected defer-bearing error routine to keep its declared return type",
+    );
+}
+
+#[test]
 fn builtin_type_installation_reuses_existing_slots() {
     let mut table = TypeTable::new();
     let first = BuiltinTypeIds::install(&mut table);
@@ -652,6 +754,55 @@ fn expression_typing_accepts_unpack_for_variadic_free_calls() {
 }
 
 #[test]
+fn expression_typing_rejects_unpack_for_non_variadic_free_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "var nums: seq[int];\n\
+         fun[] pair(left: int): int = {\n\
+             return left;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return pair(...nums);\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("call-site unpack is only supported for variadic calls in V1")
+        }),
+        "Expected non-variadic unpack diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn expression_typing_rejects_double_unpack_for_variadic_free_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "var lefts: seq[int];\n\
+         var rights: seq[int];\n\
+         fun[] score(base: int, extras: ... int): int = {\n\
+             return base;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return score(1, ...lefts, ...rights);\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("call-site unpack cannot be combined with other variadic arguments in V1")
+        }),
+        "Expected double-unpack diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
 fn expression_typing_accepts_defaulted_variadic_free_calls_with_unpack() {
     let typed = typecheck_fixture_folder(&[(
         "main.fol",
@@ -774,6 +925,63 @@ fn expression_typing_accepts_defaulted_variadic_method_calls_with_unpack() {
             .and_then(|node| node.inferred_type)
             .and_then(|type_id| typed.type_table().get(type_id)),
         Some(&CheckedType::Builtin(BuiltinType::Int))
+    );
+}
+
+#[test]
+fn expression_typing_rejects_unpack_for_non_variadic_method_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         var nums: seq[int];\n\
+         fun (Counter)read(step: int): int = {\n\
+             return step;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.read(...nums);\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("call-site unpack is only supported for variadic calls in V1")
+        }),
+        "Expected non-variadic method-unpack diagnostic, got: {errors:?}"
+    );
+}
+
+#[test]
+fn expression_typing_rejects_double_unpack_for_variadic_method_calls() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "typ Counter: rec = {\n\
+             value: int\n\
+         };\n\
+         var current: Counter;\n\
+         var lefts: seq[int];\n\
+         var rights: seq[int];\n\
+         fun (Counter)shift(step: int, values: ... int): int = {\n\
+             return step;\n\
+         };\n\
+         fun[] demo(): int = {\n\
+             return current.shift(1, ...lefts, ...rights);\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error
+                    .message()
+                    .contains("call-site unpack cannot be combined with other variadic arguments in V1")
+        }),
+        "Expected double-unpack method diagnostic, got: {errors:?}"
     );
 }
 

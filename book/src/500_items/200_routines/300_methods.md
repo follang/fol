@@ -73,6 +73,35 @@ var msg: str = tool.parse_msg(10)
 This is equivalent in meaning to passing `tool` as the first routine argument.
 The dot form is only the call-site spelling.
 
+Method calls use the same `V1` call-binding rules as free routine calls:
+
+- ordinary positional arguments may appear before named arguments
+- named arguments bind by declared parameter name
+- defaulted parameters may be omitted
+- a final variadic parameter may collect trailing arguments
+- `...sequence` may appear after named arguments when it feeds that final
+  variadic parameter
+
+Example:
+
+```fol
+typ Counter: rec = {
+    total: int
+};
+
+fun (Counter)shift(step: int = 2, extras: ... int): int = {
+    return step;
+}
+
+fun[] run(current: Counter, extras: seq[int]): int = {
+    return current.shift(step = 3, ...extras);
+}
+```
+
+`V1` does not support indexed pseudo-arguments such as
+`current.shift(extras[0] = 1, ...extras)`. That spelling looks like assignment,
+not call binding, so the language keeps variadic binding explicit and simple.
+
 For record-focused V1 code, the intended reading is:
 
 - records hold data

@@ -392,6 +392,16 @@ That means:
 
 So sugar does not get a free pass just because it looks syntactically small.
 
+One useful example is `defer`:
+
+- a narrow lexical-scope `defer { ... }` that only guarantees scope-exit
+  execution order is compatible with `V1`
+- a more complicated `defer` model that depends on ownership, borrowing,
+  pointer/resource cleanup, async task cleanup, or foreign/native resource
+  coordination belongs later
+- ownership-aware and runtime-aware `defer` semantics therefore belong with the
+  `V3`/`V4` milestones that own those semantics
+
 ## The practical compiler roadmap implied by this file
 
 The intended release order is:

@@ -1,4 +1,4 @@
-use super::body::routine_error_type;
+use super::body::{lower_panic_terminator, lower_report_terminator, routine_error_type};
 use super::cursor::{canonical_symbol_key, LoweredValue, RoutineCursor, WorkspaceDeclIndex};
 use super::expressions::{lower_expression, lower_expression_expected, lower_expression_observed};
 use crate::{
@@ -448,7 +448,15 @@ fn lower_pipe_or_fallback(
                     ))
                 }
             };
-            cursor.terminate_current_block(crate::LoweredTerminator::Report { value: lowered })?;
+            lower_report_terminator(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                lowered,
+            )?;
             Ok(None)
         }
         AstNode::FunctionCall { name, args, .. } if name == "panic" => {
@@ -689,7 +697,15 @@ fn lower_keyword_panic_terminator(
             ))
         }
     };
-    cursor.terminate_current_block(crate::LoweredTerminator::Panic { value: lowered })?;
+    lower_panic_terminator(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+        lowered,
+    )?;
     Ok(())
 }
 

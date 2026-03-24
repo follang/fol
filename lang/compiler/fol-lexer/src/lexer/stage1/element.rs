@@ -447,6 +447,7 @@ impl Element {
             "break" => self.set_key(Keyword(BUILDIN::Break)),
             "return" => self.set_key(Keyword(BUILDIN::Return)),
             "yield" => self.set_key(Keyword(BUILDIN::Yield)),
+            "defer" => self.set_key(Keyword(BUILDIN::Defer)),
             "panic" => self.set_key(Keyword(BUILDIN::Panic)),
             "report" => self.set_key(Keyword(BUILDIN::Report)),
             "check" => self.set_key(Keyword(BUILDIN::Check)),

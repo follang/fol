@@ -7,6 +7,35 @@ use fol_resolver::resolve_package_workspace;
 use fol_stream::FileStream;
 use fol_typecheck::Typechecker;
 
+fn collect_echoed_ints(routine: &crate::LoweredRoutine) -> Vec<i64> {
+    let echo_id = fol_intrinsics::intrinsic_by_canonical_name("echo")
+        .expect("echo intrinsic should exist")
+        .id;
+    let mut local_ints = std::collections::BTreeMap::new();
+    let mut echoed = Vec::new();
+
+    for instr in &routine.instructions {
+        match &instr.kind {
+            LoweredInstrKind::Const(LoweredOperand::Int(value)) => {
+                if let Some(result) = instr.result {
+                    local_ints.insert(result, *value);
+                }
+            }
+            LoweredInstrKind::RuntimeHook { intrinsic, args } if *intrinsic == echo_id => {
+                let value = args
+                    .first()
+                    .and_then(|local| local_ints.get(local))
+                    .copied()
+                    .expect("echo argument should come from an integer constant in this fixture");
+                echoed.push(value);
+            }
+            _ => {}
+        }
+    }
+
+    echoed
+}
+
 #[test]
 fn expression_lowering_keeps_local_and_imported_value_call_parity() {
     use std::fs;
@@ -131,6 +160,154 @@ fn return_lowering_emits_explicit_return_terminators_and_skips_trailing_body_nod
     assert!(
         routine.body_result.is_none(),
         "early returns should not leave a trailing body_result behind"
+    );
+}
+
+#[test]
+fn defer_lowering_runs_registered_bodies_before_return_in_reverse_order() {
+    let lowered = lower_fixture_workspace(concat!(
+        "fun[] main(): int = {\n",
+        "    defer { .echo(1); };\n",
+        "    defer { .echo(2); };\n",
+        "    return 7\n",
+        "};\n",
+    ));
+
+    let routine = lowered
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let echoed = collect_echoed_ints(routine);
+
+    assert_eq!(echoed, vec![2, 1], "defer should lower in reverse order before return");
+    assert!(
+        matches!(
+            routine
+                .blocks
+                .get(routine.entry_block)
+                .and_then(|block| block.terminator.as_ref()),
+            Some(LoweredTerminator::Return { value: Some(_) })
+        ),
+        "defer-bearing routine should still end in an explicit return terminator"
+    );
+}
+
+#[test]
+fn defer_lowering_runs_inner_scope_cleanup_before_outer_scope_cleanup() {
+    let lowered = lower_fixture_workspace(concat!(
+        "fun[] main(): int = {\n",
+        "    defer { .echo(1); };\n",
+        "    {\n",
+        "        defer { .echo(2); };\n",
+        "        .echo(3);\n",
+        "    }\n",
+        "    return .echo(7)\n",
+        "};\n",
+    ));
+
+    let routine = lowered
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+
+    assert_eq!(
+        collect_echoed_ints(routine),
+        vec![3, 2, 7, 1],
+        "nested block cleanup should run when the inner scope exits, then outer cleanup should wait for the return path"
+    );
+}
+
+#[test]
+fn defer_lowering_runs_loop_cleanup_before_break_and_outer_cleanup_before_return() {
+    let lowered = lower_fixture_workspace(concat!(
+        "fun[] main(): int = {\n",
+        "    defer { .echo(1); };\n",
+        "    loop(true) {\n",
+        "        defer { .echo(2); };\n",
+        "        .echo(3);\n",
+        "        break\n",
+        "    }\n",
+        "    return .echo(7)\n",
+        "};\n",
+    ));
+
+    let routine = lowered
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+
+    assert_eq!(
+        collect_echoed_ints(routine),
+        vec![3, 2, 7, 1],
+        "break should drain only loop-local deferred bodies, then outer deferred bodies should remain active until the return path"
+    );
+}
+
+#[test]
+fn defer_lowering_runs_cleanup_before_report_terminators() {
+    let lowered = lower_fixture_workspace(concat!(
+        "fun[] main(): int / str = {\n",
+        "    defer { .echo(1); };\n",
+        "    report \"bad\"\n",
+        "};\n",
+    ));
+
+    let routine = lowered
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let entry_block = routine
+        .blocks
+        .get(routine.entry_block)
+        .expect("entry block should exist");
+
+    assert_eq!(
+        collect_echoed_ints(routine),
+        vec![1],
+        "report paths should drain deferred bodies before terminating"
+    );
+    assert!(
+        matches!(entry_block.terminator, Some(LoweredTerminator::Report { .. })),
+        "defer-bearing report routine should still terminate with an explicit Report"
+    );
+}
+
+#[test]
+fn defer_lowering_runs_cleanup_before_panic_terminators() {
+    let lowered = lower_fixture_workspace(concat!(
+        "fun[] main(): int = {\n",
+        "    defer { .echo(1); };\n",
+        "    panic \"boom\"\n",
+        "};\n",
+    ));
+
+    let routine = lowered
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let entry_block = routine
+        .blocks
+        .get(routine.entry_block)
+        .expect("entry block should exist");
+
+    assert_eq!(
+        collect_echoed_ints(routine),
+        vec![1],
+        "panic paths should drain deferred bodies before terminating"
+    );
+    assert!(
+        matches!(entry_block.terminator, Some(LoweredTerminator::Panic { .. })),
+        "defer-bearing panic routine should still terminate with an explicit Panic"
     );
 }
 

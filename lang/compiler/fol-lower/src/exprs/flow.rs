@@ -1,5 +1,5 @@
 use super::body::lower_body_sequence;
-use super::cursor::{LoweredValue, RoutineCursor, WorkspaceDeclIndex};
+use super::cursor::{DeferScopeKind, LoweredValue, RoutineCursor, WorkspaceDeclIndex};
 use super::expressions::lower_expression_observed;
 use crate::{
     control::{LoweredBinaryOp, LoweredInstrKind, LoweredOperand},
@@ -121,6 +121,7 @@ pub(crate) fn lower_when_statement(
             source_unit_id,
             scope_id,
             body,
+            DeferScopeKind::Ordinary,
         )?;
         if !cursor.current_block_terminated()? {
             let after_block = ensure_after_block(cursor, &mut after_block);
@@ -210,6 +211,7 @@ pub(crate) fn lower_loop_statement(
                 source_unit_id,
                 scope_id,
                 body,
+                DeferScopeKind::Loop,
             )?;
             cursor.pop_loop_exit();
             if !cursor.current_block_terminated()? {
@@ -397,6 +399,7 @@ pub(crate) fn lower_loop_statement(
                     source_unit_id,
                     binder_scope_id,
                     body,
+                    DeferScopeKind::Loop,
                 )?;
                 if !cursor.current_block_terminated()? {
                     cursor.terminate_current_block(crate::LoweredTerminator::Jump {
@@ -442,6 +445,7 @@ pub(crate) fn lower_loop_statement(
                     source_unit_id,
                     binder_scope_id,
                     body,
+                    DeferScopeKind::Loop,
                 )?;
 
                 // Increment index
@@ -502,6 +506,7 @@ fn lower_default_when_body(
         source_unit_id,
         scope_id,
         default,
+        DeferScopeKind::Ordinary,
     )?;
     if !cursor.current_block_terminated()? {
         let after_block = ensure_after_block(cursor, after_block);
@@ -593,6 +598,7 @@ pub(crate) fn lower_when_expression(
             source_unit_id,
             scope_id,
             body,
+            DeferScopeKind::Ordinary,
         )?;
         lower_when_branch_value(cursor, &mut join_local, branch_value, join_block)?;
 
@@ -611,6 +617,7 @@ pub(crate) fn lower_when_expression(
         source_unit_id,
         scope_id,
         default,
+        DeferScopeKind::Ordinary,
     )?;
     lower_when_branch_value(cursor, &mut join_local, default_value, join_block)?;
 

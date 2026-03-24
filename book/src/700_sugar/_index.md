@@ -7,6 +7,7 @@ These chapters should be read after the core statement, expression, and declarat
 The current sugar chapters cover:
 - silent/discard forms
 - pipes
+- defer
 - mixed/compound convenience forms
 - limits
 - matching

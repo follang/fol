@@ -162,6 +162,11 @@ impl AstParser {
             return Ok(vec![node]);
         }
 
+        if matches!(key, KEYWORD::Keyword(BUILDIN::Defer)) {
+            let node = self.parse_defer_stmt(tokens)?;
+            return Ok(vec![node]);
+        }
+
         if (AstParser::token_can_be_logical_name(&key) || key.is_textual_literal())
             && self.lookahead_is_assignment(tokens)
         {

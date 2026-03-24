@@ -387,6 +387,11 @@ pub enum AstNode {
         value: Box<AstNode>,
     },
 
+    /// Defer statement: defer { body }
+    Defer {
+        body: Vec<AstNode>,
+    },
+
     /// Block: { statements }
     Block {
         statements: Vec<AstNode>,
@@ -597,6 +602,7 @@ impl AstNode {
             AstNode::Inquiry { .. } => None,
             AstNode::PatternWildcard => None,
             AstNode::PatternCapture { pattern, .. } => pattern.syntactic_type_hint(),
+            AstNode::Defer { .. } => None,
             AstNode::RecordInit { .. } => None,
             AstNode::TemplateCall { .. } => None,
 
@@ -808,6 +814,7 @@ impl AstNode {
             AstNode::Yield { value } => {
                 vec![value.as_ref()]
             }
+            AstNode::Defer { body } => body.iter().collect(),
             AstNode::Range { start, end, .. } => {
                 let mut children = Vec::new();
                 if let Some(s) = start {

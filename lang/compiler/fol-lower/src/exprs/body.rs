@@ -2,7 +2,7 @@ use super::bindings::lower_local_binding;
 use super::calls::{
     lower_keyword_intrinsic_statement, lower_statement_free_call, resolve_method_target,
 };
-use super::cursor::{LoweredValue, RoutineCursor, WorkspaceDeclIndex};
+use super::cursor::{DeferScopeKind, LoweredValue, RoutineCursor, WorkspaceDeclIndex};
 use super::expressions::{lower_expression, lower_expression_expected};
 use super::flow::{lower_loop_statement, lower_when_statement, when_always_terminates};
 use crate::{
@@ -171,6 +171,7 @@ fn lower_body_nodes(
         source_unit_id,
         scope_id,
         nodes,
+        DeferScopeKind::Ordinary,
     )?
     .map(|value| value.local_id);
 
@@ -188,7 +189,10 @@ pub(crate) fn lower_body_sequence(
     source_unit_id: SourceUnitId,
     scope_id: ScopeId,
     nodes: &[AstNode],
+    defer_scope_kind: DeferScopeKind,
 ) -> Result<Option<super::cursor::LoweredValue>, LoweringError> {
+    let entry_depth = cursor.defer_scope_depth();
+    cursor.push_defer_scope(defer_scope_kind);
     let mut final_value = None;
 
     for node in nodes {
@@ -210,7 +214,157 @@ pub(crate) fn lower_body_sequence(
         }
     }
 
+    if cursor.defer_scope_depth() > entry_depth {
+        let deferred = cursor.pop_defer_scope().ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                "active defer scope disappeared before body finished lowering",
+            )
+        })?;
+        if !cursor.current_block_terminated()? {
+            lower_deferred_entries(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                deferred.entries,
+            )?;
+        }
+    }
+
     Ok(final_value)
+}
+
+fn lower_deferred_entries(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    entries: Vec<super::cursor::DeferredBody>,
+) -> Result<(), LoweringError> {
+    for deferred in entries.into_iter().rev() {
+        let _ = lower_body_sequence(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            deferred.source_unit_id,
+            deferred.scope_id,
+            &deferred.body,
+            DeferScopeKind::Ordinary,
+        )?;
+        if cursor.current_block_terminated()? {
+            break;
+        }
+    }
+    Ok(())
+}
+
+fn lower_all_active_defers(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+) -> Result<(), LoweringError> {
+    while let Some(scope) = cursor.pop_defer_scope() {
+        lower_deferred_entries(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            scope.entries,
+        )?;
+        if cursor.current_block_terminated()? {
+            break;
+        }
+    }
+    Ok(())
+}
+
+fn lower_defers_until_loop_exit(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+) -> Result<(), LoweringError> {
+    let Some(loop_depth) = cursor.nearest_loop_defer_depth() else {
+        return Ok(());
+    };
+    while cursor.defer_scope_depth() > loop_depth {
+        let scope = cursor.pop_defer_scope().ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                "defer scope stack underflow while lowering break",
+            )
+        })?;
+        lower_deferred_entries(
+            typed_package,
+            type_table,
+            checked_type_map,
+            current_identity,
+            decl_index,
+            cursor,
+            scope.entries,
+        )?;
+        if cursor.current_block_terminated()? {
+            return Ok(());
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn lower_report_terminator(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    lowered: Option<crate::ids::LoweredLocalId>,
+) -> Result<(), LoweringError> {
+    lower_all_active_defers(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+    )?;
+    cursor.terminate_current_block(crate::LoweredTerminator::Report { value: lowered })?;
+    Ok(())
+}
+
+pub(crate) fn lower_panic_terminator(
+    typed_package: &fol_typecheck::TypedPackage,
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    current_identity: &PackageIdentity,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    lowered: Option<crate::ids::LoweredLocalId>,
+) -> Result<(), LoweringError> {
+    lower_all_active_defers(
+        typed_package,
+        type_table,
+        checked_type_map,
+        current_identity,
+        decl_index,
+        cursor,
+    )?;
+    cursor.terminate_current_block(crate::LoweredTerminator::Panic { value: lowered })?;
+    Ok(())
 }
 
 pub(crate) fn lower_body_node(
@@ -277,12 +431,28 @@ pub(crate) fn lower_body_node(
                     routine_return_type(cursor, type_table),
                     value,
                 )?;
+                lower_all_active_defers(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                )?;
                 cursor.terminate_current_block(crate::LoweredTerminator::Return {
                     value: Some(lowered.local_id),
                 })?;
                 Ok(None)
             }
             None => {
+                lower_all_active_defers(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                )?;
                 cursor.terminate_current_block(crate::LoweredTerminator::Return { value: None })?;
                 Ok(None)
             }
@@ -315,7 +485,15 @@ pub(crate) fn lower_body_node(
                     ))
                 }
             };
-            cursor.terminate_current_block(crate::LoweredTerminator::Report { value: lowered })?;
+            lower_report_terminator(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                lowered,
+            )?;
             Ok(None)
         }
         AstNode::FunctionCall {
@@ -411,8 +589,35 @@ pub(crate) fn lower_body_node(
                     "break lowering requires an active loop exit block",
                 ));
             };
+            lower_defers_until_loop_exit(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+            )?;
             cursor
                 .terminate_current_block(crate::LoweredTerminator::Jump { target: exit_block })?;
+            Ok(None)
+        }
+        AstNode::Defer { body } => {
+            cursor.register_defer(source_unit_id, scope_id, body)?;
+            Ok(None)
+        }
+        AstNode::Block { statements } => {
+            let _ = lower_body_sequence(
+                typed_package,
+                type_table,
+                checked_type_map,
+                current_identity,
+                decl_index,
+                cursor,
+                source_unit_id,
+                scope_id,
+                statements,
+                DeferScopeKind::Ordinary,
+            )?;
             Ok(None)
         }
         AstNode::MethodCall {

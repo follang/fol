@@ -587,3 +587,6 @@ mod unary_and_call_argument_errors;
 #[cfg(test)]
 #[path = "test_parser_parts/unmatched_paren_errors.rs"]
 mod unmatched_paren_errors;
+#[cfg(test)]
+#[path = "test_parser_parts/defer_statements.rs"]
+mod defer_statements;

@@ -8,7 +8,7 @@ pub const DECLARATION_KEYWORDS: &[&str] = &[
 /// Control flow keyword names.
 pub const CONTROL_KEYWORDS: &[&str] = &[
     "if", "else", "when", "while", "loop", "for", "each", "do", "case",
-    "break", "return", "yield", "go", "select",
+    "break", "return", "yield", "defer", "go", "select",
 ];
 
 /// Operator keyword names.
@@ -65,6 +65,7 @@ pub enum BUILDIN {
     Break,
     Return,
     Yield,
+    Defer,
     Panic,
     Report,
     Check,
@@ -125,6 +126,7 @@ impl fmt::Display for BUILDIN {
             BUILDIN::Break => "break",
             BUILDIN::Return => "return",
             BUILDIN::Yield => "yield",
+            BUILDIN::Defer => "defer",
             BUILDIN::Panic => "panic",
             BUILDIN::Report => "report",
             BUILDIN::Check => "check",

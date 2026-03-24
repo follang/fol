@@ -214,6 +214,12 @@ impl AstParser {
                 continue;
             }
 
+            if matches!(key, KEYWORD::Keyword(BUILDIN::Defer)) {
+                body.push(self.parse_defer_stmt(tokens)?);
+                self.consume_required_semicolon(tokens)?;
+                continue;
+            }
+
             if matches!(
                 key,
                 KEYWORD::Keyword(BUILDIN::Panic)
@@ -538,5 +544,38 @@ impl AstParser {
         Ok(AstNode::Yield {
             value: Box::new(value),
         })
+    }
+
+    pub(super) fn parse_defer_stmt(
+        &self,
+        tokens: &mut fol_lexer::lexer::stage3::Elements,
+    ) -> Result<AstNode, ParseError> {
+        let defer_token = tokens.curr(false)?;
+        if !matches!(defer_token.key(), KEYWORD::Keyword(BUILDIN::Defer)) {
+            return Err(ParseError::from_token(
+                &defer_token,
+                "Expected 'defer' statement".to_string(),
+            ));
+        }
+
+        if !self.is_inside_routine() {
+            return Err(ParseError::from_token(
+                &defer_token,
+                "'defer' is only allowed inside routines".to_string(),
+            ));
+        }
+
+        let _ = tokens.bump();
+        self.skip_ignorable(tokens)?;
+        let open = tokens.curr(false)?;
+        if !matches!(open.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
+            return Err(ParseError::from_token(
+                &open,
+                "Expected '{' to start deferred block".to_string(),
+            ));
+        }
+        let _ = tokens.bump();
+        let body = self.parse_block_body(tokens, "Expected '}' to close deferred block")?;
+        Ok(AstNode::Defer { body })
     }
 }

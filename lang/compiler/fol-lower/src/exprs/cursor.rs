@@ -34,6 +34,25 @@ pub(crate) struct RoutineDefaultLowering {
     pub variadic_index: Option<usize>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum DeferScopeKind {
+    Ordinary,
+    Loop,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct DeferredBody {
+    pub source_unit_id: SourceUnitId,
+    pub scope_id: fol_resolver::ScopeId,
+    pub body: Vec<AstNode>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct ActiveDeferScope {
+    pub kind: DeferScopeKind,
+    pub entries: Vec<DeferredBody>,
+}
+
 #[derive(Debug, Default)]
 pub(crate) struct WorkspaceDeclIndex {
     typed_packages: BTreeMap<PackageIdentity, fol_typecheck::TypedPackage>,
@@ -265,6 +284,7 @@ pub(crate) struct RoutineCursor<'a> {
     next_instr_index: usize,
     next_block_index: usize,
     pub(crate) loop_exit_blocks: Vec<LoweredBlockId>,
+    pub(crate) defer_scopes: Vec<ActiveDeferScope>,
     pub(crate) anonymous_routines: Vec<LoweredRoutine>,
     pub(crate) next_routine_index: usize,
 }
@@ -278,6 +298,7 @@ impl<'a> RoutineCursor<'a> {
             routine,
             block_id,
             loop_exit_blocks: Vec::new(),
+            defer_scopes: Vec::new(),
             anonymous_routines: Vec::new(),
             next_routine_index: 0,
         }
@@ -317,6 +338,47 @@ impl<'a> RoutineCursor<'a> {
 
     pub(crate) fn current_loop_exit(&self) -> Option<LoweredBlockId> {
         self.loop_exit_blocks.last().copied()
+    }
+
+    pub(crate) fn push_defer_scope(&mut self, kind: DeferScopeKind) {
+        self.defer_scopes.push(ActiveDeferScope {
+            kind,
+            entries: Vec::new(),
+        });
+    }
+
+    pub(crate) fn pop_defer_scope(&mut self) -> Option<ActiveDeferScope> {
+        self.defer_scopes.pop()
+    }
+
+    pub(crate) fn defer_scope_depth(&self) -> usize {
+        self.defer_scopes.len()
+    }
+
+    pub(crate) fn nearest_loop_defer_depth(&self) -> Option<usize> {
+        self.defer_scopes
+            .iter()
+            .rposition(|scope| scope.kind == DeferScopeKind::Loop)
+    }
+
+    pub(crate) fn register_defer(
+        &mut self,
+        source_unit_id: SourceUnitId,
+        scope_id: fol_resolver::ScopeId,
+        body: &[AstNode],
+    ) -> Result<(), LoweringError> {
+        let Some(scope) = self.defer_scopes.last_mut() else {
+            return Err(LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                "defer registration requires an active defer scope",
+            ));
+        };
+        scope.entries.push(DeferredBody {
+            source_unit_id,
+            scope_id,
+            body: body.to_vec(),
+        });
+        Ok(())
     }
 
     pub(crate) fn current_block_terminated(&self) -> Result<bool, LoweringError> {
