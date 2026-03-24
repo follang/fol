@@ -352,7 +352,7 @@ Finish with an editor pipeline that is hard to drift accidentally.
   - LSP completion by model
 - [x] Slice 35. Remove stale manual comments/docs that imply editor updates are
   mostly hand-maintained.
-- [ ] Slice 36. Add a contributor-facing doc section:
+- [x] Slice 36. Add a contributor-facing doc section:
   - "if you add a language feature, these editor sync tests must pass"
   - "if the feature changes syntax shape, update grammar/query structure"
   - "if the feature only adds names or registries, generation should cover it"

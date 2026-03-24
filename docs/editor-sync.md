@@ -157,3 +157,38 @@ If a language feature changes syntax shape:
 
 - update tree-sitter grammar and structural queries
 - keep the manual surface small and test-guarded
+
+## Contributor Checklist
+
+When you add or change a language feature, the editor sync bar is:
+
+1. Update compiler-owned metadata first if the feature adds:
+   - declaration heads
+   - builtin type families
+   - implemented intrinsic names
+   - `fol_model` capability boundaries
+2. Run the editor sync tests and keep them green:
+   - compiler/query sync tests
+   - top-level editor sync integration tests
+   - model-aware LSP completion and diagnostics tests
+3. If the feature changes only semantic behavior:
+   - do not add a duplicated editor-only semantic rule first
+   - prefer the compiler-backed analysis path
+4. If the feature adds only names or registries:
+   - generation or compiler-backed helpers should cover the editor surface
+   - avoid hand-editing duplicate completion/highlight name lists
+5. If the feature changes syntax shape:
+   - update `tree-sitter/grammar.js`
+   - update structural query files such as `highlights.base.scm`, `locals.scm`,
+     or `symbols.scm`
+   - keep structural edits minimal and covered by tests
+6. If the feature changes `fol_model` legality:
+   - add or update `core` / `alloc` / `std` editor example coverage
+   - verify LSP diagnostics match `fol code build`
+
+The intended workflow is:
+
+- compiler change first
+- generated/compiler-backed editor surfaces update next
+- manual tree-sitter edits only when syntax structure changed
+- `make build` and `make test` stay green before merge
