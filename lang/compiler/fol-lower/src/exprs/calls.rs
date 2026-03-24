@@ -11,11 +11,17 @@ use fol_parser::ast::AstNode;
 use fol_resolver::{PackageIdentity, ReferenceKind, ScopeId, SourceUnitId, SymbolId, SymbolKind};
 use std::collections::BTreeMap;
 
+pub(crate) enum BoundLoweredCallArg<'a> {
+    Explicit(&'a AstNode),
+    Default(usize),
+}
+
 pub(crate) fn bind_lowered_call_arguments<'a>(
     args: &'a [AstNode],
     param_names: &[String],
+    param_defaults: &[Option<AstNode>],
     display_name: &str,
-) -> Result<Vec<&'a AstNode>, LoweringError> {
+) -> Result<Vec<BoundLoweredCallArg<'a>>, LoweringError> {
     let mut ordered_args = vec![None; param_names.len()];
     let mut next_positional = 0usize;
     let mut seen_named = false;
@@ -67,22 +73,80 @@ pub(crate) fn bind_lowered_call_arguments<'a>(
         }
     }
 
-    if ordered_args.iter().any(Option::is_none) {
-        let missing_index = ordered_args
-            .iter()
-            .position(Option::is_none)
-            .expect("missing slot should exist");
-        let missing_name = param_names
-            .get(missing_index)
-            .cloned()
-            .unwrap_or_else(|| format!("#{missing_index}"));
-        return Err(LoweringError::with_kind(
-            LoweringErrorKind::InvalidInput,
-            format!("call to '{display_name}' is missing required argument '{missing_name}'"),
-        ));
+    let mut bound_args = Vec::with_capacity(ordered_args.len());
+    for (index, arg) in ordered_args.into_iter().enumerate() {
+        match arg {
+            Some(arg) => bound_args.push(BoundLoweredCallArg::Explicit(arg)),
+            None if matches!(param_defaults.get(index), Some(Some(_))) => {
+                bound_args.push(BoundLoweredCallArg::Default(index));
+            }
+            None => {
+                let missing_name = param_names
+                    .get(index)
+                    .cloned()
+                    .unwrap_or_else(|| format!("#{index}"));
+                return Err(LoweringError::with_kind(
+                    LoweringErrorKind::InvalidInput,
+                    format!("call to '{display_name}' is missing required argument '{missing_name}'"),
+                ));
+            }
+        }
     }
 
-    Ok(ordered_args.into_iter().map(|arg| arg.expect("all args should be bound")).collect())
+    Ok(bound_args)
+}
+
+pub(crate) fn lower_default_call_argument(
+    type_table: &crate::LoweredTypeTable,
+    checked_type_map: &BTreeMap<fol_typecheck::CheckedTypeId, LoweredTypeId>,
+    decl_index: &WorkspaceDeclIndex,
+    cursor: &mut RoutineCursor<'_>,
+    callee: crate::LoweredRoutineId,
+    param_index: usize,
+    expected: Option<LoweredTypeId>,
+) -> Result<LoweredValue, LoweringError> {
+    let default_info = decl_index.routine_param_defaults(callee).ok_or_else(|| {
+        LoweringError::with_kind(
+            LoweringErrorKind::InvalidInput,
+            format!("call target {} does not retain lowered default arguments", callee.0),
+        )
+    })?;
+    let default_expr = default_info
+        .defaults
+        .get(param_index)
+        .and_then(Option::as_ref)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!(
+                    "call target {} does not retain a default for parameter {}",
+                    callee.0, param_index
+                ),
+            )
+        })?;
+    let typed_package = decl_index
+        .typed_package(&default_info.package_identity)
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!(
+                    "default argument lowering lost typed package '{}'",
+                    default_info.package_identity.canonical_root
+                ),
+            )
+        })?;
+    lower_expression_expected(
+        typed_package,
+        type_table,
+        checked_type_map,
+        &default_info.package_identity,
+        decl_index,
+        cursor,
+        default_info.source_unit_id,
+        default_info.scope_id,
+        expected,
+        default_expr,
+    )
 }
 
 pub(crate) fn lower_dot_intrinsic_call(
@@ -726,24 +790,45 @@ pub(crate) fn lower_function_call(
                 format!("call target '{display_name}' does not retain lowered parameter names"),
             )
         })?;
-    let ordered_args = bind_lowered_call_arguments(args, param_names, display_name)?;
+    let param_defaults = decl_index
+        .routine_param_defaults(callee)
+        .map(|defaults| defaults.defaults.as_slice())
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("call target '{display_name}' does not retain lowered default arguments"),
+            )
+        })?;
+    let ordered_args =
+        bind_lowered_call_arguments(args, param_names, param_defaults, display_name)?;
     let lowered_args = ordered_args
         .iter()
         .enumerate()
         .map(|(index, arg)| {
             let expected = param_types.get(index).copied();
-            lower_expression_expected(
-                typed_package,
-                type_table,
-                checked_type_map,
-                current_identity,
-                decl_index,
-                cursor,
-                source_unit_id,
-                scope_id,
-                expected,
-                arg,
-            )
+            match arg {
+                BoundLoweredCallArg::Explicit(arg) => lower_expression_expected(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    expected,
+                    arg,
+                ),
+                BoundLoweredCallArg::Default(param_index) => lower_default_call_argument(
+                    type_table,
+                    checked_type_map,
+                    decl_index,
+                    cursor,
+                    callee,
+                    *param_index,
+                    expected,
+                ),
+            }
             .map(|value| value.local_id)
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -810,24 +895,45 @@ pub(crate) fn lower_statement_free_call(
                 format!("call target '{display_name}' does not retain lowered parameter names"),
             )
         })?;
-    let ordered_args = bind_lowered_call_arguments(args, param_names, display_name)?;
+    let param_defaults = decl_index
+        .routine_param_defaults(callee)
+        .map(|defaults| defaults.defaults.as_slice())
+        .ok_or_else(|| {
+            LoweringError::with_kind(
+                LoweringErrorKind::InvalidInput,
+                format!("call target '{display_name}' does not retain lowered default arguments"),
+            )
+        })?;
+    let ordered_args =
+        bind_lowered_call_arguments(args, param_names, param_defaults, display_name)?;
     let lowered_args = ordered_args
         .iter()
         .enumerate()
         .map(|(index, arg)| {
             let expected = param_types.get(index).copied();
-            lower_expression_expected(
-                typed_package,
-                type_table,
-                checked_type_map,
-                current_identity,
-                decl_index,
-                cursor,
-                source_unit_id,
-                scope_id,
-                expected,
-                arg,
-            )
+            match arg {
+                BoundLoweredCallArg::Explicit(arg) => lower_expression_expected(
+                    typed_package,
+                    type_table,
+                    checked_type_map,
+                    current_identity,
+                    decl_index,
+                    cursor,
+                    source_unit_id,
+                    scope_id,
+                    expected,
+                    arg,
+                ),
+                BoundLoweredCallArg::Default(param_index) => lower_default_call_argument(
+                    type_table,
+                    checked_type_map,
+                    decl_index,
+                    cursor,
+                    callee,
+                    *param_index,
+                    expected,
+                ),
+            }
             .map(|value| value.local_id)
         })
         .collect::<Result<Vec<_>, _>>()?;

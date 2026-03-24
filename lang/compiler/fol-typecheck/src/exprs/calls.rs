@@ -49,6 +49,7 @@ pub(crate) fn type_function_call(
         name,
         origin_for(resolved, syntax_id),
         true,
+        true,
     )?;
     let call_effect = merge_recoverable_effects(
         typed,
@@ -618,6 +619,7 @@ pub(crate) fn type_qualified_function_call(
         &path.joined(),
         origin_for(resolved, syntax_id),
         true,
+        true,
     )?;
     let call_effect = merge_recoverable_effects(
         typed,
@@ -675,6 +677,7 @@ pub(crate) fn type_method_call(
         args,
         method,
         origin.clone(),
+        true,
         true,
     )?;
     let merged = merge_recoverable_effects(
@@ -840,11 +843,22 @@ pub(crate) fn check_call_arguments(
     callee: &str,
     origin: Option<SyntaxOrigin>,
     allow_named: bool,
+    allow_defaults: bool,
 ) -> Result<Option<RecoverableCallEffect>, TypecheckError> {
-    let ordered_args = bind_call_arguments(signature, args, callee, origin.clone(), allow_named)?;
+    let ordered_args = bind_call_arguments(
+        signature,
+        args,
+        callee,
+        origin.clone(),
+        allow_named,
+        allow_defaults,
+    )?;
 
     let mut arg_effects = Vec::new();
     for (expected, arg) in signature.params.iter().zip(ordered_args.iter()) {
+        let BoundCallArg::Explicit(arg) = arg else {
+            continue;
+        };
         let actual_expr =
             type_node_with_expectation(typed, resolved, context, arg, Some(*expected)).map_err(
                 |error| {
@@ -883,14 +897,33 @@ pub(crate) fn check_call_arguments(
     merge_recoverable_effects(typed, origin, "call arguments", arg_effects)
 }
 
+enum BoundCallArg<'a> {
+    Explicit(&'a AstNode),
+    Default,
+}
+
 fn bind_call_arguments<'a>(
     signature: &RoutineType,
     args: &'a [AstNode],
     callee: &str,
     origin: Option<SyntaxOrigin>,
     allow_named: bool,
-) -> Result<Vec<&'a AstNode>, TypecheckError> {
-    if signature.params.len() != args.len() && !args.iter().any(|arg| matches!(arg, AstNode::NamedArgument { .. })) {
+    allow_defaults: bool,
+) -> Result<Vec<BoundCallArg<'a>>, TypecheckError> {
+    let has_named_args = args
+        .iter()
+        .any(|arg| matches!(arg, AstNode::NamedArgument { .. }));
+    if signature.params.len() != args.len() && !has_named_args && !allow_defaults {
+        return Err(call_arity_error(signature.params.len(), args.len(), callee, origin));
+    }
+    if args.len() < signature.params.len()
+        && !has_named_args
+        && signature
+            .param_defaults
+            .iter()
+            .skip(args.len())
+            .any(Option::is_none)
+    {
         return Err(call_arity_error(signature.params.len(), args.len(), callee, origin));
     }
 
@@ -974,30 +1007,35 @@ fn bind_call_arguments<'a>(
         }
     }
 
-    if ordered_args.iter().any(Option::is_none) {
-        let missing_index = ordered_args
-            .iter()
-            .position(Option::is_none)
-            .expect("missing slot should exist");
-        let missing_name = signature
-            .param_names
-            .get(missing_index)
-            .filter(|name| !name.is_empty())
-            .cloned()
-            .unwrap_or_else(|| format!("#{missing_index}"));
-        return Err(TypecheckError::with_origin(
-            TypecheckErrorKind::InvalidInput,
-            format!("call to '{callee}' is missing required argument '{missing_name}'"),
-            origin.unwrap_or(SyntaxOrigin {
-                file: None,
-                line: 1,
-                column: 1,
-                length: callee.len(),
-            }),
-        ));
+    let mut bound_args = Vec::with_capacity(ordered_args.len());
+    for (index, arg) in ordered_args.into_iter().enumerate() {
+        match arg {
+            Some(arg) => bound_args.push(BoundCallArg::Explicit(arg)),
+            None if allow_defaults && matches!(signature.param_defaults.get(index), Some(Some(_))) => {
+                bound_args.push(BoundCallArg::Default);
+            }
+            None => {
+                let missing_name = signature
+                    .param_names
+                    .get(index)
+                    .filter(|name| !name.is_empty())
+                    .cloned()
+                    .unwrap_or_else(|| format!("#{index}"));
+                return Err(TypecheckError::with_origin(
+                    TypecheckErrorKind::InvalidInput,
+                    format!("call to '{callee}' is missing required argument '{missing_name}'"),
+                    origin.unwrap_or(SyntaxOrigin {
+                        file: None,
+                        line: 1,
+                        column: 1,
+                        length: callee.len(),
+                    }),
+                ));
+            }
+        }
     }
 
-    Ok(ordered_args.into_iter().map(|arg| arg.expect("all args should be bound")).collect())
+    Ok(bound_args)
 }
 
 fn call_arity_error(

@@ -560,6 +560,7 @@ impl TypecheckSession {
                     .type_table_mut()
                     .intern(CheckedType::Routine(crate::RoutineType {
                         param_names: signature.param_names.clone(),
+                        param_defaults: signature.param_defaults.clone(),
                         params,
                         return_type,
                         error_type,

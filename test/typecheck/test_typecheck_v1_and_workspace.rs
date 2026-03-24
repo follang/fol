@@ -471,10 +471,11 @@ fn workspace_typechecking_imports_mounted_value_and_routine_types_from_foreign_p
     let (_bump_id, bump) = find_typed_symbol(entry, "bump", SymbolKind::Routine);
     assert_eq!(
         entry
-            .type_table()
-            .get(bump.declared_type.expect("mounted imported routines should keep translated signatures")),
+        .type_table()
+        .get(bump.declared_type.expect("mounted imported routines should keep translated signatures")),
         Some(&CheckedType::Routine(RoutineType {
             param_names: vec!["value".to_string()],
+            param_defaults: vec![None],
             params: vec![entry.builtin_types().int],
             return_type: Some(entry.builtin_types().int),
             error_type: None,

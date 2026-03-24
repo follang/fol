@@ -1,4 +1,9 @@
-use std::{cmp::Ordering, collections::BTreeMap, hash::{Hash, Hasher}};
+use fol_parser::ast::AstNode;
+use std::{
+    cmp::Ordering,
+    collections::BTreeMap,
+    hash::{Hash, Hasher},
+};
 
 use fol_resolver::SymbolId;
 
@@ -40,6 +45,7 @@ pub enum DeclaredTypeKind {
 #[derive(Debug, Clone)]
 pub struct RoutineType {
     pub param_names: Vec<String>,
+    pub param_defaults: Vec<Option<AstNode>>,
     pub params: Vec<CheckedTypeId>,
     pub return_type: Option<CheckedTypeId>,
     pub error_type: Option<CheckedTypeId>,
@@ -264,6 +270,7 @@ mod tests {
         let record_second = table.intern(CheckedType::Record { fields });
         let routine = table.intern(CheckedType::Routine(RoutineType {
             param_names: vec!["point".to_string(), "count".to_string()],
+            param_defaults: vec![None, None],
             params: vec![declared, int_id],
             return_type: Some(declared),
             error_type: None,
@@ -326,6 +333,7 @@ mod tests {
         let str_id = table.intern_builtin(BuiltinType::Str);
         let routine_id = table.intern(CheckedType::Routine(RoutineType {
             param_names: vec!["left".to_string(), "right".to_string()],
+            param_defaults: vec![None, None],
             params: vec![int_id, str_id],
             return_type: Some(int_id),
             error_type: None,

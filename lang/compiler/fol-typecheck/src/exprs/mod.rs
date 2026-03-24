@@ -19,7 +19,7 @@ use fol_resolver::{ResolvedProgram, ScopeId, SourceUnitId};
 
 use helpers::{
     binding_kind_for, describe_type, ensure_assignable, ensure_assignable_target,
-    internal_error, node_origin, origin_for,
+    internal_error, node_origin, origin_for, plain_value_expr,
     unsupported_node_surface,
 };
 
@@ -274,6 +274,7 @@ pub(crate) fn type_node_with_expectation(
                 routine_error_type: expected_error_type,
                 error_call_mode: ErrorCallMode::Propagate,
             };
+            type_routine_param_defaults(typed, resolved, routine_context, params)?;
             let body_type = type_body(typed, resolved, routine_context, body)?;
             let _ = type_body(typed, resolved, routine_context, inquiries)?;
             // Functions with a declared return type require explicit 'return' on all paths
@@ -380,6 +381,7 @@ pub(crate) fn type_node_with_expectation(
                 routine_error_type: expected_error_type,
                 error_call_mode: ErrorCallMode::Propagate,
             };
+            type_routine_param_defaults(typed, resolved, routine_context, params)?;
             let body_type = type_body(typed, resolved, routine_context, body)?;
             let _ = type_body(typed, resolved, routine_context, inquiries)?;
             // Anonymous routines with a declared return type require explicit 'return'
@@ -419,6 +421,7 @@ pub(crate) fn type_node_with_expectation(
             }
             let routine_type_id = typed.type_table_mut().intern(CheckedType::Routine(RoutineType {
                 param_names: vec![String::new(); lowered_params.len()],
+                param_defaults: vec![None; lowered_params.len()],
                 params: lowered_params,
                 return_type: expected_return_type,
                 error_type: expected_error_type,
@@ -578,6 +581,7 @@ pub(crate) fn type_node_with_expectation(
                 "<invoke>",
                 node_origin(resolved, node),
                 false,
+                false,
             )?;
             let call_effect = helpers::merge_recoverable_effects(
                 typed,
@@ -658,6 +662,41 @@ fn node_contains_report(node: &AstNode) -> bool {
         | AstNode::AnonymousLog { .. } => false,
         _ => node.children().iter().any(|child| node_contains_report(child)),
     }
+}
+
+fn type_routine_param_defaults(
+    typed: &mut TypedProgram,
+    resolved: &ResolvedProgram,
+    context: TypeContext,
+    params: &[fol_parser::ast::Parameter],
+) -> Result<(), TypecheckError> {
+    for param in params {
+        let Some(default) = param.default.as_ref() else {
+            continue;
+        };
+        let expected = decls::lower_type(typed, resolved, context.scope_id, &param.param_type)?;
+        let typed_default =
+            type_node_with_expectation(typed, resolved, context, default, Some(expected))?;
+        let typed_default = plain_value_expr(
+            typed,
+            context,
+            typed_default,
+            node_origin(resolved, default),
+            format!("default value for parameter '{}'", param.name),
+        )?;
+        let actual = typed_default.required_value(format!(
+            "default value for parameter '{}' does not have a type",
+            param.name
+        ))?;
+        ensure_assignable(
+            typed,
+            expected,
+            actual,
+            format!("default value for parameter '{}'", param.name),
+            node_origin(resolved, default),
+        )?;
+    }
+    Ok(())
 }
 
 pub(crate) fn type_body(

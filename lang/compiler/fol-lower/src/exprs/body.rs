@@ -460,6 +460,15 @@ pub(crate) fn lower_body_node(
             let ordered_args = super::calls::bind_lowered_call_arguments(
                 args,
                 param_names.get(1..).unwrap_or(&[]),
+                decl_index
+                    .routine_param_defaults(callee)
+                    .map(|defaults| defaults.defaults.get(1..).unwrap_or(&[]))
+                    .ok_or_else(|| {
+                        LoweringError::with_kind(
+                            LoweringErrorKind::InvalidInput,
+                            format!("method '{method}' does not retain lowered default arguments"),
+                        )
+                    })?,
                 method,
             )?;
             lowered_args.extend(
@@ -468,18 +477,33 @@ pub(crate) fn lower_body_node(
                     .enumerate()
                     .map(|(index, arg)| {
                         let expected = param_types.get(index + 1).copied();
-                        lower_expression_expected(
-                            typed_package,
-                            type_table,
-                            checked_type_map,
-                            current_identity,
-                            decl_index,
-                            cursor,
-                            source_unit_id,
-                            scope_id,
-                            expected,
-                            arg,
-                        )
+                        match arg {
+                            super::calls::BoundLoweredCallArg::Explicit(arg) => {
+                                lower_expression_expected(
+                                    typed_package,
+                                    type_table,
+                                    checked_type_map,
+                                    current_identity,
+                                    decl_index,
+                                    cursor,
+                                    source_unit_id,
+                                    scope_id,
+                                    expected,
+                                    arg,
+                                )
+                            }
+                            super::calls::BoundLoweredCallArg::Default(param_index) => {
+                                super::calls::lower_default_call_argument(
+                                    type_table,
+                                    checked_type_map,
+                                    decl_index,
+                                    cursor,
+                                    callee,
+                                    param_index + 1,
+                                    expected,
+                                )
+                            }
+                        }
                         .map(|value| value.local_id)
                     })
                     .collect::<Result<Vec<_>, _>>()?,

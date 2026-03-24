@@ -288,6 +288,59 @@ fn method_call_lowering_reorders_named_arguments_after_the_receiver() {
 }
 
 #[test]
+fn free_call_lowering_synthesizes_default_arguments() {
+    let workspace = lower_fixture_workspace(
+        "fun[] pair(left: int, right: int = 2): int = {\n\
+             return left;\n\
+         };\n\
+         fun[] main(): int = {\n\
+             return pair(1);\n\
+         };",
+    );
+
+    let routine = workspace
+        .entry_package()
+        .routine_decls
+        .values()
+        .find(|routine| routine.name == "main")
+        .expect("main routine should exist");
+    let call_args = routine
+        .instructions
+        .iter()
+        .find_map(|instr| match &instr.kind {
+            LoweredInstrKind::Call { args, .. } => Some(args.clone()),
+            _ => None,
+        })
+        .expect("main routine should contain a lowered free call");
+
+    assert_eq!(call_args.len(), 2, "defaulted free call should lower a full argument list");
+
+    let lowered_arg_constants = call_args
+        .iter()
+        .map(|local_id| {
+            routine
+                .instructions
+                .iter()
+                .find_map(|instr| match (&instr.result, &instr.kind) {
+                    (Some(result), LoweredInstrKind::Const(LoweredOperand::Int(value)))
+                        if result == local_id =>
+                    {
+                        Some(*value)
+                    }
+                    _ => None,
+                })
+                .expect("defaulted free-call args should lower from integer constants")
+        })
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        lowered_arg_constants,
+        vec![1, 2],
+        "omitted default parameters should lower in declared order"
+    );
+}
+
+#[test]
 fn errorful_call_lowering_retains_explicit_error_type_metadata() {
     let lowered = lower_fixture_workspace(
         "fun[] load(): int / str = {\n\
