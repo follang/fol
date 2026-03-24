@@ -693,6 +693,64 @@ fn lsp_server_keeps_active_fol_model_in_semantic_snapshots() {
     fs::remove_dir_all(root).ok();
 }
 
+fn assert_semantic_model_via_hover(build_model: &str, expected: fol_typecheck::TypecheckCapabilityModel) {
+    let (root, uri) = sample_package_root(&format!("semantic_model_hover_{build_model}"));
+    let text = "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n";
+    fs::write(
+        root.join("build.fol"),
+        format!(
+            concat!(
+                "pro[] build(graph: Graph): non = {{\n",
+                "    graph.add_exe({{ name = \"demo\", root = \"src/main.fol\", fol_model = \"{}\" }});\n",
+                "}};\n",
+            ),
+            build_model
+        ),
+    )
+    .unwrap();
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    let open = open_document(&mut server, uri.clone(), text);
+    assert_eq!(open.len(), 1);
+
+    let hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(702),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+
+    let snapshot = server
+        .session
+        .semantic_snapshots
+        .get(uri.as_str())
+        .expect("semantic snapshot should be cached after hover");
+    assert_eq!(snapshot.snapshot.active_fol_model, Some(expected));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_keeps_model_context_through_hover_for_core_alloc_and_std() {
+    assert_semantic_model_via_hover("core", fol_typecheck::TypecheckCapabilityModel::Core);
+    assert_semantic_model_via_hover("alloc", fol_typecheck::TypecheckCapabilityModel::Alloc);
+    assert_semantic_model_via_hover("std", fol_typecheck::TypecheckCapabilityModel::Std);
+}
+
 #[test]
 fn lsp_server_reuses_semantic_snapshots_for_unchanged_documents() {
     let (root, uri) = sample_package_root("semantic_cache");

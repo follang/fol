@@ -174,7 +174,7 @@ using and reports boundaries consistently.
   - `str` in `core`
   - dynamic `.len(...)` in `core`
   match build-mode diagnostics for the same package.
-- [ ] Slice 10. Add hover or symbol-surface tests proving model context is not
+- [x] Slice 10. Add hover or symbol-surface tests proving model context is not
   lost when analyzing package files under `core`, `alloc`, and `std`.
 
 ### Exit criteria
