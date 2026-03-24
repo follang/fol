@@ -31,7 +31,7 @@ Last updated: 2026-03-24
   `core`.
 - [x] Slice 13. Reject `run` and `test` execution for selected non-`std`
   artifacts in the frontend route, with clear diagnostics and tests.
-- [ ] Slice 14. Reject workspace-wide `run` and `test` when the resolved build
+- [x] Slice 14. Reject workspace-wide `run` and `test` when the resolved build
   route only exposes non-`std` runnable artifacts, with route-level tests.
 
 ## Purpose
