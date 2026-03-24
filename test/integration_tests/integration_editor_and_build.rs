@@ -851,10 +851,13 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     fn test_cli_build_emits_rust_for_model_examples() {
         let cases = [
             ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
+            ("examples/core_defer", "use fol_runtime::core as rt;"),
             ("examples/core_records", "use fol_runtime::core as rt;"),
+            ("examples/alloc_defaults", "use fol_runtime::alloc as rt;"),
             ("examples/alloc_containers", "use fol_runtime::alloc as rt;"),
             ("examples/alloc_collections", "use fol_runtime::alloc as rt;"),
             ("examples/std_cli", "use fol_runtime::std as rt;"),
+            ("examples/std_echo_min", "use fol_runtime::std as rt;"),
             ("examples/std_named_calls", "use fol_runtime::std as rt;"),
         ];
 
@@ -887,10 +890,13 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     fn test_cli_example_build_summaries_surface_expected_models() {
         let cases = [
             ("examples/core_blink_shape", "fol_model=core"),
+            ("examples/core_defer", "fol_model=core"),
             ("examples/core_records", "fol_model=core"),
+            ("examples/alloc_defaults", "fol_model=alloc"),
             ("examples/alloc_containers", "fol_model=alloc"),
             ("examples/alloc_collections", "fol_model=alloc"),
             ("examples/std_cli", "fol_model=std"),
+            ("examples/std_echo_min", "fol_model=std"),
             ("examples/std_named_calls", "fol_model=std"),
         ];
 
@@ -917,6 +923,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     fn test_cli_std_examples_run_and_print_expected_output() {
         let cases = [
             ("examples/std_cli", "std-ready"),
+            ("examples/std_echo_min", "9"),
             ("examples/std_named_calls", "host-ok-ready"),
         ];
 
@@ -1090,8 +1097,11 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
         let cases = [
             ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
+            ("examples/core_defer", "use fol_runtime::core as rt;"),
             ("examples/alloc_collections", "use fol_runtime::alloc as rt;"),
+            ("examples/alloc_defaults", "use fol_runtime::alloc as rt;"),
             ("examples/std_cli", "use fol_runtime::std as rt;"),
+            ("examples/std_echo_min", "use fol_runtime::std as rt;"),
         ];
 
         for (path, expected_import) in cases {
@@ -1171,10 +1181,13 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
             .expect("runtime model docs should exist");
         let examples = [
             "examples/core_blink_shape",
+            "examples/core_defer",
             "examples/core_records",
+            "examples/alloc_defaults",
             "examples/alloc_containers",
             "examples/alloc_collections",
             "examples/std_cli",
+            "examples/std_echo_min",
             "examples/std_named_calls",
             "examples/mixed_models_workspace",
         ];
@@ -1187,8 +1200,11 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         }
 
         assert!(docs.contains("examples/core_blink_shape"));
+        assert!(docs.contains("examples/core_defer"));
+        assert!(docs.contains("examples/alloc_defaults"));
         assert!(docs.contains("examples/alloc_containers"));
         assert!(docs.contains("examples/std_cli"));
+        assert!(docs.contains("examples/std_echo_min"));
         assert!(docs.contains("examples/mixed_models_workspace"));
     }
 

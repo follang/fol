@@ -433,7 +433,7 @@ pub(crate) fn type_node_with_expectation(
             }));
             Ok(TypedExpr::value(routine_type_id))
         }
-        AstNode::Block { statements } => type_body(typed, resolved, context, statements),
+        AstNode::Block { statements, .. } => type_body(typed, resolved, context, statements),
         AstNode::Program { declarations } => type_body(typed, resolved, context, declarations),
         AstNode::When {
             expr,
@@ -553,7 +553,7 @@ pub(crate) fn type_node_with_expectation(
             controlflow::type_return(typed, resolved, context, value.as_deref())
         }
         AstNode::Break => Ok(TypedExpr::value(typed.builtin_types().never)),
-        AstNode::Defer { body } => {
+        AstNode::Defer { body, .. } => {
             if body_contains_return(body) {
                 return Err(TypecheckError::new(
                     TypecheckErrorKind::InvalidInput,
@@ -658,7 +658,7 @@ fn body_contains_break(nodes: &[AstNode]) -> bool {
     nodes.iter().any(|node| match node {
         AstNode::Break => true,
         AstNode::Commented { node, .. } => body_contains_break(std::slice::from_ref(node.as_ref())),
-        AstNode::Block { statements } => body_contains_break(statements),
+        AstNode::Block { statements, .. } => body_contains_break(statements),
         AstNode::When { cases, default, .. } => {
             cases.iter().any(|case| match case {
                 fol_parser::ast::WhenCase::Case { body, .. }
@@ -669,7 +669,7 @@ fn body_contains_break(nodes: &[AstNode]) -> bool {
                 | fol_parser::ast::WhenCase::Of { body, .. } => body_contains_break(body),
             }) || default.as_ref().is_some_and(|body| body_contains_break(body))
         }
-        AstNode::Loop { body, .. } | AstNode::Defer { body } => body_contains_break(body),
+        AstNode::Loop { body, .. } | AstNode::Defer { body, .. } => body_contains_break(body),
         AstNode::FunDecl { .. }
         | AstNode::ProDecl { .. }
         | AstNode::LogDecl { .. }

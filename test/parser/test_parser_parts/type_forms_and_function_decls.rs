@@ -621,7 +621,7 @@ fn test_nested_block_statements_parse_inside_function_bodies() {
                 if let AstNode::FunDecl { name, body, .. } = node {
                     if name == "blocky" {
                         return body.iter().find_map(|statement| {
-                            if let AstNode::Block { statements } = statement {
+                            if let AstNode::Block { statements, .. } = statement {
                                 Some(statements.clone())
                             } else {
                                 None

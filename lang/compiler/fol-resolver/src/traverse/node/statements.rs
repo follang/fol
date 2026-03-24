@@ -43,6 +43,7 @@ pub fn traverse_when_node(
                     program,
                     source_unit_id,
                     scope_id,
+                    None,
                     body,
                     routine_context,
                 )?;
@@ -71,6 +72,7 @@ pub fn traverse_when_node(
                     program,
                     source_unit_id,
                     scope_id,
+                    None,
                     body,
                     routine_context,
                 )?;
@@ -88,6 +90,7 @@ pub fn traverse_when_node(
                     program,
                     source_unit_id,
                     scope_id,
+                    None,
                     body,
                     routine_context,
                 )?;
@@ -100,6 +103,7 @@ pub fn traverse_when_node(
             program,
             source_unit_id,
             scope_id,
+            None,
             default_body,
             routine_context,
         )?;

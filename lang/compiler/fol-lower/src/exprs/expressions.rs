@@ -886,7 +886,7 @@ pub(crate) fn lower_expression_observed(
             LoweringErrorKind::Unsupported,
             "loop lowering is not yet implemented",
         )),
-        AstNode::Block { statements: _ } => Err(LoweringError::with_kind(
+        AstNode::Block { statements: _, .. } => Err(LoweringError::with_kind(
             LoweringErrorKind::Unsupported,
             "block expression lowering is not yet implemented",
         )),

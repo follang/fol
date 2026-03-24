@@ -49,7 +49,7 @@ fn node_always_terminates(node: &AstNode) -> bool {
         AstNode::Commented { node, .. } => node_always_terminates(node),
         AstNode::Return { .. } => true,
         AstNode::FunctionCall { name, .. } if name == "report" => true,
-        AstNode::Block { statements } => body_always_terminates(statements),
+        AstNode::Block { statements, .. } => body_always_terminates(statements),
         AstNode::When { cases, default, .. } => when_always_terminates(cases, default.as_deref()),
         _ => false,
     }

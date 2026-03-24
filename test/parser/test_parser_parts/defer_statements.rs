@@ -16,7 +16,7 @@ fn test_defer_statement_parses_inside_routine_body() {
         .expect("Expected parsed root item to be a routine declaration");
 
     assert!(
-        matches!(body, [AstNode::Defer { body }, AstNode::Return { .. }] if body.len() == 1),
+        matches!(body, [AstNode::Defer { body, .. }, AstNode::Return { .. }] if body.len() == 1),
         "Expected defer followed by return in routine body, got: {body:?}"
     );
 }
@@ -59,11 +59,11 @@ fn test_defer_statement_parses_nested_scopes_and_when_bodies() {
         .expect("Expected parsed root item to be a routine declaration");
 
     assert!(
-        matches!(&body[0], AstNode::Defer { body } if body.len() == 1),
+        matches!(&body[0], AstNode::Defer { body, .. } if body.len() == 1),
         "Expected first body statement to be a defer block, got: {body:?}"
     );
     assert!(
-        matches!(&body[1], AstNode::Block { statements } if matches!(statements.as_slice(), [AstNode::Defer { .. }, AstNode::When { .. }])),
+        matches!(&body[1], AstNode::Block { statements, .. } if matches!(statements.as_slice(), [AstNode::Defer { .. }, AstNode::When { .. }])),
         "Expected nested block to keep its defer and when statements, got: {body:?}"
     );
     assert!(
@@ -91,8 +91,8 @@ fn test_defer_statement_keeps_nested_return_in_ast_for_later_validation() {
     assert!(
         matches!(
             &body[0],
-            AstNode::Defer { body }
-                if matches!(body.as_slice(), [AstNode::Block { statements }] if matches!(statements.as_slice(), [AstNode::Return { .. }]))
+            AstNode::Defer { body, .. }
+                if matches!(body.as_slice(), [AstNode::Block { statements, .. }] if matches!(statements.as_slice(), [AstNode::Return { .. }]))
         ),
         "Expected nested return to remain inside the parsed defer block, got: {body:?}"
     );

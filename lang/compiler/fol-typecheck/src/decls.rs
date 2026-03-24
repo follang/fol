@@ -359,12 +359,31 @@ fn lower_nested_declarations_in_node(
                 let _ = lower_type(typed, resolved, current_scope, error_type)?;
             }
         }
-        AstNode::Block { statements } => {
+        AstNode::Defer {
+            syntax_id, body, ..
+        } => {
+            let deferred_scope =
+                nested_scope_for_syntax(resolved, current_scope, *syntax_id, "defer block")?;
             lower_nested_declarations_in_nodes(
                 typed,
                 resolved,
                 source_unit_id,
-                current_scope,
+                deferred_scope,
+                body,
+            )?;
+        }
+        AstNode::Block {
+            syntax_id,
+            statements,
+            ..
+        } => {
+            let block_scope =
+                nested_scope_for_syntax(resolved, current_scope, *syntax_id, "block")?;
+            lower_nested_declarations_in_nodes(
+                typed,
+                resolved,
+                source_unit_id,
+                block_scope,
                 statements,
             )?;
         }
@@ -460,6 +479,42 @@ fn lower_named_routine_signature(
     record_symbol_type(typed, symbol_id, routine_type)?;
     record_symbol_receiver_type(typed, symbol_id, lowered_receiver)?;
     Ok(signature_scope)
+}
+
+fn nested_scope_for_syntax(
+    resolved: &ResolvedProgram,
+    parent_scope: ScopeId,
+    syntax_id: Option<SyntaxNodeId>,
+    construct_name: &str,
+) -> Result<ScopeId, TypecheckError> {
+    let Some(syntax_id) = syntax_id else {
+        return Err(internal_error(
+            format!("{construct_name} is missing syntax identity during type lowering"),
+            None,
+        ));
+    };
+    let Some(scope_id) = resolved.scope_for_syntax(syntax_id) else {
+        return Err(internal_error(
+            format!("{construct_name} is missing a resolved child scope during type lowering"),
+            None,
+        ));
+    };
+    let Some(scope) = resolved.scope(scope_id) else {
+        return Err(internal_error(
+            format!("{construct_name} resolved to unknown scope {}", scope_id.0),
+            None,
+        ));
+    };
+    if scope.parent != Some(parent_scope) {
+        return Err(internal_error(
+            format!(
+                "{construct_name} resolved scope {} does not belong to parent scope {}",
+                scope_id.0, parent_scope.0
+            ),
+            None,
+        ));
+    }
+    Ok(scope_id)
 }
 
 pub(crate) fn lower_type(
