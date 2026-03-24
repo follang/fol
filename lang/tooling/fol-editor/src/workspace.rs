@@ -1,4 +1,9 @@
 use crate::{EditorConfig, EditorDocument, EditorError, EditorErrorKind, EditorResult};
+use fol_package::{
+    build_artifact::BuildArtifactFolModel, build_runtime::BuildRuntimeArtifact,
+    evaluate_build_source, BuildEvaluationInputs, BuildEvaluationRequest,
+};
+use fol_typecheck::TypecheckCapabilityModel;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -15,6 +20,7 @@ pub struct EditorWorkspaceMapping {
     pub package_root: Option<PathBuf>,
     pub workspace_root: Option<PathBuf>,
     pub analysis_root: PathBuf,
+    pub active_fol_model: Option<TypecheckCapabilityModel>,
 }
 
 #[derive(Debug)]
@@ -59,8 +65,13 @@ pub fn map_document_workspace(
         })?,
         config,
     );
+    let active_fol_model = roots
+        .package_root
+        .as_ref()
+        .and_then(|package_root| recover_active_fol_model(package_root, &absolute));
     Ok(EditorWorkspaceMapping {
         document_path: absolute,
+        active_fol_model,
         package_root: roots.package_root,
         workspace_root: roots.workspace_root,
         analysis_root: roots.analysis_root,
@@ -241,10 +252,77 @@ fn copy_directory_tree(from: &Path, to: &Path) -> EditorResult<()> {
     Ok(())
 }
 
+fn recover_active_fol_model(
+    package_root: &Path,
+    document_path: &Path,
+) -> Option<TypecheckCapabilityModel> {
+    let build_path = package_root.join("build.fol");
+    let build_source = fs::read_to_string(&build_path).ok()?;
+    let package_root_text = package_root.to_str()?.to_string();
+    let evaluated = evaluate_build_source(
+        &BuildEvaluationRequest {
+            package_root: package_root_text.clone(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root_text,
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        },
+        &build_path,
+        &build_source,
+    )
+    .ok()
+    .flatten()?;
+    infer_active_fol_model(package_root, document_path, &evaluated.evaluated.artifacts)
+}
+
+fn infer_active_fol_model(
+    package_root: &Path,
+    document_path: &Path,
+    artifacts: &[BuildRuntimeArtifact],
+) -> Option<TypecheckCapabilityModel> {
+    if artifacts.is_empty() {
+        return None;
+    }
+
+    let relative_document = document_path.strip_prefix(package_root).ok();
+    let matching_artifacts = relative_document
+        .iter()
+        .flat_map(|relative| {
+            artifacts
+                .iter()
+                .filter(move |artifact| Path::new(&artifact.root_module) == *relative)
+        })
+        .collect::<Vec<_>>();
+    if matching_artifacts.len() == 1 {
+        return Some(typecheck_model_for_build_model(matching_artifacts[0].fol_model));
+    }
+
+    let first = artifacts[0].fol_model;
+    if artifacts.iter().all(|artifact| artifact.fol_model == first) {
+        return Some(typecheck_model_for_build_model(first));
+    }
+
+    if artifacts.len() == 1 {
+        return Some(typecheck_model_for_build_model(first));
+    }
+
+    None
+}
+
+fn typecheck_model_for_build_model(model: BuildArtifactFolModel) -> TypecheckCapabilityModel {
+    match model {
+        BuildArtifactFolModel::Core => TypecheckCapabilityModel::Core,
+        BuildArtifactFolModel::Alloc => TypecheckCapabilityModel::Alloc,
+        BuildArtifactFolModel::Std => TypecheckCapabilityModel::Std,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{map_document_workspace, materialize_analysis_overlay};
     use crate::{EditorConfig, EditorDocument, EditorDocumentUri};
+    use fol_typecheck::TypecheckCapabilityModel;
     use std::fs;
     use std::path::PathBuf;
 
@@ -280,8 +358,82 @@ mod tests {
         assert_eq!(mapping.package_root, Some(package.clone()));
         assert_eq!(mapping.workspace_root, Some(root.clone()));
         assert_eq!(mapping.analysis_root, root);
+        assert_eq!(mapping.active_fol_model, None);
 
         fs::remove_dir_all(package.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn workspace_mapping_recovers_single_artifact_fol_model() {
+        let root = temp_root("mapping_model_core");
+        let src = root.join("src");
+        fs::create_dir_all(&src).unwrap();
+        fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+                "};\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0;\n};\n",
+        )
+        .unwrap();
+
+        let mapping = map_document_workspace(&src.join("main.fol"), &EditorConfig::default())
+            .expect("mapping should succeed");
+
+        assert_eq!(mapping.active_fol_model, Some(TypecheckCapabilityModel::Core));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_mapping_uses_matching_artifact_root_in_mixed_model_package() {
+        let root = temp_root("mapping_model_mixed");
+        let src = root.join("src");
+        let tests = root.join("test");
+        fs::create_dir_all(&src).unwrap();
+        fs::create_dir_all(&tests).unwrap();
+        fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(graph: Graph): non = {\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+                "    graph.add_test({ name = \"tests\", root = \"test/app.fol\", fol_model = \"core\" });\n",
+                "};\n",
+            ),
+        )
+        .unwrap();
+        fs::write(
+            src.join("main.fol"),
+            "fun[] main(): int = {\n    return 0;\n};\n",
+        )
+        .unwrap();
+        fs::write(
+            tests.join("app.fol"),
+            "fun[] main(): int = {\n    return 0;\n};\n",
+        )
+        .unwrap();
+
+        let src_mapping = map_document_workspace(&src.join("main.fol"), &EditorConfig::default())
+            .expect("mapping should succeed");
+        let test_mapping =
+            map_document_workspace(&tests.join("app.fol"), &EditorConfig::default())
+                .expect("mapping should succeed");
+        let build_mapping = map_document_workspace(&root.join("build.fol"), &EditorConfig::default())
+            .expect("mapping should succeed");
+
+        assert_eq!(src_mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
+        assert_eq!(test_mapping.active_fol_model, Some(TypecheckCapabilityModel::Core));
+        assert_eq!(build_mapping.active_fol_model, None);
+
+        fs::remove_dir_all(root).ok();
     }
 
     #[test]

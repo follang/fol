@@ -165,7 +165,7 @@ using and reports boundaries consistently.
 
 ### Slice Tracker
 
-- [ ] Slice 7. Extend editor workspace analysis so it can recover the active
+- [x] Slice 7. Extend editor workspace analysis so it can recover the active
   `fol_model` for the opened package or routed artifact.
 - [ ] Slice 8. Thread `fol_model` into semantic snapshots and editor workspace
   caches.

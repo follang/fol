@@ -39,7 +39,7 @@ use analysis::{analyze_document_diagnostics, analyze_document_semantics};
 use completion_helpers::completion_context_with_lsp;
 use std::sync::Arc;
 use transport::from_params;
-use crate::workspace::{canonical_document_path, discover_workspace_roots};
+use crate::workspace::discover_workspace_roots;
 
 pub struct EditorLspServer {
     pub session: EditorSession,
@@ -568,20 +568,7 @@ impl EditorLspServer {
     }
 
     fn cached_document_mapping(&mut self, path: &std::path::Path) -> EditorResult<EditorWorkspaceMapping> {
-        let absolute = canonical_document_path(path)?;
-        let directory = absolute.parent().ok_or_else(|| {
-            EditorError::new(
-                EditorErrorKind::InvalidDocumentPath,
-                format!("document '{}' has no parent directory", absolute.display()),
-            )
-        })?;
-        let roots = self.cached_workspace_roots(directory);
-        Ok(EditorWorkspaceMapping {
-            document_path: absolute,
-            package_root: roots.package_root,
-            workspace_root: roots.workspace_root,
-            analysis_root: roots.analysis_root,
-        })
+        crate::map_document_workspace(path, &self.session.config)
     }
 
     fn cached_workspace_roots(
