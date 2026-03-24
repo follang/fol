@@ -56,9 +56,9 @@ Already complete before this plan:
 
 Not complete:
 
-- runtime crate split
+- single-crate runtime model ownership inside `fol-runtime`
 - backend linking by runtime tier
-- runtime code movement into `core` / `alloc` / `std`
+- runtime code movement into `core` / `alloc` / `std` modules inside `fol-runtime`
 - crate-level ownership of string/container/runtime/process services
 - docs for the full split
 
@@ -89,31 +89,29 @@ Lock down the contract before moving code.
 - The intended split is documented in one place and referenced by the book.
 - Diagnostics reflect the language model consistently.
 
-## Epoch 2: Create Runtime Crate Skeletons
+## Epoch 2: Turn `fol-runtime` Into The Model Crate
 
 Goal:
-Introduce the physical runtime split without yet moving every implementation.
+Keep one runtime crate and make the model ownership explicit inside it.
 
 ### Slice Tracker
 
-- [x] Slice 4. Add new crates:
-  - `lang/execution/fol-core`
-  - `lang/execution/fol-alloc`
-  - `lang/execution/fol-std`
-  with minimal `Cargo.toml` and `lib.rs` surfaces.
-- [x] Slice 5. Wire the workspace manifests so the new crates build in the
-  workspace and are visible to the backend build path.
-- [x] Slice 6. Define crate dependency direction and enforce it in code:
-  - `fol-core` depends on nothing from `fol-alloc` or `fol-std`
-  - `fol-alloc` may depend on `fol-core`
-  - `fol-std` may depend on `fol-core` and `fol-alloc`
-- [x] Slice 7. Add smoke tests proving the new crates compile and the workspace
-  build remains green.
+- [x] Slice 4. Remove the abandoned multi-crate split and keep `fol-runtime` as
+  the only runtime crate.
+- [ ] Slice 5. Add explicit `core`, `alloc`, and `std` module boundaries inside
+  `fol-runtime`, with minimal marker APIs and unit tests.
+- [ ] Slice 6. Define dependency direction inside `fol-runtime` modules and
+  enforce it in code:
+  - `core` module owns the no-heap, no-OS base
+  - `alloc` module may build on `core`
+  - `std` module may build on `core` and `alloc`
+- [ ] Slice 7. Add smoke tests proving `fol-runtime` exposes the model modules
+  and the workspace build remains green.
 
 ### Exit criteria
 
-- The three runtime crates exist and build.
-- The dependency direction is explicit and tested.
+- `fol-runtime` is the single model crate.
+- The internal module direction is explicit and tested.
 
 ## Epoch 3: Backend Learns Runtime Tier Linking
 
@@ -122,20 +120,21 @@ Make backend emission reflect `fol_model` structurally, not only semantically.
 
 ### Slice Tracker
 
-- [ ] Slice 8. Add backend crate-set selection by `BackendFolModel` with a small
-  internal abstraction such as `BackendRuntimeTier` or `BackendRuntimeCrateSet`.
+- [ ] Slice 8. Add backend runtime-tier selection by `BackendFolModel` with a
+  small internal abstraction such as `BackendRuntimeTier`.
 - [ ] Slice 9. Update emitted Rust crate generation so `core`, `alloc`, and
-  `std` artifacts link different runtime crates.
+  `std` artifacts import different `fol-runtime` model modules while still
+  linking one runtime crate.
 - [ ] Slice 10. Add backend trace metadata tests to prove emitted artifacts
-  record the selected runtime crate set.
+  record the selected runtime tier and emitted runtime module surface.
 - [ ] Slice 11. Add frontend integration tests proving:
-  - `fol_model = core` emits against `fol-core`
-  - `fol_model = alloc` emits against `fol-core + fol-alloc`
-  - `fol_model = std` emits against `fol-core + fol-alloc + fol-std`
+  - `fol_model = core` emits against `fol-runtime::core`
+  - `fol_model = alloc` emits against `fol-runtime::alloc`
+  - `fol_model = std` emits against `fol-runtime::std`
 
 ### Exit criteria
 
-- Backend linkage differs by model.
+- Backend-emitted runtime usage differs by model.
 - This is visible in emitted source or trace metadata and locked by tests.
 
 ## Epoch 4: Move Process And Console Services Into `std`
@@ -145,10 +144,11 @@ Remove hosted process/runtime assumptions from the shared runtime surface.
 
 ### Slice Tracker
 
-- [ ] Slice 12. Move `.echo(...)` implementation ownership into `fol-std`.
+- [ ] Slice 12. Move `.echo(...)` implementation ownership into the `std`
+  module inside `fol-runtime`.
 - [ ] Slice 13. Move process outcome and executable entry helpers into
-  `fol-std`.
-- [ ] Slice 14. Make backend-generated `std` artifacts use `fol-std` for main
+- the `std` module inside `fol-runtime`.
+- [ ] Slice 14. Make backend-generated `std` artifacts use `fol-runtime::std` for main
   entry and hosted execution support.
 - [ ] Slice 15. Remove the old shared runtime ownership for those services
   instead of keeping fallback exports.
@@ -157,7 +157,7 @@ Remove hosted process/runtime assumptions from the shared runtime surface.
 
 ### Exit criteria
 
-- Console and process behavior live in `std`.
+- Console and process behavior live in `fol-runtime::std`.
 - No shared fallback path remains for those services.
 
 ## Epoch 5: Move Heap Types Into `alloc`
@@ -167,14 +167,15 @@ Make heap-backed runtime data structures physically belong to `alloc`.
 
 ### Slice Tracker
 
-- [ ] Slice 17. Move string runtime support into `fol-alloc`.
-- [ ] Slice 18. Move `vec` and `seq` runtime support into `fol-alloc`.
-- [ ] Slice 19. Move `set` and `map` runtime support into `fol-alloc`, or, if
+- [ ] Slice 17. Move string runtime support into `fol-runtime::alloc`.
+- [ ] Slice 18. Move `vec` and `seq` runtime support into `fol-runtime::alloc`.
+- [ ] Slice 19. Move `set` and `map` runtime support into `fol-runtime::alloc`, or, if
   one of them is not yet stable enough, explicitly defer it in the docs and
   keep the plan honest.
 - [ ] Slice 20. Update backend emission so `alloc` and `std` artifacts import
-  those types from `fol-alloc`.
-- [ ] Slice 21. Delete the old monolithic ownership of those heap-backed types.
+  those types from the `alloc` module in `fol-runtime`.
+- [ ] Slice 21. Delete the old unsplit ownership path for those heap-backed
+  types inside `fol-runtime`.
 - [ ] Slice 22. Add end-to-end fixtures for:
   - `alloc` artifact using `str`
   - `alloc` artifact using `seq`
@@ -183,8 +184,8 @@ Make heap-backed runtime data structures physically belong to `alloc`.
 
 ### Exit criteria
 
-- Heap-backed runtime types physically live in `alloc`.
-- Backend emission for `alloc` and `std` points to `fol-alloc`.
+- Heap-backed runtime types physically live in `fol-runtime::alloc`.
+- Backend emission for `alloc` and `std` points to that module.
 
 ## Epoch 6: Establish `core` As A Real No-Heap Tier
 
@@ -196,7 +197,7 @@ Make `core` useful and honest for embedded-first work.
 - [ ] Slice 23. Audit the backend-emitted `core` crate root and remove accidental
   imports of hosted or heap-backed support.
 - [ ] Slice 24. Add explicit backend tests that `core` artifacts emit without
-  `fol-alloc` or `fol-std`.
+  importing alloc/std runtime modules.
 - [ ] Slice 25. Add example artifacts for `core` that use only:
   - scalars
   - arrays
@@ -244,16 +245,16 @@ Make the model visible and obvious at the artifact/build level.
 - The build UX makes model selection obvious.
 - Mixed-model workspaces are tested.
 
-## Epoch 8: Remove The Old Monolithic Runtime Surface
+## Epoch 8: Remove The Old Unsplit Runtime Surface
 
 Goal:
 Finish the transition instead of keeping parallel ownership.
 
 ### Slice Tracker
 
-- [ ] Slice 32. Delete or radically shrink the old `fol-runtime` crate so it no
-  longer owns the split runtime surfaces.
-- [ ] Slice 33. Remove old backend references to the monolithic runtime path.
+- [ ] Slice 32. Delete or radically shrink the old unsplit `fol-runtime` surface
+  so the crate becomes the model crate rather than a monolithic dump.
+- [ ] Slice 33. Remove old backend references to the unsplit runtime path.
 - [ ] Slice 34. Remove stale tests that assume one hosted runtime surface.
 - [ ] Slice 35. Add a final regression pass across backend emission, frontend
   routing, example apps, and docs.
@@ -328,5 +329,5 @@ This plan is only done when all of the following are true:
 - `core` artifacts do not pull heap or OS runtime code
 - `alloc` artifacts can use heap-backed types without `std`
 - `std` artifacts own hosted execution/runtime services
-- the old monolithic runtime path is gone
+- the old unsplit runtime path is gone
 - docs, examples, tests, and backend output all match that reality

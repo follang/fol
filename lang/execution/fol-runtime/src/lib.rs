@@ -17,13 +17,22 @@
 //! - recoverable routine results
 //! - backend-facing runtime hooks such as `.echo(...)`
 //!
+//! The runtime model is converging on explicit internal tiers:
+//!
+//! - [`core`]
+//! - [`alloc`]
+//! - [`std`]
+//!
+//! Those tiers currently begin as module boundaries and marker APIs. Later
+//! slices move concrete ownership into those modules and delete the old shared
+//! surface.
+//!
 //! Explicitly out of scope for this milestone:
 //!
 //! - ownership / borrowing / pointers
 //! - standards / generics
 //! - concurrency runtime
 //! - C ABI
-//! - `core` / `std`
 //!
 //! # Backend Mapping: Builtins
 //!
@@ -176,13 +185,16 @@
 //! then optimize behind that contract.
 
 pub mod abi;
+pub mod alloc;
 pub mod aggregate;
 pub mod builtins;
 pub mod containers;
+pub mod core;
 pub mod entry;
 pub mod error;
 pub mod prelude;
 pub mod shell;
+pub mod std;
 pub mod strings;
 pub mod value;
 
@@ -205,16 +217,34 @@ mod tests {
 
     #[test]
     fn public_runtime_module_shell_is_importable() {
+        assert_eq!(alloc::module_name(), "alloc");
         assert_eq!(abi::module_name(), "abi");
         assert_eq!(aggregate::module_name(), "aggregate");
         assert_eq!(builtins::module_name(), "builtins");
         assert_eq!(containers::module_name(), "containers");
+        assert_eq!(core::module_name(), "core");
         assert_eq!(entry::module_name(), "entry");
         assert_eq!(error::module_name(), "error");
         assert_eq!(shell::module_name(), "shell");
+        assert_eq!(std::module_name(), "std");
         assert_eq!(strings::module_name(), "strings");
         assert_eq!(value::module_name(), "value");
         assert_eq!(prelude::crate_name(), "fol-runtime");
+    }
+
+    #[test]
+    fn runtime_model_modules_expose_expected_capabilities() {
+        assert_eq!(core::tier_name(), "core");
+        assert!(!core::HAS_HEAP);
+        assert!(!core::HAS_OS);
+
+        assert_eq!(alloc::tier_name(), "alloc");
+        assert!(alloc::HAS_HEAP);
+        assert!(!alloc::HAS_OS);
+
+        assert_eq!(std::tier_name(), "std");
+        assert!(std::HAS_HEAP);
+        assert!(std::HAS_OS);
     }
 
     #[test]

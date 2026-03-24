@@ -93,12 +93,10 @@ Already enforced semantically:
 
 Still in progress:
 
-- splitting the runtime implementation into:
-  - `fol-core`
-  - `fol-alloc`
-  - `fol-std`
-- backend linkage by runtime crate set
-- deleting the old monolithic runtime ownership
+- turning `fol-runtime` into the one model crate with internal
+  `core` / `alloc` / `std` ownership
+- backend linkage by runtime tier
+- deleting the old unsplit runtime ownership path
 
 ## Build example
 

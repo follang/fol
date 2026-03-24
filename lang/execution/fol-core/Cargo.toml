@@ -1,8 +1,0 @@
-[package]
-name = "fol-core"
-version = "0.1.4"
-edition = "2021"
-
-[lib]
-name = "fol_core"
-path = "src/lib.rs"
