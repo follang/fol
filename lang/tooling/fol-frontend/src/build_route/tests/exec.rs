@@ -3,8 +3,21 @@ use super::super::{
     FrontendBuildWorkflowMode, FrontendMemberBuildRoute, FrontendStepExecutionKind,
     FrontendWorkspaceBuildRequest,
 };
-use crate::{FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
+use crate::{
+    FrontendArtifactKind, FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot,
+    WorkspaceRoot,
+};
 use std::fs;
+
+fn emitted_main_rs_from_result(result: &crate::FrontendCommandResult) -> String {
+    let crate_root = result
+        .artifacts
+        .iter()
+        .find(|artifact| artifact.kind == FrontendArtifactKind::EmittedRust)
+        .and_then(|artifact| artifact.path.clone())
+        .expect("routed build should keep an emitted Rust crate artifact");
+    fs::read_to_string(crate_root.join("src/main.rs")).expect("generated main.rs")
+}
 
 #[test]
 fn cli_selected_custom_graph_steps_flow_into_the_routed_member_plan() {
@@ -803,6 +816,201 @@ fn execute_workspace_build_route_accepts_dynamic_len_for_alloc_model_artifacts()
         },
     )
     .expect("alloc-model dynamic .len should remain buildable during routed execution");
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn execute_workspace_build_route_emits_core_runtime_module_imports() {
+    let root = std::env::temp_dir().join(format!(
+        "fol_frontend_build_route_emit_core_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("src")).unwrap();
+    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({\n",
+            "        name = \"demo\",\n",
+            "        root = \"src/main.fol\",\n",
+            "        fol_model = \"core\",\n",
+            "    });\n",
+            "    graph.install(app);\n",
+            "    return graph\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .unwrap();
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let result = execute_workspace_build_route(
+        &workspace,
+        &FrontendConfig {
+            keep_build_dir: true,
+            ..FrontendConfig::default()
+        },
+        &FrontendWorkspaceBuildRequest {
+            requested_step: "build".to_string(),
+            profile: FrontendProfile::Debug,
+            run_args: Vec::new(),
+        },
+    )
+    .expect("core-model routed build should succeed");
+
+    let main_rs = emitted_main_rs_from_result(&result);
+    assert!(main_rs.contains("use fol_runtime::core as rt_model;"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn execute_workspace_build_route_emits_alloc_runtime_module_imports() {
+    let root = std::env::temp_dir().join(format!(
+        "fol_frontend_build_route_emit_alloc_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("src")).unwrap();
+    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({\n",
+            "        name = \"demo\",\n",
+            "        root = \"src/main.fol\",\n",
+            "        fol_model = \"alloc\",\n",
+            "    });\n",
+            "    graph.install(app);\n",
+            "    return graph\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        concat!(
+            "fun[] main(): int = {\n",
+            "    return .len(\"Ada\");\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let result = execute_workspace_build_route(
+        &workspace,
+        &FrontendConfig {
+            keep_build_dir: true,
+            ..FrontendConfig::default()
+        },
+        &FrontendWorkspaceBuildRequest {
+            requested_step: "build".to_string(),
+            profile: FrontendProfile::Debug,
+            run_args: Vec::new(),
+        },
+    )
+    .expect("alloc-model routed build should succeed");
+
+    let main_rs = emitted_main_rs_from_result(&result);
+    assert!(main_rs.contains("use fol_runtime::alloc as rt_model;"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn execute_workspace_build_route_emits_std_runtime_module_imports() {
+    let root = std::env::temp_dir().join(format!(
+        "fol_frontend_build_route_emit_std_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("src")).unwrap();
+    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(graph: Graph): non = {\n",
+            "    var app = graph.add_exe({\n",
+            "        name = \"demo\",\n",
+            "        root = \"src/main.fol\",\n",
+            "        fol_model = \"std\",\n",
+            "    });\n",
+            "    graph.install(app);\n",
+            "    return graph\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        concat!(
+            "fun[] main(): int = {\n",
+            "    .echo(\"ok\");\n",
+            "    return 0;\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let result = execute_workspace_build_route(
+        &workspace,
+        &FrontendConfig {
+            keep_build_dir: true,
+            ..FrontendConfig::default()
+        },
+        &FrontendWorkspaceBuildRequest {
+            requested_step: "build".to_string(),
+            profile: FrontendProfile::Debug,
+            run_args: Vec::new(),
+        },
+    )
+    .expect("std-model routed build should succeed");
+
+    let main_rs = emitted_main_rs_from_result(&result);
+    assert!(main_rs.contains("use fol_runtime::std as rt_model;"));
 
     fs::remove_dir_all(root).ok();
 }
