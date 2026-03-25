@@ -18,35 +18,40 @@ canonical entry:
 
 ```fol
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     ...
 }
 ```
 
-The active build graph is accessed explicitly through the build-only ambient
+The active build context is accessed explicitly through the build-only ambient
 accessor:
 
 ```fol
-.graph()
+.build()
 ```
 
-There is no injected `graph` parameter anymore. `.graph()` returns an opaque
-build-only handle. Users do not name its type explicitly. All build operations
-still go through methods on that returned handle and on the handles it returns.
+There is no injected `graph` parameter anymore. `.build()` returns an opaque
+build-only handle. Users do not name its type explicitly. Package metadata and
+direct dependencies are configured through that handle, and graph work is
+reached through `build.graph()`.
 
 ## Minimal Example
 
 ```fol
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var app = graph.add_exe({ name = "app", root = "src/main.fol" });
     graph.install(app);
     graph.add_run(app);
 }
 ```
 
-This registers an executable, marks it for installation, and binds a default
-run step.
+This registers package metadata, adds an executable, marks it for installation,
+and binds a default run step.
 
 ## What `fol-build` Owns
 

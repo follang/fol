@@ -90,11 +90,13 @@ only within the file — they are not exported to the package.
 
 ```fol
 fun[] make_lib(name: str, root: str): Artifact = {
-    return .graph().add_static_lib({ name = name, root = root });
+    return .build().graph().add_static_lib({ name = name, root = root });
 }
 
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var core = make_lib("core", "src/core/lib.fol");
     var io   = make_lib("io",   "src/io/lib.fol");
     var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
@@ -105,7 +107,7 @@ pro[] build(): non = {
 }
 ```
 
-The helper `make_lib` accesses the ambient graph through `.graph()`. The graph
+The helper `make_lib` accesses the graph through `.build().graph()`. The graph
 handle is not a public type name and is not passed as a user-declared
 parameter.
 
@@ -119,11 +121,13 @@ fun[] lib_root(name: str): str = {
 }
 
 fun[] add_lib(name: str): Artifact = {
-    return .graph().add_static_lib({ name = name, root = lib_root(name) });
+    return .build().graph().add_static_lib({ name = name, root = lib_root(name) });
 }
 
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var core = add_lib("core");
     var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
     app.link(core);
@@ -135,11 +139,13 @@ pro[] build(): non = {
 
 ```fol
 fun[] make_lib(name: str): Artifact = {
-    return .graph().add_static_lib({ name = name, root = name });
+    return .build().graph().add_static_lib({ name = name, root = name });
 }
 
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var target   = graph.standard_target();
     var optimize = graph.standard_optimize();
     var strip    = graph.option({ name = "strip", kind = "bool", default = false });

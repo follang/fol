@@ -1,7 +1,18 @@
 # Graph API
 
-`.graph()` is the public access point to the build graph in `build.fol`. All
-build graph construction goes through method calls on the returned handle.
+`build.graph()` is the public access point to the build graph in `build.fol`.
+All graph construction goes through method calls on the returned handle.
+
+The canonical shape is:
+
+```fol
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
+    ...
+}
+```
 
 ## Artifacts
 
@@ -61,7 +72,9 @@ Mixed-model example:
 
 ```fol
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "workspace_tools", version = "0.1.0" });
+    var graph = build.graph();
     var corelib = graph.add_static_lib({
         name = "corelib",
         root = "core/lib.fol",

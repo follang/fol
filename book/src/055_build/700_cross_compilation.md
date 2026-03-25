@@ -27,7 +27,9 @@ or inside `build.fol`:
 
 ```fol
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var target = graph.standard_target();
     var app = graph.add_exe({
         name = "app",
