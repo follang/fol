@@ -218,7 +218,7 @@ If a new dependency/output/install shape is chosen:
 - make `run.capture_stdout()` return the same unified output handle
 - ensure stdout capture is compatible with downstream graph consumers
 
-### Slice 14
+### Slice 14 [complete]
 
 - make dependency `generated(...)` return the same unified output handle class
 

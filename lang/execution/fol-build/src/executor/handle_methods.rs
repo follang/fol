@@ -83,7 +83,11 @@ impl BuildBodyExecutor {
                     "module" => ExecValue::DependencyModule { alias, query_name },
                     "artifact" => ExecValue::DependencyArtifact { alias, query_name },
                     "step" => ExecValue::DependencyStep { alias, query_name },
-                    "generated" => ExecValue::DependencyGenerated { alias, query_name },
+                    "generated" => ExecValue::GeneratedFile {
+                        name: format!("dep::{alias}::generated::{query_name}"),
+                        path: format!("$dep/{alias}/{query_name}"),
+                        kind: BuildRuntimeGeneratedFileKind::ToolOutput,
+                    },
                     _ => return Err(self.unsupported(method)),
                 };
                 Ok(Some(result))

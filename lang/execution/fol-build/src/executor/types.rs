@@ -81,10 +81,6 @@ pub(super) enum ExecValue {
         alias: String,
         query_name: String,
     },
-    DependencyGenerated {
-        alias: String,
-        query_name: String,
-    },
     List(Vec<ExecValue>),
 }
 

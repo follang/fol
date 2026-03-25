@@ -361,7 +361,7 @@ pub fn canonical_handle_method_signatures() -> Vec<BuildSemanticMethodSignature>
             .returning(BuildSemanticTypeFamily::DependencyStepHandle),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "generated")
             .with_param(BuildSemanticMethodParameter::scalar("name"))
-            .returning(BuildSemanticTypeFamily::DependencyGeneratedOutputHandle),
+            .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
         // Artifact handle methods
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::ArtifactHandle, "link")
             .with_param(BuildSemanticMethodParameter::handle(
@@ -956,7 +956,7 @@ mod tests {
         );
         assert_eq!(
             dependency_generated.returns,
-            Some(BuildSemanticTypeFamily::DependencyGeneratedOutputHandle)
+            Some(BuildSemanticTypeFamily::GeneratedFileHandle)
         );
     }
 
