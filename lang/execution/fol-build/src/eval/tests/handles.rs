@@ -67,6 +67,42 @@ fn build_source_evaluator_accepts_build_metadata_and_dependency_calls() {
 }
 
 #[test]
+fn build_source_evaluator_treats_add_dep_as_a_real_dependency_handle() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    var dep = build.add_dep({ alias = \"core\", source = \"pkg\", target = \"core\" });\n",
+        "    var generated = dep.generated(\"bindings\");\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("build dependency handles should evaluate")
+        .expect("build body should produce operations");
+
+    assert_eq!(evaluated.result.dependency_requests.len(), 1);
+    assert_eq!(evaluated.result.dependency_requests[0].alias, "core");
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "core"
+            && query.query_name == "bindings"
+            && query.kind == crate::runtime::BuildRuntimeDependencyQueryKind::GeneratedOutput));
+}
+
+#[test]
 fn build_source_evaluator_extracts_and_replays_restricted_build_bodies() {
     let source = concat!(
         "pro[] build(): non = {\n",

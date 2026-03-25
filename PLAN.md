@@ -151,7 +151,7 @@ If a new dependency/output/install shape is chosen:
 
 ## Epoch 2: Promote Dependency Handles To The Public Surface
 
-### Slice 4
+### Slice 4 [complete]
 
 - extend `build.add_dep({...})` executor path so it returns a structured
   dependency handle intentionally, not just metadata side-effects
