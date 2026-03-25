@@ -128,6 +128,34 @@ fn build_source_evaluator_routes_build_graph_method_to_graph_handle() {
 }
 
 #[test]
+fn build_source_evaluator_supports_inferred_build_and_graph_locals() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    var graph = build.graph();\n",
+        "    graph.add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("build and graph locals should evaluate")
+        .expect("build and graph locals should produce graph operations");
+
+    let modules = evaluated.result.graph.modules();
+    assert_eq!(modules.len(), 1);
+    assert_eq!(modules[0].name, "src/utils.fol");
+}
+
+#[test]
 fn build_source_evaluator_supports_direct_ambient_graph_calls() {
     let source = concat!(
         "pro[] build(): non = {\n",
