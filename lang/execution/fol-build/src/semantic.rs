@@ -315,6 +315,17 @@ pub fn canonical_graph_method_signatures() -> Vec<BuildSemanticMethodSignature> 
     ]
 }
 
+pub fn canonical_build_context_method_signatures() -> Vec<BuildSemanticMethodSignature> {
+    vec![
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "meta")
+            .with_param(BuildSemanticMethodParameter::record("config")),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "add_dep")
+            .with_param(BuildSemanticMethodParameter::record("config")),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "graph")
+            .returning(BuildSemanticTypeFamily::Graph),
+    ]
+}
+
 pub fn canonical_handle_method_signatures() -> Vec<BuildSemanticMethodSignature> {
     vec![
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::StepHandle, "depend_on")
@@ -568,7 +579,8 @@ pub fn canonical_chain_metadata() -> Vec<BuildSemanticChainMetadata> {
 mod tests {
     use super::{
         canonical_artifact_config_shapes, canonical_chain_metadata,
-        canonical_graph_method_signatures, canonical_handle_method_signatures,
+        canonical_build_context_method_signatures, canonical_graph_method_signatures,
+        canonical_handle_method_signatures,
         canonical_option_config_shapes, canonical_option_value_kinds, BuildSemanticChainKind,
         BuildSemanticMethodParameter, BuildSemanticMethodSignature, BuildSemanticOptionValueKind,
         BuildSemanticParameterShape, BuildSemanticRecordShapeKind, BuildSemanticType,
@@ -699,6 +711,31 @@ mod tests {
         assert!(names.contains(&"add_system_tool"));
         assert!(names.contains(&"add_codegen"));
         assert!(names.contains(&"dependency"));
+    }
+
+    #[test]
+    fn canonical_build_context_methods_cover_metadata_dependency_and_graph_access() {
+        let signatures = canonical_build_context_method_signatures();
+        let names = signatures
+            .iter()
+            .map(|signature| signature.name.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(signatures.len(), 3);
+        assert!(names.contains(&"meta"));
+        assert!(names.contains(&"add_dep"));
+        assert!(names.contains(&"graph"));
+    }
+
+    #[test]
+    fn canonical_build_context_graph_method_returns_graph_family() {
+        let signatures = canonical_build_context_method_signatures();
+        let graph = signatures.iter().find(|signature| signature.name == "graph");
+
+        assert_eq!(
+            graph.and_then(|signature| signature.returns),
+            Some(BuildSemanticTypeFamily::Graph)
+        );
     }
 
     #[test]

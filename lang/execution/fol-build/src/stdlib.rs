@@ -1,7 +1,9 @@
 use crate::semantic::{
-    canonical_artifact_config_shapes, canonical_chain_metadata, canonical_graph_method_signatures,
-    canonical_handle_method_signatures, canonical_option_config_shapes, BuildSemanticMethodSignature,
-    BuildSemanticRecordShape, BuildSemanticType, BuildSemanticTypeFamily,
+    canonical_artifact_config_shapes, canonical_build_context_method_signatures,
+    canonical_chain_metadata, canonical_graph_method_signatures,
+    canonical_handle_method_signatures, canonical_option_config_shapes,
+    BuildSemanticMethodSignature, BuildSemanticRecordShape, BuildSemanticType,
+    BuildSemanticTypeFamily,
 };
 
 /// The complete build stdlib scope injected into `build.fol` during resolution.
@@ -13,6 +15,8 @@ use crate::semantic::{
 pub struct BuildStdlibScope {
     /// All public handle types available in `build.fol` (Artifact, Step, Run, Install, …).
     pub types: Vec<BuildSemanticType>,
+    /// Methods callable on the ambient build context handle (`.build()`).
+    pub build_methods: Vec<BuildSemanticMethodSignature>,
     /// Methods callable on the ambient graph handle (add_exe, install, step, dependency, …).
     pub graph_methods: Vec<BuildSemanticMethodSignature>,
     /// Methods callable on artifact/step/run/install/dependency/generated-file handles.
@@ -28,11 +32,17 @@ impl BuildStdlibScope {
     pub fn canonical() -> Self {
         Self {
             types: canonical_build_types(),
+            build_methods: canonical_build_context_method_signatures(),
             graph_methods: canonical_graph_method_signatures(),
             handle_methods: canonical_handle_method_signatures(),
             artifact_config_shapes: canonical_artifact_config_shapes(),
             option_config_shapes: canonical_option_config_shapes(),
         }
+    }
+
+    /// Returns the method signature for a given build-context method name, if it exists.
+    pub fn find_build_method(&self, name: &str) -> Option<&BuildSemanticMethodSignature> {
+        self.build_methods.iter().find(|m| m.name == name)
     }
 
     /// Returns the method signature for a given receiver family and method name, if it exists.
@@ -113,8 +123,12 @@ mod tests {
     fn stdlib_scope_canonical_covers_core_graph_methods() {
         let scope = BuildStdlibScope::canonical();
 
+        let build_names: Vec<&str> = scope.build_methods.iter().map(|m| m.name.as_str()).collect();
         let graph_names: Vec<&str> = scope.graph_methods.iter().map(|m| m.name.as_str()).collect();
 
+        assert!(build_names.contains(&"meta"));
+        assert!(build_names.contains(&"add_dep"));
+        assert!(build_names.contains(&"graph"));
         assert!(graph_names.contains(&"add_exe"));
         assert!(graph_names.contains(&"add_static_lib"));
         assert!(graph_names.contains(&"add_shared_lib"));
@@ -138,9 +152,12 @@ mod tests {
     fn stdlib_scope_find_graph_method_returns_matching_signature() {
         let scope = BuildStdlibScope::canonical();
 
+        let meta = scope.find_build_method("meta");
         let add_exe = scope.find_graph_method("add_exe");
         let missing = scope.find_graph_method("no_such_method");
 
+        assert!(meta.is_some());
+        assert_eq!(meta.unwrap().name, "meta");
         assert!(add_exe.is_some());
         assert_eq!(add_exe.unwrap().name, "add_exe");
         assert!(missing.is_none());
