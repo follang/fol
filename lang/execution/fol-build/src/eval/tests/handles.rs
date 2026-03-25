@@ -33,11 +33,12 @@ fn temp_build_package(source: &str) -> (PathBuf, PathBuf) {
 #[test]
 fn build_source_evaluator_extracts_and_replays_restricted_build_bodies() {
     let source = concat!(
-        "pro[] build(graph: Graph): non = {\n",
+        "pro[] build(): non = {\n",
+        "    var graph = .graph();\n",
         "    graph.add_exe(\"app\", \"src/app.fol\");\n",
         "    graph.add_test(\"app_test\", \"test/app.fol\");\n",
         "    graph.add_run(\"serve\", \"app\");\n",
-        "    return graph\n",
+        "    return;\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -72,7 +73,8 @@ fn build_source_evaluator_extracts_and_replays_restricted_build_bodies() {
 #[test]
 fn build_source_evaluator_supports_object_style_artifacts_and_handle_calls() {
     let source = concat!(
-        "pro[] build(graph: Graph): non = {\n",
+        "pro[] build(): non = {\n",
+        "    var graph = .graph();\n",
         "    var target = graph.standard_target();\n",
         "    var optimize = graph.standard_optimize();\n",
         "    var app = graph.add_exe({\n",
@@ -83,7 +85,7 @@ fn build_source_evaluator_supports_object_style_artifacts_and_handle_calls() {
         "    });\n",
         "    graph.install(app);\n",
         "    graph.add_run(app);\n",
-        "    return graph\n",
+        "    return;\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -127,11 +129,12 @@ fn build_source_evaluator_supports_object_style_artifacts_and_handle_calls() {
 #[test]
 fn build_source_evaluator_supports_user_option_record_configs() {
     let source = concat!(
-        "pro[] build(graph: Graph): non = {\n",
+        "pro[] build(): non = {\n",
+        "    var graph = .graph();\n",
         "    var strip = graph.option({ name = \"strip\", kind = \"bool\", default = false });\n",
         "    var jobs = graph.option({ name = \"jobs\", kind = \"int\", default = 8 });\n",
         "    var flavor = graph.option({ name = \"flavor\", kind = \"enum\", default = \"fast\" });\n",
-        "    return graph\n",
+        "    return;\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -163,12 +166,13 @@ fn build_source_evaluator_supports_user_option_record_configs() {
 #[test]
 fn build_source_evaluator_reuses_bound_run_and_install_handles_as_step_dependencies() {
     let source = concat!(
-        "pro[] build(graph: Graph): non = {\n",
+        "pro[] build(): non = {\n",
+        "    var graph = .graph();\n",
         "    var app = graph.add_exe(\"demo\", \"src/demo.fol\");\n",
         "    var run_app = graph.add_run(app);\n",
         "    var install_app = graph.install(app);\n",
         "    graph.step(\"bundle\", run_app, install_app);\n",
-        "    return graph\n",
+        "    return;\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -209,10 +213,11 @@ fn build_source_evaluator_reuses_bound_run_and_install_handles_as_step_dependenc
 #[test]
 fn build_source_evaluator_rejects_unknown_handle_methods_explicitly() {
     let source = concat!(
-        "pro[] build(graph: Graph): non = {\n",
+        "pro[] build(): non = {\n",
+        "    var graph = .graph();\n",
         "    var docs = graph.step(\"docs\");\n",
         "    docs.finish(docs);\n",
-        "    return graph\n",
+        "    return;\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -235,10 +240,11 @@ fn build_source_evaluator_rejects_unknown_handle_methods_explicitly() {
 #[test]
 fn build_source_evaluator_supports_step_handle_depend_on_chains() {
     let source = concat!(
-        "pro[] build(graph: Graph): non = {\n",
+        "pro[] build(): non = {\n",
+        "    var graph = .graph();\n",
         "    var lint = graph.step(\"lint\");\n",
         "    graph.step(\"docs\").depend_on(lint);\n",
-        "    return graph\n",
+        "    return;\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -282,11 +288,12 @@ fn build_source_evaluator_supports_step_handle_depend_on_chains() {
 #[test]
 fn build_source_evaluator_supports_run_handle_depend_on_chains() {
     let source = concat!(
-        "pro[] build(graph: Graph): non = {\n",
+        "pro[] build(): non = {\n",
+        "    var graph = .graph();\n",
         "    var lint = graph.step(\"lint\");\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    graph.add_run(app).depend_on(lint);\n",
-        "    return graph\n",
+        "    return;\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -330,11 +337,12 @@ fn build_source_evaluator_supports_run_handle_depend_on_chains() {
 #[test]
 fn build_source_evaluator_supports_install_handle_depend_on_chains() {
     let source = concat!(
-        "pro[] build(graph: Graph): non = {\n",
+        "pro[] build(): non = {\n",
+        "    var graph = .graph();\n",
         "    var lint = graph.step(\"lint\");\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    graph.install(app).depend_on(lint);\n",
-        "    return graph\n",
+        "    return;\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -378,7 +386,8 @@ fn build_source_evaluator_supports_install_handle_depend_on_chains() {
 #[test]
 fn build_source_evaluator_keeps_step_like_handle_chains_stable() {
     let source = concat!(
-        "pro[] build(graph: Graph): non = {\n",
+        "pro[] build(): non = {\n",
+        "    var graph = .graph();\n",
         "    var lint = graph.step(\"lint\");\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    var run_app = graph.add_run(app);\n",
@@ -386,7 +395,7 @@ fn build_source_evaluator_keeps_step_like_handle_chains_stable() {
         "    run_app.depend_on(lint);\n",
         "    install_app.depend_on(lint);\n",
         "    graph.step(\"bundle\", run_app, install_app, run_app).depend_on(lint);\n",
-        "    return graph\n",
+        "    return;\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);

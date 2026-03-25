@@ -246,7 +246,7 @@ fn package_session_rejects_local_directory_targets_that_define_build_fol() {
     .expect("Should write the dependency package fixture");
     fs::write(
         temp_root.join("dep/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the formal package build marker");
     let mut session = PackageSession::new();
@@ -348,7 +348,7 @@ fn package_session_can_load_installed_pkg_roots_with_required_controls() {
     .expect("Should write the package source fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the package build fixture");
     let mut session = PackageSession::new();
@@ -415,7 +415,7 @@ fn parse_directory_package_syntax_keeps_build_files_for_pkg_roots() {
     .expect("Should write the package metadata fixture");
     fs::write(
         temp_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the package build fixture");
     fs::write(
@@ -473,7 +473,7 @@ fn parse_directory_package_syntax_accepts_pkg_roots_with_only_build_files() {
     .expect("Should write the package metadata fixture");
     fs::write(
         temp_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the package build fixture");
     fs::write(
@@ -512,7 +512,7 @@ fn package_session_no_longer_projects_declared_export_namespace_mounts() {
     fs::write(
         store_root.join("json/build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
             "    return graph\n",
             "}\n",
         ),
@@ -569,7 +569,7 @@ fn package_session_keeps_semantic_build_entries_for_formal_pkg_roots() {
     .expect("Should write the package source fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = graph;\n",
+        "pro[] build(): non = graph;\n",
     )
     .expect("Should write the semantic build entry fixture");
     let mut session = PackageSession::new();
@@ -647,7 +647,7 @@ fn package_session_ignores_package_fol_when_package_yaml_is_present() {
     .expect("Should write the ignored package.fol fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the package build fixture");
     fs::write(
@@ -689,7 +689,7 @@ fn package_session_preloads_transitive_pkg_dependencies() {
     .expect("Should write the transitive dependency metadata fixture");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the transitive dependency build fixture");
     fs::write(
@@ -704,7 +704,7 @@ fn package_session_preloads_transitive_pkg_dependencies() {
     .expect("Should write the direct dependency metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the direct dependency build fixture");
     fs::write(
@@ -746,7 +746,7 @@ fn package_session_reports_explicit_pkg_dependency_cycles() {
     .expect("Should write the first package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the first package build fixture");
     fs::write(
@@ -761,7 +761,7 @@ fn package_session_reports_explicit_pkg_dependency_cycles() {
     .expect("Should write the second package metadata fixture");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the second package build fixture");
     fs::write(
@@ -813,7 +813,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     .expect("Should write the shared dependency metadata fixture");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the shared dependency build fixture");
     fs::write(
@@ -828,7 +828,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     .expect("Should write the first direct dependency metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the first direct dependency build fixture");
     fs::write(
@@ -843,7 +843,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     .expect("Should write the second direct dependency metadata fixture");
     fs::write(
         store_root.join("xml/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the second direct dependency build fixture");
     fs::write(
@@ -858,7 +858,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     .expect("Should write the top-level package metadata fixture");
     fs::write(
         store_root.join("combo/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the top-level package build fixture");
     fs::write(

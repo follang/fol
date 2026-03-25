@@ -135,7 +135,7 @@ fn test_resolver_keeps_pkg_import_semantics_stable_through_package_provider() {
         .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("Should write the installed package build fixture");
     fs::write(store_root.join("json/src/root/value.fol"), "var[exp] answer: int = 42;\n")

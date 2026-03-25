@@ -272,7 +272,7 @@ fn plan_member_execution_from_build_source(
         return Err(FrontendError::new(
             FrontendErrorKind::InvalidInput,
             format!(
-                "workspace member '{}' must declare a semantic `pro[] build(graph: Graph): non` entry",
+                "workspace member '{}' must declare a semantic `pro[] build(): non` entry",
                 member.package_name
             ),
         ));

@@ -47,6 +47,7 @@ The entry must match exactly:
 
 ```fol
 pro[] build(): non = {
+    var graph = .graph();
     ...
 }
 ```

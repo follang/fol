@@ -20,7 +20,7 @@ fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
         .expect("Should create the installed package export root fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
         .expect("Should write the installed package build fixture");
     fs::write(store_root.join("json/src/lib.fol"), "var[exp] answer: int = 42;\n")
@@ -106,7 +106,7 @@ fn test_resolver_pkg_imports_expose_semantic_internal_namespaces() {
     .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
         .expect("Should write the installed package build fixture");
     fs::write(
@@ -208,7 +208,7 @@ fn test_resolver_resolves_qualified_pkg_names_through_declared_export_namespaces
     .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("Should write the installed package build fixture");
     fs::write(
@@ -317,7 +317,7 @@ fn test_resolver_pkg_qualified_names_follow_semantic_internal_namespaces() {
     .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
         .expect("Should write the installed package build fixture");
     fs::write(
@@ -391,7 +391,7 @@ fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
     .expect("Should write the transitive dependency metadata fixture");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
         .expect("Should write the transitive dependency build fixture");
     fs::write(
@@ -406,7 +406,7 @@ fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
     .expect("Should write the direct dependency metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("Should write the direct dependency build fixture");
     fs::write(

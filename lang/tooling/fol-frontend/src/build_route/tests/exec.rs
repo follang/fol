@@ -34,9 +34,10 @@ fn cli_selected_custom_graph_steps_flow_into_the_routed_member_plan() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.step(\"docs\");\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -78,10 +79,11 @@ fn custom_run_steps_plan_as_run_execution() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe(\"app\", \"src/main.fol\");\n",
             "    graph.add_run(\"serve\", \"app\");\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -130,12 +132,13 @@ fn explicit_named_run_steps_select_the_requested_artifact_when_multiple_runnable
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
             "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
             "    graph.add_run(\"serve\", \"serve_app\");\n",
             "    graph.add_run(\"admin\", \"admin_app\");\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -189,12 +192,13 @@ fn named_build_steps_can_target_matching_artifacts_when_multiple_builds_exist() 
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
             "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
             "    graph.step(\"serve_app\");\n",
             "    graph.step(\"admin_app\");\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -249,10 +253,11 @@ fn default_build_step_is_marked_ambiguous_when_multiple_executables_exist() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
             "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -302,10 +307,11 @@ fn ambiguous_default_multi_artifact_build_steps_fail_clearly() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
             "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -362,10 +368,11 @@ fn configured_executable_roots_drive_default_build_and_run_step_planning() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe(\"app\", \"src/app.fol\");\n",
             "    graph.add_run(\"serve\", \"app\");\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -429,7 +436,8 @@ fn object_style_artifact_build_bodies_drive_default_build_and_run_step_planning(
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var target = graph.standard_target();\n",
             "    var optimize = graph.standard_optimize();\n",
             "    var app = graph.add_exe({\n",
@@ -440,7 +448,7 @@ fn object_style_artifact_build_bodies_drive_default_build_and_run_step_planning(
             "    });\n",
             "    graph.install(app);\n",
             "    graph.add_run(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -503,9 +511,10 @@ fn workspace_route_plans_modern_build_members_through_default_graph_planning() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe(\"demo\", \"src/main.fol\");\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -544,9 +553,10 @@ fn workspace_route_plans_modern_check_steps_even_without_a_runnable_binary() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.step(\"docs\");\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -585,14 +595,15 @@ fn execute_workspace_build_route_rejects_echo_for_alloc_model_artifacts() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
             "        fol_model = \"alloc\",\n",
             "    });\n",
             "    graph.install(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -651,14 +662,15 @@ fn execute_workspace_build_route_rejects_heap_backed_types_for_core_model_artifa
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
             "        fol_model = \"core\",\n",
             "    });\n",
             "    graph.install(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -713,14 +725,15 @@ fn execute_workspace_build_route_rejects_dynamic_len_for_core_model_artifacts() 
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
             "        fol_model = \"core\",\n",
             "    });\n",
             "    graph.install(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -775,14 +788,15 @@ fn execute_workspace_build_route_accepts_dynamic_len_for_alloc_model_artifacts()
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
             "        fol_model = \"alloc\",\n",
             "    });\n",
             "    graph.install(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -835,14 +849,15 @@ fn execute_workspace_build_route_emits_core_runtime_module_imports() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
             "        fol_model = \"core\",\n",
             "    });\n",
             "    graph.install(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -897,14 +912,15 @@ fn execute_workspace_build_route_emits_alloc_runtime_module_imports() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
             "        fol_model = \"alloc\",\n",
             "    });\n",
             "    graph.install(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -963,14 +979,15 @@ fn execute_workspace_build_route_emits_std_runtime_module_imports() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
             "        fol_model = \"std\",\n",
             "    });\n",
             "    graph.install(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -1030,14 +1047,15 @@ fn execute_workspace_build_route_rejects_run_for_selected_core_model_artifacts()
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
             "        fol_model = \"core\",\n",
             "    });\n",
             "    graph.add_run(\"serve\", app);\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -1093,13 +1111,14 @@ fn execute_workspace_build_route_rejects_test_for_selected_alloc_model_artifacts
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_test({\n",
             "        name = \"demo_test\",\n",
             "        root = \"src/main.fol\",\n",
             "        fol_model = \"alloc\",\n",
             "    });\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -1156,12 +1175,13 @@ fn execute_workspace_build_route_keeps_step_specific_model_diagnostics_in_mixed_
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var host = graph.add_exe({ name = \"host\", root = \"app/main.fol\", fol_model = \"std\" });\n",
             "    var blink = graph.add_exe({ name = \"blink\", root = \"core/main.fol\", fol_model = \"core\" });\n",
             "    graph.add_run(\"host_run\", host);\n",
             "    graph.add_run(\"blink_run\", blink);\n",
-            "    return graph\n",
+            "    return;\n",
             "};\n",
         ),
     )

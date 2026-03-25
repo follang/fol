@@ -200,7 +200,7 @@ use super::*;
         fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
         fs::write(
             loc_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    return;\n};\n",
         )
             .expect("Should write formal package control file");
         let main_file = app_root.join("main.fol");
@@ -463,7 +463,7 @@ use super::*;
         fs::create_dir_all(&loc_root).expect("Should create loc target fixture root");
         fs::write(
             loc_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    return;\n};\n",
         )
             .expect("Should write formal package control file");
         fs::write(

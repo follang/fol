@@ -26,7 +26,6 @@ pub(super) fn is_valid_identifier(name: &str) -> bool {
 // ---- Main executor ---
 
 pub struct BuildBodyExecutor {
-    pub(super) graph_param: String,
     pub(super) scope: BTreeMap<String, ExecValue>,
     pub(super) helpers: BTreeMap<String, HelperRoutine>,
     pub(super) output: ExecutionOutput,
@@ -94,17 +93,13 @@ impl BuildBodyExecutor {
         build_path: &Path,
     ) -> Result<Option<(BuildBodyExecutor, Vec<AstNode>)>, BuildEvaluationError> {
         let mut helpers: BTreeMap<String, HelperRoutine> = BTreeMap::new();
-        let mut build_entry: Option<(String, Vec<AstNode>)> = None;
+        let mut build_entry: Option<Vec<AstNode>> = None;
 
         for unit in &package.source_units {
             for item in &unit.items {
                 match &item.node {
-                    AstNode::ProDecl { name, params, body, .. } if name == "build" => {
-                        let graph_param = params
-                            .first()
-                            .map(|p| p.name.clone())
-                            .unwrap_or_else(|| "graph".to_string());
-                        build_entry = Some((graph_param, body.clone()));
+                    AstNode::ProDecl { name, body, .. } if name == "build" => {
+                        build_entry = Some(body.clone());
                     }
                     AstNode::FunDecl { name, params, body, .. }
                     | AstNode::ProDecl { name, params, body, .. }
@@ -123,12 +118,11 @@ impl BuildBodyExecutor {
             }
         }
 
-        let Some((graph_param, body)) = build_entry else {
+        let Some(body) = build_entry else {
             return Ok(None);
         };
 
         let executor = BuildBodyExecutor {
-            graph_param,
             scope: BTreeMap::new(),
             helpers,
             output: ExecutionOutput::default(),
@@ -201,14 +195,11 @@ impl BuildBodyExecutor {
 
             AstNode::FunctionCall {
                 surface: CallSurface::DotIntrinsic,
-                name,
-                args,
+                name: _,
+                args: _,
                 ..
             } => {
-                let Some(receiver) = self.last_value.clone() else {
-                    return Err(self.unsupported(name));
-                };
-                self.last_value = self.eval_handle_method(receiver, name, args)?;
+                self.last_value = self.eval_expr(stmt)?;
                 Ok(())
             }
 

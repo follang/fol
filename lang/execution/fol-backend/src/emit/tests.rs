@@ -992,7 +992,7 @@ mod tests {
         .expect("pkg manifest");
         fs::write(
             pkg_math_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    return;\n};\n",
         )
         .expect("pkg build");
         fs::create_dir_all(pkg_math_root.join("src")).expect("pkg src");
@@ -1219,7 +1219,7 @@ mod tests {
         .expect("pkg manifest");
         fs::write(
             pkg_math_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    return;\n};\n",
         )
         .expect("pkg build");
         fs::create_dir_all(pkg_math_root.join("src")).expect("pkg src");

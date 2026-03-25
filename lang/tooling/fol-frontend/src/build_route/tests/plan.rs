@@ -21,7 +21,7 @@ pub(super) fn absorbed_build_workspace_fixture(label: &str) -> FrontendWorkspace
     fs::write(
         app.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
             "    graph.add_exe(\"app\", \"src/main.fol\");\n",
             "    return graph\n",
             "};\n",
@@ -256,7 +256,7 @@ fn workspace_route_planner_accepts_only_semantic_members() {
     .unwrap();
     fs::write(
         modern.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
+        "pro[] build(): non = {\n    return graph\n};\n",
     )
     .unwrap();
     fs::write(
@@ -319,7 +319,7 @@ fn workspace_route_planner_rejects_old_build_members() {
     assert_eq!(error.kind(), crate::FrontendErrorKind::PackageFailed);
     assert!(error
         .message()
-        .contains("canonical `pro[] build(graph: Graph): non` entry"));
+        .contains("canonical `pro[] build(): non` entry"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -338,7 +338,7 @@ fn workspace_route_planner_rejects_broken_modern_builds() {
     fs::write(root.join("package.yaml"), "name: modern\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n",
+        "pro[] build(): non = {\n",
     )
     .unwrap();
 
@@ -379,7 +379,7 @@ fn modern_members_plan_custom_steps_from_semantic_builds() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
             "    graph.step(\"docs\");\n",
             "    return graph\n",
             "};\n",
@@ -501,7 +501,7 @@ fn build_body_step_calls_flow_into_member_execution_plans() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
             "    graph.step(\"docs\");\n",
             "    graph.step(\"lint\");\n",
             "    return graph\n",
@@ -538,7 +538,7 @@ fn build_body_step_dependencies_are_accepted_during_member_planning() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
             "    graph.add_exe(\"app\", \"src/main.fol\");\n",
             "    graph.step(\"gen\");\n",
             "    graph.step(\"docs\", \"gen\");\n",
@@ -583,7 +583,7 @@ fn custom_build_steps_plan_as_build_execution() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
             "    graph.step(\"docs\");\n",
             "    return graph\n",
             "};\n",

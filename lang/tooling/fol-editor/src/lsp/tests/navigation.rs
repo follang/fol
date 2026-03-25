@@ -440,7 +440,7 @@ fn lsp_server_reports_signature_help_for_build_file_calls() {
     let build_uri = format!("file://{}", build_path.display());
     fs::write(
         &build_path,
-        "fun[] helper(left: int, right: str): int = {\n    return left;\n};\n\npro[] build(graph: Graph): non = {\n    helper(\n        1,\n        \"ok\"\n    );\n    return graph;\n};\n",
+        "fun[] helper(left: int, right: str): int = {\n    return left;\n};\n\npro[] build(): non = {\n    helper(\n        1,\n        \"ok\"\n    );\n    return;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(&build_path).unwrap();
@@ -651,7 +651,7 @@ fn lsp_server_surfaces_quick_fix_for_build_file_unresolved_names() {
     let build_uri = format!("file://{}", build_path.display());
     fs::write(
         &build_path,
-        "pro[] build(graph: Graph): non = {\n    return grahp;\n};\n",
+        "pro[] build(): non = {\n    return grahp;\n};\n",
     )
     .unwrap();
     let text = fs::read_to_string(&build_path).unwrap();

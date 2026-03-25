@@ -40,7 +40,8 @@ fn init_root_scaffolds_binary_packages_through_public_api() {
         fs::read_to_string(root.join("build.fol")).expect("should read build file"),
         concat!(
             "// build.fol is the package build entry file.\n",
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
             "    graph.install(app);\n",
             "    graph.add_run(app);\n",

@@ -24,7 +24,7 @@ pub(super) fn sample_package_root(label: &str) -> (PathBuf, String) {
     fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .unwrap();
     let file = src.join("main.fol");
@@ -43,7 +43,7 @@ pub(super) fn sample_loc_workspace_root(label: &str) -> (PathBuf, String) {
     fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("app/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .unwrap();
     fs::write(
@@ -53,7 +53,7 @@ pub(super) fn sample_loc_workspace_root(label: &str) -> (PathBuf, String) {
     .unwrap();
     fs::write(
         root.join("shared/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .unwrap();
 

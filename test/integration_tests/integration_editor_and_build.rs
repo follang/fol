@@ -145,7 +145,8 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         )
         .expect("should write package metadata");
         let build_text = concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
             "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
             "    graph.\n",
             "};\n",
@@ -333,7 +334,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         let build_source = std::fs::read_to_string(root.join("build.fol"))
             .expect("build fixture should keep a checked-in build file");
         assert!(
-            build_source.starts_with("pro[] build(graph: Graph): non"),
+            build_source.starts_with("pro[] build(): non"),
             "fixture should exercise the new build entry: {}",
             build_source
         );
@@ -374,7 +375,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         let build_source = std::fs::read_to_string(app_root.join("build.fol"))
             .expect("bundle fixture should keep a checked-in build file");
         assert!(
-            build_source.starts_with("pro[] build(graph: Graph): non"),
+            build_source.starts_with("pro[] build(): non"),
             "bundle fixture should exercise the new build entry: {}",
             build_source
         );
@@ -408,7 +409,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         let build_source = std::fs::read_to_string(root.join("build.fol"))
             .expect("run-step fixture should keep a checked-in build file");
         assert!(
-            build_source.starts_with("pro[] build(graph: Graph): non"),
+            build_source.starts_with("pro[] build(): non"),
             "run-step fixture should exercise the new build entry: {}",
             build_source
         );
@@ -435,7 +436,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         let build_source = std::fs::read_to_string(app_root.join("build.fol"))
             .expect("secondary run fixture should keep a checked-in build file");
         assert!(
-            build_source.starts_with("pro[] build(graph: Graph): non"),
+            build_source.starts_with("pro[] build(): non"),
             "secondary run fixture should exercise the new build entry: {}",
             build_source
         );
@@ -806,14 +807,15 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
                 root.join("build.fol"),
                 format!(
                     concat!(
-                        "pro[] build(graph: Graph): non = {{\n",
+                        "pro[] build(): non = {{\n",
+                        "    var graph = .graph();\n",
                         "    var app = graph.add_exe({{\n",
                         "        name = \"demo\",\n",
                         "        root = \"src/main.fol\",\n",
                         "        fol_model = \"{}\",\n",
                         "    }});\n",
                         "    graph.install(app);\n",
-                        "    return graph\n",
+                        "    return;\n",
                         "}};\n",
                     ),
                     model
@@ -1029,14 +1031,15 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         std::fs::write(
             root.join("build.fol"),
             concat!(
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
                 "        fol_model = \"core\",\n",
                 "    });\n",
                 "    graph.add_run(app);\n",
-                "    return graph\n",
+                "    return;\n",
                 "};\n",
             ),
         )
@@ -1066,14 +1069,15 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         std::fs::write(
             root.join("build.fol"),
             concat!(
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
                 "        fol_model = \"alloc\",\n",
                 "    });\n",
                 "    graph.add_run(app);\n",
-                "    return graph\n",
+                "    return;\n",
                 "};\n",
             ),
         )
@@ -1282,7 +1286,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
             stderr
         );
         assert!(
-            stderr.contains("canonical `pro[] build(graph: Graph): non` entry"),
+            stderr.contains("canonical `pro[] build(): non` entry"),
             "old root build syntax should point at the canonical build entry: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&output.stdout),
             stderr
@@ -1299,7 +1303,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
             .expect("should write package metadata");
         std::fs::write(
             root.join("build.fol"),
-            "pro build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro build(): non = {\n    return;\n};\n",
         )
         .expect("should write non-canonical build header");
         std::fs::write(
@@ -1318,7 +1322,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
             stderr
         );
         assert!(
-            stderr.contains("canonical `pro[] build(graph: Graph): non` entry"),
+            stderr.contains("canonical `pro[] build(): non` entry"),
             "plain pro build header should point at the canonical build entry: stdout=;\n{};\nstderr=;\n{};",
             String::from_utf8_lossy(&output.stdout),
             stderr
@@ -1409,14 +1413,15 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         std::fs::write(
             root.join("build.fol"),
             concat!(
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
                 "        fol_model = \"core\",\n",
                 "    });\n",
                 "    graph.install(app);\n",
-                "    return graph\n",
+                "    return;\n",
                 "};\n",
             ),
         )
@@ -1451,14 +1456,15 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         std::fs::write(
             root.join("build.fol"),
             concat!(
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
                 "        fol_model = \"alloc\",\n",
                 "    });\n",
                 "    graph.install(app);\n",
-                "    return graph\n",
+                "    return;\n",
                 "};\n",
             ),
         )
@@ -1493,14 +1499,15 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         std::fs::write(
             root.join("build.fol"),
             concat!(
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
                 "        fol_model = \"core\",\n",
                 "    });\n",
                 "    graph.install(app);\n",
-                "    return graph\n",
+                "    return;\n",
                 "};\n",
             ),
         )
@@ -1535,7 +1542,8 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         std::fs::write(
             root.join("build.fol"),
             concat!(
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
@@ -1543,7 +1551,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
                 "    });\n",
                 "    graph.install(app);\n",
                 "    graph.add_run(app);\n",
-                "    return graph\n",
+                "    return;\n",
                 "};\n",
             ),
         )
@@ -1693,11 +1701,16 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     }
 
     #[test]
-    #[ignore = "requires network access to github.com"]
+    #[ignore = "exercises git fetch through a local fixture remote"]
     fn test_frontend_fetches_public_logtiny_from_github() {
         let temp_root = unique_temp_root("frontend_fetch_public_logtiny");
         let app_root = temp_root.join("app");
-        create_app_with_git_dependency_from_url(&app_root, "https://github.com/bresilla/logtiny");
+        let remote_root = temp_root.join("logtiny-remote");
+        create_git_package_repo(&remote_root, "logtiny", "0.1.0");
+        create_app_with_git_dependency_from_url(
+            &app_root,
+            &format!("file://{}", remote_root.display()),
+        );
 
         let output = run_fol_in_dir(&app_root, &["pack", "fetch"]);
 
@@ -1740,4 +1753,45 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
             "fun[] main(): int = {\n    return 0;\n};\n",
         )
         .expect("Should write app source");
+    }
+
+    fn create_git_package_repo(root: &Path, name: &str, version: &str) {
+        std::fs::create_dir_all(root.join("src")).expect("Should create git package source dir");
+        std::fs::write(
+            root.join("package.yaml"),
+            format!("name: {name}\nversion: {version}\n"),
+        )
+        .expect("Should write git package metadata");
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
+                "    var app = graph.add_exe({\n",
+                "        name = \"logtiny-demo\",\n",
+                "        root = \"src/main.fol\",\n",
+                "    });\n",
+                "    graph.install(app);\n",
+                "    graph.add_run(app);\n",
+                "};\n",
+            ),
+        )
+        .expect("Should write git package build");
+        std::fs::write(root.join("src/main.fol"), "fun[] main(): int = {\n    return 0;\n};\n")
+            .expect("Should write git package source");
+
+        for args in [
+            vec!["init"],
+            vec!["config", "user.name", "FOL"],
+            vec!["config", "user.email", "fol@example.com"],
+            vec!["add", "."],
+            vec!["commit", "-m", "init"],
+        ] {
+            let status = Command::new("git")
+                .args(&args)
+                .current_dir(root)
+                .status()
+                .expect("Should run git command for fixture repo");
+            assert!(status.success(), "git {:?} should succeed", args);
+        }
     }

@@ -197,11 +197,12 @@ fn lsp_server_filters_heap_type_surfaces_from_core_type_completion() {
     let (root, uri) = sample_package_root("completion_core_type_surfaces");
     fs::write(
         root.join("build.fol"),
-        concat!(
-            "pro[] build(graph: Graph): non = {\n",
-            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
-            "};\n",
-        ),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
+                "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+                "};\n",
+            ),
     )
     .unwrap();
     fs::write(

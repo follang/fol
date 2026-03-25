@@ -376,13 +376,14 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_six_build_evaluation_surface() {
         let source = concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/demo.fol\",\n",
             "    });\n",
             "    graph.add_run(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "}\n",
         );
         let (package_root, build_path) = temp_build_package(source);
@@ -411,13 +412,14 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_ten_dependency_surface() {
         let source = concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var dep = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"lazy\" });\n",
             "    var module = dep.module(\"root\");\n",
             "    var artifact = dep.artifact(\"corelib\");\n",
             "    var step = dep.step(\"check\");\n",
             "    var generated = dep.generated(\"bindings\");\n",
-            "    return graph\n",
+            "    return;\n",
             "}\n",
         );
         let (package_root, build_path) = temp_build_package(source);
@@ -454,12 +456,13 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_eleven_generated_surface() {
         let source = concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
             "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
             "    var tool = graph.add_system_tool({ tool = \"flatc\", output = \"gen/schema.fol\" });\n",
             "    var codegen = graph.add_codegen({ kind = \"schema\", input = \"schema/api.yaml\", output = \"gen/api.fol\" });\n",
-            "    return graph\n",
+            "    return;\n",
             "}\n",
         );
         let (package_root, build_path) = temp_build_package(source);
@@ -492,13 +495,14 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_nine_real_option_surface() {
         let source = concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var root = graph.option({ name = \"root\", kind = \"path\", default = \"src/default.fol\" });\n",
             "    var target = graph.standard_target();\n",
             "    var optimize = graph.standard_optimize();\n",
             "    var app = graph.add_exe({ name = \"demo\", root = root, target = target, optimize = optimize });\n",
             "    graph.add_run(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "}\n",
         );
         let (package_root, build_path) = temp_build_package(source);

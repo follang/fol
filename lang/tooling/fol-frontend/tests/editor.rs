@@ -223,7 +223,7 @@ fn editor_format_cli_matches_lsp_for_build_files() {
     let root = temp_root("format_parity_build");
     fs::create_dir_all(&root).expect("should create temp root");
     let file = root.join("build.fol");
-    let source = "pro[] build(graph: Graph): non = {\nvar target = graph.standard_target();\nvar app = graph.add_exe({\nname = \"demo\",\nroot = \"src/main.fol\",\n});\ngraph.install(app);\n};\n";
+    let source = "pro[] build(): non = {\nvar graph = .graph();\nvar target = graph.standard_target();\nvar app = graph.add_exe({\nname = \"demo\",\nroot = \"src/main.fol\",\n});\ngraph.install(app);\n};\n";
     fs::write(&file, source).expect("should write build source");
 
     let lsp_formatted = lsp_format_text(&file, source);
@@ -313,7 +313,7 @@ fn editor_build_file_commands_dispatch_through_public_cli() {
         .expect("should write package manifest");
     fs::write(
         &build,
-        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("should write build source");
     fs::write(
@@ -422,14 +422,14 @@ fn editor_rename_command_surfaces_safe_boundary_failures() {
         .expect("should write app package manifest");
     fs::write(
         root.join("app/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("should write app build source");
     fs::write(&root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n")
         .expect("should write shared package manifest");
     fs::write(
         root.join("shared/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("should write shared build source");
     fs::write(
@@ -477,7 +477,7 @@ fn editor_rename_command_supports_same_package_namespaced_symbols() {
         .expect("should write package manifest");
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("should write build source");
     fs::write(
@@ -731,14 +731,14 @@ fn editor_rename_json_error_stays_snapshot_stable() {
         .expect("should write app package manifest");
     fs::write(
         root.join("app/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("should write app build source");
     fs::write(&root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n")
         .expect("should write shared package manifest");
     fs::write(
         root.join("shared/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("should write shared build source");
     fs::write(

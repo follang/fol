@@ -113,7 +113,7 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
     .expect("Should write json package metadata");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("Should write json build definition");
     fs::write(
@@ -129,7 +129,7 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
     .expect("Should write core package metadata");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
         .expect("Should write core build definition");
     fs::write(store_root.join("core/src/lib.fol"), "var[exp] shared: int = 7;\n")

@@ -1,4 +1,5 @@
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var graph = .graph();
     var app = graph.add_exe({
         name = "std-cli",
         root = "src/main.fol",
@@ -6,5 +7,5 @@ pro[] build(graph: Graph): non = {
     });
     graph.install(app);
     graph.add_run(app);
-    return graph;
+    return;
 };

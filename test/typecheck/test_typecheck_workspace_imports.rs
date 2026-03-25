@@ -933,7 +933,7 @@ fn legacy_single_package_typecheck_rejects_imported_pkg_values_explicitly() {
             ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
             (
                 "store/json/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+                "pro[] build(): non = {\n    return;\n};\n",
             ),
             ("store/json/src/lib.fol", "var[exp] answer: int = 42;\n"),
             (

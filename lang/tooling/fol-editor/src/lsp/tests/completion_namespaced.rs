@@ -214,12 +214,13 @@ fn lsp_server_filters_echo_from_core_and_alloc_dot_completion() {
         let (root, uri) = sample_package_root(&format!("completion_dot_model_{model}"));
         fs::write(
             root.join("build.fol"),
-            format!(
-                concat!(
-                    "pro[] build(graph: Graph): non = {{\n",
-                    "    graph.add_exe({{ name = \"demo\", root = \"src/main.fol\", fol_model = \"{}\" }});\n",
-                    "}};\n",
-                ),
+                format!(
+                    concat!(
+                        "pro[] build(): non = {{\n",
+                        "    var graph = .graph();\n",
+                        "    graph.add_exe({{ name = \"demo\", root = \"src/main.fol\", fol_model = \"{}\" }});\n",
+                        "}};\n",
+                    ),
                 model
             ),
         )
@@ -284,11 +285,12 @@ fn lsp_server_keeps_model_completion_context_isolated_across_workspace_members()
     fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("app/build.fol"),
-        concat!(
-            "pro[] build(graph: Graph): non = {\n",
-            "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"core\" });\n",
-            "};\n",
-        ),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+                "};\n",
+            ),
     )
     .unwrap();
     fs::write(
@@ -300,11 +302,12 @@ fn lsp_server_keeps_model_completion_context_isolated_across_workspace_members()
     fs::write(root.join("tool/package.yaml"), "name: tool\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("tool/build.fol"),
-        concat!(
-            "pro[] build(graph: Graph): non = {\n",
-            "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
-            "};\n",
-        ),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
+                "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+                "};\n",
+            ),
     )
     .unwrap();
     fs::write(

@@ -250,7 +250,7 @@ fn lsp_server_formats_build_files_with_the_same_full_document_contract() {
     let root = temp_root("format_build");
     let build_path = root.join("build.fol");
     let build_uri = format!("file://{}", build_path.display());
-    let text = "pro[] build(graph: Graph): non = {\nvar target = graph.standard_target();\nvar app = graph.add_exe({\nname = \"demo\",\nroot = \"src/main.fol\",\n});\ngraph.install(app);\n};\n";
+    let text = "pro[] build(): non = {\nvar graph = .graph();\nvar target = graph.standard_target();\nvar app = graph.add_exe({\nname = \"demo\",\nroot = \"src/main.fol\",\n});\ngraph.install(app);\n};\n";
     fs::write(&build_path, text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, build_uri.clone(), text);
@@ -274,7 +274,7 @@ fn lsp_server_formats_build_files_with_the_same_full_document_contract() {
     assert_eq!(edits.len(), 1);
     assert_eq!(
         edits[0].new_text,
-        "pro[] build(graph: Graph): non = {\n    var target = graph.standard_target();\n    var app = graph.add_exe({\n        name = \"demo\",\n        root = \"src/main.fol\",\n    });\n    graph.install(app);\n};\n"
+        "pro[] build(): non = {\n    var graph = .graph();\n    var target = graph.standard_target();\n    var app = graph.add_exe({\n        name = \"demo\",\n        root = \"src/main.fol\",\n    });\n    graph.install(app);\n};\n"
     );
 
     fs::remove_dir_all(root).ok();
@@ -285,7 +285,7 @@ fn lsp_server_returns_no_build_file_formatting_edits_when_already_formatted() {
     let root = temp_root("format_build_noop");
     let build_path = root.join("build.fol");
     let build_uri = format!("file://{}", build_path.display());
-    let text = "pro[] build(graph: Graph): non = {\n    var target = graph.standard_target();\n    graph.install(target);\n};\n";
+    let text = "pro[] build(): non = {\n    var graph = .graph();\n    var target = graph.standard_target();\n    graph.install(target);\n};\n";
     fs::write(&build_path, text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, build_uri.clone(), text);
@@ -646,7 +646,8 @@ fn lsp_server_keeps_active_fol_model_in_semantic_snapshots() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
             "};\n",
         ),
@@ -700,7 +701,8 @@ fn assert_semantic_model_via_hover(build_model: &str, expected: fol_typecheck::T
         root.join("build.fol"),
         format!(
             concat!(
-                "pro[] build(graph: Graph): non = {{\n",
+                "pro[] build(): non = {{\n",
+                "    var graph = .graph();\n",
                 "    graph.add_exe({{ name = \"demo\", root = \"src/main.fol\", fol_model = \"{}\" }});\n",
                 "}};\n",
             ),
@@ -2541,7 +2543,7 @@ fn lsp_server_filters_build_file_diagnostics_out_of_source_buffers() {
     fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .unwrap();
     let file = src.join("main.fol");
@@ -2657,7 +2659,8 @@ fn lsp_server_surfaces_alloc_echo_model_diagnostics_from_open_documents() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
             "};\n",
         ),
@@ -2685,7 +2688,8 @@ fn lsp_server_surfaces_core_string_model_diagnostics_from_open_documents() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
             "};\n",
         ),
@@ -2713,7 +2717,8 @@ fn lsp_server_surfaces_core_heap_literal_boundary_from_open_documents() {
     fs::write(
         root.join("build.fol"),
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
             "};\n",
         ),

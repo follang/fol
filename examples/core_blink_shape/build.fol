@@ -1,9 +1,10 @@
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var graph = .graph();
     var app = graph.add_exe({
         name = "blink-shape",
         root = "src/main.fol",
         fol_model = "core",
     });
     graph.install(app);
-    return graph;
+    return;
 };

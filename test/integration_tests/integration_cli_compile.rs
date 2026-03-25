@@ -118,7 +118,7 @@ use super::*;
             .expect("Should create the installed package export root fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    return;\n};\n",
         )
         .expect("Should write the installed package build fixture");
         fs::write(
@@ -264,7 +264,7 @@ use super::*;
             .expect("Should create the installed package export root fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    return;\n};\n",
         )
         .expect("Should write the installed package build fixture");
         fs::write(

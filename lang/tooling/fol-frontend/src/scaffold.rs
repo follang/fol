@@ -135,7 +135,8 @@ fn starter_build_file(target: PackageTargetKind) -> &'static str {
     match target {
         PackageTargetKind::Bin => concat!(
             "// build.fol is the package build entry file.\n",
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
             "    graph.install(app);\n",
             "    graph.add_run(app);\n",
@@ -143,7 +144,8 @@ fn starter_build_file(target: PackageTargetKind) -> &'static str {
         ),
         PackageTargetKind::Lib => concat!(
             "// build.fol is the package build entry file.\n",
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var lib = graph.add_static_lib({ name = \"demo\", root = \"src/lib.fol\" });\n",
             "    graph.install(lib);\n",
             "}\n",
@@ -194,7 +196,8 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
                 "    graph.install(app);\n",
                 "    graph.add_run(app);\n",
@@ -253,7 +256,8 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
                 "    graph.install(app);\n",
                 "    graph.add_run(app);\n",
@@ -278,7 +282,8 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    var lib = graph.add_static_lib({ name = \"demo\", root = \"src/lib.fol\" });\n",
                 "    graph.install(lib);\n",
                 "}\n",
@@ -325,7 +330,8 @@ mod tests {
             fs::read_to_string(root.join("build.fol")).unwrap(),
             concat!(
                 "// build.fol is the package build entry file.\n",
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
                 "    graph.install(app);\n",
                 "    graph.add_run(app);\n",

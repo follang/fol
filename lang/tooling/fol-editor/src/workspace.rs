@@ -397,7 +397,8 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"core\" });\n",
                 "};\n",
             ),
@@ -428,7 +429,8 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
                 "    graph.add_test({ name = \"tests\", root = \"test/app.fol\", fol_model = \"core\" });\n",
                 "};\n",
@@ -487,7 +489,8 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
                 "};\n",
             ),
@@ -522,7 +525,8 @@ mod tests {
         fs::write(
             root.join("build.fol"),
             concat!(
-                "pro[] build(graph: Graph): non = {\n",
+                "pro[] build(): non = {\n",
+                "    var graph = .graph();\n",
                 "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
                 "    graph.add_test({ name = \"suite\", root = \"test/app.fol\", fol_model = \"core\" });\n",
                 "};\n",
@@ -560,7 +564,7 @@ mod tests {
         fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    return;\n};\n",
         )
         .unwrap();
         fs::write(
@@ -606,7 +610,7 @@ mod tests {
         fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("app/build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    return;\n};\n",
         )
         .unwrap();
         fs::write(
@@ -617,7 +621,7 @@ mod tests {
         fs::write(root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("shared/build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    return;\n};\n",
         )
         .unwrap();
         fs::write(

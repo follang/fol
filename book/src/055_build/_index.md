@@ -18,6 +18,7 @@ canonical entry:
 
 ```fol
 pro[] build(): non = {
+    var graph = .graph();
     ...
 }
 ```

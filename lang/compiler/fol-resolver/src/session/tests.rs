@@ -209,7 +209,7 @@ fn session_can_load_installed_pkg_roots_with_required_metadata_and_build_files()
     .expect("Should write the package source fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the package build fixture");
     let mut session = ResolverSession::new();
@@ -349,7 +349,7 @@ fn session_ignores_package_fol_when_package_yaml_is_present() {
     .expect("Should write the ignored package.fol fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the package build fixture");
     fs::write(
@@ -389,7 +389,7 @@ fn session_package_fol_only_roots_still_fail_missing_metadata() {
     .expect("Should write the ignored package.fol fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the package build fixture");
     let mut session = ResolverSession::new();
@@ -423,7 +423,7 @@ fn session_rejects_malformed_pkg_metadata_explicitly() {
         .expect("Should write the malformed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the package build fixture");
     fs::write(
@@ -463,7 +463,7 @@ fn session_rejects_pkg_roots_with_only_control_files_after_exclusion() {
     .expect("Should write the package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the package build fixture");
     let mut session = ResolverSession::new();
@@ -506,7 +506,7 @@ fn session_recursively_loads_transitive_pkg_dependencies_from_store() {
     .expect("Should write the transitive dependency metadata");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the transitive dependency build fixture");
     fs::write(
@@ -521,7 +521,7 @@ fn session_recursively_loads_transitive_pkg_dependencies_from_store() {
     .expect("Should write the direct dependency metadata");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the direct dependency build fixture");
     fs::write(
@@ -579,7 +579,7 @@ fn session_preloads_pkg_dependencies_from_metadata() {
     .expect("Should write the dependency metadata");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the dependency build fixture");
     fs::write(
@@ -594,7 +594,7 @@ fn session_preloads_pkg_dependencies_from_metadata() {
     .expect("Should write the dependent package metadata");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the dependent package build fixture");
     fs::write(
@@ -660,7 +660,7 @@ fn session_reuses_cached_shared_pkg_dependencies_across_multiple_dependents() {
     .expect("Should write the shared dependency metadata");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the shared dependency build fixture");
     fs::write(
@@ -675,7 +675,7 @@ fn session_reuses_cached_shared_pkg_dependencies_across_multiple_dependents() {
     .expect("Should write the first direct dependency metadata");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the first direct dependency build fixture");
     fs::write(
@@ -690,7 +690,7 @@ fn session_reuses_cached_shared_pkg_dependencies_across_multiple_dependents() {
     .expect("Should write the second direct dependency metadata");
     fs::write(
         store_root.join("xml/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+        "pro[] build(): non = {\n    return graph\n}\n",
     )
     .expect("Should write the second direct dependency build fixture");
     fs::write(

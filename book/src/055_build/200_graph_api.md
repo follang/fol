@@ -1,7 +1,7 @@
 # Graph API
 
-The `Graph` handle is the sole parameter to `pro[] build`. All build graph
-construction goes through method calls on it.
+`.graph()` is the public access point to the build graph in `build.fol`. All
+build graph construction goes through method calls on the returned handle.
 
 ## Artifacts
 
@@ -60,7 +60,8 @@ Current implementation note:
 Mixed-model example:
 
 ```fol
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var graph = .graph();
     var corelib = graph.add_static_lib({
         name = "corelib",
         root = "core/lib.fol",

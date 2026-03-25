@@ -471,7 +471,7 @@ mod tests {
         .expect("package metadata should be writable");
         std::fs::write(
             root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(): non = {\n    return graph\n}\n",
         )
             .expect("package build should be writable");
         std::fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")

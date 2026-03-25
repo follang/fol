@@ -560,7 +560,8 @@ mod tests {
 
     fn semantic_bin_build() -> &'static str {
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
             "    graph.install(app);\n",
             "    graph.add_run(app);\n",
@@ -571,7 +572,8 @@ mod tests {
     fn semantic_lib_build(name: &str) -> String {
         format!(
             concat!(
-                "pro[] build(graph: Graph): non = {{\n",
+                "pro[] build(): non = {{\n",
+                "    var graph = .graph();\n",
                 "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
                 "    graph.install(lib);\n",
                 "}};\n",

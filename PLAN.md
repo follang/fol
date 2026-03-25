@@ -144,17 +144,17 @@ Make the build loader accept only `pro[] build(): non`.
 
 ### Slice Tracker
 
-- [ ] Slice 5. Change build-entry validation in
+- [x] Slice 5. Change build-entry validation in
   `lang/compiler/fol-package/src/build_entry.rs` to require:
   - zero parameters
   - return type `non`
-- [ ] Slice 6. Rewrite validation errors to describe:
+- [x] Slice 6. Rewrite validation errors to describe:
   - no parameters allowed
   - old `build(graph: Graph)` is invalid
-- [ ] Slice 7. Update package build parse errors in
+- [x] Slice 7. Update package build parse errors in
   `lang/compiler/fol-package/src/build.rs` to reference
   `pro[] build(): non`
-- [ ] Slice 8. Update all build-entry validation tests to:
+- [x] Slice 8. Update all build-entry validation tests to:
   - accept `build(): non`
   - reject `build(graph: Graph)`
 
@@ -215,13 +215,13 @@ Delete executor behavior centered on the injected graph parameter.
 
 ### Slice Tracker
 
-- [ ] Slice 18. Refactor `BuildBodyExecutor` so graph access is no longer tied
+- [x] Slice 18. Refactor `BuildBodyExecutor` so graph access is no longer tied
   to `self.graph_param`
-- [ ] Slice 19. Remove special identifier handling for the graph parameter
-- [ ] Slice 20. Evaluate `.graph()` directly to the active internal graph handle
-- [ ] Slice 21. Remove helper-call conventions that depended on graph being the
+- [x] Slice 19. Remove special identifier handling for the graph parameter
+- [x] Slice 20. Evaluate `.graph()` directly to the active internal graph handle
+- [x] Slice 21. Remove helper-call conventions that depended on graph being the
   first helper parameter
-- [ ] Slice 22. Add executor tests for:
+- [x] Slice 22. Add executor tests for:
   - direct `.graph().method(...)`
   - local inferred graph handle
   - no public `Graph` parameter path
@@ -237,13 +237,13 @@ Move scaffolding, examples, and tests to the new design.
 
 ### Slice Tracker
 
-- [ ] Slice 23. Rewrite frontend scaffolding to emit:
+- [x] Slice 23. Rewrite frontend scaffolding to emit:
   - `pro[] build(): non`
   - `.graph()` access
-- [ ] Slice 24. Rewrite examples under `examples/`
-- [ ] Slice 25. Rewrite fixtures under `test/apps`, `test/large_examples`, and
+- [x] Slice 24. Rewrite examples under `examples/`
+- [x] Slice 25. Rewrite fixtures under `test/apps`, `test/large_examples`, and
   `xtra/`
-- [ ] Slice 26. Rewrite synthetic build-file helpers across frontend/editor
+- [x] Slice 26. Rewrite synthetic build-file helpers across frontend/editor
   tests
 - [ ] Slice 27. Add example coverage for:
   - direct `.graph()` use
@@ -261,10 +261,10 @@ Make tooling reflect the new public surface.
 
 ### Slice Tracker
 
-- [ ] Slice 28. Update `fol-editor` build-file completion and diagnostics for
+- [x] Slice 28. Update `fol-editor` build-file completion and diagnostics for
   `.graph()`
-- [ ] Slice 29. Remove editor assumptions that `Graph` is a public build type
-- [ ] Slice 30. Update frontend/build-route errors and fixtures to reference
+- [x] Slice 29. Remove editor assumptions that `Graph` is a public build type
+- [x] Slice 30. Update frontend/build-route errors and fixtures to reference
   `build(): non`
 - [ ] Slice 31. Add integration tests for:
   - new-style build files
@@ -282,8 +282,8 @@ Delete the last stale references to public `Graph`.
 
 ### Slice Tracker
 
-- [ ] Slice 32. Remove docs/comments that still describe `Graph` as public
-- [ ] Slice 33. Replace remaining tests that reference `build(graph: Graph)`
+- [x] Slice 32. Remove docs/comments that still describe `Graph` as public
+- [x] Slice 33. Replace remaining tests that reference `build(graph: Graph)`
 - [ ] Slice 34. Add regression tests that fail if public `Graph` comes back
 - [ ] Slice 35. Run a full repo audit and remove remaining stale public-Graph
   references

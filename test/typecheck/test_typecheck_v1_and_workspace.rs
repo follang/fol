@@ -880,7 +880,7 @@ fn workspace_typechecking_keeps_direct_pkg_import_declaration_facts() {
             ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
             (
                 "store/json/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+                "pro[] build(): non = {\n    return;\n};\n",
             ),
             (
                 "store/json/src/lib.fol",
@@ -928,7 +928,7 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
             ("store/core/package.yaml", "name: core\nversion: 1.0.0\n"),
             (
                 "store/core/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+                "pro[] build(): non = {\n    return;\n};\n",
             ),
             ("store/core/src/lib.fol", "typ[exp] Count: int;\n"),
             (
@@ -937,7 +937,7 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
             ),
             (
                 "store/json/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+                "pro[] build(): non = {\n    return;\n};\n",
             ),
             (
                 "store/json/src/lib.fol",

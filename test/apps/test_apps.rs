@@ -381,7 +381,7 @@ fn app_harness_root_helpers_support_std_and_pkg_layouts() {
         .expect("pkg manifest");
     fs::write(
         math_root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("pkg build");
     fs::write(math_root.join("src").join("lib.fol"), "var[exp] pkg_answer: int = 4;\n")

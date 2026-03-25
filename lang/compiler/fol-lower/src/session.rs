@@ -600,7 +600,7 @@ mod tests {
         .expect("should write package metadata");
         fs::write(
             json_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(): non = {\n    return graph\n}\n",
         )
         .expect("should write package build definition");
         fs::write(json_root.join("src/lib.fol"), "var[exp] answer: int = 42\n")
@@ -783,7 +783,7 @@ mod tests {
         .expect("should write package metadata");
         fs::write(
             json_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(): non = {\n    return graph\n}\n",
         )
             .expect("should write package build definition");
         fs::write(json_root.join("src/lib.fol"), "var[exp] answer: int = 3\n")
