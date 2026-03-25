@@ -121,6 +121,7 @@ pub struct BuildInstall {
     pub kind: BuildInstallKind,
     pub name: String,
     pub target: Option<BuildInstallTarget>,
+    pub projected_destination: String,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -311,7 +312,7 @@ impl BuildGraph {
         kind: BuildInstallKind,
         name: impl Into<String>,
     ) -> BuildInstallId {
-        self.add_install_with_target(kind, name, None)
+        self.add_install_with_target(kind, name, None, String::new())
     }
 
     pub fn add_install_with_target(
@@ -319,6 +320,7 @@ impl BuildGraph {
         kind: BuildInstallKind,
         name: impl Into<String>,
         target: Option<BuildInstallTarget>,
+        projected_destination: impl Into<String>,
     ) -> BuildInstallId {
         let id = BuildInstallId::from_index(self.installs.len());
         self.installs.push(BuildInstall {
@@ -326,6 +328,7 @@ impl BuildGraph {
             kind,
             name: name.into(),
             target,
+            projected_destination: projected_destination.into(),
         });
         id
     }

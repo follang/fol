@@ -115,6 +115,12 @@ The intended extension points on this public surface are:
 - explicit dependency build arguments
 - a cleaner install-prefix model
 
+Build/cache internals and installed outputs are separate:
+
+- build root for emitted and intermediate build artifacts
+- cache roots for reusable local state
+- install prefix for user-visible installed outputs
+
 Do not put package metadata directly on the graph handle.
 
 ## Local Helpers

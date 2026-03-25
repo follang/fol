@@ -264,14 +264,21 @@ fn project_step_output_names(graph: &BuildGraph, step: BuildStepId) -> Vec<Strin
             .filter(|install| install.name == graph.steps()[step.index()].name)
             .filter_map(|install| match &install.target {
                 Some(crate::graph::BuildInstallTarget::GeneratedFile(generated_id)) => graph
-                    .generated_files()
-                    .get(generated_id.index())
-                    .map(|generated| generated.name.clone()),
-                Some(crate::graph::BuildInstallTarget::DirectoryPath(path)) => Some(path.clone()),
-                Some(crate::graph::BuildInstallTarget::Artifact(artifact_id)) => graph
-                    .artifacts()
-                    .get(artifact_id.index())
-                    .map(|artifact| artifact.name.clone()),
+                    .installs()
+                    .iter()
+                    .find(|install_output| install_output.id == install.id)
+                    .map(|install_output| install_output.projected_destination.clone())
+                    .or_else(|| {
+                        graph.generated_files()
+                            .get(generated_id.index())
+                            .map(|generated| generated.name.clone())
+                    }),
+                Some(crate::graph::BuildInstallTarget::DirectoryPath(_)) => {
+                    Some(install.projected_destination.clone())
+                }
+                Some(crate::graph::BuildInstallTarget::Artifact(_)) => {
+                    Some(install.projected_destination.clone())
+                }
                 None => None,
             }),
     );

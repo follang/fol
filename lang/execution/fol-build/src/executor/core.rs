@@ -33,6 +33,8 @@ pub struct BuildBodyExecutor {
     pub(super) helpers: BTreeMap<String, HelperRoutine>,
     pub(super) output: ExecutionOutput,
     pub(super) build_path_str: String,
+    pub(super) package_root_str: String,
+    pub(super) install_prefix_str: String,
     pub(super) next_run_index: usize,
     pub(super) next_install_index: usize,
     pub(super) last_value: Option<ExecValue>,
@@ -131,6 +133,17 @@ impl BuildBodyExecutor {
             helpers,
             output: ExecutionOutput::default(),
             build_path_str: build_path.display().to_string(),
+            package_root_str: build_path
+                .parent()
+                .unwrap_or_else(|| Path::new("."))
+                .display()
+                .to_string(),
+            install_prefix_str: build_path
+                .parent()
+                .unwrap_or_else(|| Path::new("."))
+                .join(".fol/install")
+                .display()
+                .to_string(),
             next_run_index: 0,
             next_install_index: 0,
             last_value: None,
@@ -150,6 +163,11 @@ impl BuildBodyExecutor {
     /// Set resolved option values used when evaluating `when` conditions.
     pub fn with_resolved_inputs(mut self, inputs: BTreeMap<String, String>) -> Self {
         self.resolved_inputs = inputs;
+        self
+    }
+
+    pub fn with_install_prefix(mut self, install_prefix: impl Into<String>) -> Self {
+        self.install_prefix_str = install_prefix.into();
         self
     }
 

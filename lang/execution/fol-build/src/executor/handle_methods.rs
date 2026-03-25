@@ -10,6 +10,17 @@ use super::core::BuildBodyExecutor;
 use super::types::ExecValue;
 
 impl BuildBodyExecutor {
+    fn invalid_config(
+        &self,
+        method: &str,
+        detail: impl Into<String>,
+    ) -> BuildEvaluationError {
+        BuildEvaluationError::new(
+            crate::eval::BuildEvaluationErrorKind::InvalidInput,
+            format!("{method} config is invalid: {}", detail.into()),
+        )
+    }
+
     pub(super) fn eval_handle_method(
         &mut self,
         receiver: ExecValue,
@@ -22,9 +33,9 @@ impl BuildBodyExecutor {
                     return Err(self.unsupported(method));
                 };
                 self.resolve_field_string(fields, "name")
-                    .ok_or_else(|| self.unsupported(method))?;
+                    .ok_or_else(|| self.invalid_config(method, "build.meta requires string field 'name'"))?;
                 self.resolve_field_string(fields, "version")
-                    .ok_or_else(|| self.unsupported(method))?;
+                    .ok_or_else(|| self.invalid_config(method, "build.meta requires string field 'version'"))?;
                 Ok(Some(receiver))
             }
             ExecValue::Build if method == "add_dep" => {
@@ -33,13 +44,29 @@ impl BuildBodyExecutor {
                 };
                 let alias = self
                     .resolve_field_string(fields, "alias")
-                    .ok_or_else(|| self.unsupported(method))?;
+                    .ok_or_else(|| self.invalid_config(method, "build.add_dep requires string field 'alias'"))?;
+                if !super::core::is_valid_identifier(&alias) {
+                    return Err(self.invalid_config(
+                        method,
+                        format!("dependency alias '{}' must match [a-z][a-z0-9_-]*", alias),
+                    ));
+                }
+                let source = self
+                    .resolve_field_string(fields, "source")
+                    .ok_or_else(|| self.invalid_config(method, "build.add_dep requires string field 'source'"))?;
+                if !matches!(source.as_str(), "loc" | "pkg" | "git") {
+                    return Err(self.invalid_config(
+                        method,
+                        format!("dependency source must be one of: loc, pkg, git (got '{}')", source),
+                    ));
+                }
                 let package = self
                     .resolve_field_string(fields, "target")
-                    .ok_or_else(|| self.unsupported(method))?;
-                let args = self.resolve_dependency_args(fields).unwrap_or_default();
-                self.resolve_field_string(fields, "source")
-                    .ok_or_else(|| self.unsupported(method))?;
+                    .ok_or_else(|| self.invalid_config(method, "build.add_dep requires string field 'target'"))?;
+                if package.trim().is_empty() {
+                    return Err(self.invalid_config(method, "dependency 'target' must not be empty"));
+                }
+                let args = self.resolve_dependency_args(fields)?.unwrap_or_default();
                 self.output.operations.push(BuildEvaluationOperation {
                     origin: None,
                     kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {

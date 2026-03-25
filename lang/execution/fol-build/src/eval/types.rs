@@ -27,6 +27,7 @@ pub struct BuildEvaluationRequest {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildEvaluationInputs {
     pub working_directory: String,
+    pub install_prefix: String,
     pub target: Option<BuildTargetTriple>,
     pub optimize: Option<BuildOptimizeMode>,
     pub options: BTreeMap<String, String>,
@@ -37,6 +38,7 @@ pub struct BuildEvaluationInputs {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildEvaluationInputEnvelope {
     pub working_directory: String,
+    pub install_prefix: String,
     pub target: Option<BuildTargetTriple>,
     pub optimize: Option<BuildOptimizeMode>,
     pub options: BTreeMap<String, String>,
@@ -70,8 +72,9 @@ impl BuildEvaluationInputEnvelope {
             .collect::<Vec<_>>()
             .join(",");
         format!(
-            "cwd={};target={};optimize={};options=[{}];declared_env=[{}];env=[{}]",
+            "cwd={};prefix={};target={};optimize={};options=[{}];declared_env=[{}];env=[{}]",
             self.working_directory,
+            self.install_prefix,
             target,
             optimize,
             options,
@@ -122,6 +125,7 @@ impl BuildEvaluationInputs {
     pub fn explicit_envelope(&self) -> BuildEvaluationInputEnvelope {
         BuildEvaluationInputEnvelope {
             working_directory: self.working_directory.clone(),
+            install_prefix: self.install_prefix.clone(),
             target: self.target.clone(),
             optimize: self.optimize,
             options: self.options.clone(),

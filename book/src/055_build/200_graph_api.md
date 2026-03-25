@@ -161,6 +161,12 @@ graph.install(app);
 
 Returns an `Install` handle.
 
+Install projections use the selected install prefix. Artifact installs resolve
+under the prefix by kind:
+
+- executables under `bin/`
+- libraries under `lib/`
+
 ### `graph.install_file`
 
 Installs either a source-path file or a generated output handle.
@@ -190,6 +196,10 @@ graph.install_dir("assets/");
 ```
 
 Returns an `Install` handle.
+
+The install prefix is selected by frontend/workspace configuration, not by the
+package itself. Changing the prefix should move projected install destinations
+without changing `build.fol`.
 
 ### `graph.add_run`
 

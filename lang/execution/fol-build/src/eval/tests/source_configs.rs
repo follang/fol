@@ -633,3 +633,59 @@ fn build_source_evaluator_applies_build_inputs_and_option_overrides_to_artifact_
     assert_eq!(artifact.target.as_deref(), Some("aarch64-macos-gnu"));
     assert_eq!(artifact.optimize.as_deref(), Some("release-small"));
 }
+
+#[test]
+fn build_source_evaluator_rejects_invalid_artifact_target_shapes_with_exact_diagnostics() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", target = graph });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("invalid artifact target shape should fail");
+
+    assert_eq!(
+        error.message(),
+        "add_exe config is invalid: artifact 'target' must be a target handle or string triple"
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_empty_artifact_roots_with_exact_diagnostics() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    graph.add_exe({ name = \"demo\", root = \"\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("empty artifact root should fail");
+
+    assert_eq!(
+        error.message(),
+        "add_exe config is invalid: artifact 'root' must not be empty"
+    );
+}

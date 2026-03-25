@@ -419,7 +419,7 @@ impl BuildBodyExecutor {
                     let package = self
                         .resolve_field_string(fields, "package")
                         .ok_or_else(|| self.unsupported(method))?;
-                    let forwarded_args = self.resolve_dependency_args(fields).unwrap_or_default();
+                    let forwarded_args = self.resolve_dependency_args(fields)?.unwrap_or_default();
                     let mode = self
                         .resolve_field_string(fields, "mode")
                         .and_then(|v| crate::DependencyBuildEvaluationMode::parse(v.as_str()));
@@ -431,7 +431,7 @@ impl BuildBodyExecutor {
                     let package = self
                         .resolve_string(package_arg)
                         .ok_or_else(|| self.unsupported(method))?;
-                    (alias, package, std::collections::BTreeMap::new(), None)
+                    (alias, package, std::collections::BTreeMap::<String, crate::api::DependencyArgValue>::new(), None)
                 } else {
                     return Err(self.unsupported(method));
                 };
@@ -476,9 +476,9 @@ impl BuildBodyExecutor {
                 Ok(Some(ExecValue::Str(format!("$root/{subpath}"))))
             }
 
-            "build_root" => Ok(Some(ExecValue::Str("$root".to_string()))),
+            "build_root" => Ok(Some(ExecValue::Str(self.package_root_str.clone()))),
 
-            "install_prefix" => Ok(Some(ExecValue::Str("$prefix".to_string()))),
+            "install_prefix" => Ok(Some(ExecValue::Str(self.install_prefix_str.clone()))),
 
             _ => Err(self.unsupported(method)),
         }
@@ -494,21 +494,48 @@ impl BuildBodyExecutor {
             [AstNode::RecordInit { fields, .. }] => {
                 let name = self
                     .resolve_field_string(fields, "name")
-                    .ok_or_else(|| self.unsupported(method))?;
-                let root_module = fields
+                    .ok_or_else(|| BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        format!("{method} config is invalid: artifact config requires string field 'name'"),
+                    ))?;
+                let root_field = fields
                     .iter()
                     .find(|f| f.name == "root" || f.name == "root_module")
-                    .and_then(|f| self.parse_config_value(&f.value, &["path", "string", "target"]))
-                    .ok_or_else(|| self.unsupported(method))?;
+                    .ok_or_else(|| BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        format!("{method} config is invalid: artifact config requires 'root'"),
+                    ))?;
+                let root_module = self
+                    .parse_config_value(&root_field.value, &["path", "string", "target"])
+                    .ok_or_else(|| BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        format!("{method} config is invalid: artifact 'root' must be a string path or path-like option"),
+                    ))?;
+                if root_module.placeholder_string().trim().is_empty() {
+                    return Err(BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        format!("{method} config is invalid: artifact 'root' must not be empty"),
+                    ));
+                }
                 let target = fields
                     .iter()
                     .find(|f| f.name == "target")
-                    .and_then(|f| self.parse_config_value(&f.value, &["target", "string"]));
+                    .map(|f| {
+                        self.parse_config_value(&f.value, &["target", "string"])
+                            .ok_or_else(|| BuildEvaluationError::new(
+                                BuildEvaluationErrorKind::InvalidInput,
+                                format!("{method} config is invalid: artifact 'target' must be a target handle or string triple"),
+                            ))
+                    })
+                    .transpose()?;
                 let fol_model = match fields.iter().find(|f| f.name == "fol_model") {
                     Some(field) => {
                         let raw = self
                             .resolve_string(&field.value)
-                            .ok_or_else(|| self.unsupported(method))?;
+                            .ok_or_else(|| BuildEvaluationError::new(
+                                BuildEvaluationErrorKind::InvalidInput,
+                                format!("{method} config is invalid: artifact 'fol_model' must be a string"),
+                            ))?;
                         BuildArtifactFolModel::parse(raw.as_str()).ok_or_else(|| {
                             BuildEvaluationError::new(
                                 BuildEvaluationErrorKind::InvalidInput,
@@ -524,7 +551,14 @@ impl BuildBodyExecutor {
                 let optimize = fields
                     .iter()
                     .find(|f| f.name == "optimize")
-                    .and_then(|f| self.parse_config_value(&f.value, &["optimize", "string"]));
+                    .map(|f| {
+                        self.parse_config_value(&f.value, &["optimize", "string"])
+                            .ok_or_else(|| BuildEvaluationError::new(
+                                BuildEvaluationErrorKind::InvalidInput,
+                                format!("{method} config is invalid: artifact 'optimize' must be an optimize handle or string mode"),
+                            ))
+                    })
+                    .transpose()?;
                 (name, root_module, fol_model, target, optimize)
             }
             [name_arg, root_arg] => {

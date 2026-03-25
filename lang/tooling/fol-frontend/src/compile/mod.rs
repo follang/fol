@@ -767,6 +767,7 @@ fn test_workspace_selected_with_config(
             build_root: workspace.build_root.clone(),
             cache_root: workspace.cache_root.clone(),
             git_cache_root: workspace.git_cache_root.clone(),
+            install_prefix: workspace.install_prefix.clone(),
         };
         let member_result = run_workspace_with_config(&member_workspace, config)?;
         result.artifacts.extend(member_result.artifacts);

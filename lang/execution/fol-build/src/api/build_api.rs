@@ -19,11 +19,22 @@ use super::types::{
 #[derive(Debug)]
 pub struct BuildApi<'a> {
     graph: &'a mut BuildGraph,
+    install_prefix: String,
 }
 
 impl<'a> BuildApi<'a> {
     pub fn new(graph: &'a mut BuildGraph) -> Self {
-        Self { graph }
+        Self {
+            graph,
+            install_prefix: "$prefix".to_string(),
+        }
+    }
+
+    pub fn with_install_prefix(graph: &'a mut BuildGraph, install_prefix: impl Into<String>) -> Self {
+        Self {
+            graph,
+            install_prefix: install_prefix.into(),
+        }
     }
 
     pub fn graph(&self) -> &BuildGraph {
@@ -178,6 +189,7 @@ impl<'a> BuildApi<'a> {
             Some(crate::graph::BuildInstallTarget::Artifact(
                 request.artifact.artifact_id,
             )),
+            self.project_artifact_install_destination(request.artifact.artifact_id),
         );
         Ok(InstallHandle {
             install_id,
@@ -191,6 +203,7 @@ impl<'a> BuildApi<'a> {
         request: InstallFileRequest,
     ) -> Result<InstallHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(super::types::BuildApiError::InvalidName)?;
+        let install_path = request.path.clone();
         let step_id = self.graph.add_step(
             crate::graph::BuildStepKind::Install,
             request.name.clone(),
@@ -208,6 +221,7 @@ impl<'a> BuildApi<'a> {
             Some(crate::graph::BuildInstallTarget::GeneratedFile(
                 generated,
             )),
+            self.project_prefixed_path(&install_path),
         );
         Ok(InstallHandle {
             install_id,
@@ -232,6 +246,7 @@ impl<'a> BuildApi<'a> {
             Some(crate::graph::BuildInstallTarget::GeneratedFile(
                 generated_file_id,
             )),
+            self.project_generated_install_destination(generated_file_id),
         );
         Ok(InstallHandle {
             install_id,
@@ -325,14 +340,53 @@ impl<'a> BuildApi<'a> {
             crate::graph::BuildInstallKind::Directory,
             request.name.clone(),
             Some(crate::graph::BuildInstallTarget::DirectoryPath(
-                request.path,
+                request.path.clone(),
             )),
+            self.project_prefixed_path(&request.path),
         );
         Ok(InstallHandle {
             install_id,
             step_id,
             name: request.name,
         })
+    }
+
+    fn project_prefixed_path(&self, relative_path: &str) -> String {
+        let trimmed = relative_path.trim_start_matches('/');
+        if trimmed.is_empty() {
+            self.install_prefix.clone()
+        } else {
+            format!("{}/{}", self.install_prefix.trim_end_matches('/'), trimmed)
+        }
+    }
+
+    fn project_generated_install_destination(
+        &self,
+        generated_file_id: crate::graph::BuildGeneratedFileId,
+    ) -> String {
+        let relative_path = self
+            .graph
+            .generated_files()
+            .get(generated_file_id.index())
+            .map(|generated| generated.name.as_str())
+            .unwrap_or("");
+        self.project_prefixed_path(relative_path)
+    }
+
+    fn project_artifact_install_destination(
+        &self,
+        artifact_id: crate::graph::BuildArtifactId,
+    ) -> String {
+        let Some(artifact) = self.graph.artifacts().get(artifact_id.index()) else {
+            return self.install_prefix.clone();
+        };
+        let dir = match artifact.kind {
+            crate::graph::BuildArtifactKind::Executable => "bin",
+            crate::graph::BuildArtifactKind::StaticLibrary
+            | crate::graph::BuildArtifactKind::SharedLibrary
+            | crate::graph::BuildArtifactKind::Object => "lib",
+        };
+        self.project_prefixed_path(&format!("{dir}/{}", artifact.name))
     }
 
     pub fn add_module(

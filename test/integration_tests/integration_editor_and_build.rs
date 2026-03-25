@@ -869,6 +869,7 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
     #[test]
     fn test_cli_build_emits_rust_for_model_examples() {
         let cases = [
+            ("examples/build_dep_handles", "use fol_runtime::std as rt;"),
             ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
             ("examples/core_defer", "use fol_runtime::core as rt;"),
             ("examples/core_records", "use fol_runtime::core as rt;"),
@@ -908,6 +909,7 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
     #[test]
     fn test_cli_example_build_summaries_surface_expected_models() {
         let cases = [
+            ("examples/build_dep_handles", "fol_model=std"),
             ("examples/core_blink_shape", "fol_model=core"),
             ("examples/core_defer", "fol_model=core"),
             ("examples/core_records", "fol_model=core"),
@@ -986,6 +988,62 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
                 String::from_utf8_lossy(&run.stderr)
             );
         }
+    }
+
+    #[test]
+    fn test_build_install_prefix_moves_without_changing_build_source() {
+        let root = temp_example_root("examples/build_dep_handles");
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path).expect("example build.fol");
+
+        let request_a = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                install_prefix: root.join(".out-a").display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+        let request_b = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                install_prefix: root.join(".out-b").display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated_a = evaluate_build_source(&request_a, &build_path, &source)
+            .expect("example should evaluate")
+            .expect("example should produce a graph");
+        let evaluated_b = evaluate_build_source(&request_b, &build_path, &source)
+            .expect("example should evaluate")
+            .expect("example should produce a graph");
+
+        let install_a = evaluated_a
+            .result
+            .graph
+            .installs()
+            .iter()
+            .find(|install| install.name == "install")
+            .expect("example install should exist")
+            .projected_destination
+            .clone();
+        let install_b = evaluated_b
+            .result
+            .graph
+            .installs()
+            .iter()
+            .find(|install| install.name == "install")
+            .expect("example install should exist")
+            .projected_destination
+            .clone();
+
+        assert_ne!(install_a, install_b);
+        assert!(install_a.ends_with("/bin/demo"));
+        assert!(install_b.ends_with("/bin/demo"));
     }
 
     #[test]

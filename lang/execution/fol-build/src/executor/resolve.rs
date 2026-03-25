@@ -75,10 +75,15 @@ impl BuildBodyExecutor {
     pub(super) fn resolve_dependency_args(
         &self,
         fields: &[RecordInitField],
-    ) -> Option<BTreeMap<String, crate::api::DependencyArgValue>> {
-        let args_field = fields.iter().find(|field| field.name == "args")?;
+    ) -> Result<Option<BTreeMap<String, crate::api::DependencyArgValue>>, crate::eval::BuildEvaluationError> {
+        let Some(args_field) = fields.iter().find(|field| field.name == "args") else {
+            return Ok(None);
+        };
         let AstNode::RecordInit { fields: arg_fields, .. } = &args_field.value else {
-            return None;
+            return Err(crate::eval::BuildEvaluationError::new(
+                crate::eval::BuildEvaluationErrorKind::InvalidInput,
+                "build.add_dep config is invalid: dependency 'args' must be a record".to_string(),
+            ));
         };
         let mut args = BTreeMap::new();
         for field in arg_fields {
@@ -101,12 +106,28 @@ impl BuildBodyExecutor {
                     Some(ExecValue::Str(value)) => {
                         crate::api::DependencyArgValue::String(value.clone())
                     }
-                    _ => return None,
+                    _ => {
+                        return Err(crate::eval::BuildEvaluationError::new(
+                            crate::eval::BuildEvaluationErrorKind::InvalidInput,
+                            format!(
+                                "build.add_dep config is invalid: dependency arg '{}' must be bool, int, str, or an option handle",
+                                field.name
+                            ),
+                        ))
+                    }
                 },
-                _ => return None,
+                _ => {
+                    return Err(crate::eval::BuildEvaluationError::new(
+                        crate::eval::BuildEvaluationErrorKind::InvalidInput,
+                        format!(
+                            "build.add_dep config is invalid: dependency arg '{}' must be bool, int, str, or an option handle",
+                            field.name
+                        ),
+                    ))
+                }
             };
             args.insert(field.name.clone(), value);
         }
-        Some(args)
+        Ok(Some(args))
     }
 }

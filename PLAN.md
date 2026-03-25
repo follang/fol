@@ -351,29 +351,29 @@ If a new dependency/output/install shape is chosen:
 
 ## Epoch 7: Install Prefix And Output Layout
 
-### Slice 34
+### Slice 34 [complete]
 
 - audit current build root, cache root, git cache root, and install semantics
 - define a clean public model:
   - cache/build internals
   - user-visible install prefix
 
-### Slice 35
+### Slice 35 [complete]
 
 - add frontend config for install prefix selection, separate from build/cache
 - make default behavior deterministic for local development
 
-### Slice 36
+### Slice 36 [complete]
 
 - teach `graph.install`, `graph.install_file`, and `graph.install_dir` to
   project into the chosen install prefix model instead of only implicit paths
 
-### Slice 37
+### Slice 37 [complete]
 
 - add integration coverage verifying install roots can move without changing
   build graph source
 
-### Slice 38
+### Slice 38 [complete]
 
 - update docs to match the install model and explicitly distinguish:
   - build cache
@@ -382,13 +382,13 @@ If a new dependency/output/install shape is chosen:
 
 ## Epoch 8: Reduce Ad Hoc Stringly Config Shapes
 
-### Slice 39
+### Slice 39 [complete]
 
 - review artifact/dependency config records for fields still parsed mostly as
   loose strings
 - identify where typed handles should replace strings
 
-### Slice 40
+### Slice 40 [complete]
 
 - improve dependency config validation:
   - `source`
@@ -396,21 +396,21 @@ If a new dependency/output/install shape is chosen:
   - `args`
   - alias rules
 
-### Slice 41
+### Slice 41 [complete]
 
 - improve artifact config validation for:
   - root source
   - fol model
   - target/optimize handles
 
-### Slice 42
+### Slice 42 [complete]
 
 - add exact diagnostics for unsupported combinations instead of generic
   “unsupported build method” failures
 
 ## Epoch 9: Docs, Examples, And Hardening
 
-### Slice 43
+### Slice 43 [complete]
 
 - add one standalone example focused on dependency handles
 

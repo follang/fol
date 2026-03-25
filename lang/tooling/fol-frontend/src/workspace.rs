@@ -12,6 +12,7 @@ pub struct FrontendWorkspaceConfig {
     pub build_root_override: Option<PathBuf>,
     pub cache_root_override: Option<PathBuf>,
     pub git_cache_root_override: Option<PathBuf>,
+    pub install_prefix_override: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -23,6 +24,7 @@ pub struct FrontendWorkspace {
     pub build_root: PathBuf,
     pub cache_root: PathBuf,
     pub git_cache_root: PathBuf,
+    pub install_prefix: PathBuf,
 }
 
 impl FrontendWorkspace {
@@ -35,6 +37,7 @@ impl FrontendWorkspace {
             build_root: PathBuf::from("/tmp/demo/.fol/build"),
             cache_root: PathBuf::from("/tmp/demo/.fol/cache"),
             git_cache_root: PathBuf::from("/tmp/demo/.fol/cache/git"),
+            install_prefix: PathBuf::from("/tmp/demo/.fol/install"),
         }
     }
 
@@ -44,6 +47,7 @@ impl FrontendWorkspace {
             build_root: default_build_root(&root.root),
             cache_root: default_cache_root(&root.root),
             git_cache_root: default_git_cache_root(&root.root),
+            install_prefix: default_install_prefix(&root.root),
             root,
             std_root_override: None,
             package_store_root_override: None,
@@ -79,6 +83,11 @@ impl FrontendWorkspace {
                 .as_ref()
                 .map(|path| absolute_member_root(&root.root, path))
                 .unwrap_or_else(|| default_git_cache_root(&root.root)),
+            install_prefix: config
+                .install_prefix_override
+                .as_ref()
+                .map(|path| absolute_member_root(&root.root, path))
+                .unwrap_or_else(|| default_install_prefix(&root.root)),
             root,
         })
     }
@@ -90,6 +99,7 @@ impl FrontendWorkspace {
             format!("build_root={}", self.build_root.display()),
             format!("cache_root={}", self.cache_root.display()),
             format!("git_cache_root={}", self.git_cache_root.display()),
+            format!("install_prefix={}", self.install_prefix.display()),
         ];
 
         if let Some(std_root) = &self.std_root_override {
@@ -135,6 +145,11 @@ pub fn load_frontend_workspace(
                     workspace.git_cache_root = git_cache_root.clone();
                 }
             }
+            if workspace.install_prefix == default_install_prefix(&root.root) {
+                if let Some(install_prefix) = &config.install_prefix_override {
+                    workspace.install_prefix = install_prefix.clone();
+                }
+            }
             Ok(workspace)
         }
         DiscoveredRoot::Package(root) => Ok(FrontendWorkspace {
@@ -154,6 +169,10 @@ pub fn load_frontend_workspace(
                 .git_cache_root_override
                 .clone()
                 .unwrap_or_else(|| default_git_cache_root(&root.root)),
+            install_prefix: config
+                .install_prefix_override
+                .clone()
+                .unwrap_or_else(|| default_install_prefix(&root.root)),
         }),
     }
 }
@@ -256,6 +275,9 @@ pub fn load_workspace_config(
             "git_cache_root" => {
                 config.git_cache_root_override = Some(PathBuf::from(strip_quotes(value)))
             }
+            "install_prefix" => {
+                config.install_prefix_override = Some(PathBuf::from(strip_quotes(value)))
+            }
             _ => {
                 return Err(FrontendError::new(
                     FrontendErrorKind::InvalidInput,
@@ -290,6 +312,10 @@ fn default_cache_root(workspace_root: &Path) -> PathBuf {
 
 fn default_git_cache_root(workspace_root: &Path) -> PathBuf {
     default_cache_root(workspace_root).join("git")
+}
+
+fn default_install_prefix(workspace_root: &Path) -> PathBuf {
+    workspace_root.join(".fol/install")
 }
 
 fn strip_quotes(raw: &str) -> &str {
@@ -462,6 +488,7 @@ mod tests {
         assert_eq!(workspace.build_root, root.join(".fol/build"));
         assert_eq!(workspace.cache_root, root.join(".fol/cache"));
         assert_eq!(workspace.git_cache_root, root.join(".fol/cache/git"));
+        assert_eq!(workspace.install_prefix, root.join(".fol/install"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -499,7 +526,7 @@ mod tests {
         fs::create_dir_all(&root).unwrap();
         fs::write(
             root.join("fol.work.yaml"),
-            "members:\n  - app\nbuild_root: .artifacts/build\ncache_root: .artifacts/cache\n",
+            "members:\n  - app\nbuild_root: .artifacts/build\ncache_root: .artifacts/cache\ninstall_prefix: .artifacts/install\n",
         )
         .unwrap();
 
@@ -514,6 +541,10 @@ mod tests {
             Some(PathBuf::from(".artifacts/cache"))
         );
         assert_eq!(config.git_cache_root_override, None);
+        assert_eq!(
+            config.install_prefix_override,
+            Some(PathBuf::from(".artifacts/install"))
+        );
 
         fs::remove_dir_all(root).ok();
     }
@@ -539,6 +570,7 @@ mod tests {
                 build_root_override: Some(PathBuf::from(".artifacts/build")),
                 cache_root_override: Some(PathBuf::from(".artifacts/cache")),
                 git_cache_root_override: Some(PathBuf::from(".artifacts/git-cache")),
+                install_prefix_override: Some(PathBuf::from(".artifacts/install")),
                 ..FrontendWorkspaceConfig::default()
             },
         )
@@ -547,6 +579,7 @@ mod tests {
         assert_eq!(workspace.build_root, root.join(".artifacts/build"));
         assert_eq!(workspace.cache_root, root.join(".artifacts/cache"));
         assert_eq!(workspace.git_cache_root, root.join(".artifacts/git-cache"));
+        assert_eq!(workspace.install_prefix, root.join(".artifacts/install"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -563,6 +596,7 @@ mod tests {
                 "build_root=/tmp/demo/.fol/build".to_string(),
                 "cache_root=/tmp/demo/.fol/cache".to_string(),
                 "git_cache_root=/tmp/demo/.fol/cache/git".to_string(),
+                "install_prefix=/tmp/demo/.fol/install".to_string(),
             ]
         );
     }
@@ -577,6 +611,7 @@ mod tests {
             build_root: PathBuf::from("/tmp/demo/.fol/build"),
             cache_root: PathBuf::from("/tmp/demo/.fol/cache"),
             git_cache_root: PathBuf::from("/tmp/demo/.fol/cache/git"),
+            install_prefix: PathBuf::from("/tmp/demo/.fol/install"),
         };
 
         let lines = workspace.info_summary_lines();

@@ -35,7 +35,7 @@ pub fn evaluate_build_plan(
     let raw_option_overrides = request.inputs.options.clone();
     let mut resolved_options = ResolvedBuildOptionSet::new();
     let mut graph = crate::graph::BuildGraph::new();
-    let mut api = BuildApi::new(&mut graph);
+    let mut api = BuildApi::with_install_prefix(&mut graph, request.inputs.install_prefix.clone());
 
     for operation in &request.operations {
         match &operation.kind {

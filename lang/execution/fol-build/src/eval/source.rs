@@ -27,6 +27,7 @@ pub fn evaluate_build_source(
         resolved_inputs.insert("optimize".to_string(), optimize.as_str().to_string());
     }
     let executor = executor.with_resolved_inputs(resolved_inputs);
+    let executor = executor.with_install_prefix(request.inputs.install_prefix.clone());
     let exec_output = executor.execute(&body)?;
     if exec_output.operations.is_empty() {
         return Ok(None);

@@ -246,6 +246,11 @@ fn plan_member_execution_from_build_source(
     })?;
     let mut inputs = fol_package::BuildEvaluationInputs {
         working_directory: member.member_root.display().to_string(),
+        install_prefix: config
+            .install_prefix_override
+            .as_ref()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| member.member_root.join(".fol/install").display().to_string()),
         ..fol_package::BuildEvaluationInputs::default()
     };
     if let Some(target_str) = &config.build_target_override {

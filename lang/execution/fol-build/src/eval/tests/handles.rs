@@ -376,6 +376,137 @@ fn build_source_evaluator_keeps_generated_handles_through_local_helpers() {
 }
 
 #[test]
+fn build_source_evaluator_projects_install_destinations_under_selected_prefix() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    var cfg = graph.write_file({ name = \"cfg\", path = \"config/generated.toml\", contents = \"ok\" });\n",
+        "    graph.install(app);\n",
+        "    graph.install_file({ name = \"generated-cfg\", source = cfg });\n",
+        "    graph.install_dir({ name = \"assets\", path = \"assets\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            install_prefix: "/opt/demo".to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("install projection should evaluate")
+        .expect("build body should produce operations");
+
+    let installs = evaluated.result.graph.installs();
+    assert!(installs
+        .iter()
+        .any(|install| install.name == "install" && install.projected_destination == "/opt/demo/bin/demo"));
+    assert!(installs
+        .iter()
+        .any(|install| install.name == "generated-cfg"
+            && install.projected_destination == "/opt/demo/config/generated.toml"));
+    assert!(installs
+        .iter()
+        .any(|install| install.name == "assets" && install.projected_destination == "/opt/demo/assets"));
+}
+
+#[test]
+fn build_source_evaluator_surfaces_real_build_root_and_install_prefix_strings() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var root = graph.build_root();\n",
+        "    var prefix = graph.install_prefix();\n",
+        "    graph.write_file({ name = \"paths\", path = \"gen/paths.txt\", contents = root + \":\" + prefix });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            install_prefix: "/srv/demo".to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("path helpers should evaluate")
+        .expect("build body should produce operations");
+
+    assert!(evaluated
+        .evaluated
+        .generated_files
+        .iter()
+        .any(|generated| generated.relative_path == "gen/paths.txt"));
+}
+
+#[test]
+fn build_source_evaluator_rejects_invalid_dependency_sources_with_exact_diagnostics() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    build.add_dep({ alias = \"core\", source = \"http\", target = \"core\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("invalid dependency source should fail");
+
+    assert_eq!(
+        error.message(),
+        "build.add_dep config is invalid: dependency source must be one of: loc, pkg, git (got 'http')"
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_invalid_dependency_arg_shapes_with_exact_diagnostics() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    .build().add_dep({ alias = \"core\", source = \"pkg\", target = \"core\", args = { target = graph } });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("invalid dependency arg shape should fail");
+
+    assert_eq!(
+        error.message(),
+        "build.add_dep config is invalid: dependency arg 'target' must be bool, int, str, or an option handle"
+    );
+}
+
+#[test]
 fn build_source_evaluator_extracts_and_replays_restricted_build_bodies() {
     let source = concat!(
         "pro[] build(): non = {\n",
