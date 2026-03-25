@@ -195,13 +195,31 @@ pub fn evaluate_build_plan(
                 let handle = api
                     .write_file(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
-                generated_names.insert(operation_request.name.clone(), handle.generated_file_id);
+                let generated_file_id = handle.generated_file_id().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!(
+                            "output '{}' from graph.write_file must resolve to a local generated file",
+                            operation_request.name
+                        ),
+                        operation.origin.clone(),
+                    )
+                })?;
+                generated_names.insert(operation_request.name.clone(), generated_file_id);
             }
             BuildEvaluationOperationKind::CopyFile(operation_request) => {
                 let handle = api
                     .copy_file(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
-                generated_names.insert(operation_request.name.clone(), handle.generated_file_id);
+                let generated_file_id = handle.generated_file_id().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!(
+                            "output '{}' from graph.copy_file must resolve to a local generated file",
+                            operation_request.name
+                        ),
+                        operation.origin.clone(),
+                    )
+                })?;
+                generated_names.insert(operation_request.name.clone(), generated_file_id);
             }
             BuildEvaluationOperationKind::SystemTool(operation_request) => {
                 let handles = api

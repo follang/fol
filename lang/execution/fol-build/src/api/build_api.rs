@@ -10,9 +10,10 @@ use super::types::{
     validate_build_name, AddModuleRequest, BuildApiError, BuildArtifactHandle,
     CopyFileRequest, DependencyHandle, DependencyRequest, ExecutableRequest, GeneratedFileHandle,
     InstallArtifactRequest, InstallDirRequest, InstallFileRequest, InstallHandle, ModuleHandle,
-    RunHandle, RunRequest, SharedLibraryRequest, StandardOptimizeOption, StandardOptimizeRequest,
-    StandardTargetOption, StandardTargetRequest, StaticLibraryRequest, StepHandle, StepRequest,
-    TestArtifactRequest, UserOption, UserOptionRequest, WriteFileRequest,
+    OutputHandle, OutputHandleKind, OutputHandleLocator, RunHandle, RunRequest,
+    SharedLibraryRequest, StandardOptimizeOption, StandardOptimizeRequest, StandardTargetOption,
+    StandardTargetRequest, StaticLibraryRequest, StepHandle, StepRequest, TestArtifactRequest,
+    UserOption, UserOptionRequest, WriteFileRequest,
 };
 
 #[derive(Debug)]
@@ -218,25 +219,31 @@ impl<'a> BuildApi<'a> {
     pub fn write_file(
         &mut self,
         request: WriteFileRequest,
-    ) -> Result<GeneratedFileHandle, BuildApiError> {
+    ) -> Result<OutputHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(super::types::BuildApiError::InvalidName)?;
         let generated_file_id = self.graph.add_generated_file(
             crate::graph::BuildGeneratedFileKind::Write,
             request.path,
         );
-        Ok(GeneratedFileHandle { generated_file_id })
+        Ok(OutputHandle {
+            kind: OutputHandleKind::WrittenFile,
+            locator: OutputHandleLocator::GeneratedFile(generated_file_id),
+        })
     }
 
     pub fn copy_file(
         &mut self,
         request: CopyFileRequest,
-    ) -> Result<GeneratedFileHandle, BuildApiError> {
+    ) -> Result<OutputHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(super::types::BuildApiError::InvalidName)?;
         let generated_file_id = self.graph.add_generated_file(
             crate::graph::BuildGeneratedFileKind::Copy,
             request.destination_path,
         );
-        Ok(GeneratedFileHandle { generated_file_id })
+        Ok(OutputHandle {
+            kind: OutputHandleKind::CopiedFile,
+            locator: OutputHandleLocator::GeneratedFile(generated_file_id),
+        })
     }
 
     pub fn add_system_tool(

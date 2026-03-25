@@ -2,9 +2,9 @@
 mod tests {
     use super::super::{
         validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
-        CopyFileRequest, DependencyRequest, ExecutableRequest, GeneratedFileHandle,
-        InstallArtifactRequest, InstallDirRequest, InstallFileRequest, RunRequest,
-        OutputHandle, OutputHandleKind, OutputHandleLocator, SharedLibraryRequest,
+        CopyFileRequest, DependencyRequest, ExecutableRequest, InstallArtifactRequest,
+        InstallDirRequest, InstallFileRequest, OutputHandle, OutputHandleKind,
+        OutputHandleLocator, RunRequest, SharedLibraryRequest,
         StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest, StepRequest,
         TestArtifactRequest, UserOptionRequest, WriteFileRequest,
     };
@@ -436,15 +436,14 @@ mod tests {
             })
             .expect("copy file should succeed");
 
+        assert_eq!(write.kind, OutputHandleKind::WrittenFile);
         assert_eq!(
-            write,
-            GeneratedFileHandle {
-                generated_file_id: crate::graph::BuildGeneratedFileId(0)
-            }
+            write.generated_file_id(),
+            Some(crate::graph::BuildGeneratedFileId(0))
         );
         assert_eq!(
-            copy.generated_file_id,
-            crate::graph::BuildGeneratedFileId(1)
+            copy.generated_file_id(),
+            Some(crate::graph::BuildGeneratedFileId(1))
         );
         assert_eq!(
             api.graph().generated_files()[0].kind,

@@ -307,6 +307,15 @@ pub struct OutputHandle {
     pub locator: OutputHandleLocator,
 }
 
+impl OutputHandle {
+    pub fn generated_file_id(&self) -> Option<crate::graph::BuildGeneratedFileId> {
+        match self.locator {
+            OutputHandleLocator::GeneratedFile(id) => Some(id),
+            OutputHandleLocator::DependencyGeneratedOutput { .. } => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedFileHandle {
     pub generated_file_id: crate::graph::BuildGeneratedFileId,

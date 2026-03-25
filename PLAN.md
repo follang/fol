@@ -208,7 +208,7 @@ If a new dependency/output/install shape is chosen:
   `lang/execution/fol-build/src/api/types.rs`
 - keep names repo-appropriate; avoid blindly copying `LazyPath`
 
-### Slice 12
+### Slice 12 [complete]
 
 - make `graph.write_file(...)` and `graph.copy_file(...)` return the unified
   output handle instead of ad hoc generated-file values
