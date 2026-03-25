@@ -204,7 +204,7 @@ Make `.build()` the top-level ambient entrypoint.
 - [x] Slice 12. Keep inferred locals working:
   - `var build = .build();`
   - `var graph = build.graph();`
-- [ ] Slice 13. Add executor tests for:
+- [x] Slice 13. Add executor tests for:
   - `.build()`
   - `.build().graph()`
   - inferred locals for build and graph

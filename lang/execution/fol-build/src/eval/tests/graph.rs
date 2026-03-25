@@ -156,6 +156,55 @@ fn build_source_evaluator_supports_inferred_build_and_graph_locals() {
 }
 
 #[test]
+fn build_source_evaluator_rejects_build_intrinsic_arguments() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    .build(\"oops\");\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("build intrinsic arguments should be rejected");
+
+    assert!(error.message().contains("unsupported build API call"));
+    assert!(error.message().contains("build"));
+}
+
+#[test]
+fn build_source_evaluator_rejects_build_graph_arguments() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.graph(\"oops\");\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("build.graph arguments should be rejected");
+
+    assert!(error.message().contains("unsupported build API call"));
+    assert!(error.message().contains("graph"));
+}
+
+#[test]
 fn build_source_evaluator_supports_direct_ambient_graph_calls() {
     let source = concat!(
         "pro[] build(): non = {\n",
