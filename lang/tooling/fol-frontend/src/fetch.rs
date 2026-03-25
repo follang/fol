@@ -61,6 +61,37 @@ fn lockfile_path(workspace: &FrontendWorkspace) -> PathBuf {
     workspace.root.root.join("fol.lock")
 }
 
+fn copy_package_projection(from: &Path, to: &Path) -> FrontendResult<()> {
+    std::fs::create_dir_all(to).map_err(FrontendError::from)?;
+    for entry in std::fs::read_dir(from).map_err(FrontendError::from)? {
+        let entry = entry.map_err(FrontendError::from)?;
+        let from_path = entry.path();
+        let to_path = to.join(entry.file_name());
+        let file_type = entry.file_type().map_err(FrontendError::from)?;
+        if file_type.is_dir() {
+            copy_package_projection(&from_path, &to_path)?;
+        } else {
+            std::fs::copy(&from_path, &to_path).map_err(FrontendError::from)?;
+        }
+    }
+    Ok(())
+}
+
+fn project_git_dependency_alias(
+    package_store_root: &Path,
+    alias: &str,
+    materialized_root: &Path,
+) -> FrontendResult<PathBuf> {
+    let alias_root = package_store_root.join(alias);
+    if alias_root.is_dir() {
+        std::fs::remove_dir_all(&alias_root).map_err(FrontendError::from)?;
+    } else if alias_root.exists() {
+        std::fs::remove_file(&alias_root).map_err(FrontendError::from)?;
+    }
+    copy_package_projection(materialized_root, &alias_root)?;
+    Ok(alias_root)
+}
+
 pub fn prepare_workspace_packages(
     workspace: &FrontendWorkspace,
 ) -> FrontendResult<FrontendPackagePreparation> {
@@ -323,6 +354,11 @@ fn resolve_workspace_fetch(
                             .map_err(FrontendError::from)?
                     };
                     seen_git_aliases.insert(dependency.alias.clone());
+                    project_git_dependency_alias(
+                        &package_store_root,
+                        &dependency.alias,
+                        &materialization.store_root,
+                    )?;
                     let loaded = package_session
                         .load_materialized_package(&materialization.store_root)
                         .map_err(FrontendError::from)?;

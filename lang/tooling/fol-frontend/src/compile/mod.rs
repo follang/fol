@@ -657,17 +657,19 @@ fn resolver_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
 ) -> fol_resolver::ResolverConfig {
+    let package_store_root = config
+        .package_store_root_override
+        .clone()
+        .or_else(|| workspace.package_store_root_override.clone())
+        .unwrap_or_else(|| workspace.root.root.join(".fol/pkg"));
+
     fol_resolver::ResolverConfig {
         std_root: config
             .std_root_override
             .clone()
             .or_else(|| workspace.std_root_override.clone())
             .map(|path| path.to_string_lossy().to_string()),
-        package_store_root: config
-            .package_store_root_override
-            .clone()
-            .or_else(|| workspace.package_store_root_override.clone())
-            .map(|path| path.to_string_lossy().to_string()),
+        package_store_root: Some(package_store_root.to_string_lossy().to_string()),
     }
 }
 

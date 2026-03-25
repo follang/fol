@@ -64,6 +64,31 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     target
 }
 
+fn init_git_repo(root: &std::path::Path) {
+    for args in [
+        vec!["init"],
+        vec!["config", "user.name", "FOL"],
+        vec!["config", "user.email", "fol@example.com"],
+        vec!["add", "."],
+        vec!["commit", "-m", "init"],
+    ] {
+        let status = std::process::Command::new("git")
+            .args(&args)
+            .current_dir(root)
+            .status()
+            .expect("should run git command");
+        assert!(status.success(), "git {:?} should succeed", args);
+    }
+}
+
+fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
+    let source = repo_root().join("xtra/logtiny");
+    copy_dir_all(&source, root);
+    std::fs::remove_dir_all(root.join(".git")).ok();
+    std::fs::remove_dir_all(root.join(".fol")).ok();
+    init_git_repo(root);
+}
+
     #[test]
     fn test_editor_file_commands_cover_build_fol_entry_files() {
         let parse = run_fol(&[
@@ -1126,6 +1151,68 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     }
 
     #[test]
+    fn test_std_logtiny_git_example_builds_against_local_git_remote() {
+        let example_root = temp_example_root("examples/std_logtiny_git");
+        let remote_root = example_root
+            .parent()
+            .expect("example temp root should have a parent")
+            .join("logtiny-remote");
+        create_git_remote_from_logtiny_fixture(&remote_root);
+
+        let build_path = example_root.join("build.fol");
+        let build_source =
+            std::fs::read_to_string(&build_path).expect("git example build file should load");
+        std::fs::write(
+            &build_path,
+            build_source.replace(
+                "git+https://github.com/bresilla/logtiny.git",
+                &format!("git+file://{}", remote_root.display()),
+            ),
+        )
+        .expect("git example build file should rewrite");
+
+        let fetch = run_fol_in_dir(&example_root, &["pack", "fetch"]);
+        assert!(
+            fetch.status.success(),
+            "git dependency example should fetch: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&fetch.stdout),
+            String::from_utf8_lossy(&fetch.stderr)
+        );
+
+        let build = run_fol_in_dir(&example_root, &["code", "build", "--keep-build-dir"]);
+        assert!(
+            build.status.success(),
+            "git dependency example should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+
+        let build_stdout = String::from_utf8_lossy(&build.stdout);
+        let binary = build_stdout
+            .lines()
+            .find_map(|line| {
+                let plain = strip_ansi(line);
+                if plain.contains("binary") {
+                    plain.split_whitespace().last().map(str::to_string)
+                } else {
+                    None
+                }
+            })
+            .expect("git dependency example build should report a binary path")
+            .trim()
+            .to_string();
+        let run = std::process::Command::new(&binary)
+            .output()
+            .expect("git dependency example binary should execute");
+        assert!(
+            run.status.success(),
+            "git dependency example should run: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&run.stdout),
+            String::from_utf8_lossy(&run.stderr)
+        );
+    }
+
+    #[test]
     fn test_mixed_model_example_keeps_graph_models_and_std_emission() {
         let root = temp_example_root("examples/mixed_models_workspace");
 
@@ -1184,6 +1271,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
             "examples/alloc_collections",
             "examples/std_cli",
             "examples/std_echo_min",
+            "examples/std_logtiny_git",
             "examples/std_named_calls",
             "examples/mixed_models_workspace",
         ];
@@ -1201,6 +1289,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         assert!(docs.contains("examples/alloc_containers"));
         assert!(docs.contains("examples/std_cli"));
         assert!(docs.contains("examples/std_echo_min"));
+        assert!(docs.contains("examples/std_logtiny_git"));
         assert!(docs.contains("examples/mixed_models_workspace"));
     }
 

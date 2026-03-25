@@ -149,7 +149,10 @@ need targeted tree-sitter or editor UX updates.
 ## Build example
 
 ```fol
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "mixed_models_workspace", version = "0.1.0" });
+    var graph = build.graph();
     var corelib = graph.add_static_lib({
         name = "corelib",
         root = "src/core/lib.fol",
@@ -180,5 +183,6 @@ pro[] build(graph: Graph): non = {
 - `examples/alloc_collections`
 - `examples/std_cli`
 - `examples/std_echo_min`
+- `examples/std_logtiny_git`
 - `examples/std_named_calls`
 - `examples/mixed_models_workspace`
