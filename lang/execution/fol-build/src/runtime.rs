@@ -135,6 +135,7 @@ impl BuildRuntimeStepBinding {
 pub struct BuildRuntimeDependency {
     pub alias: String,
     pub package: String,
+    pub args: BTreeMap<String, String>,
     pub evaluation_mode: Option<DependencyBuildEvaluationMode>,
 }
 
@@ -486,6 +487,7 @@ mod tests {
         let dependency = BuildRuntimeDependency {
             alias: "core".to_string(),
             package: "org/core".to_string(),
+            args: BTreeMap::from([("target".to_string(), "wasm32-freestanding".to_string())]),
             evaluation_mode: Some(DependencyBuildEvaluationMode::Lazy),
         };
         let query = BuildRuntimeDependencyQuery {
@@ -496,6 +498,10 @@ mod tests {
 
         assert_eq!(dependency.alias, "core");
         assert_eq!(dependency.package, "org/core");
+        assert_eq!(
+            dependency.args.get("target").map(String::as_str),
+            Some("wasm32-freestanding")
+        );
         assert_eq!(
             dependency.evaluation_mode,
             Some(DependencyBuildEvaluationMode::Lazy)

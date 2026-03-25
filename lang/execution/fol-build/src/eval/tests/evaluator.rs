@@ -124,6 +124,7 @@ fn build_evaluator_replays_graph_building_operations_into_a_validated_graph() {
                 kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
                     alias: "logtiny".to_string(),
                     package: "org/logtiny".to_string(),
+                    args: std::collections::BTreeMap::new(),
                     evaluation_mode: None,
                     surface: None,
                 }),

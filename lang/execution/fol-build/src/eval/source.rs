@@ -2,7 +2,7 @@ use super::plan::evaluate_build_plan;
 use super::types::{
     BuildEvaluationRequest, BuildEvaluationResult, EvaluatedBuildProgram, EvaluatedBuildSource,
 };
-use super::error::BuildEvaluationError;
+use super::error::{BuildEvaluationError, BuildEvaluationErrorKind};
 use crate::executor::{BuildBodyExecutor, ExecutionOutput};
 use crate::runtime::{
     BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
@@ -36,14 +36,14 @@ pub fn evaluate_build_source(
         inputs: request.inputs.clone(),
         operations: exec_output.operations.clone(),
     })?;
-    let evaluated = build_evaluated_program(&exec_output, &result);
+    let evaluated = build_evaluated_program(&exec_output, &result)?;
     Ok(Some(EvaluatedBuildSource { evaluated, result }))
 }
 
 pub(super) fn build_evaluated_program(
     exec_output: &ExecutionOutput,
     result: &BuildEvaluationResult,
-) -> EvaluatedBuildProgram {
+) -> Result<EvaluatedBuildProgram, BuildEvaluationError> {
     let mut step_bindings = exec_output
         .run_steps
         .iter()
@@ -157,13 +157,34 @@ pub(super) fn build_evaluated_program(
     let dependencies = result
         .dependency_requests
         .iter()
-        .map(|request| BuildRuntimeDependency {
-            alias: request.alias.clone(),
-            package: request.package.clone(),
-            evaluation_mode: request.evaluation_mode,
+        .map(|request| {
+            let args = request
+                .args
+                .iter()
+                .map(|(name, value)| {
+                    value
+                        .resolve(&result.resolved_options)
+                        .map(|resolved| (name.clone(), resolved))
+                        .ok_or_else(|| {
+                            BuildEvaluationError::new(
+                                BuildEvaluationErrorKind::InvalidInput,
+                                format!(
+                                    "dependency '{}' requires a resolved option for arg '{}'",
+                                    request.alias, name
+                                ),
+                            )
+                        })
+                })
+                .collect::<Result<std::collections::BTreeMap<_, _>, _>>()?;
+            Ok(BuildRuntimeDependency {
+                alias: request.alias.clone(),
+                package: request.package.clone(),
+                args,
+                evaluation_mode: request.evaluation_mode,
+            })
         })
-        .collect::<Vec<_>>();
-    EvaluatedBuildProgram {
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(EvaluatedBuildProgram {
         program: BuildRuntimeProgram::new(BuildExecutionRepresentation::RestrictedRuntimeIr),
         artifacts,
         generated_files: exec_output.generated_files.clone(),
@@ -171,5 +192,5 @@ pub(super) fn build_evaluated_program(
         dependency_queries: exec_output.dependency_queries.clone(),
         step_bindings,
         result: result.clone(),
-    }
+    })
 }

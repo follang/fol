@@ -19,7 +19,7 @@ pub mod stdlib;
 
 pub use api::{
     validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildArtifactHandle,
-    BuildOptionValue, DependencyHandle, DependencyRequest, ExecutableRequest,
+    BuildOptionValue, DependencyArgValue, DependencyHandle, DependencyRequest, ExecutableRequest,
     InstallArtifactRequest, InstallDirRequest, InstallFileRequest, InstallHandle, OutputHandle,
     OutputHandleKind, OutputHandleLocator, RunHandle, RunRequest, SharedLibraryRequest,
     StandardOptimizeOption, StandardOptimizeRequest, StandardTargetOption, StandardTargetRequest,

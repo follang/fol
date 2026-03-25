@@ -2,7 +2,7 @@
 mod tests {
     use super::super::{
         validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
-        CopyFileRequest, DependencyRequest, ExecutableRequest, InstallArtifactRequest,
+        CopyFileRequest, DependencyArgValue, DependencyRequest, ExecutableRequest, InstallArtifactRequest,
         InstallDirRequest, InstallFileRequest, OutputHandle, OutputHandleKind,
         OutputHandleLocator, RunRequest, SharedLibraryRequest,
         StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest, StepRequest,
@@ -375,6 +375,16 @@ mod tests {
             .dependency(DependencyRequest {
                 alias: "logtiny".to_string(),
                 package: "org/logtiny".to_string(),
+                args: std::collections::BTreeMap::from([
+                    (
+                        "target".to_string(),
+                        DependencyArgValue::OptionRef("target".to_string()),
+                    ),
+                    (
+                        "use_fast_parser".to_string(),
+                        DependencyArgValue::Bool(true),
+                    ),
+                ]),
                 evaluation_mode: Some(DependencyBuildEvaluationMode::Lazy),
                 surface: Some(DependencyBuildSurface {
                     alias: "logtiny".to_string(),
@@ -410,6 +420,10 @@ mod tests {
         assert_eq!(api.graph().modules()[0].name, "logtiny:org/logtiny");
         assert_eq!(dependency.build.alias, "logtiny");
         assert_eq!(dependency.build.package, "org/logtiny");
+        assert_eq!(
+            dependency.args.get("use_fast_parser"),
+            Some(&DependencyArgValue::Bool(true))
+        );
         assert_eq!(dependency.modules.modules.len(), 1);
         assert_eq!(dependency.artifacts.artifacts.len(), 1);
         assert_eq!(dependency.steps.steps.len(), 1);

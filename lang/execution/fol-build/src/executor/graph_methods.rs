@@ -409,7 +409,7 @@ impl BuildBodyExecutor {
             }
 
             "dependency" => {
-                let (alias, package, evaluation_mode) = if let [AstNode::RecordInit {
+                let (alias, package, forwarded_args, evaluation_mode) = if let [AstNode::RecordInit {
                     fields, ..
                 }] = args
                 {
@@ -419,10 +419,11 @@ impl BuildBodyExecutor {
                     let package = self
                         .resolve_field_string(fields, "package")
                         .ok_or_else(|| self.unsupported(method))?;
+                    let forwarded_args = self.resolve_dependency_args(fields).unwrap_or_default();
                     let mode = self
                         .resolve_field_string(fields, "mode")
                         .and_then(|v| crate::DependencyBuildEvaluationMode::parse(v.as_str()));
-                    (alias, package, mode)
+                    (alias, package, forwarded_args, mode)
                 } else if let [alias_arg, package_arg] = args {
                     let alias = self
                         .resolve_string(alias_arg)
@@ -430,7 +431,7 @@ impl BuildBodyExecutor {
                     let package = self
                         .resolve_string(package_arg)
                         .ok_or_else(|| self.unsupported(method))?;
-                    (alias, package, None)
+                    (alias, package, std::collections::BTreeMap::new(), None)
                 } else {
                     return Err(self.unsupported(method));
                 };
@@ -439,6 +440,7 @@ impl BuildBodyExecutor {
                     kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
                         alias: alias.clone(),
                         package,
+                        args: forwarded_args,
                         evaluation_mode,
                         surface: None,
                     }),

@@ -37,6 +37,7 @@ impl BuildBodyExecutor {
                 let package = self
                     .resolve_field_string(fields, "target")
                     .ok_or_else(|| self.unsupported(method))?;
+                let args = self.resolve_dependency_args(fields).unwrap_or_default();
                 self.resolve_field_string(fields, "source")
                     .ok_or_else(|| self.unsupported(method))?;
                 self.output.operations.push(BuildEvaluationOperation {
@@ -44,6 +45,7 @@ impl BuildBodyExecutor {
                     kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
                         alias: alias.clone(),
                         package,
+                        args,
                         evaluation_mode: None,
                         surface: None,
                     }),

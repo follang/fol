@@ -103,6 +103,104 @@ fn build_source_evaluator_treats_add_dep_as_a_real_dependency_handle() {
 }
 
 #[test]
+fn build_source_evaluator_keeps_explicit_dependency_args_on_build_handles() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var target = graph.standard_target();\n",
+        "    var optimize = graph.standard_optimize();\n",
+        "    var fast = graph.option({ name = \"use_fast_parser\", kind = \"bool\", default = true });\n",
+        "    .build().add_dep({\n",
+        "        alias = \"json\",\n",
+        "        source = \"pkg\",\n",
+        "        target = \"json\",\n",
+        "        args = { target = target, optimize = optimize, use_fast_parser = fast, jobs = 4, flavor = \"strict\" },\n",
+        "    });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let mut options = std::collections::BTreeMap::new();
+    options.insert("target".to_string(), "thumbv7em-none-eabi".to_string());
+    options.insert("optimize".to_string(), "release-safe".to_string());
+    options.insert("use_fast_parser".to_string(), "false".to_string());
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            options,
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("dependency args should evaluate")
+        .expect("build body should produce operations");
+
+    assert_eq!(evaluated.result.dependency_requests.len(), 1);
+    assert_eq!(
+        evaluated.result.dependency_requests[0].args.get("jobs"),
+        Some(&crate::DependencyArgValue::Int(4))
+    );
+    assert_eq!(
+        evaluated.evaluated.dependencies[0].args.get("target").map(String::as_str),
+        Some("thumbv7em-none-eabi")
+    );
+    assert_eq!(
+        evaluated.evaluated.dependencies[0]
+            .args
+            .get("optimize")
+            .map(String::as_str),
+        Some("release-safe")
+    );
+    assert_eq!(
+        evaluated.evaluated.dependencies[0]
+            .args
+            .get("use_fast_parser")
+            .map(String::as_str),
+        Some("false")
+    );
+    assert_eq!(
+        evaluated.evaluated.dependencies[0].args.get("flavor").map(String::as_str),
+        Some("strict")
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_missing_required_dependency_option_args() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var fast = graph.option({ name = \"use_fast_parser\", kind = \"bool\" });\n",
+        "    .build().add_dep({\n",
+        "        alias = \"json\",\n",
+        "        source = \"pkg\",\n",
+        "        target = \"json\",\n",
+        "        args = { use_fast_parser = fast },\n",
+        "    });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("missing required dependency option args should fail");
+
+    assert!(error
+        .message()
+        .contains("dependency 'json' requires a resolved option for arg 'use_fast_parser'"));
+}
+
+#[test]
 fn build_source_evaluator_allows_dependency_modules_to_feed_back_into_artifact_imports() {
     let source = concat!(
         "pro[] build(): non = {\n",
@@ -664,6 +762,7 @@ fn evaluated_build_program_surface_keeps_runtime_metadata_and_graph_result() {
         dependencies: vec![crate::runtime::BuildRuntimeDependency {
             alias: "core".to_string(),
             package: "org/core".to_string(),
+            args: std::collections::BTreeMap::new(),
             evaluation_mode: None,
         }],
         dependency_queries: Vec::new(),

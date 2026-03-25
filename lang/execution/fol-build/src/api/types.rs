@@ -2,6 +2,7 @@ use crate::dependency::{
     DependencyBuildEvaluationMode, DependencyBuildSurface,
 };
 use crate::graph::{BuildOptionId, BuildOptionKind};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StandardTargetRequest {
@@ -325,8 +326,28 @@ pub struct GeneratedFileHandle {
 pub struct DependencyRequest {
     pub alias: String,
     pub package: String,
+    pub args: BTreeMap<String, DependencyArgValue>,
     pub evaluation_mode: Option<DependencyBuildEvaluationMode>,
     pub surface: Option<DependencyBuildSurface>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DependencyArgValue {
+    Bool(bool),
+    Int(i64),
+    String(String),
+    OptionRef(String),
+}
+
+impl DependencyArgValue {
+    pub fn resolve(&self, options: &crate::option::ResolvedBuildOptionSet) -> Option<String> {
+        match self {
+            Self::Bool(value) => Some(value.to_string()),
+            Self::Int(value) => Some(value.to_string()),
+            Self::String(value) => Some(value.clone()),
+            Self::OptionRef(name) => options.get(name.as_str()).map(str::to_string),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

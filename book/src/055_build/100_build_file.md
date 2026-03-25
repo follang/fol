@@ -172,6 +172,7 @@ Typical fields belong here:
 - `alias`
 - `source`
 - `target`
+- `args`
 
 For example:
 
@@ -189,9 +190,35 @@ build.add_dep({
 });
 ```
 
+Forwarded dependency args stay explicit:
+
+```fol
+var graph = build.graph();
+var target = graph.standard_target();
+var optimize = graph.standard_optimize();
+var fast = graph.option({ name = "use_fast_parser", kind = "bool", default = true });
+
+build.add_dep({
+    alias = "json",
+    source = "pkg",
+    target = "json",
+    args = {
+        target = target,
+        optimize = optimize,
+        use_fast_parser = fast,
+        jobs = 4,
+        flavor = "strict",
+    },
+});
+```
+
 This declares direct dependencies only.
 Transitive dependencies stay declared in each dependency package's own
 `build.fol`.
+
+Nothing is forwarded implicitly from the parent build. If a dependency should
+see `target`, `optimize`, or a package-specific option, pass it explicitly in
+`args`.
 
 ### `build.graph()`
 

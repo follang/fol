@@ -241,7 +241,7 @@ If a new dependency/output/install shape is chosen:
 
 ## Epoch 4: Explicit Dependency Argument Forwarding
 
-### Slice 18
+### Slice 18 [complete]
 
 - extend dependency request schema to accept `args = { ... }`
 - support scalar values first:
@@ -250,33 +250,33 @@ If a new dependency/output/install shape is chosen:
   - `str`
   - option handles for target/optimize/path-like values
 
-### Slice 19
+### Slice 19 [complete]
 
 - add semantic typing for dependency arg records
 - reject unknown field/value shapes cleanly
 
-### Slice 20
+### Slice 20 [complete]
 
 - thread dependency args through:
   - build evaluation operations
   - dependency runtime representation
   - fetch/preparation structures if needed
 
-### Slice 21
+### Slice 21 [complete]
 
 - define how forwarded args influence dependency build evaluation:
   - target
   - optimize
   - dependency-specific user options
 
-### Slice 22
+### Slice 22 [complete]
 
 - add package-loading tests for:
   - forwarded target/optimize
   - forwarded user bool/string/path/int options
   - missing required dependency options
 
-### Slice 23
+### Slice 23 [complete]
 
 - add book examples showing explicit forwarding
 - state clearly that nothing is implicitly inherited
