@@ -1,402 +1,488 @@
-# PLAN: Unify Package Metadata Into `.build()`
+# Build-System Gap Plan
 
-Last updated: 2026-03-25
+This plan covers the next build-system round after the current one-file
+`build.fol` model.
 
-## Intent
+Goal:
 
-Replace the current two-file control model:
+- keep the current FOL-first build surface
+- do not copy Zig mechanically
+- add the highest-value capabilities that Zig already proves out
+- avoid parallel legacy paths
 
-- `package.yaml`
-- `build.fol`
+Primary targets for this round:
 
-with one canonical FOL control file:
+1. public dependency handles from `.build().add_dep(...)`
+2. first-class generated output / lazy-path style handles
+3. per-dependency option forwarding
+4. stronger step execution and cache semantics
+5. cleaner install/output-prefix model
 
-- `build.fol`
+This plan is grounded in the current implementation seams:
 
-The new public shape is:
+- build API: `lang/execution/fol-build/src/api/build_api.rs`
+- build handle types: `lang/execution/fol-build/src/api/types.rs`
+- semantic surface: `lang/execution/fol-build/src/semantic.rs`
+- graph execution: `lang/execution/fol-build/src/executor/graph_methods.rs`
+- handle execution: `lang/execution/fol-build/src/executor/handle_methods.rs`
+- build source evaluation: `lang/execution/fol-build/src/eval/source.rs`
+- step planning/cache model: `lang/execution/fol-build/src/step.rs`
+- dependency surface model: `lang/execution/fol-build/src/dependency.rs`
+- frontend fetch/build routing: `lang/tooling/fol-frontend/src/fetch.rs`
+- frontend compile resolver config: `lang/tooling/fol-frontend/src/compile/mod.rs`
+- current build docs: `book/src/055_build/*.md`
+
+## Design Decisions
+
+These should be treated as fixed unless a better design is chosen explicitly.
+
+### 1. Keep `.build()` as the top-level public entry
+
+Do not reintroduce public `Graph` or `Build` type names.
+
+Public shape stays:
 
 ```fol
 pro[] build(): non = {
     var build = .build();
-
-    build.meta({
-        name = "app",
-        version = "0.1.0",
-        kind = "exe",
-    });
-
-    build.add_dep({
-        alias = "shared",
-        source = "loc",
-        target = "../shared",
-    });
-
+    build.meta({ name = "app", version = "0.1.0" });
+    build.add_dep({ alias = "logtiny", source = "git", target = "git+https://..." });
     var graph = build.graph();
-    var app = graph.add_exe({
-        name = "app",
-        root = "src/main.fol",
-        fol_model = "std",
-    });
-    graph.install(app);
-    graph.add_run(app);
-};
+}
 ```
 
-## Core Rules
+### 2. `.build().add_dep(...)` should return a real dependency handle
 
-1. `package.yaml` is deleted completely.
-2. Metadata lives in `build.fol` only.
-3. Direct dependencies live in `build.fol` only.
-4. The only canonical entry is still:
-   - `pro[] build(): non`
-5. Package metadata is configured through:
-   - `.build().meta({...})`
-6. Direct dependencies are configured through:
-   - `.build().add_dep({...})`
-7. Artifact graph access is configured through:
-   - `.build().graph()`
-8. No compatibility path is kept for `package.yaml`.
-
-## Public Surface
-
-### Canonical control flow
+Current internal machinery already supports dependency handles and queries.
+The public contract should become:
 
 ```fol
-pro[] build(): non = {
-    var build = .build();
-
-    build.meta({
-        name = "app",
-        version = "0.1.0",
-        kind = "exe",
-        description = "demo",
-        license = "MIT",
-    });
-
-    build.add_dep({
-        alias = "json",
-        source = "pkg",
-        target = "json",
-    });
-
-    var graph = build.graph();
-    var app = graph.add_exe({
-        name = "app",
-        root = "src/main.fol",
-    });
-
-    graph.install(app);
-    graph.add_run(app);
-};
+var logtiny = build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+});
 ```
 
-### Semantics
+and later:
 
-- `.build()` is valid only in `build.fol`
-- `build.meta({...})` sets package metadata
-- `build.add_dep({...})` registers one direct dependency
-- `build.graph()` returns the existing opaque build graph handle
-- dependency preloading happens from `build.meta` / `build.add_dep`, not from YAML
-- `build()` becomes the single control routine for:
-  - package metadata
-  - direct dependencies
-  - artifact graph
+```fol
+var logtiny_mod = logtiny.module("logtiny");
+var logtiny_lib = logtiny.artifact("logtiny");
+var logtiny_gen = logtiny.generated("bindings");
+```
 
-## Non-Rules
+### 3. Add a unified path/output handle family
 
-These should become invalid:
+Zig uses `LazyPath`. FOL should not copy the name automatically, but it needs
+the same capability class:
 
-- any `package.yaml`
-- any loader behavior that requires `package.yaml`
-- any dependency preload path that reads `package.yaml`
-- any docs/examples that teach `package.yaml`
+- source path from package root
+- generated file from `write_file`
+- copied file from `copy_file`
+- captured stdout from run/system-tool/codegen
+- dependency generated output
 
-## Architecture Decision
+The handle should compose across graph methods and handle methods.
 
-Use one ambient build context with three responsibilities:
+### 4. Dependency forwarding must stay explicit
 
-- package metadata
-- direct dependency declarations
-- graph construction
+Do not auto-forward target/optimize/user options to dependencies.
 
-The clean public layering is:
+Public style should be explicit, for example:
 
-- `.build()`
-  - `.meta({...})`
-  - `.add_dep({...})`
-  - `.graph()`
+```fol
+var target = graph.standard_target();
+var optimize = graph.standard_optimize();
 
-Do not push metadata onto `.graph()`.
-Do not keep a separate `package()` manifest routine.
-Do not keep YAML parsing.
+var dep = build.add_dep({
+    alias = "json",
+    source = "pkg",
+    target = "json",
+    args = {
+        target = target,
+        optimize = optimize,
+        use_fast_parser = true,
+    },
+});
+```
 
-## Current Reality
+### 5. Installation/output must remain user-directed, not hardcoded by package
 
-Right now:
+FOL should move closer to Zig’s separation of cache vs install prefix.
 
-- formal packages require `package.yaml`
-- metadata is parsed in `lang/compiler/fol-package/src/metadata.rs`
-- package loading requires both `package.yaml` and `build.fol`
-- dependency preloading comes from parsed metadata
-- editor/root detection docs still mention `package.yaml`
-- many examples/tests create `package.yaml`
+The package author should declare what gets installed.
+The user/tool should choose where it lands.
 
-So this is a full package-loading redesign, not just a syntax tweak.
+### 6. No compatibility layer for old surface
 
-## Epoch 1: Freeze The New Contract
+If a new dependency/output/install shape is chosen:
 
-Goal:
-Write down the new one-file package model before code changes begin.
+- remove old docs
+- remove fallback parsing
+- remove dual surface
 
-### Slice Tracker
+## Epoch 1: Freeze The Public Direction
 
-- [x] Slice 1. Update book chapters that currently teach `package.yaml`:
-  - `book/src/600_modules/100_import.md`
-  - `book/src/600_modules/200_blocks.md`
-  - `book/src/055_build/100_build_file.md`
-- [x] Slice 2. Add docs for the new `.build()` ambient API:
-  - `.build().meta({...})`
-  - `.build().add_dep({...})`
-  - `.build().graph()`
-- [x] Slice 3. Update architecture/runtime docs that mention two control files
-- [x] Slice 4. Update planning/version docs to state:
-  - `package.yaml` is removed
-  - `build.fol` is the only package control file
+### Slice 1 [complete]
 
-### Exit criteria
+- audit current build docs and tests for stale `.graph()`-first examples
+- record the intended public dependency/output story in docs comments
+- no behavior change
 
-- The docs teach only the unified `.build()` model.
+### Slice 2
 
-## Epoch 2: Define Build-Context Metadata Semantics
+- add a book note comparing current FOL build goals against:
+  - dependency handles
+  - generated outputs
+  - explicit dependency args
+  - install prefixes
+- keep this repo-facing, not a generic Zig essay
 
-Goal:
-Add semantic metadata for the new build context API.
+### Slice 3
 
-### Slice Tracker
-
-- [x] Slice 5. Add an internal opaque build-context handle alongside the existing graph handle
-- [x] Slice 6. Define canonical build-context methods:
-  - `meta`
-  - `add_dep`
-  - `graph`
-- [x] Slice 7. Define canonical record shapes for:
-  - `meta`
-  - `add_dep`
-- [x] Slice 8. Keep graph methods on the graph handle only, not on the build-context handle
-- [x] Slice 9. Add semantic tests for:
-  - build-context handle families
-  - method lookup
-  - config record shapes
-
-### Exit criteria
-
-- The build semantic catalog knows about the new `.build()` surface.
-
-## Epoch 3: Replace Ambient `.graph()` With Ambient `.build()`
-
-Goal:
-Make `.build()` the top-level ambient entrypoint.
-
-### Slice Tracker
-
-- [x] Slice 10. Add `.build()` evaluation support in the build executor
-- [x] Slice 11. Route `.build().graph()` to the existing internal graph handle
-- [x] Slice 12. Keep inferred locals working:
-  - `var build = .build();`
-  - `var graph = build.graph();`
-- [x] Slice 13. Add executor tests for:
+- add a top-level architecture note for build surface layering:
   - `.build()`
-  - `.build().graph()`
-  - inferred locals for build and graph
+  - `build.meta`
+  - `build.add_dep`
+  - `build.graph`
+  - dependency handles
+  - output handles
 
-### Exit criteria
+## Epoch 2: Promote Dependency Handles To The Public Surface
 
-- `.build()` is the new ambient root in `build.fol`.
+### Slice 4
 
-## Epoch 4: Move Package Metadata Out Of YAML
+- extend `build.add_dep({...})` executor path so it returns a structured
+  dependency handle intentionally, not just metadata side-effects
+- tighten tests around returned dependency values
 
-Goal:
-Teach the loader to get metadata from `build.fol` instead of `package.yaml`.
+### Slice 5
 
-### Slice Tracker
+- define public semantic signatures for dependency handle methods:
+  - `module(name)`
+  - `artifact(name)`
+  - `step(name)`
+  - `generated(name)`
+- wire them into semantic registries
 
-- [x] Slice 14. Define the canonical `meta` record fields:
-  - `name`
-  - `version`
-  - optional `kind`
-  - optional `description`
-  - optional `license`
-- [x] Slice 15. Add extraction logic for `build.meta({...})`
-- [x] Slice 16. Validate metadata constraints formerly enforced by YAML parsing:
-  - required `name`
-  - required `version`
-  - valid package name
-  - no duplicate metadata keys
-- [x] Slice 17. Replace `parse_package_metadata` usage in package loading with build metadata extraction
-- [x] Slice 18. Keep equivalent diagnostics for malformed metadata
-- [x] Slice 19. Add tests for:
-  - valid metadata extraction
-  - missing required metadata
-  - invalid names
-  - duplicate metadata declarations
+### Slice 6
 
-### Exit criteria
+- expose dependency handles in build docs with one simple package example
+- document that these reflect exposed surfaces from the dependency package
 
-- Formal package identity comes from `build.fol`, not YAML.
+### Slice 7
 
-## Epoch 5: Move Direct Dependencies Out Of YAML
+- add resolver/typecheck coverage for dependency-handle method calls inside
+  `build.fol`
+- make failures precise for unknown module/artifact/step/generated names
 
-Goal:
-Teach the loader to get direct dependencies from `build.fol`.
+### Slice 8
 
-### Slice Tracker
+- harden executor and runtime query recording for dependency-handle lookups
+- ensure all dependency queries preserve alias + requested name + kind
 
-- [x] Slice 20. Define canonical `add_dep` record fields:
-  - `alias`
+### Slice 9
+
+- add an end-to-end fixture where a dependency is:
+  - declared via `build.add_dep`
+  - queried via `dep.module(...)` or `dep.generated(...)`
+  - fed back into graph operations
+
+## Epoch 3: Build A Unified Output Handle Model
+
+### Slice 10
+
+- inventory current output-like values:
+  - `write_file`
+  - `copy_file`
+  - `run.capture_stdout`
+  - codegen outputs
+  - dependency generated outputs
+  - source-root-relative file references
+- define one canonical internal handle family
+
+### Slice 11
+
+- add explicit API/types for output handles in
+  `lang/execution/fol-build/src/api/types.rs`
+- keep names repo-appropriate; avoid blindly copying `LazyPath`
+
+### Slice 12
+
+- make `graph.write_file(...)` and `graph.copy_file(...)` return the unified
+  output handle instead of ad hoc generated-file values
+
+### Slice 13
+
+- make `run.capture_stdout()` return the same unified output handle
+- ensure stdout capture is compatible with downstream graph consumers
+
+### Slice 14
+
+- make dependency `generated(...)` return the same unified output handle class
+
+### Slice 15
+
+- add graph methods that accept output handles where path-like inputs make
+  sense today:
+  - `install_file`
+  - run file args
+  - artifact generated attachments
+
+### Slice 16
+
+- add source-eval tests proving output handles can flow through local helpers
+  without degrading to strings
+
+### Slice 17
+
+- add book chapter section for output-handle composition with examples
+
+## Epoch 4: Explicit Dependency Argument Forwarding
+
+### Slice 18
+
+- extend dependency request schema to accept `args = { ... }`
+- support scalar values first:
+  - `bool`
+  - `int`
+  - `str`
+  - option handles for target/optimize/path-like values
+
+### Slice 19
+
+- add semantic typing for dependency arg records
+- reject unknown field/value shapes cleanly
+
+### Slice 20
+
+- thread dependency args through:
+  - build evaluation operations
+  - dependency runtime representation
+  - fetch/preparation structures if needed
+
+### Slice 21
+
+- define how forwarded args influence dependency build evaluation:
+  - target
+  - optimize
+  - dependency-specific user options
+
+### Slice 22
+
+- add package-loading tests for:
+  - forwarded target/optimize
+  - forwarded user bool/string/path/int options
+  - missing required dependency options
+
+### Slice 23
+
+- add book examples showing explicit forwarding
+- state clearly that nothing is implicitly inherited
+
+## Epoch 5: Tighten Dependency Surface Exposure
+
+### Slice 24
+
+- define what a dependency exposes by default:
+  - package source roots
+  - generated outputs
+  - installed artifacts
+  - named graph modules
+  - named steps
+
+### Slice 25
+
+- make dependency surface projection deterministic and testable
+- remove ad hoc alias assumptions
+
+### Slice 26
+
+- decide whether imports should continue to resolve by alias projection under
+  `.fol/pkg/<alias>` or instead through a richer exposed-surface registry
+- document the chosen model and remove the unused one
+
+### Slice 27
+
+- add regression tests for mixed local/pkg/git dependency exposure
+- include at least one imported generated-output case
+
+## Epoch 6: Strengthen Step Execution And Cache Semantics
+
+### Slice 28
+
+- audit what step cache keys currently model vs what frontend/backend actually
+  reuse
+- document the gap
+
+### Slice 29
+
+- make produced outputs participate in step cache-key semantics where relevant
+- generated file changes should invalidate dependent steps predictably
+
+### Slice 30
+
+- add explicit step execution reporting that distinguishes:
+  - requested
+  - executed
+  - skipped-from-cache
+  - skipped-by-foreign-run-policy
+
+### Slice 31
+
+- make run/system-tool/codegen step summaries expose enough detail for frontend
+  reporting and tests
+
+### Slice 32
+
+- add tests covering deterministic step ordering and cache invalidation
+  boundaries for:
+  - options
+  - artifact roots
+  - generated outputs
+  - dependency args
+
+### Slice 33
+
+- if execution is still fully serial, document that honestly and add a follow-up
+  note for future parallel execution
+- do not fake parallelism in docs
+
+## Epoch 7: Install Prefix And Output Layout
+
+### Slice 34
+
+- audit current build root, cache root, git cache root, and install semantics
+- define a clean public model:
+  - cache/build internals
+  - user-visible install prefix
+
+### Slice 35
+
+- add frontend config for install prefix selection, separate from build/cache
+- make default behavior deterministic for local development
+
+### Slice 36
+
+- teach `graph.install`, `graph.install_file`, and `graph.install_dir` to
+  project into the chosen install prefix model instead of only implicit paths
+
+### Slice 37
+
+- add integration coverage verifying install roots can move without changing
+  build graph source
+
+### Slice 38
+
+- update docs to match the install model and explicitly distinguish:
+  - build cache
+  - fetched package store
+  - install outputs
+
+## Epoch 8: Reduce Ad Hoc Stringly Config Shapes
+
+### Slice 39
+
+- review artifact/dependency config records for fields still parsed mostly as
+  loose strings
+- identify where typed handles should replace strings
+
+### Slice 40
+
+- improve dependency config validation:
   - `source`
   - `target`
-- [x] Slice 21. Support only current direct dependency source kinds:
-  - `loc`
-  - `pkg`
-  - `git`
-- [x] Slice 22. Add extraction logic for `build.add_dep({...})`
-- [x] Slice 23. Replace metadata dependency preload paths with extracted build dependencies
-- [x] Slice 24. Keep validation for:
-  - valid alias names
-  - supported source kinds
-  - non-empty targets
-  - duplicate dependency aliases
-- [x] Slice 25. Add tests for:
-  - local deps
-  - package-store deps
-  - git deps
-  - duplicate alias rejection
-  - malformed dependency rejection
+  - `args`
+  - alias rules
 
-### Exit criteria
+### Slice 41
 
-- Direct dependency loading comes from `build.fol`, not YAML.
+- improve artifact config validation for:
+  - root source
+  - fol model
+  - target/optimize handles
 
-## Epoch 6: Delete `package.yaml` From Package Loading
+### Slice 42
 
-Goal:
-Remove YAML as a required or supported package control input.
+- add exact diagnostics for unsupported combinations instead of generic
+  “unsupported build method” failures
 
-### Slice Tracker
+## Epoch 9: Docs, Examples, And Hardening
 
-- [x] Slice 26. Delete `lang/compiler/fol-package/src/metadata.rs` public usage from active loader paths
-- [x] Slice 27. Remove `package.yaml` file existence checks from formal package loading
-- [x] Slice 28. Require `build.fol` only for formal package roots
-- [x] Slice 29. Update package-session identity/display-name derivation to use build metadata
-- [x] Slice 30. Remove loader diagnostics that mention missing `package.yaml`
-- [x] Slice 31. Add tests proving:
-  - formal packages load with `build.fol` only
-  - roots with only YAML fail or are unsupported
-  - dependency preloading still works without YAML
+### Slice 43
 
-### Exit criteria
+- add one standalone example focused on dependency handles
 
-- `package.yaml` is no longer part of active loading.
+### Slice 44
 
-## Epoch 7: Frontend, Fetch, Lockfile, And Store Integration
+- add one standalone example focused on generated-output handle composition
 
-Goal:
-Make all package-management flows work with `build.fol` metadata.
+### Slice 45
 
-### Slice Tracker
+- add one standalone example focused on dependency arg forwarding
 
-- [x] Slice 32. Update fetch/materialization flows that currently read/write assumptions about `package.yaml`
-- [x] Slice 33. Ensure lockfile/fetch diagnostics point at `build.fol` metadata when relevant
-- [x] Slice 34. Update package-store root validation for build-only metadata
-- [x] Slice 35. Update frontend diagnostics/help text away from `package.yaml`
-- [x] Slice 36. Add integration tests for:
-  - git deps
-  - package-store deps
-  - lockfile flows
-  - fetch flows
-  under the new one-file package model
+### Slice 46
 
-### Exit criteria
+- add one standalone example focused on install prefix behavior
 
-- package-management UX works without YAML.
+### Slice 47
 
-## Epoch 8: Editor And Root Detection
+- add negative examples for:
+  - unknown dependency surface queries
+  - invalid dependency args
+  - invalid output-handle usage
+  - invalid install projections
 
-Goal:
-Make tooling stop treating `package.yaml` as a root marker or required package indicator.
+## Epoch 10: Cleanup And Final Audit
 
-### Slice Tracker
+### Slice 48
 
-- [x] Slice 37. Update editor/root discovery docs from:
-  - `package.yaml`
-  - `fol.work.yaml`
-  toward the new build-only package marker
-- [x] Slice 38. Update editor integration tests and fixtures to use `build.fol` only
-- [x] Slice 39. Ensure LSP workspace/package detection still succeeds for formal packages
-- [x] Slice 40. Add regression tests proving editor features work for build-only package roots
+- remove stale internal `.graph()` wording from build diagnostics/tests/docs
+  that should now speak in terms of `.build()` and public handles
 
-### Exit criteria
+### Slice 49
 
-- editor tooling no longer depends on `package.yaml`.
+- audit editor/LSP completion for the new build-surface methods and handle
+  member names
 
-## Epoch 9: Examples, Fixtures, And Book Migration
+### Slice 50
 
-Goal:
-Replace checked-in YAML examples/fixtures with the new `build.fol` metadata model.
+- final repo-wide scan for:
+  - stale build docs
+  - dead test helpers
+  - obsolete dependency projection code
+  - duplicate output-handle representations
 
-### Slice Tracker
+## Suggested Execution Order
 
-- [x] Slice 41. Rewrite examples under `examples/` to remove `package.yaml`
-- [x] Slice 42. Rewrite formal-package fixtures under `test/app`, `test/apps`, and `test/large_examples`
-- [x] Slice 43. Rewrite resolver/package/session fixtures that currently author YAML metadata
-- [x] Slice 44. Update book examples to show:
-  - `build.meta({...})`
-  - `build.add_dep({...})`
-  - `build.graph()`
-- [x] Slice 45. Add positive example coverage for:
-  - single package
-  - loc dep
-  - pkg dep
-  - git dep
-  - mixed models
+Recommended implementation order:
 
-### Exit criteria
+1. Epoch 2
+2. Epoch 3
+3. Epoch 4
+4. Epoch 5
+5. Epoch 6
+6. Epoch 7
+7. Epoch 8
+8. Epoch 9
+9. Epoch 10
 
-- checked-in examples teach only the new one-file control model.
+Reason:
 
-## Epoch 10: Hard Cleanup
+- dependency handles are already half-present internally
+- output handles are the next biggest foundation
+- dependency args depend on both
+- install/output and cache reporting should come after the handle model is real
 
-Goal:
-Delete the old YAML path entirely.
+## Exit Criteria
 
-### Slice Tracker
+This plan is complete when:
 
-- [x] Slice 46. Remove public exports that only exist for YAML metadata parsing
-- [x] Slice 47. Remove stale comments and docs that mention `package.yaml` as required control metadata
-- [x] Slice 48. Add regression tests that fail if `package.yaml` becomes required again
-- [x] Slice 49. Run a full repo audit for:
-  - `package.yaml`
-  - metadata parser references
-  - YAML-root assumptions
-- [x] Slice 50. Final consistency pass on diagnostics and scaffolding
-
-### Exit criteria
-
-- `package.yaml` is gone from the active package system.
-
-## Expected End State
-
-When this plan is complete:
-
-- `build.fol` is the only package control file
-- the only canonical entry is:
-  - `pro[] build(): non`
-- package metadata is declared through:
-  - `.build().meta({...})`
-- direct dependencies are declared through:
-  - `.build().add_dep({...})`
-- artifact graph access is declared through:
-  - `.build().graph()`
-- no package loader path reads `package.yaml`
-- no docs/examples require `package.yaml`
-- no compatibility path remains
+- `.build().add_dep(...)` returns a first-class public dependency handle
+- dependency handles can query modules/artifacts/steps/generated outputs
+- generated outputs flow through one unified public handle model
+- dependency args can be forwarded explicitly and tested end to end
+- step/cache reporting is materially stronger and documented honestly
+- install/output layout is explicit and configurable
+- docs/examples reflect the final surface without fallback language

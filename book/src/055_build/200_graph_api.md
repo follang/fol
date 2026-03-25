@@ -3,6 +3,13 @@
 `build.graph()` is the public access point to the build graph in `build.fol`.
 All graph construction goes through method calls on the returned handle.
 
+This layer is intentionally narrower than the whole build surface:
+
+- package metadata belongs on `build.meta({...})`
+- direct dependencies belong on `build.add_dep({...})`
+- future dependency queries and output handles sit above raw graph mutation and
+  should not collapse back into ad hoc string-only graph APIs
+
 The canonical shape is:
 
 ```fol

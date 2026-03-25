@@ -108,6 +108,13 @@ The public layering is:
 - `build.add_dep({...})` for one direct dependency
 - `build.graph()` for artifact and step graph work
 
+The intended extension points on this public surface are:
+
+- dependency handles returned from `build.add_dep({...})`
+- unified output handles for generated and copied files
+- explicit dependency build arguments
+- a cleaner install-prefix model
+
 Do not put package metadata directly on the graph handle.
 
 ## Local Helpers
