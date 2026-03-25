@@ -154,7 +154,7 @@ Write down the new one-file package model before code changes begin.
   - `book/src/600_modules/100_import.md`
   - `book/src/600_modules/200_blocks.md`
   - `book/src/055_build/100_build_file.md`
-- [ ] Slice 2. Add docs for the new `.build()` ambient API:
+- [x] Slice 2. Add docs for the new `.build()` ambient API:
   - `.build().meta({...})`
   - `.build().add_dep({...})`
   - `.build().graph()`

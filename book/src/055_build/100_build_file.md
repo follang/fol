@@ -71,6 +71,45 @@ is reached through `build.graph()`.
 Missing entry, wrong signature, duplicate entries, the old injected graph
 parameter form, or explicit `Graph` type syntax are compile errors.
 
+## Ambient Build API
+
+The canonical build shape is:
+
+```fol
+pro[] build(): non = {
+    var build = .build();
+
+    build.meta({
+        name = "app",
+        version = "0.1.0",
+        kind = "exe",
+    });
+
+    build.add_dep({
+        alias = "json",
+        source = "pkg",
+        target = "json",
+    });
+
+    var graph = build.graph();
+    var app = graph.add_exe({
+        name = "app",
+        root = "src/main.fol",
+    });
+    graph.install(app);
+    graph.add_run(app);
+}
+```
+
+The public layering is:
+
+- `.build()` for package-level build context
+- `build.meta({...})` for package metadata
+- `build.add_dep({...})` for one direct dependency
+- `build.graph()` for artifact and step graph work
+
+Do not put package metadata directly on the graph handle.
+
 ## Local Helpers
 
 `build.fol` can define helper functions visible only within itself:
@@ -101,6 +140,72 @@ graph type in source.
 
 Package metadata and direct dependencies are configured from inside
 `pro[] build(): non` through the ambient build context.
+
+### `build.meta({...})`
+
+`build.meta({...})` configures package metadata for the current package.
+
+Typical fields belong here:
+
+- `name`
+- `version`
+- `kind`
+- `description`
+- `license`
+
+This is package identity and package description data.
+It is not graph mutation.
+
+### `build.add_dep({...})`
+
+`build.add_dep({...})` registers one direct dependency of the current package.
+
+Typical fields belong here:
+
+- `alias`
+- `source`
+- `target`
+
+For example:
+
+```fol
+build.add_dep({
+    alias = "shared",
+    source = "loc",
+    target = "../shared",
+});
+
+build.add_dep({
+    alias = "json",
+    source = "pkg",
+    target = "json",
+});
+```
+
+This declares direct dependencies only.
+Transitive dependencies stay declared in each dependency package's own
+`build.fol`.
+
+### `build.graph()`
+
+`build.graph()` returns the opaque graph handle used for artifact and step
+construction.
+
+Graph-only work belongs here:
+
+- `add_exe`
+- `add_static_lib`
+- `install`
+- `add_run`
+- `standard_target`
+- `standard_optimize`
+- `write_file`
+
+That split keeps the build surface clear:
+
+- package metadata through `build.meta`
+- direct dependencies through `build.add_dep`
+- artifact graph mutation through `build.graph()`
 
 ## Capability Restrictions
 
