@@ -139,7 +139,7 @@ If a new dependency/output/install shape is chosen:
   - install prefixes
 - keep this repo-facing, not a generic Zig essay
 
-### Slice 3
+### Slice 3 [complete]
 
 - add a top-level architecture note for build surface layering:
   - `.build()`

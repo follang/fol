@@ -6,6 +6,41 @@ depend on each other, and how data flows from source to binary.
 ## Workspace layout
 
 ```
+
+## Build Surface Layers
+
+The public `build.fol` surface is intentionally layered.
+
+Current public layering:
+
+- `.build()`
+  ambient package build context
+- `build.meta({...})`
+  package identity and package metadata
+- `build.add_dep({...})`
+  direct dependency declarations
+- `build.graph()`
+  artifact, step, option, and generated-file graph mutation
+
+This split is intentional:
+
+- package metadata is not graph mutation
+- direct dependency declarations are not artifact declarations
+- graph construction should not become a catch-all stringly package API
+
+Near-term build-system expansion should stay inside this layering rather than
+replace it:
+
+- dependency handles returned from `build.add_dep({...})`
+- unified output handles for generated and copied files
+- explicit dependency build-argument forwarding
+- cleaner install-prefix/output-root behavior
+
+The design constraint is:
+
+- richer build values on top of the current layers
+- no return to YAML manifests
+- no reintroduction of public `Graph`/`Build` type names
 lang/
   compiler/       front-end: source --> typed IR
     fol-types         shared type definitions and traits
