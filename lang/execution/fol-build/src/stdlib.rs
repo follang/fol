@@ -65,15 +65,33 @@ impl BuildStdlibScope {
             .find(|m| m.receiver == family && m.name == name)
     }
 
+    /// Returns the method signature for the exact receiver family and method name.
+    pub fn find_method_for_receiver(
+        &self,
+        family: BuildSemanticTypeFamily,
+        name: &str,
+    ) -> Option<&BuildSemanticMethodSignature> {
+        match family {
+            BuildSemanticTypeFamily::BuildContext => self.find_build_method(name),
+            BuildSemanticTypeFamily::Graph => self.find_graph_method(name),
+            _ => self.find_handle_method(family, name),
+        }
+    }
+
     /// Returns all methods available on a given handle family.
     pub fn methods_for_family(
         &self,
         family: BuildSemanticTypeFamily,
     ) -> Vec<&BuildSemanticMethodSignature> {
-        self.handle_methods
-            .iter()
-            .filter(|m| m.receiver == family)
-            .collect()
+        match family {
+            BuildSemanticTypeFamily::BuildContext => self.build_methods.iter().collect(),
+            BuildSemanticTypeFamily::Graph => self.graph_methods.iter().collect(),
+            _ => self
+                .handle_methods
+                .iter()
+                .filter(|m| m.receiver == family)
+                .collect(),
+        }
     }
 
     /// Returns the chain metadata for depend_on calls, used to validate step dependencies.
@@ -187,13 +205,40 @@ mod tests {
     fn stdlib_scope_methods_for_family_returns_all_methods_for_receiver() {
         let scope = BuildStdlibScope::canonical();
 
+        let build_methods = scope.methods_for_family(BuildSemanticTypeFamily::BuildContext);
+        let build_names: Vec<&str> = build_methods.iter().map(|m| m.name.as_str()).collect();
+        let graph_methods = scope.methods_for_family(BuildSemanticTypeFamily::Graph);
+        let graph_names: Vec<&str> = graph_methods.iter().map(|m| m.name.as_str()).collect();
         let dep_methods = scope.methods_for_family(BuildSemanticTypeFamily::DependencyHandle);
         let dep_names: Vec<&str> = dep_methods.iter().map(|m| m.name.as_str()).collect();
 
+        assert!(build_names.contains(&"meta"));
+        assert!(build_names.contains(&"add_dep"));
+        assert!(build_names.contains(&"graph"));
+        assert!(graph_names.contains(&"add_exe"));
+        assert!(graph_names.contains(&"install"));
         assert!(dep_names.contains(&"module"));
         assert!(dep_names.contains(&"artifact"));
         assert!(dep_names.contains(&"step"));
         assert!(dep_names.contains(&"generated"));
+    }
+
+    #[test]
+    fn stdlib_scope_keeps_build_and_graph_method_surfaces_disjoint() {
+        let scope = BuildStdlibScope::canonical();
+
+        assert!(scope
+            .find_method_for_receiver(BuildSemanticTypeFamily::BuildContext, "meta")
+            .is_some());
+        assert!(scope
+            .find_method_for_receiver(BuildSemanticTypeFamily::BuildContext, "add_exe")
+            .is_none());
+        assert!(scope
+            .find_method_for_receiver(BuildSemanticTypeFamily::Graph, "add_exe")
+            .is_some());
+        assert!(scope
+            .find_method_for_receiver(BuildSemanticTypeFamily::Graph, "meta")
+            .is_none());
     }
 
     #[test]

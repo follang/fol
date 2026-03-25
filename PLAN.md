@@ -182,7 +182,7 @@ Add semantic metadata for the new build context API.
 - [x] Slice 7. Define canonical record shapes for:
   - `meta`
   - `add_dep`
-- [ ] Slice 8. Keep graph methods on the graph handle only, not on the build-context handle
+- [x] Slice 8. Keep graph methods on the graph handle only, not on the build-context handle
 - [ ] Slice 9. Add semantic tests for:
   - build-context handle families
   - method lookup
