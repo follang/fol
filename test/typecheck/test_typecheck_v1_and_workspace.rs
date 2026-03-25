@@ -1013,6 +1013,35 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
 }
 
 #[test]
+fn build_typechecking_accepts_dependency_handle_method_calls() {
+    let typed = typecheck_fixture_folder(&[(
+        "build.fol",
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    var dep = build.add_dep({\n",
+            "        alias = \"core\",\n",
+            "        source = \"pkg\",\n",
+            "        target = \"core\",\n",
+            "    });\n",
+            "    var module = dep.module(\"root\");\n",
+            "    var artifact = dep.artifact(\"corelib\");\n",
+            "    var step = dep.step(\"check\");\n",
+            "    var generated = dep.generated(\"bindings\");\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )]);
+
+    let _ = find_typed_symbol(&typed, "dep", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "module", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "artifact", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "step", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "generated", SymbolKind::ValueBinding);
+}
+
+#[test]
 fn workspace_expression_typing_keeps_plain_imported_value_types_in_bindings_returns_and_call_args() {
     let root = unique_temp_dir("workspace_imported_value_contexts");
     create_dir_all(&root).expect("Fixture root should be creatable");

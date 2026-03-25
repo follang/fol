@@ -171,7 +171,7 @@ If a new dependency/output/install shape is chosen:
 - expose dependency handles in build docs with one simple package example
 - document that these reflect exposed surfaces from the dependency package
 
-### Slice 7
+### Slice 7 [complete]
 
 - add resolver/typecheck coverage for dependency-handle method calls inside
   `build.fol`
