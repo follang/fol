@@ -118,7 +118,7 @@ use super::*;
             .expect("Should create the installed package export root fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "pro[] build(): non = {\n    return;\n};\n",
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"json\",\n        version = \"1.0.0\",\n    });\n};\n",
         )
         .expect("Should write the installed package build fixture");
         fs::write(
@@ -264,7 +264,7 @@ use super::*;
             .expect("Should create the installed package export root fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "pro[] build(): non = {\n    return;\n};\n",
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"json\",\n        version = \"1.0.0\",\n    });\n};\n",
         )
         .expect("Should write the installed package build fixture");
         fs::write(
@@ -841,4 +841,3 @@ use super::*;
 
         fs::remove_dir_all(&temp_root).ok();
     }
-

@@ -95,3 +95,34 @@ fn test_package_parser_accepts_helper_declarations_alongside_the_build_entry() {
     fs::remove_dir_all(&temp_root)
         .expect("Temporary parser fixture root should be removable after the test");
 }
+
+#[test]
+fn test_package_parser_accepts_build_local_meta_calls_in_build_files() {
+    let temp_root = unique_temp_root("build_local_meta_calls");
+    fs::create_dir_all(&temp_root).expect("Should create temporary parser fixture root");
+    let file_path = temp_root.join("build.fol");
+    fs::write(
+        &file_path,
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({\n",
+            "        name = \"json\",\n",
+            "        version = \"1.0.0\",\n",
+            "    });\n",
+            "};\n",
+        ),
+    )
+    .expect("Should write the local build metadata fixture");
+
+    let parsed = parse_package_from_file(
+        file_path
+            .to_str()
+            .expect("Temporary parser fixture path should be valid UTF-8"),
+    );
+
+    assert_eq!(parsed.source_units.len(), 1);
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary parser fixture root should be removable after the test");
+}

@@ -1,4 +1,7 @@
 pro[] build(): non = {
-    var graph = .graph();
-    return;
+    var build = .build();
+    build.meta({
+        name = "core",
+        version = "0.1.0",
+    });
 };

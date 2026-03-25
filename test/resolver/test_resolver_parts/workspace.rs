@@ -113,7 +113,7 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
     .expect("Should write json package metadata");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return;\n};\n",
+        "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"json\",\n        version = \"1.0.0\",\n    });\n    build.add_dep({\n        alias = \"core\",\n        source = \"pkg\",\n        target = \"core\",\n    });\n};\n",
     )
     .expect("Should write json build definition");
     fs::write(
@@ -129,7 +129,7 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
     .expect("Should write core package metadata");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(): non = {\n    return;\n};\n",
+        "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"core\",\n        version = \"1.0.0\",\n    });\n};\n",
     )
         .expect("Should write core build definition");
     fs::write(store_root.join("core/src/lib.fol"), "var[exp] shared: int = 7;\n")

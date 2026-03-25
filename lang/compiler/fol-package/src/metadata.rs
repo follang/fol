@@ -320,7 +320,11 @@ fn canonical_build_body<'a>(parsed: &'a ParsedPackage) -> Option<&'a [AstNode]> 
             if name != "build" || !params.is_empty() {
                 continue;
             }
-            let Some(return_type_name) = return_type.as_ref().and_then(|ty| ty.named_text()) else {
+            let Some(return_type_name) = (match return_type.as_ref() {
+                Some(fol_parser::ast::FolType::None) => Some("non".to_string()),
+                Some(ty) => ty.named_text(),
+                None => None,
+            }) else {
                 continue;
             };
             if return_type_name != "non" && return_type_name != "none" {

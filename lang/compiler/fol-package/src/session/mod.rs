@@ -1,6 +1,7 @@
 use crate::{
-    metadata::PackageDependencySourceKind, PackageConfig, PackageError, PackageErrorKind,
-    PackageIdentity, PackageSourceKind, PreparedPackage,
+    metadata::PackageDependencySourceKind, PackageBuildDefinition, PackageBuildMode,
+    PackageConfig, PackageError, PackageErrorKind, PackageIdentity, PackageSourceKind,
+    PreparedPackage,
 };
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::{AstParser, ParsedPackage, SyntaxOrigin, UsePathSegment};
@@ -116,18 +117,7 @@ impl PackageSession {
         {
             return Ok(cached);
         }
-        let metadata_path = canonical_root.join("package.yaml");
         let build_path = canonical_root.join("build.fol");
-        if !metadata_path.is_file() {
-            return Err(PackageError::new(
-                PackageErrorKind::InvalidInput,
-                format!(
-                    "package pkg import target '{}' is missing required package metadata '{}'",
-                    canonical_root.display(),
-                    metadata_path.display()
-                ),
-            ));
-        }
         if !build_path.is_file() {
             return Err(PackageError::new(
                 PackageErrorKind::InvalidInput,
@@ -224,18 +214,7 @@ impl PackageSession {
         if let Some(cached) = self.cached_package_by_root(source_kind, &canonical_root_str) {
             return Ok(cached);
         }
-        let metadata_path = canonical_root.join("package.yaml");
         let build_path = canonical_root.join("build.fol");
-        if !metadata_path.is_file() {
-            return Err(PackageError::new(
-                PackageErrorKind::InvalidInput,
-                format!(
-                    "package pkg import target '{}' is missing required package metadata '{}'",
-                    canonical_root.display(),
-                    metadata_path.display()
-                ),
-            ));
-        }
         if !build_path.is_file() {
             return Err(PackageError::new(
                 PackageErrorKind::InvalidInput,
@@ -247,8 +226,10 @@ impl PackageSession {
             ));
         }
 
-        let metadata = crate::parse_package_metadata(metadata_path.as_path())?;
-        let build = crate::parse_package_build(build_path.as_path())?;
+        let metadata = crate::parse_package_metadata_from_build(build_path.as_path())?;
+        let build = PackageBuildDefinition {
+            mode: PackageBuildMode::ModernOnly,
+        };
         let identity = PackageIdentity {
             source_kind,
             canonical_root: canonical_root_str,

@@ -1764,16 +1764,22 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         .expect("Should write git package metadata");
         std::fs::write(
             root.join("build.fol"),
-            concat!(
-                "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
-                "    var app = graph.add_exe({\n",
-                "        name = \"logtiny-demo\",\n",
-                "        root = \"src/main.fol\",\n",
-                "    });\n",
-                "    graph.install(app);\n",
-                "    graph.add_run(app);\n",
-                "};\n",
+            format!(
+                concat!(
+                    "pro[] build(): non = {{\n",
+                    "    var build = .build();\n",
+                    "    build.meta({{ name = \"{name}\", version = \"{version}\" }});\n",
+                    "    var graph = .graph();\n",
+                    "    var app = graph.add_exe({{\n",
+                    "        name = \"logtiny-demo\",\n",
+                    "        root = \"src/main.fol\",\n",
+                    "    }});\n",
+                    "    graph.install(app);\n",
+                    "    graph.add_run(app);\n",
+                    "}};\n",
+                ),
+                name = name,
+                version = version,
             ),
         )
         .expect("Should write git package build");

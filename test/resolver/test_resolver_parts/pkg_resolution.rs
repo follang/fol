@@ -2,6 +2,36 @@ use super::{resolve_package_from_folder_with_config, try_resolve_package_from_fo
 use fol_resolver::{ReferenceKind, ResolverConfig, ResolverErrorKind, ScopeKind, SymbolKind};
 use std::fs;
 
+fn formal_pkg_build(name: &str, deps: &[(&str, &str, &str)]) -> String {
+    let mut source = format!(
+        concat!(
+            "pro[] build(): non = {{\n",
+            "    var build = .build();\n",
+            "    build.meta({{\n",
+            "        name = \"{name}\",\n",
+            "        version = \"1.0.0\",\n",
+            "    }});\n",
+        ),
+        name = name
+    );
+    for (alias, source_kind, target) in deps {
+        source.push_str(&format!(
+            concat!(
+                "    build.add_dep({{\n",
+                "        alias = \"{alias}\",\n",
+                "        source = \"{source_kind}\",\n",
+                "        target = \"{target}\",\n",
+                "    }});\n",
+            ),
+            alias = alias,
+            source_kind = source_kind,
+            target = target
+        ));
+    }
+    source.push_str("};\n");
+    source
+}
+
 #[test]
 fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
     let temp_root = unique_temp_root("pkg_import_root");
@@ -20,7 +50,7 @@ fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
         .expect("Should create the installed package export root fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return;\n};\n",
+        formal_pkg_build("json", &[]),
     )
         .expect("Should write the installed package build fixture");
     fs::write(store_root.join("json/src/lib.fol"), "var[exp] answer: int = 42;\n")
@@ -106,7 +136,7 @@ fn test_resolver_pkg_imports_expose_semantic_internal_namespaces() {
     .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return;\n};\n",
+        formal_pkg_build("json", &[]),
     )
         .expect("Should write the installed package build fixture");
     fs::write(
@@ -208,7 +238,7 @@ fn test_resolver_resolves_qualified_pkg_names_through_declared_export_namespaces
     .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return;\n};\n",
+        formal_pkg_build("json", &[]),
     )
     .expect("Should write the installed package build fixture");
     fs::write(
@@ -317,7 +347,7 @@ fn test_resolver_pkg_qualified_names_follow_semantic_internal_namespaces() {
     .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return;\n};\n",
+        formal_pkg_build("json", &[]),
     )
         .expect("Should write the installed package build fixture");
     fs::write(
@@ -391,7 +421,7 @@ fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
     .expect("Should write the transitive dependency metadata fixture");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(): non = {\n    return;\n};\n",
+        formal_pkg_build("core", &[]),
     )
         .expect("Should write the transitive dependency build fixture");
     fs::write(
@@ -406,7 +436,7 @@ fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
     .expect("Should write the direct dependency metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return;\n};\n",
+        formal_pkg_build("json", &[("core", "pkg", "core")]),
     )
     .expect("Should write the direct dependency build fixture");
     fs::write(

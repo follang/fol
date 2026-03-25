@@ -37,6 +37,19 @@ fn unique_temp_root(label: &str) -> std::path::PathBuf {
     ))
 }
 
+fn formal_build_fixture(name: &str, deps: &[(&str, &str, &str)]) -> String {
+    let mut source = format!(
+        "pro[] build(): non = {{\n    var build = .build();\n    build.meta({{ name = \"{name}\", version = \"1.0.0\" }});\n"
+    );
+    for (alias, source_kind, target) in deps {
+        source.push_str(&format!(
+            "    build.add_dep({{ alias = \"{alias}\", source = \"{source_kind}\", target = \"{target}\" }});\n"
+        ));
+    }
+    source.push_str("};\n");
+    source
+}
+
 #[test]
 fn package_session_config_can_be_provided_explicitly() {
     let session = PackageSession::with_config(PackageConfig {
@@ -348,7 +361,7 @@ fn package_session_can_load_installed_pkg_roots_with_required_controls() {
     .expect("Should write the package source fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("json", &[]),
     )
     .expect("Should write the package build fixture");
     let mut session = PackageSession::new();
@@ -415,7 +428,7 @@ fn parse_directory_package_syntax_keeps_build_files_for_pkg_roots() {
     .expect("Should write the package metadata fixture");
     fs::write(
         temp_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("json", &[]),
     )
     .expect("Should write the package build fixture");
     fs::write(
@@ -473,7 +486,7 @@ fn parse_directory_package_syntax_accepts_pkg_roots_with_only_build_files() {
     .expect("Should write the package metadata fixture");
     fs::write(
         temp_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("json", &[]),
     )
     .expect("Should write the package build fixture");
     fs::write(
@@ -513,8 +526,9 @@ fn package_session_no_longer_projects_declared_export_namespace_mounts() {
         store_root.join("json/build.fol"),
         concat!(
             "pro[] build(): non = {\n",
-            "    return graph\n",
-            "}\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"json\", version = \"1.0.0\" });\n",
+            "};\n",
         ),
     )
     .expect("Should write the package build fixture");
@@ -569,7 +583,7 @@ fn package_session_keeps_semantic_build_entries_for_formal_pkg_roots() {
     .expect("Should write the package source fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = graph;\n",
+        formal_build_fixture("json", &[]),
     )
     .expect("Should write the semantic build entry fixture");
     let mut session = PackageSession::new();
@@ -598,11 +612,16 @@ fn package_session_keeps_semantic_build_entries_for_formal_pkg_roots() {
 }
 
 #[test]
-fn package_session_rejects_pkg_roots_without_required_metadata() {
-    let temp_root = unique_temp_root("missing_pkg_metadata");
+fn package_session_rejects_pkg_roots_without_required_build_file() {
+    let temp_root = unique_temp_root("missing_pkg_build");
     let store_root = temp_root.join("store");
     fs::create_dir_all(store_root.join("json"))
         .expect("Should create a temporary package-store fixture");
+    fs::write(
+        store_root.join("json/package.yaml"),
+        "name: json\nversion: 1.0.0\n",
+    )
+    .expect("Should write a stale package.yaml fixture");
     fs::write(
         store_root.join("json/lib.fol"),
         "var[exp] answer: int = 42;\n",
@@ -618,36 +637,26 @@ fn package_session_rejects_pkg_roots_without_required_metadata() {
                 spelling: "json".to_string(),
             }],
         )
-        .expect_err("Package session should reject installed package roots without metadata");
+        .expect_err("Package session should reject installed package roots without build.fol");
 
     assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
     assert!(error
         .to_string()
-        .contains("missing required package metadata"));
+        .contains("missing required package build file"));
 
     fs::remove_dir_all(&temp_root)
         .expect("Temporary package-store fixture should be removable after the test");
 }
 
 #[test]
-fn package_session_ignores_package_fol_when_package_yaml_is_present() {
-    let temp_root = unique_temp_root("ignored_package_fol");
+fn package_session_loads_formal_packages_from_build_fol_only() {
+    let temp_root = unique_temp_root("build_fol_only_formal_package");
     let store_root = temp_root.join("store");
     fs::create_dir_all(store_root.join("json"))
         .expect("Should create a temporary package-store fixture");
     fs::write(
-        store_root.join("json/package.yaml"),
-        "name: json\nversion: 1.0.0\n",
-    )
-    .expect("Should write the package metadata fixture");
-    fs::write(
-        store_root.join("json/package.fol"),
-        "var name: str = \"json\";\nvar version: str = \"1.0.0\";\n",
-    )
-    .expect("Should write the ignored package.fol fixture");
-    fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("json", &[]),
     )
     .expect("Should write the package build fixture");
     fs::write(
@@ -665,7 +674,7 @@ fn package_session_ignores_package_fol_when_package_yaml_is_present() {
                 spelling: "json".to_string(),
             }],
         )
-        .expect("Package session should ignore package.fol when package.yaml is present");
+        .expect("Package session should load formal packages from build.fol metadata alone");
 
     assert_eq!(loaded.identity.display_name, "json");
     assert_eq!(loaded.package_name(), "json");
@@ -689,7 +698,7 @@ fn package_session_preloads_transitive_pkg_dependencies() {
     .expect("Should write the transitive dependency metadata fixture");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("core", &[]),
     )
     .expect("Should write the transitive dependency build fixture");
     fs::write(
@@ -704,7 +713,7 @@ fn package_session_preloads_transitive_pkg_dependencies() {
     .expect("Should write the direct dependency metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("json", &[("core", "pkg", "core")]),
     )
     .expect("Should write the direct dependency build fixture");
     fs::write(
@@ -746,7 +755,7 @@ fn package_session_reports_explicit_pkg_dependency_cycles() {
     .expect("Should write the first package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("json", &[("core", "pkg", "core")]),
     )
     .expect("Should write the first package build fixture");
     fs::write(
@@ -761,7 +770,7 @@ fn package_session_reports_explicit_pkg_dependency_cycles() {
     .expect("Should write the second package metadata fixture");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("core", &[("json", "pkg", "json")]),
     )
     .expect("Should write the second package build fixture");
     fs::write(
@@ -813,7 +822,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     .expect("Should write the shared dependency metadata fixture");
     fs::write(
         store_root.join("core/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("core", &[]),
     )
     .expect("Should write the shared dependency build fixture");
     fs::write(
@@ -828,7 +837,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     .expect("Should write the first direct dependency metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("json", &[("core", "pkg", "core")]),
     )
     .expect("Should write the first direct dependency build fixture");
     fs::write(
@@ -843,7 +852,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     .expect("Should write the second direct dependency metadata fixture");
     fs::write(
         store_root.join("xml/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("xml", &[("core", "pkg", "core")]),
     )
     .expect("Should write the second direct dependency build fixture");
     fs::write(
@@ -858,7 +867,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     .expect("Should write the top-level package metadata fixture");
     fs::write(
         store_root.join("combo/build.fol"),
-        "pro[] build(): non = {\n    return graph\n}\n",
+        formal_build_fixture("combo", &[("json", "pkg", "json"), ("xml", "pkg", "xml")]),
     )
     .expect("Should write the top-level package build fixture");
     fs::write(

@@ -262,6 +262,8 @@ mod integration_tests {
         format!(
             concat!(
                 "pro[] build(): non = {{\n",
+                "    var build = .build();\n",
+                "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
                 "    var graph = .graph();\n",
                 "    var app = graph.add_exe({{ name = \"{name}\", root = \"src/main.fol\" }});\n",
                 "    graph.install(app);\n",
@@ -276,6 +278,8 @@ mod integration_tests {
         format!(
             concat!(
                 "pro[] build(): non = {{\n",
+                "    var build = .build();\n",
+                "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
                 "    var graph = .graph();\n",
                 "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
                 "    graph.install(lib);\n",

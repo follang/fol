@@ -232,9 +232,9 @@ Teach the loader to get metadata from `build.fol` instead of `package.yaml`.
   - required `version`
   - valid package name
   - no duplicate metadata keys
-- [ ] Slice 17. Replace `parse_package_metadata` usage in package loading with build metadata extraction
-- [ ] Slice 18. Keep equivalent diagnostics for malformed metadata
-- [ ] Slice 19. Add tests for:
+- [x] Slice 17. Replace `parse_package_metadata` usage in package loading with build metadata extraction
+- [x] Slice 18. Keep equivalent diagnostics for malformed metadata
+- [x] Slice 19. Add tests for:
   - valid metadata extraction
   - missing required metadata
   - invalid names
@@ -251,22 +251,22 @@ Teach the loader to get direct dependencies from `build.fol`.
 
 ### Slice Tracker
 
-- [ ] Slice 20. Define canonical `add_dep` record fields:
+- [x] Slice 20. Define canonical `add_dep` record fields:
   - `alias`
   - `source`
   - `target`
-- [ ] Slice 21. Support only current direct dependency source kinds:
+- [x] Slice 21. Support only current direct dependency source kinds:
   - `loc`
   - `pkg`
   - `git`
-- [ ] Slice 22. Add extraction logic for `build.add_dep({...})`
-- [ ] Slice 23. Replace metadata dependency preload paths with extracted build dependencies
-- [ ] Slice 24. Keep validation for:
+- [x] Slice 22. Add extraction logic for `build.add_dep({...})`
+- [x] Slice 23. Replace metadata dependency preload paths with extracted build dependencies
+- [x] Slice 24. Keep validation for:
   - valid alias names
   - supported source kinds
   - non-empty targets
   - duplicate dependency aliases
-- [ ] Slice 25. Add tests for:
+- [x] Slice 25. Add tests for:
   - local deps
   - package-store deps
   - git deps
@@ -285,11 +285,11 @@ Remove YAML as a required or supported package control input.
 ### Slice Tracker
 
 - [ ] Slice 26. Delete `lang/compiler/fol-package/src/metadata.rs` public usage from active loader paths
-- [ ] Slice 27. Remove `package.yaml` file existence checks from formal package loading
-- [ ] Slice 28. Require `build.fol` only for formal package roots
-- [ ] Slice 29. Update package-session identity/display-name derivation to use build metadata
-- [ ] Slice 30. Remove loader diagnostics that mention missing `package.yaml`
-- [ ] Slice 31. Add tests proving:
+- [x] Slice 27. Remove `package.yaml` file existence checks from formal package loading
+- [x] Slice 28. Require `build.fol` only for formal package roots
+- [x] Slice 29. Update package-session identity/display-name derivation to use build metadata
+- [x] Slice 30. Remove loader diagnostics that mention missing `package.yaml`
+- [x] Slice 31. Add tests proving:
   - formal packages load with `build.fol` only
   - roots with only YAML fail or are unsupported
   - dependency preloading still works without YAML
