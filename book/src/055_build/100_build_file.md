@@ -11,7 +11,7 @@ shares one namespace. `build.fol` is the one exception.
 Rules for `build.fol`:
 
 - It is its own compilation unit — it does not see sibling `.fol` files
-- It has one implicit build stdlib scope, exposing `.graph()` and build-only
+- It has one implicit build stdlib scope, exposing `.build()` and build-only
   handle methods
 - It can define local helper `fun[]`, `pro[]`, and `typ` declarations
 - Those local declarations are not exported to the package
@@ -47,7 +47,8 @@ The entry must match exactly:
 
 ```fol
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    var graph = build.graph();
     ...
 }
 ```
@@ -56,15 +57,16 @@ pro[] build(): non = {
 - no parameters
 - return type `non`
 
-The active build graph is accessed explicitly through the ambient build-only
+The active build context is accessed explicitly through the ambient build-only
 accessor:
 
 ```fol
-.graph()
+.build()
 ```
 
-`.graph()` returns an opaque build-only handle. The handle type is not public
-language surface and should not be named explicitly in source code.
+`.build()` returns an opaque build-only handle. The handle type is not public
+language surface and should not be named explicitly in source code. Graph access
+is reached through `build.graph()`.
 
 Missing entry, wrong signature, duplicate entries, the old injected graph
 parameter form, or explicit `Graph` type syntax are compile errors.
@@ -75,11 +77,12 @@ parameter form, or explicit `Graph` type syntax are compile errors.
 
 ```fol
 fun[] make_lib(name: str, root: str): Artifact = {
-    return .graph().add_static_lib({ name = name, root = root });
+    return .build().graph().add_static_lib({ name = name, root = root });
 }
 
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    var graph = build.graph();
     var core = make_lib("core", "src/core/lib.fol");
     var io   = make_lib("io",   "src/io/lib.fol");
     var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
@@ -89,32 +92,26 @@ pro[] build(): non = {
 }
 ```
 
-Helpers may call `.graph()` ambiently, but they do not name a public `Graph`
-type in source.
+Helpers may call `.build()` ambiently, but they do not name a public build or
+graph type in source.
 
-## package.yaml
+## Package Control
 
-Every package needs a `package.yaml` alongside `build.fol`:
+`build.fol` is the only package control file.
 
-```yaml
-name: my-app
-version: 1.0.0
-```
-
-The build system reads `name` and `version` from the manifest. Dependencies
-declared in the manifest are made available to `build.fol` via
-`.graph().dependency(...)`.
+Package metadata and direct dependencies are configured from inside
+`pro[] build(): non` through the ambient build context.
 
 ## Capability Restrictions
 
 The build executor enforces a capability model. Allowed operations:
 
 - graph mutation (adding artifacts, steps, options)
-- option reads (`.graph().standard_target()`, `.graph().standard_optimize()`, etc.)
-- path joining and normalization (`.graph().path_from_root(...)`)
+- option reads (`.build().graph().standard_target()`, `.build().graph().standard_optimize()`, etc.)
+- path joining and normalization (`.build().graph().path_from_root(...)`)
 - basic string and container operations
-- controlled file generation (`.graph().write_file(...)`, `.graph().copy_file(...)`)
-- controlled process execution (`.graph().add_system_tool(...)`)
+- controlled file generation (`.build().graph().write_file(...)`, `.build().graph().copy_file(...)`)
+- controlled process execution (`.build().graph().add_system_tool(...)`)
 
 Forbidden operations (produce a compile or runtime error):
 

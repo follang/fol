@@ -1,306 +1,402 @@
-# PLAN: Opaque Ambient Build Graph
+# PLAN: Unify Package Metadata Into `.build()`
 
 Last updated: 2026-03-25
 
 ## Intent
 
-This plan replaces the current public build entry model:
+Replace the current two-file control model:
 
-```fol
-pro[] build(graph: Graph): non
-```
+- `package.yaml`
+- `build.fol`
 
-with:
+with one canonical FOL control file:
 
-```fol
-pro[] build(): non
-```
+- `build.fol`
 
-and a build-only ambient accessor:
-
-```fol
-.graph()
-```
-
-The key rule is:
-
-- `Graph` is not a public language type
-- `Graph` is not nameable by users
-- `Graph` is valid only as an internal compiler/runtime concept
-- user-visible build graph access happens only through `.graph()`
-- `.graph()` is valid only in `build.fol`
-
-This keeps the build system ordinary FOL while removing the awkward injected
-parameter and avoiding collisions with user-defined types named `Graph`.
-
-## Required Language Contract
-
-### Canonical build entry
+The new public shape is:
 
 ```fol
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+
+    build.meta({
+        name = "app",
+        version = "0.1.0",
+        kind = "exe",
+    });
+
+    build.add_dep({
+        alias = "shared",
+        source = "loc",
+        target = "../shared",
+    });
+
+    var graph = build.graph();
+    var app = graph.add_exe({
+        name = "app",
+        root = "src/main.fol",
+        fol_model = "std",
+    });
+    graph.install(app);
+    graph.add_run(app);
+};
+```
+
+## Core Rules
+
+1. `package.yaml` is deleted completely.
+2. Metadata lives in `build.fol` only.
+3. Direct dependencies live in `build.fol` only.
+4. The only canonical entry is still:
+   - `pro[] build(): non`
+5. Package metadata is configured through:
+   - `.build().meta({...})`
+6. Direct dependencies are configured through:
+   - `.build().add_dep({...})`
+7. Artifact graph access is configured through:
+   - `.build().graph()`
+8. No compatibility path is kept for `package.yaml`.
+
+## Public Surface
+
+### Canonical control flow
+
+```fol
+pro[] build(): non = {
+    var build = .build();
+
+    build.meta({
+        name = "app",
+        version = "0.1.0",
+        kind = "exe",
+        description = "demo",
+        license = "MIT",
+    });
+
+    build.add_dep({
+        alias = "json",
+        source = "pkg",
+        target = "json",
+    });
+
+    var graph = build.graph();
     var app = graph.add_exe({
         name = "app",
         root = "src/main.fol",
     });
+
+    graph.install(app);
     graph.add_run(app);
-}
+};
 ```
 
-### Direct-use form
+### Semantics
 
-```fol
-pro[] build(): non = {
-    .graph().add_exe({
-        name = "app",
-        root = "src/main.fol",
-    });
-}
-```
+- `.build()` is valid only in `build.fol`
+- `build.meta({...})` sets package metadata
+- `build.add_dep({...})` registers one direct dependency
+- `build.graph()` returns the existing opaque build graph handle
+- dependency preloading happens from `build.meta` / `build.add_dep`, not from YAML
+- `build()` becomes the single control routine for:
+  - package metadata
+  - direct dependencies
+  - artifact graph
 
-### Non-rules
+## Non-Rules
 
-These should be invalid:
+These should become invalid:
 
-```fol
-pro[] build(graph: Graph): non = { ... }
-fun[] helper(graph: Graph): non = { ... }
-var graph: Graph = .graph();
-```
-
-So:
-
-- inferred locals are allowed
-- explicit `Graph` type syntax is not allowed
-- helper routines cannot name `Graph`
-
-## Core Principles
-
-1. `.graph()` is the only public access path to the build graph.
-2. `.graph()` is valid only in `build.fol`.
-3. `Graph` must not exist as a public injected build type.
-4. The compiler may keep any internal runtime/semantic graph type it wants.
-5. Old `build(graph: Graph)` is deleted with no compatibility path.
-
-## Current Reality
-
-The current repo still assumes a public `Graph` surface in many places:
-
-- build entry validation
-- package build parsing errors
-- resolver build-stdlib injection
-- restricted build executor graph-parameter logic
-- editor tests and build-file completion
-- scaffolded `build.fol`
-- examples and fixtures
-- book chapters
-
-That means this is a real semantic migration, not a docs-only rename.
+- any `package.yaml`
+- any loader behavior that requires `package.yaml`
+- any dependency preload path that reads `package.yaml`
+- any docs/examples that teach `package.yaml`
 
 ## Architecture Decision
 
-Use this exact model:
+Use one ambient build context with three responsibilities:
 
-- user-facing surface:
+- package metadata
+- direct dependency declarations
+- graph construction
+
+The clean public layering is:
+
+- `.build()`
+  - `.meta({...})`
+  - `.add_dep({...})`
   - `.graph()`
-  - methods on the returned handle
-- internal implementation:
-  - any opaque build-graph handle representation
-- forbidden user surface:
-  - public `Graph` type
-  - explicit `Graph` annotations
-  - build entry parameters
+
+Do not push metadata onto `.graph()`.
+Do not keep a separate `package()` manifest routine.
+Do not keep YAML parsing.
+
+## Current Reality
+
+Right now:
+
+- formal packages require `package.yaml`
+- metadata is parsed in `lang/compiler/fol-package/src/metadata.rs`
+- package loading requires both `package.yaml` and `build.fol`
+- dependency preloading comes from parsed metadata
+- editor/root detection docs still mention `package.yaml`
+- many examples/tests create `package.yaml`
+
+So this is a full package-loading redesign, not just a syntax tweak.
 
 ## Epoch 1: Freeze The New Contract
 
 Goal:
-Write down the real public contract before code changes begin.
+Write down the new one-file package model before code changes begin.
 
 ### Slice Tracker
 
-- [x] Slice 1. Update `book/src/055_build/_index.md` to say:
-  - canonical entry is `pro[] build(): non`
-  - graph access is `.graph()`
-  - `Graph` is not a public type
-- [x] Slice 2. Update `book/src/055_build/100_build_file.md` to explain:
-  - `build.fol` is still ordinary FOL
-  - `.graph()` is build-only
-  - explicit `Graph` annotations are not part of the language surface
-- [x] Slice 3. Update package/module chapters in:
+- [x] Slice 1. Update book chapters that currently teach `package.yaml`:
   - `book/src/600_modules/100_import.md`
   - `book/src/600_modules/200_blocks.md`
-  so they stop teaching `build(graph: Graph)`
-- [x] Slice 4. Update version/planning docs if they mention public `Graph`
+  - `book/src/055_build/100_build_file.md`
+- [ ] Slice 2. Add docs for the new `.build()` ambient API:
+  - `.build().meta({...})`
+  - `.build().add_dep({...})`
+  - `.build().graph()`
+- [ ] Slice 3. Update architecture/runtime docs that mention two control files
+- [ ] Slice 4. Update planning/version docs to state:
+  - `package.yaml` is removed
+  - `build.fol` is the only package control file
 
 ### Exit criteria
 
-- The book teaches only `.graph()` and `build(): non`.
+- The docs teach only the unified `.build()` model.
 
-## Epoch 2: Remove Public Graph From Build Validation
+## Epoch 2: Define Build-Context Metadata Semantics
 
 Goal:
-Make the build loader accept only `pro[] build(): non`.
+Add semantic metadata for the new build context API.
 
 ### Slice Tracker
 
-- [x] Slice 5. Change build-entry validation in
-  `lang/compiler/fol-package/src/build_entry.rs` to require:
-  - zero parameters
-  - return type `non`
-- [x] Slice 6. Rewrite validation errors to describe:
-  - no parameters allowed
-  - old `build(graph: Graph)` is invalid
-- [x] Slice 7. Update package build parse errors in
-  `lang/compiler/fol-package/src/build.rs` to reference
-  `pro[] build(): non`
-- [x] Slice 8. Update all build-entry validation tests to:
-  - accept `build(): non`
-  - reject `build(graph: Graph)`
+- [ ] Slice 5. Add an internal opaque build-context handle alongside the existing graph handle
+- [ ] Slice 6. Define canonical build-context methods:
+  - `meta`
+  - `add_dep`
+  - `graph`
+- [ ] Slice 7. Define canonical record shapes for:
+  - `meta`
+  - `add_dep`
+- [ ] Slice 8. Keep graph methods on the graph handle only, not on the build-context handle
+- [ ] Slice 9. Add semantic tests for:
+  - build-context handle families
+  - method lookup
+  - config record shapes
 
 ### Exit criteria
 
-- The loader no longer encodes public `Graph`.
+- The build semantic catalog knows about the new `.build()` surface.
 
-## Epoch 3: Add `.graph()` As A Build-Only Surface
+## Epoch 3: Replace Ambient `.graph()` With Ambient `.build()`
 
 Goal:
-Make `.graph()` the only public graph access path.
+Make `.build()` the top-level ambient entrypoint.
 
 ### Slice Tracker
 
-- [x] Slice 9. Define `.graph()` in `fol-build` semantic metadata as a
-  build-only ambient call
-- [x] Slice 10. Ensure resolver/typecheck recognize `.graph()` only for build
-  source units
-- [x] Slice 11. Ensure ordinary source units reject `.graph()` explicitly
-- [x] Slice 12. Add tests for:
-  - `.graph()` valid in `build.fol`
-  - `.graph()` invalid outside `build.fol`
-  - `.graph().add_exe(...)` valid in build files
+- [ ] Slice 10. Add `.build()` evaluation support in the build executor
+- [ ] Slice 11. Route `.build().graph()` to the existing internal graph handle
+- [ ] Slice 12. Keep inferred locals working:
+  - `var build = .build();`
+  - `var graph = build.graph();`
+- [ ] Slice 13. Add executor tests for:
+  - `.build()`
+  - `.build().graph()`
+  - inferred locals for build and graph
 
 ### Exit criteria
 
-- `.graph()` is real and build-only.
+- `.build()` is the new ambient root in `build.fol`.
 
-## Epoch 4: Make The Returned Handle Opaque
+## Epoch 4: Move Package Metadata Out Of YAML
 
 Goal:
-Keep graph access usable without making `Graph` a public type name.
+Teach the loader to get metadata from `build.fol` instead of `package.yaml`.
 
 ### Slice Tracker
 
-- [x] Slice 13. Remove public build-stdlib injection of a user-visible `Graph`
-  type from resolver semantics
-- [x] Slice 14. Keep the internal semantic/runtime graph receiver type opaque to
-  source-level type syntax
-- [x] Slice 15. Allow inferred locals from `.graph()`:
-  - `var graph = .graph();`
-- [x] Slice 16. Reject explicit type spellings like:
-  - `var graph: Graph = .graph();`
-  - helper params/returns using `Graph`
-- [x] Slice 17. Add tests proving:
-  - inferred local binding works
-  - explicit `Graph` annotations fail
-  - a user-defined ordinary `Graph` type in non-build code is unaffected
+- [ ] Slice 14. Define the canonical `meta` record fields:
+  - `name`
+  - `version`
+  - optional `kind`
+  - optional `description`
+  - optional `license`
+- [ ] Slice 15. Add extraction logic for `build.meta({...})`
+- [ ] Slice 16. Validate metadata constraints formerly enforced by YAML parsing:
+  - required `name`
+  - required `version`
+  - valid package name
+  - no duplicate metadata keys
+- [ ] Slice 17. Replace `parse_package_metadata` usage in package loading with build metadata extraction
+- [ ] Slice 18. Keep equivalent diagnostics for malformed metadata
+- [ ] Slice 19. Add tests for:
+  - valid metadata extraction
+  - missing required metadata
+  - invalid names
+  - duplicate metadata declarations
 
 ### Exit criteria
 
-- The graph handle is usable but not nameable by users.
+- Formal package identity comes from `build.fol`, not YAML.
 
-## Epoch 5: Remove Graph-Parameter Execution Logic
+## Epoch 5: Move Direct Dependencies Out Of YAML
 
 Goal:
-Delete executor behavior centered on the injected graph parameter.
+Teach the loader to get direct dependencies from `build.fol`.
 
 ### Slice Tracker
 
-- [x] Slice 18. Refactor `BuildBodyExecutor` so graph access is no longer tied
-  to `self.graph_param`
-- [x] Slice 19. Remove special identifier handling for the graph parameter
-- [x] Slice 20. Evaluate `.graph()` directly to the active internal graph handle
-- [x] Slice 21. Remove helper-call conventions that depended on graph being the
-  first helper parameter
-- [x] Slice 22. Add executor tests for:
-  - direct `.graph().method(...)`
-  - local inferred graph handle
-  - no public `Graph` parameter path
+- [ ] Slice 20. Define canonical `add_dep` record fields:
+  - `alias`
+  - `source`
+  - `target`
+- [ ] Slice 21. Support only current direct dependency source kinds:
+  - `loc`
+  - `pkg`
+  - `git`
+- [ ] Slice 22. Add extraction logic for `build.add_dep({...})`
+- [ ] Slice 23. Replace metadata dependency preload paths with extracted build dependencies
+- [ ] Slice 24. Keep validation for:
+  - valid alias names
+  - supported source kinds
+  - non-empty targets
+  - duplicate dependency aliases
+- [ ] Slice 25. Add tests for:
+  - local deps
+  - package-store deps
+  - git deps
+  - duplicate alias rejection
+  - malformed dependency rejection
 
 ### Exit criteria
 
-- Execution is ambient and opaque, not parameter-based.
+- Direct dependency loading comes from `build.fol`, not YAML.
 
-## Epoch 6: Rewrite User-Facing Surfaces
+## Epoch 6: Delete `package.yaml` From Package Loading
 
 Goal:
-Move scaffolding, examples, and tests to the new design.
+Remove YAML as a required or supported package control input.
 
 ### Slice Tracker
 
-- [x] Slice 23. Rewrite frontend scaffolding to emit:
-  - `pro[] build(): non`
-  - `.graph()` access
-- [x] Slice 24. Rewrite examples under `examples/`
-- [x] Slice 25. Rewrite fixtures under `test/apps`, `test/large_examples`, and
-  `xtra/`
-- [x] Slice 26. Rewrite synthetic build-file helpers across frontend/editor
-  tests
-- [x] Slice 27. Add example coverage for:
-  - direct `.graph()` use
-  - inferred local graph binding
-  - user-defined non-build `Graph` type without collisions
+- [ ] Slice 26. Delete `lang/compiler/fol-package/src/metadata.rs` public usage from active loader paths
+- [ ] Slice 27. Remove `package.yaml` file existence checks from formal package loading
+- [ ] Slice 28. Require `build.fol` only for formal package roots
+- [ ] Slice 29. Update package-session identity/display-name derivation to use build metadata
+- [ ] Slice 30. Remove loader diagnostics that mention missing `package.yaml`
+- [ ] Slice 31. Add tests proving:
+  - formal packages load with `build.fol` only
+  - roots with only YAML fail or are unsupported
+  - dependency preloading still works without YAML
 
 ### Exit criteria
 
-- No checked-in example teaches public `Graph`.
+- `package.yaml` is no longer part of active loading.
 
-## Epoch 7: Update Editor And Frontend Expectations
+## Epoch 7: Frontend, Fetch, Lockfile, And Store Integration
 
 Goal:
-Make tooling reflect the new public surface.
+Make all package-management flows work with `build.fol` metadata.
 
 ### Slice Tracker
 
-- [x] Slice 28. Update `fol-editor` build-file completion and diagnostics for
-  `.graph()`
-- [x] Slice 29. Remove editor assumptions that `Graph` is a public build type
-- [x] Slice 30. Update frontend/build-route errors and fixtures to reference
-  `build(): non`
-- [x] Slice 31. Add integration tests for:
-  - new-style build files
-  - old-style build files rejected
-  - `.graph()` not usable outside `build.fol`
+- [ ] Slice 32. Update fetch/materialization flows that currently read/write assumptions about `package.yaml`
+- [ ] Slice 33. Ensure lockfile/fetch diagnostics point at `build.fol` metadata when relevant
+- [ ] Slice 34. Update package-store root validation for build-only metadata
+- [ ] Slice 35. Update frontend diagnostics/help text away from `package.yaml`
+- [ ] Slice 36. Add integration tests for:
+  - git deps
+  - package-store deps
+  - lockfile flows
+  - fetch flows
+  under the new one-file package model
 
 ### Exit criteria
 
-- CLI and editor agree on the new build contract.
+- package-management UX works without YAML.
 
-## Epoch 8: Full Repo Cleanup
+## Epoch 8: Editor And Root Detection
 
 Goal:
-Delete the last stale references to public `Graph`.
+Make tooling stop treating `package.yaml` as a root marker or required package indicator.
 
 ### Slice Tracker
 
-- [x] Slice 32. Remove docs/comments that still describe `Graph` as public
-- [x] Slice 33. Replace remaining tests that reference `build(graph: Graph)`
-- [x] Slice 34. Add regression tests that fail if public `Graph` comes back
-- [x] Slice 35. Run a full repo audit and remove remaining stale public-Graph
-  references
+- [ ] Slice 37. Update editor/root discovery docs from:
+  - `package.yaml`
+  - `fol.work.yaml`
+  toward the new build-only package marker
+- [ ] Slice 38. Update editor integration tests and fixtures to use `build.fol` only
+- [ ] Slice 39. Ensure LSP workspace/package detection still succeeds for formal packages
+- [ ] Slice 40. Add regression tests proving editor features work for build-only package roots
 
 ### Exit criteria
 
-- `Graph` is no longer part of the public build language.
+- editor tooling no longer depends on `package.yaml`.
+
+## Epoch 9: Examples, Fixtures, And Book Migration
+
+Goal:
+Replace checked-in YAML examples/fixtures with the new `build.fol` metadata model.
+
+### Slice Tracker
+
+- [ ] Slice 41. Rewrite examples under `examples/` to remove `package.yaml`
+- [ ] Slice 42. Rewrite formal-package fixtures under `test/app`, `test/apps`, and `test/large_examples`
+- [ ] Slice 43. Rewrite resolver/package/session fixtures that currently author YAML metadata
+- [ ] Slice 44. Update book examples to show:
+  - `build.meta({...})`
+  - `build.add_dep({...})`
+  - `build.graph()`
+- [ ] Slice 45. Add positive example coverage for:
+  - single package
+  - loc dep
+  - pkg dep
+  - git dep
+  - mixed models
+
+### Exit criteria
+
+- checked-in examples teach only the new one-file control model.
+
+## Epoch 10: Hard Cleanup
+
+Goal:
+Delete the old YAML path entirely.
+
+### Slice Tracker
+
+- [ ] Slice 46. Remove public exports that only exist for YAML metadata parsing
+- [ ] Slice 47. Remove stale comments and docs that mention `package.yaml` as required control metadata
+- [ ] Slice 48. Add regression tests that fail if `package.yaml` becomes required again
+- [ ] Slice 49. Run a full repo audit for:
+  - `package.yaml`
+  - metadata parser references
+  - YAML-root assumptions
+- [ ] Slice 50. Final consistency pass on diagnostics and scaffolding
+
+### Exit criteria
+
+- `package.yaml` is gone from the active package system.
 
 ## Expected End State
 
 When this plan is complete:
 
-- build entry is `pro[] build(): non`
-- `.graph()` is the only public graph access surface
-- `.graph()` is valid only in `build.fol`
-- the returned graph handle supports build methods
-- the graph handle can be inferred in locals
-- `Graph` is not a public type name
-- user code can define its own `Graph` without collision
-- old `build(graph: Graph)` is rejected everywhere
+- `build.fol` is the only package control file
+- the only canonical entry is:
+  - `pro[] build(): non`
+- package metadata is declared through:
+  - `.build().meta({...})`
+- direct dependencies are declared through:
+  - `.build().add_dep({...})`
+- artifact graph access is declared through:
+  - `.build().graph()`
+- no package loader path reads `package.yaml`
+- no docs/examples require `package.yaml`
+- no compatibility path remains
