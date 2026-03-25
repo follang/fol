@@ -130,7 +130,7 @@ If a new dependency/output/install shape is chosen:
 - record the intended public dependency/output story in docs comments
 - no behavior change
 
-### Slice 2
+### Slice 2 [complete]
 
 - add a book note comparing current FOL build goals against:
   - dependency handles
