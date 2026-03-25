@@ -320,7 +320,8 @@ pub fn canonical_build_context_method_signatures() -> Vec<BuildSemanticMethodSig
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "meta")
             .with_param(BuildSemanticMethodParameter::record("config")),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "add_dep")
-            .with_param(BuildSemanticMethodParameter::record("config")),
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::DependencyHandle),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "graph")
             .returning(BuildSemanticTypeFamily::Graph),
     ]
@@ -761,6 +762,13 @@ mod tests {
         assert!(names.contains(&"meta"));
         assert!(names.contains(&"add_dep"));
         assert!(names.contains(&"graph"));
+        assert_eq!(
+            signatures
+                .iter()
+                .find(|signature| signature.name == "add_dep")
+                .and_then(|signature| signature.returns),
+            Some(BuildSemanticTypeFamily::DependencyHandle)
+        );
     }
 
     #[test]

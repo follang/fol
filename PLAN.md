@@ -157,7 +157,7 @@ If a new dependency/output/install shape is chosen:
   dependency handle intentionally, not just metadata side-effects
 - tighten tests around returned dependency values
 
-### Slice 5
+### Slice 5 [complete]
 
 - define public semantic signatures for dependency handle methods:
   - `module(name)`
