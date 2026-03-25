@@ -11,11 +11,11 @@ shares one namespace. `build.fol` is the one exception.
 Rules for `build.fol`:
 
 - It is its own compilation unit — it does not see sibling `.fol` files
-- It has one implicit import: the build stdlib (`fol/build`), providing `Graph`
-  and all handle types
+- It has one implicit build stdlib scope, exposing `.graph()` and build-only
+  handle methods
 - It can define local helper `fun[]`, `pro[]`, and `typ` declarations
 - Those local declarations are not exported to the package
-- It must declare exactly one `pro[] build(graph: Graph): non` entry
+- It must declare exactly one `pro[] build(): non` entry
 - Additional `use` imports from the FOL stdlib are allowed
 
 ## Compilation Pipeline
@@ -46,35 +46,50 @@ use filesystem or network APIs, or contain more than one canonical entry.
 The entry must match exactly:
 
 ```fol
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
     ...
 }
 ```
 
 - `pro[]` — procedure with no receivers
-- parameter name `graph`, type `Graph`
+- no parameters
 - return type `non`
 
-Missing entry, wrong signature, or duplicate entries are compile errors.
+The active build graph is accessed explicitly through the ambient build-only
+accessor:
+
+```fol
+.graph()
+```
+
+`.graph()` returns an opaque build-only handle. The handle type is not public
+language surface and should not be named explicitly in source code.
+
+Missing entry, wrong signature, duplicate entries, the old injected graph
+parameter form, or explicit `Graph` type syntax are compile errors.
 
 ## Local Helpers
 
 `build.fol` can define helper functions visible only within itself:
 
 ```fol
-fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
-    return graph.add_static_lib({ name = name, root = root });
+fun[] make_lib(name: str, root: str): Artifact = {
+    return .graph().add_static_lib({ name = name, root = root });
 }
 
-pro[] build(graph: Graph): non = {
-    var core = make_lib(graph, "core", "src/core/lib.fol");
-    var io   = make_lib(graph, "io",   "src/io/lib.fol");
+pro[] build(): non = {
+    var graph = .graph();
+    var core = make_lib("core", "src/core/lib.fol");
+    var io   = make_lib("io",   "src/io/lib.fol");
     var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
     app.link(core);
     app.link(io);
     graph.install(app);
 }
 ```
+
+Helpers may call `.graph()` ambiently, but they do not name a public `Graph`
+type in source.
 
 ## package.yaml
 
@@ -87,18 +102,18 @@ version: 1.0.0
 
 The build system reads `name` and `version` from the manifest. Dependencies
 declared in the manifest are made available to `build.fol` via
-`graph.dependency(...)`.
+`.graph().dependency(...)`.
 
 ## Capability Restrictions
 
 The build executor enforces a capability model. Allowed operations:
 
 - graph mutation (adding artifacts, steps, options)
-- option reads (`graph.standard_target()`, `graph.standard_optimize()`, etc.)
-- path joining and normalization (`graph.path_from_root(...)`)
+- option reads (`.graph().standard_target()`, `.graph().standard_optimize()`, etc.)
+- path joining and normalization (`.graph().path_from_root(...)`)
 - basic string and container operations
-- controlled file generation (`graph.write_file(...)`, `graph.copy_file(...)`)
-- controlled process execution (`graph.add_system_tool(...)`)
+- controlled file generation (`.graph().write_file(...)`, `.graph().copy_file(...)`)
+- controlled process execution (`.graph().add_system_tool(...)`)
 
 Forbidden operations (produce a compile or runtime error):
 

@@ -1,49 +1,41 @@
-# PLAN: Build Entry Ambient Graph Redesign
+# PLAN: Opaque Ambient Build Graph
 
 Last updated: 2026-03-25
 
 ## Intent
 
-This plan replaces the current canonical build entry:
+This plan replaces the current public build entry model:
 
 ```fol
 pro[] build(graph: Graph): non
 ```
 
-with the new canonical build entry:
+with:
 
 ```fol
 pro[] build(): non
 ```
 
-and adds a build-only ambient accessor:
+and a build-only ambient accessor:
 
 ```fol
-.graph(): Graph
+.graph()
 ```
 
-The goal is to remove the awkward injected-parameter shape from `build.fol`
-without turning the build system into a separate language.
+The key rule is:
 
-The new mental model is:
+- `Graph` is not a public language type
+- `Graph` is not nameable by users
+- `Graph` is valid only as an internal compiler/runtime concept
+- user-visible build graph access happens only through `.graph()`
+- `.graph()` is valid only in `build.fol`
 
-- `build.fol` is still ordinary FOL
-- the build entry no longer receives a magic parameter
-- the active build graph is accessed explicitly through `.graph()`
-- graph methods stay on `Graph`
-- old `build(graph: Graph)` is deleted, not preserved
+This keeps the build system ordinary FOL while removing the awkward injected
+parameter and avoiding collisions with user-defined types named `Graph`.
 
-## Non-Negotiable Rules
+## Required Language Contract
 
-1. No compatibility path for `pro[] build(graph: Graph): non`.
-2. No dual accepted signatures.
-3. No fallback parser or validator behavior.
-4. No mixed "sometimes ambient, sometimes injected" execution path.
-5. `build.fol` remains ordinary FOL, not a separate DSL.
-
-## New Canonical Surface
-
-### Canonical entry
+### Canonical build entry
 
 ```fol
 pro[] build(): non = {
@@ -51,7 +43,6 @@ pro[] build(): non = {
     var app = graph.add_exe({
         name = "app",
         root = "src/main.fol",
-        fol_model = "std",
     });
     graph.add_run(app);
 }
@@ -68,345 +59,248 @@ pro[] build(): non = {
 }
 ```
 
-### Helper routine form
+### Non-rules
 
-`Graph` stays as a real build type for helper routines and local bindings:
-
-```fol
-fun[] add_app(graph: Graph, name: str, root: str): ArtifactHandle = {
-    return graph.add_exe({ name = name, root = root });
-}
-
-pro[] build(): non = {
-    var graph = .graph();
-    var app = add_app(graph, "app", "src/main.fol");
-    graph.add_run(app);
-}
-```
-
-### Ambient helper form
-
-Also valid if the helper wants ambient access:
+These should be invalid:
 
 ```fol
-fun[] add_app(name: str, root: str): ArtifactHandle = {
-    return .graph().add_exe({ name = name, root = root });
-}
+pro[] build(graph: Graph): non = { ... }
+fun[] helper(graph: Graph): non = { ... }
+var graph: Graph = .graph();
 ```
 
-## Scope Decision
+So:
 
-This plan does **not** remove `Graph` as a build type.
+- inferred locals are allowed
+- explicit `Graph` type syntax is not allowed
+- helper routines cannot name `Graph`
 
-It removes only the requirement that the build entry receive an injected graph
-parameter.
+## Core Principles
 
-That keeps the change focused and avoids unnecessary churn in:
+1. `.graph()` is the only public access path to the build graph.
+2. `.graph()` is valid only in `build.fol`.
+3. `Graph` must not exist as a public injected build type.
+4. The compiler may keep any internal runtime/semantic graph type it wants.
+5. Old `build(graph: Graph)` is deleted with no compatibility path.
 
-- helper routine typing
-- local graph bindings
-- resolver/build stdlib type injection
-- graph method semantics
+## Current Reality
 
-## Current Reality From The Scan
+The current repo still assumes a public `Graph` surface in many places:
 
-The current `graph` parameter is baked into several layers:
+- build entry validation
+- package build parsing errors
+- resolver build-stdlib injection
+- restricted build executor graph-parameter logic
+- editor tests and build-file completion
+- scaffolded `build.fol`
+- examples and fixtures
+- book chapters
 
-- package/build entry validation in
-  `lang/compiler/fol-package/src/build_entry.rs`
-- package build parsing diagnostics in
-  `lang/compiler/fol-package/src/build.rs`
-- build stdlib injection and `Graph` type visibility in
-  `lang/compiler/fol-resolver/src/inject.rs`
-- restricted build execution in
-  `lang/execution/fol-build/src/executor/eval_expr.rs`
-- graph-method execution in
-  `lang/execution/fol-build/src/executor/graph_methods.rs`
-- build docs across `book/src/055_build/*` and module/package chapters
-- examples, scaffolding, frontend tests, resolver tests, editor tests
-
-One especially important detail:
-
-- the restricted build executor currently recognizes graph access by comparing
-  identifiers against `self.graph_param`
-- helper execution has explicit special logic for "graph is the first helper
-  parameter"
-
-That means `.graph()` cannot be bolted on as just documentation. It must become
-part of the executor/runtime contract.
-
-## Design Direction
-
-The clean design is:
-
-1. canonical build entry is `pro[] build(): non`
-2. `.graph()` becomes a build-only dot intrinsic or build-runtime ambient call
-3. build executor owns one active graph handle implicitly
-4. `Graph` type and graph methods remain unchanged
-5. helper routines may still accept `graph: Graph`, but that becomes ordinary
-   user choice, not required entry shape
+That means this is a real semantic migration, not a docs-only rename.
 
 ## Architecture Decision
 
-Use a build-only ambient accessor with ordinary call syntax:
+Use this exact model:
 
-- `.graph()`
-
-Do **not** try to model it as:
-
-- a fake implicit local named `graph`
-- a source-unit variable injection
-- a global function `graph()`
-- direct ambient methods like `.add_exe(...)`
-
-Why `.graph()` is the right shape:
-
-- explicit but not awkward
-- reads like other dot-root calls already in the language
-- keeps graph methods grouped under the `Graph` handle
-- avoids polluting normal identifier scope
-- keeps build-only ambient capability obvious
+- user-facing surface:
+  - `.graph()`
+  - methods on the returned handle
+- internal implementation:
+  - any opaque build-graph handle representation
+- forbidden user surface:
+  - public `Graph` type
+  - explicit `Graph` annotations
+  - build entry parameters
 
 ## Epoch 1: Freeze The New Contract
 
 Goal:
-Write down the new canonical surface before implementation starts.
+Write down the real public contract before code changes begin.
 
 ### Slice Tracker
 
-- [x] Slice 1. Update `book/src/055_build/_index.md` to declare the new
-  canonical entry:
-  - `pro[] build(): non`
-  - ambient `.graph(): Graph`
-  - no `build(graph: Graph)` compatibility
-- [ ] Slice 2. Update `book/src/055_build/100_build_file.md` to explain:
-  - `build.fol` still uses ordinary FOL syntax
-  - the graph is ambient through `.graph()`
-  - the old injected parameter is deleted
-- [ ] Slice 3. Update `book/src/600_modules/100_import.md` and
-  `book/src/600_modules/200_blocks.md` so package/build chapters no longer
-  reference `build(graph: Graph)`
-- [ ] Slice 4. Update version/planning docs if needed so they describe the new
-  build contract honestly
+- [x] Slice 1. Update `book/src/055_build/_index.md` to say:
+  - canonical entry is `pro[] build(): non`
+  - graph access is `.graph()`
+  - `Graph` is not a public type
+- [x] Slice 2. Update `book/src/055_build/100_build_file.md` to explain:
+  - `build.fol` is still ordinary FOL
+  - `.graph()` is build-only
+  - explicit `Graph` annotations are not part of the language surface
+- [x] Slice 3. Update package/module chapters in:
+  - `book/src/600_modules/100_import.md`
+  - `book/src/600_modules/200_blocks.md`
+  so they stop teaching `build(graph: Graph)`
+- [x] Slice 4. Update version/planning docs if they mention public `Graph`
 
 ### Exit criteria
 
-- The book no longer teaches the old entrypoint.
-- The new contract is explicit before parser/runtime work begins.
+- The book teaches only `.graph()` and `build(): non`.
 
-## Epoch 2: Change Build Entry Validation
+## Epoch 2: Remove Public Graph From Build Validation
 
 Goal:
-Make the package/build loader accept only `pro[] build(): non`.
+Make the build loader accept only `pro[] build(): non`.
 
 ### Slice Tracker
 
-- [ ] Slice 5. Change `BuildEntrySignatureExpectation` in
-  `lang/compiler/fol-package/src/build_entry.rs` so the canonical entry has:
+- [ ] Slice 5. Change build-entry validation in
+  `lang/compiler/fol-package/src/build_entry.rs` to require:
   - zero parameters
-  - accepted return type `non`
-- [ ] Slice 6. Rewrite parameter-count/type validation errors to describe the
-  new required shape:
+  - return type `non`
+- [ ] Slice 6. Rewrite validation errors to describe:
   - no parameters allowed
-  - no graph parameter expected
-- [ ] Slice 7. Update package build parsing diagnostics in
-  `lang/compiler/fol-package/src/build.rs` to say:
-  - `build.fol must declare exactly one canonical pro[] build(): non entry`
-- [ ] Slice 8. Replace all build-entry validation tests so they reject
-  `build(graph: Graph)` and accept `build(): non`
-
-### Exit criteria
-
-- The loader only accepts the new entry signature.
-- Old `build(graph: Graph)` fails fast and explicitly.
-
-## Epoch 3: Introduce Ambient `.graph()`
-
-Goal:
-Define `.graph()` as the one sanctioned way to access the active build graph.
-
-### Slice Tracker
-
-- [ ] Slice 9. Decide and implement where `.graph()` is modeled semantically:
-  - as build-only ambient call metadata in `fol-build`
-  - not as a normal source-level declared routine
-- [ ] Slice 10. Extend build semantic metadata in
-  `lang/execution/fol-build/src/semantic.rs` and `stdlib.rs` to describe
-  `.graph(): Graph`
-- [ ] Slice 11. Ensure resolver/typecheck for build source units recognize
-  `.graph()` without requiring an injected local named `graph`
-- [ ] Slice 12. Add parser/resolver/typecheck tests proving:
-  - `.graph()` is valid in `build.fol`
-  - `.graph()` is invalid in ordinary source units
-  - graph methods still work through the returned handle
-
-### Exit criteria
-
-- `.graph()` is a real build-only surface.
-- No injected identifier is needed to access the graph.
-
-## Epoch 4: Remove Graph-Parameter Execution Semantics
-
-Goal:
-Delete the restricted-executor logic that relies on a graph parameter name.
-
-### Slice Tracker
-
-- [ ] Slice 13. Refactor `BuildBodyExecutor` in
-  `lang/execution/fol-build/src/executor/eval_expr.rs` so graph access is not
-  tied to `self.graph_param`
-- [ ] Slice 14. Remove the special-case identifier logic:
-  - `AstNode::Identifier { name } if name == &self.graph_param`
-- [ ] Slice 15. Teach expression evaluation to recognize `.graph()` directly and
-  return the active graph handle
-- [ ] Slice 16. Remove helper-call special handling that treats "first param is
-  graph" as an executor-level convention
-- [ ] Slice 17. Add executor tests for:
-  - `.graph().add_exe(...)`
-  - `var g = .graph(); g.add_exe(...)`
-  - helper routines that receive `Graph` explicitly
-  - helper routines that call `.graph()` ambiently
-
-### Exit criteria
-
-- Restricted execution no longer depends on a magic parameter name.
-- `.graph()` is the single ambient graph access path.
-
-## Epoch 5: Rework Build Stdlib And Editor Semantics
-
-Goal:
-Align build stdlib/editor behavior with the ambient accessor model.
-
-### Slice Tracker
-
-- [ ] Slice 18. Keep `Graph` injected as a type in build stdlib scope, but stop
-  depending on an entry parameter to make it usable
-- [ ] Slice 19. Add editor/LSP completion coverage for `.graph()` inside
-  `build.fol`
-- [ ] Slice 20. Ensure editor diagnostics and symbol/navigation tests for build
-  files use the new entry form and ambient graph access
-- [ ] Slice 21. Update build-file completion helpers so they no longer assume a
-  local identifier named `graph`
-
-### Exit criteria
-
-- `fol-editor` understands `.graph()` in build files.
-- Editor tests no longer encode the old entrypoint.
-
-## Epoch 6: Rewrite Examples, Scaffolding, And Fixtures
-
-Goal:
-Move all user-facing examples to the new build style.
-
-### Slice Tracker
-
-- [ ] Slice 22. Rewrite scaffolded `build.fol` templates in
-  `lang/tooling/fol-frontend/src/scaffold.rs` to emit:
-  - `pro[] build(): non`
-  - `var graph = .graph();`
-- [ ] Slice 23. Rewrite all checked-in examples under `examples/` to the new
-  form
-- [ ] Slice 24. Rewrite package fixtures under `test/apps`, `test/large_examples`,
-  and `xtra/` to the new form
-- [ ] Slice 25. Rewrite resolver/frontend/editor helpers that currently write
-  synthetic build files using `build(graph: Graph)`
-- [ ] Slice 26. Add focused positive examples for:
-  - direct `.graph().add_exe(...)`
-  - local binding `var graph = .graph()`
-  - helper routine with explicit `Graph`
-  - helper routine with ambient `.graph()`
-
-### Exit criteria
-
-- New projects and all examples teach only the new build style.
-- No checked-in example still uses the deleted entry form.
-
-## Epoch 7: Update Frontend And Build-Route Assumptions
-
-Goal:
-Make CLI/build routing depend on the new entry contract everywhere.
-
-### Slice Tracker
-
-- [ ] Slice 27. Update build-route error text in
-  `lang/tooling/fol-frontend/src/build_route/mod.rs` to reference
+  - old `build(graph: Graph)` is invalid
+- [ ] Slice 7. Update package build parse errors in
+  `lang/compiler/fol-package/src/build.rs` to reference
   `pro[] build(): non`
-- [ ] Slice 28. Update compile/fetch helpers and synthetic build fixtures in
-  `fol-frontend` tests
-- [ ] Slice 29. Add integration tests proving:
-  - new-style build files plan and execute
-  - old-style build files fail with the new canonical-entry error
-- [ ] Slice 30. Verify routed `build/run/test/check` still work unchanged on top
-  of the new graph-access mechanism
+- [ ] Slice 8. Update all build-entry validation tests to:
+  - accept `build(): non`
+  - reject `build(graph: Graph)`
 
 ### Exit criteria
 
-- CLI/build routing fully speaks the new entry shape.
-- Error messages are consistent.
+- The loader no longer encodes public `Graph`.
 
-## Epoch 8: Hard Delete Old Surface
+## Epoch 3: Add `.graph()` As A Build-Only Surface
 
 Goal:
-Remove the last code/comments/tests that encode the injected-parameter model.
+Make `.graph()` the only public graph access path.
 
 ### Slice Tracker
 
-- [ ] Slice 31. Remove remaining docs/comments that describe:
-  - "Graph is the sole parameter to `pro[] build`"
-  - helper conventions based on the old entry parameter
-- [ ] Slice 32. Audit resolver/typecheck/build tests for lingering
-  `return graph` / `build(graph: Graph)` fixtures and replace them
-- [ ] Slice 33. Add regression tests that specifically fail if the old entry
-  form starts parsing/validating/executing again
-- [ ] Slice 34. Run a full repo grep audit and remove the last stale references
-  to the old canonical entry from tracked source
+- [ ] Slice 9. Define `.graph()` in `fol-build` semantic metadata as a
+  build-only ambient call
+- [ ] Slice 10. Ensure resolver/typecheck recognize `.graph()` only for build
+  source units
+- [ ] Slice 11. Ensure ordinary source units reject `.graph()` explicitly
+- [ ] Slice 12. Add tests for:
+  - `.graph()` valid in `build.fol`
+  - `.graph()` invalid outside `build.fol`
+  - `.graph().add_exe(...)` valid in build files
 
 ### Exit criteria
 
-- The old entrypoint is gone from implementation and tracked examples.
-- Regression tests keep it gone.
+- `.graph()` is real and build-only.
 
-## Open Design Questions To Resolve During Implementation
+## Epoch 4: Make The Returned Handle Opaque
 
-These should be answered early and then kept stable:
+Goal:
+Keep graph access usable without making `Graph` a public type name.
 
-1. Should `.graph()` be callable only in `build.fol`, or in helper routines
-   defined inside `build.fol` too?
-   - recommendation: yes, anywhere inside build source units
-2. Should ordinary helper routines still be allowed to accept `graph: Graph`?
-   - recommendation: yes, keep this allowed
-3. Should `.graph()` return the same logical handle identity every call?
-   - recommendation: yes
-4. Should there be any implicit local named `graph`?
-   - recommendation: no
-5. Should the book prefer:
-   - direct `.graph().add_exe(...)`
-   - or `var graph = .graph();`
-   - recommendation: prefer local binding in most docs for readability
+### Slice Tracker
 
-## Recommended Implementation Order
+- [ ] Slice 13. Remove public build-stdlib injection of a user-visible `Graph`
+  type from resolver semantics
+- [ ] Slice 14. Keep the internal semantic/runtime graph receiver type opaque to
+  source-level type syntax
+- [ ] Slice 15. Allow inferred locals from `.graph()`:
+  - `var graph = .graph();`
+- [ ] Slice 16. Reject explicit type spellings like:
+  - `var graph: Graph = .graph();`
+  - helper params/returns using `Graph`
+- [ ] Slice 17. Add tests proving:
+  - inferred local binding works
+  - explicit `Graph` annotations fail
+  - a user-defined ordinary `Graph` type in non-build code is unaffected
 
-Do the work in this order:
+### Exit criteria
 
-1. docs and contract freeze
-2. build-entry validator switch
-3. `.graph()` semantic surface
-4. restricted executor rewrite
-5. frontend/build-route tests
-6. editor/tests/examples/scaffolding rewrite
-7. repo-wide deletion of old entry references
+- The graph handle is usable but not nameable by users.
 
-That order avoids a half-migrated state where docs/examples teach one shape but
-the loader still requires another.
+## Epoch 5: Remove Graph-Parameter Execution Logic
+
+Goal:
+Delete executor behavior centered on the injected graph parameter.
+
+### Slice Tracker
+
+- [ ] Slice 18. Refactor `BuildBodyExecutor` so graph access is no longer tied
+  to `self.graph_param`
+- [ ] Slice 19. Remove special identifier handling for the graph parameter
+- [ ] Slice 20. Evaluate `.graph()` directly to the active internal graph handle
+- [ ] Slice 21. Remove helper-call conventions that depended on graph being the
+  first helper parameter
+- [ ] Slice 22. Add executor tests for:
+  - direct `.graph().method(...)`
+  - local inferred graph handle
+  - no public `Graph` parameter path
+
+### Exit criteria
+
+- Execution is ambient and opaque, not parameter-based.
+
+## Epoch 6: Rewrite User-Facing Surfaces
+
+Goal:
+Move scaffolding, examples, and tests to the new design.
+
+### Slice Tracker
+
+- [ ] Slice 23. Rewrite frontend scaffolding to emit:
+  - `pro[] build(): non`
+  - `.graph()` access
+- [ ] Slice 24. Rewrite examples under `examples/`
+- [ ] Slice 25. Rewrite fixtures under `test/apps`, `test/large_examples`, and
+  `xtra/`
+- [ ] Slice 26. Rewrite synthetic build-file helpers across frontend/editor
+  tests
+- [ ] Slice 27. Add example coverage for:
+  - direct `.graph()` use
+  - inferred local graph binding
+  - user-defined non-build `Graph` type without collisions
+
+### Exit criteria
+
+- No checked-in example teaches public `Graph`.
+
+## Epoch 7: Update Editor And Frontend Expectations
+
+Goal:
+Make tooling reflect the new public surface.
+
+### Slice Tracker
+
+- [ ] Slice 28. Update `fol-editor` build-file completion and diagnostics for
+  `.graph()`
+- [ ] Slice 29. Remove editor assumptions that `Graph` is a public build type
+- [ ] Slice 30. Update frontend/build-route errors and fixtures to reference
+  `build(): non`
+- [ ] Slice 31. Add integration tests for:
+  - new-style build files
+  - old-style build files rejected
+  - `.graph()` not usable outside `build.fol`
+
+### Exit criteria
+
+- CLI and editor agree on the new build contract.
+
+## Epoch 8: Full Repo Cleanup
+
+Goal:
+Delete the last stale references to public `Graph`.
+
+### Slice Tracker
+
+- [ ] Slice 32. Remove docs/comments that still describe `Graph` as public
+- [ ] Slice 33. Replace remaining tests that reference `build(graph: Graph)`
+- [ ] Slice 34. Add regression tests that fail if public `Graph` comes back
+- [ ] Slice 35. Run a full repo audit and remove remaining stale public-Graph
+  references
+
+### Exit criteria
+
+- `Graph` is no longer part of the public build language.
 
 ## Expected End State
 
 When this plan is complete:
 
-- every canonical build file uses `pro[] build(): non`
-- ambient graph access is `.graph()`
-- graph methods still live on `Graph`
-- `Graph` remains a build-only type for helpers and locals
-- the executor no longer depends on a magic parameter name
-- scaffolding, examples, CLI tests, LSP tests, and the book all agree
-- `pro[] build(graph: Graph): non` is deleted everywhere and rejected explicitly
+- build entry is `pro[] build(): non`
+- `.graph()` is the only public graph access surface
+- `.graph()` is valid only in `build.fol`
+- the returned graph handle supports build methods
+- the graph handle can be inferred in locals
+- `Graph` is not a public type name
+- user code can define its own `Graph` without collision
+- old `build(graph: Graph)` is rejected everywhere

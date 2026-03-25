@@ -117,7 +117,7 @@ The difference is that the package layer evaluates one canonical build routine i
 Today that means:
 
 - `fol code build/run/test/check` starts from `build.fol`
-- the canonical entry is `pro[] build(graph: Graph): non`
+- the canonical entry is `pro[] build(): non`
 - old `def root: loc = ...` and `def build(...)` forms are not the build model
 
 So:
@@ -129,7 +129,7 @@ So:
 That means:
 
 - ordinary source `.fol` files use `use` to consume packages/namespaces
-- `build.fol` uses `pro[] build(graph: Graph): non` to mutate the build graph
+- `build.fol` uses `pro[] build(): non` plus `.graph()` to mutate the build graph
 
 So `use` and the build routine serve different jobs:
 

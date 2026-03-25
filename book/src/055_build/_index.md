@@ -26,11 +26,12 @@ The active build graph is accessed explicitly through the build-only ambient
 accessor:
 
 ```fol
-.graph(): Graph
+.graph()
 ```
 
-There is no injected `graph` parameter anymore. All build operations still go
-through methods on `Graph` and on the handles it returns.
+There is no injected `graph` parameter anymore. `.graph()` returns an opaque
+build-only handle. Users do not name its type explicitly. All build operations
+still go through methods on that returned handle and on the handles it returns.
 
 ## Minimal Example
 

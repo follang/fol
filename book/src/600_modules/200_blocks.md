@@ -140,7 +140,7 @@ It is a formal package root with:
 This keeps the language model clean:
 
 - source files `use` other namespaces/packages
-- package build execution starts from `pro[] build(graph: Graph): non` in `build.fol`
+- package build execution starts from `pro[] build(): non` in `build.fol`
 - package metadata lives in `package.yaml`
 - package loading happens before ordinary name resolution
 
