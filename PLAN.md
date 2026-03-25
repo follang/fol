@@ -169,12 +169,12 @@ Make `.graph()` the only public graph access path.
 
 ### Slice Tracker
 
-- [ ] Slice 9. Define `.graph()` in `fol-build` semantic metadata as a
+- [x] Slice 9. Define `.graph()` in `fol-build` semantic metadata as a
   build-only ambient call
-- [ ] Slice 10. Ensure resolver/typecheck recognize `.graph()` only for build
+- [x] Slice 10. Ensure resolver/typecheck recognize `.graph()` only for build
   source units
-- [ ] Slice 11. Ensure ordinary source units reject `.graph()` explicitly
-- [ ] Slice 12. Add tests for:
+- [x] Slice 11. Ensure ordinary source units reject `.graph()` explicitly
+- [x] Slice 12. Add tests for:
   - `.graph()` valid in `build.fol`
   - `.graph()` invalid outside `build.fol`
   - `.graph().add_exe(...)` valid in build files
@@ -190,16 +190,16 @@ Keep graph access usable without making `Graph` a public type name.
 
 ### Slice Tracker
 
-- [ ] Slice 13. Remove public build-stdlib injection of a user-visible `Graph`
+- [x] Slice 13. Remove public build-stdlib injection of a user-visible `Graph`
   type from resolver semantics
-- [ ] Slice 14. Keep the internal semantic/runtime graph receiver type opaque to
+- [x] Slice 14. Keep the internal semantic/runtime graph receiver type opaque to
   source-level type syntax
-- [ ] Slice 15. Allow inferred locals from `.graph()`:
+- [x] Slice 15. Allow inferred locals from `.graph()`:
   - `var graph = .graph();`
-- [ ] Slice 16. Reject explicit type spellings like:
+- [x] Slice 16. Reject explicit type spellings like:
   - `var graph: Graph = .graph();`
   - helper params/returns using `Graph`
-- [ ] Slice 17. Add tests proving:
+- [x] Slice 17. Add tests proving:
   - inferred local binding works
   - explicit `Graph` annotations fail
   - a user-defined ordinary `Graph` type in non-build code is unaffected
@@ -245,7 +245,7 @@ Move scaffolding, examples, and tests to the new design.
   `xtra/`
 - [x] Slice 26. Rewrite synthetic build-file helpers across frontend/editor
   tests
-- [ ] Slice 27. Add example coverage for:
+- [x] Slice 27. Add example coverage for:
   - direct `.graph()` use
   - inferred local graph binding
   - user-defined non-build `Graph` type without collisions
@@ -266,7 +266,7 @@ Make tooling reflect the new public surface.
 - [x] Slice 29. Remove editor assumptions that `Graph` is a public build type
 - [x] Slice 30. Update frontend/build-route errors and fixtures to reference
   `build(): non`
-- [ ] Slice 31. Add integration tests for:
+- [x] Slice 31. Add integration tests for:
   - new-style build files
   - old-style build files rejected
   - `.graph()` not usable outside `build.fol`
@@ -284,8 +284,8 @@ Delete the last stale references to public `Graph`.
 
 - [x] Slice 32. Remove docs/comments that still describe `Graph` as public
 - [x] Slice 33. Replace remaining tests that reference `build(graph: Graph)`
-- [ ] Slice 34. Add regression tests that fail if public `Graph` comes back
-- [ ] Slice 35. Run a full repo audit and remove remaining stale public-Graph
+- [x] Slice 34. Add regression tests that fail if public `Graph` comes back
+- [x] Slice 35. Run a full repo audit and remove remaining stale public-Graph
   references
 
 ### Exit criteria

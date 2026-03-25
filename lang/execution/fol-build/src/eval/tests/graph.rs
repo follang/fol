@@ -108,6 +108,37 @@ fn build_source_evaluator_supports_inferred_graph_locals() {
 }
 
 #[test]
+fn build_source_evaluator_rejects_public_graph_type_annotations() {
+    let source = concat!(
+        "fun[] make_graph(graph: Graph): non = {\n",
+        "    return;\n",
+        "};\n",
+        "pro[] build(): non = {\n",
+        "    var graph: Graph = .graph();\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("public Graph type syntax should be rejected in build.fol");
+
+    assert_eq!(error.kind(), super::super::BuildEvaluationErrorKind::InvalidInput);
+    assert!(
+        error.message().contains("public `Graph` type syntax"),
+        "expected Graph-type rejection, got: {error:?}"
+    );
+}
+
+#[test]
 fn build_source_evaluator_helpers_use_ambient_graph_without_graph_params() {
     let source = concat!(
         "fun[] make_lib(name: str, root: str): Artifact = {\n",

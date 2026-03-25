@@ -207,7 +207,6 @@ impl BuildBodyExecutor {
         // Build a child scope with parameter bindings
         let mut child_scope: BTreeMap<String, ExecValue> = BTreeMap::new();
 
-        // For helpers that take `graph: Graph` as first param, bind it to a sentinel
         for (param_name, value) in helper.params.iter().zip(evaluated_args.iter()) {
             if let Some(v) = value {
                 child_scope.insert(param_name.clone(), v.clone());

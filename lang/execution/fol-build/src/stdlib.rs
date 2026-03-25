@@ -8,12 +8,12 @@ use crate::semantic::{
 ///
 /// When the resolver encounters a file flagged as `ParsedSourceUnitKind::Build` it uses
 /// this scope instead of walking the sibling `.fol` files in the package folder.
-/// Every `Graph` method, every handle method, and every config record shape is listed here.
+/// Every ambient graph-handle method, every handle method, and every config record shape is listed here.
 #[derive(Debug, Clone)]
 pub struct BuildStdlibScope {
-    /// All types available in `build.fol` (Graph, Artifact, Step, Run, Install, …).
+    /// All public handle types available in `build.fol` (Artifact, Step, Run, Install, …).
     pub types: Vec<BuildSemanticType>,
-    /// Methods callable on the `Graph` handle (add_exe, install, step, dependency, …).
+    /// Methods callable on the ambient graph handle (add_exe, install, step, dependency, …).
     pub graph_methods: Vec<BuildSemanticMethodSignature>,
     /// Methods callable on artifact/step/run/install/dependency/generated-file handles.
     pub handle_methods: Vec<BuildSemanticMethodSignature>,
@@ -70,7 +70,6 @@ impl BuildStdlibScope {
 
 fn canonical_build_types() -> Vec<BuildSemanticType> {
     vec![
-        BuildSemanticType::graph(),
         BuildSemanticType::artifact_handle(),
         BuildSemanticType::module_handle(),
         BuildSemanticType::step_handle(),
@@ -97,7 +96,6 @@ mod tests {
         let families: Vec<BuildSemanticTypeFamily> =
             scope.types.iter().map(|t| t.family).collect();
 
-        assert!(families.contains(&BuildSemanticTypeFamily::Graph));
         assert!(families.contains(&BuildSemanticTypeFamily::ArtifactHandle));
         assert!(families.contains(&BuildSemanticTypeFamily::StepHandle));
         assert!(families.contains(&BuildSemanticTypeFamily::RunHandle));

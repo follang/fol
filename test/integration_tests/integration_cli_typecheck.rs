@@ -1,6 +1,81 @@
 use super::*;
 
     #[test]
+    fn test_cli_rejects_old_style_build_and_ordinary_dot_graph() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_build_graph_surface");
+        fs::create_dir_all(temp_root.join("src")).expect("should create source root");
+        fs::write(
+            temp_root.join("package.yaml"),
+            "name: demo\nversion: 0.1.0\n",
+        )
+        .expect("should write package metadata");
+        fs::write(
+            temp_root.join("src/main.fol"),
+            "fun[] main(): int = {\n    return 0;\n};\n",
+        )
+        .expect("should write app source");
+        fs::write(
+            temp_root.join("build.fol"),
+            "pro[] build(): non = {\n    var graph = .graph();\n    graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n};\n",
+        )
+        .expect("should write modern build file");
+
+        let success = run_fol(&[temp_root
+            .to_str()
+            .expect("package path should be utf-8")]);
+        assert!(
+            success.status.success(),
+            "modern ambient .graph() build should succeed: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&success.stdout),
+            String::from_utf8_lossy(&success.stderr)
+        );
+
+        fs::write(
+            temp_root.join("build.fol"),
+            "pro[] build(graph: Graph): non = {\n    return;\n};\n",
+        )
+        .expect("should rewrite old-style build file");
+        let old_style = run_fol(&[temp_root
+            .to_str()
+            .expect("package path should be utf-8")]);
+        let old_stdout = String::from_utf8_lossy(&old_style.stdout);
+        assert!(!old_style.status.success(), "old-style build should fail");
+        assert!(
+            old_stdout.contains("pro[] build(): non")
+                || old_stdout.contains(".graph()")
+                || old_stdout.contains("canonical build entry")
+                || old_stdout.contains("must not declare parameters")
+                || old_stdout.contains("could not resolve type 'Graph'"),
+            "old-style build failure should point at the ambient build contract"
+        );
+
+        fs::write(
+            temp_root.join("build.fol"),
+            "pro[] build(): non = {\n    var graph = .graph();\n    graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n};\n",
+        )
+        .expect("should restore modern build file");
+        fs::write(
+            temp_root.join("src/main.fol"),
+            "fun[] main(): int = {\n    .graph();\n    return 0;\n};\n",
+        )
+        .expect("should write ordinary-source .graph misuse");
+
+        let ordinary = run_fol(&[temp_root
+            .to_str()
+            .expect("package path should be utf-8")]);
+        let ordinary_stdout = String::from_utf8_lossy(&ordinary.stdout);
+        assert!(!ordinary.status.success(), "ordinary .graph() should fail");
+        assert!(
+            ordinary_stdout.contains(".graph"),
+            "ordinary source failure should mention .graph() misuse"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_typecheck_imported_symbol_mismatches_fail_full_chain() {
         use std::fs;
 
