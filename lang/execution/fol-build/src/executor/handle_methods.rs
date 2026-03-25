@@ -16,6 +16,12 @@ impl BuildBodyExecutor {
         args: &[AstNode],
     ) -> Result<Option<ExecValue>, BuildEvaluationError> {
         match &receiver {
+            ExecValue::Build if method == "graph" => {
+                let [] = args else {
+                    return Err(self.unsupported(method));
+                };
+                Ok(Some(ExecValue::Graph))
+            }
             ExecValue::Build => Err(self.unsupported(method)),
             ExecValue::Dependency { alias }
                 if matches!(method, "module" | "artifact" | "step" | "generated") =>

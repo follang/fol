@@ -200,7 +200,7 @@ Make `.build()` the top-level ambient entrypoint.
 ### Slice Tracker
 
 - [x] Slice 10. Add `.build()` evaluation support in the build executor
-- [ ] Slice 11. Route `.build().graph()` to the existing internal graph handle
+- [x] Slice 11. Route `.build().graph()` to the existing internal graph handle
 - [ ] Slice 12. Keep inferred locals working:
   - `var build = .build();`
   - `var graph = build.graph();`
