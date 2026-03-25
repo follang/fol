@@ -17,13 +17,17 @@ pub(super) fn absorbed_build_workspace_fixture(label: &str) -> FrontendWorkspace
     ));
     let app = root.join("app");
     fs::create_dir_all(app.join("src")).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(
         app.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
-            "    graph.add_exe(\"app\", \"src/main.fol\");\n",
-            "    return graph\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "    return;\n",
             "};\n",
         ),
     )
@@ -250,13 +254,14 @@ fn workspace_route_planner_accepts_only_semantic_members() {
     let modern = root.join("modern");
     fs::create_dir_all(modern.join("src")).unwrap();
     fs::write(
-        modern.join("package.yaml"),
-        "name: modern\nversion: 0.1.0\n",
-    )
-    .unwrap();
-    fs::write(
         modern.join("build.fol"),
-        "pro[] build(): non = {\n    return graph\n};\n",
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"modern\", version = \"0.1.0\" });\n",
+            "    return;\n",
+            "};\n",
+        ),
     )
     .unwrap();
     fs::write(

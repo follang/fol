@@ -264,7 +264,7 @@ mod integration_tests {
                 "pro[] build(): non = {{\n",
                 "    var build = .build();\n",
                 "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
-                "    var graph = .graph();\n",
+                "    var graph = build.graph();\n",
                 "    var app = graph.add_exe({{ name = \"{name}\", root = \"src/main.fol\" }});\n",
                 "    graph.install(app);\n",
                 "    graph.add_run(app);\n",
@@ -274,30 +274,25 @@ mod integration_tests {
         )
     }
 
-    fn semantic_lib_build(name: &str) -> String {
-        format!(
-            concat!(
-                "pro[] build(): non = {{\n",
-                "    var build = .build();\n",
-                "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
-                "    var graph = .graph();\n",
-                "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
-                "    graph.install(lib);\n",
-                "}};\n",
-            ),
-            name = name
-        )
-    }
-
     fn create_git_package_repo(root: &Path, name: &str, version: &str) {
         std::fs::create_dir_all(root.join("src")).expect("Should create git package source dir");
         std::fs::write(
-            root.join("package.yaml"),
-            format!("name: {name}\nversion: {version}\n"),
+            root.join("build.fol"),
+            format!(
+                concat!(
+                    "pro[] build(): non = {{\n",
+                    "    var build = .build();\n",
+                    "    build.meta({{ name = \"{name}\", version = \"{version}\" }});\n",
+                    "    var graph = build.graph();\n",
+                    "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
+                    "    graph.install(lib);\n",
+                    "}};\n",
+                ),
+                name = name,
+                version = version
+            ),
         )
-        .expect("Should write git package metadata");
-        std::fs::write(root.join("build.fol"), semantic_lib_build(name))
-            .expect("Should write git package build");
+        .expect("Should write git package build");
         std::fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1;\n")
             .expect("Should write git package source");
 
@@ -319,20 +314,29 @@ mod integration_tests {
 
     fn create_app_with_git_dependency(app_root: &Path, remote_root: &Path) {
         std::fs::create_dir_all(app_root.join("src")).expect("Should create app source dir");
+        let name = app_root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("app");
         std::fs::write(
-            app_root.join("package.yaml"),
+            app_root.join("build.fol"),
             format!(
-                "name: {}\nversion: 0.1.0\ndep.logtiny: git:git+file://{}\n",
-                app_root
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .unwrap_or("app"),
-                remote_root.display()
+                concat!(
+                    "pro[] build(): non = {{\n",
+                    "    var build = .build();\n",
+                    "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
+                    "    build.add_dep({{ alias = \"logtiny\", source = \"git\", target = \"git+file://{remote}\" }});\n",
+                    "    var graph = build.graph();\n",
+                    "    var app = graph.add_exe({{ name = \"{name}\", root = \"src/main.fol\" }});\n",
+                    "    graph.install(app);\n",
+                    "    graph.add_run(app);\n",
+                    "}};\n",
+                ),
+                name = name,
+                remote = remote_root.display()
             ),
         )
-        .expect("Should write app manifest");
-        std::fs::write(app_root.join("build.fol"), semantic_bin_build("app"))
-            .expect("Should write app build");
+        .expect("Should write app build");
         std::fs::write(
             app_root.join("src/main.fol"),
             "fun[] main(): int = {\n    return 0;\n};\n",

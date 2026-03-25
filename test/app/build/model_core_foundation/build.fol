@@ -1,5 +1,7 @@
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "model_core_foundation", version = "0.1.0" });
+    var graph = build.graph();
     var app = graph.add_exe({
         name = "model_core_foundation",
         root = "src/main.fol",

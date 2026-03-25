@@ -7,18 +7,20 @@ use super::*;
         let temp_root = unique_temp_root("cli_build_graph_surface");
         fs::create_dir_all(temp_root.join("src")).expect("should create source root");
         fs::write(
-            temp_root.join("package.yaml"),
-            "name: demo\nversion: 0.1.0\n",
-        )
-        .expect("should write package metadata");
-        fs::write(
             temp_root.join("src/main.fol"),
             "fun[] main(): int = {\n    return 0;\n};\n",
         )
         .expect("should write app source");
         fs::write(
             temp_root.join("build.fol"),
-            "pro[] build(): non = {\n    var graph = .graph();\n    graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n};\n",
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    var graph = build.graph();\n",
+                "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+                "};\n",
+            ),
         )
         .expect("should write modern build file");
 
@@ -53,7 +55,14 @@ use super::*;
 
         fs::write(
             temp_root.join("build.fol"),
-            "pro[] build(): non = {\n    var graph = .graph();\n    graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n};\n",
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    var graph = build.graph();\n",
+                "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+                "};\n",
+            ),
         )
         .expect("should restore modern build file");
         fs::write(

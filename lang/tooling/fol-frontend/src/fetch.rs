@@ -81,9 +81,10 @@ pub fn prepare_workspace_packages(
         .members
         .iter()
         .map(|member| {
-            let metadata = fol_package::parse_package_metadata(&member.manifest_file)
-                .map_err(FrontendError::from)?;
             let build_path = member.root.join("build.fol");
+            let metadata =
+                fol_package::parse_package_metadata_from_build(&build_path)
+                    .map_err(FrontendError::from)?;
             fol_package::parse_package_build(&build_path).map_err(FrontendError::from)?;
 
             Ok(FrontendPreparedPackage {
@@ -247,9 +248,10 @@ fn resolve_workspace_fetch(
             continue;
         }
 
-        let metadata = fol_package::parse_package_metadata(&canonical_root.join("package.yaml"))
+        let build_path = canonical_root.join("build.fol");
+        let metadata = fol_package::parse_package_metadata_from_build(&build_path)
             .map_err(FrontendError::from)?;
-        fol_package::parse_package_build(&canonical_root.join("build.fol"))
+        fol_package::parse_package_build(&build_path)
             .map_err(FrontendError::from)?;
 
         resolved_packages.push(ResolvedDependencyPackage {
@@ -263,9 +265,10 @@ fn resolve_workspace_fetch(
                 fol_package::PackageDependencySourceKind::Local => {
                     let dependency_root =
                         absolute_dependency_root(&canonical_root, &dependency.target);
-                    fol_package::parse_package_metadata(&dependency_root.join("package.yaml"))
+                    let dependency_build = dependency_root.join("build.fol");
+                    fol_package::parse_package_metadata_from_build(&dependency_build)
                         .map_err(FrontendError::from)?;
-                    fol_package::parse_package_build(&dependency_root.join("build.fol"))
+                    fol_package::parse_package_build(&dependency_build)
                         .map_err(FrontendError::from)?;
                     queued_roots.push(dependency_root);
                 }
@@ -296,7 +299,7 @@ fn resolve_workspace_fetch(
                             })?;
                         if entry.locator != locator.raw {
                             return Err(lock_mismatch_error(format!(
-                                "git dependency '{}' points to '{}' in package.yaml but '{}' in fol.lock",
+                                "git dependency '{}' points to '{}' in build.fol metadata but '{}' in fol.lock",
                                 dependency.alias, locator.raw, entry.locator
                             )));
                         }
@@ -363,7 +366,7 @@ fn resolve_workspace_fetch(
             .collect::<BTreeSet<_>>();
         if existing_aliases != new_aliases {
             return Err(lock_mismatch_error(
-                "package.yaml git dependencies do not match the aliases pinned in fol.lock",
+                "build.fol git dependencies do not match the aliases pinned in fol.lock",
             ));
         }
     }
@@ -399,7 +402,7 @@ fn load_existing_lockfile(
 fn lock_mismatch_error(message: impl Into<String>) -> FrontendError {
     FrontendError::new(crate::FrontendErrorKind::InvalidInput, message.into())
         .with_note("run `fol pack fetch` or `fol pack update` to refresh fol.lock")
-        .with_note("use `fol pack fetch --locked` only when package.yaml and fol.lock are intentionally in sync")
+        .with_note("use `fol pack fetch --locked` only when build.fol and fol.lock are intentionally in sync")
 }
 
 fn with_fetch_guidance(mut error: FrontendError, config: &FrontendConfig) -> FrontendError {
@@ -411,7 +414,7 @@ fn with_fetch_guidance(mut error: FrontendError, config: &FrontendConfig) -> Fro
     }
     if config.locked_fetch {
         error = error.with_note(
-            "locked mode requires package.yaml and fol.lock to describe the same git dependencies",
+            "locked mode requires build.fol and fol.lock to describe the same git dependencies",
         );
     }
     if message.contains("permission denied")
@@ -561,6 +564,8 @@ mod tests {
     fn semantic_bin_build() -> &'static str {
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
             "    graph.install(app);\n",
@@ -573,6 +578,8 @@ mod tests {
         format!(
             concat!(
                 "pro[] build(): non = {{\n",
+                "    var build = .build();\n",
+                "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
                 "    var graph = .graph();\n",
                 "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
                 "    graph.install(lib);\n",
@@ -600,7 +607,6 @@ mod tests {
             std::env::temp_dir().join(format!("fol_frontend_prepare_{}", std::process::id()));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
-        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
 
         let workspace = FrontendWorkspace {
@@ -634,7 +640,6 @@ mod tests {
         ));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
-        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
 
         let workspace = FrontendWorkspace {
             root: WorkspaceRoot::new(root.clone()),
@@ -659,7 +664,6 @@ mod tests {
         let root = std::env::temp_dir().join(format!("fol_frontend_fetch_{}", std::process::id()));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
-        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
 
         let workspace = FrontendWorkspace {
@@ -727,7 +731,6 @@ mod tests {
             std::env::temp_dir().join(format!("fol_frontend_fetch_summary_{}", std::process::id()));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
-        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
 
         let workspace = FrontendWorkspace {

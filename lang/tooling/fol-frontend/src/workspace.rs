@@ -166,8 +166,8 @@ pub fn enumerate_member_packages(
         .iter()
         .map(|member| {
             let absolute = absolute_member_root(&workspace_root.root, member);
-            let manifest_file = absolute.join(crate::PACKAGE_FILE_NAME);
-            if !manifest_file.is_file() {
+            let control_file = absolute.join(crate::PACKAGE_FILE_NAME);
+            if !control_file.is_file() {
                 return Err(FrontendError::new(
                     FrontendErrorKind::InvalidInput,
                     format!(
@@ -342,8 +342,16 @@ mod tests {
         fs::create_dir_all(&app).unwrap();
         fs::create_dir_all(&lib).unwrap();
         fs::write(root.join("fol.work.yaml"), "members:\n  - app\n  - lib\n").unwrap();
-        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
-        fs::write(lib.join("package.yaml"), "name: lib\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            app.join("build.fol"),
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"app\", version = \"0.1.0\" });\n    return;\n};\n",
+        )
+        .unwrap();
+        fs::write(
+            lib.join("build.fol"),
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"lib\", version = \"0.1.0\" });\n    return;\n};\n",
+        )
+        .unwrap();
 
         let members = enumerate_member_packages(
             &WorkspaceRoot::new(root.clone()),
@@ -372,7 +380,7 @@ mod tests {
                 .unwrap_err();
 
         assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
-        assert!(error.message().contains("missing 'package.yaml'"));
+        assert!(error.message().contains("missing 'build.fol'"));
 
         fs::remove_dir_all(root).ok();
     }
@@ -428,7 +436,11 @@ mod tests {
         ));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
-        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            app.join("build.fol"),
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"app\", version = \"0.1.0\" });\n    return;\n};\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace::from_config(
             WorkspaceRoot::new(root.clone()),
@@ -514,7 +526,11 @@ mod tests {
         ));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
-        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            app.join("build.fol"),
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"app\", version = \"0.1.0\" });\n    return;\n};\n",
+        )
+        .unwrap();
 
         let workspace = FrontendWorkspace::from_config(
             WorkspaceRoot::new(root.clone()),
@@ -576,7 +592,11 @@ mod tests {
         ));
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
-        fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            app.join("build.fol"),
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"app\", version = \"0.1.0\" });\n    return;\n};\n",
+        )
+        .unwrap();
         fs::write(
             root.join("fol.work.yaml"),
             "members:\n  - app\nstd_root: std\npackage_store_root: .fol/pkg\nbuild_root: .ws/build\ncache_root: .ws/cache\ngit_cache_root: .ws/git-cache\n",
@@ -613,7 +633,11 @@ mod tests {
         let root =
             std::env::temp_dir().join(format!("fol_frontend_package_load_{}", std::process::id()));
         fs::create_dir_all(&root).unwrap();
-        fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(
+            root.join("build.fol"),
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"app\", version = \"0.1.0\" });\n    return;\n};\n",
+        )
+        .unwrap();
 
         let workspace = load_frontend_workspace(
             &DiscoveredRoot::Package(PackageRoot::new(root.clone())),

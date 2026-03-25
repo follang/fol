@@ -30,11 +30,12 @@ fn cli_selected_custom_graph_steps_flow_into_the_routed_member_plan() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    graph.step(\"docs\");\n",
             "    return;\n",
@@ -75,11 +76,12 @@ fn custom_run_steps_plan_as_run_execution() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    graph.add_exe(\"app\", \"src/main.fol\");\n",
             "    graph.add_run(\"serve\", \"app\");\n",
@@ -128,11 +130,12 @@ fn explicit_named_run_steps_select_the_requested_artifact_when_multiple_runnable
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
             "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
@@ -188,11 +191,12 @@ fn named_build_steps_can_target_matching_artifacts_when_multiple_builds_exist() 
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
             "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
@@ -249,11 +253,12 @@ fn default_build_step_is_marked_ambiguous_when_multiple_executables_exist() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
             "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
@@ -303,11 +308,12 @@ fn ambiguous_default_multi_artifact_build_steps_fail_clearly() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    graph.add_exe(\"serve_app\", \"src/serve.fol\");\n",
             "    graph.add_exe(\"admin_app\", \"src/admin.fol\");\n",
@@ -364,11 +370,12 @@ fn configured_executable_roots_drive_default_build_and_run_step_planning() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    graph.add_exe(\"app\", \"src/app.fol\");\n",
             "    graph.add_run(\"serve\", \"app\");\n",
@@ -432,11 +439,12 @@ fn object_style_artifact_build_bodies_drive_default_build_and_run_step_planning(
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var target = graph.standard_target();\n",
             "    var optimize = graph.standard_optimize();\n",
@@ -507,11 +515,12 @@ fn workspace_route_plans_modern_build_members_through_default_graph_planning() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    graph.add_exe(\"demo\", \"src/main.fol\");\n",
             "    return;\n",
@@ -549,11 +558,12 @@ fn workspace_route_plans_modern_check_steps_even_without_a_runnable_binary() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    graph.step(\"docs\");\n",
             "    return;\n",
@@ -591,11 +601,12 @@ fn execute_workspace_build_route_rejects_echo_for_alloc_model_artifacts() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
@@ -658,11 +669,12 @@ fn execute_workspace_build_route_rejects_heap_backed_types_for_core_model_artifa
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
@@ -721,11 +733,12 @@ fn execute_workspace_build_route_rejects_dynamic_len_for_core_model_artifacts() 
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
@@ -784,11 +797,12 @@ fn execute_workspace_build_route_accepts_dynamic_len_for_alloc_model_artifacts()
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
@@ -845,11 +859,12 @@ fn execute_workspace_build_route_emits_core_runtime_module_imports() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
@@ -908,11 +923,12 @@ fn execute_workspace_build_route_emits_alloc_runtime_module_imports() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
@@ -975,11 +991,12 @@ fn execute_workspace_build_route_emits_std_runtime_module_imports() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
@@ -1043,11 +1060,12 @@ fn execute_workspace_build_route_rejects_run_for_selected_core_model_artifacts()
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
@@ -1107,11 +1125,12 @@ fn execute_workspace_build_route_rejects_test_for_selected_alloc_model_artifacts
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    graph.add_test({\n",
             "        name = \"demo_test\",\n",
@@ -1171,11 +1190,12 @@ fn execute_workspace_build_route_keeps_step_specific_model_diagnostics_in_mixed_
     ));
     fs::create_dir_all(root.join("app")).unwrap();
     fs::create_dir_all(root.join("core")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
             "    var host = graph.add_exe({ name = \"host\", root = \"app/main.fol\", fol_model = \"std\" });\n",
             "    var blink = graph.add_exe({ name = \"blink\", root = \"core/main.fol\", fol_model = \"core\" });\n",

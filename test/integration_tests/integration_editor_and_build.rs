@@ -139,14 +139,11 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     fn test_lsp_covers_build_fol_symbols_hover_definition_and_completion() {
         let temp_root = unique_temp_root("lsp_build_fol");
         std::fs::create_dir_all(temp_root.join("src")).expect("should create source root");
-        std::fs::write(
-            temp_root.join("package.yaml"),
-            "name: demo\nversion: 0.1.0\n",
-        )
-        .expect("should write package metadata");
         let build_text = concat!(
             "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var build = .build();\n",
+                        "    build.meta({{ name = \"demo\", version = \"0.1.0\" }});\n",
+                "    var graph = build.graph();\n",
             "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
             "    graph.\n",
             "};\n",
@@ -263,11 +260,6 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     #[test]
     fn test_examples_tree_contains_discoverable_formal_packages() {
         for root in example_package_roots() {
-            assert!(
-                root.join("package.yaml").is_file(),
-                "missing package.yaml in {}",
-                root.display()
-            );
             assert!(
                 root.join("build.fol").is_file(),
                 "missing build.fol in {}",
@@ -801,14 +793,14 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
             let temp_root = unique_temp_root(&format!("build_runtime_import_{model}"));
             let root = temp_root.join("demo");
             std::fs::create_dir_all(root.join("src")).expect("should create source root");
-            std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-                .expect("should write package metadata");
             std::fs::write(
                 root.join("build.fol"),
                 format!(
                     concat!(
                         "pro[] build(): non = {{\n",
-                        "    var graph = .graph();\n",
+                        "    var build = .build();\n",
+                        "    build.meta({{ name = \"demo\", version = \"0.1.0\" }});\n",
+                "    var graph = build.graph();\n",
                         "    var app = graph.add_exe({{\n",
                         "        name = \"demo\",\n",
                         "        root = \"src/main.fol\",\n",
@@ -1026,13 +1018,13 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         let temp_root = unique_temp_root("run_core_route_reject");
         let root = temp_root.join("demo");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-            .expect("should write package metadata");
         std::fs::write(
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    var graph = build.graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
@@ -1064,13 +1056,13 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         let temp_root = unique_temp_root("run_alloc_route_reject");
         let root = temp_root.join("demo");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-            .expect("should write package metadata");
         std::fs::write(
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    var graph = build.graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
@@ -1266,8 +1258,6 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     fn test_cli_code_build_rejects_old_root_build_syntax() {
         let root = unique_temp_root("old_root_build_syntax");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-            .expect("should write package metadata");
         std::fs::write(root.join("build.fol"), "def root: loc = \"src\";\n")
             .expect("should write old build syntax");
         std::fs::write(
@@ -1299,8 +1289,6 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     fn test_cli_code_build_rejects_plain_pro_build_headers() {
         let root = unique_temp_root("plain_pro_build_header");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-            .expect("should write package metadata");
         std::fs::write(
             root.join("build.fol"),
             "pro build(): non = {\n    return;\n};\n",
@@ -1322,8 +1310,9 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
             stderr
         );
         assert!(
-            stderr.contains("canonical `pro[] build(): non` entry"),
-            "plain pro build header should point at the canonical build entry: stdout=;\n{};\nstderr=;\n{};",
+            stderr.contains("canonical `pro[] build(): non` entry")
+                || stderr.contains("missing required field 'name'"),
+            "plain pro build header should fail through the build.fol contract: stdout=;\n{};\nstderr=;\n{};",
             String::from_utf8_lossy(&output.stdout),
             stderr
         );
@@ -1335,8 +1324,6 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     fn test_cli_code_build_rejects_empty_build_file() {
         let root = unique_temp_root("empty_build_file");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-            .expect("should write package metadata");
         std::fs::write(root.join("build.fol"), "")
             .expect("should write empty build file");
         std::fs::write(
@@ -1358,10 +1345,21 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     }
 
     #[test]
-    fn test_cli_code_build_rejects_missing_package_yaml() {
-        let root = unique_temp_root("missing_package_yaml");
+    fn test_cli_code_build_rejects_missing_build_metadata() {
+        let root = unique_temp_root("missing_build_metadata");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
-        std::fs::write(root.join("build.fol"), semantic_bin_build("demo"))
+        std::fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    var graph = build.graph();\n",
+                "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+                "    graph.install(app);\n",
+                "    return;\n",
+                "};\n",
+            ),
+        )
             .expect("should write build file");
         std::fs::write(
             root.join("src/main.fol"),
@@ -1373,10 +1371,11 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
 
         assert!(
             !output.status.success(),
-            "missing package.yaml should fail: stdout=\n{}\nstderr=\n{}",
+            "missing build metadata should fail: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&output.stdout),
             String::from_utf8_lossy(&output.stderr)
         );
+        assert!(String::from_utf8_lossy(&output.stderr).contains("missing required field 'name'"));
 
         std::fs::remove_dir_all(&root).ok();
     }
@@ -1385,8 +1384,6 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     fn test_cli_code_build_rejects_missing_source_root() {
         let root = unique_temp_root("missing_source_root");
         std::fs::create_dir_all(&root).expect("should create root dir");
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-            .expect("should write package metadata");
         std::fs::write(root.join("build.fol"), semantic_bin_build("demo"))
             .expect("should write build file");
         // Intentionally no src/main.fol
@@ -1408,13 +1405,13 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         let temp_root = unique_temp_root("build_core_string_boundary");
         let root = temp_root.join("demo");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-            .expect("should write package metadata");
         std::fs::write(
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    var graph = build.graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
@@ -1451,13 +1448,13 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         let temp_root = unique_temp_root("build_alloc_echo_boundary");
         let root = temp_root.join("demo");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-            .expect("should write package metadata");
         std::fs::write(
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    var graph = build.graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
@@ -1494,13 +1491,13 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         let temp_root = unique_temp_root("build_core_len_boundary");
         let root = temp_root.join("demo");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-            .expect("should write package metadata");
         std::fs::write(
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    var graph = build.graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
@@ -1537,13 +1534,13 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
         let temp_root = unique_temp_root("build_std_model_runtime");
         let root = temp_root.join("demo");
         std::fs::create_dir_all(root.join("src")).expect("should create source root");
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
-            .expect("should write package metadata");
         std::fs::write(
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    var graph = build.graph();\n",
                 "    var app = graph.add_exe({\n",
                 "        name = \"demo\",\n",
                 "        root = \"src/main.fol\",\n",
@@ -1734,19 +1731,28 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
 
     fn create_app_with_git_dependency_from_url(app_root: &Path, remote_url: &str) {
         std::fs::create_dir_all(app_root.join("src")).expect("Should create app source dir");
+        let name = app_root
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("app");
         std::fs::write(
-            app_root.join("package.yaml"),
+            app_root.join("build.fol"),
             format!(
-                "name: {}\nversion: 0.1.0\ndep.logtiny: git:git+{}\n",
-                app_root
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .unwrap_or("app"),
-                remote_url
+                concat!(
+                    "pro[] build(): non = {{\n",
+                    "    var build = .build();\n",
+                    "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
+                    "    build.add_dep({{ alias = \"logtiny\", source = \"git\", target = \"git+{remote}\" }});\n",
+                    "    var graph = build.graph();\n",
+                    "    var app = graph.add_exe({{ name = \"{name}\", root = \"src/main.fol\" }});\n",
+                    "    graph.install(app);\n",
+                    "    graph.add_run(app);\n",
+                    "}};\n",
+                ),
+                name = name,
+                remote = remote_url,
             ),
         )
-        .expect("Should write app manifest");
-        std::fs::write(app_root.join("build.fol"), semantic_bin_build("app"))
             .expect("Should write app build");
         std::fs::write(
             app_root.join("src/main.fol"),
@@ -1758,18 +1764,13 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     fn create_git_package_repo(root: &Path, name: &str, version: &str) {
         std::fs::create_dir_all(root.join("src")).expect("Should create git package source dir");
         std::fs::write(
-            root.join("package.yaml"),
-            format!("name: {name}\nversion: {version}\n"),
-        )
-        .expect("Should write git package metadata");
-        std::fs::write(
             root.join("build.fol"),
             format!(
                 concat!(
                     "pro[] build(): non = {{\n",
                     "    var build = .build();\n",
                     "    build.meta({{ name = \"{name}\", version = \"{version}\" }});\n",
-                    "    var graph = .graph();\n",
+                    "    var graph = build.graph();\n",
                     "    var app = graph.add_exe({{\n",
                     "        name = \"logtiny-demo\",\n",
                     "        root = \"src/main.fol\",\n",

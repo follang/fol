@@ -284,7 +284,7 @@ Remove YAML as a required or supported package control input.
 
 ### Slice Tracker
 
-- [ ] Slice 26. Delete `lang/compiler/fol-package/src/metadata.rs` public usage from active loader paths
+- [x] Slice 26. Delete `lang/compiler/fol-package/src/metadata.rs` public usage from active loader paths
 - [x] Slice 27. Remove `package.yaml` file existence checks from formal package loading
 - [x] Slice 28. Require `build.fol` only for formal package roots
 - [x] Slice 29. Update package-session identity/display-name derivation to use build metadata
@@ -305,11 +305,11 @@ Make all package-management flows work with `build.fol` metadata.
 
 ### Slice Tracker
 
-- [ ] Slice 32. Update fetch/materialization flows that currently read/write assumptions about `package.yaml`
-- [ ] Slice 33. Ensure lockfile/fetch diagnostics point at `build.fol` metadata when relevant
-- [ ] Slice 34. Update package-store root validation for build-only metadata
-- [ ] Slice 35. Update frontend diagnostics/help text away from `package.yaml`
-- [ ] Slice 36. Add integration tests for:
+- [x] Slice 32. Update fetch/materialization flows that currently read/write assumptions about `package.yaml`
+- [x] Slice 33. Ensure lockfile/fetch diagnostics point at `build.fol` metadata when relevant
+- [x] Slice 34. Update package-store root validation for build-only metadata
+- [x] Slice 35. Update frontend diagnostics/help text away from `package.yaml`
+- [x] Slice 36. Add integration tests for:
   - git deps
   - package-store deps
   - lockfile flows
@@ -327,13 +327,13 @@ Make tooling stop treating `package.yaml` as a root marker or required package i
 
 ### Slice Tracker
 
-- [ ] Slice 37. Update editor/root discovery docs from:
+- [x] Slice 37. Update editor/root discovery docs from:
   - `package.yaml`
   - `fol.work.yaml`
   toward the new build-only package marker
-- [ ] Slice 38. Update editor integration tests and fixtures to use `build.fol` only
-- [ ] Slice 39. Ensure LSP workspace/package detection still succeeds for formal packages
-- [ ] Slice 40. Add regression tests proving editor features work for build-only package roots
+- [x] Slice 38. Update editor integration tests and fixtures to use `build.fol` only
+- [x] Slice 39. Ensure LSP workspace/package detection still succeeds for formal packages
+- [x] Slice 40. Add regression tests proving editor features work for build-only package roots
 
 ### Exit criteria
 

@@ -1,5 +1,7 @@
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "std_named_calls", version = "0.1.0" });
+    var graph = build.graph();
     var app = graph.add_exe({
         name = "std-named-calls",
         root = "src/main.fol",

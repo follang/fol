@@ -95,11 +95,11 @@ pub(crate) fn discover_workspace_roots(
     directory: &Path,
     config: &EditorConfig,
 ) -> EditorWorkspaceRoots {
-    let package_root = find_upward_marker(directory, "package.yaml");
+    let package_root = find_upward_marker(directory, "build.fol");
     let workspace_root = config
         .root_markers
         .iter()
-        .filter(|marker| marker.as_str() != "package.yaml")
+        .filter(|marker| marker.as_str() != "build.fol")
         .find_map(|marker| find_upward_marker(directory, marker));
     let analysis_root = workspace_root
         .clone()

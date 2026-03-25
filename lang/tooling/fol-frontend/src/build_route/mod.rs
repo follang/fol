@@ -115,8 +115,9 @@ pub fn plan_workspace_build_route(
         .members
         .iter()
         .map(|member| {
-            let metadata = fol_package::parse_package_metadata(&member.manifest_file)?;
-            let mode = load_member_build_mode(&member.root.join("build.fol"))?;
+            let build_path = member.root.join("build.fol");
+            let metadata = fol_package::parse_package_metadata_from_build(&build_path)?;
+            let mode = load_member_build_mode(&build_path)?;
             Ok(FrontendMemberBuildRoute {
                 member_root: member.root.clone(),
                 package_name: metadata.name,

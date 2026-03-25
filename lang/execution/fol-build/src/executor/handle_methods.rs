@@ -2,6 +2,7 @@ use crate::eval::{
     BuildEvaluationError, BuildEvaluationOperation, BuildEvaluationOperationKind,
     BuildEvaluationRunArgKind,
 };
+use crate::api::DependencyRequest;
 use crate::runtime::{BuildRuntimeDependencyQuery, BuildRuntimeDependencyQueryKind, BuildRuntimeGeneratedFileKind};
 use fol_parser::ast::AstNode;
 
@@ -16,6 +17,39 @@ impl BuildBodyExecutor {
         args: &[AstNode],
     ) -> Result<Option<ExecValue>, BuildEvaluationError> {
         match &receiver {
+            ExecValue::Build if method == "meta" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                self.resolve_field_string(fields, "name")
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.resolve_field_string(fields, "version")
+                    .ok_or_else(|| self.unsupported(method))?;
+                Ok(Some(receiver))
+            }
+            ExecValue::Build if method == "add_dep" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let alias = self
+                    .resolve_field_string(fields, "alias")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let package = self
+                    .resolve_field_string(fields, "target")
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.resolve_field_string(fields, "source")
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin: None,
+                    kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
+                        alias: alias.clone(),
+                        package,
+                        evaluation_mode: None,
+                        surface: None,
+                    }),
+                });
+                Ok(Some(ExecValue::Dependency { alias }))
+            }
             ExecValue::Build if method == "graph" => {
                 let [] = args else {
                     return Err(self.unsupported(method));
