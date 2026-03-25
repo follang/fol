@@ -171,16 +171,27 @@ install.depend_on(check);
 
 ## Dependency
 
-The `Dependency` handle is returned by `graph.dependency`. It exposes the
+The `Dependency` handle is returned by `build.add_dep({...})`. It exposes the
 public surface of another package.
+
+```fol
+var build = .build();
+var dep = build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+});
+```
+
+Dependency handles query already-declared package dependencies. They do not add
+new graph mutations themselves.
 
 ### `dependency.module`
 
 Resolves a named module from the dependency.
 
 ```fol
-var dep    = graph.dependency("mylib", "local:../mylib");
-var module = dep.module("core");
+var module = dep.module("logtiny");
 app.import(module);
 ```
 
@@ -189,8 +200,7 @@ app.import(module);
 Resolves a named artifact from the dependency.
 
 ```fol
-var dep = graph.dependency("mylib", "local:../mylib");
-var lib = dep.artifact("mylib-static");
+var lib = dep.artifact("logtiny");
 app.link(lib);
 ```
 
@@ -199,8 +209,7 @@ app.link(lib);
 Resolves a named step from the dependency.
 
 ```fol
-var dep  = graph.dependency("mylib", "local:../mylib");
-var step = dep.step("codegen");
+var step = dep.step("check");
 app_step.depend_on(step);
 ```
 
@@ -209,7 +218,6 @@ app_step.depend_on(step);
 Resolves a named generated output from the dependency.
 
 ```fol
-var dep   = graph.dependency("mylib", "local:../mylib");
-var types = dep.generated("types.fol");
+var types = dep.generated("bindings");
 app.add_generated(types);
 ```

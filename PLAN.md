@@ -166,7 +166,7 @@ If a new dependency/output/install shape is chosen:
   - `generated(name)`
 - wire them into semantic registries
 
-### Slice 6
+### Slice 6 [complete]
 
 - expose dependency handles in build docs with one simple package example
 - document that these reflect exposed surfaces from the dependency package
