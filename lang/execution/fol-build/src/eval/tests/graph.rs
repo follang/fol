@@ -1,5 +1,5 @@
 use super::super::{
-    evaluate_build_source, BuildEvaluationInputs, BuildEvaluationRequest,
+    evaluate_build_source, BuildBodyExecutor, BuildEvaluationInputs, BuildEvaluationRequest,
 };
 use crate::option::BuildOptimizeMode;
 use std::{
@@ -48,6 +48,53 @@ fn build_source_evaluator_records_add_module_in_graph() {
     let evaluated = evaluate_build_source(&request, &build_path, source)
         .expect("add_module should evaluate")
         .expect("build body should produce operations");
+
+    let modules = evaluated.result.graph.modules();
+    assert_eq!(modules.len(), 1);
+    assert_eq!(modules[0].name, "src/utils.fol");
+}
+
+#[test]
+fn build_source_evaluator_supports_ambient_build_without_graph_work() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (_package_root, build_path) = temp_build_package(source);
+
+    let (executor, body) = BuildBodyExecutor::from_file(&build_path)
+        .expect("ambient build source should parse")
+        .expect("build entry should exist");
+    let output = executor
+        .execute(&body)
+        .expect("ambient build local should execute");
+
+    assert!(output.operations.is_empty());
+}
+
+#[test]
+fn build_source_evaluator_supports_inferred_build_locals_before_graph_work() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    .graph().add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("ambient build local should evaluate")
+        .expect("ambient build local should still produce graph operations");
 
     let modules = evaluated.result.graph.modules();
     assert_eq!(modules.len(), 1);

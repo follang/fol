@@ -41,6 +41,7 @@ pub struct ExecArtifact {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum ExecValue {
+    Build,
     Graph,
     Target(String),
     Optimize(String),

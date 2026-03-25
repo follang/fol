@@ -136,6 +136,18 @@ impl BuildBodyExecutor {
                 name,
                 args,
                 ..
+            } if name == "build" => {
+                if !args.is_empty() {
+                    return Err(self.unsupported(name));
+                }
+                Ok(Some(ExecValue::Build))
+            }
+
+            AstNode::FunctionCall {
+                surface: CallSurface::DotIntrinsic,
+                name,
+                args,
+                ..
             } if name == "graph" => {
                 if !args.is_empty() {
                     return Err(self.unsupported(name));
