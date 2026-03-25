@@ -17,18 +17,26 @@ Every buildable package must have a `build.fol` at its root with exactly one
 canonical entry:
 
 ```fol
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
     ...
 }
 ```
 
-The `graph` parameter is the injection surface. All build operations go through
-method calls on `graph` and on the handles it returns.
+The active build graph is accessed explicitly through the build-only ambient
+accessor:
+
+```fol
+.graph(): Graph
+```
+
+There is no injected `graph` parameter anymore. All build operations still go
+through methods on `Graph` and on the handles it returns.
 
 ## Minimal Example
 
 ```fol
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var graph = .graph();
     var app = graph.add_exe({ name = "app", root = "src/main.fol" });
     graph.install(app);
     graph.add_run(app);

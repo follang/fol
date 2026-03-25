@@ -1,390 +1,412 @@
-# PLAN: Compiler-Backed Editor Sync
+# PLAN: Build Entry Ambient Graph Redesign
 
-Last updated: 2026-03-24
+Last updated: 2026-03-25
 
 ## Intent
 
-This plan replaces the current "remember to update `fol-editor` manually"
-workflow with a stricter model:
+This plan replaces the current canonical build entry:
 
-- LSP semantic behavior should come from the real compiler pipeline whenever
-  possible.
-- `fol_model` awareness must be visible in editor diagnostics, hover,
-  completion, and semantic analysis.
-- tree-sitter should not be fully generated from the compiler, but all
-  repetitive editor registries and query fragments that can be derived from
-  compiler-owned data should become generated or compiler-backed.
-- drift between compiler features and editor syntax assets should become a test
-  failure, not tribal knowledge.
+```fol
+pro[] build(graph: Graph): non
+```
 
-The end state is not:
+with the new canonical build entry:
 
-- fully hand-maintained editor metadata forever
-- a second language implementation inside `fol-editor`
-- full tree-sitter grammar generation from the parser
-- "maybe update the editor later"
+```fol
+pro[] build(): non
+```
 
-The end state is:
+and adds a build-only ambient accessor:
 
-- compiler-owned semantic truth
-- model-aware LSP behavior
-- generated or compiler-derived editor registries where practical
-- manual grammar/query work only where structure really must stay hand-authored
-- aggressive sync tests that fail when compiler and editor drift
+```fol
+.graph(): Graph
+```
 
-## Core Principles
+The goal is to remove the awkward injected-parameter shape from `build.fol`
+without turning the build system into a separate language.
 
-1. `fol-editor` should consume compiler-owned facts before inventing editor-only
-   ones.
-2. `fol_model = core | alloc | std` must affect editor diagnostics and semantic
-   tooling exactly the same way it affects `fol code build`.
-3. Manual grammar authoring is acceptable.
-4. Manual keyword/type/intrinsic lists are not acceptable if they can be
-   derived from compiler registries.
-5. No compatibility editor paths for stale syntax once a new syntax form is
-   chosen.
-6. Every behavior-changing slice includes tests in the same change.
+The new mental model is:
 
-## Current Baseline
+- `build.fol` is still ordinary FOL
+- the build entry no longer receives a magic parameter
+- the active build graph is accessed explicitly through `.graph()`
+- graph methods stay on `Graph`
+- old `build(graph: Graph)` is deleted, not preserved
 
-Already true today:
+## Non-Negotiable Rules
 
-- `fol-editor` LSP semantic analysis reuses parser, package loading, resolver,
-  and typechecker from the real compiler.
-- tree-sitter sync tests already compare some editor assets against compiler
-  constants:
-  - builtin types
-  - implemented dot intrinsics
-  - container type names
-  - shell type names
-  - source kinds
-- tree-sitter assets live in one place:
-  - `lang/tooling/fol-editor/tree-sitter/grammar.js`
-  - `lang/tooling/fol-editor/queries/fol/*.scm`
+1. No compatibility path for `pro[] build(graph: Graph): non`.
+2. No dual accepted signatures.
+3. No fallback parser or validator behavior.
+4. No mixed "sometimes ambient, sometimes injected" execution path.
+5. `build.fol` remains ordinary FOL, not a separate DSL.
 
-Not good enough yet:
+## New Canonical Surface
 
-- editor behavior is not explicitly `fol_model` aware in all user-facing areas
-- completions and some query families still rely on hand-maintained surfaces
-- tree-sitter query files still embed lists that can drift from compiler data
-- feature additions can still succeed in the compiler while the editor layer
-  silently lags
-- there is no canonical generated editor-metadata pipeline
+### Canonical entry
 
-## Boundaries
+```fol
+pro[] build(): non = {
+    var graph = .graph();
+    var app = graph.add_exe({
+        name = "app",
+        root = "src/main.fol",
+        fol_model = "std",
+    });
+    graph.add_run(app);
+}
+```
 
-Things this plan should automate:
+### Direct-use form
 
-- keyword/type/intrinsic registries used by editor features
-- model-aware completion and diagnostics policy
-- query fragment generation for regex-like name sets
-- test enforcement that editor assets match compiler data
+```fol
+pro[] build(): non = {
+    .graph().add_exe({
+        name = "app",
+        root = "src/main.fol",
+    });
+}
+```
 
-Things this plan should not try to automate fully:
+### Helper routine form
 
-- complete tree-sitter grammar generation from the parser
-- all highlight capture structure
-- all LSP UX behavior
-- formatter policy
+`Graph` stays as a real build type for helper routines and local bindings:
 
-## Required Workflow
+```fol
+fun[] add_app(graph: Graph, name: str, root: str): ArtifactHandle = {
+    return graph.add_exe({ name = name, root = root });
+}
 
-For every implementation slice:
+pro[] build(): non = {
+    var graph = .graph();
+    var app = add_app(graph, "app", "src/main.fol");
+    graph.add_run(app);
+}
+```
 
-- keep the slice commit-sized
-- if behavior changes, add tests in the same slice
-- after each slice:
-  - run `make build`
-  - run `make test`
-  - if both pass:
-    - mark the slice complete here
-    - commit it
+### Ambient helper form
 
-## Epoch 1: Freeze The Editor Contract
+Also valid if the helper wants ambient access:
+
+```fol
+fun[] add_app(name: str, root: str): ArtifactHandle = {
+    return .graph().add_exe({ name = name, root = root });
+}
+```
+
+## Scope Decision
+
+This plan does **not** remove `Graph` as a build type.
+
+It removes only the requirement that the build entry receive an injected graph
+parameter.
+
+That keeps the change focused and avoids unnecessary churn in:
+
+- helper routine typing
+- local graph bindings
+- resolver/build stdlib type injection
+- graph method semantics
+
+## Current Reality From The Scan
+
+The current `graph` parameter is baked into several layers:
+
+- package/build entry validation in
+  `lang/compiler/fol-package/src/build_entry.rs`
+- package build parsing diagnostics in
+  `lang/compiler/fol-package/src/build.rs`
+- build stdlib injection and `Graph` type visibility in
+  `lang/compiler/fol-resolver/src/inject.rs`
+- restricted build execution in
+  `lang/execution/fol-build/src/executor/eval_expr.rs`
+- graph-method execution in
+  `lang/execution/fol-build/src/executor/graph_methods.rs`
+- build docs across `book/src/055_build/*` and module/package chapters
+- examples, scaffolding, frontend tests, resolver tests, editor tests
+
+One especially important detail:
+
+- the restricted build executor currently recognizes graph access by comparing
+  identifiers against `self.graph_param`
+- helper execution has explicit special logic for "graph is the first helper
+  parameter"
+
+That means `.graph()` cannot be bolted on as just documentation. It must become
+part of the executor/runtime contract.
+
+## Design Direction
+
+The clean design is:
+
+1. canonical build entry is `pro[] build(): non`
+2. `.graph()` becomes a build-only dot intrinsic or build-runtime ambient call
+3. build executor owns one active graph handle implicitly
+4. `Graph` type and graph methods remain unchanged
+5. helper routines may still accept `graph: Graph`, but that becomes ordinary
+   user choice, not required entry shape
+
+## Architecture Decision
+
+Use a build-only ambient accessor with ordinary call syntax:
+
+- `.graph()`
+
+Do **not** try to model it as:
+
+- a fake implicit local named `graph`
+- a source-unit variable injection
+- a global function `graph()`
+- direct ambient methods like `.add_exe(...)`
+
+Why `.graph()` is the right shape:
+
+- explicit but not awkward
+- reads like other dot-root calls already in the language
+- keeps graph methods grouped under the `Graph` handle
+- avoids polluting normal identifier scope
+- keeps build-only ambient capability obvious
+
+## Epoch 1: Freeze The New Contract
 
 Goal:
-Write down exactly what is compiler-owned, what remains manual, and where
-`fol_model` must surface in editor behavior.
+Write down the new canonical surface before implementation starts.
 
 ### Slice Tracker
 
-- [x] Slice 1. Replace or expand editor docs so they explicitly state:
-  - LSP semantic truth comes from compiler analysis
-  - tree-sitter grammar stays manual
-  - query fragments and registries should be compiler-derived where possible
-  - `fol_model` must affect editor diagnostics and completion
-- [x] Slice 2. Add a canonical doc, likely `docs/editor-sync.md`, covering:
-  - compiler-owned editor data
-  - generated editor data
-  - manual editor data
-  - test gates that prevent drift
-- [x] Slice 3. Add a matrix to the doc for `core`, `alloc`, `std`:
-  - which type surfaces should appear in completion
-  - which intrinsics should appear in completion
-  - which diagnostics should be shown by analysis
-  - which example packages should exercise each mode
+- [x] Slice 1. Update `book/src/055_build/_index.md` to declare the new
+  canonical entry:
+  - `pro[] build(): non`
+  - ambient `.graph(): Graph`
+  - no `build(graph: Graph)` compatibility
+- [ ] Slice 2. Update `book/src/055_build/100_build_file.md` to explain:
+  - `build.fol` still uses ordinary FOL syntax
+  - the graph is ambient through `.graph()`
+  - the old injected parameter is deleted
+- [ ] Slice 3. Update `book/src/600_modules/100_import.md` and
+  `book/src/600_modules/200_blocks.md` so package/build chapters no longer
+  reference `build(graph: Graph)`
+- [ ] Slice 4. Update version/planning docs if needed so they describe the new
+  build contract honestly
 
 ### Exit criteria
 
-- The intended editor architecture is written down.
-- `fol_model` expectations are explicit before code changes start.
+- The book no longer teaches the old entrypoint.
+- The new contract is explicit before parser/runtime work begins.
 
-## Epoch 2: Introduce Compiler-Owned Editor Metadata
+## Epoch 2: Change Build Entry Validation
 
 Goal:
-Create one compiler-backed metadata surface that `fol-editor` can consume.
+Make the package/build loader accept only `pro[] build(): non`.
 
 ### Slice Tracker
 
-- [x] Slice 4. Add a compiler-owned editor metadata API, probably in an existing
-  compiler crate or a new small compiler-side module, exposing:
-  - declaration keywords
-  - builtin type names
-  - container type names
-  - shell type names
-  - source kind names
-  - implemented intrinsic names grouped by surface
-- [x] Slice 5. Extend that metadata API to carry `fol_model` capability facts:
-  - whether a type family is legal in `core`
-  - whether an intrinsic is legal in `core`
-  - whether an intrinsic is `std`-only
-  - whether a completion item should be suppressed by model
-- [x] Slice 6. Add unit tests proving the metadata API is canonical and matches
-  existing compiler registries exactly.
+- [ ] Slice 5. Change `BuildEntrySignatureExpectation` in
+  `lang/compiler/fol-package/src/build_entry.rs` so the canonical entry has:
+  - zero parameters
+  - accepted return type `non`
+- [ ] Slice 6. Rewrite parameter-count/type validation errors to describe the
+  new required shape:
+  - no parameters allowed
+  - no graph parameter expected
+- [ ] Slice 7. Update package build parsing diagnostics in
+  `lang/compiler/fol-package/src/build.rs` to say:
+  - `build.fol must declare exactly one canonical pro[] build(): non entry`
+- [ ] Slice 8. Replace all build-entry validation tests so they reject
+  `build(graph: Graph)` and accept `build(): non`
 
 ### Exit criteria
 
-- Editor-relevant language facts have one compiler-owned source.
-- `fol_model` capability facts exist in machine-readable form.
+- The loader only accepts the new entry signature.
+- Old `build(graph: Graph)` fails fast and explicitly.
 
-## Epoch 3: Make LSP Model-Aware
+## Epoch 3: Introduce Ambient `.graph()`
 
 Goal:
-Ensure editor semantic analysis knows which model the current artifact/package is
-using and reports boundaries consistently.
+Define `.graph()` as the one sanctioned way to access the active build graph.
 
 ### Slice Tracker
 
-- [x] Slice 7. Extend editor workspace analysis so it can recover the active
-  `fol_model` for the opened package or routed artifact.
-- [x] Slice 8. Thread `fol_model` into semantic snapshots and editor workspace
-  caches.
-- [x] Slice 9. Add tests proving LSP diagnostics for:
-  - `.echo(...)` in `alloc`
-  - `str` in `core`
-  - dynamic `.len(...)` in `core`
-  match build-mode diagnostics for the same package.
-- [x] Slice 10. Add hover or symbol-surface tests proving model context is not
-  lost when analyzing package files under `core`, `alloc`, and `std`.
+- [ ] Slice 9. Decide and implement where `.graph()` is modeled semantically:
+  - as build-only ambient call metadata in `fol-build`
+  - not as a normal source-level declared routine
+- [ ] Slice 10. Extend build semantic metadata in
+  `lang/execution/fol-build/src/semantic.rs` and `stdlib.rs` to describe
+  `.graph(): Graph`
+- [ ] Slice 11. Ensure resolver/typecheck for build source units recognize
+  `.graph()` without requiring an injected local named `graph`
+- [ ] Slice 12. Add parser/resolver/typecheck tests proving:
+  - `.graph()` is valid in `build.fol`
+  - `.graph()` is invalid in ordinary source units
+  - graph methods still work through the returned handle
 
 ### Exit criteria
 
-- LSP analysis is explicitly aware of `fol_model`.
-- Editor diagnostics agree with compiler/build diagnostics for model boundaries.
+- `.graph()` is a real build-only surface.
+- No injected identifier is needed to access the graph.
 
-## Epoch 4: Make Completion Model-Aware
+## Epoch 4: Remove Graph-Parameter Execution Semantics
 
 Goal:
-Stop offering completion items that are invalid for the current model.
+Delete the restricted-executor logic that relies on a graph parameter name.
 
 ### Slice Tracker
 
-- [x] Slice 11. Move intrinsic completion sources to use compiler-owned editor
-  metadata instead of hand-maintained item lists.
-- [x] Slice 12. Filter completion items by active `fol_model`:
-  - hide `std`-only intrinsics in `core` and `alloc`
-  - hide heap-backed type families in `core`
-  - keep `alloc` items visible in `std`
-- [x] Slice 13. Add completion tests for:
-  - `core` does not suggest `.echo`
-  - `alloc` does not suggest `.echo`
-  - `std` does suggest `.echo`
-  - `core` does not suggest `str`, `seq`, `vec`, `set`, `map` as normal type
-    surfaces
-- [x] Slice 14. Add completion tests for mixed-model workspaces so package-local
-  artifact context does not bleed across unrelated members.
+- [ ] Slice 13. Refactor `BuildBodyExecutor` in
+  `lang/execution/fol-build/src/executor/eval_expr.rs` so graph access is not
+  tied to `self.graph_param`
+- [ ] Slice 14. Remove the special-case identifier logic:
+  - `AstNode::Identifier { name } if name == &self.graph_param`
+- [ ] Slice 15. Teach expression evaluation to recognize `.graph()` directly and
+  return the active graph handle
+- [ ] Slice 16. Remove helper-call special handling that treats "first param is
+  graph" as an executor-level convention
+- [ ] Slice 17. Add executor tests for:
+  - `.graph().add_exe(...)`
+  - `var g = .graph(); g.add_exe(...)`
+  - helper routines that receive `Graph` explicitly
+  - helper routines that call `.graph()` ambiently
 
 ### Exit criteria
 
-- Completion is generated from compiler-backed facts where practical.
-- Completion respects `fol_model`.
+- Restricted execution no longer depends on a magic parameter name.
+- `.graph()` is the single ambient graph access path.
 
-## Epoch 5: Generate Query Fragments From Compiler Metadata
+## Epoch 5: Rework Build Stdlib And Editor Semantics
 
 Goal:
-Reduce manual drift in tree-sitter queries without pretending grammar structure
- can be generated.
+Align build stdlib/editor behavior with the ambient accessor model.
 
 ### Slice Tracker
 
-- [x] Slice 15. Split query content into:
-  - hand-written structural query bodies
-  - generated/compiler-derived regex fragments for names and symbol families
-- [x] Slice 16. Add a small generation step or checked-in generator that writes
-  canonical fragments for:
-  - builtin type names
-  - implemented dot intrinsics
-  - source kinds
-  - container type names
-  - shell type names
-- [x] Slice 17. Change `highlights.scm` consumption so those compiler-derived
-  fragments are included from generated files or composed deterministically at
-  bundle-generation time.
-- [x] Slice 18. Add tests proving generated fragments are stable and do not
-  require hand edits when compiler registries change.
+- [ ] Slice 18. Keep `Graph` injected as a type in build stdlib scope, but stop
+  depending on an entry parameter to make it usable
+- [ ] Slice 19. Add editor/LSP completion coverage for `.graph()` inside
+  `build.fol`
+- [ ] Slice 20. Ensure editor diagnostics and symbol/navigation tests for build
+  files use the new entry form and ambient graph access
+- [ ] Slice 21. Update build-file completion helpers so they no longer assume a
+  local identifier named `graph`
 
 ### Exit criteria
 
-- Repetitive query name lists are compiler-derived.
-- Manual query maintenance is reduced to structural capture logic.
+- `fol-editor` understands `.graph()` in build files.
+- Editor tests no longer encode the old entrypoint.
 
-## Epoch 6: Tighten Tree-Sitter Sync Gates
+## Epoch 6: Rewrite Examples, Scaffolding, And Fixtures
 
 Goal:
-Turn more classes of editor drift into obvious test failures.
+Move all user-facing examples to the new build style.
 
 ### Slice Tracker
 
-- [x] Slice 19. Expand sync tests beyond `highlights.scm` to cover:
-  - locals query expectations where compiler data can define them
-  - symbols query expectations where declaration families are compiler-known
-- [x] Slice 20. Add tests that fail if new implemented dot intrinsics exist in
-  the compiler but are absent from tree-sitter highlight coverage.
-- [x] Slice 21. Add tests that fail if new declaration heads/keywords exist in
-  compiler constants but are absent from grammar/query coverage.
-- [x] Slice 22. Add tests for `defer`, named args, variadics, and `fol_model`
-  example packages so real syntax fixtures exercise the tree-sitter bundle.
+- [ ] Slice 22. Rewrite scaffolded `build.fol` templates in
+  `lang/tooling/fol-frontend/src/scaffold.rs` to emit:
+  - `pro[] build(): non`
+  - `var graph = .graph();`
+- [ ] Slice 23. Rewrite all checked-in examples under `examples/` to the new
+  form
+- [ ] Slice 24. Rewrite package fixtures under `test/apps`, `test/large_examples`,
+  and `xtra/` to the new form
+- [ ] Slice 25. Rewrite resolver/frontend/editor helpers that currently write
+  synthetic build files using `build(graph: Graph)`
+- [ ] Slice 26. Add focused positive examples for:
+  - direct `.graph().add_exe(...)`
+  - local binding `var graph = .graph()`
+  - helper routine with explicit `Graph`
+  - helper routine with ambient `.graph()`
 
 ### Exit criteria
 
-- Common "forgot to update tree-sitter" failures are caught automatically.
-- Real checked-in examples participate in syntax coverage.
+- New projects and all examples teach only the new build style.
+- No checked-in example still uses the deleted entry form.
 
-## Epoch 7: Add Editor Model Fixtures
+## Epoch 7: Update Frontend And Build-Route Assumptions
 
 Goal:
-Use real example packages to lock editor behavior by model.
+Make CLI/build routing depend on the new entry contract everywhere.
 
 ### Slice Tracker
 
-- [x] Slice 23. Add `fol-editor` integration fixtures for:
-  - `core` example package
-  - `alloc` example package
-  - `std` example package
-- [x] Slice 24. Add LSP diagnostics tests over those packages:
-  - legal surfaces stay quiet
-  - forbidden surfaces produce exact model-aware errors
-- [x] Slice 25. Add semantic token tests over those same packages so model
-  examples also harden highlighting and tokenization paths.
-- [x] Slice 26. Add completion tests opened against those package roots, not
-  just synthetic one-file snippets.
+- [ ] Slice 27. Update build-route error text in
+  `lang/tooling/fol-frontend/src/build_route/mod.rs` to reference
+  `pro[] build(): non`
+- [ ] Slice 28. Update compile/fetch helpers and synthetic build fixtures in
+  `fol-frontend` tests
+- [ ] Slice 29. Add integration tests proving:
+  - new-style build files plan and execute
+  - old-style build files fail with the new canonical-entry error
+- [ ] Slice 30. Verify routed `build/run/test/check` still work unchanged on top
+  of the new graph-access mechanism
 
 ### Exit criteria
 
-- Real model examples drive editor integration coverage.
-- LSP and tree-sitter are tested against the same example family users read.
+- CLI/build routing fully speaks the new entry shape.
+- Error messages are consistent.
 
-## Epoch 8: Build-System Awareness In The Editor
+## Epoch 8: Hard Delete Old Surface
 
 Goal:
-Make the editor understand routed build artifacts instead of only package-wide
- assumptions.
+Remove the last code/comments/tests that encode the injected-parameter model.
 
 ### Slice Tracker
 
-- [x] Slice 27. Teach editor workspace mapping to inspect `build.fol` routed
-  artifacts and recover the artifact model for the current file where possible.
-- [x] Slice 28. Add tests for mixed-model workspaces where:
-  - one member contains `core`
-  - one member contains `alloc`
-  - one member contains `std`
-  and the editor chooses the right model per opened file/package.
-- [x] Slice 29. Define and document fallback behavior when the editor cannot map
-  a file to a specific routed artifact:
-  - whether to use package default
-  - whether to use conservative model intersection
-  - whether to show "unknown model context" notes
-- [x] Slice 30. Add tests for that fallback policy so ambiguous editor context
-  behaves deterministically.
+- [ ] Slice 31. Remove remaining docs/comments that describe:
+  - "Graph is the sole parameter to `pro[] build`"
+  - helper conventions based on the old entry parameter
+- [ ] Slice 32. Audit resolver/typecheck/build tests for lingering
+  `return graph` / `build(graph: Graph)` fixtures and replace them
+- [ ] Slice 33. Add regression tests that specifically fail if the old entry
+  form starts parsing/validating/executing again
+- [ ] Slice 34. Run a full repo grep audit and remove the last stale references
+  to the old canonical entry from tracked source
 
 ### Exit criteria
 
-- Editor model awareness is based on build reality, not guesswork.
-- Mixed-model workspaces behave deterministically in LSP.
+- The old entrypoint is gone from implementation and tracked examples.
+- Regression tests keep it gone.
 
-## Epoch 9: Reduce Remaining Hand-Written LSP Registries
+## Open Design Questions To Resolve During Implementation
 
-Goal:
-Audit and remove manual editor registries that can be replaced with
- compiler-owned data.
+These should be answered early and then kept stable:
 
-### Slice Tracker
+1. Should `.graph()` be callable only in `build.fol`, or in helper routines
+   defined inside `build.fol` too?
+   - recommendation: yes, anywhere inside build source units
+2. Should ordinary helper routines still be allowed to accept `graph: Graph`?
+   - recommendation: yes, keep this allowed
+3. Should `.graph()` return the same logical handle identity every call?
+   - recommendation: yes
+4. Should there be any implicit local named `graph`?
+   - recommendation: no
+5. Should the book prefer:
+   - direct `.graph().add_exe(...)`
+   - or `var graph = .graph();`
+   - recommendation: prefer local binding in most docs for readability
 
-- [x] Slice 31. Audit all completion/hover/navigation helper tables in
-  `fol-editor` and classify each one:
-  - must stay manual
-  - can become compiler-backed
-  - can become generated
-- [x] Slice 32. Replace at least the low-risk manual registries first:
-  - intrinsic labels
-  - builtin type suggestions
-  - keyword family lists
-- [x] Slice 33. Add regression tests proving compiler-backed LSP registries stay
-  synchronized without hand editing.
+## Recommended Implementation Order
 
-### Exit criteria
+Do the work in this order:
 
-- Obvious duplicated registries are gone.
-- Remaining manual registries are intentional and documented.
+1. docs and contract freeze
+2. build-entry validator switch
+3. `.graph()` semantic surface
+4. restricted executor rewrite
+5. frontend/build-route tests
+6. editor/tests/examples/scaffolding rewrite
+7. repo-wide deletion of old entry references
 
-## Epoch 10: Final Hardening And Removal Of Weak Paths
-
-Goal:
-Finish with an editor pipeline that is hard to drift accidentally.
-
-### Slice Tracker
-
-- [x] Slice 34. Add a top-level "editor sync" test suite that exercises:
-  - compiler metadata export
-  - generated query fragments
-  - tree-sitter bundle validation
-  - LSP diagnostics by model
-  - LSP completion by model
-- [x] Slice 35. Remove stale manual comments/docs that imply editor updates are
-  mostly hand-maintained.
-- [x] Slice 36. Add a contributor-facing doc section:
-  - "if you add a language feature, these editor sync tests must pass"
-  - "if the feature changes syntax shape, update grammar/query structure"
-  - "if the feature only adds names or registries, generation should cover it"
-- [x] Slice 37. Run a full repo audit and close any remaining drift holes found
-  during implementation.
-
-### Exit criteria
-
-- Editor sync expectations are explicit for contributors.
-- The remaining manual surfaces are the ones that should stay manual.
+That order avoids a half-migrated state where docs/examples teach one shape but
+the loader still requires another.
 
 ## Expected End State
 
 When this plan is complete:
 
-- adding a new implemented intrinsic should usually require:
-  - compiler change
-  - maybe structural query update if syntax shape changed
-  - no hand-edited duplicate intrinsic lists
-- adding a new builtin/type family should usually require:
-  - compiler change
-  - generated metadata/query fragments update automatically or through one
-    canonical generator
-- opening a package in the editor should surface `core` / `alloc` / `std`
-  boundaries through the real compiler pipeline
-- mixed-model workspaces should behave predictably in LSP
-- tree-sitter grammar will still be hand-authored, but compiler-driven drift in
-  query-name families will be minimized and test-guarded
-
-## Non-Goals
-
-- Generate the entire tree-sitter grammar from the parser.
-- Replace all `fol-editor` logic with compiler internals.
-- Hide model ambiguity by guessing silently.
-- Keep old manual registries if a compiler-backed source is available.
+- every canonical build file uses `pro[] build(): non`
+- ambient graph access is `.graph()`
+- graph methods still live on `Graph`
+- `Graph` remains a build-only type for helpers and locals
+- the executor no longer depends on a magic parameter name
+- scaffolding, examples, CLI tests, LSP tests, and the book all agree
+- `pro[] build(graph: Graph): non` is deleted everywhere and rejected explicitly
