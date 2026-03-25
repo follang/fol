@@ -46,6 +46,7 @@ impl BuildStdlibImportSurface {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildSemanticTypeFamily {
+    BuildContext,
     Graph,
     ArtifactHandle,
     ModuleHandle,
@@ -68,6 +69,14 @@ pub struct BuildSemanticType {
 }
 
 impl BuildSemanticType {
+    pub fn build_context() -> Self {
+        Self {
+            module: BuildStdlibModulePath::root(),
+            name: "BuildContext".to_string(),
+            family: BuildSemanticTypeFamily::BuildContext,
+        }
+    }
+
     pub fn graph() -> Self {
         Self {
             module: BuildStdlibModulePath::root(),
@@ -591,10 +600,13 @@ mod tests {
 
     #[test]
     fn semantic_build_surface_types_keep_canonical_modules() {
+        let build = BuildSemanticType::build_context();
         let graph = BuildSemanticType::graph();
         let artifact = BuildSemanticType::artifact_handle();
         let step = BuildSemanticType::step_handle();
 
+        assert_eq!(build.module, BuildStdlibModulePath::root());
+        assert_eq!(build.family, BuildSemanticTypeFamily::BuildContext);
         assert_eq!(graph.module, BuildStdlibModulePath::root());
         assert_eq!(graph.family, BuildSemanticTypeFamily::Graph);
         assert_eq!(artifact.module, BuildStdlibModulePath::types());
@@ -605,6 +617,7 @@ mod tests {
 
     #[test]
     fn semantic_build_surface_handle_names_stay_stable() {
+        assert_eq!(BuildSemanticType::build_context().name, "BuildContext");
         assert_eq!(BuildSemanticType::run_handle().name, "Run");
         assert_eq!(BuildSemanticType::install_handle().name, "Install");
         assert_eq!(BuildSemanticType::dependency_handle().name, "Dependency");

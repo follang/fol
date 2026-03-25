@@ -174,7 +174,7 @@ Add semantic metadata for the new build context API.
 
 ### Slice Tracker
 
-- [ ] Slice 5. Add an internal opaque build-context handle alongside the existing graph handle
+- [x] Slice 5. Add an internal opaque build-context handle alongside the existing graph handle
 - [ ] Slice 6. Define canonical build-context methods:
   - `meta`
   - `add_dep`

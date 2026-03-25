@@ -96,6 +96,7 @@ mod tests {
         let families: Vec<BuildSemanticTypeFamily> =
             scope.types.iter().map(|t| t.family).collect();
 
+        assert!(!families.contains(&BuildSemanticTypeFamily::BuildContext));
         assert!(families.contains(&BuildSemanticTypeFamily::ArtifactHandle));
         assert!(families.contains(&BuildSemanticTypeFamily::StepHandle));
         assert!(families.contains(&BuildSemanticTypeFamily::RunHandle));
@@ -210,5 +211,15 @@ mod tests {
         assert!(names.contains(&"StandardTargetConfig"));
         assert!(names.contains(&"StandardOptimizeConfig"));
         assert!(names.contains(&"UserOptionConfig"));
+    }
+
+    #[test]
+    fn stdlib_scope_keeps_internal_build_context_type_hidden() {
+        let scope = BuildStdlibScope::canonical();
+
+        assert!(scope
+            .types
+            .iter()
+            .all(|surface_type| surface_type.family != BuildSemanticTypeFamily::BuildContext));
     }
 }

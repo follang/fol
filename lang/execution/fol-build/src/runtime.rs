@@ -155,6 +155,7 @@ pub struct BuildRuntimeDependencyQuery {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildRuntimeHandleKind {
+    BuildContext,
     Graph,
     Artifact,
     GeneratedFile,
@@ -414,6 +415,10 @@ mod tests {
 
     #[test]
     fn runtime_values_cover_the_initial_build_handle_and_option_surface() {
+        let build = BuildRuntimeValue::Handle(BuildRuntimeHandle::new(
+            BuildRuntimeHandleKind::BuildContext,
+            "build",
+        ));
         let graph = BuildRuntimeValue::Handle(BuildRuntimeHandle::new(
             BuildRuntimeHandleKind::Graph,
             "graph",
@@ -425,6 +430,13 @@ mod tests {
         let target = BuildRuntimeValue::Target("x86_64-linux-gnu".to_string());
         let optimize = BuildRuntimeValue::Optimize("release-safe".to_string());
 
+        assert!(matches!(
+            build,
+            BuildRuntimeValue::Handle(BuildRuntimeHandle {
+                kind: BuildRuntimeHandleKind::BuildContext,
+                ..
+            })
+        ));
         assert!(matches!(
             graph,
             BuildRuntimeValue::Handle(BuildRuntimeHandle {
