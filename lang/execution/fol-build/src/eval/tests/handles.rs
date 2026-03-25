@@ -146,6 +146,60 @@ fn build_source_evaluator_allows_dependency_modules_to_feed_back_into_artifact_i
 }
 
 #[test]
+fn build_source_evaluator_keeps_generated_handles_through_local_helpers() {
+    let source = concat!(
+        "fun[] emit_cfg() = {\n",
+        "    var graph = .build().graph();\n",
+        "    return graph.write_file({ name = \"cfg\", path = \"config/generated.toml\", contents = \"ok\" });\n",
+        "}\n",
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    var run = graph.add_run(app);\n",
+        "    var cfg = emit_cfg();\n",
+        "    app.add_generated(cfg);\n",
+        "    run.add_file_arg(cfg);\n",
+        "    graph.install_file({ name = \"install-cfg\", source = cfg });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("helper output handles should evaluate")
+        .expect("build body should produce operations");
+
+    assert_eq!(evaluated.result.graph.generated_files().len(), 1);
+    assert_eq!(evaluated.result.graph.installs().len(), 1);
+    let artifact_inputs = evaluated
+        .result
+        .graph
+        .artifact_inputs_for(crate::graph::BuildArtifactId(0))
+        .collect::<Vec<_>>();
+    assert!(artifact_inputs.iter().any(|input| matches!(
+        input,
+        crate::graph::BuildArtifactInput::GeneratedFile(crate::graph::BuildGeneratedFileId(0))
+    )));
+    let run_cfg = evaluated
+        .result
+        .graph
+        .run_config_for(crate::graph::BuildStepId(0))
+        .expect("run config should exist");
+    assert!(run_cfg.args.iter().any(|arg| matches!(
+        arg,
+        crate::graph::BuildRunArg::GeneratedFile(crate::graph::BuildGeneratedFileId(0))
+    )));
+}
+
+#[test]
 fn build_source_evaluator_extracts_and_replays_restricted_build_bodies() {
     let source = concat!(
         "pro[] build(): non = {\n",

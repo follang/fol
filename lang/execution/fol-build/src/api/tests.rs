@@ -537,6 +537,37 @@ mod tests {
     }
 
     #[test]
+    fn build_api_install_generated_file_reuses_existing_generated_nodes() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+        let written = api
+            .write_file(WriteFileRequest {
+                name: "cfg".to_string(),
+                path: "config/generated.toml".to_string(),
+                contents: "ok".to_string(),
+            })
+            .expect("write file should succeed");
+
+        let install = api
+            .install_generated_file(
+                "install-generated",
+                written
+                    .generated_file_id()
+                    .expect("written output should resolve to a generated file id"),
+            )
+            .expect("install generated file should succeed");
+
+        assert_eq!(install.name, "install-generated");
+        assert_eq!(api.graph().generated_files().len(), 1);
+        assert_eq!(
+            api.graph().installs()[0].target,
+            Some(crate::graph::BuildInstallTarget::GeneratedFile(
+                crate::graph::BuildGeneratedFileId(0)
+            ))
+        );
+    }
+
+    #[test]
     fn output_handles_cover_local_and_dependency_generated_sources() {
         let local = OutputHandle {
             kind: OutputHandleKind::WrittenFile,

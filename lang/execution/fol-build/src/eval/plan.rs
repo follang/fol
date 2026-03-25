@@ -185,6 +185,23 @@ pub fn evaluate_build_plan(
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
                 step_names.insert(operation_request.name.clone(), handle.step_id);
             }
+            BuildEvaluationOperationKind::InstallGeneratedFile {
+                name,
+                generated_name,
+            } => {
+                let generated_id = generated_names.get(generated_name).copied().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!(
+                            "unknown generated file '{generated_name}' in graph.install_file"
+                        ),
+                        operation.origin.clone(),
+                    )
+                })?;
+                let handle = api
+                    .install_generated_file(name.clone(), generated_id)
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                step_names.insert(name.clone(), handle.step_id);
+            }
             BuildEvaluationOperationKind::InstallDir(operation_request) => {
                 let handle = api
                     .install_dir(operation_request.clone())

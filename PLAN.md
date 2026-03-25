@@ -222,7 +222,7 @@ If a new dependency/output/install shape is chosen:
 
 - make dependency `generated(...)` return the same unified output handle class
 
-### Slice 15
+### Slice 15 [complete]
 
 - add graph methods that accept output handles where path-like inputs make
   sense today:
@@ -230,7 +230,7 @@ If a new dependency/output/install shape is chosen:
   - run file args
   - artifact generated attachments
 
-### Slice 16
+### Slice 16 [complete]
 
 - add source-eval tests proving output handles can flow through local helpers
   without degrading to strings

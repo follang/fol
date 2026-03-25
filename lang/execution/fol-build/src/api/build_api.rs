@@ -216,6 +216,30 @@ impl<'a> BuildApi<'a> {
         })
     }
 
+    pub fn install_generated_file(
+        &mut self,
+        name: impl Into<String>,
+        generated_file_id: crate::graph::BuildGeneratedFileId,
+    ) -> Result<InstallHandle, BuildApiError> {
+        let name = name.into();
+        validate_build_name(&name).map_err(super::types::BuildApiError::InvalidName)?;
+        let step_id = self
+            .graph
+            .add_step(crate::graph::BuildStepKind::Install, name.clone());
+        let install_id = self.graph.add_install_with_target(
+            crate::graph::BuildInstallKind::File,
+            name.clone(),
+            Some(crate::graph::BuildInstallTarget::GeneratedFile(
+                generated_file_id,
+            )),
+        );
+        Ok(InstallHandle {
+            install_id,
+            step_id,
+            name,
+        })
+    }
+
     pub fn write_file(
         &mut self,
         request: WriteFileRequest,

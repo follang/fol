@@ -166,6 +166,7 @@ pub enum BuildEvaluationOperationKind {
     AddRun(BuildEvaluationRunRequest),
     InstallArtifact(BuildEvaluationInstallArtifactRequest),
     InstallFile(InstallFileRequest),
+    InstallGeneratedFile { name: String, generated_name: String },
     InstallDir(InstallDirRequest),
     WriteFile(WriteFileRequest),
     CopyFile(CopyFileRequest),

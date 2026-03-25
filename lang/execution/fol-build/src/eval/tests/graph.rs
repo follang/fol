@@ -571,6 +571,40 @@ fn build_source_evaluator_records_artifact_add_generated_in_graph() {
 }
 
 #[test]
+fn build_source_evaluator_records_install_file_from_generated_handles() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var cfg = graph.write_file({ name = \"cfg\", path = \"config/generated.toml\", contents = \"ok\" });\n",
+        "    graph.install_file({ name = \"install-cfg\", source = cfg });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("install_file from generated handle should evaluate")
+        .expect("build body should produce operations");
+
+    assert_eq!(evaluated.result.graph.generated_files().len(), 1);
+    assert_eq!(evaluated.result.graph.installs().len(), 1);
+    assert_eq!(
+        evaluated.result.graph.installs()[0].target,
+        Some(crate::graph::BuildInstallTarget::GeneratedFile(
+            crate::graph::BuildGeneratedFileId(0)
+        ))
+    );
+}
+
+#[test]
 fn build_source_evaluator_executes_when_condition_conditionally() {
     let source = concat!(
         "pro[] build(): non = {\n",

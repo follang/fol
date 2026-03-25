@@ -209,17 +209,35 @@ impl BuildBodyExecutor {
                 let name = self
                     .resolve_field_string(fields, "name")
                     .ok_or_else(|| self.unsupported(method))?;
-                let path = self
-                    .resolve_field_string(fields, "path")
-                    .or_else(|| self.resolve_field_string(fields, "source"))
-                    .ok_or_else(|| self.unsupported(method))?;
                 self.output.operations.push(BuildEvaluationOperation {
                     origin,
-                    kind: BuildEvaluationOperationKind::InstallFile(InstallFileRequest {
-                        name: name.clone(),
-                        path,
-                        depends_on: Vec::new(),
-                    }),
+                    kind: if let Some(generated_name) = fields
+                        .iter()
+                        .find(|field| field.name == "path" || field.name == "source")
+                        .and_then(|field| match &field.value {
+                            AstNode::Identifier { name, .. } => match self.scope.get(name.as_str())
+                            {
+                                Some(ExecValue::GeneratedFile { name, .. }) => Some(name.clone()),
+                                _ => None,
+                            },
+                            _ => None,
+                        })
+                    {
+                        BuildEvaluationOperationKind::InstallGeneratedFile {
+                            name: name.clone(),
+                            generated_name,
+                        }
+                    } else {
+                        let path = self
+                            .resolve_field_string(fields, "path")
+                            .or_else(|| self.resolve_field_string(fields, "source"))
+                            .ok_or_else(|| self.unsupported(method))?;
+                        BuildEvaluationOperationKind::InstallFile(InstallFileRequest {
+                            name: name.clone(),
+                            path,
+                            depends_on: Vec::new(),
+                        })
+                    },
                 });
                 Ok(Some(ExecValue::Install { name }))
             }
