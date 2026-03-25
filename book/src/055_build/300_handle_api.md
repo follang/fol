@@ -35,7 +35,8 @@ Equivalent to Zig's `artifact.root_module.addImport(name, module)`.
 ### `artifact.add_generated`
 
 Declares that this artifact depends on a generated file being produced before
-it can compile.
+it can compile. The value stays a generated-output handle; it does not need to
+be converted back into a string path.
 
 ```fol
 var schema = graph.add_codegen({
@@ -65,7 +66,7 @@ run.add_arg("--config").add_arg("config/default.toml");
 
 ### `run.add_file_arg`
 
-Appends a generated file as a path argument.
+Appends a generated output handle as a path argument.
 
 ```fol
 var cfg = graph.copy_file({
@@ -78,6 +79,23 @@ run.add_file_arg(cfg);
 ```
 
 Equivalent to Zig's `run.addFileArg(file)`.
+
+Generated-output handles compose across the graph surface:
+
+```fol
+fun[] emit_cfg() = {
+    return .build().graph().write_file({
+        name = "cfg",
+        path = "config/generated.toml",
+        contents = "ok",
+    });
+}
+
+var cfg = emit_cfg();
+app.add_generated(cfg);
+run.add_file_arg(cfg);
+graph.install_file({ name = "install-cfg", source = cfg });
+```
 
 ### `run.add_dir_arg`
 

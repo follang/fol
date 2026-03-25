@@ -235,7 +235,7 @@ If a new dependency/output/install shape is chosen:
 - add source-eval tests proving output handles can flow through local helpers
   without degrading to strings
 
-### Slice 17
+### Slice 17 [complete]
 
 - add book chapter section for output-handle composition with examples
 

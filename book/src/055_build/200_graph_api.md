@@ -163,10 +163,20 @@ Returns an `Install` handle.
 
 ### `graph.install_file`
 
-Installs a file by path.
+Installs either a source-path file or a generated output handle.
 
 ```fol
-graph.install_file("config/defaults.toml");
+graph.install_file({ name = "defaults", path = "config/defaults.toml" });
+```
+
+```fol
+var cfg = graph.write_file({
+    name = "cfg",
+    path = "config/generated.toml",
+    contents = "ok",
+});
+
+graph.install_file({ name = "generated-cfg", source = cfg });
 ```
 
 Returns an `Install` handle.
