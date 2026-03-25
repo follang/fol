@@ -162,6 +162,7 @@ version = "0.1.4"
 dependencies = [
  "fol-diagnostics",
  "fol-intrinsics",
+ "fol-lexer",
  "fol-parser",
  "fol-resolver",
 ]

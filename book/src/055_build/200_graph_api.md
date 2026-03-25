@@ -222,6 +222,24 @@ fol code build docs
 fol code build --step docs
 ```
 
+## Current Execution Semantics
+
+Step execution is still serial today. The build graph keeps deterministic step
+ordering and explicit dependency edges, but it does not claim parallel
+execution yet.
+
+Current reporting distinguishes:
+
+- requested
+- executed
+- skipped-from-cache
+- skipped-by-foreign-run-policy
+- produced outputs
+
+That reporting is intended for frontend summaries and tests. Produced outputs
+now participate in step cache-key semantics, so generated-file changes can
+invalidate dependent steps predictably.
+
 ## Options
 
 ### `graph.standard_target`

@@ -50,6 +50,14 @@ var logtiny_gen = logtiny.generated("bindings");
 
 That makes dependencies real build values instead of only package-loader data.
 
+The current dependency import model stays explicit:
+
+- ordinary source imports still resolve by alias projection under `.fol/pkg/<alias>`
+- dependency handles query the projected build-facing surface of that package
+
+This keeps source imports and build-surface queries separate instead of
+collapsing them into one implicit registry.
+
 ### Output Handles
 
 Generated and copied files should not remain fragmented into unrelated special
@@ -63,18 +71,8 @@ The intended capability is one output-handle family that can represent:
 - generated files exported by dependency packages
 
 This should behave like one composable build value, not a pile of unrelated
-string paths.
-
-The current migration order is:
-
-1. define one canonical output-handle family internally
-2. move local generated-file returns onto that family
-3. move `run.capture_stdout()` onto the same family
-4. later, merge dependency `generated(...)` lookups into that same output
-   family
-
-That keeps the public surface moving toward one handle class without forcing
-every dependency-facing path to land in the same patch.
+string paths. That handle family is now the current direction for local and
+dependency-generated outputs alike.
 
 ### Explicit Dependency Arguments
 
@@ -110,6 +108,20 @@ That means FOL should continue to separate:
 - build/cache internals
 - fetched dependency storage
 - final installed outputs
+
+### Step Execution
+
+Step execution is still serial today. The current work is about making cache
+boundaries and reporting honest and explicit, not pretending the executor is
+already parallel.
+
+The current reporting direction is:
+
+- requested
+- executed
+- skipped-from-cache
+- skipped-by-foreign-run-policy
+- produced outputs
 
 ## What This Does Not Mean
 

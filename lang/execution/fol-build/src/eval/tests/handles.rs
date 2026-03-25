@@ -244,6 +244,84 @@ fn build_source_evaluator_allows_dependency_modules_to_feed_back_into_artifact_i
 }
 
 #[test]
+fn build_source_evaluator_keeps_mixed_source_dependency_surface_queries_precise() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    var shared = build.add_dep({ alias = \"shared\", source = \"loc\", target = \"../shared\" });\n",
+        "    var json = build.add_dep({ alias = \"json\", source = \"pkg\", target = \"json\" });\n",
+        "    var logtiny = build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://example.com/logtiny\" });\n",
+        "    var graph = build.graph();\n",
+        "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    app.import(shared.module(\"root\"));\n",
+        "    app.link(json.artifact(\"json\"));\n",
+        "    app.add_generated(logtiny.generated(\"bindings\"));\n",
+        "    logtiny.step(\"check\");\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("mixed-source dependency queries should evaluate")
+        .expect("build body should produce operations");
+
+    assert_eq!(evaluated.result.dependency_requests.len(), 3);
+    assert!(evaluated
+        .result
+        .dependency_requests
+        .iter()
+        .any(|dep| dep.alias == "shared" && dep.source == crate::DependencySourceKind::Local));
+    assert!(evaluated
+        .result
+        .dependency_requests
+        .iter()
+        .any(|dep| dep.alias == "json" && dep.source == crate::DependencySourceKind::Package));
+    assert!(evaluated
+        .result
+        .dependency_requests
+        .iter()
+        .any(|dep| dep.alias == "logtiny" && dep.source == crate::DependencySourceKind::Git));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "root"
+            && query.kind == crate::runtime::BuildRuntimeDependencyQueryKind::Module));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "json"
+            && query.query_name == "json"
+            && query.kind == crate::runtime::BuildRuntimeDependencyQueryKind::Artifact));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "logtiny"
+            && query.query_name == "bindings"
+            && query.kind == crate::runtime::BuildRuntimeDependencyQueryKind::GeneratedOutput));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "logtiny"
+            && query.query_name == "check"
+            && query.kind == crate::runtime::BuildRuntimeDependencyQueryKind::Step));
+}
+
+#[test]
 fn build_source_evaluator_keeps_generated_handles_through_local_helpers() {
     let source = concat!(
         "fun[] emit_cfg() = {\n",

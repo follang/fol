@@ -50,6 +50,27 @@ fn formal_build_fixture(name: &str, deps: &[(&str, &str, &str)]) -> String {
     source
 }
 
+fn formal_build_fixture_with_surface(name: &str) -> String {
+    concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"",
+    )
+    .to_string()
+        + name
+        + "\", version = \"1.0.0\" });\n"
+        + "    var graph = build.graph();\n"
+        + "    var codec = graph.add_module({ name = \"codec\", root = \"src/root/codec.fol\" });\n"
+        + "    var app = graph.add_exe({ name = \""
+        + name
+        + "\", root = \"src/root/main.fol\" });\n"
+        + "    var schema = graph.write_file({ name = \"schema\", path = \"gen/schema.fol\", contents = \"ok\" });\n"
+        + "    var docs = graph.step(\"docs\");\n"
+        + "    graph.install(app);\n"
+        + "    return;\n"
+        + "};\n"
+}
+
 #[test]
 fn package_session_config_can_be_provided_explicitly() {
     let session = PackageSession::with_config(PackageConfig {
@@ -606,6 +627,56 @@ fn package_session_keeps_semantic_build_entries_for_formal_pkg_roots() {
     assert!(loaded.has_semantic_build_entry(
         &crate::build_entry::BuildEntrySignatureExpectation::canonical()
     ));
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary package-store fixture should be removable after the test");
+}
+
+#[test]
+fn package_session_projects_dependency_surfaces_for_formal_pkg_roots() {
+    let temp_root = unique_temp_root("pkg_dependency_surface");
+    let store_root = temp_root.join("store");
+    fs::create_dir_all(store_root.join("json/src/root"))
+        .expect("Should create a temporary package-store fixture");
+    fs::write(
+        store_root.join("json/build.fol"),
+        formal_build_fixture_with_surface("json"),
+    )
+    .expect("Should write the semantic build entry fixture");
+    fs::write(
+        store_root.join("json/src/root/main.fol"),
+        "var[exp] answer: int = 42;\n",
+    )
+    .expect("Should write the package source fixture");
+    fs::write(
+        store_root.join("json/src/root/codec.fol"),
+        "var[exp] codec: int = 7;\n",
+    )
+    .expect("Should write the package source fixture");
+    let mut session = PackageSession::new();
+
+    let loaded = session
+        .load_package_from_store(
+            &store_root,
+            &[UsePathSegment {
+                separator: None,
+                spelling: "json".to_string(),
+            }],
+        )
+        .expect("Package session should load pkg roots with projected dependency surfaces");
+
+    let surfaces = loaded
+        .dependency_surfaces
+        .as_ref()
+        .expect("formal pkg roots should now project dependency surfaces");
+    let surface = surfaces
+        .find("json")
+        .expect("surface should be keyed by package name");
+    assert!(surface.source_roots.iter().any(|root| root.relative_path == "src/root"));
+    assert!(surface.modules.iter().any(|module| module.name == "codec"));
+    assert!(surface.artifacts.iter().any(|artifact| artifact.name == "json"));
+    assert!(surface.steps.iter().any(|step| step.name == "docs"));
+    assert!(surface.generated_outputs.iter().any(|output| output.name == "schema"));
 
     fs::remove_dir_all(&temp_root)
         .expect("Temporary package-store fixture should be removable after the test");

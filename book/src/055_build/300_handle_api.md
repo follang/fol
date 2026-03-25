@@ -204,6 +204,18 @@ var dep = build.add_dep({
 Dependency handles query already-declared package dependencies. They do not add
 new graph mutations themselves.
 
+The exposed surface is projected deterministically from the dependency package:
+
+- ordinary package source roots
+- named graph modules
+- installed artifacts
+- named steps
+- generated outputs
+
+Import resolution still follows the current alias-projection model under
+`.fol/pkg/<alias>`. Dependency handles do not replace ordinary package imports;
+they expose the build-facing surface of the already-declared dependency.
+
 ### `dependency.module`
 
 Resolves a named module from the dependency.

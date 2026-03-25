@@ -1,7 +1,7 @@
 use crate::{
-    metadata::PackageDependencySourceKind, PackageBuildDefinition, PackageBuildMode,
-    PackageConfig, PackageError, PackageErrorKind, PackageIdentity, PackageSourceKind,
-    PreparedPackage,
+    build_dependency::{project_dependency_surface, DependencyBuildSurfaceSet},
+    metadata::PackageDependencySourceKind, PackageBuildDefinition, PackageBuildMode, PackageConfig,
+    PackageError, PackageErrorKind, PackageIdentity, PackageSourceKind, PreparedPackage,
 };
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::{AstParser, ParsedPackage, SyntaxOrigin, UsePathSegment};
@@ -264,12 +264,18 @@ impl PackageSession {
         let prepared_result =
             parse_directory_package_syntax(canonical_root, &metadata.name, source_kind).and_then(
                 |syntax| {
+                    let mut dependency_surfaces = DependencyBuildSurfaceSet::new();
+                    dependency_surfaces.add(project_dependency_surface(
+                        &metadata.name,
+                        canonical_root,
+                        &syntax,
+                    )?);
                     Ok(PreparedPackage::with_controls(
                         identity.clone(),
                         metadata,
                         build,
                         Vec::new(),
-                        None,
+                        Some(dependency_surfaces),
                         None,
                         syntax,
                     ))

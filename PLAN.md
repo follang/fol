@@ -283,7 +283,7 @@ If a new dependency/output/install shape is chosen:
 
 ## Epoch 5: Tighten Dependency Surface Exposure
 
-### Slice 24
+### Slice 24 [complete]
 
 - define what a dependency exposes by default:
   - package source roots
@@ -292,36 +292,36 @@ If a new dependency/output/install shape is chosen:
   - named graph modules
   - named steps
 
-### Slice 25
+### Slice 25 [complete]
 
 - make dependency surface projection deterministic and testable
 - remove ad hoc alias assumptions
 
-### Slice 26
+### Slice 26 [complete]
 
 - decide whether imports should continue to resolve by alias projection under
   `.fol/pkg/<alias>` or instead through a richer exposed-surface registry
 - document the chosen model and remove the unused one
 
-### Slice 27
+### Slice 27 [complete]
 
 - add regression tests for mixed local/pkg/git dependency exposure
 - include at least one imported generated-output case
 
 ## Epoch 6: Strengthen Step Execution And Cache Semantics
 
-### Slice 28
+### Slice 28 [complete]
 
 - audit what step cache keys currently model vs what frontend/backend actually
   reuse
 - document the gap
 
-### Slice 29
+### Slice 29 [complete]
 
 - make produced outputs participate in step cache-key semantics where relevant
 - generated file changes should invalidate dependent steps predictably
 
-### Slice 30
+### Slice 30 [complete]
 
 - add explicit step execution reporting that distinguishes:
   - requested
@@ -329,12 +329,12 @@ If a new dependency/output/install shape is chosen:
   - skipped-from-cache
   - skipped-by-foreign-run-policy
 
-### Slice 31
+### Slice 31 [complete]
 
 - make run/system-tool/codegen step summaries expose enough detail for frontend
   reporting and tests
 
-### Slice 32
+### Slice 32 [complete]
 
 - add tests covering deterministic step ordering and cache invalidation
   boundaries for:
@@ -343,7 +343,7 @@ If a new dependency/output/install shape is chosen:
   - generated outputs
   - dependency args
 
-### Slice 33
+### Slice 33 [complete]
 
 - if execution is still fully serial, document that honestly and add a follow-up
   note for future parallel execution
