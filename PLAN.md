@@ -182,7 +182,7 @@ If a new dependency/output/install shape is chosen:
 - harden executor and runtime query recording for dependency-handle lookups
 - ensure all dependency queries preserve alias + requested name + kind
 
-### Slice 9
+### Slice 9 [complete]
 
 - add an end-to-end fixture where a dependency is:
   - declared via `build.add_dep`

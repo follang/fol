@@ -103,6 +103,49 @@ fn build_source_evaluator_treats_add_dep_as_a_real_dependency_handle() {
 }
 
 #[test]
+fn build_source_evaluator_allows_dependency_modules_to_feed_back_into_artifact_imports() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    var dep = build.add_dep({ alias = \"core\", source = \"pkg\", target = \"core\" });\n",
+        "    var graph = build.graph();\n",
+        "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    app.import(dep.module(\"root\"));\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("dependency module imports should evaluate")
+        .expect("build body should produce operations");
+
+    assert_eq!(evaluated.result.graph.artifacts().len(), 1);
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "core"
+            && query.query_name == "root"
+            && query.kind == crate::runtime::BuildRuntimeDependencyQueryKind::Module));
+    assert!(evaluated
+        .result
+        .graph
+        .modules()
+        .iter()
+        .any(|module| module.name == "dep:core:root"));
+}
+
+#[test]
 fn build_source_evaluator_extracts_and_replays_restricted_build_bodies() {
     let source = concat!(
         "pro[] build(): non = {\n",

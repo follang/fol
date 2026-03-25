@@ -136,6 +136,9 @@ impl BuildBodyExecutor {
                 let module_name = match arg {
                     AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
                         Some(ExecValue::Module { name }) => name.clone(),
+                        Some(ExecValue::DependencyModule { alias, query_name }) => {
+                            format!("dep::{alias}::module::{query_name}")
+                        }
                         _ => return Err(self.unsupported(method)),
                     },
                     _ => return Err(self.unsupported(method)),

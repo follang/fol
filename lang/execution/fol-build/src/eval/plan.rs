@@ -17,6 +17,12 @@ use crate::option::{
 };
 use std::collections::BTreeMap;
 
+fn parse_dependency_module_identity(name: &str) -> Option<(&str, &str)> {
+    let rest = name.strip_prefix("dep::")?;
+    let (alias, rest) = rest.split_once("::module::")?;
+    Some((alias, rest))
+}
+
 pub fn evaluate_build_plan(
     request: &BuildEvaluationRequest,
 ) -> Result<BuildEvaluationResult, BuildEvaluationError> {
@@ -256,12 +262,23 @@ pub fn evaluate_build_plan(
                             operation.origin.clone(),
                         )
                     })?;
-                let module_id = module_names.get(module_name).copied().ok_or_else(|| {
-                    evaluation_invalid_input(
+                let module_id = if let Some(module_id) = module_names.get(module_name).copied() {
+                    module_id
+                } else if let Some((alias, query_name)) =
+                    parse_dependency_module_identity(module_name)
+                {
+                    let synthetic_name = format!("dep:{alias}:{query_name}");
+                    let module_id = api
+                        .graph_mut()
+                        .add_module(crate::graph::BuildModuleKind::Imported, synthetic_name);
+                    module_names.insert(module_name.clone(), module_id);
+                    module_id
+                } else {
+                    return Err(evaluation_invalid_input(
                         format!("unknown module '{module_name}' in artifact.import"),
                         operation.origin.clone(),
-                    )
-                })?;
+                    ));
+                };
                 api.artifact_import(artifact_id, module_id);
             }
             BuildEvaluationOperationKind::ArtifactAddGenerated {
