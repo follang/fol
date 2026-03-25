@@ -1,7 +1,16 @@
 use crate::{PackageError, PackageErrorKind};
-use fol_parser::ast::SyntaxOrigin;
+use fol_lexer::lexer::stage3::Elements;
+use fol_parser::ast::{AstNode, AstParser, CallSurface, ParsedPackage, SyntaxOrigin};
+use fol_stream::FileStream;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExtractedPackageMetadataField {
+    pub name: String,
+    pub value: String,
+    pub origin: Option<SyntaxOrigin>,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PackageDependencySourceKind {
@@ -190,6 +199,195 @@ pub fn parse_package_metadata(path: &Path) -> Result<PackageMetadata, PackageErr
         )?,
         dependencies,
     })
+}
+
+pub fn extract_package_metadata_fields_from_build(
+    path: &Path,
+) -> Result<Vec<ExtractedPackageMetadataField>, PackageError> {
+    let parsed = parse_build_package_for_metadata(path)?;
+    let build_body = canonical_build_body(&parsed).ok_or_else(|| {
+        PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "build.fol '{}' must declare exactly one canonical `pro[] build(): non` entry",
+                path.display()
+            ),
+        )
+    })?;
+    let mut fields = Vec::new();
+    let mut build_aliases = BTreeSet::new();
+    let mut string_bindings = BTreeMap::new();
+    collect_metadata_fields(
+        build_body,
+        &parsed,
+        &mut build_aliases,
+        &mut string_bindings,
+        &mut fields,
+    );
+    Ok(fields)
+}
+
+fn parse_build_package_for_metadata(path: &Path) -> Result<ParsedPackage, PackageError> {
+    let path_str = path.to_str().ok_or_else(|| {
+        PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!("package build file '{}' is not valid UTF-8", path.display()),
+        )
+    })?;
+    let mut stream = FileStream::from_file(path_str).map_err(|error| {
+        PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package loader could not read package build file '{}': {}",
+                path.display(),
+                error
+            ),
+        )
+    })?;
+    let mut lexer = Elements::init(&mut stream);
+    let mut parser = AstParser::new();
+    parser.parse_package(&mut lexer).map_err(|diagnostics| {
+        let message = diagnostics
+            .into_iter()
+            .next()
+            .map(|d| d.message)
+            .unwrap_or_else(|| "unknown parse error".to_string());
+        PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "package loader could not parse package build file '{}': {}",
+                path.display(),
+                message
+            ),
+        )
+    })
+}
+
+fn canonical_build_body<'a>(parsed: &'a ParsedPackage) -> Option<&'a [AstNode]> {
+    let mut found = None;
+    for unit in &parsed.source_units {
+        for item in &unit.items {
+            let AstNode::ProDecl {
+                name,
+                params,
+                return_type,
+                body,
+                ..
+            } = &item.node
+            else {
+                continue;
+            };
+            if name != "build" || !params.is_empty() {
+                continue;
+            }
+            let Some(return_type_name) = return_type.as_ref().and_then(|ty| ty.named_text()) else {
+                continue;
+            };
+            if return_type_name != "non" && return_type_name != "none" {
+                continue;
+            }
+            if found.is_some() {
+                return None;
+            }
+            found = Some(body.as_slice());
+        }
+    }
+    found
+}
+
+fn collect_metadata_fields(
+    nodes: &[AstNode],
+    parsed: &ParsedPackage,
+    build_aliases: &mut BTreeSet<String>,
+    string_bindings: &mut BTreeMap<String, String>,
+    fields: &mut Vec<ExtractedPackageMetadataField>,
+) {
+    for node in nodes {
+        match node {
+            AstNode::VarDecl {
+                name,
+                value: Some(value),
+                ..
+            } => {
+                if is_ambient_build(value) {
+                    build_aliases.insert(name.clone());
+                } else if let Some(literal) = resolve_string_value(value, string_bindings) {
+                    string_bindings.insert(name.clone(), literal);
+                }
+            }
+            AstNode::MethodCall { object, method, args } if method == "meta" => {
+                if !is_build_receiver(object, build_aliases) {
+                    continue;
+                }
+                let [AstNode::RecordInit { syntax_id, fields: record_fields, .. }] = &args[..] else {
+                    continue;
+                };
+                let origin = syntax_id.and_then(|id| parsed.syntax_index.origin(id).cloned());
+                for field in record_fields {
+                    if let Some(value) = resolve_string_value(&field.value, string_bindings) {
+                        fields.push(ExtractedPackageMetadataField {
+                            name: field.name.clone(),
+                            value,
+                            origin: origin.clone(),
+                        });
+                    }
+                }
+            }
+            AstNode::When { cases, default, .. } => {
+                for case in cases {
+                    if let fol_parser::ast::WhenCase::Case { body, .. } = case {
+                        let mut aliases = build_aliases.clone();
+                        let mut bindings = string_bindings.clone();
+                        collect_metadata_fields(body, parsed, &mut aliases, &mut bindings, fields);
+                    }
+                }
+                if let Some(default_body) = default {
+                    let mut aliases = build_aliases.clone();
+                    let mut bindings = string_bindings.clone();
+                    collect_metadata_fields(default_body, parsed, &mut aliases, &mut bindings, fields);
+                }
+            }
+            AstNode::Loop { body, .. } | AstNode::Defer { body, .. } => {
+                let mut aliases = build_aliases.clone();
+                let mut bindings = string_bindings.clone();
+                collect_metadata_fields(body, parsed, &mut aliases, &mut bindings, fields);
+            }
+            AstNode::Block { statements, .. } => {
+                let mut aliases = build_aliases.clone();
+                let mut bindings = string_bindings.clone();
+                collect_metadata_fields(statements, parsed, &mut aliases, &mut bindings, fields);
+            }
+            _ => {}
+        }
+    }
+}
+
+fn is_ambient_build(node: &AstNode) -> bool {
+    matches!(
+        node,
+        AstNode::FunctionCall {
+            surface: CallSurface::DotIntrinsic,
+            name,
+            args,
+            ..
+        } if name == "build" && args.is_empty()
+    )
+}
+
+fn is_build_receiver(node: &AstNode, build_aliases: &BTreeSet<String>) -> bool {
+    is_ambient_build(node)
+        || matches!(
+            node,
+            AstNode::Identifier { name, .. } if build_aliases.contains(name)
+        )
+}
+
+fn resolve_string_value(node: &AstNode, string_bindings: &BTreeMap<String, String>) -> Option<String> {
+    match node {
+        AstNode::Literal(fol_parser::ast::Literal::String(value)) => Some(value.clone()),
+        AstNode::Identifier { name, .. } => string_bindings.get(name).cloned(),
+        _ => None,
+    }
 }
 
 fn parse_dependency_decl(
@@ -384,7 +582,8 @@ fn is_valid_package_name(package_name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_package_metadata, PackageDependencyDecl, PackageDependencySourceKind, PackageMetadata,
+        extract_package_metadata_fields_from_build, parse_package_metadata, PackageDependencyDecl,
+        PackageDependencySourceKind, PackageMetadata,
     };
     use fol_diagnostics::ToDiagnostic;
     use std::fs;
@@ -401,6 +600,14 @@ mod tests {
             std::process::id(),
             stamp
         ))
+    }
+
+    fn write_build_fixture(label: &str, source: &str) -> std::path::PathBuf {
+        let temp_root = unique_temp_root(label);
+        fs::create_dir_all(&temp_root).expect("Should create temporary build fixture root");
+        let build_path = temp_root.join("build.fol");
+        fs::write(&build_path, source).expect("Should write the build fixture");
+        build_path
     }
 
     #[test]
@@ -568,6 +775,62 @@ mod tests {
 
         fs::remove_dir_all(&temp_root)
             .expect("Temporary metadata fixture root should be removable after the test");
+    }
+
+    #[test]
+    fn build_metadata_extractor_reads_direct_meta_fields() {
+        let build_path = write_build_fixture(
+            "build_meta_direct",
+            concat!(
+                "pro[] build(): non = {\n",
+                "    .build().meta({\n",
+                "        name = \"demo\",\n",
+                "        version = \"1.0.0\",\n",
+                "        kind = \"exe\",\n",
+                "    });\n",
+                "}\n",
+            ),
+        );
+
+        let fields = extract_package_metadata_fields_from_build(&build_path)
+            .expect("build metadata should extract from direct meta call");
+
+        assert!(fields.iter().any(|field| field.name == "name" && field.value == "demo"));
+        assert!(fields
+            .iter()
+            .any(|field| field.name == "version" && field.value == "1.0.0"));
+        assert!(fields.iter().any(|field| field.name == "kind" && field.value == "exe"));
+
+        fs::remove_dir_all(build_path.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn build_metadata_extractor_reads_string_bindings_through_build_local() {
+        let build_path = write_build_fixture(
+            "build_meta_local_bindings",
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    var name = \"demo\";\n",
+                "    var version = \"1.0.0\";\n",
+                "    build.meta({\n",
+                "        name = name,\n",
+                "        version = version,\n",
+                "    });\n",
+                "}\n",
+            ),
+        );
+
+        let fields = extract_package_metadata_fields_from_build(&build_path)
+            .expect("build metadata should extract through inferred build locals");
+
+        assert_eq!(fields.len(), 2);
+        assert!(fields.iter().any(|field| field.name == "name" && field.value == "demo"));
+        assert!(fields
+            .iter()
+            .any(|field| field.name == "version" && field.value == "1.0.0"));
+
+        fs::remove_dir_all(build_path.parent().unwrap()).ok();
     }
 
     #[test]
