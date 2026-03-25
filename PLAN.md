@@ -202,7 +202,7 @@ If a new dependency/output/install shape is chosen:
   - source-root-relative file references
 - define one canonical internal handle family
 
-### Slice 11
+### Slice 11 [complete]
 
 - add explicit API/types for output handles in
   `lang/execution/fol-build/src/api/types.rs`

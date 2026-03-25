@@ -283,6 +283,30 @@ pub struct InstallHandle {
     pub name: String,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OutputHandleKind {
+    WrittenFile,
+    CopiedFile,
+    CapturedStdout,
+    CodegenOutput,
+    DependencyGeneratedOutput,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OutputHandleLocator {
+    GeneratedFile(crate::graph::BuildGeneratedFileId),
+    DependencyGeneratedOutput {
+        dependency_alias: String,
+        output_name: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OutputHandle {
+    pub kind: OutputHandleKind,
+    pub locator: OutputHandleLocator,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeneratedFileHandle {
     pub generated_file_id: crate::graph::BuildGeneratedFileId,

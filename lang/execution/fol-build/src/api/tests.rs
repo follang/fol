@@ -4,8 +4,9 @@ mod tests {
         validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
         CopyFileRequest, DependencyRequest, ExecutableRequest, GeneratedFileHandle,
         InstallArtifactRequest, InstallDirRequest, InstallFileRequest, RunRequest,
-        SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest,
-        StepRequest, TestArtifactRequest, UserOptionRequest, WriteFileRequest,
+        OutputHandle, OutputHandleKind, OutputHandleLocator, SharedLibraryRequest,
+        StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest, StepRequest,
+        TestArtifactRequest, UserOptionRequest, WriteFileRequest,
     };
     use crate::codegen::{
         CodegenKind, CodegenRequest, GeneratedFileInstallProjection, SystemToolRequest,
@@ -501,5 +502,34 @@ mod tests {
 
         assert_eq!(install.install_id, crate::graph::BuildInstallId(0));
         assert_eq!(api.graph().installs()[0].kind, BuildInstallKind::File);
+    }
+
+    #[test]
+    fn output_handles_cover_local_and_dependency_generated_sources() {
+        let local = OutputHandle {
+            kind: OutputHandleKind::WrittenFile,
+            locator: OutputHandleLocator::GeneratedFile(crate::graph::BuildGeneratedFileId(3)),
+        };
+        let dep = OutputHandle {
+            kind: OutputHandleKind::DependencyGeneratedOutput,
+            locator: OutputHandleLocator::DependencyGeneratedOutput {
+                dependency_alias: "core".to_string(),
+                output_name: "bindings".to_string(),
+            },
+        };
+
+        assert_eq!(local.kind, OutputHandleKind::WrittenFile);
+        assert!(matches!(
+            local.locator,
+            OutputHandleLocator::GeneratedFile(crate::graph::BuildGeneratedFileId(3))
+        ));
+        assert_eq!(dep.kind, OutputHandleKind::DependencyGeneratedOutput);
+        assert!(matches!(
+            dep.locator,
+            OutputHandleLocator::DependencyGeneratedOutput {
+                ref dependency_alias,
+                ref output_name,
+            } if dependency_alias == "core" && output_name == "bindings"
+        ));
     }
 }

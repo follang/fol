@@ -20,10 +20,11 @@ pub mod stdlib;
 pub use api::{
     validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildArtifactHandle,
     BuildOptionValue, DependencyHandle, DependencyRequest, ExecutableRequest,
-    InstallArtifactRequest, InstallDirRequest, InstallFileRequest, InstallHandle, RunHandle,
-    RunRequest, SharedLibraryRequest, StandardOptimizeOption, StandardOptimizeRequest,
-    StandardTargetOption, StandardTargetRequest, StaticLibraryRequest, StepHandle, StepRequest,
-    TestArtifactRequest, UserOption, UserOptionRequest,
+    InstallArtifactRequest, InstallDirRequest, InstallFileRequest, InstallHandle, OutputHandle,
+    OutputHandleKind, OutputHandleLocator, RunHandle, RunRequest, SharedLibraryRequest,
+    StandardOptimizeOption, StandardOptimizeRequest, StandardTargetOption, StandardTargetRequest,
+    StaticLibraryRequest, StepHandle, StepRequest, TestArtifactRequest, UserOption,
+    UserOptionRequest,
 };
 pub use artifact::{
     project_graph_artifacts, BuildArtifactDefinition, BuildArtifactFolModel,

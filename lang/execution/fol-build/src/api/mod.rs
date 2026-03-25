@@ -8,7 +8,8 @@ pub use types::{
     BuildOptionValue, CopyFileRequest, DependencyHandle, DependencyRequest, ExecutableRequest,
     GeneratedFileHandle, InstallArtifactRequest, InstallDirRequest, InstallFileRequest,
     InstallHandle, ModuleHandle, RunHandle, RunRequest, SharedLibraryRequest,
-    StandardOptimizeOption, StandardOptimizeRequest, StandardTargetOption, StandardTargetRequest,
-    StaticLibraryRequest, StepHandle, StepRequest, TestArtifactRequest, UserOption,
-    UserOptionRequest, WriteFileRequest,
+    OutputHandle, OutputHandleKind, OutputHandleLocator, StandardOptimizeOption,
+    StandardOptimizeRequest, StandardTargetOption, StandardTargetRequest, StaticLibraryRequest,
+    StepHandle, StepRequest, TestArtifactRequest, UserOption, UserOptionRequest,
+    WriteFileRequest,
 };
