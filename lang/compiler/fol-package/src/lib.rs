@@ -136,7 +136,9 @@ pub use lockfile::{
     parse_package_lockfile, render_package_lockfile, PackageLockEntry, PackageLockfile,
 };
 pub use metadata::{
-    parse_package_metadata, PackageDependencyDecl, PackageDependencySourceKind, PackageMetadata,
+    extract_package_dependencies_from_build, extract_package_metadata_fields_from_build,
+    parse_package_metadata, parse_package_metadata_from_build, PackageDependencyDecl,
+    PackageDependencySourceKind, PackageMetadata,
 };
 pub use model::{PreparedExportMount, PreparedPackage};
 pub use paths::{git_cache_path, git_store_path};

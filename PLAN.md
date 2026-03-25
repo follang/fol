@@ -227,7 +227,7 @@ Teach the loader to get metadata from `build.fol` instead of `package.yaml`.
   - optional `description`
   - optional `license`
 - [x] Slice 15. Add extraction logic for `build.meta({...})`
-- [ ] Slice 16. Validate metadata constraints formerly enforced by YAML parsing:
+- [x] Slice 16. Validate metadata constraints formerly enforced by YAML parsing:
   - required `name`
   - required `version`
   - valid package name
