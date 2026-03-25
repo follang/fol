@@ -65,6 +65,17 @@ The intended capability is one output-handle family that can represent:
 This should behave like one composable build value, not a pile of unrelated
 string paths.
 
+The current migration order is:
+
+1. define one canonical output-handle family internally
+2. move local generated-file returns onto that family
+3. move `run.capture_stdout()` onto the same family
+4. later, merge dependency `generated(...)` lookups into that same output
+   family
+
+That keeps the public surface moving toward one handle class without forcing
+every dependency-facing path to land in the same patch.
+
 ### Explicit Dependency Arguments
 
 Dependencies should eventually accept explicit forwarded build arguments:

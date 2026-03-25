@@ -191,7 +191,7 @@ If a new dependency/output/install shape is chosen:
 
 ## Epoch 3: Build A Unified Output Handle Model
 
-### Slice 10
+### Slice 10 [complete]
 
 - inventory current output-like values:
   - `write_file`
