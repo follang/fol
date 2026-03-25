@@ -250,11 +250,13 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `use loc` imports resolve against the loaded package and namespace scope set.
 - `use std` imports resolve against explicit configured std roots.
 - `use pkg` imports resolve against explicit configured package-store roots.
-- Installed `pkg` roots now require both `package.yaml` and `build.fol`.
-- Stray `package.fol` files are ignored during `pkg` loading and do not satisfy package metadata requirements.
-- `package.yaml` is metadata-only and is not part of ordinary package source loading.
-- `build.fol` defines pkg dependency and export records with `def` and is not part of
-  ordinary package source loading.
+- Historical package loading used `package.yaml` plus `build.fol`.
+- Current direction removes `package.yaml` completely and moves package metadata and
+  direct dependencies into `pro[] build(): non` through `.build().meta({...})`
+  and `.build().add_dep({...})`.
+- Stray `package.fol` files stay ignored and do not satisfy package metadata requirements.
+- `build.fol` remains outside ordinary package source loading, but it is now the
+  only package control file.
 - Consumer-visible `pkg` imports now mount only the roots and namespaces exported by
   `build.fol`, instead of exposing every exported symbol under the package root.
 - Unsupported import kinds fail explicitly instead of silently degrading.
@@ -296,9 +298,9 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 - `fol-package` now exists as a workspace crate and sits between parser output and
   resolver package consumption.
-- `fol-package` owns `package.yaml` metadata parsing.
-- `fol-package` owns `build.fol` extraction for dependency, export, and inert
-  native-artifact placeholder records.
+- Historical package loading used `fol-package` parsing of `package.yaml`.
+- Current direction is for `fol-package` to extract package metadata, direct
+  dependencies, and exports from `build.fol` only.
 - `fol-package` owns package-session caching, cycle detection, shared dependency
   dedupe, and directory/store loading.
 
@@ -358,8 +360,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Entry packages are now prepared through `fol-package` before resolution instead
   of being handed directly from parser output into the resolver.
 - `loc` and `std` imports resolve as exact directories through `fol-package`.
-- `pkg` imports resolve as installed package roots with required `package.yaml`
-  plus `build.fol`, while stray `package.fol` files stay ignored.
+- `pkg` imports are moving to installed package roots defined by `build.fol`
+  only, while stray `package.fol` files stay ignored.
 - Control files remain excluded from ordinary package source parsing.
 - `build.fol` export declarations are now lowered into concrete prepared export
   mounts before resolver namespace mounting.

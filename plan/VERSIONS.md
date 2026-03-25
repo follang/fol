@@ -59,8 +59,9 @@ source-file pragma.
 The build entry surface itself is also ordinary FOL:
 
 - canonical entry is `pro[] build(): non`
-- build graph access is ambient through `.graph()`
-- the build graph handle is not a public type name in source code
+- package metadata and direct dependencies are configured through `.build()`
+- graph access is reached through `.build().graph()`
+- neither the build handle nor the graph handle is a public type name in source code
 
 That means a `V1` compiler can still have multiple runtime models. The version
 answers “which language semantics are implemented end to end,” while the model
