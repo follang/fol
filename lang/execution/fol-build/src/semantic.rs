@@ -506,7 +506,7 @@ pub fn canonical_build_context_config_shapes() -> Vec<BuildSemanticRecordShape> 
             [
                 BuildSemanticRecordField::required("name"),
                 BuildSemanticRecordField::required("version"),
-                BuildSemanticRecordField::required("kind"),
+                BuildSemanticRecordField::optional("kind"),
                 BuildSemanticRecordField::optional("description"),
                 BuildSemanticRecordField::optional("license"),
             ],
@@ -785,6 +785,33 @@ mod tests {
         assert!(shapes
             .iter()
             .all(|shape| shape.kind == BuildSemanticRecordShapeKind::BuildContextConfig));
+    }
+
+    #[test]
+    fn canonical_meta_config_requires_only_name_and_version() {
+        let shapes = canonical_build_context_config_shapes();
+        let meta = shapes
+            .iter()
+            .find(|shape| shape.name == "BuildMetaConfig")
+            .expect("meta config should exist");
+
+        let required = meta
+            .fields
+            .iter()
+            .filter(|field| field.required)
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(required, vec!["name", "version"]);
+        assert!(meta.fields.iter().any(|field| field.name == "kind" && !field.required));
+        assert!(meta
+            .fields
+            .iter()
+            .any(|field| field.name == "description" && !field.required));
+        assert!(meta
+            .fields
+            .iter()
+            .any(|field| field.name == "license" && !field.required));
     }
 
     #[test]

@@ -220,7 +220,7 @@ Teach the loader to get metadata from `build.fol` instead of `package.yaml`.
 
 ### Slice Tracker
 
-- [ ] Slice 14. Define the canonical `meta` record fields:
+- [x] Slice 14. Define the canonical `meta` record fields:
   - `name`
   - `version`
   - optional `kind`

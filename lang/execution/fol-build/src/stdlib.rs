@@ -262,6 +262,18 @@ mod tests {
         assert_eq!(graph.returns, Some(BuildSemanticTypeFamily::Graph));
         assert!(build_shape_names.contains(&"BuildMetaConfig"));
         assert!(build_shape_names.contains(&"BuildDependencyConfig"));
+        let meta_shape = scope
+            .build_config_shapes
+            .iter()
+            .find(|shape| shape.name == "BuildMetaConfig")
+            .expect("meta config shape should exist");
+        let required = meta_shape
+            .fields
+            .iter()
+            .filter(|field| field.required)
+            .map(|field| field.name.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(required, vec!["name", "version"]);
     }
 
     #[test]
