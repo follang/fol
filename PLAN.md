@@ -158,7 +158,7 @@ Write down the new one-file package model before code changes begin.
   - `.build().meta({...})`
   - `.build().add_dep({...})`
   - `.build().graph()`
-- [ ] Slice 3. Update architecture/runtime docs that mention two control files
+- [x] Slice 3. Update architecture/runtime docs that mention two control files
 - [ ] Slice 4. Update planning/version docs to state:
   - `package.yaml` is removed
   - `build.fol` is the only package control file

@@ -91,7 +91,7 @@ LAYER 3 — build system + packages                             │             
   │  owns all build logic:     │ │  re-exports fol-build     ││                   │
   │   - build graph IR         │ │  adds package concerns:   ││                   │
   │   - build.fol API surface  │ │   - PackageIdentity       ││                   │
-  │   - build.fol executor     │ │   - package.yaml parsing  ││                   │
+  │   - build.fol executor     │ │   - build.fol metadata    ││                   │
   │   - artifact definitions   │ │   - git fetch/clone       ││                   │
   │   - step ordering          │ │   - lockfile handling     ││                   │
   │   - option resolution      │ │   - build entry validation││                   │
@@ -225,15 +225,15 @@ The tooling crates sit beside the pipeline and reach into multiple layers.
 How a FOL source file becomes a binary:
 
 ```
-  *.fol source files                         package.yaml
-       │                                          │
-       ▼                                          ▼
+  *.fol source files                         build.fol
+       │                                        │
+       ▼                                        ▼
   ┌──────────┐                              ┌───────────┐
   │fol-stream│  read files into             │fol-package│  parse package
-  │          │  character streams           │           │  metadata and
-  └────┬─────┘                              │           │  identity
-       │                                    └─────┬─────┘
-       ▼                                          │
+  │          │  character streams           │           │  metadata,
+  └────┬─────┘                              │           │  dependencies,
+       │                                    │           │  and identity
+       ▼                                    └─────┬─────┘
   ┌──────────┐                                    │
   │fol-lexer │  chars --> tokens                  │
   │          │  (4-stage pipeline)                │
@@ -254,7 +254,8 @@ How a FOL source file becomes a binary:
                     │fol-build │                  │
                     │          │ evaluate         │
                     │          │ build.fol into   │
-                    │          │ build graph:     │
+                    │          │ metadata, deps,  │
+                    │          │ and build graph: │
                     │          │  - artifacts     │
                     │          │  - steps         │
                     │          │  - options       │
@@ -335,7 +336,7 @@ declarations, codegen definitions, and capability enforcement.
 through thin shim modules (each `build_*.rs` file is a single
 `pub use fol_build::*` line). On top of that, `fol-package` adds its
 own package-level concerns: `PackageIdentity`, `PackageMetadata`
-(from `package.yaml`), git fetching, lockfile handling, package session
+(from `build.fol`), git fetching, lockfile handling, package session
 and root discovery, and build entry validation.
 
 Downstream crates import through `fol-package` as a single entry point.

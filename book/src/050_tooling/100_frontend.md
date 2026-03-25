@@ -61,7 +61,7 @@ directory or from an explicit path.
 
 It recognizes:
 
-- package roots via `package.yaml`
+- package roots via `build.fol`
 - workspace roots via `fol.work.yaml`
 
 A package root is one buildable package.
