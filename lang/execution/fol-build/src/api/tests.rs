@@ -504,6 +504,39 @@ mod tests {
     }
 
     #[test]
+    fn build_api_run_capture_stdout_returns_an_output_handle() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+        let app = api
+            .add_exe(ExecutableRequest {
+                name: "app".to_string(),
+                root_module: "src/app.fol".to_string(),
+            })
+            .expect("executable should succeed");
+        let run = api
+            .add_run(RunRequest {
+                name: "run".to_string(),
+                artifact: app,
+                depends_on: Vec::new(),
+            })
+            .expect("run should succeed");
+
+        let captured = api.run_capture_stdout(run.step_id, "run-stdout");
+
+        assert_eq!(captured.kind, OutputHandleKind::CapturedStdout);
+        assert_eq!(
+            captured.generated_file_id(),
+            Some(crate::graph::BuildGeneratedFileId(0))
+        );
+        assert_eq!(
+            api.graph()
+                .run_config_for(run.step_id)
+                .and_then(|config| config.capture_stdout),
+            Some(crate::graph::BuildGeneratedFileId(0))
+        );
+    }
+
+    #[test]
     fn output_handles_cover_local_and_dependency_generated_sources() {
         let local = OutputHandle {
             kind: OutputHandleKind::WrittenFile,

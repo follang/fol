@@ -213,7 +213,7 @@ If a new dependency/output/install shape is chosen:
 - make `graph.write_file(...)` and `graph.copy_file(...)` return the unified
   output handle instead of ad hoc generated-file values
 
-### Slice 13
+### Slice 13 [complete]
 
 - make `run.capture_stdout()` return the same unified output handle
 - ensure stdout capture is compatible with downstream graph consumers

@@ -362,7 +362,16 @@ pub fn evaluate_build_plan(
                     )
                 })?;
                 let handle = api.run_capture_stdout(step_id, output_name.clone());
-                generated_names.insert(output_name.clone(), handle.generated_file_id);
+                let generated_file_id = handle.generated_file_id().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        format!(
+                            "output '{}' from run.capture_stdout must resolve to a local generated file",
+                            output_name
+                        ),
+                        operation.origin.clone(),
+                    )
+                })?;
+                generated_names.insert(output_name.clone(), generated_file_id);
             }
             BuildEvaluationOperationKind::RunSetEnv { run_name, key, value } => {
                 let step_id = step_names.get(run_name).copied().ok_or_else(|| {

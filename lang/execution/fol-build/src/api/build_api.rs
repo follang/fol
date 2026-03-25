@@ -362,13 +362,16 @@ impl<'a> BuildApi<'a> {
         &mut self,
         step_id: crate::graph::BuildStepId,
         output_name: impl Into<String>,
-    ) -> GeneratedFileHandle {
+    ) -> OutputHandle {
         let generated_file_id = self.graph.add_generated_file(
             crate::graph::BuildGeneratedFileKind::CaptureOutput,
             output_name,
         );
         self.graph.run_config_mut(step_id).capture_stdout = Some(generated_file_id);
-        GeneratedFileHandle { generated_file_id }
+        OutputHandle {
+            kind: OutputHandleKind::CapturedStdout,
+            locator: OutputHandleLocator::GeneratedFile(generated_file_id),
+        }
     }
 
     pub fn run_set_env(
