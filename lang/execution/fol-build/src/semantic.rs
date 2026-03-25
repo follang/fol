@@ -413,6 +413,7 @@ pub fn canonical_handle_method_signatures() -> Vec<BuildSemanticMethodSignature>
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildSemanticRecordShapeKind {
+    BuildContextConfig,
     ArtifactConfig,
     OptionConfig,
 }
@@ -431,6 +432,17 @@ pub struct BuildSemanticRecordShape {
 }
 
 impl BuildSemanticRecordShape {
+    pub fn build_context(
+        name: impl Into<String>,
+        fields: impl IntoIterator<Item = BuildSemanticRecordField>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            kind: BuildSemanticRecordShapeKind::BuildContextConfig,
+            fields: fields.into_iter().collect(),
+        }
+    }
+
     pub fn artifact(
         name: impl Into<String>,
         fields: impl IntoIterator<Item = BuildSemanticRecordField>,
@@ -484,6 +496,29 @@ pub fn canonical_artifact_config_shapes() -> Vec<BuildSemanticRecordShape> {
         BuildSemanticRecordShape::artifact("StaticLibConfig", base_fields.clone()),
         BuildSemanticRecordShape::artifact("SharedLibConfig", base_fields.clone()),
         BuildSemanticRecordShape::artifact("TestConfig", base_fields),
+    ]
+}
+
+pub fn canonical_build_context_config_shapes() -> Vec<BuildSemanticRecordShape> {
+    vec![
+        BuildSemanticRecordShape::build_context(
+            "BuildMetaConfig",
+            [
+                BuildSemanticRecordField::required("name"),
+                BuildSemanticRecordField::required("version"),
+                BuildSemanticRecordField::required("kind"),
+                BuildSemanticRecordField::optional("description"),
+                BuildSemanticRecordField::optional("license"),
+            ],
+        ),
+        BuildSemanticRecordShape::build_context(
+            "BuildDependencyConfig",
+            [
+                BuildSemanticRecordField::required("alias"),
+                BuildSemanticRecordField::required("source"),
+                BuildSemanticRecordField::required("target"),
+            ],
+        ),
     ]
 }
 
@@ -578,7 +613,8 @@ pub fn canonical_chain_metadata() -> Vec<BuildSemanticChainMetadata> {
 #[cfg(test)]
 mod tests {
     use super::{
-        canonical_artifact_config_shapes, canonical_chain_metadata,
+        canonical_artifact_config_shapes, canonical_build_context_config_shapes,
+        canonical_chain_metadata,
         canonical_build_context_method_signatures, canonical_graph_method_signatures,
         canonical_handle_method_signatures,
         canonical_option_config_shapes, canonical_option_value_kinds, BuildSemanticChainKind,
@@ -736,6 +772,19 @@ mod tests {
             graph.and_then(|signature| signature.returns),
             Some(BuildSemanticTypeFamily::Graph)
         );
+    }
+
+    #[test]
+    fn canonical_build_context_config_shapes_cover_meta_and_dependency_records() {
+        let shapes = canonical_build_context_config_shapes();
+        let names = shapes.iter().map(|shape| shape.name.as_str()).collect::<Vec<_>>();
+
+        assert_eq!(shapes.len(), 2);
+        assert!(names.contains(&"BuildMetaConfig"));
+        assert!(names.contains(&"BuildDependencyConfig"));
+        assert!(shapes
+            .iter()
+            .all(|shape| shape.kind == BuildSemanticRecordShapeKind::BuildContextConfig));
     }
 
     #[test]

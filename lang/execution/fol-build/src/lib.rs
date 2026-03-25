@@ -80,7 +80,8 @@ pub use runtime::{
     BuildRuntimeStmt, BuildRuntimeValue,
 };
 pub use semantic::{
-    canonical_artifact_config_shapes, canonical_build_context_method_signatures,
+    canonical_artifact_config_shapes, canonical_build_context_config_shapes,
+    canonical_build_context_method_signatures,
     canonical_chain_metadata, canonical_graph_method_signatures,
     canonical_handle_method_signatures, canonical_option_config_shapes,
     canonical_option_value_kinds, BuildSemanticChainKind, BuildSemanticChainMetadata,

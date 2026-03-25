@@ -1,5 +1,6 @@
 use crate::semantic::{
-    canonical_artifact_config_shapes, canonical_build_context_method_signatures,
+    canonical_artifact_config_shapes, canonical_build_context_config_shapes,
+    canonical_build_context_method_signatures,
     canonical_chain_metadata, canonical_graph_method_signatures,
     canonical_handle_method_signatures, canonical_option_config_shapes,
     BuildSemanticMethodSignature, BuildSemanticRecordShape, BuildSemanticType,
@@ -21,6 +22,8 @@ pub struct BuildStdlibScope {
     pub graph_methods: Vec<BuildSemanticMethodSignature>,
     /// Methods callable on artifact/step/run/install/dependency/generated-file handles.
     pub handle_methods: Vec<BuildSemanticMethodSignature>,
+    /// Record shapes accepted by build-context metadata and dependency methods.
+    pub build_config_shapes: Vec<BuildSemanticRecordShape>,
     /// Record shapes accepted by graph methods that take a config record argument.
     pub artifact_config_shapes: Vec<BuildSemanticRecordShape>,
     /// Record shapes accepted by option-related graph methods.
@@ -35,6 +38,7 @@ impl BuildStdlibScope {
             build_methods: canonical_build_context_method_signatures(),
             graph_methods: canonical_graph_method_signatures(),
             handle_methods: canonical_handle_method_signatures(),
+            build_config_shapes: canonical_build_context_config_shapes(),
             artifact_config_shapes: canonical_artifact_config_shapes(),
             option_config_shapes: canonical_option_config_shapes(),
         }
@@ -204,12 +208,19 @@ mod tests {
     #[test]
     fn stdlib_scope_artifact_config_shapes_cover_all_artifact_kinds() {
         let scope = BuildStdlibScope::canonical();
+        let build_names: Vec<&str> = scope
+            .build_config_shapes
+            .iter()
+            .map(|s| s.name.as_str())
+            .collect();
         let names: Vec<&str> = scope
             .artifact_config_shapes
             .iter()
             .map(|s| s.name.as_str())
             .collect();
 
+        assert!(build_names.contains(&"BuildMetaConfig"));
+        assert!(build_names.contains(&"BuildDependencyConfig"));
         assert!(names.contains(&"ExeConfig"));
         assert!(names.contains(&"StaticLibConfig"));
         assert!(names.contains(&"SharedLibConfig"));
