@@ -44,7 +44,7 @@ Also note:
 
 - it points to a local directory
 - that directory is scanned as a FOL package / namespace tree
-- no `package.yaml` is required
+- no `build.fol` is required
 - no `build.fol` is required
 
 This makes `loc` useful for local workspace code, experiments, and monorepo-style sharing.

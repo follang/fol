@@ -159,7 +159,7 @@ mod tests {
             PackageErrorKind::InvalidInput,
             "invalid package metadata",
             SyntaxOrigin {
-                file: Some("pkg/package.yaml".to_string()),
+                file: Some("pkg/build.fol".to_string()),
                 line: 4,
                 column: 1,
                 length: 4,
@@ -170,7 +170,7 @@ mod tests {
             .diagnostic_location()
             .expect("Package errors with syntax origins should expose diagnostic locations");
 
-        assert_eq!(location.file.as_deref(), Some("pkg/package.yaml"));
+        assert_eq!(location.file.as_deref(), Some("pkg/build.fol"));
         assert_eq!(location.line, 4);
         assert_eq!(location.column, 1);
         assert_eq!(location.length, Some(4));
@@ -182,7 +182,7 @@ mod tests {
             PackageErrorKind::InvalidInput,
             "duplicate package metadata field",
             SyntaxOrigin {
-                file: Some("pkg/package.yaml".to_string()),
+                file: Some("pkg/build.fol".to_string()),
                 line: 2,
                 column: 1,
                 length: 4,
@@ -195,7 +195,7 @@ mod tests {
         assert!(report.has_errors());
         let rendered = report.output(fol_diagnostics::OutputFormat::Json);
         assert!(rendered.contains("duplicate package metadata field"));
-        assert!(rendered.contains("pkg/package.yaml"));
+        assert!(rendered.contains("pkg/build.fol"));
         assert!(rendered.contains("\"line\": 2"));
     }
 
@@ -256,7 +256,7 @@ mod tests {
             PackageErrorKind::InvalidInput,
             "duplicate package metadata field",
             SyntaxOrigin {
-                file: Some("pkg/package.yaml".to_string()),
+                file: Some("pkg/build.fol".to_string()),
                 line: 2,
                 column: 1,
                 length: 4,
@@ -277,7 +277,7 @@ mod tests {
             PackageErrorKind::InvalidInput,
             "duplicate package metadata field",
             SyntaxOrigin {
-                file: Some("pkg/package.yaml".to_string()),
+                file: Some("pkg/build.fol".to_string()),
                 line: 3,
                 column: 1,
                 length: 4,
@@ -285,7 +285,7 @@ mod tests {
         )
         .with_related_origin(
             SyntaxOrigin {
-                file: Some("pkg/package.yaml".to_string()),
+                file: Some("pkg/build.fol".to_string()),
                 line: 1,
                 column: 1,
                 length: 4,

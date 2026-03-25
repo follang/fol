@@ -346,14 +346,14 @@ Replace checked-in YAML examples/fixtures with the new `build.fol` metadata mode
 
 ### Slice Tracker
 
-- [ ] Slice 41. Rewrite examples under `examples/` to remove `package.yaml`
-- [ ] Slice 42. Rewrite formal-package fixtures under `test/app`, `test/apps`, and `test/large_examples`
-- [ ] Slice 43. Rewrite resolver/package/session fixtures that currently author YAML metadata
-- [ ] Slice 44. Update book examples to show:
+- [x] Slice 41. Rewrite examples under `examples/` to remove `package.yaml`
+- [x] Slice 42. Rewrite formal-package fixtures under `test/app`, `test/apps`, and `test/large_examples`
+- [x] Slice 43. Rewrite resolver/package/session fixtures that currently author YAML metadata
+- [x] Slice 44. Update book examples to show:
   - `build.meta({...})`
   - `build.add_dep({...})`
   - `build.graph()`
-- [ ] Slice 45. Add positive example coverage for:
+- [x] Slice 45. Add positive example coverage for:
   - single package
   - loc dep
   - pkg dep
@@ -371,14 +371,14 @@ Delete the old YAML path entirely.
 
 ### Slice Tracker
 
-- [ ] Slice 46. Remove public exports that only exist for YAML metadata parsing
-- [ ] Slice 47. Remove stale comments and docs that mention `package.yaml` as required control metadata
-- [ ] Slice 48. Add regression tests that fail if `package.yaml` becomes required again
-- [ ] Slice 49. Run a full repo audit for:
+- [x] Slice 46. Remove public exports that only exist for YAML metadata parsing
+- [x] Slice 47. Remove stale comments and docs that mention `package.yaml` as required control metadata
+- [x] Slice 48. Add regression tests that fail if `package.yaml` becomes required again
+- [x] Slice 49. Run a full repo audit for:
   - `package.yaml`
   - metadata parser references
   - YAML-root assumptions
-- [ ] Slice 50. Final consistency pass on diagnostics and scaffolding
+- [x] Slice 50. Final consistency pass on diagnostics and scaffolding
 
 ### Exit criteria
 

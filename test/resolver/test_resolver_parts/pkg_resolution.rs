@@ -42,7 +42,7 @@ fn test_resolver_resolves_pkg_imports_from_the_configured_package_store_root() {
     fs::create_dir_all(&app_root)
         .expect("Should create the importing package root fixture directory");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the installed package metadata fixture");
@@ -130,7 +130,7 @@ fn test_resolver_pkg_imports_expose_semantic_internal_namespaces() {
     fs::create_dir_all(&app_root)
         .expect("Should create the importing package root fixture directory");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the installed package metadata fixture");
@@ -232,7 +232,7 @@ fn test_resolver_resolves_qualified_pkg_names_through_declared_export_namespaces
     fs::create_dir_all(&app_root)
         .expect("Should create the importing package root fixture directory");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the installed package metadata fixture");
@@ -341,7 +341,7 @@ fn test_resolver_pkg_qualified_names_follow_semantic_internal_namespaces() {
     fs::create_dir_all(&app_root)
         .expect("Should create the importing package root fixture directory");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the installed package metadata fixture");
@@ -415,7 +415,7 @@ fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
     fs::create_dir_all(&app_root)
         .expect("Should create the importing package root fixture directory");
     fs::write(
-        store_root.join("core/package.yaml"),
+        store_root.join("core/build.fol"),
         "name: core\nversion: 1.0.0\n",
     )
     .expect("Should write the transitive dependency metadata fixture");
@@ -430,7 +430,7 @@ fn test_resolver_pkg_transitive_dependencies_follow_build_definitions() {
     )
     .expect("Should write the transitive dependency source fixture");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
     )
     .expect("Should write the direct dependency metadata fixture");

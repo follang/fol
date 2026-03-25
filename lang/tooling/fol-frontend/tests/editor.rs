@@ -309,7 +309,7 @@ fn editor_build_file_commands_dispatch_through_public_cli() {
     let root = temp_root("build_cli_surface");
     fs::create_dir_all(root.join("src")).expect("should create src root");
     let build = root.join("build.fol");
-    fs::write(&root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+    fs::write(&root.join("build.fol"), "name: demo\nversion: 0.1.0\n")
         .expect("should write package manifest");
     fs::write(
         &build,
@@ -418,14 +418,14 @@ fn editor_rename_command_surfaces_safe_boundary_failures() {
         "members:\n  - app\n  - shared\n",
     )
     .expect("should write workspace manifest");
-    fs::write(&root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n")
+    fs::write(&root.join("app/build.fol"), "name: app\nversion: 0.1.0\n")
         .expect("should write app package manifest");
     fs::write(
         root.join("app/build.fol"),
         "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("should write app build source");
-    fs::write(&root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n")
+    fs::write(&root.join("shared/build.fol"), "name: shared\nversion: 0.1.0\n")
         .expect("should write shared package manifest");
     fs::write(
         root.join("shared/build.fol"),
@@ -473,7 +473,7 @@ fn editor_rename_command_surfaces_safe_boundary_failures() {
 fn editor_rename_command_supports_same_package_namespaced_symbols() {
     let root = temp_root("rename_same_package_namespace_cli");
     fs::create_dir_all(root.join("src/api")).expect("should create api root");
-    fs::write(&root.join("package.yaml"), "name: demo\nversion: 0.1.0\n")
+    fs::write(&root.join("build.fol"), "name: demo\nversion: 0.1.0\n")
         .expect("should write package manifest");
     fs::write(
         root.join("build.fol"),
@@ -727,14 +727,14 @@ fn editor_rename_json_error_stays_snapshot_stable() {
         "members:\n  - app\n  - shared\n",
     )
     .expect("should write workspace manifest");
-    fs::write(&root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n")
+    fs::write(&root.join("app/build.fol"), "name: app\nversion: 0.1.0\n")
         .expect("should write app package manifest");
     fs::write(
         root.join("app/build.fol"),
         "pro[] build(): non = {\n    return;\n};\n",
     )
     .expect("should write app build source");
-    fs::write(&root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n")
+    fs::write(&root.join("shared/build.fol"), "name: shared\nversion: 0.1.0\n")
         .expect("should write shared package manifest");
     fs::write(
         root.join("shared/build.fol"),

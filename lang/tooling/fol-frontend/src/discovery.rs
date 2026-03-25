@@ -22,13 +22,13 @@ impl WorkspaceRoot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PackageRoot {
     pub root: PathBuf,
-    pub manifest_file: PathBuf,
+    pub control_file: PathBuf,
 }
 
 impl PackageRoot {
     pub fn new(root: PathBuf) -> Self {
         Self {
-            manifest_file: root.join(PACKAGE_FILE_NAME),
+            control_file: root.join(PACKAGE_FILE_NAME),
             root,
         }
     }
@@ -109,7 +109,7 @@ mod tests {
         assert_eq!(PACKAGE_FILE_NAME, "build.fol");
         assert_eq!(root.root, PathBuf::from("/tmp/demo"));
         assert_eq!(
-            root.manifest_file,
+            root.control_file,
             PathBuf::from("/tmp/demo").join("build.fol")
         );
     }

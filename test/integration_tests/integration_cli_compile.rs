@@ -110,7 +110,7 @@ use super::*;
         fs::create_dir_all(&app_root)
             .expect("Should create the importing package root fixture directory");
         fs::write(
-            store_root.join("json/package.yaml"),
+            store_root.join("json/build.fol"),
             "name: json\nversion: 1.0.0\n",
         )
         .expect("Should write the installed package metadata fixture");
@@ -256,7 +256,7 @@ use super::*;
         fs::create_dir_all(&app_root)
             .expect("Should create the importing package root fixture directory");
         fs::write(
-            store_root.join("json/package.yaml"),
+            store_root.join("json/build.fol"),
             "name: json\nversion: 1.0.0\n",
         )
         .expect("Should write the installed package metadata fixture");

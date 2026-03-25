@@ -370,7 +370,7 @@ mod tests {
         let src = package.join("src");
         fs::create_dir_all(&src).unwrap();
         fs::write(root.join("fol.work.yaml"), "members:\n  - app\n").unwrap();
-        fs::write(package.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(package.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             src.join("main.fol"),
             "fun[] main(): int = {\n    return 0;\n};\n",
@@ -393,7 +393,7 @@ mod tests {
         let root = temp_root("mapping_model_core");
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
-        fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(root.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
             concat!(
@@ -425,7 +425,7 @@ mod tests {
         let tests = root.join("test");
         fs::create_dir_all(&src).unwrap();
         fs::create_dir_all(&tests).unwrap();
-        fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(root.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
             concat!(
@@ -485,7 +485,7 @@ mod tests {
         let root = temp_root("uniform_unmapped_model");
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
-        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
             concat!(
@@ -521,7 +521,7 @@ mod tests {
         let tests = root.join("test");
         fs::create_dir_all(&src).unwrap();
         fs::create_dir_all(&tests).unwrap();
-        fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
             concat!(
@@ -561,7 +561,7 @@ mod tests {
         let root = temp_root("overlay");
         let src = root.join("src");
         fs::create_dir_all(&src).unwrap();
-        fs::write(root.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(root.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("build.fol"),
             "pro[] build(): non = {\n    return;\n};\n",
@@ -607,7 +607,7 @@ mod tests {
         fs::create_dir_all(&app_src).unwrap();
         fs::create_dir_all(&shared_src).unwrap();
         fs::write(root.join("fol.work.yaml"), "members:\n  - app\n  - shared\n").unwrap();
-        fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+        fs::write(root.join("app/build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("app/build.fol"),
             "pro[] build(): non = {\n    return;\n};\n",
@@ -618,7 +618,7 @@ mod tests {
             "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper();\n};\n",
         )
         .unwrap();
-        fs::write(root.join("shared/package.yaml"), "name: shared\nversion: 0.1.0\n").unwrap();
+        fs::write(root.join("shared/build.fol"), "name: shared\nversion: 0.1.0\n").unwrap();
         fs::write(
             root.join("shared/build.fol"),
             "pro[] build(): non = {\n    return;\n};\n",

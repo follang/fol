@@ -392,7 +392,7 @@ fn app_harness_root_helpers_support_std_and_pkg_layouts() {
     .expect("app source");
     fs::write(std_root.join("fmt").join("lib.fol"), "var[exp] std_answer: int = 3;\n")
         .expect("std source");
-    fs::write(math_root.join("package.yaml"), "name: math\nversion: 0.1.0\n")
+    fs::write(math_root.join("build.fol"), "name: math\nversion: 0.1.0\n")
         .expect("pkg manifest");
     fs::write(
         math_root.join("build.fol"),

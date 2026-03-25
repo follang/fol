@@ -350,7 +350,7 @@ fn package_session_can_load_installed_pkg_roots_with_required_controls() {
     fs::create_dir_all(store_root.join("json"))
         .expect("Should create a temporary package-store fixture");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         concat!("name: json\n", "version: 1.0.0\n", "kind: lib\n"),
     )
     .expect("Should write the package metadata fixture");
@@ -385,7 +385,7 @@ fn package_session_can_load_installed_pkg_roots_with_required_controls() {
             .syntax
             .source_units
             .iter()
-            .all(|unit| !unit.path.ends_with("package.yaml") && !unit.path.ends_with("package.fol")),
+            .all(|unit| !unit.path.ends_with("build.fol") && !unit.path.ends_with("package.fol")),
         "Installed package source loading should keep legacy control files out of the parsed source set",
     );
     assert!(
@@ -422,7 +422,7 @@ fn parse_directory_package_syntax_keeps_build_files_for_pkg_roots() {
     fs::create_dir_all(temp_root.join("json"))
         .expect("Should create a temporary package-store fixture");
     fs::write(
-        temp_root.join("json/package.yaml"),
+        temp_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the package metadata fixture");
@@ -457,7 +457,7 @@ fn parse_directory_package_syntax_keeps_build_files_for_pkg_roots() {
             .source_units
             .iter()
             .all(|unit| {
-                !unit.path.ends_with("package.yaml")
+                !unit.path.ends_with("build.fol")
                     && !unit.path.ends_with("package.fol")
             }),
         "Pkg source parsing should keep legacy package control files out of the parsed source set",
@@ -480,7 +480,7 @@ fn parse_directory_package_syntax_accepts_pkg_roots_with_only_build_files() {
     fs::create_dir_all(temp_root.join("json"))
         .expect("Should create a temporary package-store fixture");
     fs::write(
-        temp_root.join("json/package.yaml"),
+        temp_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the package metadata fixture");
@@ -518,7 +518,7 @@ fn package_session_no_longer_projects_declared_export_namespace_mounts() {
     fs::create_dir_all(store_root.join("json/src/fmt/nested"))
         .expect("Should create the nested export fixture");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the package metadata fixture");
@@ -572,7 +572,7 @@ fn package_session_keeps_semantic_build_entries_for_formal_pkg_roots() {
     fs::create_dir_all(store_root.join("json"))
         .expect("Should create a temporary package-store fixture");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\n",
     )
     .expect("Should write the package metadata fixture");
@@ -618,10 +618,10 @@ fn package_session_rejects_pkg_roots_without_required_build_file() {
     fs::create_dir_all(store_root.join("json"))
         .expect("Should create a temporary package-store fixture");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\n",
     )
-    .expect("Should write a stale package.yaml fixture");
+    .expect("Should write a stale build.fol fixture");
     fs::write(
         store_root.join("json/lib.fol"),
         "var[exp] answer: int = 42;\n",
@@ -692,7 +692,7 @@ fn package_session_preloads_transitive_pkg_dependencies() {
     fs::create_dir_all(store_root.join("json/src/root"))
         .expect("Should create the direct dependency export root fixture");
     fs::write(
-        store_root.join("core/package.yaml"),
+        store_root.join("core/build.fol"),
         "name: core\nversion: 1.0.0\n",
     )
     .expect("Should write the transitive dependency metadata fixture");
@@ -707,7 +707,7 @@ fn package_session_preloads_transitive_pkg_dependencies() {
     )
     .expect("Should write the transitive dependency source fixture");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
     )
     .expect("Should write the direct dependency metadata fixture");
@@ -749,7 +749,7 @@ fn package_session_reports_explicit_pkg_dependency_cycles() {
     fs::create_dir_all(store_root.join("core/src/root"))
         .expect("Should create the second cyclic package fixture");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
     )
     .expect("Should write the first package metadata fixture");
@@ -764,7 +764,7 @@ fn package_session_reports_explicit_pkg_dependency_cycles() {
     )
     .expect("Should write the first package source fixture");
     fs::write(
-        store_root.join("core/package.yaml"),
+        store_root.join("core/build.fol"),
         "name: core\nversion: 1.0.0\ndep.json: pkg:json\n",
     )
     .expect("Should write the second package metadata fixture");
@@ -816,7 +816,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     fs::create_dir_all(store_root.join("combo/src/root"))
         .expect("Should create the top-level package export root fixture");
     fs::write(
-        store_root.join("core/package.yaml"),
+        store_root.join("core/build.fol"),
         "name: core\nversion: 1.0.0\n",
     )
     .expect("Should write the shared dependency metadata fixture");
@@ -831,7 +831,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     )
     .expect("Should write the shared dependency source fixture");
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
     )
     .expect("Should write the first direct dependency metadata fixture");
@@ -846,7 +846,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     )
     .expect("Should write the first direct dependency source fixture");
     fs::write(
-        store_root.join("xml/package.yaml"),
+        store_root.join("xml/build.fol"),
         "name: xml\nversion: 1.0.0\ndep.core: pkg:core\n",
     )
     .expect("Should write the second direct dependency metadata fixture");
@@ -861,7 +861,7 @@ fn package_session_dedupes_shared_transitive_pkg_dependencies() {
     )
     .expect("Should write the second direct dependency source fixture");
     fs::write(
-        store_root.join("combo/package.yaml"),
+        store_root.join("combo/build.fol"),
         "name: combo\nversion: 1.0.0\ndep.json: pkg:json\ndep.xml: pkg:xml\n",
     )
     .expect("Should write the top-level package metadata fixture");

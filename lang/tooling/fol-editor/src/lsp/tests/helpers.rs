@@ -21,7 +21,7 @@ pub(super) fn sample_package_root(label: &str) -> (PathBuf, String) {
     let root = temp_root(label);
     let src = root.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         "pro[] build(): non = {\n    return;\n};\n",
@@ -40,14 +40,14 @@ pub(super) fn sample_loc_workspace_root(label: &str) -> (PathBuf, String) {
     fs::create_dir_all(&app_src).unwrap();
     fs::create_dir_all(&shared_src).unwrap();
 
-    fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("app/build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("app/build.fol"),
         "pro[] build(): non = {\n    return;\n};\n",
     )
     .unwrap();
     fs::write(
-        root.join("shared/package.yaml"),
+        root.join("shared/build.fol"),
         "name: shared\nversion: 0.1.0\n",
     )
     .unwrap();

@@ -18,7 +18,7 @@ fn temp_build_package(source: &str) -> (PathBuf, PathBuf) {
     ));
     fs::create_dir_all(&package_root).expect("temp package root should be created");
     fs::write(
-        package_root.join("package.yaml"),
+        package_root.join("build.fol"),
         "name: build-eval\nversion: 1.0.0\n",
     )
     .expect("package metadata should be written");

@@ -137,8 +137,8 @@ pub use lockfile::{
 };
 pub use metadata::{
     extract_package_dependencies_from_build, extract_package_metadata_fields_from_build,
-    parse_package_metadata, parse_package_metadata_from_build, PackageDependencyDecl,
-    PackageDependencySourceKind, PackageMetadata,
+    parse_package_metadata_from_build, PackageDependencyDecl, PackageDependencySourceKind,
+    PackageMetadata,
 };
 pub use model::{PreparedExportMount, PreparedPackage};
 pub use paths::{git_cache_path, git_store_path};
@@ -176,11 +176,6 @@ mod tests {
             NEXT_ID.fetch_add(1, Ordering::Relaxed)
         ));
         fs::create_dir_all(&package_root).expect("temp package root should be created");
-        fs::write(
-            package_root.join("package.yaml"),
-            "name: buildlib\nversion: 1.0.0\n",
-        )
-        .expect("package metadata should be written");
         fs::write(package_root.join("build.fol"), source).expect("build source should be written");
         (package_root.clone(), package_root.join("build.fol"))
     }

@@ -2540,7 +2540,7 @@ fn lsp_server_filters_build_file_diagnostics_out_of_source_buffers() {
     let root = temp_root("build_diag_filter");
     let src = root.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         "pro[] build(): non = {\n    return;\n};\n",

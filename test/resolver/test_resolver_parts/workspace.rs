@@ -107,7 +107,7 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
     fs::create_dir_all(&app_root).expect("Should create the importing package root fixture");
 
     fs::write(
-        store_root.join("json/package.yaml"),
+        store_root.join("json/build.fol"),
         "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
     )
     .expect("Should write json package metadata");
@@ -123,7 +123,7 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
     .expect("Should write json package sources");
 
     fs::write(
-        store_root.join("core/package.yaml"),
+        store_root.join("core/build.fol"),
         "name: core\nversion: 1.0.0\n",
     )
     .expect("Should write core package metadata");

@@ -300,7 +300,7 @@ fn workspace_route_planner_rejects_old_build_members() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: old\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("build.fol"), "name: old\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         "var[] answer: int = 42;\n",
@@ -340,7 +340,7 @@ fn workspace_route_planner_rejects_broken_modern_builds() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: modern\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("build.fol"), "name: modern\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         "pro[] build(): non = {\n",
@@ -380,7 +380,7 @@ fn modern_members_plan_custom_steps_from_semantic_builds() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: modern\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("build.fol"), "name: modern\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
@@ -502,7 +502,7 @@ fn build_body_step_calls_flow_into_member_execution_plans() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
@@ -539,7 +539,7 @@ fn build_body_step_dependencies_are_accepted_during_member_planning() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
@@ -584,7 +584,7 @@ fn custom_build_steps_plan_as_build_execution() {
             .as_nanos()
     ));
     fs::create_dir_all(root.join("src")).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(

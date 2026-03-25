@@ -986,7 +986,7 @@ mod tests {
         )
         .expect("std");
         fs::write(
-            pkg_math_root.join("package.yaml"),
+            pkg_math_root.join("build.fol"),
             "name: math\nversion: 0.1.0\n",
         )
         .expect("pkg manifest");
@@ -1213,7 +1213,7 @@ mod tests {
         )
         .expect("std");
         fs::write(
-            pkg_math_root.join("package.yaml"),
+            pkg_math_root.join("build.fol"),
             "name: math\nversion: 0.1.0\n",
         )
         .expect("pkg manifest");

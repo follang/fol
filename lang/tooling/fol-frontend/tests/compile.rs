@@ -11,7 +11,9 @@ use std::process::Command;
 fn semantic_bin_build() -> &'static str {
     concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+        "    var graph = build.graph();\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
         "    graph.install(app);\n",
         "    graph.add_run(app);\n",
@@ -24,7 +26,9 @@ fn semantic_lib_build(name: &str) -> String {
     format!(
         concat!(
             "pro[] build(): non = {{\n",
-            "    var graph = .graph();\n",
+            "    var build = .build();\n",
+            "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
+            "    var graph = build.graph();\n",
             "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/lib.fol\" }});\n",
             "    graph.install(lib);\n",
             "}};\n",
@@ -63,8 +67,6 @@ fn sample_workspace(root: &PathBuf) -> FrontendWorkspace {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).expect("should create source tree");
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n")
-        .expect("should write manifest");
     fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write build file");
     fs::write(
         src.join("main.fol"),
@@ -131,14 +133,24 @@ fn locked_check_build_run_and_test_use_existing_lockfile() {
 fn create_app_with_git_dep(app: &Path, remote: &Path) {
     fs::create_dir_all(app.join("src")).expect("should create app package");
     fs::write(
-        app.join("package.yaml"),
+        app.join("build.fol"),
         format!(
-            "name: app\nversion: 0.1.0\ndep.logtiny: git:git+file://{}\n",
+            concat!(
+                "pro[] build(): non = {{\n",
+                "    var build = .build();\n",
+                "    build.meta({{ name = \"app\", version = \"0.1.0\" }});\n",
+                "    build.add_dep({{ alias = \"logtiny\", source = \"git\", target = \"git+file://{}\" }});\n",
+                "    var graph = build.graph();\n",
+                "    var app = graph.add_exe({{ name = \"app\", root = \"src/main.fol\" }});\n",
+                "    graph.install(app);\n",
+                "    graph.add_run(app);\n",
+                "    graph.add_test({ name = \"app_test\", root = \"src/main.fol\" });\n",
+                "}};\n",
+            ),
             remote.display()
         ),
     )
-    .expect("should write app manifest");
-    fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write app build");
+    .expect("should write app build");
     fs::write(
         app.join("src/main.fol"),
         "fun[] main(): int = {\n    return 0\n};\n",
@@ -148,12 +160,7 @@ fn create_app_with_git_dep(app: &Path, remote: &Path) {
 
 fn create_git_package_repo(root: &Path, name: &str, version: &str) {
     fs::create_dir_all(root.join("src")).expect("package repo should be creatable");
-    fs::write(
-        root.join("package.yaml"),
-        format!("name: {name}\nversion: {version}\n"),
-    )
-    .expect("package metadata should be writable");
-    fs::write(root.join("build.fol"), semantic_lib_build(name))
+    fs::write(root.join("build.fol"), semantic_lib_build(name).replace("0.1.0", version))
         .expect("package build should be writable");
     fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1;\n")
         .expect("package source should be writable");
@@ -263,11 +270,19 @@ fn test_command_traverses_all_runnable_workspace_members_through_public_api() {
     let tools_src = tools_root.join("src");
     fs::create_dir_all(&tools_src).expect("should create tools source tree");
     fs::write(
-        tools_root.join("package.yaml"),
-        "name: tools\nversion: 0.1.0\n",
+        tools_root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"tools\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    var app = graph.add_exe({ name = \"tools\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "    graph.add_run(app);\n",
+            "    graph.add_test({ name = \"tools_test\", root = \"src/main.fol\" });\n",
+            "};\n",
+        ),
     )
-    .expect("should write tools manifest");
-    fs::write(tools_root.join("build.fol"), semantic_bin_build())
         .expect("should write tools build");
     fs::write(
         tools_src.join("main.fol"),

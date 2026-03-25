@@ -314,7 +314,7 @@ pub fn infer_package_root(syntax: &ParsedPackage) -> Result<PathBuf, PackageErro
 pub fn parse_directory_package_syntax(
     root: &Path,
     display_name: &str,
-    source_kind: PackageSourceKind,
+    _source_kind: PackageSourceKind,
 ) -> Result<ParsedPackage, PackageError> {
     let root_str = root.to_str().ok_or_else(|| {
         PackageError::new(
@@ -322,7 +322,7 @@ pub fn parse_directory_package_syntax(
             format!("package root '{}' is not valid UTF-8", root.display()),
         )
     })?;
-    let mut sources = Source::init_with_package(root_str, SourceType::Folder, display_name)
+    let sources = Source::init_with_package(root_str, SourceType::Folder, display_name)
         .map_err(|error| {
             PackageError::new(
                 PackageErrorKind::InvalidInput,
@@ -333,18 +333,6 @@ pub fn parse_directory_package_syntax(
                 ),
             )
         })?;
-    if source_kind == PackageSourceKind::Package {
-        sources.retain(|source| !is_package_control_file(root, source));
-        if sources.is_empty() {
-            return Err(PackageError::new(
-                PackageErrorKind::InvalidInput,
-                format!(
-                    "package import target '{}' has no loadable source files after excluding package control files",
-                    root.display()
-                ),
-            ));
-        }
-    }
     let mut stream = FileStream::from_sources(sources).map_err(|error| {
         PackageError::new(
             PackageErrorKind::InvalidInput,
@@ -502,20 +490,6 @@ fn reject_formal_package_roots_for_directory_imports(
     }
 
     Ok(())
-}
-
-fn is_package_control_file(root: &Path, source: &Source) -> bool {
-    let source_path = Path::new(&source.path);
-    let Some(parent) = source_path.parent() else {
-        return false;
-    };
-    if parent != root {
-        return false;
-    }
-    matches!(
-        source_path.file_name().and_then(|name| name.to_str()),
-        Some("package.yaml") | Some("package.fol")
-    )
 }
 
 #[cfg(test)]

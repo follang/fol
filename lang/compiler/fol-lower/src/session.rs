@@ -594,7 +594,7 @@ mod tests {
         )
         .expect("should write app entry");
         fs::write(
-            json_root.join("package.yaml"),
+            json_root.join("build.fol"),
             "name: json\nversion: 1.0.0\n",
         )
         .expect("should write package metadata");
@@ -777,7 +777,7 @@ mod tests {
         fs::write(fmt_root.join("lib.fol"), "var[exp] answer: int = 2\n")
             .expect("should write std import");
         fs::write(
-            json_root.join("package.yaml"),
+            json_root.join("build.fol"),
             "name: json\nversion: 1.0.0\n",
         )
         .expect("should write package metadata");

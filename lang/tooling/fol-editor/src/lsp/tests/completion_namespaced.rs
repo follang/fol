@@ -282,7 +282,7 @@ fn lsp_server_keeps_model_completion_context_isolated_across_workspace_members()
     fs::create_dir_all(&tool_src).unwrap();
     fs::write(root.join("fol.work.yaml"), "members:\n  - app\n  - tool\n").unwrap();
 
-    fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("app/build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("app/build.fol"),
             concat!(
@@ -299,7 +299,7 @@ fn lsp_server_keeps_model_completion_context_isolated_across_workspace_members()
     )
     .unwrap();
 
-    fs::write(root.join("tool/package.yaml"), "name: tool\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("tool/build.fol"), "name: tool\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("tool/build.fol"),
             concat!(

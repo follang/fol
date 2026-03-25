@@ -210,7 +210,7 @@ mod tests {
         ));
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(root.join("build.fol"), "pro[] build(): non = {\n    return;\n};\n").unwrap();
         let file = src.join("main.fol");
         let text = "fun[] main(): int = {\n    return 0;\n};\n";
@@ -275,7 +275,7 @@ mod tests {
         ));
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(
             root.join("build.fol"),
             "pro[] build(): non = {\n    return;\n};\n",

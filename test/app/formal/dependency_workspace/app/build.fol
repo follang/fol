@@ -1,5 +1,7 @@
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "dependency_workspace_app", version = "0.1.0" });
+    var graph = build.graph();
     var app = graph.add_exe({
         name = "dependency_workspace_app",
         root = "src/main.fol",

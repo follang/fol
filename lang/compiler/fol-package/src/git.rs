@@ -415,7 +415,7 @@ mod tests {
 
         assert!(materialization.cache_root.is_dir());
         assert!(materialization.store_root.is_dir());
-        assert!(materialization.store_root.join("package.yaml").is_file());
+        assert!(materialization.store_root.join("build.fol").is_file());
         assert!(!materialization.selected_revision.trim().is_empty());
 
         std::fs::remove_dir_all(temp_root).ok();
@@ -465,7 +465,7 @@ mod tests {
     fn create_package_repo(root: &Path, version: &str) {
         std::fs::create_dir_all(root.join("src")).expect("package repo should be creatable");
         std::fs::write(
-            root.join("package.yaml"),
+            root.join("build.fol"),
             format!("name: logtiny\nversion: {version}\n"),
         )
         .expect("package metadata should be writable");

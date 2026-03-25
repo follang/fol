@@ -1,5 +1,7 @@
 pro[] build(): non = {
-    var graph = .graph();
+    var build = .build();
+    build.meta({ name = "dependency_workspace_shared", version = "0.1.0" });
+    var graph = build.graph();
     var lib = graph.add_static_lib({
         name = "dependency_workspace_shared",
         root = "src/lib.fol",

@@ -37,7 +37,7 @@ fn check_workspace_runs_the_real_pipeline_for_workspace_members() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
@@ -70,7 +70,7 @@ fn build_workspace_runs_the_backend_for_runnable_members() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
@@ -181,7 +181,7 @@ fn build_workspace_uses_profile_specific_output_roots() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
@@ -221,7 +221,7 @@ fn run_workspace_executes_a_single_runnable_member() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
@@ -260,7 +260,7 @@ fn run_workspace_passes_through_binary_arguments() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
@@ -298,7 +298,7 @@ fn run_workspace_rejects_non_host_machine_targets_before_execution() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
@@ -338,7 +338,7 @@ fn build_workspace_keeps_generated_crate_dirs_when_requested() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
@@ -374,7 +374,7 @@ fn test_workspace_runs_single_workspace_members() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
@@ -410,7 +410,7 @@ fn test_package_selects_a_single_named_workspace_member() {
     for package in [&app, &lib] {
         let src = package.join("src");
         fs::create_dir_all(&src).unwrap();
-        fs::write(package.join("package.yaml"), "name: pkg\nversion: 0.1.0\n").unwrap();
+        fs::write(package.join("build.fol"), "name: pkg\nversion: 0.1.0\n").unwrap();
         fs::write(package.join("build.fol"), semantic_bin_build()).unwrap();
         fs::write(
             src.join("main.fol"),
@@ -445,7 +445,7 @@ fn test_workspace_rejects_non_host_machine_targets_before_execution() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
@@ -483,7 +483,7 @@ fn emit_rust_materializes_generated_crates_for_workspace_members() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),
@@ -525,7 +525,7 @@ fn emit_lowered_materializes_rendered_workspace_snapshots() {
     let app = root.join("app");
     let src = app.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(app.join("package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
+    fs::write(app.join("build.fol"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(app.join("build.fol"), semantic_bin_build()).unwrap();
     fs::write(
         src.join("main.fol"),

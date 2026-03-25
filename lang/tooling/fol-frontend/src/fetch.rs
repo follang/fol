@@ -765,7 +765,7 @@ mod tests {
         create_package_repo(&remote, "logtiny", "0.1.0");
         fs::create_dir_all(app.join("src")).expect("should create app package");
         fs::write(
-            app.join("package.yaml"),
+            app.join("build.fol"),
             format!(
                 "name: app\nversion: 0.1.0\ndep.logtiny: git:git+file://{}\n",
                 remote.display()
@@ -811,7 +811,7 @@ mod tests {
     fn create_package_repo(root: &Path, name: &str, version: &str) {
         fs::create_dir_all(root.join("src")).expect("package repo should be creatable");
         fs::write(
-            root.join("package.yaml"),
+            root.join("build.fol"),
             format!("name: {name}\nversion: {version}\n"),
         )
         .expect("package metadata should be writable");

@@ -877,7 +877,7 @@ fn workspace_typechecking_keeps_direct_pkg_import_declaration_facts() {
     write_fixture_files(
         &root,
         &[
-            ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
+            ("store/json/build.fol", "name: json\nversion: 1.0.0\n"),
             (
                 "store/json/build.fol",
                 "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"json\",\n        version = \"1.0.0\",\n    });\n};\n",
@@ -925,14 +925,14 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
     write_fixture_files(
         &root,
         &[
-            ("store/core/package.yaml", "name: core\nversion: 1.0.0\n"),
+            ("store/core/build.fol", "name: core\nversion: 1.0.0\n"),
             (
                 "store/core/build.fol",
                 "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"core\",\n        version = \"1.0.0\",\n    });\n};\n",
             ),
             ("store/core/src/lib.fol", "typ[exp] Count: int;\n"),
             (
-                "store/json/package.yaml",
+                "store/json/build.fol",
                 "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
             ),
             (

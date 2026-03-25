@@ -250,8 +250,8 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - `use loc` imports resolve against the loaded package and namespace scope set.
 - `use std` imports resolve against explicit configured std roots.
 - `use pkg` imports resolve against explicit configured package-store roots.
-- Historical package loading used `package.yaml` plus `build.fol`.
-- Current direction removes `package.yaml` completely and moves package metadata and
+- Historical package loading used `build.fol` plus `build.fol`.
+- Current direction removes `build.fol` completely and moves package metadata and
   direct dependencies into `pro[] build(): non` through `.build().meta({...})`
   and `.build().add_dep({...})`.
 - Stray `package.fol` files stay ignored and do not satisfy package metadata requirements.
@@ -298,7 +298,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 
 - `fol-package` now exists as a workspace crate and sits between parser output and
   resolver package consumption.
-- Historical package loading used `fol-package` parsing of `package.yaml`.
+- Historical package loading used `fol-package` parsing of `build.fol`.
 - Current direction is for `fol-package` to extract package metadata, direct
   dependencies, and exports from `build.fol` only.
 - `fol-package` owns package-session caching, cycle detection, shared dependency
