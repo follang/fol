@@ -242,6 +242,29 @@ mod tests {
     }
 
     #[test]
+    fn stdlib_scope_build_surface_contract_stays_coherent() {
+        let scope = BuildStdlibScope::canonical();
+        let meta = scope.find_build_method("meta").unwrap();
+        let add_dep = scope.find_build_method("add_dep").unwrap();
+        let graph = scope.find_build_method("graph").unwrap();
+        let build_shape_names = scope
+            .build_config_shapes
+            .iter()
+            .map(|shape| shape.name.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(meta.receiver, BuildSemanticTypeFamily::BuildContext);
+        assert_eq!(add_dep.receiver, BuildSemanticTypeFamily::BuildContext);
+        assert_eq!(graph.receiver, BuildSemanticTypeFamily::BuildContext);
+        assert_eq!(meta.params.len(), 1);
+        assert_eq!(add_dep.params.len(), 1);
+        assert!(graph.params.is_empty());
+        assert_eq!(graph.returns, Some(BuildSemanticTypeFamily::Graph));
+        assert!(build_shape_names.contains(&"BuildMetaConfig"));
+        assert!(build_shape_names.contains(&"BuildDependencyConfig"));
+    }
+
+    #[test]
     fn stdlib_scope_chain_metadata_covers_depend_on_receivers() {
         let scope = BuildStdlibScope::canonical();
         let chains = scope.chain_metadata();

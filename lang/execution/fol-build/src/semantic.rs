@@ -788,6 +788,35 @@ mod tests {
     }
 
     #[test]
+    fn canonical_build_context_surface_keeps_receiver_param_and_shape_contracts() {
+        let methods = canonical_build_context_method_signatures();
+        let shapes = canonical_build_context_config_shapes();
+        let meta = methods.iter().find(|signature| signature.name == "meta").unwrap();
+        let add_dep = methods
+            .iter()
+            .find(|signature| signature.name == "add_dep")
+            .unwrap();
+        let graph = methods
+            .iter()
+            .find(|signature| signature.name == "graph")
+            .unwrap();
+
+        assert!(methods
+            .iter()
+            .all(|signature| signature.receiver == BuildSemanticTypeFamily::BuildContext));
+        assert_eq!(meta.params.len(), 1);
+        assert_eq!(meta.params[0].shape, BuildSemanticParameterShape::Record);
+        assert_eq!(add_dep.params.len(), 1);
+        assert_eq!(add_dep.params[0].shape, BuildSemanticParameterShape::Record);
+        assert!(graph.params.is_empty());
+        assert_eq!(graph.returns, Some(BuildSemanticTypeFamily::Graph));
+        assert!(shapes.iter().any(|shape| shape.name == "BuildMetaConfig"));
+        assert!(shapes
+            .iter()
+            .any(|shape| shape.name == "BuildDependencyConfig"));
+    }
+
+    #[test]
     fn canonical_graph_methods_return_expected_handle_families() {
         let signatures = canonical_graph_method_signatures();
         let add_exe = signatures
