@@ -489,6 +489,67 @@ fn build_source_evaluator_keeps_full_dependency_surface_usage_together() {
 }
 
 #[test]
+fn build_source_evaluator_keeps_dependency_queries_precise_for_build_add_dep_handles() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    var dep = build.add_dep({ alias = \"core\", source = \"pkg\", target = \"core\" });\n",
+        "    var module = dep.module(\"root\");\n",
+        "    var artifact = dep.artifact(\"corelib\");\n",
+        "    var step = dep.step(\"check\");\n",
+        "    var generated = dep.generated(\"bindings\");\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("build.add_dep dependency queries should evaluate")
+        .expect("build body should produce a graph");
+
+    assert_eq!(evaluated.evaluated.dependencies.len(), 1);
+    assert_eq!(evaluated.evaluated.dependencies[0].alias, "core");
+    assert_eq!(evaluated.evaluated.dependency_queries.len(), 4);
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "core"
+            && query.query_name == "root"
+            && query.kind == BuildRuntimeDependencyQueryKind::Module));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "core"
+            && query.query_name == "corelib"
+            && query.kind == BuildRuntimeDependencyQueryKind::Artifact));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "core"
+            && query.query_name == "check"
+            && query.kind == BuildRuntimeDependencyQueryKind::Step));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "core"
+            && query.query_name == "bindings"
+            && query.kind == BuildRuntimeDependencyQueryKind::GeneratedOutput));
+}
+
+#[test]
 fn build_source_evaluator_resolves_deferred_artifact_option_values_into_runtime_metadata() {
     let source = concat!(
         "pro[] build(): non = {\n",

@@ -177,7 +177,7 @@ If a new dependency/output/install shape is chosen:
   `build.fol`
 - make failures precise for unknown module/artifact/step/generated names
 
-### Slice 8
+### Slice 8 [complete]
 
 - harden executor and runtime query recording for dependency-handle lookups
 - ensure all dependency queries preserve alias + requested name + kind
