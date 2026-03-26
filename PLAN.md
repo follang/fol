@@ -131,6 +131,8 @@ Completion criteria:
 ## Epoch 2: Harden Direct Model Boundary Rejections
 
 ### Slice 5
+Status: complete
+
 Expand direct compile-fail fixtures for `core` rejecting heap-backed types.
 
 Completion criteria:

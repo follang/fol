@@ -2179,6 +2179,14 @@ fn test_build_fixtures_core_model_reject_forbidden_surfaces() {
             "map[...] requires heap support and is unavailable in 'fol_model = core'",
         ),
         (
+            "model_core_reject_inferred_str",
+            "string literals require heap support and are unavailable in 'fol_model = core'",
+        ),
+        (
+            "model_core_reject_heap_mix",
+            "requires heap support and is unavailable in 'fol_model = core'",
+        ),
+        (
             "model_core_reject_echo",
             "'.echo(...)' requires 'fol_model = std'",
         ),
