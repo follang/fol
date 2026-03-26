@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TreeSitterCorpusCase {
     pub name: &'static str,
@@ -12,7 +14,9 @@ pub struct TreeSitterQuerySnapshot {
 
 const GRAMMAR_SOURCE: &str = include_str!("../tree-sitter/grammar.js");
 const TREE_SITTER_CONFIG: &str = include_str!("../tree-sitter/tree-sitter.json");
-const HIGHLIGHTS_QUERY: &str = include_str!("../queries/fol/highlights.scm");
+const HIGHLIGHTS_QUERY_BASE: &str = include_str!("../queries/fol/highlights.base.scm");
+#[cfg(test)]
+const CHECKED_IN_HIGHLIGHTS_QUERY: &str = include_str!("../queries/fol/highlights.scm");
 const LOCALS_QUERY: &str = include_str!("../queries/fol/locals.scm");
 const SYMBOLS_QUERY: &str = include_str!("../queries/fol/symbols.scm");
 const CORPUS_DECLARATIONS: &str = include_str!("../tree-sitter/test/corpus/declarations.txt");
@@ -20,6 +24,8 @@ const CORPUS_EXPRESSIONS: &str = include_str!("../tree-sitter/test/corpus/expres
 const CORPUS_RECOVERABLE: &str = include_str!("../tree-sitter/test/corpus/recoverable.txt");
 const CORPUS_SHOWCASE: &str =
     include_str!("../../../../test/apps/showcases/full_v1_showcase/app/main.fol");
+static GENERATED_HIGHLIGHTS_QUERY: OnceLock<String> = OnceLock::new();
+static QUERY_SNAPSHOTS: OnceLock<[TreeSitterQuerySnapshot; 3]> = OnceLock::new();
 
 pub fn fol_tree_sitter_grammar() -> &'static str {
     GRAMMAR_SOURCE
@@ -30,7 +36,9 @@ pub fn fol_tree_sitter_config() -> &'static str {
 }
 
 pub fn fol_tree_sitter_highlights_query() -> &'static str {
-    HIGHLIGHTS_QUERY
+    GENERATED_HIGHLIGHTS_QUERY
+        .get_or_init(generate_highlights_query)
+        .as_str()
 }
 
 pub fn fol_tree_sitter_locals_query() -> &'static str {
@@ -63,20 +71,73 @@ pub fn fol_tree_sitter_corpus() -> &'static [TreeSitterCorpusCase] {
 }
 
 pub fn fol_tree_sitter_query_snapshots() -> &'static [TreeSitterQuerySnapshot] {
-    &[
-        TreeSitterQuerySnapshot {
-            name: "highlights",
-            query: HIGHLIGHTS_QUERY,
-        },
-        TreeSitterQuerySnapshot {
-            name: "locals",
-            query: LOCALS_QUERY,
-        },
-        TreeSitterQuerySnapshot {
-            name: "symbols",
-            query: SYMBOLS_QUERY,
-        },
-    ]
+    QUERY_SNAPSHOTS
+        .get_or_init(|| {
+            [
+                TreeSitterQuerySnapshot {
+                    name: "highlights",
+                    query: fol_tree_sitter_highlights_query(),
+                },
+                TreeSitterQuerySnapshot {
+                    name: "locals",
+                    query: LOCALS_QUERY,
+                },
+                TreeSitterQuerySnapshot {
+                    name: "symbols",
+                    query: SYMBOLS_QUERY,
+                },
+            ]
+        })
+        .as_slice()
+}
+
+fn generate_highlights_query() -> String {
+    HIGHLIGHTS_QUERY_BASE
+        .replace("__FOL_SOURCE_KIND_LINES__", &render_source_kind_lines())
+        .replace("__FOL_CONTAINER_TYPE_LINES__", &render_container_type_lines())
+        .replace("__FOL_SHELL_TYPE_LINES__", &render_shell_type_lines())
+        .replace(
+            "__FOL_BUILTIN_TYPE_REGEX__",
+            &render_group_regex(fol_typecheck::editor_builtin_type_names().iter().copied()),
+        )
+        .replace(
+            "__FOL_DOT_INTRINSIC_REGEX__",
+            &render_group_regex(
+                fol_typecheck::editor_implemented_intrinsics()
+                    .into_iter()
+                    .filter(|entry| entry.surface == fol_intrinsics::IntrinsicSurface::DotRootCall)
+                    .map(|entry| entry.name),
+            ),
+        )
+}
+
+fn render_group_regex<'a>(names: impl IntoIterator<Item = &'a str>) -> String {
+    let joined = names.into_iter().collect::<Vec<_>>().join("|");
+    format!("^({joined})$")
+}
+
+fn render_source_kind_lines() -> String {
+    fol_typecheck::editor_source_kind_names()
+        .iter()
+        .map(|name| format!("(use_decl source_kind: (source_kind \"{name}\" @keyword.import))"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_container_type_lines() -> String {
+    fol_typecheck::editor_container_type_names()
+        .iter()
+        .map(|name| format!("(container_type \"{name}\" @type.builtin)"))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_shell_type_lines() -> String {
+    fol_typecheck::editor_shell_type_names()
+        .iter()
+        .map(|name| format!("(shell_type \"{name}\" @type.builtin)"))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 #[cfg(test)]
@@ -85,6 +146,7 @@ mod tests {
         fol_tree_sitter_config, fol_tree_sitter_corpus, fol_tree_sitter_grammar,
         fol_tree_sitter_highlights_query, fol_tree_sitter_locals_query,
         fol_tree_sitter_query_snapshots, fol_tree_sitter_symbols_query,
+        CHECKED_IN_HIGHLIGHTS_QUERY, HIGHLIGHTS_QUERY_BASE,
     };
     use std::path::{Path, PathBuf};
     use std::process::Command;
@@ -221,6 +283,24 @@ mod tests {
     }
 
     #[test]
+    fn grammar_and_highlights_cover_compiler_declaration_keywords() {
+        let grammar = fol_tree_sitter_grammar();
+        let query = fol_tree_sitter_highlights_query();
+        for keyword in fol_typecheck::editor_declaration_keywords() {
+            let decl_rule = format!("{keyword}_decl");
+            let quoted = format!("\"{keyword}\"");
+            assert!(
+                grammar.contains(&decl_rule) || grammar.contains(&quoted),
+                "grammar is missing declaration keyword coverage for '{keyword}'"
+            );
+            assert!(
+                query.contains(&quoted),
+                "highlight query is missing declaration keyword coverage for '{keyword}'"
+            );
+        }
+    }
+
+    #[test]
     fn highlight_query_covers_declarations_keywords_and_literals() {
         let query = fol_tree_sitter_highlights_query();
         for needle in [
@@ -251,13 +331,66 @@ mod tests {
     }
 
     #[test]
+    fn highlight_query_base_template_keeps_generation_placeholders() {
+        for needle in [
+            "__FOL_SOURCE_KIND_LINES__",
+            "__FOL_CONTAINER_TYPE_LINES__",
+            "__FOL_SHELL_TYPE_LINES__",
+            "__FOL_BUILTIN_TYPE_REGEX__",
+            "__FOL_DOT_INTRINSIC_REGEX__",
+        ] {
+            assert!(
+                HIGHLIGHTS_QUERY_BASE.contains(needle),
+                "base highlight template is missing placeholder: {needle}"
+            );
+        }
+    }
+
+    #[test]
+    fn generated_highlight_query_resolves_all_placeholders() {
+        let query = fol_tree_sitter_highlights_query();
+        for needle in [
+            "__FOL_SOURCE_KIND_LINES__",
+            "__FOL_CONTAINER_TYPE_LINES__",
+            "__FOL_SHELL_TYPE_LINES__",
+            "__FOL_BUILTIN_TYPE_REGEX__",
+            "__FOL_DOT_INTRINSIC_REGEX__",
+        ] {
+            assert!(
+                !query.contains(needle),
+                "generated highlight query still contains placeholder: {needle}"
+            );
+        }
+    }
+
+    #[test]
+    fn checked_in_highlight_query_matches_generated_output() {
+        assert_eq!(CHECKED_IN_HIGHLIGHTS_QUERY, fol_tree_sitter_highlights_query());
+    }
+
+    #[test]
     fn highlight_query_covers_intrinsics_and_qualified_paths() {
         let query = fol_tree_sitter_highlights_query();
         assert!(query.contains("(dot_intrinsic \".\" @operator)"));
         assert!(query.contains("(dot_intrinsic name: (identifier) @function.builtin"));
-        assert!(query.contains("^(len|echo|eq|nq|lt|gt|le|ge|not)$"));
+        assert!(query.contains("#match? @function.builtin \"^("));
         assert!(query.contains("(qualified_path"));
         assert!(query.contains("@namespace"));
+    }
+
+    #[test]
+    fn highlight_query_mentions_every_implemented_dot_intrinsic_name() {
+        let query = fol_tree_sitter_highlights_query();
+        for intrinsic in fol_typecheck::editor_implemented_intrinsics()
+            .into_iter()
+            .filter(|entry| entry.surface == fol_intrinsics::IntrinsicSurface::DotRootCall)
+        {
+            assert!(
+                query.contains(intrinsic.name),
+                "highlight query is missing implemented dot intrinsic '{}'",
+                intrinsic.name
+            );
+        }
     }
 
     #[test]
@@ -413,6 +546,30 @@ mod tests {
     }
 
     #[test]
+    fn locals_query_covers_named_declaration_families_from_compiler_surface() {
+        let query = fol_tree_sitter_locals_query();
+        for needle in [
+            "(fun_decl declaration: (plain_fun_decl name: (identifier) @local.definition.function))",
+            "(fun_decl declaration: (method_decl name: (identifier) @local.definition.method))",
+            "(log_decl declaration: (plain_log_decl name: (identifier) @local.definition.function))",
+            "(log_decl declaration: (method_decl name: (identifier) @local.definition.method))",
+            "(typ_decl name: (identifier) @local.definition.type)",
+            "(ali_decl name: (identifier) @local.definition.type)",
+        ] {
+            assert!(
+                query.contains(needle),
+                "locals query lost declaration-family capture: {needle}"
+            );
+        }
+        for keyword in ["fun", "log", "typ", "ali", "var"] {
+            assert!(
+                fol_typecheck::editor_declaration_keywords().contains(&keyword),
+                "compiler declaration keyword surface drifted away from locals expectation for '{keyword}'"
+            );
+        }
+    }
+
+    #[test]
     fn symbols_query_captures_types_functions_bindings_and_namespaces() {
         let query = fol_tree_sitter_symbols_query();
         for needle in [
@@ -425,6 +582,32 @@ mod tests {
             assert!(
                 query.contains(needle),
                 "missing symbol capture marker: {needle}"
+            );
+        }
+    }
+
+    #[test]
+    fn symbols_query_covers_named_declaration_families_from_compiler_surface() {
+        let query = fol_tree_sitter_symbols_query();
+        for needle in [
+            "(fun_decl declaration: (plain_fun_decl name: (identifier) @symbol.function))",
+            "(fun_decl declaration: (method_decl name: (identifier) @symbol.method))",
+            "(log_decl declaration: (plain_log_decl name: (identifier) @symbol.function))",
+            "(log_decl declaration: (method_decl name: (identifier) @symbol.method))",
+            "(typ_decl name: (identifier) @symbol.type)",
+            "(ali_decl name: (identifier) @symbol.type)",
+            "(var_decl (typed_binding name: (identifier) @symbol.variable))",
+            "(use_decl name: (identifier) @symbol.namespace)",
+        ] {
+            assert!(
+                query.contains(needle),
+                "symbols query lost declaration-family capture: {needle}"
+            );
+        }
+        for keyword in ["fun", "log", "typ", "ali", "var", "use"] {
+            assert!(
+                fol_typecheck::editor_declaration_keywords().contains(&keyword),
+                "compiler declaration keyword surface drifted away from symbols expectation for '{keyword}'"
             );
         }
     }
@@ -475,6 +658,54 @@ mod tests {
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(stdout.contains("function"));
         assert!(stdout.contains("attribute"));
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn generated_bundle_locals_query_captures_real_example_bindings_and_methods() {
+        let root = build_bundle_root("locals_real_examples");
+        let output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/locals.scm"),
+            &repo_root().join("examples/core_records/src/main.fol"),
+        );
+
+        assert!(
+            output.status.success(),
+            "tree-sitter locals query failed:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("@local.definition.type"));
+        assert!(stdout.contains("@local.definition.method"));
+        assert!(stdout.contains("@local.definition.function"));
+        assert!(stdout.contains("@local.definition"));
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn generated_bundle_symbols_query_captures_real_example_symbols() {
+        let root = build_bundle_root("symbols_real_examples");
+        let output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/symbols.scm"),
+            &repo_root().join("examples/core_records/src/main.fol"),
+        );
+
+        assert!(
+            output.status.success(),
+            "tree-sitter symbols query failed:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("@symbol.type"));
+        assert!(stdout.contains("@symbol.method"));
+        assert!(stdout.contains("@symbol.function"));
+        assert!(stdout.contains("@symbol.variable"));
 
         std::fs::remove_dir_all(root).ok();
     }
@@ -851,6 +1082,53 @@ mod tests {
                 showcase.contains(needle),
                 "showcase fixture lost container/shell/intrinsic capture: {needle}\n{showcase}"
             );
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn tree_sitter_bundle_exercises_v1_niceties_and_model_examples() {
+        let root = build_bundle_root("v1_niceties_and_models");
+        let cases = [
+            (
+                repo_root().join("test/apps/fixtures/defer_scope_exit/main.fol"),
+                ["keyword.exception", "punctuation.bracket"].as_slice(),
+            ),
+            (
+                repo_root().join("test/apps/fixtures/call_binding_stress/main.fol"),
+                ["punctuation.delimiter", "function"].as_slice(),
+            ),
+            (
+                repo_root().join("examples/core_defer/src/main.fol"),
+                ["keyword.exception", "type.builtin"].as_slice(),
+            ),
+            (
+                repo_root().join("examples/std_echo_min/src/main.fol"),
+                ["function.builtin", "operator"].as_slice(),
+            ),
+        ];
+
+        for (path, needles) in cases {
+            let output =
+                run_tree_sitter_query(&root, &root.join("queries/fol/highlights.scm"), &path);
+            assert!(
+                output.status.success(),
+                "tree-sitter query failed for '{}':\nstdout:\n{}\nstderr:\n{}",
+                path.display(),
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for needle in needles {
+                assert!(
+                    stdout.contains(needle),
+                    "fixture '{}' lost capture '{}':\n{}",
+                    path.display(),
+                    needle,
+                    stdout
+                );
+            }
         }
 
         std::fs::remove_dir_all(root).ok();

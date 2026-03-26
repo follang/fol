@@ -26,7 +26,10 @@ fol code build --target x86_64-pc-windows-gnu
 or inside `build.fol`:
 
 ```fol
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var target = graph.standard_target();
     var app = graph.add_exe({
         name = "app",

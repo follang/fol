@@ -594,13 +594,13 @@ mod tests {
         )
         .expect("should write app entry");
         fs::write(
-            json_root.join("package.yaml"),
+            json_root.join("build.fol"),
             "name: json\nversion: 1.0.0\n",
         )
         .expect("should write package metadata");
         fs::write(
             json_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(): non = {\n    return graph\n}\n",
         )
         .expect("should write package build definition");
         fs::write(json_root.join("src/lib.fol"), "var[exp] answer: int = 42\n")
@@ -777,13 +777,13 @@ mod tests {
         fs::write(fmt_root.join("lib.fol"), "var[exp] answer: int = 2\n")
             .expect("should write std import");
         fs::write(
-            json_root.join("package.yaml"),
+            json_root.join("build.fol"),
             "name: json\nversion: 1.0.0\n",
         )
         .expect("should write package metadata");
         fs::write(
             json_root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph\n}\n",
+            "pro[] build(): non = {\n    return graph\n}\n",
         )
             .expect("should write package build definition");
         fs::write(json_root.join("src/lib.fol"), "var[exp] answer: int = 3\n")

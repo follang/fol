@@ -14,7 +14,7 @@ pub enum ScopeKind {
     NamespaceRoot { namespace: String },
     SourceUnitRoot { path: String },
     /// Virtual scope injected as the parent of every `build.fol` source-unit scope.
-    /// It holds synthetic type symbols for the build stdlib (Graph, ArtifactHandle, …)
+    /// It holds synthetic handle symbols for the build stdlib (ArtifactHandle, …)
     /// and has no parent, providing file-bound isolation for `build.fol`.
     BuildStdlib,
     Routine,

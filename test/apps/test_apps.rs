@@ -20,6 +20,21 @@ fn fixture_root(name: &str) -> PathBuf {
     Path::new("test/apps/fixtures").join(name)
 }
 
+fn formal_pkg_build(name: &str) -> String {
+    format!(
+        concat!(
+            "pro[] build(): non = {{\n",
+            "    var build = .build();\n",
+            "    build.meta({{\n",
+            "        name = \"{name}\",\n",
+            "        version = \"0.1.0\",\n",
+            "    }});\n",
+            "}};\n",
+        ),
+        name = name
+    )
+}
+
 fn run_fol(args: &[&str]) -> std::process::Output {
     Command::new(env!("CARGO_BIN_EXE_fol"))
         .args(args)
@@ -377,11 +392,11 @@ fn app_harness_root_helpers_support_std_and_pkg_layouts() {
     .expect("app source");
     fs::write(std_root.join("fmt").join("lib.fol"), "var[exp] std_answer: int = 3;\n")
         .expect("std source");
-    fs::write(math_root.join("package.yaml"), "name: math\nversion: 0.1.0\n")
+    fs::write(math_root.join("build.fol"), "name: math\nversion: 0.1.0\n")
         .expect("pkg manifest");
     fs::write(
         math_root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        formal_pkg_build("math"),
     )
     .expect("pkg build");
     fs::write(math_root.join("src").join("lib.fol"), "var[exp] pkg_answer: int = 4;\n")

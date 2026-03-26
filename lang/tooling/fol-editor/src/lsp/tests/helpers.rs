@@ -3,7 +3,7 @@ use super::super::{
     LspTextDocumentItem,
 };
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub(super) fn temp_root(label: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
@@ -21,10 +21,9 @@ pub(super) fn sample_package_root(label: &str) -> (PathBuf, String) {
     let root = temp_root(label);
     let src = root.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .unwrap();
     let file = src.join("main.fol");
@@ -40,20 +39,14 @@ pub(super) fn sample_loc_workspace_root(label: &str) -> (PathBuf, String) {
     fs::create_dir_all(&app_src).unwrap();
     fs::create_dir_all(&shared_src).unwrap();
 
-    fs::write(root.join("app/package.yaml"), "name: app\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("app/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
-    )
-    .unwrap();
-    fs::write(
-        root.join("shared/package.yaml"),
-        "name: shared\nversion: 0.1.0\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .unwrap();
     fs::write(
         root.join("shared/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .unwrap();
 
@@ -69,6 +62,32 @@ pub(super) fn sample_loc_workspace_root(label: &str) -> (PathBuf, String) {
     .unwrap();
 
     let uri = format!("file://{}", root.join("app/src/main.fol").display());
+    (root, uri)
+}
+
+fn copy_dir_all(src: &Path, dst: &Path) {
+    fs::create_dir_all(dst).unwrap();
+    for entry in fs::read_dir(src).unwrap() {
+        let entry = entry.unwrap();
+        let from = entry.path();
+        let to = dst.join(entry.file_name());
+        if entry.file_type().unwrap().is_dir() {
+            copy_dir_all(&from, &to);
+        } else {
+            fs::copy(&from, &to).unwrap();
+        }
+    }
+}
+
+pub(super) fn copied_example_package_root(example_path: &str) -> (PathBuf, String) {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .join(example_path)
+        .canonicalize()
+        .expect("checked-in example path should canonicalize");
+    let root = temp_root(&format!("example_copy_{}", example_path.replace('/', "_")));
+    copy_dir_all(&source, &root);
+    let uri = format!("file://{}", root.join("src/main.fol").display());
     (root, uri)
 }
 

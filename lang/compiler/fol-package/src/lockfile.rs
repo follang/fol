@@ -285,4 +285,24 @@ mod tests {
 
         assert!(error.message().contains("missing required field 'root'"));
     }
+
+    #[test]
+    fn package_lockfile_keeps_structured_git_locator_strings() {
+        let lockfile = PackageLockfile::new(vec![PackageLockEntry {
+            alias: "logtiny".to_string(),
+            source_kind: PackageDependencySourceKind::Git,
+            locator: "git+https://github.com/bresilla/logtiny.git#tag:v0.1.1#hash:77df4240d6f0"
+                .to_string(),
+            selected_revision: "77df4240d6f0a28590fc5b8dce8b648b63c17540".to_string(),
+            materialized_root: ".fol/pkg/git/github.com/bresilla/logtiny/rev_77df4240d6f0a28590fc5b8dce8b648b63c17540"
+                .to_string(),
+        }]);
+
+        let rendered = render_package_lockfile(&lockfile);
+        let reparsed = parse_package_lockfile(&rendered)
+            .expect("structured git lockfile locator should roundtrip");
+
+        assert!(rendered.contains("#tag:v0.1.1#hash:77df4240d6f0"));
+        assert_eq!(reparsed, lockfile);
+    }
 }

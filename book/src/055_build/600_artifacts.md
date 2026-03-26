@@ -43,6 +43,23 @@ var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
 app.link(core);
 ```
 
+Typed system-library requests can be linked the same way:
+
+```fol
+var ssl = graph.add_system_lib({ name = "ssl", mode = "dynamic" });
+app.link(ssl);
+```
+
+Framework-style requests use the same surface:
+
+```fol
+var metal = graph.add_system_lib({
+    name = "Metal",
+    framework = true,
+});
+app.link(metal);
+```
+
 Linking is transitive through the graph. If `core` itself links `utils`, `app`
 will also see `utils`.
 
@@ -58,8 +75,10 @@ graph.install(core);
 Files and directories can also be installed directly:
 
 ```fol
-graph.install_file("config/defaults.toml");
-graph.install_dir("assets/");
+var defaults = graph.file_from_root("config/defaults.toml");
+var assets = graph.dir_from_root("assets");
+graph.install_file({ name = "defaults", source = defaults });
+graph.install_dir({ name = "assets", source = assets });
 ```
 
 ## Modules
@@ -79,10 +98,14 @@ source scope. Equivalent to Zig's `artifact.root_module.addImport(name, dep)`.
 Modules from dependencies are accessed via `dep.module(name)`:
 
 ```fol
-var dep    = graph.dependency("mylib", "local:../mylib");
+var build  = .build();
+var dep    = build.add_dep({ alias = "mylib", source = "loc", target = "../mylib" });
 var logger = dep.module("logger");
 app.import(logger);
 ```
+
+`dep.module(name)` resolves only explicitly exported build modules. It does not
+change the ordinary package import rules used in source files.
 
 ## Generated Files
 
@@ -96,7 +119,9 @@ in the graph so the build system knows to produce them and what depends on them.
 | Write         | `graph.write_file`       | Written with literal string contents  |
 | Copy          | `graph.copy_file`        | Copied from a source path             |
 | Tool output   | `graph.add_system_tool`  | Produced by an external tool          |
+| Tool dir      | `graph.add_system_tool_dir` | Produced as a generated directory |
 | Codegen       | `graph.add_codegen`      | Produced by the FOL codegen pipeline  |
+| Codegen dir   | `graph.add_codegen_dir`  | Produced as a generated directory     |
 | Captured run  | `run.capture_stdout()`   | Stdout of a run step                  |
 
 ### Connecting Generated Files
@@ -106,7 +131,19 @@ A generated file must be connected to the graph entity that depends on it.
 Attach to a step (the step triggers its production):
 
 ```fol
-var gen  = graph.add_system_tool({ tool = "protoc", output = "gen/types.fol" });
+var schema = graph.file_from_root("schema/api.yaml");
+var defaults = graph.write_file({
+    name = "defaults",
+    path = "gen/defaults.txt",
+    contents = "strict",
+});
+var gen  = graph.add_system_tool({
+    tool = "flatc",
+    args = { "--fol" },
+    file_args = { schema, defaults },
+    env = { MODE = "strict" },
+    output = "gen/types.fol",
+});
 var step = graph.step("proto");
 step.attach(gen);
 ```
@@ -132,6 +169,18 @@ var gen_output = gen_run.capture_stdout();
 
 var app_run = graph.add_run(app);
 app_run.add_file_arg(gen_output);
+```
+
+Generated directories can be installed or exported as dirs:
+
+```fol
+var assets = graph.add_system_tool_dir({
+    tool = "assetpack",
+    output_dir = "gen/assets",
+});
+
+build.export_dir({ name = "assets", dir = assets });
+graph.install_dir({ name = "assets", source = assets });
 ```
 
 ## Steps

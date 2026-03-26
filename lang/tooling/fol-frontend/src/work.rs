@@ -43,7 +43,7 @@ pub fn work_deps(workspace: &FrontendWorkspace) -> FrontendResult<FrontendComman
     let mut result = FrontendCommandResult::new("work deps", "");
 
     for member in &workspace.members {
-        let metadata = fol_package::parse_package_metadata(&member.manifest_file)
+        let metadata = fol_package::parse_package_metadata_from_build(&member.root.join("build.fol"))
             .map_err(FrontendError::from)?;
         if metadata.dependencies.is_empty() {
             lines.push(format!("{}:", metadata.name));
@@ -227,8 +227,16 @@ mod tests {
         let app = root.join("app");
         fs::create_dir_all(&app).unwrap();
         fs::write(
-            app.join("package.yaml"),
-            "name: app\nversion: 0.1.0\ndep.shared: loc:../shared\ndep.logtiny: git:git+https://github.com/bresilla/logtiny\n",
+            app.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"shared\", source = \"loc\", target = \"../shared\" });\n",
+                "    build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://github.com/bresilla/logtiny\" });\n",
+                "    return;\n",
+                "};\n",
+            ),
         )
         .unwrap();
         let workspace = FrontendWorkspace {

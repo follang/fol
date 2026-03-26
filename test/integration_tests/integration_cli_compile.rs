@@ -110,7 +110,7 @@ use super::*;
         fs::create_dir_all(&app_root)
             .expect("Should create the importing package root fixture directory");
         fs::write(
-            store_root.join("json/package.yaml"),
+            store_root.join("json/build.fol"),
             "name: json\nversion: 1.0.0\n",
         )
         .expect("Should write the installed package metadata fixture");
@@ -118,7 +118,7 @@ use super::*;
             .expect("Should create the installed package export root fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"json\",\n        version = \"1.0.0\",\n    });\n};\n",
         )
         .expect("Should write the installed package build fixture");
         fs::write(
@@ -256,7 +256,7 @@ use super::*;
         fs::create_dir_all(&app_root)
             .expect("Should create the importing package root fixture directory");
         fs::write(
-            store_root.join("json/package.yaml"),
+            store_root.join("json/build.fol"),
             "name: json\nversion: 1.0.0\n",
         )
         .expect("Should write the installed package metadata fixture");
@@ -264,7 +264,7 @@ use super::*;
             .expect("Should create the installed package export root fixture");
         fs::write(
             store_root.join("json/build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"json\",\n        version = \"1.0.0\",\n    });\n};\n",
         )
         .expect("Should write the installed package build fixture");
         fs::write(
@@ -841,4 +841,3 @@ use super::*;
 
         fs::remove_dir_all(&temp_root).ok();
     }
-

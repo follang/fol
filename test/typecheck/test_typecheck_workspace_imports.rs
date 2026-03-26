@@ -930,10 +930,10 @@ fn legacy_single_package_typecheck_rejects_imported_pkg_values_explicitly() {
     write_fixture_files(
         &root,
         &[
-            ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
+            ("store/json/build.fol", "name: json\nversion: 1.0.0\n"),
             (
                 "store/json/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+                "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"json\",\n        version = \"1.0.0\",\n    });\n};\n",
             ),
             ("store/json/src/lib.fol", "var[exp] answer: int = 42;\n"),
             (

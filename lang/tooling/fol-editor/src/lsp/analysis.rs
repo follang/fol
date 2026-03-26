@@ -8,7 +8,7 @@ use fol_package::{PackageSession, PackageSourceKind};
 use fol_parser::ast::AstParser;
 use fol_resolver::Resolver;
 use fol_stream::{FileStream, Source, SourceType};
-use fol_typecheck::Typechecker;
+use fol_typecheck::{TypecheckConfig, Typechecker};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -127,6 +127,7 @@ pub(super) fn analyze_document_semantics(
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
                 source_document_path: mapping.document_path.clone(),
                 source_package_root: mapping.package_root.clone(),
+                active_fol_model: mapping.active_fol_model,
                 compiler_diagnostics: parser_diags,
                 diagnostics: parser_lsp_diags,
                 resolved_workspace: None,
@@ -156,6 +157,7 @@ pub(super) fn analyze_document_semantics(
                         analyzed_path: Some(overlay.document_path().to_path_buf()),
                         source_document_path: mapping.document_path.clone(),
                         source_package_root: mapping.package_root.clone(),
+                        active_fol_model: mapping.active_fol_model,
                         compiler_diagnostics: vec![diagnostic.clone()],
                         diagnostics: lsp_diags,
                         resolved_workspace: None,
@@ -178,6 +180,7 @@ pub(super) fn analyze_document_semantics(
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
                     source_document_path: mapping.document_path.clone(),
                     source_package_root: mapping.package_root.clone(),
+                    active_fol_model: mapping.active_fol_model,
                     compiler_diagnostics: diagnostics.clone(),
                     diagnostics: diagnostics
                         .iter()
@@ -192,7 +195,9 @@ pub(super) fn analyze_document_semantics(
             }
         };
 
-        let mut typechecker = Typechecker::new();
+        let mut typechecker = Typechecker::with_config(TypecheckConfig {
+            capability_model: mapping.active_fol_model.unwrap_or_default(),
+        });
         #[cfg(test)]
         TYPECHECK_WORKSPACE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         match typechecker.check_resolved_workspace(resolved.clone()) {
@@ -200,6 +205,7 @@ pub(super) fn analyze_document_semantics(
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
                 source_document_path: mapping.document_path.clone(),
                 source_package_root: mapping.package_root.clone(),
+                active_fol_model: mapping.active_fol_model,
                 compiler_diagnostics: Vec::new(),
                 diagnostics: Vec::new(),
                 resolved_workspace: Some(resolved),
@@ -214,6 +220,7 @@ pub(super) fn analyze_document_semantics(
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
                     source_document_path: mapping.document_path.clone(),
                     source_package_root: mapping.package_root.clone(),
+                    active_fol_model: mapping.active_fol_model,
                     compiler_diagnostics: diagnostics.clone(),
                     diagnostics: diagnostics
                         .iter()
@@ -233,6 +240,7 @@ pub(super) fn analyze_document_semantics(
             analyzed_path: Some(mapping.document_path.clone()),
             source_document_path: mapping.document_path.clone(),
             source_package_root: mapping.package_root.clone(),
+            active_fol_model: mapping.active_fol_model,
             compiler_diagnostics: diagnostics.clone(),
             diagnostics: diagnostics
                 .into_iter()

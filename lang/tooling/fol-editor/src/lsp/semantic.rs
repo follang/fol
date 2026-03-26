@@ -3,10 +3,13 @@ use crate::{
     EditorResult, LspDiagnostic, LspLocation, LspPosition, LspRange, LspTextEdit,
     LspWorkspaceEdit,
 };
-use fol_intrinsics::{
-    intrinsic_registry, IntrinsicAvailability, IntrinsicStatus, IntrinsicSurface,
-};
+use fol_intrinsics::IntrinsicSurface;
 use fol_parser::ast::{AstNode, SyntaxNodeId};
+use fol_typecheck::{
+    editor_builtin_type_names, editor_container_type_names, editor_implemented_intrinsics,
+    editor_intrinsic_available_in_model, editor_shell_type_names,
+    editor_type_family_available_in_model, EditorTypeFamily, TypecheckCapabilityModel,
+};
 use std::path::Path;
 use std::path::PathBuf;
 
@@ -17,6 +20,7 @@ use super::completion_helpers::{
     current_routine_name, dedupe_completion_items, fallback_decl_name,
     fallback_items_from_package_dir, position_to_offset, render_checked_type, render_symbol_kind,
     symbol_kind_code, symbol_visibility_matches_namespace_root, CompletionContext,
+    FALLBACK_ALIAS_PREFIXES, FALLBACK_ROUTINE_PREFIXES, FALLBACK_TYPE_PREFIXES,
 };
 use super::types::{
     EditorCompletionItem, LspDocumentSymbol, LspHover, LspParameterInformation, LspSignatureHelp,
@@ -34,6 +38,7 @@ pub(crate) struct SemanticSnapshot {
     pub(super) analyzed_path: Option<PathBuf>,
     pub(super) source_document_path: PathBuf,
     pub(super) source_package_root: Option<PathBuf>,
+    pub(super) active_fol_model: Option<TypecheckCapabilityModel>,
     pub(super) compiler_diagnostics: Vec<fol_diagnostics::Diagnostic>,
     pub(super) diagnostics: Vec<LspDiagnostic>,
     pub(super) resolved_workspace: Option<fol_resolver::ResolvedWorkspace>,
@@ -337,7 +342,7 @@ impl SemanticSnapshot {
         match context {
             CompletionContext::Plain => {}
             CompletionContext::TypePosition => {
-                let mut items = self.builtin_type_completion_items();
+                let mut items = self.type_surface_completion_items();
                 items.extend(self.visible_named_type_completion_items());
                 return dedupe_completion_items(items);
             }
@@ -364,7 +369,7 @@ impl SemanticSnapshot {
                 self.fallback_qualified_completion_items(&qualifier)
             }
             CompletionContext::TypePosition => {
-                let mut items = self.builtin_type_completion_items();
+                let mut items = self.type_surface_completion_items();
                 items.extend(self.fallback_local_named_type_items(document));
                 items.extend(self.fallback_imported_named_type_items(document));
                 dedupe_completion_items(items)
@@ -391,11 +396,34 @@ impl SemanticSnapshot {
         }
     }
 
-    fn builtin_type_completion_items(&self) -> Vec<EditorCompletionItem> {
-        fol_typecheck::BuiltinType::ALL_NAMES
+    fn active_model(&self) -> TypecheckCapabilityModel {
+        self.active_fol_model.unwrap_or_default()
+    }
+
+    fn type_surface_completion_items(&self) -> Vec<EditorCompletionItem> {
+        let model = self.active_model();
+        let mut items = editor_builtin_type_names()
             .iter()
+            .filter(|name| {
+                editor_type_family_available_in_model(model, builtin_type_family(name))
+            })
             .map(|name| completion_builtin_type_item(name))
-            .collect()
+            .collect::<Vec<_>>();
+        items.extend(
+            editor_container_type_names()
+                .iter()
+                .filter(|name| {
+                    editor_type_family_available_in_model(model, container_type_family(name))
+                })
+                .map(|name| completion_builtin_type_item(name)),
+        );
+        items.extend(
+            editor_shell_type_names()
+                .iter()
+                .filter(|name| editor_type_family_available_in_model(model, shell_type_family(name)))
+                .map(|name| completion_builtin_type_item(name)),
+        );
+        items
     }
 
     // COMPILER-BACKED: reads from resolved all_symbols
@@ -475,12 +503,12 @@ impl SemanticSnapshot {
 
     // COMPILER-BACKED: intrinsic registry is the canonical source
     fn dot_intrinsic_fallback_completion_items(&self) -> Vec<EditorCompletionItem> {
-        intrinsic_registry()
+        let model = self.active_model();
+        editor_implemented_intrinsics()
             .iter()
             .filter(|entry| entry.surface == IntrinsicSurface::DotRootCall)
-            .filter(|entry| entry.availability == IntrinsicAvailability::V1)
-            .filter(|entry| entry.status == IntrinsicStatus::Implemented)
-            .map(completion_intrinsic_item)
+            .filter(|entry| editor_intrinsic_available_in_model(model, **entry))
+            .map(|entry| completion_intrinsic_item(entry.name))
             .collect()
     }
 
@@ -634,7 +662,7 @@ impl SemanticSnapshot {
         items
     }
 
-    // FALLBACK: text-matches `fun[`, `pro[`, `typ[`, `ali[`, `def[` prefixes
+    // FALLBACK: text-matches current V1 declaration heads when resolver data is absent.
     // when resolver data is absent. Required for broken documents.
     fn fallback_current_package_top_level_items(
         &self,
@@ -645,10 +673,7 @@ impl SemanticSnapshot {
         let current_routine = current_routine_name(&document.text, position);
         for line in document.text.lines() {
             let trimmed = line.trim();
-            if let Some(name) = fallback_decl_name(
-                trimmed,
-                &["fun[] ", "fun[", "log[] ", "log[", "pro[] ", "pro["],
-            ) {
+            if let Some(name) = fallback_decl_name(trimmed, FALLBACK_ROUTINE_PREFIXES) {
                 if current_routine.as_deref() == Some(name.as_str()) {
                     continue;
                 }
@@ -658,21 +683,14 @@ impl SemanticSnapshot {
                     detail: Some("routine".to_string()),
                     insert_text: None,
                 });
-            } else if let Some(name) = fallback_decl_name(trimmed, &["def[] ", "def["]) {
-                items.push(EditorCompletionItem {
-                    label: name,
-                    kind: 12,
-                    detail: Some("definition".to_string()),
-                    insert_text: None,
-                });
-            } else if let Some(name) = fallback_decl_name(trimmed, &["typ[] ", "typ[", "typ "]) {
+            } else if let Some(name) = fallback_decl_name(trimmed, FALLBACK_TYPE_PREFIXES) {
                 items.push(EditorCompletionItem {
                     label: name,
                     kind: 22,
                     detail: Some("type".to_string()),
                     insert_text: None,
                 });
-            } else if let Some(name) = fallback_decl_name(trimmed, &["ali[] ", "ali[", "ali "]) {
+            } else if let Some(name) = fallback_decl_name(trimmed, FALLBACK_ALIAS_PREFIXES) {
                 items.push(EditorCompletionItem {
                     label: name,
                     kind: 22,
@@ -1261,6 +1279,32 @@ impl SemanticSnapshot {
             .source_units
             .iter()
             .find(move |unit| unit.path == path_text)
+    }
+}
+
+fn builtin_type_family(name: &str) -> EditorTypeFamily {
+    match name {
+        "str" => EditorTypeFamily::String,
+        _ => EditorTypeFamily::Scalar,
+    }
+}
+
+fn container_type_family(name: &str) -> EditorTypeFamily {
+    match name {
+        "arr" => EditorTypeFamily::Array,
+        "vec" => EditorTypeFamily::Vector,
+        "seq" => EditorTypeFamily::Sequence,
+        "set" => EditorTypeFamily::Set,
+        "map" => EditorTypeFamily::Map,
+        _ => EditorTypeFamily::RecordLike,
+    }
+}
+
+fn shell_type_family(name: &str) -> EditorTypeFamily {
+    match name {
+        "opt" => EditorTypeFamily::OptionalShell,
+        "err" => EditorTypeFamily::ErrorShell,
+        _ => EditorTypeFamily::RecordLike,
     }
 }
 

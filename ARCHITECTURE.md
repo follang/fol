@@ -6,6 +6,41 @@ depend on each other, and how data flows from source to binary.
 ## Workspace layout
 
 ```
+
+## Build Surface Layers
+
+The public `build.fol` surface is intentionally layered.
+
+Current public layering:
+
+- `.build()`
+  ambient package build context
+- `build.meta({...})`
+  package identity and package metadata
+- `build.add_dep({...})`
+  direct dependency declarations
+- `build.graph()`
+  artifact, step, option, and generated-file graph mutation
+
+This split is intentional:
+
+- package metadata is not graph mutation
+- direct dependency declarations are not artifact declarations
+- graph construction should not become a catch-all stringly package API
+
+Near-term build-system expansion should stay inside this layering rather than
+replace it:
+
+- dependency handles returned from `build.add_dep({...})`
+- unified output handles for generated and copied files
+- explicit dependency build-argument forwarding
+- cleaner install-prefix/output-root behavior
+
+The design constraint is:
+
+- richer build values on top of the current layers
+- no return to YAML manifests
+- no reintroduction of public `Graph`/`Build` type names
 lang/
   compiler/       front-end: source --> typed IR
     fol-types         shared type definitions and traits
@@ -91,7 +126,7 @@ LAYER 3 — build system + packages                             │             
   │  owns all build logic:     │ │  re-exports fol-build     ││                   │
   │   - build graph IR         │ │  adds package concerns:   ││                   │
   │   - build.fol API surface  │ │   - PackageIdentity       ││                   │
-  │   - build.fol executor     │ │   - package.yaml parsing  ││                   │
+  │   - build.fol executor     │ │   - build.fol metadata    ││                   │
   │   - artifact definitions   │ │   - git fetch/clone       ││                   │
   │   - step ordering          │ │   - lockfile handling     ││                   │
   │   - option resolution      │ │   - build entry validation││                   │
@@ -225,15 +260,15 @@ The tooling crates sit beside the pipeline and reach into multiple layers.
 How a FOL source file becomes a binary:
 
 ```
-  *.fol source files                         package.yaml
-       │                                          │
-       ▼                                          ▼
+  *.fol source files                         build.fol
+       │                                        │
+       ▼                                        ▼
   ┌──────────┐                              ┌───────────┐
   │fol-stream│  read files into             │fol-package│  parse package
-  │          │  character streams           │           │  metadata and
-  └────┬─────┘                              │           │  identity
-       │                                    └─────┬─────┘
-       ▼                                          │
+  │          │  character streams           │           │  metadata,
+  └────┬─────┘                              │           │  dependencies,
+       │                                    │           │  and identity
+       ▼                                    └─────┬─────┘
   ┌──────────┐                                    │
   │fol-lexer │  chars --> tokens                  │
   │          │  (4-stage pipeline)                │
@@ -254,7 +289,8 @@ How a FOL source file becomes a binary:
                     │fol-build │                  │
                     │          │ evaluate         │
                     │          │ build.fol into   │
-                    │          │ build graph:     │
+                    │          │ metadata, deps,  │
+                    │          │ and build graph: │
                     │          │  - artifacts     │
                     │          │  - steps         │
                     │          │  - options       │
@@ -335,7 +371,7 @@ declarations, codegen definitions, and capability enforcement.
 through thin shim modules (each `build_*.rs` file is a single
 `pub use fol_build::*` line). On top of that, `fol-package` adds its
 own package-level concerns: `PackageIdentity`, `PackageMetadata`
-(from `package.yaml`), git fetching, lockfile handling, package session
+(from `build.fol`), git fetching, lockfile handling, package session
 and root discovery, and build entry validation.
 
 Downstream crates import through `fol-package` as a single entry point.

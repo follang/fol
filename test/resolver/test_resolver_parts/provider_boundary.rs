@@ -131,11 +131,11 @@ fn test_resolver_keeps_pkg_import_semantics_stable_through_package_provider() {
     fs::create_dir_all(store_root.join("json/src/fmt"))
         .expect("Should create the exported namespace source fixture");
     fs::create_dir_all(&app_root).expect("Should create the importing package root fixture");
-    fs::write(store_root.join("json/package.yaml"), "name: json\nversion: 1.0.0\n")
+    fs::write(store_root.join("json/build.fol"), "name: json\nversion: 1.0.0\n")
         .expect("Should write the installed package metadata fixture");
     fs::write(
         store_root.join("json/build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"json\",\n        version = \"1.0.0\",\n    });\n};\n",
     )
     .expect("Should write the installed package build fixture");
     fs::write(store_root.join("json/src/root/value.fol"), "var[exp] answer: int = 42;\n")

@@ -17,26 +17,41 @@ Every buildable package must have a `build.fol` at its root with exactly one
 canonical entry:
 
 ```fol
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     ...
 }
 ```
 
-The `graph` parameter is the injection surface. All build operations go through
-method calls on `graph` and on the handles it returns.
+The active build context is accessed explicitly through the build-only ambient
+accessor:
+
+```fol
+.build()
+```
+
+There is no injected `graph` parameter anymore. `.build()` returns an opaque
+build-only handle. Users do not name its type explicitly. Package metadata and
+direct dependencies are configured through that handle, and graph work is
+reached through `build.graph()`.
 
 ## Minimal Example
 
 ```fol
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var app = graph.add_exe({ name = "app", root = "src/main.fol" });
     graph.install(app);
     graph.add_run(app);
 }
 ```
 
-This registers an executable, marks it for installation, and binds a default
-run step.
+This registers package metadata, adds an executable, marks it for installation,
+and binds a default run step.
 
 ## What `fol-build` Owns
 
@@ -60,3 +75,41 @@ Use this section for:
 - control flow available inside `build.fol`
 - build options and `-D` flags
 - artifact types, modules, and generated files
+- dependency handles and unified output handles
+
+## Near-Term Architecture
+
+The next build round is about extending the existing explicit surface, not
+replacing it.
+
+The intended layering is:
+
+- `build.add_dep({...})` declares a direct dependency and returns a dependency
+  handle
+- `build.export_*({...})` declares the build-facing surface a package chooses to
+  expose
+- `graph.file_from_root(...)` and `graph.dir_from_root(...)` remain the typed
+  source-path producers
+- broader path-oriented exports and dependency path queries sit on top of those
+  producers instead of collapsing back into raw string paths
+- dependency modes, install reporting, and system integration should become more
+  concrete without changing the top-level `.build()` structure
+
+This means the near-term additions should look like richer values and richer
+queries on top of the current build graph, not a new manifest format and not a
+public `Graph` or `Build` type.
+
+## Standalone Examples
+
+These checked-in example packages exercise the current public build surface:
+
+- `examples/build_dep_exports`
+- `examples/build_source_paths`
+- `examples/build_dep_modes`
+- `examples/build_described_steps`
+- `examples/build_generated_dirs`
+- `examples/build_dep_handles`
+- `examples/build_output_handles`
+- `examples/build_install_prefix`
+- `examples/build_system_lib`
+- `examples/build_system_tool`

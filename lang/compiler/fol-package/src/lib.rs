@@ -40,6 +40,7 @@ pub use build::{
 pub use build_api::{
     validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildArtifactHandle,
     BuildOptionValue, DependencyHandle, DependencyRequest, ExecutableRequest,
+    GitDependencyVersionSelector,
     InstallArtifactRequest, InstallDirRequest, InstallFileRequest, InstallHandle, RunHandle,
     RunRequest, SharedLibraryRequest, StandardOptimizeOption, StandardOptimizeRequest,
     StandardTargetOption, StandardTargetRequest, StaticLibraryRequest, StepHandle, StepRequest,
@@ -59,9 +60,11 @@ pub use build_codegen::{
 pub use build_dependency::{
     dependency_modules_from_exports, DependencyArtifactSurface, DependencyArtifactSurfaceSet,
     DependencyBuildEvaluationMode, DependencyBuildHandle, DependencyBuildSurface,
-    DependencyBuildSurfaceSet, DependencyGeneratedOutputSurface,
+    DependencyBuildSurfaceSet, DependencyDirSurface, DependencyDirSurfaceSet,
+    DependencyFileSurface, DependencyFileSurfaceSet, DependencyGeneratedOutputSurface,
     DependencyGeneratedOutputSurfaceSet, DependencyModuleSurface, DependencyModuleSurfaceSet,
-    DependencySourceRootSurface, DependencyStepSurface, DependencyStepSurfaceSet,
+    DependencyPathSurface, DependencyPathSurfaceSet, DependencySourceRootSurface,
+    DependencyStepSurface, DependencyStepSurfaceSet,
 };
 pub use build_entry::{
     collect_build_entry_candidates, validate_build_entry_cardinality,
@@ -136,7 +139,9 @@ pub use lockfile::{
     parse_package_lockfile, render_package_lockfile, PackageLockEntry, PackageLockfile,
 };
 pub use metadata::{
-    parse_package_metadata, PackageDependencyDecl, PackageDependencySourceKind, PackageMetadata,
+    extract_package_dependencies_from_build, extract_package_metadata_fields_from_build,
+    parse_package_metadata_from_build, PackageDependencyDecl, PackageDependencySourceKind,
+    PackageMetadata,
 };
 pub use model::{PreparedExportMount, PreparedPackage};
 pub use paths::{git_cache_path, git_store_path};
@@ -174,11 +179,6 @@ mod tests {
             NEXT_ID.fetch_add(1, Ordering::Relaxed)
         ));
         fs::create_dir_all(&package_root).expect("temp package root should be created");
-        fs::write(
-            package_root.join("package.yaml"),
-            "name: buildlib\nversion: 1.0.0\n",
-        )
-        .expect("package metadata should be written");
         fs::write(package_root.join("build.fol"), source).expect("build source should be written");
         (package_root.clone(), package_root.join("build.fol"))
     }
@@ -376,13 +376,14 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_six_build_evaluation_surface() {
         let source = concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/demo.fol\",\n",
             "    });\n",
             "    graph.add_run(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "}\n",
         );
         let (package_root, build_path) = temp_build_package(source);
@@ -411,13 +412,14 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_ten_dependency_surface() {
         let source = concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var dep = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"lazy\" });\n",
             "    var module = dep.module(\"root\");\n",
             "    var artifact = dep.artifact(\"corelib\");\n",
             "    var step = dep.step(\"check\");\n",
             "    var generated = dep.generated(\"bindings\");\n",
-            "    return graph\n",
+            "    return;\n",
             "}\n",
         );
         let (package_root, build_path) = temp_build_package(source);
@@ -454,12 +456,14 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_eleven_generated_surface() {
         let source = concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
-            "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
+            "    var logo = graph.file_from_root(\"assets/logo.svg\");\n",
+            "    var asset = graph.copy_file({ name = \"asset\", source = logo, path = \"gen/logo.svg\" });\n",
             "    var tool = graph.add_system_tool({ tool = \"flatc\", output = \"gen/schema.fol\" });\n",
             "    var codegen = graph.add_codegen({ kind = \"schema\", input = \"schema/api.yaml\", output = \"gen/api.fol\" });\n",
-            "    return graph\n",
+            "    return;\n",
             "}\n",
         );
         let (package_root, build_path) = temp_build_package(source);
@@ -492,13 +496,14 @@ mod tests {
     #[test]
     fn crate_root_reexports_phase_nine_real_option_surface() {
         let source = concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var root = graph.option({ name = \"root\", kind = \"path\", default = \"src/default.fol\" });\n",
             "    var target = graph.standard_target();\n",
             "    var optimize = graph.standard_optimize();\n",
             "    var app = graph.add_exe({ name = \"demo\", root = root, target = target, optimize = optimize });\n",
             "    graph.add_run(app);\n",
-            "    return graph\n",
+            "    return;\n",
             "}\n",
         );
         let (package_root, build_path) = temp_build_package(source);

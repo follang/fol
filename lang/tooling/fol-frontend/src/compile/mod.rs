@@ -34,6 +34,14 @@ where
     format!("fol_model={rendered}")
 }
 
+fn produced_artifact_count(result: &FrontendCommandResult) -> usize {
+    result
+        .artifacts
+        .iter()
+        .filter(|artifact| artifact.kind != FrontendArtifactKind::BuildRoot)
+        .count()
+}
+
 pub fn check_workspace_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
@@ -169,10 +177,12 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
         .iter()
         .filter(|artifact| artifact.kind == FrontendArtifactKind::Binary)
         .count();
+    let output_count = produced_artifact_count(&result);
     result.summary = format!(
-        "built {binary_count} workspace package(s) into {} ({})",
+        "built {binary_count} workspace package(s) into {} ({}, install_prefix={}, outputs={output_count})",
         output_root.display(),
-        summarize_fol_models(selections.iter().map(|selection| selection.fol_model))
+        summarize_fol_models(selections.iter().map(|selection| selection.fol_model)),
+        workspace.install_prefix.display()
     );
     Ok(result)
 }
@@ -566,6 +576,7 @@ fn compile_member_workspace_for_model(
     package_root: &Path,
     fol_model: fol_backend::BackendFolModel,
 ) -> FrontendResult<fol_lower::LoweredWorkspace> {
+    validate_build_dependency_queries(workspace, config, package_root)?;
     let display_name = package_root
         .file_name()
         .and_then(|name| name.to_str())
@@ -588,11 +599,182 @@ fn compile_member_workspace_for_model(
     let typed = fol_typecheck::Typechecker::with_config(fol_typecheck::TypecheckConfig {
         capability_model: typecheck_capability_model(fol_model),
     })
-        .check_resolved_workspace(resolved)
-        .map_err(FrontendError::from_errors)?;
+    .check_resolved_workspace(resolved)
+    .map_err(FrontendError::from_errors)?;
     fol_lower::Lowerer::new()
         .lower_typed_workspace(typed)
         .map_err(FrontendError::from_errors)
+}
+
+fn validate_build_dependency_queries(
+    workspace: &FrontendWorkspace,
+    config: &FrontendConfig,
+    package_root: &Path,
+) -> FrontendResult<()> {
+    let build_path = package_root.join("build.fol");
+    let source = match fs::read_to_string(&build_path) {
+        Ok(source) => source,
+        Err(_) => return Ok(()),
+    };
+    let evaluated = match fol_package::evaluate_build_source(
+        &fol_package::BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: fol_package::BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                install_prefix: package_root.join(".fol/install").display().to_string(),
+                ..fol_package::BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        },
+        &build_path,
+        &source,
+    ) {
+        Ok(Some(evaluated)) => evaluated,
+        Ok(None) => return Ok(()),
+        Err(error) => {
+            return Err(FrontendError::new(
+                FrontendErrorKind::InvalidInput,
+                error.to_string(),
+            ));
+        }
+    };
+    if evaluated.evaluated.dependency_queries.is_empty() {
+        return Ok(());
+    }
+
+    let metadata =
+        fol_package::parse_package_metadata_from_build(&build_path).map_err(FrontendError::from)?;
+    let package_store_root = config
+        .package_store_root_override
+        .clone()
+        .or_else(|| workspace.package_store_root_override.clone())
+        .unwrap_or_else(|| workspace.root.root.join(".fol").join("pkg"));
+
+    for query in &evaluated.evaluated.dependency_queries {
+        let metadata_dependency = metadata
+            .dependencies
+            .iter()
+            .find(|dependency| dependency.alias == query.dependency_alias);
+        let evaluated_dependency = evaluated
+            .result
+            .dependency_requests
+            .iter()
+            .find(|dependency| dependency.alias == query.dependency_alias);
+        let dependency_root = resolve_dependency_query_root(
+            package_root,
+            &package_store_root,
+            metadata_dependency,
+            evaluated_dependency,
+        )?;
+        let syntax = fol_package::parse_directory_package_syntax(
+            &dependency_root,
+            &query.dependency_alias,
+            fol_package::PackageSourceKind::Package,
+        )
+        .map_err(FrontendError::from)?;
+        let surface = fol_package::build_dependency::project_dependency_surface(
+            &query.dependency_alias,
+            &dependency_root,
+            &syntax,
+        )
+        .map_err(FrontendError::from)?;
+        let exported = match query.kind {
+            fol_package::BuildRuntimeDependencyQueryKind::Module => {
+                surface.find_module(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::Artifact => {
+                surface.find_artifact(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::Step => {
+                surface.find_step(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::File => {
+                surface.find_file(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::Dir => {
+                surface.find_dir(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::Path => {
+                surface.find_path(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::GeneratedOutput => {
+                surface.find_generated_output(&query.query_name).is_some()
+            }
+        };
+        if !exported {
+            return Err(FrontendError::new(
+                FrontendErrorKind::InvalidInput,
+                format!(
+                    "dependency '{}' does not export {} '{}'",
+                    query.dependency_alias,
+                    dependency_query_kind_label(query.kind),
+                    query.query_name
+                ),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn resolve_dependency_query_root(
+    package_root: &Path,
+    package_store_root: &Path,
+    metadata_dependency: Option<&fol_package::PackageDependencyDecl>,
+    evaluated_dependency: Option<&fol_package::DependencyRequest>,
+) -> FrontendResult<std::path::PathBuf> {
+    if let Some(dependency) = metadata_dependency {
+        return Ok(match dependency.source_kind {
+            fol_package::PackageDependencySourceKind::Local => {
+                package_root.join(&dependency.target)
+            }
+            fol_package::PackageDependencySourceKind::PackageStore => {
+                package_store_root.join(&dependency.target)
+            }
+            fol_package::PackageDependencySourceKind::Git => {
+                package_store_root.join(&dependency.alias)
+            }
+        });
+    }
+
+    if let Some(dependency) = evaluated_dependency {
+        let local_root = package_root.join(&dependency.package);
+        if local_root.join("build.fol").is_file() {
+            return Ok(local_root);
+        }
+        let package_root = package_store_root.join(&dependency.package);
+        if package_root.join("build.fol").is_file() {
+            return Ok(package_root);
+        }
+        let alias_root = package_store_root.join(&dependency.alias);
+        if alias_root.join("build.fol").is_file() {
+            return Ok(alias_root);
+        }
+    }
+
+    let alias = metadata_dependency
+        .map(|dependency| dependency.alias.as_str())
+        .or_else(|| evaluated_dependency.map(|dependency| dependency.alias.as_str()))
+        .unwrap_or("<unknown>");
+    Err(FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "build dependency query references undeclared dependency alias '{}'",
+            alias
+        ),
+    ))
+}
+
+fn dependency_query_kind_label(kind: fol_package::BuildRuntimeDependencyQueryKind) -> &'static str {
+    match kind {
+        fol_package::BuildRuntimeDependencyQueryKind::Module => "module",
+        fol_package::BuildRuntimeDependencyQueryKind::Artifact => "artifact",
+        fol_package::BuildRuntimeDependencyQueryKind::Step => "step",
+        fol_package::BuildRuntimeDependencyQueryKind::File => "file",
+        fol_package::BuildRuntimeDependencyQueryKind::Dir => "dir",
+        fol_package::BuildRuntimeDependencyQueryKind::Path => "path",
+        fol_package::BuildRuntimeDependencyQueryKind::GeneratedOutput => "generated output",
+    }
 }
 
 fn compile_member_workspace_targeted(
@@ -657,17 +839,19 @@ fn resolver_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
 ) -> fol_resolver::ResolverConfig {
+    let package_store_root = config
+        .package_store_root_override
+        .clone()
+        .or_else(|| workspace.package_store_root_override.clone())
+        .unwrap_or_else(|| workspace.root.root.join(".fol/pkg"));
+
     fol_resolver::ResolverConfig {
         std_root: config
             .std_root_override
             .clone()
             .or_else(|| workspace.std_root_override.clone())
             .map(|path| path.to_string_lossy().to_string()),
-        package_store_root: config
-            .package_store_root_override
-            .clone()
-            .or_else(|| workspace.package_store_root_override.clone())
-            .map(|path| path.to_string_lossy().to_string()),
+        package_store_root: Some(package_store_root.to_string_lossy().to_string()),
     }
 }
 
@@ -713,9 +897,7 @@ fn ensure_host_runnable_target(config: &FrontendConfig, command: &str) -> Fronte
     let host = FrontendConfig::host_rust_target_triple().unwrap_or("unknown-host");
     Err(FrontendError::new(
         FrontendErrorKind::InvalidInput,
-        format!(
-            "{command} command cannot execute target '{selected}' on host '{host}'"
-        ),
+        format!("{command} command cannot execute target '{selected}' on host '{host}'"),
     ))
 }
 
@@ -765,6 +947,7 @@ fn test_workspace_selected_with_config(
             build_root: workspace.build_root.clone(),
             cache_root: workspace.cache_root.clone(),
             git_cache_root: workspace.git_cache_root.clone(),
+            install_prefix: workspace.install_prefix.clone(),
         };
         let member_result = run_workspace_with_config(&member_workspace, config)?;
         result.artifacts.extend(member_result.artifacts);

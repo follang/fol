@@ -1,333 +1,485 @@
-# PLAN: Runtime Split for `fol-model`
-
-Last updated: 2026-03-24
-
-## Intent
-
-This plan replaces the current compiler-only `fol_model` enforcement with a
-real architecture split:
-
-- `core`
-  no heap, no OS
-- `alloc`
-  heap yes, OS no
-- `std`
-  heap yes, OS yes
-
-The end state is not:
-
-- one large runtime with conditional checks
-- frontend-only policy
-- backend-only policy
-- import-name conventions
+# Git Dependency Selector Cutover Plan
+
+This plan replaces the current git dependency selector surface:
+
+- selectors embedded inside `target`
+- examples like `git+https://github.com/org/repo.git?branch=main`
+- optional `?tag=...`
+- optional `?rev=...`
+- optional `?hash=...`
+
+with a structured build API:
+
+```fol
+pro[] build(): non = {
+    var build = .build();
+
+    build.add_dep({
+        alias = "logtiny",
+        source = "git",
+        target = "git+https://github.com/bresilla/logtiny.git",
+        version = "tag:v0.1.1",
+        hash = "77df4240d6f0",
+    });
+}
+```
+
+The goal is:
+
+1. keep `target` as only the repository locator
+2. move selector policy into explicit fields
+3. keep hash verification explicit and separate
+4. remove query-param selectors entirely
+5. verify the real flow against `xtra/logtiny`
+
+This follows the repo policy:
+
+- no legacy shims
+- no compatibility parsing path
+- no dual public syntax
+
+If the new structured surface is chosen, the old `?branch=...`, `?tag=...`,
+`?rev=...`, and `?hash=...` form must be deleted, not deprecated.
+
+## Current Grounding
+
+The current implementation that this plan will replace lives in:
+
+- locator parsing:
+  [lang/compiler/fol-package/src/locator.rs](/home/bresilla/data/code/bresilla/fol/lang/compiler/fol-package/src/locator.rs)
+- git revision resolution and materialization:
+  [lang/compiler/fol-package/src/git.rs](/home/bresilla/data/code/bresilla/fol/lang/compiler/fol-package/src/git.rs)
+- package metadata extraction from `build.fol`:
+  [lang/compiler/fol-package/src/metadata.rs](/home/bresilla/data/code/bresilla/fol/lang/compiler/fol-package/src/metadata.rs)
+- build evaluator dependency request parsing:
+  [lang/execution/fol-build/src/executor/handle_methods.rs](/home/bresilla/data/code/bresilla/fol/lang/execution/fol-build/src/executor/handle_methods.rs)
+  [lang/execution/fol-build/src/executor/resolve.rs](/home/bresilla/data/code/bresilla/fol/lang/execution/fol-build/src/executor/resolve.rs)
+- dependency request types:
+  [lang/execution/fol-build/src/api/types.rs](/home/bresilla/data/code/bresilla/fol/lang/execution/fol-build/src/api/types.rs)
+- frontend fetch / lockfile behavior:
+  [lang/tooling/fol-frontend/src/fetch.rs](/home/bresilla/data/code/bresilla/fol/lang/tooling/fol-frontend/src/fetch.rs)
+  [lang/compiler/fol-package/src/lockfile.rs](/home/bresilla/data/code/bresilla/fol/lang/compiler/fol-package/src/lockfile.rs)
+- current examples/tests:
+  [examples/std_logtiny_git](/home/bresilla/data/code/bresilla/fol/examples/std_logtiny_git)
+  [xtra/logtiny](/home/bresilla/data/code/bresilla/fol/xtra/logtiny)
+  [test/integration_tests/integration_editor_and_build.rs](/home/bresilla/data/code/bresilla/fol/test/integration_tests/integration_editor_and_build.rs)
+
+## New Public Contract
+
+For git dependencies:
+
+- `target` must be only the repository locator
+- `version` is optional
+- `hash` is optional
+
+Allowed forms:
+
+```fol
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+});
+```
+
+```fol
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "branch:develop",
+});
+```
+
+```fol
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "tag:v0.1.1",
+});
+```
+
+```fol
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "commit:77df4240d6f0a28590fc5b8dce8b648b63c17540",
+});
+```
 
-The end state is:
+```fol
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "branch:develop",
+    hash = "77df4240d6f0",
+});
+```
 
-- `build.fol` chooses `fol_model` per artifact
-- typecheck enforces the language surface for that artifact
-- backend links the correct runtime crate set
-- the runtime implementation is physically split
-- docs match the real behavior
-
-## Rules
-
-- Every slice must stay commit-sized.
-- Every slice that changes behavior must include tests in the same commit.
-- After each slice:
-  - run `make build`
-  - run `make test`
-  - if both pass:
-    - mark the slice complete here
-    - commit it
-- No compatibility layer for the old monolithic runtime model once the new path
-  is chosen for a subsystem.
-
-## Current baseline
-
-Already complete before this plan:
+Semantic rules:
 
-- `build.fol` accepts `fol_model`
-- frontend carries `fol_model`
-- typecheck gates:
-  - `.echo(...)` behind `std`
-  - heap-backed type surfaces out of `core`
-  - dynamic `.len(...)` out of `core`
-- routed `run` / `test` reject non-`std` execution
-
-Not complete:
-
-- single-crate runtime model ownership inside `fol-runtime`
-- backend linking by runtime tier
-- runtime code movement into `core` / `alloc` / `std` modules inside `fol-runtime`
-- crate-level ownership of string/container/runtime/process services
-- docs for the full split
-
-## Epoch 1: Freeze The Model Contract
-
-Goal:
-Lock down the contract before moving code.
+- `version` accepted schemes:
+  - `branch:<name>`
+  - `tag:<name>`
+  - `commit:<sha>`
+- `hash` means required commit-prefix verification
+- `version` absent means remote `HEAD`
+- `hash` may be used with or without `version`
 
-### Slice Tracker
+Rejected:
 
-- [x] Slice 1. Rewrite the book and version docs so `core`, `alloc`, and `std`
-  are described as runtime tiers, and explicitly state:
-  - `str` is not `core`
-  - dynamic containers are not `core`
-  - `.echo(...)` is `std`
-  - process-entry behavior is `std`
-- [x] Slice 2. Add a single canonical feature matrix document, probably
-  `docs/runtime-models.md`, that maps language features, intrinsics, and runtime
-  services into `core`, `alloc`, and `std`.
-- [x] Slice 3. Add tests that lock the intended language boundary text into CLI
-  and structured diagnostics for:
-  - `str` in `core`
-  - `.echo(...)` in `alloc`
-  - dynamic `.len(...)` in `core`
-
-### Exit criteria
-
-- The intended split is documented in one place and referenced by the book.
-- Diagnostics reflect the language model consistently.
-
-## Epoch 2: Turn `fol-runtime` Into The Model Crate
-
-Goal:
-Keep one runtime crate and make the model ownership explicit inside it.
-
-### Slice Tracker
-
-- [x] Slice 4. Remove the abandoned multi-crate split and keep `fol-runtime` as
-  the only runtime crate.
-- [x] Slice 5. Add explicit `core`, `alloc`, and `std` module boundaries inside
-  `fol-runtime`, with minimal marker APIs and unit tests.
-- [x] Slice 6. Define dependency direction inside `fol-runtime` modules and
-  enforce it in code:
-  - `core` module owns the no-heap, no-OS base
-  - `alloc` module may build on `core`
-  - `std` module may build on `core` and `alloc`
-- [x] Slice 7. Add smoke tests proving `fol-runtime` exposes the model modules
-  and the workspace build remains green.
-
-### Exit criteria
-
-- `fol-runtime` is the single model crate.
-- The internal module direction is explicit and tested.
-
-## Epoch 3: Backend Learns Runtime Tier Linking
-
-Goal:
-Make backend emission reflect `fol_model` structurally, not only semantically.
-
-### Slice Tracker
-
-- [x] Slice 8. Add backend runtime-tier selection by `BackendFolModel` with a
-  small internal abstraction such as `BackendRuntimeTier`.
-- [x] Slice 9. Update emitted Rust crate generation so `core`, `alloc`, and
-  `std` artifacts import different `fol-runtime` model modules while still
-  linking one runtime crate.
-- [x] Slice 10. Add backend trace metadata tests to prove emitted artifacts
-  record the selected runtime tier and emitted runtime module surface.
-- [x] Slice 11. Add frontend integration tests proving:
-  - `fol_model = core` emits against `fol-runtime::core`
-  - `fol_model = alloc` emits against `fol-runtime::alloc`
-  - `fol_model = std` emits against `fol-runtime::std`
-
-### Exit criteria
-
-- Backend-emitted runtime usage differs by model.
-- This is visible in emitted source or trace metadata and locked by tests.
-
-## Epoch 4: Move Process And Console Services Into `std`
-
-Goal:
-Remove hosted process/runtime assumptions from the shared runtime surface.
-
-### Slice Tracker
-
-- [x] Slice 12. Move `.echo(...)` implementation ownership into the `std`
-  module inside `fol-runtime`.
-- [x] Slice 13. Move process outcome and executable entry helpers into
-- the `std` module inside `fol-runtime`.
-- [x] Slice 14. Make backend-generated `std` artifacts use `fol-runtime::std` for main
-  entry and hosted execution support.
-- [x] Slice 15. Remove the old shared runtime ownership for those services
-  instead of keeping fallback exports.
-- [x] Slice 16. Add backend and app-level example tests for hosted `std`
-  execution after the move.
-
-### Exit criteria
-
-- Console and process behavior live in `fol-runtime::std`.
-- No shared fallback path remains for those services.
-
-## Epoch 5: Move Heap Types Into `alloc`
-
-Goal:
-Make heap-backed runtime data structures physically belong to `alloc`.
-
-### Slice Tracker
-
-- [x] Slice 17. Move string runtime support into `fol-runtime::alloc`.
-- [x] Slice 18. Move `vec` and `seq` runtime support into `fol-runtime::alloc`.
-- [x] Slice 19. Move `set` and `map` runtime support into `fol-runtime::alloc`, or, if
-  one of them is not yet stable enough, explicitly defer it in the docs and
-  keep the plan honest.
-- [x] Slice 20. Update backend emission so `alloc` and `std` artifacts import
-  those types from the `alloc` module in `fol-runtime`.
-- [x] Slice 21. Delete the old unsplit ownership path for those heap-backed
-  types inside `fol-runtime`.
-- [x] Slice 22. Add end-to-end fixtures for:
-  - `alloc` artifact using `str`
-  - `alloc` artifact using `seq`
-  - `std` artifact using `str` + `.echo(...)`
-  - `core` artifact still rejecting the same surfaces
-
-### Exit criteria
-
-- Heap-backed runtime types physically live in `fol-runtime::alloc`.
-- Backend emission for `alloc` and `std` points to that module.
-
-## Epoch 6: Establish `core` As A Real No-Heap Tier
-
-Goal:
-Make `core` useful and honest for embedded-first work.
-
-### Slice Tracker
-
-- [x] Slice 23. Audit the backend-emitted `core` crate root and remove accidental
-  imports of hosted or heap-backed support.
-- [x] Slice 24. Add explicit backend tests that `core` artifacts emit without
-  importing alloc/std runtime modules.
-- [x] Slice 25. Add example artifacts for `core` that use only:
-  - scalars
-  - arrays
-  - records
-  - control flow
-  - `defer`
-- [x] Slice 26. Add negative example fixtures for forbidden `core` surfaces:
-  - `str`
-  - `seq`
-  - `vec`
-  - `set`
-  - `map`
-  - `.echo(...)`
-- [x] Slice 27. Document the exact current embedded meaning of `core`:
-  “no heap and no OS at language/runtime level, still emitted through the
-  current Rust backend pipeline.”
-
-### Exit criteria
-
-- `core` has a tested positive surface.
-- `core` has a tested negative surface.
-- Docs do not overclaim embedded backend maturity.
-
-## Epoch 7: Tighten Frontend And Build-System UX
-
-Goal:
-Make the model visible and obvious at the artifact/build level.
-
-### Slice Tracker
-
-- [x] Slice 28. Improve frontend summaries and emitted metadata so build output
-  shows the selected `fol_model`.
-- [x] Slice 29. Add build-route tests for mixed-model workspaces:
-  - `core` static lib
-  - `alloc` helper lib
-  - `std` host tool
-- [x] Slice 30. Add scaffold support or examples that generate clear
-  `fol_model` usage in `build.fol`.
-- [x] Slice 31. Add validation diagnostics for inconsistent build intent where
-  relevant, for example if a route expects host execution but the artifact model
-  is non-`std`.
-
-### Exit criteria
-
-- The build UX makes model selection obvious.
-- Mixed-model workspaces are tested.
-
-## Epoch 8: Remove The Old Unsplit Runtime Surface
-
-Goal:
-Finish the transition instead of keeping parallel ownership.
-
-### Slice Tracker
-
-- [x] Slice 32. Delete or radically shrink the old unsplit `fol-runtime` surface
-  so the crate becomes the model crate rather than a monolithic dump.
-- [x] Slice 33. Remove old backend references to the unsplit runtime path.
-- [x] Slice 34. Remove stale tests that assume one hosted runtime surface.
-- [x] Slice 35. Add a final regression pass across backend emission, frontend
-  routing, example apps, and docs.
-
-### Exit criteria
-
-- There is no parallel runtime implementation path left.
-- Runtime ownership is unambiguous.
-
-## Epoch 9: Post-Split Hardening
-
-Goal:
-Prove the split holds under normal project use.
-
-### Slice Tracker
-
-- [x] Slice 36. Add full example packages:
-  - `examples/core-blink-shape`
-  - `examples/alloc-containers`
-  - `examples/std-cli`
-- [x] Slice 37. Add CLI integration tests compiling and emitting each example.
-- [x] Slice 38. Add one workspace example mixing all three models in one build
-  graph.
-- [x] Slice 39. Add developer docs for how to choose a model and what each tier
-  guarantees.
-- [x] Slice 40. Do a final language/docs audit so no chapter still implies the
-  old unsplit hosted runtime story.
-
-### Exit criteria
-
-- Users can see and run concrete examples for each model.
-- Documentation no longer conflicts with implementation.
-
-## Recommended execution order
-
-Do not reorder casually.
-
-Recommended order:
-
-1. Epoch 1
-2. Epoch 2
-3. Epoch 3
-4. Epoch 4
-5. Epoch 5
-6. Epoch 6
-7. Epoch 7
-8. Epoch 8
-9. Epoch 9
-
-This order matters because:
-
-- docs and contract should settle before moving code
-- backend linkage must exist before runtime movement is safe
-- hosted services should move before deleting the old runtime
-- `core` must be tested as a real tier before cleanup is declared done
-
-## High-risk points
-
-These are the places most likely to break during implementation:
-
-- backend emitted Rust import paths
-- executable entrypoint ownership
-- string/container runtime assumptions hidden in lowering or backend helpers
-- tests that assume all runnable artifacts are `std`
-- accidental parallel exports from both old and new runtime crates
-
-## Definition of done
-
-This plan is only done when all of the following are true:
-
-- `fol_model` changes both semantics and linked runtime structure
-- `core` artifacts do not pull heap or OS runtime code
-- `alloc` artifacts can use heap-backed types without `std`
-- `std` artifacts own hosted execution/runtime services
-- the old unsplit runtime path is gone
-- docs, examples, tests, and backend output all match that reality
+- selectors inside `target`
+- `version = "rev:..."`
+- multiple version selectors
+- empty `version`
+- empty `hash`
+
+## Epoch 1: Freeze The New Contract
+
+### Slice 1
+Status: complete
+
+- document the new public contract in the build book
+- explicitly state:
+  - `target` is repository only
+  - `version` carries selection
+  - `hash` carries verification
+- explicitly state old query-param selectors are removed
+
+### Slice 2
+Status: complete
+
+- update standalone examples in docs to the new structured shape
+- remove any public-facing `?branch=`, `?tag=`, `?rev=`, `?hash=` examples
+
+### Slice 3
+Status: complete
+
+- add one short architecture note to `PLAN.md` / book direction docs:
+  - structured dependency config is preferred over query-param encoding
+
+## Epoch 2: Add Structured Dependency Fields
+
+### Slice 4
+Status: complete
+
+- extend dependency config parsing in the build evaluator to accept:
+  - `version`
+  - `hash`
+- only for `source = "git"`
+
+### Slice 5
+Status: complete
+
+- extend dependency request types so git dependencies carry structured selector
+  data instead of only an opaque target string
+
+### Slice 6
+Status: complete
+
+- define an internal selector model:
+  - none
+  - branch
+  - tag
+  - commit
+- define separate optional verification hash
+
+### Slice 7
+Status: complete
+
+- add semantic registry coverage for the new config fields
+- ensure build-editor completion/help sees `version` and `hash`
+
+## Epoch 3: Delete Query-Param Selector Parsing
+
+### Slice 8
+Status: complete
+
+- remove `branch`, `tag`, `rev`, `hash` parsing from git locator query params
+- keep repository locator parsing only
+
+### Slice 9
+Status: complete
+
+- simplify `PackageGitSelector` / locator model to reflect the new split
+- locator should no longer be responsible for public selector parsing
+
+### Slice 10
+Status: complete
+
+- delete tests that assert query-param selectors parse
+- replace them with tests that query-param selectors are rejected
+
+### Slice 11
+Status: complete
+
+- make the rejection diagnostic explicit:
+  - selector query params are no longer supported
+  - use `version` and `hash` fields on `build.add_dep(...)`
+
+## Epoch 4: Version Field Parsing And Validation
+
+### Slice 12
+Status: complete
+
+- implement parser/validator for:
+  - `branch:<name>`
+  - `tag:<name>`
+  - `commit:<sha>`
+
+### Slice 13
+Status: complete
+
+- reject malformed `version` values with exact diagnostics:
+  - missing `:`
+  - unknown selector kind
+  - empty branch/tag/commit payload
+
+### Slice 14
+Status: complete
+
+- reject `version` on non-git dependencies with exact diagnostics
+
+### Slice 15
+Status: complete
+
+- reject `hash` on non-git dependencies with exact diagnostics
+
+### Slice 16
+Status: complete
+
+- reject empty-string `hash`
+
+## Epoch 5: Wire Structured Selectors Into Git Resolution
+
+### Slice 17
+Status: complete
+
+- change git revision resolution to use structured selector data from dependency
+  requests instead of query params embedded in locators
+
+### Slice 18
+Status: complete
+
+- map `version = "branch:..."` to remote branch resolution
+
+### Slice 19
+Status: complete
+
+- map `version = "tag:..."` to remote tag resolution
+
+### Slice 20
+Status: complete
+
+- map `version = "commit:..."` to direct commit pinning
+
+### Slice 21
+Status: complete
+
+- keep `hash` verification as resolved-commit prefix checking
+
+### Slice 22
+Status: complete
+
+- make the mismatch diagnostic exact and stable:
+  - include dependency locator
+  - include resolved revision
+  - include required hash
+
+## Epoch 6: Metadata, Fetch, And Lockfile Integration
+
+### Slice 23
+Status: complete
+
+- change package metadata extraction from `build.fol` so it captures:
+  - repo locator
+  - version selector
+  - hash
+- do not keep selector info encoded in `target`
+
+### Slice 24
+Status: complete
+
+- update frontend fetch resolution to use structured selector fields
+
+### Slice 25
+Status: complete
+
+- ensure eager/lazy/on-demand behavior remains unchanged under the new model
+
+### Slice 26
+Status: complete
+
+- update lockfile rendering/parsing if needed so stored entries remain sufficient
+  to reproduce exact pinned git state
+
+### Slice 27
+Status: complete
+
+- decide and implement whether lockfile should additionally record requested
+  `hash` or only selected revision
+- preferred direction:
+  - keep selected revision authoritative
+  - optionally keep requested hash for transparency if useful
+
+## Epoch 7: Tests For The New Public Surface
+
+### Slice 28
+Status: complete
+
+- add evaluator tests for:
+  - plain repo target with no version
+  - branch version
+  - tag version
+  - commit version
+  - branch plus hash
+
+### Slice 29
+Status: complete
+
+- add evaluator tests for invalid config:
+  - bad `version`
+  - bad `hash`
+  - `version` on `pkg`
+  - `hash` on `loc`
+
+### Slice 30
+Status: complete
+
+- add package metadata extraction tests for the new fields
+
+### Slice 31
+Status: complete
+
+- add frontend fetch tests that materialize local temp git repos using:
+  - branch
+  - tag
+  - commit
+  - branch plus hash
+
+### Slice 32
+Status: complete
+
+- add one explicit negative fetch test for hash mismatch
+
+## Epoch 8: Real `xtra/logtiny` Verification
+
+### Slice 33
+Status: complete
+
+- update [xtra/logtiny/build.fol](/home/bresilla/data/code/bresilla/fol/xtra/logtiny/build.fol)
+  if needed so it remains a valid dependency target:
+  - metadata
+  - exported module
+  - optional exported artifact
+
+### Slice 34
+Status: complete
+
+- verify `xtra/logtiny` directly with the local CLI:
+  - `code build`
+  - built binary execution if applicable
+
+### Slice 35
+Status: complete
+
+- commit `xtra/logtiny` changes in its own repo with conventional commit title
+
+### Slice 36
+Status: complete
+
+- push the branch to its remote
+
+### Slice 37
+Status: complete
+
+- add and push a real tag for verification
+
+### Slice 38
+Status: complete
+
+- add integration coverage in this repo using the live GitHub `logtiny` repo for:
+  - branch
+  - tag
+  - commit
+  - branch plus hash
+
+## Epoch 9: Migrate Examples And Remove Old Surface
+
+### Slice 39
+Status: complete
+
+- migrate [examples/std_logtiny_git/build.fol](/home/bresilla/data/code/bresilla/fol/examples/std_logtiny_git/build.fol)
+  to the new shape
+
+### Slice 40
+Status: complete
+
+- migrate any other examples that still use selector query params
+
+### Slice 41
+Status: complete
+
+- update integration fixtures and helper-generated build files to the new
+  structured fields
+
+### Slice 42
+Status: complete
+
+- remove all checked-in public examples of query-param selectors
+
+## Epoch 10: Hardening And Final Cleanup
+
+### Slice 43
+Status: complete
+
+- audit editor/LSP build completion tests for `version` and `hash`
+
+### Slice 44
+Status: complete
+
+- ensure diagnostics point users only to the new shape
+
+### Slice 45
+Status: complete
+
+- update build book chapters:
+  - dependency config
+  - git examples
+  - verification examples
+
+### Slice 46
+Status: complete
+
+- add one standalone example package specifically for:
+  - git branch pin
+  - git tag pin
+  - git commit pin
+  - git hash verification
+
+### Slice 47
+Status: complete
+
+- remove stale code/comments/tests that still assume selector query params
+
+### Slice 48
+Status: complete
+
+- final full pass:
+  - `make build`
+  - `make test`
+  - worktree clean
+
+## Expected Outcome
+
+At the end of this plan:
+
+- git repo locators are clean and selector-free
+- selector policy lives in explicit build fields
+- hash verification is explicit and first-class
+- old query-param selectors are gone
+- docs/examples/tests all teach only the new structured form
+- the flow is verified against the real `xtra/logtiny` dependency repo

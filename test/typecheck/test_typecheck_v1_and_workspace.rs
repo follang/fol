@@ -877,10 +877,10 @@ fn workspace_typechecking_keeps_direct_pkg_import_declaration_facts() {
     write_fixture_files(
         &root,
         &[
-            ("store/json/package.yaml", "name: json\nversion: 1.0.0\n"),
+            ("store/json/build.fol", "name: json\nversion: 1.0.0\n"),
             (
                 "store/json/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+                "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"json\",\n        version = \"1.0.0\",\n    });\n};\n",
             ),
             (
                 "store/json/src/lib.fol",
@@ -925,19 +925,19 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
     write_fixture_files(
         &root,
         &[
-            ("store/core/package.yaml", "name: core\nversion: 1.0.0\n"),
+            ("store/core/build.fol", "name: core\nversion: 1.0.0\n"),
             (
                 "store/core/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+                "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"core\",\n        version = \"1.0.0\",\n    });\n};\n",
             ),
             ("store/core/src/lib.fol", "typ[exp] Count: int;\n"),
             (
-                "store/json/package.yaml",
+                "store/json/build.fol",
                 "name: json\nversion: 1.0.0\ndep.core: pkg:core\n",
             ),
             (
                 "store/json/build.fol",
-                "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+                "pro[] build(): non = {\n    var build = .build();\n    build.meta({\n        name = \"json\",\n        version = \"1.0.0\",\n    });\n    build.add_dep({\n        alias = \"core\",\n        source = \"pkg\",\n        target = \"core\",\n    });\n};\n",
             ),
             (
                 "store/json/src/lib.fol",
@@ -1010,6 +1010,41 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
             ..
         }) if name == "Count"
     ));
+}
+
+#[test]
+fn build_typechecking_accepts_dependency_handle_method_calls() {
+    let typed = typecheck_fixture_folder(&[(
+        "build.fol",
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    var dep = build.add_dep({\n",
+            "        alias = \"core\",\n",
+            "        source = \"pkg\",\n",
+            "        target = \"core\",\n",
+            "    });\n",
+            "    var module = dep.module(\"root\");\n",
+            "    var artifact = dep.artifact(\"corelib\");\n",
+            "    var step = dep.step(\"check\");\n",
+            "    var file = dep.file(\"config\");\n",
+            "    var dir = dep.dir(\"assets\");\n",
+            "    var path = dep.path(\"schema\");\n",
+            "    var generated = dep.generated(\"bindings\");\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )]);
+
+    let _ = find_typed_symbol(&typed, "dep", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "module", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "artifact", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "step", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "file", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "dir", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "path", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "generated", SymbolKind::ValueBinding);
 }
 
 #[test]

@@ -130,10 +130,29 @@ Implemented today:
 - `fol-runtime` is the single runtime crate with internal `core` / `alloc` /
   `std` ownership
 
+## Editor note
+
+The editor should follow the same model split.
+
+The intended contract is:
+
+- LSP semantic diagnostics should come from the real compiler pipeline
+- `fol_model` should affect editor diagnostics and completion the same way it
+  affects `fol code build`
+- tree-sitter grammar and structural capture layout stay hand-authored
+- repetitive editor name lists are compiler-derived, not manually copied
+
+This means adding a language feature should not require a second semantic
+implementation in `fol-editor`. Only syntax-structure changes should normally
+need targeted tree-sitter or editor UX updates.
+
 ## Build example
 
 ```fol
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "mixed_models_workspace", version = "0.1.0" });
+    var graph = build.graph();
     var corelib = graph.add_static_lib({
         name = "corelib",
         root = "src/core/lib.fol",
@@ -164,5 +183,6 @@ pro[] build(graph: Graph): non = {
 - `examples/alloc_collections`
 - `examples/std_cli`
 - `examples/std_echo_min`
+- `examples/std_logtiny_git`
 - `examples/std_named_calls`
 - `examples/mixed_models_workspace`

@@ -250,7 +250,7 @@ fn lsp_server_formats_build_files_with_the_same_full_document_contract() {
     let root = temp_root("format_build");
     let build_path = root.join("build.fol");
     let build_uri = format!("file://{}", build_path.display());
-    let text = "pro[] build(graph: Graph): non = {\nvar target = graph.standard_target();\nvar app = graph.add_exe({\nname = \"demo\",\nroot = \"src/main.fol\",\n});\ngraph.install(app);\n};\n";
+    let text = "pro[] build(): non = {\nvar graph = .build().graph();\nvar target = graph.standard_target();\nvar app = graph.add_exe({\nname = \"demo\",\nroot = \"src/main.fol\",\n});\ngraph.install(app);\n};\n";
     fs::write(&build_path, text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, build_uri.clone(), text);
@@ -274,7 +274,7 @@ fn lsp_server_formats_build_files_with_the_same_full_document_contract() {
     assert_eq!(edits.len(), 1);
     assert_eq!(
         edits[0].new_text,
-        "pro[] build(graph: Graph): non = {\n    var target = graph.standard_target();\n    var app = graph.add_exe({\n        name = \"demo\",\n        root = \"src/main.fol\",\n    });\n    graph.install(app);\n};\n"
+        "pro[] build(): non = {\n    var graph = .build().graph();\n    var target = graph.standard_target();\n    var app = graph.add_exe({\n        name = \"demo\",\n        root = \"src/main.fol\",\n    });\n    graph.install(app);\n};\n"
     );
 
     fs::remove_dir_all(root).ok();
@@ -285,7 +285,7 @@ fn lsp_server_returns_no_build_file_formatting_edits_when_already_formatted() {
     let root = temp_root("format_build_noop");
     let build_path = root.join("build.fol");
     let build_uri = format!("file://{}", build_path.display());
-    let text = "pro[] build(graph: Graph): non = {\n    var target = graph.standard_target();\n    graph.install(target);\n};\n";
+    let text = "pro[] build(): non = {\n    var graph = .build().graph();\n    var target = graph.standard_target();\n    graph.install(target);\n};\n";
     fs::write(&build_path, text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, build_uri.clone(), text);
@@ -637,6 +637,120 @@ fn lsp_server_maps_document_roots_and_surfaces_resolver_diagnostics() {
     assert_eq!(diagnostics[0].diagnostics[0].code, "R1003");
 
     fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_keeps_active_fol_model_in_semantic_snapshots() {
+    let (root, uri) = sample_package_root("semantic_model_cache");
+    let text = "fun[] main(): int = {\n    return 0;\n};\n";
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    let open = open_document(&mut server, uri.clone(), text);
+    assert_eq!(open.len(), 1);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(701),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 1,
+                        character: 4,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _completion: LspCompletionList =
+        serde_json::from_value(completion.result.unwrap()).unwrap();
+
+    let snapshot = server
+        .session
+        .semantic_snapshots
+        .get(uri.as_str())
+        .expect("semantic snapshot should be cached after a semantic request");
+    assert_eq!(
+        snapshot.snapshot.active_fol_model,
+        Some(fol_typecheck::TypecheckCapabilityModel::Core)
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+fn assert_semantic_model_via_hover(build_model: &str, expected: fol_typecheck::TypecheckCapabilityModel) {
+    let (root, uri) = sample_package_root(&format!("semantic_model_hover_{build_model}"));
+    let text = "fun[] main(): int = {\n    var value: int = 7;\n    return value;\n};\n";
+    fs::write(
+        root.join("build.fol"),
+        format!(
+            concat!(
+                "pro[] build(): non = {{\n",
+                "    var graph = .build().graph();\n",
+                "    graph.add_exe({{ name = \"demo\", root = \"src/main.fol\", fol_model = \"{}\" }});\n",
+                "}};\n",
+            ),
+            build_model
+        ),
+    )
+    .unwrap();
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    let open = open_document(&mut server, uri.clone(), text);
+    assert_eq!(open.len(), 1);
+
+    let hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(702),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+
+    let snapshot = server
+        .session
+        .semantic_snapshots
+        .get(uri.as_str())
+        .expect("semantic snapshot should be cached after hover");
+    assert_eq!(snapshot.snapshot.active_fol_model, Some(expected));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_keeps_model_context_through_hover_for_core_alloc_and_std() {
+    assert_semantic_model_via_hover("core", fol_typecheck::TypecheckCapabilityModel::Core);
+    assert_semantic_model_via_hover("alloc", fol_typecheck::TypecheckCapabilityModel::Alloc);
+    assert_semantic_model_via_hover("std", fol_typecheck::TypecheckCapabilityModel::Std);
 }
 
 #[test]
@@ -2426,10 +2540,10 @@ fn lsp_server_filters_build_file_diagnostics_out_of_source_buffers() {
     let root = temp_root("build_diag_filter");
     let src = root.join("src");
     fs::create_dir_all(&src).unwrap();
-    fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+    fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
     fs::write(
         root.join("build.fol"),
-        "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+        "pro[] build(): non = {\n    return;\n};\n",
     )
     .unwrap();
     let file = src.join("main.fol");
@@ -2535,6 +2649,93 @@ fn lsp_server_handles_hover_definition_and_document_symbols() {
         .unwrap();
     let _symbols: Vec<crate::LspDocumentSymbol> =
         serde_json::from_value(symbols.result.unwrap()).unwrap();
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_surfaces_alloc_echo_model_diagnostics_from_open_documents() {
+    let (root, uri) = sample_package_root("typecheck_alloc_echo_diag");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = "fun[] main(): int = {\n    return .echo(1);\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, text);
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0]
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic
+            .message
+            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'alloc'")));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_surfaces_core_string_model_diagnostics_from_open_documents() {
+    let (root, uri) = sample_package_root("typecheck_core_string_diag");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = "fun[] main(): str = {\n    return \"ok\";\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, text);
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0]
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic
+            .message
+            .contains("str requires heap support and is unavailable in 'fol_model = core'")));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_surfaces_core_heap_literal_boundary_from_open_documents() {
+    let (root, uri) = sample_package_root("typecheck_core_len_diag");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = "fun[] main(): int = {\n    return .len(\"Ada\");\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, text);
+
+    assert_eq!(diagnostics.len(), 1);
+    assert!(diagnostics[0]
+        .diagnostics
+        .iter()
+        .any(|diagnostic| diagnostic.message.contains(
+            "string literals require heap support and are unavailable in 'fol_model = core'",
+        )));
 
     fs::remove_dir_all(root).ok();
 }

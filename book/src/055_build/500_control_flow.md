@@ -89,13 +89,16 @@ only within the file — they are not exported to the package.
 ### Helper Function
 
 ```fol
-fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
-    return graph.add_static_lib({ name = name, root = root });
+fun[] make_lib(name: str, root: str): Artifact = {
+    return .build().graph().add_static_lib({ name = name, root = root });
 }
 
-pro[] build(graph: Graph): non = {
-    var core = make_lib(graph, "core", "src/core/lib.fol");
-    var io   = make_lib(graph, "io",   "src/io/lib.fol");
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
+    var core = make_lib("core", "src/core/lib.fol");
+    var io   = make_lib("io",   "src/io/lib.fol");
     var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
     app.link(core);
     app.link(io);
@@ -104,8 +107,9 @@ pro[] build(graph: Graph): non = {
 }
 ```
 
-The helper `make_lib` receives the `graph` handle as a parameter because
-`graph` is not a global — it is a parameter of `build`.
+The helper `make_lib` accesses the graph through `.build().graph()`. The graph
+handle is not a public type name and is not passed as a user-declared
+parameter.
 
 ### Helpers Calling Helpers
 
@@ -116,12 +120,15 @@ fun[] lib_root(name: str): str = {
     return "src/" + name + "/lib.fol";
 }
 
-fun[] add_lib(graph: Graph, name: str): Artifact = {
-    return graph.add_static_lib({ name = name, root = lib_root(name) });
+fun[] add_lib(name: str): Artifact = {
+    return .build().graph().add_static_lib({ name = name, root = lib_root(name) });
 }
 
-pro[] build(graph: Graph): non = {
-    var core = add_lib(graph, "core");
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
+    var core = add_lib("core");
     var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
     app.link(core);
     graph.install(app);
@@ -131,17 +138,20 @@ pro[] build(graph: Graph): non = {
 ## Combined Example
 
 ```fol
-fun[] make_lib(graph: Graph, name: str): Artifact = {
-    return graph.add_static_lib({ name = name, root = name });
+fun[] make_lib(name: str): Artifact = {
+    return .build().graph().add_static_lib({ name = name, root = name });
 }
 
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var target   = graph.standard_target();
     var optimize = graph.standard_optimize();
     var strip    = graph.option({ name = "strip", kind = "bool", default = false });
 
     loop(name in {"core", "io", "net"}) {
-        make_lib(graph, name);
+        make_lib(name);
     };
 
     var app = graph.add_exe({

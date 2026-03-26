@@ -1,7 +1,9 @@
 //! Editor tooling foundations for the FOL language.
 //!
-//! `fol-editor` will host both the Tree-sitter-facing editor syntax layer and
-//! the compiler-backed language-server layer.
+//! `fol-editor` hosts the hand-authored tree-sitter structure layer and the
+//! compiler-backed language-server layer. Name families and capability-aware
+//! editor facts should come from compiler-owned metadata instead of copied
+//! editor registries.
 
 mod commands;
 mod convert;
@@ -208,8 +210,8 @@ mod tests {
         ));
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
-        std::fs::write(root.join("build.fol"), "pro[] build(graph: Graph): non = {\n    return graph;\n};\n").unwrap();
+        std::fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "pro[] build(): non = {\n    return;\n};\n").unwrap();
         let file = src.join("main.fol");
         let text = "fun[] main(): int = {\n    return 0;\n};\n";
         std::fs::write(&file, text).unwrap();
@@ -273,10 +275,10 @@ mod tests {
         ));
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(
             root.join("build.fol"),
-            "pro[] build(graph: Graph): non = {\n    return graph;\n};\n",
+            "pro[] build(): non = {\n    return;\n};\n",
         )
         .unwrap();
         let file = src.join("main.fol");

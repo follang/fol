@@ -95,7 +95,7 @@ mod tests {
     }
 
     #[test]
-    fn inject_adds_graph_type_to_build_stdlib_scope() {
+    fn inject_keeps_public_graph_type_out_of_build_stdlib_scope() {
         let mut program = ResolvedProgram::new(build_only_package("demo"));
         program.init_build_stdlib_scope();
         inject_build_stdlib_types(&mut program);
@@ -106,8 +106,8 @@ mod tests {
 
         let graph_symbols = program.symbols_named_in_scope(stdlib_scope, "graph");
         assert!(
-            graph_symbols.iter().any(|s| s.kind == SymbolKind::Type),
-            "Graph type should be injected into the build stdlib scope"
+            graph_symbols.iter().all(|s| s.kind != SymbolKind::Type),
+            "Graph must stay internal and not be injected into the build stdlib scope"
         );
     }
 
@@ -125,7 +125,6 @@ mod tests {
             .map(|s| s.name.clone())
             .collect();
 
-        assert!(type_names.contains(&"Graph".to_string()));
         assert!(type_names.contains(&"ArtifactHandle".to_string()));
         assert!(type_names.contains(&"StepHandle".to_string()));
         assert!(type_names.contains(&"RunHandle".to_string()));
@@ -148,8 +147,8 @@ mod tests {
                 .iter()
                 .filter(|s| s.kind == SymbolKind::Type)
                 .count(),
-            1,
-            "Repeated injection should not duplicate Graph type symbol"
+            0,
+            "Repeated injection should not inject a public Graph type symbol"
         );
     }
 
@@ -166,7 +165,7 @@ mod tests {
         let graph_symbols = program.symbols_named_in_scope(program.program_scope, "graph");
         assert!(
             graph_symbols.is_empty(),
-            "Ordinary packages should not see injected Graph type"
+            "Ordinary packages should not see an injected Graph type"
         );
     }
 

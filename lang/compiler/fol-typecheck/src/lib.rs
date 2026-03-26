@@ -7,6 +7,7 @@
 pub mod builtins;
 pub mod config;
 pub mod decls;
+pub mod editor;
 pub mod errors;
 pub mod exprs;
 pub mod model;
@@ -16,6 +17,13 @@ pub mod types;
 pub use builtins::BuiltinTypeIds;
 pub use config::{TypecheckCapabilityModel, TypecheckConfig};
 pub use errors::{TypecheckError, TypecheckErrorKind};
+pub use editor::{
+    editor_builtin_type_names, editor_container_type_names, editor_declaration_keywords,
+    editor_implemented_intrinsics, editor_intrinsic_available_in_model,
+    editor_model_capability, editor_shell_type_names, editor_source_kind_names,
+    editor_type_family_available_in_model, EditorIntrinsicInfo, EditorModelCapability,
+    EditorTypeFamily,
+};
 pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use model::{
     RecoverableCallEffect, TypedExportMount, TypedNode, TypedPackage, TypedProgram, TypedReference,

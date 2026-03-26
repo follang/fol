@@ -145,13 +145,13 @@ mod tests {
     #[test]
     fn frontend_error_can_carry_guidance_notes() {
         let error = FrontendError::new(FrontendErrorKind::InvalidInput, "bad input")
-            .with_note("check package.yaml")
+            .with_note("check build.fol")
             .with_note("run `fol work info`");
 
         assert_eq!(
             error.notes(),
             &[
-                "check package.yaml".to_string(),
+                "check build.fol".to_string(),
                 "run `fol work info`".to_string()
             ]
         );

@@ -7,7 +7,7 @@
 //! - expose imported exported names through plain lookup after supported imports
 //! - resolve `use loc` imports against the loaded source set
 //! - resolve `use std` imports against configured std roots
-//! - resolve `use pkg` imports against installed `package.yaml` + `build.fol` roots
+//! - resolve `use pkg` imports against installed `build.fol` + `build.fol` roots
 //! - mount only `build.fol`-declared export roots for consumer-visible `pkg` imports
 //! - keep file-private `hid` visibility inside the owning source unit only
 //! - treat built-in `str` as a builtin instead of a user-defined type lookup

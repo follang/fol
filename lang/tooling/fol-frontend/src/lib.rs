@@ -300,7 +300,8 @@ mod tests {
 
     fn semantic_dispatch_build() -> &'static str {
         concat!(
-            "pro[] build(graph: Graph): non = {\n",
+            "pro[] build(): non = {\n",
+            "    var graph = .graph();\n",
             "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
             "    graph.install(app);\n",
             "    graph.add_run(app);\n",
@@ -320,7 +321,7 @@ mod tests {
         ));
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(
             root.join("build.fol"),
             semantic_dispatch_build(),
@@ -354,7 +355,7 @@ mod tests {
         ));
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(
             root.join("build.fol"),
             semantic_dispatch_build(),
@@ -421,7 +422,7 @@ mod tests {
             std::env::temp_dir().join(format!("fol_frontend_dispatch_{}", std::process::id()));
         let src = root.join("src");
         std::fs::create_dir_all(&src).unwrap();
-        std::fs::write(root.join("package.yaml"), "name: demo\nversion: 0.1.0\n").unwrap();
+        std::fs::write(root.join("build.fol"), "name: demo\nversion: 0.1.0\n").unwrap();
         std::fs::write(
             root.join("build.fol"),
             semantic_dispatch_build(),

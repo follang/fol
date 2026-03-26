@@ -36,6 +36,7 @@ pub enum BuildRuntimeGeneratedFileKind {
     Copy,
     ToolOutput,
     CodegenOutput,
+    GeneratedDir,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -135,7 +136,26 @@ impl BuildRuntimeStepBinding {
 pub struct BuildRuntimeDependency {
     pub alias: String,
     pub package: String,
+    pub args: BTreeMap<String, String>,
     pub evaluation_mode: Option<DependencyBuildEvaluationMode>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildRuntimeDependencyExportKind {
+    Module,
+    Artifact,
+    Step,
+    File,
+    Dir,
+    Path,
+    GeneratedOutput,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeDependencyExport {
+    pub name: String,
+    pub target_name: String,
+    pub kind: BuildRuntimeDependencyExportKind,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -143,6 +163,9 @@ pub enum BuildRuntimeDependencyQueryKind {
     Module,
     Artifact,
     Step,
+    File,
+    Dir,
+    Path,
     GeneratedOutput,
 }
 
@@ -155,6 +178,7 @@ pub struct BuildRuntimeDependencyQuery {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildRuntimeHandleKind {
+    BuildContext,
     Graph,
     Artifact,
     GeneratedFile,
@@ -414,6 +438,10 @@ mod tests {
 
     #[test]
     fn runtime_values_cover_the_initial_build_handle_and_option_surface() {
+        let build = BuildRuntimeValue::Handle(BuildRuntimeHandle::new(
+            BuildRuntimeHandleKind::BuildContext,
+            "build",
+        ));
         let graph = BuildRuntimeValue::Handle(BuildRuntimeHandle::new(
             BuildRuntimeHandleKind::Graph,
             "graph",
@@ -425,6 +453,13 @@ mod tests {
         let target = BuildRuntimeValue::Target("x86_64-linux-gnu".to_string());
         let optimize = BuildRuntimeValue::Optimize("release-safe".to_string());
 
+        assert!(matches!(
+            build,
+            BuildRuntimeValue::Handle(BuildRuntimeHandle {
+                kind: BuildRuntimeHandleKind::BuildContext,
+                ..
+            })
+        ));
         assert!(matches!(
             graph,
             BuildRuntimeValue::Handle(BuildRuntimeHandle {
@@ -474,21 +509,26 @@ mod tests {
         let dependency = BuildRuntimeDependency {
             alias: "core".to_string(),
             package: "org/core".to_string(),
+            args: BTreeMap::from([("target".to_string(), "wasm32-freestanding".to_string())]),
             evaluation_mode: Some(DependencyBuildEvaluationMode::Lazy),
         };
         let query = BuildRuntimeDependencyQuery {
             dependency_alias: "core".to_string(),
             query_name: "bindings".to_string(),
-            kind: BuildRuntimeDependencyQueryKind::GeneratedOutput,
+            kind: BuildRuntimeDependencyQueryKind::Path,
         };
 
         assert_eq!(dependency.alias, "core");
         assert_eq!(dependency.package, "org/core");
         assert_eq!(
+            dependency.args.get("target").map(String::as_str),
+            Some("wasm32-freestanding")
+        );
+        assert_eq!(
             dependency.evaluation_mode,
             Some(DependencyBuildEvaluationMode::Lazy)
         );
-        assert_eq!(query.kind, BuildRuntimeDependencyQueryKind::GeneratedOutput);
+        assert_eq!(query.kind, BuildRuntimeDependencyQueryKind::Path);
         assert_eq!(query.query_name, "bindings");
     }
 

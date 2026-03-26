@@ -10,5 +10,6 @@ path = "src/lib.rs"
 [dependencies]
 fol-diagnostics = { path = "../fol-diagnostics" }
 fol-intrinsics = { path = "../fol-intrinsics" }
+fol-lexer = { path = "../fol-lexer" }
 fol-parser = { path = "../fol-parser" }
 fol-resolver = { path = "../fol-resolver" }

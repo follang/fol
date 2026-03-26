@@ -1,4 +1,7 @@
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "mixed_models_workspace", version = "0.1.0" });
+    var graph = build.graph();
     var corelib = graph.add_static_lib({
         name = "corelib",
         root = "core/lib.fol",

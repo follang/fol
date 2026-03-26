@@ -1,4 +1,7 @@
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "std_echo_min", version = "0.1.0" });
+    var graph = build.graph();
     var app = graph.add_exe({
         name = "std-echo-min",
         root = "src/main.fol",
@@ -6,5 +9,5 @@ pro[] build(graph: Graph): non = {
     });
     graph.install(app);
     graph.add_run(app);
-    return graph;
+    return;
 };

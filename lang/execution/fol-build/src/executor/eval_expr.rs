@@ -129,18 +129,51 @@ impl BuildBodyExecutor {
 
     fn eval_expr_inner(&mut self, expr: &AstNode) -> Result<Option<ExecValue>, BuildEvaluationError> {
         match expr {
-            AstNode::Identifier { name, .. } if name == &self.graph_param => Ok(None),
             AstNode::Identifier { name, .. } => Ok(self.scope.get(name.as_str()).cloned()),
 
-            AstNode::MethodCall { object, method, args } => {
-                if let AstNode::Identifier { name, .. } = object.as_ref() {
-                    if name == &self.graph_param {
-                        return self.eval_graph_method(method, args);
-                    }
+            AstNode::FunctionCall {
+                surface: CallSurface::DotIntrinsic,
+                name,
+                args,
+                ..
+            } if name == "build" => {
+                if !args.is_empty() {
+                    return Err(self.unsupported(name));
                 }
+                Ok(Some(ExecValue::Build))
+            }
+
+            AstNode::FunctionCall {
+                surface: CallSurface::DotIntrinsic,
+                name,
+                args,
+                ..
+            } if name == "graph" => {
+                if !args.is_empty() {
+                    return Err(self.unsupported(name));
+                }
+                Ok(Some(ExecValue::Graph))
+            }
+
+            AstNode::FunctionCall {
+                surface: CallSurface::DotIntrinsic,
+                name,
+                args,
+                ..
+            } => {
+                let Some(receiver) = self.last_value.clone() else {
+                    return Err(self.unsupported(name));
+                };
+                self.eval_handle_method(receiver, name, args)
+            }
+
+            AstNode::MethodCall { object, method, args } => {
                 let Some(receiver) = self.eval_expr(object)? else {
                     return Ok(None);
                 };
+                if matches!(receiver, ExecValue::Graph) {
+                    return self.eval_graph_method(method, args);
+                }
                 self.eval_handle_method(receiver, method, args)
             }
 
@@ -186,43 +219,20 @@ impl BuildBodyExecutor {
         // Build a child scope with parameter bindings
         let mut child_scope: BTreeMap<String, ExecValue> = BTreeMap::new();
 
-        // Add the graph parameter (first param) if present
-        // For helpers that take `graph: Graph` as first param, bind it to a sentinel
         for (param_name, value) in helper.params.iter().zip(evaluated_args.iter()) {
             if let Some(v) = value {
                 child_scope.insert(param_name.clone(), v.clone());
             }
         }
 
-        // We need the graph_param name to be accessible in helper execution
         let helper_body = helper.body.clone();
-        let helper_params = helper.params.clone();
 
         // Save current scope and last_value, install helper scope
         let saved_scope = std::mem::replace(&mut self.scope, child_scope);
         let saved_last = self.last_value.take();
-
-        // If helper takes a graph param, wire it up
-        if let Some(first_param) = helper_params.first() {
-            let saved_graph_param = self.graph_param.clone();
-            // Check if any arg was None (the graph arg)
-            for (param_name, value) in helper_params.iter().zip(evaluated_args.iter()) {
-                if value.is_none() && param_name == first_param {
-                    // This is the graph parameter — update the executor's graph_param
-                    // so method calls inside the helper know what the graph is named
-                    self.graph_param = param_name.clone();
-                }
-            }
-            let result = self.exec_body_with_return(&helper_body);
-            self.graph_param = saved_graph_param;
-            self.scope = saved_scope;
-            self.last_value = saved_last;
-            result
-        } else {
-            let result = self.exec_body_with_return(&helper_body);
-            self.scope = saved_scope;
-            self.last_value = saved_last;
-            result
-        }
+        let result = self.exec_body_with_return(&helper_body);
+        self.scope = saved_scope;
+        self.last_value = saved_last;
+        result
     }
 }

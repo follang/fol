@@ -116,9 +116,9 @@ For source layout, the mental model is:
 - subfolders extend the namespace path
 - `use` imports packages or namespaces
 - `hid` keeps a declaration private to one file
-- `loc` imports a local directory tree without package metadata
+- `loc` imports a local directory tree without a package control file
 - `std` imports a toolchain-owned directory tree
-- `pkg` imports a formal external package defined by `package.yaml` + `build.fol`
+- `pkg` imports a formal external package defined by `build.fol`
 
 This means FOL is **not** "one file = one module".
 The package is the folder; the file is a source unit inside that package.
@@ -128,20 +128,20 @@ The package is the folder; the file is a source unit inside that package.
 When a directory is treated as a package root, the exact contract depends on the import kind:
 
 - `loc`: plain local directory import, no package metadata required
+- `loc`: plain local directory import, no package control file required
 - `std`: toolchain standard-library directory import
 - `pkg`: installed external package import with explicit root files
 
 For `pkg`, the root is not just "a folder containing `.fol` files".
 It is a formal package root with:
 
-- `package.yaml` for metadata
-- `build.fol` as the package build entry file
+- `build.fol` as the package control file
 
 This keeps the language model clean:
 
 - source files `use` other namespaces/packages
-- package build execution starts from `pro[] build(graph: Graph): non` in `build.fol`
-- package metadata lives in `package.yaml`
+- package build execution starts from `pro[] build(): non` in `build.fol`
+- package metadata and direct dependencies are configured through `.build()` inside `build.fol`
 - package loading happens before ordinary name resolution
 
 `build.fol` itself is still ordinary FOL syntax.

@@ -166,7 +166,7 @@ mod tests {
         let src = temp_root.join("src");
         std::fs::create_dir_all(&src).unwrap();
         std::fs::write(
-            temp_root.join("package.yaml"),
+            temp_root.join("build.fol"),
             "name: editor_test\nversion: 0.1.0\n",
         )
         .unwrap();

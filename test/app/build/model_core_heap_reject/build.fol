@@ -1,4 +1,7 @@
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "model_core_heap_reject", version = "0.1.0" });
+    var graph = build.graph();
     var app = graph.add_exe({
         name = "model_core_heap_reject",
         root = "src/main.fol",

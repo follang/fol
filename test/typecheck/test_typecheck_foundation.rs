@@ -216,6 +216,50 @@ fn typechecker_wraps_resolved_programs_in_a_typed_shell() {
 }
 
 #[test]
+fn dot_graph_is_rejected_in_ordinary_source_units() {
+    let errors = typecheck_fixture_folder_errors(&[(
+        "main.fol",
+        "fun[] main(): int = {\n\
+             .graph();\n\
+             return 0;\n\
+         };\n",
+    )]);
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == TypecheckErrorKind::InvalidInput
+                && error.message().contains(".graph")
+        }),
+        "Expected ordinary source to reject .graph(), got: {errors:?}"
+    );
+}
+
+#[test]
+fn ordinary_source_can_define_its_own_graph_type() {
+    let typed = typecheck_fixture_folder(&[(
+        "main.fol",
+        "typ Graph: rec = {\n\
+             value: int\n\
+         };\n\
+         fun[] make_graph(): Graph = {\n\
+             return { value = 7 };\n\
+         };\n",
+    )]);
+
+    let syntax_id = find_named_routine_syntax_id(&typed, "make_graph");
+    let return_type = typed
+        .typed_node(syntax_id)
+        .and_then(|node| node.inferred_type)
+        .and_then(|type_id| typed.type_table().get(type_id))
+        .cloned();
+
+    assert!(
+        matches!(return_type, Some(CheckedType::Declared { ref name, .. }) if name == "Graph"),
+        "ordinary source Graph type should remain user-defined, got: {return_type:?}"
+    );
+}
+
+#[test]
 fn semantic_type_table_covers_declared_and_structural_shapes() {
     let mut table = TypeTable::new();
     let int_id = table.intern_builtin(BuiltinType::Int);
