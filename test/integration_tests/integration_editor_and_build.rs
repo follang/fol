@@ -96,6 +96,7 @@ fn positive_runtime_model_examples() -> &'static [(&'static str, &'static str)] 
         ("examples/mem_collections", "mem"),
         ("examples/mem_surface_showcase", "mem"),
         ("examples/std_bundled_fmt", "std"),
+        ("examples/std_bundled_io", "std"),
         ("examples/std_cli", "std"),
         ("examples/std_echo_min", "std"),
         ("examples/std_named_calls", "std"),
@@ -1579,6 +1580,7 @@ fn test_cli_example_build_summaries_surface_expected_models() {
 fn test_cli_std_examples_run_and_print_expected_output() {
     let cases = [
         ("examples/std_bundled_fmt", "7"),
+        ("examples/std_bundled_io", "std-io"),
         ("examples/std_cli", "std-ready"),
         ("examples/std_echo_min", "9"),
         ("examples/std_named_calls", "host-ok-ready"),
@@ -1710,6 +1712,41 @@ fn test_bundled_std_discovery_stays_coherent_across_cli_and_editor() {
 }
 
 #[test]
+fn test_bundled_std_io_example_builds_and_runs_without_override() {
+    let root = temp_example_root("examples/std_bundled_io");
+    let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+    let stdout = String::from_utf8_lossy(&build.stdout);
+    assert!(
+        build.status.success(),
+        "bundled std.io example should build: stdout=\n{}\nstderr=\n{}",
+        stdout,
+        String::from_utf8_lossy(&build.stderr)
+    );
+    let binary = stdout
+        .lines()
+        .find_map(|line| {
+            let plain = strip_ansi(line);
+            if plain.contains("binary") {
+                plain.split_whitespace().last().map(str::to_string)
+            } else {
+                None
+            }
+        })
+        .expect("bundled std.io build should report a binary path");
+    let run = std::process::Command::new(binary.trim())
+        .output()
+        .expect("bundled std.io example should run");
+    let stdout = String::from_utf8_lossy(&run.stdout);
+    assert!(run.status.success(), "bundled std.io example should execute");
+    assert!(
+        stdout.contains("std-io"),
+        "bundled std.io example should print through the std.io wrapper: stdout=\n{}\nstderr=\n{}",
+        stdout,
+        String::from_utf8_lossy(&run.stderr)
+    );
+}
+
+#[test]
 fn test_bundled_std_package_root_builds_under_the_current_model() {
     let root = repo_root().join("lang/library/std");
     let build = run_fol_in_dir(&root, &["code", "check"]);
@@ -1742,8 +1779,8 @@ fn test_bundled_std_tree_stays_source_only_and_bootstrap_honest() {
         "bundled std bootstrap should ship std.fmt.math"
     );
     assert!(
-        !root.join("io/lib.fol").exists(),
-        "bundled std should not ship a public std.io module before it has honest source"
+        root.join("io/lib.fol").exists(),
+        "bundled std bootstrap should ship std.io once it has honest public source"
     );
     assert!(
         !root.join("os/lib.fol").exists(),
@@ -3094,6 +3131,7 @@ fn test_docs_reference_real_example_packages() {
         "examples/mem_collections",
         "examples/mem_surface_showcase",
         "examples/std_bundled_fmt",
+        "examples/std_bundled_io",
         "examples/std_cli",
         "examples/std_echo_min",
         "examples/std_logtiny_git",

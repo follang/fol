@@ -25,6 +25,8 @@ The current bundled bootstrap surface is intentionally tiny:
 - `std.fmt.answer(): int`
 - `std.fmt.double(int): int`
 - `std.fmt.math.answer(): int`
+- `std.io.echo_int(int): int`
+- `std.io.echo_str(str): str`
 
 That is enough to prove:
 
@@ -32,4 +34,7 @@ That is enough to prove:
 - bundled std resolves without extra dependency setup
 - FOL-authored std modules compile and run under `fol_model = "std"`
 
-`std.io` and `std.os` are deferred until they contain honest user-facing APIs.
+`std.io` is currently just a thin FOL wrapper over the hosted `.echo(...)`
+substrate.
+
+`std.os` is still deferred until it has one honest user-facing API.

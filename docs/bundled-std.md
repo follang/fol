@@ -50,19 +50,30 @@ Current public bootstrap modules:
 
 - `std.fmt`
 - `std.fmt.math`
+- `std.io`
 
 Current bootstrap routines:
 
 - `fmt::answer(): int`
 - `fmt::double(int): int`
 - `fmt::math::answer(): int`
+- `io::echo_int(int): int`
+- `io::echo_str(str): str`
+
+`std.io` is intentionally narrow right now. It wraps the hosted `.echo(...)`
+primitive instead of replacing it.
+
+Current rule:
+
+- `.echo(...)` remains the low-level hosted substrate
+- `std.io` is the first bundled public wrapper over that substrate
 
 That keeps the first shipped std honest:
 
 - real FOL package
 - real import path
 - real hosted example coverage
-- no fake placeholder `std.io` or `std.os` modules yet
+- no fake placeholder `std.os` module yet
 
 ## Editing Bundled Std
 

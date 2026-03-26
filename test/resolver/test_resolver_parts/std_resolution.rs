@@ -167,6 +167,88 @@ fn test_resolver_reports_bundled_std_namespace_modules_from_the_default_root() {
 }
 
 #[test]
+fn test_resolver_resolves_bundled_std_io_from_the_default_root() {
+    let temp_root = unique_temp_root("bundled_std_io_root");
+    let app_root = temp_root.join("app");
+    fs::create_dir_all(&app_root).expect("Should create the importing package root fixture directory");
+    fs::write(
+        app_root.join("main.fol"),
+        "use io: std = {io};\nfun[] main(): int = {\n    return io::echo_int(7);\n};\n",
+    )
+    .expect("Should write the std.io import fixture");
+
+    let resolved = resolve_package_from_folder_with_config(
+        app_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+        ResolverConfig {
+            std_root: None,
+            package_store_root: None,
+        },
+    );
+    let import = resolved
+        .imports_in_scope(resolved.program_scope)
+        .into_iter()
+        .find(|import| import.alias_name == "io")
+        .expect("Resolver should keep the bundled std.io import record");
+    let target_scope = import
+        .target_scope
+        .expect("Bundled std.io imports should resolve to a mounted root scope");
+    let echo_symbol = resolved
+        .symbols_in_scope(target_scope)
+        .into_iter()
+        .find(|symbol| symbol.name == "echo_int" && symbol.kind == SymbolKind::Routine)
+        .expect("Mounted std.io root should expose exported routines");
+
+    assert!(
+        matches!(
+            resolved.scope(target_scope).map(|scope| &scope.kind),
+            Some(ScopeKind::ProgramRoot { package }) if package == "io"
+        ),
+        "Bundled std.io imports should mount the shipped std.io directory as the imported root scope",
+    );
+    assert_eq!(echo_symbol.name, "echo_int");
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
+fn test_resolver_reports_missing_bundled_std_modules_cleanly() {
+    let temp_root = unique_temp_root("bundled_std_missing_module");
+    let app_root = temp_root.join("app");
+    fs::create_dir_all(&app_root).expect("Should create the importing package root fixture directory");
+    fs::write(
+        app_root.join("main.fol"),
+        "use os: std = {os};\nfun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .expect("Should write the missing bundled std module fixture");
+
+    let errors = try_resolve_package_from_folder_with_config(
+        app_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+        ResolverConfig {
+            std_root: None,
+            package_store_root: None,
+        },
+    )
+    .expect_err("Resolver should reject missing bundled std module targets");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == ResolverErrorKind::InvalidInput
+                && error.to_string().contains("resolver std import target")
+                && error.to_string().contains("os")
+        }),
+        "Resolver should report missing bundled std modules with the exact requested module path",
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
 fn test_resolver_reports_missing_std_targets_explicitly() {
     let temp_root = unique_temp_root("std_missing_target");
     let std_root = temp_root.join("std");

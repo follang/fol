@@ -1,0 +1,6 @@
+use io: std = {"io"};
+
+fun[] main(): int = {
+    var shown: str = io::echo_str("std-io");
+    return 7;
+};

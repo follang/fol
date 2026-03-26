@@ -375,11 +375,45 @@ use super::*;
         let message = diagnostic["message"]
             .as_str()
             .expect("Resolver diagnostic message should stay a string");
-        assert!(message.contains("does not exist"));
-        assert!(message.contains("missing-std"));
+    assert!(message.contains("does not exist"));
+    assert!(message.contains("missing-std"));
 
-        fs::remove_dir_all(&temp_root).ok();
-    }
+    fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn test_cli_json_resolver_errors_report_missing_bundled_std_modules() {
+    use std::fs;
+
+    let temp_root = unique_temp_root("cli_json_missing_bundled_std_module");
+    fs::create_dir_all(&temp_root).expect("Should create resolver fixture root");
+    fs::write(
+        temp_root.join("main.fol"),
+        "use os: std = {os};\nfun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .expect("Should write missing bundled std module fixture");
+
+    let output = run_fol(&[
+        "--json",
+        temp_root
+            .to_str()
+            .expect("Resolver fixture path should be valid UTF-8"),
+    ]);
+    let json = parse_cli_json(&output);
+    let diagnostic = &json["diagnostics"][0];
+
+    assert!(
+        !output.status.success(),
+        "Missing bundled std module should fail"
+    );
+    let message = diagnostic["message"]
+        .as_str()
+        .expect("Resolver diagnostic message should stay a string");
+    assert!(message.contains("resolver std import target"));
+    assert!(message.contains("os"));
+
+    fs::remove_dir_all(&temp_root).ok();
+}
 
     #[test]
     fn test_cli_json_resolver_errors_keep_notes_for_unsupported_import_kinds() {

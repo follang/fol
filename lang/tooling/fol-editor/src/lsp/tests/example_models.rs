@@ -31,6 +31,7 @@ fn lsp_server_opens_real_model_example_packages_cleanly() {
         "examples/core_defer",
         "examples/mem_defaults",
         "examples/std_bundled_fmt",
+        "examples/std_bundled_io",
         "examples/std_echo_min",
     ] {
         let (root, uri) = copied_example_package_root(example);
@@ -63,6 +64,11 @@ fn lsp_server_reports_model_aware_diagnostics_for_real_example_roots() {
         (
             "examples/std_bundled_fmt",
             "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::math::answer();\n};\n",
+            None,
+        ),
+        (
+            "examples/std_bundled_io",
+            "use io: std = {io};\nfun[] main(): int = {\n    var shown: str = io::echo_str(\"ok\");\n    return 7;\n};\n",
             None,
         ),
         (
@@ -104,6 +110,7 @@ fn lsp_server_returns_semantic_tokens_for_real_model_examples() {
         "examples/core_defer",
         "examples/mem_defaults",
         "examples/std_bundled_fmt",
+        "examples/std_bundled_io",
         "examples/std_echo_min",
     ] {
         let (root, uri) = copied_example_package_root(example);
@@ -186,6 +193,20 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
                 trigger_character: Some(":".to_string()),
             }),
             vec!["answer"],
+            vec![],
+        ),
+        (
+            "examples/std_bundled_io",
+            "use io: std = {io};\nfun[] main(): int = {\n    return io::;\n};\n",
+            LspPosition {
+                line: 1,
+                character: 15,
+            },
+            Some(LspCompletionContext {
+                trigger_kind: Some(2),
+                trigger_character: Some(":".to_string()),
+            }),
+            vec!["echo_int", "echo_str"],
             vec![],
         ),
         (

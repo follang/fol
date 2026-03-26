@@ -188,7 +188,7 @@ Completion criteria:
 ## Epoch 4: Bootstrap `std.io`
 
 ### Slice 13
-Status: pending
+Status: complete
 
 Define the first honest `std.io` surface.
 
@@ -198,7 +198,7 @@ Completion criteria:
 - the API is clearly smaller than future ambitions
 
 ### Slice 14
-Status: pending
+Status: complete
 
 Decide how `.echo(...)` relates to `std.io`.
 
@@ -209,7 +209,7 @@ Completion criteria:
   - or `std.io` becomes the preferred public surface while the primitive remains substrate
 
 ### Slice 15
-Status: pending
+Status: complete
 
 Implement the first `std.io` routines in FOL.
 
@@ -219,7 +219,7 @@ Completion criteria:
 - any Rust piece used is clearly substrate-only
 
 ### Slice 16
-Status: pending
+Status: complete
 
 Add positive runtime coverage for `std.io`.
 
@@ -229,7 +229,7 @@ Completion criteria:
 - integration tests assert real stdout behavior
 
 ### Slice 17
-Status: pending
+Status: complete
 
 Add negative capability coverage for `std.io`.
 
@@ -244,7 +244,7 @@ Completion criteria:
 ## Epoch 5: Optional Minimal `std.os`
 
 ### Slice 18
-Status: pending
+Status: complete
 
 Decide whether a truthful minimal `std.os` exists for bootstrap.
 
@@ -254,7 +254,7 @@ Completion criteria:
 - or one tiny real hosted API is approved
 
 ### Slice 19
-Status: pending
+Status: complete
 
 If approved, implement one minimal `std.os` routine in FOL.
 
@@ -264,7 +264,7 @@ Completion criteria:
 - it does not pretend to be a broad OS layer
 
 ### Slice 20
-Status: pending
+Status: complete
 
 Add coverage for the chosen `std.os` decision.
 
@@ -279,7 +279,7 @@ Completion criteria:
 ## Epoch 6: Package Resolution And Import UX
 
 ### Slice 21
-Status: pending
+Status: complete
 
 Audit `use std: ...` resolution against the real bundled package tree.
 
@@ -288,7 +288,7 @@ Completion criteria:
 - import resolution matches the shipped std module layout
 
 ### Slice 22
-Status: pending
+Status: complete
 
 Add tests for missing bundled std modules.
 
