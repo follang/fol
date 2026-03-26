@@ -278,4 +278,23 @@ mod tests {
             .skip(1)
             .all(|record| matches!(record.kind, BackendTraceKind::Emission)));
     }
+
+    #[test]
+    fn backend_trace_reports_public_mem_tier_with_internal_alloc_runtime_module() {
+        let session = crate::BackendSession::new(sample_lowered_workspace());
+        let trace = build_backend_trace(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Mem,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("trace");
+
+        assert!(trace.records()[0].detail.contains("fol_model=mem"));
+        assert!(trace.records()[0].detail.contains("runtime_tier=mem"));
+        assert!(trace.records()[0]
+            .detail
+            .contains("runtime_module=fol_runtime::alloc"));
+    }
 }

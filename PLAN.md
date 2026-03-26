@@ -165,7 +165,7 @@ Completion criteria:
 - typecheck public/config-facing APIs use `Mem`
 
 ### Slice 11
-Status: pending
+Status: completed
 
 Update typecheck diagnostics from `alloc` wording to `mem`.
 
@@ -175,7 +175,7 @@ Completion criteria:
   - current artifact model is `mem`
 
 ### Slice 12
-Status: pending
+Status: completed
 
 Keep heap-backed capability behavior unchanged while renaming the visible model.
 
@@ -185,7 +185,7 @@ Completion criteria:
 - hosted-only surfaces remain illegal in `mem`
 
 ### Slice 13
-Status: pending
+Status: completed
 
 Add capability tests that prove `mem` is behavior-preserving relative to the former middle tier.
 
@@ -202,7 +202,7 @@ Completion criteria:
 ## Epoch 4: Runtime And Backend Naming Cutover
 
 ### Slice 14
-Status: pending
+Status: completed
 
 Rename backend public model enums/strings from `Alloc` to `Mem`.
 
@@ -211,7 +211,7 @@ Completion criteria:
 - backend config surfaces render `mem`
 
 ### Slice 15
-Status: pending
+Status: completed
 
 Rename runtime-tier selection strings from `alloc` to `mem` in emitted metadata and traces.
 
@@ -220,7 +220,7 @@ Completion criteria:
 - emitted trace/report surfaces use `mem`
 
 ### Slice 16
-Status: pending
+Status: completed
 
 Decide runtime module-path strategy and apply it consistently.
 
@@ -237,7 +237,7 @@ Note:
 - no dual public wording
 
 ### Slice 17
-Status: pending
+Status: completed
 
 Update backend emission tests to the chosen `mem` contract.
 
@@ -246,7 +246,7 @@ Completion criteria:
 - emitted-Rust/import tests reflect the final chosen naming strategy
 
 ### Slice 18
-Status: pending
+Status: completed
 
 Update backend/build summaries so model lines show `mem`.
 
@@ -259,7 +259,7 @@ Completion criteria:
 ## Epoch 5: Frontend Routing And Reporting
 
 ### Slice 19
-Status: pending
+Status: completed
 
 Update routed build/run/test planning to use `mem` in model distribution and diagnostics.
 
@@ -269,7 +269,7 @@ Completion criteria:
 - ambiguity diagnostics use `mem`
 
 ### Slice 20
-Status: pending
+Status: completed
 
 Update `work info` / `work status` model-distribution reporting.
 

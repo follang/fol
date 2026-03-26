@@ -633,7 +633,7 @@ fn workspace_route_plans_modern_check_steps_even_without_a_runnable_binary() {
 }
 
 #[test]
-fn execute_workspace_build_route_rejects_echo_for_alloc_model_artifacts() {
+fn execute_workspace_build_route_rejects_echo_for_mem_model_artifacts() {
     let root = std::env::temp_dir().join(format!(
         "fol_frontend_build_route_alloc_echo_{}_{}",
         std::process::id(),
@@ -685,7 +685,7 @@ fn execute_workspace_build_route_rejects_echo_for_alloc_model_artifacts() {
             run_args: Vec::new(),
         },
     )
-    .expect_err("alloc-model .echo should be rejected during routed build execution");
+    .expect_err("mem-model .echo should be rejected during routed build execution");
 
     assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
     assert!(error.message().contains("compilation failed"));
@@ -829,7 +829,7 @@ fn execute_workspace_build_route_rejects_dynamic_len_for_core_model_artifacts() 
 }
 
 #[test]
-fn execute_workspace_build_route_accepts_dynamic_len_for_alloc_model_artifacts() {
+fn execute_workspace_build_route_accepts_dynamic_len_for_mem_model_artifacts() {
     let root = std::env::temp_dir().join(format!(
         "fol_frontend_build_route_alloc_len_{}_{}",
         std::process::id(),
@@ -885,7 +885,7 @@ fn execute_workspace_build_route_accepts_dynamic_len_for_alloc_model_artifacts()
             run_args: Vec::new(),
         },
     )
-    .expect("alloc-model dynamic .len should remain buildable during routed execution");
+    .expect("mem-model dynamic .len should remain buildable during routed execution");
 
     fs::remove_dir_all(root).ok();
 }
@@ -955,7 +955,7 @@ fn execute_workspace_build_route_emits_core_runtime_module_imports() {
 }
 
 #[test]
-fn execute_workspace_build_route_emits_alloc_runtime_module_imports() {
+fn execute_workspace_build_route_emits_mem_runtime_module_imports() {
     let root = std::env::temp_dir().join(format!(
         "fol_frontend_build_route_emit_alloc_{}_{}",
         std::process::id(),
@@ -1014,7 +1014,7 @@ fn execute_workspace_build_route_emits_alloc_runtime_module_imports() {
             run_args: Vec::new(),
         },
     )
-    .expect("alloc-model routed build should succeed");
+    .expect("mem-model routed build should succeed");
 
     let main_rs = emitted_main_rs_from_result(&result);
     assert!(main_rs.contains("use fol_runtime::alloc as rt_model;"));
@@ -1157,7 +1157,7 @@ fn execute_workspace_build_route_rejects_run_for_selected_core_model_artifacts()
 }
 
 #[test]
-fn execute_workspace_build_route_rejects_test_for_selected_alloc_model_artifacts() {
+fn execute_workspace_build_route_rejects_test_for_selected_mem_model_artifacts() {
     let root = std::env::temp_dir().join(format!(
         "fol_frontend_build_route_alloc_test_{}_{}",
         std::process::id(),
@@ -1208,7 +1208,7 @@ fn execute_workspace_build_route_rejects_test_for_selected_alloc_model_artifacts
             run_args: Vec::new(),
         },
     )
-    .expect_err("alloc-model selected test should be rejected during routed execution");
+    .expect_err("mem-model selected test should be rejected during routed execution");
 
     assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
     assert!(error

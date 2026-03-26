@@ -18,7 +18,7 @@ cleanup system.
 Model reminder:
 
 - the `.echo(...)` examples below assume `fol_model = "std"`
-- `defer` itself is not std-only; it is valid in `core`, `alloc`, and `std`
+- `defer` itself is not std-only; it is valid in `core`, `mem`, and `std`
   within the current V1 surface
 
 ## Basic form

@@ -219,14 +219,14 @@ mod tests {
             },
         )
         .expect("core main");
-        let alloc_emitted = emit_main_rs_for_config(
+        let mem_emitted = emit_main_rs_for_config(
             &session,
             &BackendConfig {
                 fol_model: BackendFolModel::Mem,
                 ..BackendConfig::default()
             },
         )
-        .expect("alloc main");
+        .expect("mem main");
 
         assert!(core_emitted
             .contents
@@ -234,10 +234,10 @@ mod tests {
         assert!(core_emitted
             .contents
             .contains("use fol_runtime::core as rt;"));
-        assert!(alloc_emitted
+        assert!(mem_emitted
             .contents
             .contains("use fol_runtime::alloc as rt_model;"));
-        assert!(alloc_emitted
+        assert!(mem_emitted
             .contents
             .contains("use fol_runtime::alloc as rt;"));
         assert!(core_emitted
@@ -245,8 +245,8 @@ mod tests {
             .contains("let _runtime_tier = rt_model::tier_name();"));
         assert!(!core_emitted.contents.contains("use fol_runtime::alloc"));
         assert!(!core_emitted.contents.contains("use fol_runtime::std"));
-        assert!(!alloc_emitted.contents.contains("use fol_runtime::core"));
-        assert!(!alloc_emitted.contents.contains("use fol_runtime::std"));
+        assert!(!mem_emitted.contents.contains("use fol_runtime::core"));
+        assert!(!mem_emitted.contents.contains("use fol_runtime::std"));
 
         let std_emitted = emit_main_rs_for_config(
             &session,
@@ -379,7 +379,7 @@ mod tests {
                 ..BackendConfig::default()
             },
         )
-        .expect("alloc artifact");
+        .expect("mem artifact");
 
         let BackendArtifact::RustSourceCrate { files, .. } = artifact else {
             panic!("expected RustSourceCrate artifact");
@@ -391,7 +391,7 @@ mod tests {
             }
             assert!(
                 !file.contents.contains("use fol_runtime::std"),
-                "alloc artifact should not import std runtime paths in {}:\n{}",
+                "mem artifact should not import std runtime paths in {}:\n{}",
                 file.path,
                 file.contents
             );
@@ -526,9 +526,9 @@ mod tests {
         assert!(!core_snapshot.contains("use fol_runtime::alloc"));
         assert!(!core_snapshot.contains("use fol_runtime::std"));
 
-        let alloc_root = temp_root("mem_len_emit");
-        let alloc_fixture = write_fixture(
-            &alloc_root,
+        let mem_root = temp_root("mem_len_emit");
+        let mem_fixture = write_fixture(
+            &mem_root,
             concat!(
                 "fun[] main(): int = {\n",
                 "    var values: seq[int] = {1, 2, 3};\n",
@@ -536,29 +536,29 @@ mod tests {
                 "};\n",
             ),
         );
-        let alloc_session = BackendSession::new(lowered_workspace_from_entry_path(&alloc_fixture));
-        let alloc_artifact = emit_generated_crate_skeleton_for_config(
-            &alloc_session,
+        let mem_session = BackendSession::new(lowered_workspace_from_entry_path(&mem_fixture));
+        let mem_artifact = emit_generated_crate_skeleton_for_config(
+            &mem_session,
             &BackendConfig {
                 fol_model: BackendFolModel::Mem,
                 ..BackendConfig::default()
             },
         )
-        .expect("alloc artifact");
-        let BackendArtifact::RustSourceCrate { files: alloc_files, .. } = alloc_artifact else {
+        .expect("mem artifact");
+        let BackendArtifact::RustSourceCrate { files: mem_files, .. } = mem_artifact else {
             panic!("expected RustSourceCrate artifact");
         };
-        let alloc_snapshot = alloc_files
+        let mem_snapshot = mem_files
             .iter()
             .map(|file| file.contents.as_str())
             .collect::<Vec<_>>()
             .join("\n");
-        assert!(alloc_snapshot.contains("use fol_runtime::alloc as rt;"));
-        assert!(alloc_snapshot.contains("rt::len("));
-        assert!(!alloc_snapshot.contains("use fol_runtime::std"));
+        assert!(mem_snapshot.contains("use fol_runtime::alloc as rt;"));
+        assert!(mem_snapshot.contains("rt::len("));
+        assert!(!mem_snapshot.contains("use fol_runtime::std"));
 
         let _ = fs::remove_dir_all(&core_root);
-        let _ = fs::remove_dir_all(&alloc_root);
+        let _ = fs::remove_dir_all(&mem_root);
     }
 
     #[test]

@@ -272,7 +272,7 @@ Model reminder:
 
 - any routine example that calls `.echo(...)` assumes a `std` artifact context
 - routine examples without hosted behavior should stay valid in `core` or
-  `alloc` where the surrounding chapter claims they are model-neutral
+  `mem` where the surrounding chapter claims they are model-neutral
 
 The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.
 ```

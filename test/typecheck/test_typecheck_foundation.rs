@@ -1234,7 +1234,7 @@ fn echo_intrinsic_requires_std_fol_model_in_core() {
 }
 
 #[test]
-fn echo_intrinsic_requires_std_fol_model_in_alloc() {
+fn echo_intrinsic_requires_std_fol_model_in_mem() {
     let errors = typecheck_fixture_folder_errors_with_config(
         &[(
             "main.fol",
@@ -1251,6 +1251,61 @@ fn echo_intrinsic_requires_std_fol_model_in_alloc() {
         .message()
         .contains("'.echo(...)' requires 'fol_model = std'"));
     assert!(errors[0].message().contains("current artifact model is 'mem'"));
+}
+
+#[test]
+fn public_runtime_model_matrix_keeps_mem_between_core_and_std() {
+    let core_errors = typecheck_fixture_folder_errors_with_config(
+        &[("main.fol", "fun[] main(): str = {\n    return \"heap\";\n};\n")],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Core,
+        },
+    );
+    assert_eq!(core_errors.len(), 1);
+    assert!(core_errors[0]
+        .message()
+        .contains("str requires heap support and is unavailable in 'fol_model = core'"));
+
+    let mem_typed = typecheck_fixture_folder_with_config(
+        &[("main.fol", "fun[] main(): str = {\n    return \"heap\";\n};\n")],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Mem,
+        },
+    );
+    let mem_syntax_id = find_named_routine_syntax_id(&mem_typed, "main");
+    assert_eq!(
+        mem_typed
+            .typed_node(mem_syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| mem_typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Str)),
+    );
+
+    let mem_echo_errors = typecheck_fixture_folder_errors_with_config(
+        &[("main.fol", "fun[] main(): int = {\n    return .echo(1);\n};\n")],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Mem,
+        },
+    );
+    assert_eq!(mem_echo_errors.len(), 1);
+    assert!(mem_echo_errors[0]
+        .message()
+        .contains("'.echo(...)' requires 'fol_model = std'"));
+
+    let std_typed = typecheck_fixture_folder_with_config(
+        &[("main.fol", "fun[] main(): int = {\n    return .echo(1);\n};\n")],
+        TypecheckConfig {
+            capability_model: TypecheckCapabilityModel::Std,
+        },
+    );
+    let std_syntax_id = find_named_routine_syntax_id(&std_typed, "main");
+    assert_eq!(
+        std_typed
+            .typed_node(std_syntax_id)
+            .and_then(|node| node.inferred_type)
+            .and_then(|type_id| std_typed.type_table().get(type_id)),
+        Some(&CheckedType::Builtin(BuiltinType::Int)),
+    );
 }
 
 #[test]

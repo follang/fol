@@ -255,7 +255,9 @@ Implemented today:
 - array `.len(...)` stays valid in `core`
 - dynamic/string `.len(...)` requires `mem` or `std`
 - routed `run` / `test` reject non-`std` artifacts
-- emitted Rust imports the matching `fol_runtime::{core,alloc,std}` module
+- emitted Rust imports the matching internal runtime module
+- public `fol_model = "mem"` currently maps to the internal
+  `fol_runtime::alloc` module path
 - `fol-runtime` is the single runtime crate with internal `core` / `alloc` /
   `std` ownership
 
@@ -278,8 +280,9 @@ public surfaces.
   - alloc-tier heap types re-exported for host artifacts
 
 Backend authors should not import a wider tier than the lowered artifact
-actually requires. `core` emission should stay `core`-only. `alloc` emission
-must not silently widen to `std`. `std` is the only tier that may rely on
+actually requires. `core` emission should stay `core`-only. `mem` emission
+currently routes through the internal `fol_runtime::alloc` module and must not
+silently widen to `std`. `std` is the only tier that may rely on
 hosted runtime entry and console hooks.
 
 ## Editor note
@@ -314,7 +317,7 @@ pro[] build(): non = {
     var heaplib = graph.add_static_lib({
         name = "heaplib",
         root = "src/alloc/lib.fol",
-        fol_model = "alloc",
+        fol_model = "mem",
     });
 
     var tool = graph.add_exe({

@@ -191,7 +191,7 @@ fn shorten_revision(revision: &str) -> String {
 
 fn artifact_model_distribution_line(workspace: &FrontendWorkspace) -> Option<String> {
     let mut core = 0usize;
-    let mut alloc = 0usize;
+    let mut mem = 0usize;
     let mut std = 0usize;
 
     for member in &workspace.members {
@@ -214,13 +214,13 @@ fn artifact_model_distribution_line(workspace: &FrontendWorkspace) -> Option<Str
         for artifact in &evaluated.evaluated.artifacts {
             match artifact.fol_model {
                 BuildArtifactFolModel::Core => core += 1,
-                BuildArtifactFolModel::Mem => alloc += 1,
+                BuildArtifactFolModel::Mem => mem += 1,
                 BuildArtifactFolModel::Std => std += 1,
             }
         }
     }
 
-    Some(format!("artifact_models=core={core},mem={alloc},std={std}"))
+    Some(format!("artifact_models=core={core},mem={mem},std={std}"))
 }
 
 #[cfg(test)]

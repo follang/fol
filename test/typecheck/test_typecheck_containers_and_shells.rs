@@ -645,7 +645,7 @@ fn core_model_keeps_array_length_queries_available() {
 }
 
 #[test]
-fn alloc_model_accepts_dynamic_length_queries() {
+fn mem_model_accepts_dynamic_length_queries() {
     let typed = typecheck_fixture_folder_with_config(
         &[(
             "main.fol",
