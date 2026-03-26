@@ -190,7 +190,7 @@ shape:
   - improved build help/reporting
 - keep it repo-specific, not a generic Zig essay
 
-### Slice 3
+### Slice 3 (complete)
 
 - record explicit non-goals for this round:
   - no new control file

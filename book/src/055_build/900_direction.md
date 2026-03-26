@@ -187,6 +187,9 @@ This direction does not mean:
 - turning the graph API into a stringly catch-all
 - introducing a separate build manifest file
 - pretending step execution is parallel before it is
+- adding compatibility string-path fallbacks beside typed path handles
+- growing a broad shell-script DSL inside `build.fol`
+- reintroducing public build type names just to expose more features
 
 The current design constraint remains:
 
