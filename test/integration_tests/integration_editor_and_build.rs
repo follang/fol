@@ -1112,9 +1112,33 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
             .iter()
             .find(|dependency| dependency.alias == "shared")
             .expect("shared dependency should be recorded");
+        let assets = evaluated
+            .evaluated
+            .dependencies
+            .iter()
+            .find(|dependency| dependency.alias == "assets")
+            .expect("assets dependency should be recorded");
+        let logtiny = evaluated
+            .evaluated
+            .dependencies
+            .iter()
+            .find(|dependency| dependency.alias == "logtiny")
+            .expect("logtiny dependency should be recorded");
 
         assert_eq!(dep.args.get("jobs").map(String::as_str), Some("6"));
         assert_eq!(dep.args.get("flavor").map(String::as_str), Some("strict"));
+        assert_eq!(
+            dep.evaluation_mode,
+            Some(fol_package::DependencyBuildEvaluationMode::Lazy)
+        );
+        assert_eq!(
+            assets.evaluation_mode,
+            Some(fol_package::DependencyBuildEvaluationMode::OnDemand)
+        );
+        assert_eq!(
+            logtiny.evaluation_mode,
+            Some(fol_package::DependencyBuildEvaluationMode::Eager)
+        );
     }
 
     #[test]

@@ -1,4 +1,5 @@
 use crate::{PackageError, PackageErrorKind};
+use fol_build::DependencyBuildEvaluationMode;
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::{AstNode, AstParser, CallSurface, ParsedPackage, SyntaxOrigin};
 use fol_stream::FileStream;
@@ -17,6 +18,7 @@ pub struct ExtractedPackageDependencyDecl {
     pub alias: String,
     pub source: String,
     pub target: String,
+    pub evaluation_mode: DependencyBuildEvaluationMode,
     pub origin: Option<SyntaxOrigin>,
 }
 
@@ -32,6 +34,7 @@ pub struct PackageDependencyDecl {
     pub alias: String,
     pub source_kind: PackageDependencySourceKind,
     pub target: String,
+    pub evaluation_mode: DependencyBuildEvaluationMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -272,12 +275,22 @@ fn collect_dependency_decls(
                 let mut alias = None;
                 let mut source = None;
                 let mut target = None;
+                let mut evaluation_mode = DependencyBuildEvaluationMode::Eager;
                 for field in record_fields {
                     let value = resolve_string_value(&field.value, string_bindings);
                     match field.name.as_str() {
                         "alias" => alias = value,
                         "source" => source = value,
                         "target" => target = value,
+                        "mode" => {
+                            if let Some(value) = value {
+                                if let Some(parsed_mode) =
+                                    DependencyBuildEvaluationMode::parse(value.as_str())
+                                {
+                                    evaluation_mode = parsed_mode;
+                                }
+                            }
+                        }
                         _ => {}
                     }
                 }
@@ -286,6 +299,7 @@ fn collect_dependency_decls(
                         alias,
                         source,
                         target,
+                        evaluation_mode,
                         origin,
                     });
                 }
@@ -472,7 +486,7 @@ fn materialize_package_metadata_from_build(
             });
         }
         let source_target = format!("{}:{}", dependency.source, dependency.target);
-        materialized_deps.push(parse_dependency_decl(
+        let mut parsed = parse_dependency_decl(
             path,
             &dependency.alias,
             &source_target,
@@ -482,7 +496,9 @@ fn materialize_package_metadata_from_build(
                 column: 1,
                 length: dependency.alias.len().max(1),
             }),
-        )?);
+        )?;
+        parsed.evaluation_mode = dependency.evaluation_mode;
+        materialized_deps.push(parsed);
     }
 
     Ok(PackageMetadata {
@@ -596,6 +612,7 @@ fn parse_dependency_decl(
         alias: alias.to_string(),
         source_kind,
         target: target.to_string(),
+        evaluation_mode: DependencyBuildEvaluationMode::Eager,
     })
 }
 
@@ -645,6 +662,7 @@ mod tests {
         parse_package_metadata_from_build, PackageDependencyDecl, PackageDependencySourceKind,
         PackageMetadata,
     };
+    use fol_build::DependencyBuildEvaluationMode;
     use fol_diagnostics::ToDiagnostic;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -811,10 +829,16 @@ mod tests {
         assert_eq!(deps.len(), 2);
         assert!(deps
             .iter()
-            .any(|dep| dep.alias == "core" && dep.source == "pkg" && dep.target == "core/tools"));
+            .any(|dep| dep.alias == "core"
+                && dep.source == "pkg"
+                && dep.target == "core/tools"
+                && dep.evaluation_mode == DependencyBuildEvaluationMode::Eager));
         assert!(deps
             .iter()
-            .any(|dep| dep.alias == "shared" && dep.source == "loc" && dep.target == "../shared"));
+            .any(|dep| dep.alias == "shared"
+                && dep.source == "loc"
+                && dep.target == "../shared"
+                && dep.evaluation_mode == DependencyBuildEvaluationMode::Eager));
 
         fs::remove_dir_all(build_path.parent().unwrap()).ok();
     }
@@ -827,8 +851,8 @@ mod tests {
                 "pro[] build(): non = {\n",
                 "    var build = .build();\n",
                 "    build.meta({ name = \"demo\", version = \"1.0.0\" });\n",
-                "    build.add_dep({ alias = \"core\", source = \"pkg\", target = \"core\" });\n",
-                "    build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"https://github.com/bresilla/logtiny.git\" });\n",
+                "    build.add_dep({ alias = \"core\", source = \"pkg\", target = \"core\", mode = \"lazy\" });\n",
+                "    build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"https://github.com/bresilla/logtiny.git\", mode = \"on-demand\" });\n",
                 "}\n",
             ),
         );
@@ -844,10 +868,18 @@ mod tests {
             metadata.dependencies[0].source_kind,
             PackageDependencySourceKind::PackageStore
         );
+        assert_eq!(
+            metadata.dependencies[0].evaluation_mode,
+            DependencyBuildEvaluationMode::Lazy
+        );
         assert_eq!(metadata.dependencies[1].alias, "logtiny");
         assert_eq!(
             metadata.dependencies[1].source_kind,
             PackageDependencySourceKind::Git
+        );
+        assert_eq!(
+            metadata.dependencies[1].evaluation_mode,
+            DependencyBuildEvaluationMode::OnDemand
         );
 
         fs::remove_dir_all(build_path.parent().unwrap()).ok();

@@ -201,11 +201,18 @@ var dep = build.add_dep({
     alias = "logtiny",
     source = "git",
     target = "git+https://github.com/bresilla/logtiny.git",
+    mode = "lazy",
 });
 ```
 
 Dependency handles query already-declared package dependencies. They do not add
 new graph mutations themselves.
+
+Declared dependency modes:
+
+- `eager`
+- `lazy`
+- `on-demand`
 
 The default surface is still projected deterministically from the dependency
 package:

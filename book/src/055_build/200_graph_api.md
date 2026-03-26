@@ -222,7 +222,7 @@ Creates a named custom step.
 
 ```fol
 var docs = graph.step("docs");
-var docs = graph.step("docs", "Generate documentation");  // with description
+var docs = graph.step("docs", "Generate documentation");
 ```
 
 Returns a `Step` handle. See [Handle API](./300_handle_api.md) for `Step` methods.
@@ -233,6 +233,9 @@ Named steps are selectable on the command line:
 fol code build docs
 fol code build --step docs
 ```
+
+When a description is present, frontend step planning and unknown-step
+diagnostics surface it as part of the available step catalog.
 
 ## Current Execution Semantics
 

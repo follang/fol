@@ -112,6 +112,7 @@ pub fn evaluate_build_plan(
                 let handle = api
                     .step(crate::StepRequest {
                         name: operation_request.name.clone(),
+                        description: operation_request.description.clone(),
                         depends_on,
                     })
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;

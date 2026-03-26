@@ -38,6 +38,7 @@ impl BuildRequestedStep {
 pub struct BuildStepDefinition {
     pub name: String,
     pub default_kind: Option<BuildDefaultStepKind>,
+    pub description: Option<String>,
     pub dependencies: Vec<String>,
 }
 
@@ -46,6 +47,7 @@ impl BuildStepDefinition {
         Self {
             name: name.into(),
             default_kind: None,
+            description: None,
             dependencies: Vec::new(),
         }
     }
@@ -54,6 +56,7 @@ impl BuildStepDefinition {
         Self {
             name: kind.as_str().to_string(),
             default_kind: Some(kind),
+            description: None,
             dependencies: Vec::new(),
         }
     }
@@ -100,6 +103,7 @@ pub struct BuildStepEvent {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BuildStepReport {
     pub requested_step: String,
+    pub requested_step_description: Option<String>,
     pub events: Vec<BuildStepEvent>,
     pub produced_outputs: Vec<String>,
 }
@@ -127,13 +131,14 @@ impl BuildStepReport {
             .filter(|event| event.kind == BuildStepEventKind::SkippedByForeignRunPolicy)
             .count();
         format!(
-            "step:{} requested={} executed={} cache-skips={} foreign-skips={} outputs={}",
+            "step:{} requested={} executed={} cache-skips={} foreign-skips={} outputs={} description={}",
             self.requested_step,
             requested,
             executed,
             cache_skips,
             foreign_skips,
-            self.produced_outputs.len()
+            self.produced_outputs.len(),
+            self.requested_step_description.as_deref().unwrap_or("")
         )
     }
 
@@ -350,6 +355,7 @@ pub fn project_graph_steps(graph: &BuildGraph) -> Vec<BuildStepDefinition> {
                 crate::graph::BuildStepKind::Check => Some(BuildDefaultStepKind::Check),
                 crate::graph::BuildStepKind::CustomCommand => None,
             },
+            description: step.description.clone(),
             dependencies: graph
                 .step_dependencies_for(step.id)
                 .filter_map(|dependency| {
@@ -443,6 +449,7 @@ mod tests {
     fn build_step_reports_keep_execution_events_and_outputs() {
         let report = BuildStepReport {
             requested_step: "build".to_string(),
+            requested_step_description: Some("Compile the app".to_string()),
             events: vec![
                 BuildStepEvent {
                     step_name: "build".to_string(),
@@ -469,7 +476,7 @@ mod tests {
         assert_eq!(report.produced_outputs, vec!["zig-out/bin/app".to_string()]);
         assert_eq!(
             report.summary(),
-            "step:build requested=1 executed=1 cache-skips=0 foreign-skips=0 outputs=1"
+            "step:build requested=1 executed=1 cache-skips=0 foreign-skips=0 outputs=1 description=Compile the app"
         );
         assert_eq!(report.primary_output(), Some("zig-out/bin/app"));
         assert_eq!(report.output_details(), &["zig-out/bin/app".to_string()]);
@@ -479,6 +486,7 @@ mod tests {
     fn step_reports_can_distinguish_cache_and_foreign_policy_skips() {
         let report = BuildStepReport {
             requested_step: "run".to_string(),
+            requested_step_description: None,
             events: vec![
                 BuildStepEvent {
                     step_name: "run".to_string(),
@@ -501,16 +509,16 @@ mod tests {
 
         assert_eq!(
             report.summary(),
-            "step:run requested=1 executed=0 cache-skips=1 foreign-skips=1 outputs=0"
+            "step:run requested=1 executed=0 cache-skips=1 foreign-skips=1 outputs=0 description="
         );
     }
 
     #[test]
     fn step_order_planning_runs_dependencies_before_requested_step() {
         let mut graph = BuildGraph::new();
-        let build = graph.add_step(BuildStepKind::Default, "build");
-        let generate = graph.add_step(BuildStepKind::CustomCommand, "generate");
-        let check = graph.add_step(BuildStepKind::Check, "check");
+        let build = graph.add_step(BuildStepKind::Default, "build", None);
+        let generate = graph.add_step(BuildStepKind::CustomCommand, "generate", None);
+        let check = graph.add_step(BuildStepKind::Check, "check", None);
         graph.add_step_dependency(build, generate);
         graph.add_step_dependency(build, check);
 
@@ -534,8 +542,8 @@ mod tests {
     #[test]
     fn step_order_planning_reports_dependency_cycles() {
         let mut graph = BuildGraph::new();
-        let build = graph.add_step(BuildStepKind::Default, "build");
-        let check = graph.add_step(BuildStepKind::Check, "check");
+        let build = graph.add_step(BuildStepKind::Default, "build", None);
+        let check = graph.add_step(BuildStepKind::Check, "check", None);
         graph.add_step_dependency(build, check);
         graph.add_step_dependency(check, build);
 
@@ -547,8 +555,12 @@ mod tests {
     #[test]
     fn graph_step_projection_keeps_default_and_custom_step_shapes() {
         let mut graph = BuildGraph::new();
-        let build = graph.add_step(BuildStepKind::Default, "build");
-        let docs = graph.add_step(BuildStepKind::CustomCommand, "docs");
+        let build = graph.add_step(BuildStepKind::Default, "build", None);
+        let docs = graph.add_step(
+            BuildStepKind::CustomCommand,
+            "docs",
+            Some("Generate documentation".to_string()),
+        );
         graph.add_step_dependency(docs, build);
 
         let projected = project_graph_steps(&graph);
@@ -558,14 +570,18 @@ mod tests {
         assert_eq!(projected[0].default_kind, Some(BuildDefaultStepKind::Build));
         assert_eq!(projected[1].name, "docs");
         assert_eq!(projected[1].default_kind, None);
+        assert_eq!(
+            projected[1].description.as_deref(),
+            Some("Generate documentation")
+        );
         assert_eq!(projected[1].dependencies, vec!["build".to_string()]);
     }
 
     #[test]
     fn computed_step_cache_keys_include_outputs_options_and_dependency_args() {
         let mut graph = BuildGraph::new();
-        let build = graph.add_step(BuildStepKind::Default, "build");
-        let run = graph.add_step(BuildStepKind::Run, "run");
+        let build = graph.add_step(BuildStepKind::Default, "build", None);
+        let run = graph.add_step(BuildStepKind::Run, "run", None);
         graph.add_step_dependency(run, build);
         let generated = graph.add_generated_file(BuildGeneratedFileKind::CaptureOutput, "run-stdout");
         graph.run_config_mut(run).capture_stdout = Some(generated);

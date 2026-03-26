@@ -147,6 +147,7 @@ impl<'a> BuildApi<'a> {
         let step_id = self.graph.add_step(
             crate::graph::BuildStepKind::Default,
             request.name.clone(),
+            request.description.clone(),
         );
         for dependency in request.depends_on {
             self.graph.add_step_dependency(step_id, dependency);
@@ -161,7 +162,7 @@ impl<'a> BuildApi<'a> {
         validate_build_name(&request.name).map_err(super::types::BuildApiError::InvalidName)?;
         let step_id = self
             .graph
-            .add_step(crate::graph::BuildStepKind::Run, request.name);
+            .add_step(crate::graph::BuildStepKind::Run, request.name, None);
         for dependency in request.depends_on {
             self.graph.add_step_dependency(step_id, dependency);
         }
@@ -179,6 +180,7 @@ impl<'a> BuildApi<'a> {
         let step_id = self.graph.add_step(
             crate::graph::BuildStepKind::Install,
             request.name.clone(),
+            None,
         );
         for dependency in &request.depends_on {
             self.graph.add_step_dependency(step_id, *dependency);
@@ -207,6 +209,7 @@ impl<'a> BuildApi<'a> {
         let step_id = self.graph.add_step(
             crate::graph::BuildStepKind::Install,
             request.name.clone(),
+            None,
         );
         for dependency in &request.depends_on {
             self.graph.add_step_dependency(step_id, *dependency);
@@ -239,7 +242,7 @@ impl<'a> BuildApi<'a> {
         validate_build_name(&name).map_err(super::types::BuildApiError::InvalidName)?;
         let step_id = self
             .graph
-            .add_step(crate::graph::BuildStepKind::Install, name.clone());
+            .add_step(crate::graph::BuildStepKind::Install, name.clone(), None);
         let install_id = self.graph.add_install_with_target(
             crate::graph::BuildInstallKind::File,
             name.clone(),
@@ -332,6 +335,7 @@ impl<'a> BuildApi<'a> {
         let step_id = self.graph.add_step(
             crate::graph::BuildStepKind::Install,
             request.name.clone(),
+            None,
         );
         for dependency in &request.depends_on {
             self.graph.add_step_dependency(step_id, *dependency);

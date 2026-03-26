@@ -45,6 +45,8 @@ pub(crate) struct FrontendMemberExecutionPlan {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct FrontendMemberPlannedStep {
     name: String,
+    description: Option<String>,
+    default_kind: Option<fol_package::BuildDefaultStepKind>,
     execution: Option<FrontendStepExecutionKind>,
     selection: Option<crate::compile::FrontendArtifactExecutionSelection>,
     ambiguous_selection: bool,
@@ -163,7 +165,11 @@ pub fn execute_workspace_build_route(
         .iter()
         .any(|plan| plan.steps.iter().any(|step| step.name == requested_step))
     {
-        return Err(unknown_workspace_build_step_error(requested_step, &route));
+        return Err(unknown_workspace_build_step_error(
+            requested_step,
+            &route,
+            &member_plans,
+        ));
     }
 
     let resolved = resolve_requested_step_execution(requested_step, &member_plans)?;
@@ -304,6 +310,8 @@ pub(crate) fn plan_member_execution_from_graph(
             selection: selection_for_step(member, evaluated, &step.name, step.default_kind),
             ambiguous_selection: step_has_ambiguous_default_selection(evaluated, step.default_kind),
             available_models: models_for_step(evaluated, &step.name, step.default_kind),
+            description: step.description,
+            default_kind: step.default_kind,
             name: step.name,
             execution: step.default_kind.and_then(step_execution_kind_from_default),
         })
@@ -318,6 +326,8 @@ pub(crate) fn plan_member_execution_from_graph(
     if !steps.iter().any(|step| step.name == "check") {
         steps.push(FrontendMemberPlannedStep {
             name: "check".to_string(),
+            description: Some("Typecheck the workspace graph".to_string()),
+            default_kind: Some(fol_package::BuildDefaultStepKind::Check),
             execution: Some(FrontendStepExecutionKind::Check),
             selection: None,
             ambiguous_selection: false,
@@ -401,6 +411,8 @@ fn synthesized_default_steps(
         );
         steps.push(FrontendMemberPlannedStep {
             name: "build".to_string(),
+            description: Some("Build default executable artifacts".to_string()),
+            default_kind: Some(fol_package::BuildDefaultStepKind::Build),
             execution: Some(FrontendStepExecutionKind::Build),
             selection: selection.clone(),
             ambiguous_selection: executable_count > 1,
@@ -411,6 +423,8 @@ fn synthesized_default_steps(
         });
         steps.push(FrontendMemberPlannedStep {
             name: "run".to_string(),
+            description: Some("Run the default executable artifact".to_string()),
+            default_kind: Some(fol_package::BuildDefaultStepKind::Run),
             execution: Some(FrontendStepExecutionKind::Run),
             selection,
             ambiguous_selection: executable_count > 1,
@@ -432,6 +446,8 @@ fn synthesized_default_steps(
         );
         steps.push(FrontendMemberPlannedStep {
             name: "test".to_string(),
+            description: Some("Run the default test artifact".to_string()),
+            default_kind: Some(fol_package::BuildDefaultStepKind::Test),
             execution: Some(FrontendStepExecutionKind::Test),
             selection,
             ambiguous_selection: test_count > 1,
@@ -731,17 +747,42 @@ fn ensure_std_workspace_step_selections(
 fn unknown_workspace_build_step_error(
     requested_step: &str,
     route: &FrontendWorkspaceBuildRoute,
+    member_plans: &[FrontendMemberExecutionPlan],
 ) -> FrontendError {
     let members = route
         .members
         .iter()
         .map(|member| member.package_name.as_str())
         .collect::<Vec<_>>();
+    let known_steps = render_known_workspace_steps(member_plans);
     FrontendError::new(
         FrontendErrorKind::InvalidInput,
         format!(
-            "workspace build execution does not define step '{requested_step}' for workspace members: {}",
-            members.join(", ")
+            "workspace build execution does not define step '{requested_step}' for workspace members: {}. known steps: {}",
+            members.join(", "),
+            known_steps
         ),
     )
+}
+
+fn render_known_workspace_steps(member_plans: &[FrontendMemberExecutionPlan]) -> String {
+    let mut rendered = member_plans
+        .iter()
+        .flat_map(|plan| plan.steps.iter())
+        .map(render_step_catalog_entry)
+        .collect::<Vec<_>>();
+    rendered.sort();
+    rendered.dedup();
+    rendered.join(", ")
+}
+
+fn render_step_catalog_entry(step: &FrontendMemberPlannedStep) -> String {
+    let mut rendered = step.name.clone();
+    if let Some(default_kind) = step.default_kind {
+        rendered.push_str(&format!(" [default:{}]", default_kind.as_str()));
+    }
+    if let Some(description) = step.description.as_deref() {
+        rendered.push_str(&format!(" - {description}"));
+    }
+    rendered
 }

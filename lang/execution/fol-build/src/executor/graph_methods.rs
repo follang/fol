@@ -198,15 +198,23 @@ impl BuildBodyExecutor {
                         format!("invalid step name '{}': names must match [a-z][a-z0-9_-]*", name),
                     ));
                 }
+                let (description, depends_on_start) = match args.get(1) {
+                    Some(arg) => match self.resolve_string(arg) {
+                        Some(description) => (Some(description), 2usize),
+                        None => (None, 1usize),
+                    },
+                    None => (None, 1usize),
+                };
                 let depends_on = args
                     .iter()
-                    .skip(1)
+                    .skip(depends_on_start)
                     .filter_map(|a| self.resolve_step_ref(a))
                     .collect::<Vec<_>>();
                 self.output.operations.push(BuildEvaluationOperation {
                     origin,
                     kind: BuildEvaluationOperationKind::Step(BuildEvaluationStepRequest {
                         name: name.clone(),
+                        description,
                         depends_on,
                     }),
                 });

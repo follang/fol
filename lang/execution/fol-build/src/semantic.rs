@@ -280,6 +280,13 @@ pub fn canonical_graph_method_signatures() -> Vec<BuildSemanticMethodSignature> 
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "step")
             .with_param(BuildSemanticMethodParameter::scalar("name"))
             .with_param(BuildSemanticMethodParameter::scalar("description").optional())
+            .with_param(
+                BuildSemanticMethodParameter::handle(
+                    "depends_on",
+                    BuildSemanticTypeFamily::StepHandle,
+                )
+                .variadic(),
+            )
             .returning(BuildSemanticTypeFamily::StepHandle),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_run")
             .with_param(BuildSemanticMethodParameter::handle(
@@ -550,6 +557,7 @@ pub fn canonical_build_context_config_shapes() -> Vec<BuildSemanticRecordShape> 
                 BuildSemanticRecordField::required("alias"),
                 BuildSemanticRecordField::required("source"),
                 BuildSemanticRecordField::required("target"),
+                BuildSemanticRecordField::optional("mode"),
                 BuildSemanticRecordField::optional("args"),
             ],
         ),

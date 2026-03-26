@@ -10,10 +10,23 @@ pro[] build(): non = {
         alias = "shared",
         source = "loc",
         target = "deps/shared",
+        mode = "lazy",
         args = {
             jobs = jobs,
             flavor = flavor,
         },
+    });
+    build.add_dep({
+        alias = "assets",
+        source = "loc",
+        target = "deps/assets",
+        mode = "on-demand",
+    });
+    build.add_dep({
+        alias = "logtiny",
+        source = "git",
+        target = "git+https://github.com/bresilla/logtiny.git",
+        mode = "eager",
     });
 
     var app = graph.add_exe({

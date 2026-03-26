@@ -225,6 +225,7 @@ pub enum BuildEvaluationRunArgKind {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildEvaluationStepRequest {
     pub name: String,
+    pub description: Option<String>,
     pub depends_on: Vec<String>,
 }
 

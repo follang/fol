@@ -109,6 +109,19 @@ impl BuildBodyExecutor {
                         self.invalid_config(method, "dependency 'target' must not be empty")
                     );
                 }
+                let evaluation_mode = match self.resolve_field_string(fields, "mode") {
+                    Some(mode) => crate::DependencyBuildEvaluationMode::parse(mode.as_str())
+                        .ok_or_else(|| {
+                            self.invalid_config(
+                                method,
+                                format!(
+                                    "dependency mode must be one of: eager, lazy, on-demand (got '{}')",
+                                    mode
+                                ),
+                            )
+                        })?,
+                    None => crate::DependencyBuildEvaluationMode::Eager,
+                };
                 let args = self.resolve_dependency_args(fields)?.unwrap_or_default();
                 self.output.operations.push(BuildEvaluationOperation {
                     origin: None,
@@ -116,7 +129,7 @@ impl BuildBodyExecutor {
                         alias: alias.clone(),
                         package,
                         args,
-                        evaluation_mode: None,
+                        evaluation_mode: Some(evaluation_mode),
                         surface: None,
                     }),
                 });

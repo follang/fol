@@ -220,6 +220,7 @@ pub struct BuildArtifactHandle {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StepRequest {
     pub name: String,
+    pub description: Option<String>,
     pub depends_on: Vec<crate::graph::BuildStepId>,
 }
 

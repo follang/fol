@@ -331,7 +331,7 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
 
 ## Epoch 4: Make Dependency Evaluation Mode Public
 
-### Slice 25
+### Slice 25 (complete)
 
 - extend `.build().add_dep({...})` to accept `mode`
 - public accepted values:
@@ -339,15 +339,15 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
   - `lazy`
   - `on-demand`
 
-### Slice 26
+### Slice 26 (complete)
 
 - add semantic typing and exact config diagnostics for dependency mode
 
-### Slice 27
+### Slice 27 (complete)
 
 - thread public mode into dependency request/runtime/preparation structures
 
-### Slice 28
+### Slice 28 (complete)
 
 - define frontend/package semantics for each mode:
   - when it is fetched
@@ -355,34 +355,34 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
   - when it is fully evaluated
 - document this honestly if the runtime still behaves partly eagerly underneath
 
-### Slice 29
+### Slice 29 (complete)
 
 - add tests for public dependency mode acceptance and exact diagnostics
 
-### Slice 30
+### Slice 30 (complete)
 
 - add at least one example package that uses mixed dependency modes
 
 ## Epoch 5: Improve Step Help And User-Facing Step Ergonomics
 
-### Slice 31
+### Slice 31 (complete)
 
 - extend `graph.step(...)` to accept an optional description
 - keep old no-description shape only if it is the same canonical call form;
   otherwise replace it directly
 
-### Slice 32
+### Slice 32 (complete)
 
 - persist step descriptions in graph/runtime/step-report data
 
-### Slice 33
+### Slice 33 (complete)
 
 - teach frontend summaries and `build --help`-style output to show:
   - step name
   - default-step kind if any
   - description if present
 
-### Slice 34
+### Slice 34 (complete)
 
 - improve diagnostics when the user asks for an unknown named step:
   - show known steps

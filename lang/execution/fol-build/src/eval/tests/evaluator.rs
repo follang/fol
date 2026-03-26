@@ -90,6 +90,7 @@ fn build_evaluator_replays_graph_building_operations_into_a_validated_graph() {
                 origin: None,
                 kind: BuildEvaluationOperationKind::Step(BuildEvaluationStepRequest {
                     name: "build".to_string(),
+                    description: Some("Compile the app".to_string()),
                     depends_on: Vec::new(),
                 }),
             },

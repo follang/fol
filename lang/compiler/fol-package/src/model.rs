@@ -189,6 +189,7 @@ mod tests {
                     alias: "core".to_string(),
                     source_kind: PackageDependencySourceKind::PackageStore,
                     target: "core".to_string(),
+                    evaluation_mode: fol_build::DependencyBuildEvaluationMode::Eager,
                 }],
             },
             PackageBuildDefinition {

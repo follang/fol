@@ -178,6 +178,7 @@ Typical fields belong here:
 - `alias`
 - `source`
 - `target`
+- `mode`
 - `args`
 
 For example:
@@ -193,8 +194,19 @@ build.add_dep({
     alias = "json",
     source = "pkg",
     target = "json",
+    mode = "lazy",
 });
 ```
+
+Supported dependency modes:
+
+- `eager`
+- `lazy`
+- `on-demand`
+
+The public mode is preserved as declared. Some deeper dependency preparation is
+still earlier-stage internally today, so treat the current runtime behavior as
+honest-but-not-yet-maximally-lazy.
 
 Forwarded dependency args stay explicit:
 
@@ -208,6 +220,7 @@ build.add_dep({
     alias = "json",
     source = "pkg",
     target = "json",
+    mode = "lazy",
     args = {
         target = target,
         optimize = optimize,
@@ -238,6 +251,12 @@ Graph-only work belongs here:
 - `install`
 - `add_run`
 - `standard_target`
+
+Named steps may also carry an optional description:
+
+```fol
+var docs = graph.step("docs", "Generate documentation");
+```
 - `standard_optimize`
 - `write_file`
 

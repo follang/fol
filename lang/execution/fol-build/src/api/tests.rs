@@ -35,7 +35,7 @@ mod tests {
         let mut api = BuildApi::new(&mut graph);
 
         api.graph_mut()
-            .add_step(crate::graph::BuildStepKind::Default, "build");
+            .add_step(crate::graph::BuildStepKind::Default, "build", None);
 
         assert_eq!(api.graph().steps().len(), 1);
     }
@@ -250,17 +250,23 @@ mod tests {
         let base = api
             .step(StepRequest {
                 name: "build".to_string(),
+                description: Some("Compile the app".to_string()),
                 depends_on: Vec::new(),
             })
             .expect("valid step request should succeed");
         let check = api
             .step(StepRequest {
                 name: "check".to_string(),
+                description: None,
                 depends_on: vec![base.step_id],
             })
             .expect("valid dependent step should succeed");
 
         assert_eq!(api.graph().steps()[0].kind, BuildStepKind::Default);
+        assert_eq!(
+            api.graph().steps()[0].description.as_deref(),
+            Some("Compile the app")
+        );
         assert_eq!(api.graph().steps()[1].id, check.step_id);
         assert_eq!(
             api.graph()
@@ -277,6 +283,7 @@ mod tests {
         let build = api
             .step(StepRequest {
                 name: "build".to_string(),
+                description: None,
                 depends_on: Vec::new(),
             })
             .expect("build step should succeed");

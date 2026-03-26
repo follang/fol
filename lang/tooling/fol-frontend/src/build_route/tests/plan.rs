@@ -95,7 +95,7 @@ fn workspace_build_route_keeps_requested_step_and_members() {
 #[test]
 fn shared_graph_projection_helper_keeps_graph_steps_and_synthesizes_check() {
     let mut graph = fol_package::BuildGraph::new();
-    graph.add_step(fol_package::BuildStepKind::Default, "build");
+    graph.add_step(fol_package::BuildStepKind::Default, "build", None);
     let member = FrontendMemberBuildRoute {
         member_root: PathBuf::from("/tmp/demo/app"),
         package_name: "app".to_string(),
@@ -134,6 +134,8 @@ fn resolve_requested_step_execution_keeps_untargeted_non_std_models() {
     let member_plans = vec![super::super::FrontendMemberExecutionPlan {
         steps: vec![super::super::FrontendMemberPlannedStep {
             name: "run".to_string(),
+            description: Some("Run the default executable artifact".to_string()),
+            default_kind: Some(fol_package::BuildDefaultStepKind::Run),
             execution: Some(super::super::FrontendStepExecutionKind::Run),
             selection: None,
             ambiguous_selection: false,
@@ -153,6 +155,51 @@ fn resolve_requested_step_execution_keeps_untargeted_non_std_models() {
         resolved.available_models,
         vec![fol_backend::BackendFolModel::Core]
     );
+}
+
+#[test]
+fn projected_step_plans_keep_step_descriptions() {
+    let mut graph = fol_package::BuildGraph::new();
+    graph.add_step(
+        fol_package::BuildStepKind::CustomCommand,
+        "docs",
+        Some("Generate documentation".to_string()),
+    );
+    let member = FrontendMemberBuildRoute {
+        member_root: PathBuf::from("/tmp/demo/app"),
+        package_name: "app".to_string(),
+        mode: FrontendBuildWorkflowMode::Modern,
+    };
+    let evaluated = fol_package::build_eval::EvaluatedBuildProgram {
+        program: fol_package::BuildRuntimeProgram::new(
+            fol_package::BuildExecutionRepresentation::RestrictedRuntimeIr,
+        ),
+        artifacts: Vec::new(),
+        generated_files: Vec::new(),
+        dependencies: Vec::new(),
+        dependency_exports: Vec::new(),
+        dependency_queries: Vec::new(),
+        step_bindings: Vec::new(),
+        result: fol_package::BuildEvaluationResult::new(
+            fol_package::BuildEvaluationBoundary::GraphConstructionSubset,
+            fol_package::canonical_graph_construction_capabilities(),
+            "/tmp/demo/app",
+            fol_package::BuildOptionDeclarationSet::new(),
+            fol_package::ResolvedBuildOptionSet::new(),
+            Vec::new(),
+            graph.clone(),
+        ),
+    };
+
+    let plan = super::super::plan_member_execution_from_graph(&member, &graph, &evaluated, false)
+        .expect("graph projection should keep descriptions");
+
+    let docs = plan
+        .steps
+        .iter()
+        .find(|step| step.name == "docs")
+        .expect("docs step should exist");
+    assert_eq!(docs.description.as_deref(), Some("Generate documentation"));
 }
 
 #[test]
@@ -490,6 +537,9 @@ fn absorbed_build_executor_rejects_unknown_named_steps() {
     assert!(error
         .message()
         .contains("workspace build execution does not define step 'docs'"));
+    assert!(error.message().contains("known steps:"));
+    assert!(error.message().contains("build [default:build]"));
+    assert!(error.message().contains("run [default:run]"));
 
     fs::remove_dir_all(&workspace.root.root).ok();
 }

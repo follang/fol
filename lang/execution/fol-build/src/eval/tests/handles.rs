@@ -30,7 +30,7 @@ fn build_source_evaluator_accepts_build_metadata_and_dependency_calls() {
         "pro[] build(): non = {\n",
         "    var build = .build();\n",
         "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
-        "    var logtiny = build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://example.com/logtiny\" });\n",
+        "    var logtiny = build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://example.com/logtiny\", mode = \"lazy\" });\n",
         "    var graph = build.graph();\n",
         "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
         "    graph.install(app);\n",
@@ -58,6 +58,38 @@ fn build_source_evaluator_accepts_build_metadata_and_dependency_calls() {
         evaluated.result.dependency_requests[0].package,
         "git+https://example.com/logtiny"
     );
+    assert_eq!(
+        evaluated.result.dependency_requests[0].evaluation_mode,
+        Some(crate::DependencyBuildEvaluationMode::Lazy)
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_invalid_build_dependency_modes() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://example.com/logtiny\", mode = \"ambient\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("invalid build dependency mode should fail");
+
+    assert!(error.message().contains(
+        "build.add_dep config is invalid: dependency mode must be one of: eager, lazy, on-demand"
+    ));
 }
 
 #[test]

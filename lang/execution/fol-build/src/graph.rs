@@ -85,6 +85,7 @@ pub struct BuildStep {
     pub id: BuildStepId,
     pub kind: BuildStepKind,
     pub name: String,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -249,12 +250,18 @@ impl BuildGraph {
         &self.artifact_dependencies
     }
 
-    pub fn add_step(&mut self, kind: BuildStepKind, name: impl Into<String>) -> BuildStepId {
+    pub fn add_step(
+        &mut self,
+        kind: BuildStepKind,
+        name: impl Into<String>,
+        description: Option<String>,
+    ) -> BuildStepId {
         let id = BuildStepId::from_index(self.steps.len());
         self.steps.push(BuildStep {
             id,
             kind,
             name: name.into(),
+            description,
         });
         id
     }
@@ -676,8 +683,8 @@ mod tests {
     fn build_graph_allocators_assign_dense_ids_per_node_family() {
         let mut graph = BuildGraph::new();
 
-        let compile_step = graph.add_step(BuildStepKind::Default, "compile");
-        let run_step = graph.add_step(BuildStepKind::Run, "run");
+        let compile_step = graph.add_step(BuildStepKind::Default, "compile", None);
+        let run_step = graph.add_step(BuildStepKind::Run, "run", None);
         let exe = graph.add_artifact(BuildArtifactKind::Executable, "app");
         let module = graph.add_module(BuildModuleKind::Source, "app.main");
         let generated = graph.add_generated_file(BuildGeneratedFileKind::Write, "version.rs");
@@ -697,7 +704,7 @@ mod tests {
     fn build_graph_storage_tables_preserve_inserted_records() {
         let mut graph = BuildGraph::new();
 
-        graph.add_step(BuildStepKind::Test, "test");
+        graph.add_step(BuildStepKind::Test, "test", None);
         graph.add_artifact(BuildArtifactKind::StaticLibrary, "support");
         graph.add_module(BuildModuleKind::Imported, "dep.math");
         graph.add_generated_file(BuildGeneratedFileKind::Copy, "config.json");
@@ -719,9 +726,9 @@ mod tests {
     #[test]
     fn build_graph_records_explicit_step_dependencies() {
         let mut graph = BuildGraph::new();
-        let compile = graph.add_step(BuildStepKind::Default, "compile");
-        let test = graph.add_step(BuildStepKind::Test, "test");
-        let run = graph.add_step(BuildStepKind::Run, "run");
+        let compile = graph.add_step(BuildStepKind::Default, "compile", None);
+        let test = graph.add_step(BuildStepKind::Test, "test", None);
+        let run = graph.add_step(BuildStepKind::Run, "run", None);
 
         graph.add_step_dependency(test, compile);
         graph.add_step_dependency(run, compile);
@@ -744,9 +751,9 @@ mod tests {
     #[test]
     fn build_graph_can_query_dependencies_for_one_step() {
         let mut graph = BuildGraph::new();
-        let compile = graph.add_step(BuildStepKind::Default, "compile");
-        let install = graph.add_step(BuildStepKind::Install, "install");
-        let run = graph.add_step(BuildStepKind::Run, "run");
+        let compile = graph.add_step(BuildStepKind::Default, "compile", None);
+        let install = graph.add_step(BuildStepKind::Install, "install", None);
+        let run = graph.add_step(BuildStepKind::Run, "run", None);
 
         graph.add_step_dependency(install, compile);
         graph.add_step_dependency(run, compile);
@@ -761,8 +768,8 @@ mod tests {
     #[test]
     fn build_graph_dedupes_repeated_step_dependencies() {
         let mut graph = BuildGraph::new();
-        let compile = graph.add_step(BuildStepKind::Default, "compile");
-        let run = graph.add_step(BuildStepKind::Run, "run");
+        let compile = graph.add_step(BuildStepKind::Default, "compile", None);
+        let run = graph.add_step(BuildStepKind::Run, "run", None);
 
         graph.add_step_dependency(run, compile);
         graph.add_step_dependency(run, compile);
@@ -848,7 +855,7 @@ mod tests {
     #[test]
     fn build_graph_validation_rejects_self_cycles() {
         let mut graph = BuildGraph::new();
-        let build = graph.add_step(BuildStepKind::Default, "build");
+        let build = graph.add_step(BuildStepKind::Default, "build", None);
 
         graph.add_step_dependency(build, build);
 
@@ -865,9 +872,9 @@ mod tests {
     #[test]
     fn build_graph_validation_rejects_multi_step_cycles() {
         let mut graph = BuildGraph::new();
-        let build = graph.add_step(BuildStepKind::Default, "build");
-        let test = graph.add_step(BuildStepKind::Test, "test");
-        let run = graph.add_step(BuildStepKind::Run, "run");
+        let build = graph.add_step(BuildStepKind::Default, "build", None);
+        let test = graph.add_step(BuildStepKind::Test, "test", None);
+        let run = graph.add_step(BuildStepKind::Run, "run", None);
 
         graph.add_step_dependency(build, test);
         graph.add_step_dependency(test, run);

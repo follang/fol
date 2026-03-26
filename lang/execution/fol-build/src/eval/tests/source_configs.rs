@@ -441,6 +441,39 @@ fn build_source_evaluator_records_dependency_step_and_generated_queries() {
 }
 
 #[test]
+fn build_source_evaluator_records_step_descriptions() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var docs = graph.step(\"docs\", \"Generate documentation\");\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("step descriptions should evaluate")
+        .expect("build body should produce a graph");
+
+    let docs = evaluated
+        .result
+        .graph
+        .steps()
+        .iter()
+        .find(|step| step.name == "docs")
+        .expect("docs step should exist");
+    assert_eq!(docs.description.as_deref(), Some("Generate documentation"));
+}
+
+#[test]
 fn build_source_evaluator_keeps_full_dependency_surface_usage_together() {
     let source = concat!(
         "pro[] build(): non = {\n",
