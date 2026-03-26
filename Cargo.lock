@@ -76,6 +76,7 @@ name = "fol-frontend"
 version = "0.1.4"
 dependencies = [
  "fol-backend",
+ "fol-build",
  "fol-diagnostics",
  "fol-editor",
  "fol-lexer",

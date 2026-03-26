@@ -243,6 +243,23 @@ mod tests {
         assert!(core_emitted
             .contents
             .contains("let _runtime_tier = rt_model::tier_name();"));
+        assert!(!core_emitted.contents.contains("use fol_runtime::alloc"));
+        assert!(!core_emitted.contents.contains("use fol_runtime::std"));
+        assert!(!alloc_emitted.contents.contains("use fol_runtime::core"));
+        assert!(!alloc_emitted.contents.contains("use fol_runtime::std"));
+
+        let std_emitted = emit_main_rs_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Std,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("std main");
+        assert!(std_emitted.contents.contains("use fol_runtime::std as rt_model;"));
+        assert!(std_emitted.contents.contains("use fol_runtime::std as rt;"));
+        assert!(!std_emitted.contents.contains("use fol_runtime::core"));
+        assert!(!std_emitted.contents.contains("use fol_runtime::alloc"));
     }
 
     #[test]
@@ -445,6 +462,103 @@ mod tests {
         assert!(root_namespace
             .contents
             .contains("use fol_runtime::alloc as rt_model;"));
+    }
+
+    #[test]
+    fn core_generated_crate_keeps_heap_and_hosted_helpers_out_of_emitted_tree() {
+        let session = BackendSession::new(sample_lowered_workspace());
+        let artifact = emit_generated_crate_skeleton_for_config(
+            &session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Core,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("core artifact");
+
+        let BackendArtifact::RustSourceCrate { files, .. } = artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+
+        let snapshot = files
+            .iter()
+            .map(|file| file.contents.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(!snapshot.contains("use fol_runtime::alloc"));
+        assert!(!snapshot.contains("use fol_runtime::std"));
+        assert!(!snapshot.contains("rt::echo("));
+        assert!(!snapshot.contains("FolSeq"));
+        assert!(!snapshot.contains("FolVec"));
+    }
+
+    #[test]
+    fn model_specific_len_rendering_keeps_runtime_imports_pure() {
+        let core_root = temp_root("core_len_emit");
+        let core_fixture = write_fixture(
+            &core_root,
+            concat!(
+                "fun[] main(): int = {\n",
+                "    var values: arr[int, 3] = {1, 2, 3};\n",
+                "    return .len(values);\n",
+                "};\n",
+            ),
+        );
+        let core_session = BackendSession::new(lowered_workspace_from_entry_path(&core_fixture));
+        let core_artifact = emit_generated_crate_skeleton_for_config(
+            &core_session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Core,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("core artifact");
+        let BackendArtifact::RustSourceCrate { files: core_files, .. } = core_artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+        let core_snapshot = core_files
+            .iter()
+            .map(|file| file.contents.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(core_snapshot.contains("use fol_runtime::core as rt;"));
+        assert!(core_snapshot.contains("rt::len("));
+        assert!(!core_snapshot.contains("use fol_runtime::alloc"));
+        assert!(!core_snapshot.contains("use fol_runtime::std"));
+
+        let alloc_root = temp_root("alloc_len_emit");
+        let alloc_fixture = write_fixture(
+            &alloc_root,
+            concat!(
+                "fun[] main(): int = {\n",
+                "    var values: seq[int] = {1, 2, 3};\n",
+                "    return .len(values);\n",
+                "};\n",
+            ),
+        );
+        let alloc_session = BackendSession::new(lowered_workspace_from_entry_path(&alloc_fixture));
+        let alloc_artifact = emit_generated_crate_skeleton_for_config(
+            &alloc_session,
+            &BackendConfig {
+                fol_model: BackendFolModel::Alloc,
+                ..BackendConfig::default()
+            },
+        )
+        .expect("alloc artifact");
+        let BackendArtifact::RustSourceCrate { files: alloc_files, .. } = alloc_artifact else {
+            panic!("expected RustSourceCrate artifact");
+        };
+        let alloc_snapshot = alloc_files
+            .iter()
+            .map(|file| file.contents.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(alloc_snapshot.contains("use fol_runtime::alloc as rt;"));
+        assert!(alloc_snapshot.contains("rt::len("));
+        assert!(!alloc_snapshot.contains("use fol_runtime::std"));
+
+        let _ = fs::remove_dir_all(&core_root);
+        let _ = fs::remove_dir_all(&alloc_root);
     }
 
     #[test]

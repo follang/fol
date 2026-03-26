@@ -1287,3 +1287,134 @@ fn execute_workspace_build_route_keeps_step_specific_model_diagnostics_in_mixed_
 
     fs::remove_dir_all(root).ok();
 }
+
+#[test]
+fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_workspace() {
+    let root = std::env::temp_dir().join(format!(
+        "fol_frontend_build_route_mixed_model_build_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("app")).unwrap();
+    fs::create_dir_all(root.join("core")).unwrap();
+    fs::create_dir_all(root.join("alloc")).unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    var graph = .graph();\n",
+            "    graph.add_exe({ name = \"tool\", root = \"app/main.fol\", fol_model = \"std\" });\n",
+            "    graph.add_static_lib({ name = \"blink\", root = \"core/lib.fol\", fol_model = \"core\" });\n",
+            "    graph.add_static_lib({ name = \"heap\", root = \"alloc/lib.fol\", fol_model = \"alloc\" });\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("app/main.fol"),
+        "fun[] main(): int = {\n    return .echo(7);\n};\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("core/lib.fol"),
+        "fun[] helper(): int = {\n    return 1;\n};\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("alloc/lib.fol"),
+        "fun[] helper(): int = {\n    var values: seq[int] = {1};\n    return .len(values);\n};\n",
+    )
+    .unwrap();
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let result = execute_workspace_build_route(
+        &workspace,
+        &FrontendConfig::default(),
+        &FrontendWorkspaceBuildRequest {
+            requested_step: "build".to_string(),
+            profile: FrontendProfile::Debug,
+            run_args: Vec::new(),
+        },
+    )
+    .expect("mixed workspace routed build should succeed");
+
+    assert!(result.summary.contains("fol_model=core,alloc,std"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn execute_workspace_build_route_run_selection_stays_std_with_same_root_core_tests() {
+    let root = std::env::temp_dir().join(format!(
+        "fol_frontend_build_route_same_root_models_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    fs::create_dir_all(root.join("src")).unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    var graph = .graph();\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+            "    graph.add_test({ name = \"suite\", root = \"src/tests.fol\", fol_model = \"core\" });\n",
+            "    graph.add_run(app);\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return .echo(7);\n};\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/tests.fol"),
+        "fun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .unwrap();
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let result = execute_workspace_build_route(
+        &workspace,
+        &FrontendConfig::default(),
+        &FrontendWorkspaceBuildRequest {
+            requested_step: "run".to_string(),
+            profile: FrontendProfile::Debug,
+            run_args: Vec::new(),
+        },
+    )
+    .expect("run selection should stay on the std executable");
+
+    assert!(result.summary.contains("fol_model=std"));
+
+    fs::remove_dir_all(root).ok();
+}

@@ -310,6 +310,8 @@ Completion criteria:
 - selecting a non-`std` step for `run`/`test` fails with explicit step/model details
 
 ### Slice 21
+Status: complete
+
 Add routed build tests for mixed-model workspaces that include all three models and multiple packages.
 
 Completion criteria:
@@ -317,6 +319,8 @@ Completion criteria:
 - build summary exposes all three models stably
 
 ### Slice 22
+Status: complete
+
 Add routed check/build/test regression tests where package members have same root but different artifact models.
 
 Completion criteria:
@@ -324,6 +328,8 @@ Completion criteria:
 - selection logic stays correct for multi-artifact package roots
 
 ### Slice 23
+Status: complete
+
 Add frontend `work`/summary tests that surface model distribution across the workspace.
 
 Completion criteria:
@@ -331,6 +337,8 @@ Completion criteria:
 - `work` surfaces expose model information clearly enough for debugging
 
 ### Slice 24
+Status: complete
+
 Tighten routed diagnostics to distinguish:
 
 - not runnable because model is wrong
@@ -346,6 +354,8 @@ Completion criteria:
 ## Epoch 5: Backend And Emitted Rust Audits
 
 ### Slice 25
+Status: complete
+
 Expand backend emission tests for direct `core`, `alloc`, and `std` crates to assert imports stay model-pure.
 
 Completion criteria:
@@ -354,6 +364,8 @@ Completion criteria:
 - `alloc` emitted modules do not import `fol_runtime::std`
 
 ### Slice 26
+Status: complete
+
 Add mixed-workspace emitted-source tests where different artifacts in one workspace emit different runtime module imports.
 
 Completion criteria:
@@ -361,6 +373,8 @@ Completion criteria:
 - emitted source audit covers one workspace with all three models
 
 ### Slice 27
+Status: complete
+
 Add emitted-source tests for cross-package dependency consumption with different models.
 
 Completion criteria:
@@ -369,6 +383,8 @@ Completion criteria:
 - a `core` illegal consumer fails before emission
 
 ### Slice 28
+Status: complete
+
 Audit instruction rendering tests for hidden alloc/std leakage into core rendering paths.
 
 Completion criteria:
@@ -376,6 +392,8 @@ Completion criteria:
 - backend instruction tests explicitly assert no alloc/std helper names leak into core-only emission
 
 ### Slice 29
+Status: complete
+
 Add backend tests covering runtime helper selection for `.len(...)` and recoverable hooks by model.
 
 Completion criteria:
@@ -384,6 +402,8 @@ Completion criteria:
 - dynamic `.len(...)` path is only rendered for alloc/std-legal lowered programs
 
 ### Slice 30
+Status: complete
+
 Add a top-level regression test that walks emitted Rust trees and fails if model-forbidden runtime imports appear.
 
 Completion criteria:

@@ -38,6 +38,22 @@ fn find_file_by_name(root: &std::path::Path, target_name: &str) -> Option<std::p
     None
 }
 
+fn collect_rust_source_files(root: &std::path::Path) -> Vec<std::path::PathBuf> {
+    let mut found = Vec::new();
+    let Ok(entries) = std::fs::read_dir(root) else {
+        return found;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.is_dir() {
+            found.extend(collect_rust_source_files(&path));
+        } else if path.extension().and_then(|ext| ext.to_str()) == Some("rs") {
+            found.push(path);
+        }
+    }
+    found
+}
+
 fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) {
     std::fs::create_dir_all(dst).expect("should create destination directory");
     for entry in std::fs::read_dir(src).expect("should read source directory") {
@@ -1260,6 +1276,94 @@ fn test_std_artifact_accepts_mixed_core_and_alloc_pkg_dependencies() {
 }
 
 #[test]
+fn test_std_consumer_of_alloc_pkg_dependency_emits_std_runtime_only() {
+    let temp_root = unique_temp_root("model_std_dep_alloc_emit");
+    let store_root = temp_root.join("store");
+    let app_root = temp_root.join("app");
+    write_formal_model_package(
+        &store_root.join("alloclib"),
+        "alloclib",
+        "alloc",
+        "lib.fol",
+        concat!(
+            "fun[exp] size(): int = {\n",
+            "    var values: seq[int] = {1, 2, 3};\n",
+            "    return .len(values);\n",
+            "};\n",
+        ),
+    );
+    write_model_app_package(
+        &app_root,
+        "app",
+        "std",
+        concat!(
+            "use alloclib: pkg = {alloclib};\n",
+            "fun[] main(): int = {\n",
+            "    return .echo(alloclib::src::size());\n",
+            "};\n",
+        ),
+        true,
+    );
+
+    let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build", "--keep-build-dir"]);
+    assert!(
+        build.status.success(),
+        "std alloc-consumer build should succeed: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        String::from_utf8_lossy(&build.stderr)
+    );
+    let emitted = find_file_by_name(&app_root.join(".fol/build"), "main.rs")
+        .expect("std alloc-consumer should emit main.rs");
+    let source = std::fs::read_to_string(&emitted).expect("generated main should load");
+    assert!(source.contains("use fol_runtime::std as rt;"));
+    assert!(!source.contains("use fol_runtime::alloc as rt;"));
+    assert!(!source.contains("use fol_runtime::core as rt;"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn test_core_illegal_dependency_failure_happens_before_emission() {
+    let temp_root = unique_temp_root("model_core_dep_alloc_no_emit");
+    let store_root = temp_root.join("store");
+    let app_root = temp_root.join("app");
+    write_formal_model_package(
+        &store_root.join("alloclib"),
+        "alloclib",
+        "alloc",
+        "lib.fol",
+        "fun[exp] helper(): str = {\n    return \"ok\";\n};\n",
+    );
+    write_model_app_package(
+        &app_root,
+        "app",
+        "core",
+        concat!(
+            "use alloclib: pkg = {alloclib};\n",
+            "fun[] main(): int = {\n",
+            "    var value: str = alloclib::src::helper();\n",
+            "    return 0;\n",
+            "};\n",
+        ),
+        false,
+    );
+
+    let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build", "--keep-build-dir"]);
+    assert!(
+        !build.status.success(),
+        "illegal core alloc-consumer should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        String::from_utf8_lossy(&build.stderr)
+    );
+    assert!(
+        find_file_by_name(&app_root.join(".fol/build"), "main.rs").is_none(),
+        "illegal core alloc-consumer should fail before Rust emission"
+    );
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
 fn test_build_fixtures_emit_runtime_imports_for_each_model() {
     let cases = [
         ("core", "fun[] main(): int = {\n    return 7;\n};\n"),
@@ -2400,6 +2504,40 @@ fn test_cli_run_rejects_explicit_core_run_step_with_step_model_detail() {
 }
 
 #[test]
+fn test_cli_run_reports_missing_entry_step_separately_from_model_rejection() {
+    let temp_root = unique_temp_root("run_missing_entry_step");
+    let root = temp_root.join("demo");
+    std::fs::create_dir_all(root.join("src")).expect("should create source root");
+    std::fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    graph.step(\"docs\", \"Generate docs\");\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .expect("should write build file");
+    std::fs::write(
+        root.join("src/main.fol"),
+        "fun[] helper(): int = {\n    return 0;\n};\n",
+    )
+    .expect("should write source");
+
+    let run = run_fol_in_dir(&root, &["code", "run"]);
+    let stderr = String::from_utf8_lossy(&run.stderr);
+    assert!(!run.status.success(), "missing entry route should be rejected");
+    assert!(stderr.contains("workspace build execution does not define step 'run'"));
+    assert!(stderr.contains("known steps:"));
+    assert!(stderr.contains("docs"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
 fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
     let cases = [
         ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
@@ -2441,6 +2579,68 @@ fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
             generated,
             source
         );
+    }
+}
+
+#[test]
+fn test_model_examples_keep_runtime_imports_clean_across_emitted_rust_trees() {
+    let cases = [
+        (
+            "examples/core_records",
+            "use fol_runtime::core as rt;",
+            Some("use fol_runtime::alloc"),
+            Some("use fol_runtime::std"),
+        ),
+        (
+            "examples/alloc_collections",
+            "use fol_runtime::alloc as rt;",
+            None,
+            Some("use fol_runtime::std"),
+        ),
+        (
+            "examples/std_cli",
+            "use fol_runtime::std as rt;",
+            None,
+            None,
+        ),
+    ];
+
+    for (path, required, forbid_a, forbid_b) in cases {
+        let root = temp_example_root(path);
+        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        assert!(
+            build.status.success(),
+            "example '{path}' should build: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+
+        let rust_files = collect_rust_source_files(&root.join(".fol/build"));
+        assert!(
+            !rust_files.is_empty(),
+            "example '{path}' should emit Rust source files"
+        );
+        let joined = rust_files
+            .iter()
+            .map(|file| std::fs::read_to_string(file).expect("rust source should load"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(
+            joined.contains(required),
+            "example '{path}' emitted tree should contain '{required}'"
+        );
+        if let Some(forbidden) = forbid_a {
+            assert!(
+                !joined.contains(forbidden),
+                "example '{path}' emitted tree should not contain '{forbidden}'"
+            );
+        }
+        if let Some(forbidden) = forbid_b {
+            assert!(
+                !joined.contains(forbidden),
+                "example '{path}' emitted tree should not contain '{forbidden}'"
+            );
+        }
     }
 }
 
@@ -2623,6 +2823,20 @@ fn test_mixed_model_example_keeps_graph_models_and_std_emission() {
         .expect("mixed example should emit main.rs");
     let emitted = std::fs::read_to_string(&generated).expect("generated main should load");
     assert!(emitted.contains("use fol_runtime::std as rt;"));
+}
+
+#[test]
+fn test_work_info_surfaces_model_distribution_for_mixed_model_example() {
+    let root = temp_example_root("examples/mixed_models_workspace");
+    let info = run_fol_in_dir(&root, &["work", "info"]);
+    let stdout = String::from_utf8_lossy(&info.stdout);
+    assert!(
+        info.status.success(),
+        "work info should succeed for mixed-model example: stdout=\n{}\nstderr=\n{}",
+        stdout,
+        String::from_utf8_lossy(&info.stderr)
+    );
+    assert!(stdout.contains("artifact_models=core=1,alloc=1,std=1"));
 }
 
 #[test]

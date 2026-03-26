@@ -18,5 +18,6 @@ fol-resolver = { path = "../../compiler/fol-resolver" }
 fol-typecheck = { path = "../../compiler/fol-typecheck" }
 fol-lower = { path = "../../compiler/fol-lower" }
 fol-backend = { path = "../../execution/fol-backend" }
+fol-build = { path = "../../execution/fol-build" }
 fol-editor = { path = "../fol-editor" }
 fol-diagnostics = { path = "../../compiler/fol-diagnostics" }

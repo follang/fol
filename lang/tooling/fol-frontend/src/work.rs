@@ -3,9 +3,14 @@ use crate::{
     FrontendCommandResult, FrontendConfig, FrontendError, FrontendErrorKind, FrontendResult,
     FrontendWorkspace,
 };
+use fol_build::{evaluate_build_source, BuildEvaluationInputs, BuildEvaluationRequest};
+use fol_package::build_artifact::BuildArtifactFolModel;
 pub fn work_info(workspace: &FrontendWorkspace) -> FrontendCommandResult {
-    let mut result =
-        FrontendCommandResult::new("work info", workspace.info_summary_lines().join("\n"));
+    let mut summary = workspace.info_summary_lines();
+    if let Some(distribution) = artifact_model_distribution_line(workspace) {
+        summary.push(distribution);
+    }
+    let mut result = FrontendCommandResult::new("work info", summary.join("\n"));
     result.artifacts.push(FrontendArtifactSummary::new(
         FrontendArtifactKind::WorkspaceRoot,
         "workspace-root",
@@ -178,6 +183,40 @@ fn shorten_revision(revision: &str) -> String {
     revision.chars().take(12).collect()
 }
 
+fn artifact_model_distribution_line(workspace: &FrontendWorkspace) -> Option<String> {
+    let mut core = 0usize;
+    let mut alloc = 0usize;
+    let mut std = 0usize;
+
+    for member in &workspace.members {
+        let build_path = member.root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path).ok()?;
+        let evaluated = evaluate_build_source(
+            &BuildEvaluationRequest {
+                package_root: member.root.display().to_string(),
+                inputs: BuildEvaluationInputs {
+                    working_directory: member.root.display().to_string(),
+                    ..BuildEvaluationInputs::default()
+                },
+                operations: Vec::new(),
+            },
+            &build_path,
+            &source,
+        )
+        .ok()??;
+
+        for artifact in &evaluated.evaluated.artifacts {
+            match artifact.fol_model {
+                BuildArtifactFolModel::Core => core += 1,
+                BuildArtifactFolModel::Alloc => alloc += 1,
+                BuildArtifactFolModel::Std => std += 1,
+            }
+        }
+    }
+
+    Some(format!("artifact_models=core={core},alloc={alloc},std={std}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{work_deps, work_info, work_list, work_status};
@@ -192,6 +231,44 @@ mod tests {
         assert_eq!(result.command, "work info");
         assert!(result.summary.contains("root=/tmp/demo"));
         assert_eq!(result.artifacts.len(), 1);
+    }
+
+    #[test]
+    fn work_info_surfaces_artifact_model_distribution_for_valid_members() {
+        let root = std::env::temp_dir().join(format!("fol_frontend_work_info_models_{}", std::process::id()));
+        let app = root.join("app");
+        fs::create_dir_all(&app).unwrap();
+        fs::write(
+            app.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    var graph = build.graph();\n",
+                "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+                "    graph.add_static_lib({ name = \"corelib\", root = \"src/core.fol\", fol_model = \"core\" });\n",
+                "    graph.add_static_lib({ name = \"alloclib\", root = \"src/alloc.fol\", fol_model = \"alloc\" });\n",
+                "    return;\n",
+                "};\n",
+            ),
+        )
+        .unwrap();
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app.clone())],
+            std_root_override: None,
+            package_store_root_override: None,
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+            install_prefix: root.join(".fol/install"),
+        };
+
+        let result = work_info(&workspace);
+
+        assert!(result.summary.contains("artifact_models=core=1,alloc=1,std=1"));
+
+        fs::remove_dir_all(&root).ok();
     }
 
     #[test]
