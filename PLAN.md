@@ -368,6 +368,7 @@ Status: complete
 ## Epoch 8: Real `xtra/logtiny` Verification
 
 ### Slice 33
+Status: complete
 
 - update [xtra/logtiny/build.fol](/home/bresilla/data/code/bresilla/fol/xtra/logtiny/build.fol)
   if needed so it remains a valid dependency target:
@@ -376,24 +377,29 @@ Status: complete
   - optional exported artifact
 
 ### Slice 34
+Status: complete
 
 - verify `xtra/logtiny` directly with the local CLI:
   - `code build`
   - built binary execution if applicable
 
 ### Slice 35
+Status: complete
 
 - commit `xtra/logtiny` changes in its own repo with conventional commit title
 
 ### Slice 36
+Status: complete
 
 - push the branch to its remote
 
 ### Slice 37
+Status: complete
 
 - add and push a real tag for verification
 
 ### Slice 38
+Status: complete
 
 - add integration coverage in this repo using the live GitHub `logtiny` repo for:
   - branch
@@ -404,34 +410,41 @@ Status: complete
 ## Epoch 9: Migrate Examples And Remove Old Surface
 
 ### Slice 39
+Status: complete
 
 - migrate [examples/std_logtiny_git/build.fol](/home/bresilla/data/code/bresilla/fol/examples/std_logtiny_git/build.fol)
   to the new shape
 
 ### Slice 40
+Status: complete
 
 - migrate any other examples that still use selector query params
 
 ### Slice 41
+Status: complete
 
 - update integration fixtures and helper-generated build files to the new
   structured fields
 
 ### Slice 42
+Status: complete
 
 - remove all checked-in public examples of query-param selectors
 
 ## Epoch 10: Hardening And Final Cleanup
 
 ### Slice 43
+Status: complete
 
 - audit editor/LSP build completion tests for `version` and `hash`
 
 ### Slice 44
+Status: complete
 
 - ensure diagnostics point users only to the new shape
 
 ### Slice 45
+Status: complete
 
 - update build book chapters:
   - dependency config
@@ -439,6 +452,7 @@ Status: complete
   - verification examples
 
 ### Slice 46
+Status: complete
 
 - add one standalone example package specifically for:
   - git branch pin
@@ -447,10 +461,12 @@ Status: complete
   - git hash verification
 
 ### Slice 47
+Status: complete
 
 - remove stale code/comments/tests that still assume selector query params
 
 ### Slice 48
+Status: complete
 
 - final full pass:
   - `make build`

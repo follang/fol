@@ -2630,11 +2630,11 @@ fn test_lsp_hover_on_empty_document_does_not_crash() {
 fn test_frontend_fetches_public_logtiny_from_github() {
     let temp_root = unique_temp_root("frontend_fetch_public_logtiny");
     let app_root = temp_root.join("app");
-    let remote_root = temp_root.join("logtiny-remote");
-    create_git_package_repo(&remote_root, "logtiny", "0.1.0");
     create_app_with_git_dependency_from_url(
         &app_root,
-        &format!("file://{}", remote_root.display()),
+        "git+https://github.com/bresilla/logtiny.git",
+        Some("tag:v0.1.1"),
+        Some("77df4240d6f0"),
     );
 
     let output = run_fol_in_dir(&app_root, &["pack", "fetch"]);
@@ -2657,12 +2657,74 @@ fn test_frontend_fetches_public_logtiny_from_github() {
     std::fs::remove_dir_all(&temp_root).ok();
 }
 
-fn create_app_with_git_dependency_from_url(app_root: &Path, remote_url: &str) {
+#[test]
+#[ignore = "exercises real github branch/tag/commit/hash git fetches"]
+fn test_frontend_fetches_public_logtiny_version_matrix_from_github() {
+    let cases = [
+        (
+            "branch",
+            "git+https://github.com/bresilla/logtiny.git",
+            Some("branch:develop"),
+            None,
+        ),
+        (
+            "tag",
+            "git+https://github.com/bresilla/logtiny.git",
+            Some("tag:v0.1.1"),
+            None,
+        ),
+        (
+            "commit",
+            "git+https://github.com/bresilla/logtiny.git",
+            Some("commit:77df4240d6f0a28590fc5b8dce8b648b63c17540"),
+            None,
+        ),
+        (
+            "hash",
+            "git+https://github.com/bresilla/logtiny.git",
+            Some("branch:develop"),
+            Some("77df4240d6f0"),
+        ),
+    ];
+
+    for (label, remote_url, version, hash) in cases {
+        let temp_root = unique_temp_root(&format!("frontend_fetch_public_logtiny_{label}"));
+        let app_root = temp_root.join("app");
+        create_app_with_git_dependency_from_url(&app_root, remote_url, version, hash);
+
+        let output = run_fol_in_dir(&app_root, &["pack", "fetch"]);
+        assert!(
+            output.status.success(),
+            "public git fetch should succeed for {label}: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        assert!(
+            app_root.join("fol.lock").is_file(),
+            "public fetch should write fol.lock for {label}"
+        );
+
+        std::fs::remove_dir_all(&temp_root).ok();
+    }
+}
+
+fn create_app_with_git_dependency_from_url(
+    app_root: &Path,
+    remote_url: &str,
+    version: Option<&str>,
+    hash: Option<&str>,
+) {
     std::fs::create_dir_all(app_root.join("src")).expect("Should create app source dir");
     let name = app_root
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("app");
+    let version_field = version
+        .map(|value| format!("        version = \"{value}\",\n"))
+        .unwrap_or_default();
+    let hash_field = hash
+        .map(|value| format!("        hash = \"{value}\",\n"))
+        .unwrap_or_default();
     std::fs::write(
             app_root.join("build.fol"),
             format!(
@@ -2670,7 +2732,13 @@ fn create_app_with_git_dependency_from_url(app_root: &Path, remote_url: &str) {
                     "pro[] build(): non = {{\n",
                     "    var build = .build();\n",
                     "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
-                    "    build.add_dep({{ alias = \"logtiny\", source = \"git\", target = \"git+{remote}\" }});\n",
+                    "    build.add_dep({{\n",
+                    "        alias = \"logtiny\",\n",
+                    "        source = \"git\",\n",
+                    "        target = \"{remote}\",\n",
+                    "{version_field}",
+                    "{hash_field}",
+                    "    }});\n",
                     "    var graph = build.graph();\n",
                     "    var app = graph.add_exe({{ name = \"{name}\", root = \"src/main.fol\" }});\n",
                     "    graph.install(app);\n",
@@ -2679,6 +2747,8 @@ fn create_app_with_git_dependency_from_url(app_root: &Path, remote_url: &str) {
                 ),
                 name = name,
                 remote = remote_url,
+                version_field = version_field,
+                hash_field = hash_field,
             ),
         )
             .expect("Should write app build");
@@ -2687,49 +2757,4 @@ fn create_app_with_git_dependency_from_url(app_root: &Path, remote_url: &str) {
         "fun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write app source");
-}
-
-fn create_git_package_repo(root: &Path, name: &str, version: &str) {
-    std::fs::create_dir_all(root.join("src")).expect("Should create git package source dir");
-    std::fs::write(
-        root.join("build.fol"),
-        format!(
-            concat!(
-                "pro[] build(): non = {{\n",
-                "    var build = .build();\n",
-                "    build.meta({{ name = \"{name}\", version = \"{version}\" }});\n",
-                "    var graph = build.graph();\n",
-                "    var app = graph.add_exe({{\n",
-                "        name = \"logtiny-demo\",\n",
-                "        root = \"src/main.fol\",\n",
-                "    }});\n",
-                "    graph.install(app);\n",
-                "    graph.add_run(app);\n",
-                "}};\n",
-            ),
-            name = name,
-            version = version,
-        ),
-    )
-    .expect("Should write git package build");
-    std::fs::write(
-        root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return 0;\n};\n",
-    )
-    .expect("Should write git package source");
-
-    for args in [
-        vec!["init"],
-        vec!["config", "user.name", "FOL"],
-        vec!["config", "user.email", "fol@example.com"],
-        vec!["add", "."],
-        vec!["commit", "-m", "init"],
-    ] {
-        let status = Command::new("git")
-            .args(&args)
-            .current_dir(root)
-            .status()
-            .expect("Should run git command for fixture repo");
-        assert!(status.success(), "git {:?} should succeed", args);
-    }
 }

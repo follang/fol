@@ -415,6 +415,58 @@ fn lsp_server_returns_dependency_handle_completions_in_build_files() {
 }
 
 #[test]
+fn lsp_server_returns_git_dependency_field_completions_in_build_files() {
+    let (root, _) = sample_package_root("completion_git_dep_fields");
+    let build_file = root.join("build.fol");
+    fs::write(
+        &build_file,
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://github.com/bresilla/logtiny.git\",  });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = fs::read_to_string(&build_file).unwrap();
+    let uri = format!("file://{}", build_file.display());
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(503),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 96,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+
+    let labels = serde_json::from_value::<LspCompletionList>(completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(labels.contains(&"version".to_string()));
+    assert!(labels.contains(&"hash".to_string()));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_returns_visible_named_type_completions_in_type_positions() {
     let (root, uri) = sample_loc_workspace_root("completion_named_types");
     fs::write(

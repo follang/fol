@@ -218,6 +218,10 @@ For git dependencies:
 - `hash` is optional commit-prefix verification
 - selector query params in `target` are not supported
 
+See [examples/build_git_dep_versions](/home/bresilla/data/code/bresilla/fol/examples/build_git_dep_versions)
+for a standalone package that shows branch, tag, commit, and hash-pinned git
+dependencies together.
+
 Supported dependency modes:
 
 - `eager`
