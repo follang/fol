@@ -224,7 +224,7 @@ fn workspace_route_model_guard_rejects_untargeted_non_std_models() {
         "run",
         &[
             fol_backend::BackendFolModel::Core,
-            fol_backend::BackendFolModel::Alloc,
+            fol_backend::BackendFolModel::Mem,
         ],
     )
     .expect_err("untargeted non-std routed run should be rejected");
@@ -233,7 +233,7 @@ fn workspace_route_model_guard_rejects_untargeted_non_std_models() {
     assert!(error
         .message()
         .contains("run command requires 'fol_model = std'"));
-    assert!(error.message().contains("core, alloc"));
+    assert!(error.message().contains("core, mem"));
 }
 
 #[test]

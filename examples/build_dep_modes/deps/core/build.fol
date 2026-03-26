@@ -6,7 +6,7 @@ pro[] build(): non = {
     var lib = graph.add_static_lib({
         name = "core",
         root = "src/root.fol",
-        fol_model = "alloc",
+        fol_model = "mem",
     });
     graph.install(lib);
     return;

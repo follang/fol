@@ -49,10 +49,10 @@ package root.
 
 - `core`
   no heap, no OS/runtime services
-- `alloc`
+- `mem`
   heap-backed facilities, still no OS/runtime services
 - `std`
-  hosted/runtime services on top of `alloc`
+  hosted/runtime services on top of `mem`
 
 The recommended style is to spell `fol_model` explicitly on every artifact so
 the capability contract is visible in `build.fol`.
@@ -63,7 +63,7 @@ The important boundary is semantic and runtime-facing:
   `map`
 - `core` artifacts may still use arrays, records, routines, control flow, and
   `defer`
-- `alloc` artifacts may use heap-backed runtime types but not hosted services
+- `mem` artifacts may use heap-backed runtime types but not hosted services
 - `std` artifacts are the only artifacts that may use hosted services such as
   `.echo(...)` and ordinary host-executed `run` / `test`
 - `std` should not be treated as the informal baseline just because the current
@@ -89,10 +89,10 @@ pro[] build(): non = {
         root = "core/lib.fol",
         fol_model = "core",
     });
-    var alloclib = graph.add_static_lib({
-        name = "alloclib",
-        root = "alloc/lib.fol",
-        fol_model = "alloc",
+    var memlib = graph.add_static_lib({
+        name = "memlib",
+        root = "mem/lib.fol",
+        fol_model = "mem",
     });
     var tool = graph.add_exe({
         name = "tool",

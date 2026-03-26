@@ -747,9 +747,9 @@ fn assert_semantic_model_via_hover(build_model: &str, expected: fol_typecheck::T
 }
 
 #[test]
-fn lsp_server_keeps_model_context_through_hover_for_core_alloc_and_std() {
+fn lsp_server_keeps_model_context_through_hover_for_core_mem_and_std() {
     assert_semantic_model_via_hover("core", fol_typecheck::TypecheckCapabilityModel::Core);
-    assert_semantic_model_via_hover("alloc", fol_typecheck::TypecheckCapabilityModel::Alloc);
+    assert_semantic_model_via_hover("mem", fol_typecheck::TypecheckCapabilityModel::Mem);
     assert_semantic_model_via_hover("std", fol_typecheck::TypecheckCapabilityModel::Std);
 }
 
@@ -781,7 +781,7 @@ fn lsp_server_keeps_model_context_isolated_across_mixed_workspace_packages() {
             alloc_uri.as_str(),
             1_u32,
             12_u32,
-            fol_typecheck::TypecheckCapabilityModel::Alloc,
+            fol_typecheck::TypecheckCapabilityModel::Mem,
         ),
         (
             782_i64,
@@ -2729,7 +2729,7 @@ fn lsp_server_surfaces_alloc_echo_model_diagnostics_from_open_documents() {
         concat!(
             "pro[] build(): non = {\n",
             "    var graph = .build().graph();\n",
-            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"mem\" });\n",
             "};\n",
         ),
     )
@@ -2745,7 +2745,7 @@ fn lsp_server_surfaces_alloc_echo_model_diagnostics_from_open_documents() {
         .iter()
         .any(|diagnostic| diagnostic
             .message
-            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'alloc'")));
+            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'mem'")));
 
     fs::remove_dir_all(root).ok();
 }

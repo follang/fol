@@ -102,7 +102,7 @@ fn lsp_server_keeps_build_file_semantic_tokens_for_all_model_declarations() {
             "pro[] build(): non = {\n",
             "    var graph = .build().graph();\n",
             "    graph.add_static_lib({ name = \"corelib\", root = \"src/main.fol\", fol_model = \"core\" });\n",
-            "    graph.add_static_lib({ name = \"alloclib\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
+            "    graph.add_static_lib({ name = \"alloclib\", root = \"src/main.fol\", fol_model = \"mem\" });\n",
             "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
             "};\n",
         ),
@@ -132,7 +132,7 @@ fn lsp_server_keeps_build_file_semantic_tokens_for_all_model_declarations() {
 
     assert!(
         decoded.iter().filter(|token| token.0 >= 2 && token.0 <= 4).count() >= 6,
-        "build files with core/alloc/std declarations should keep semantic tokens on all model lines: {decoded:?}"
+        "build files with core/mem/std declarations should keep semantic tokens on all model lines: {decoded:?}"
     );
 
     fs::remove_dir_all(root).ok();

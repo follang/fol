@@ -313,7 +313,7 @@ fn infer_active_fol_model(
 fn typecheck_model_for_build_model(model: BuildArtifactFolModel) -> TypecheckCapabilityModel {
     match model {
         BuildArtifactFolModel::Core => TypecheckCapabilityModel::Core,
-        BuildArtifactFolModel::Alloc => TypecheckCapabilityModel::Alloc,
+        BuildArtifactFolModel::Mem => TypecheckCapabilityModel::Mem,
         BuildArtifactFolModel::Std => TypecheckCapabilityModel::Std,
     }
 }
@@ -489,7 +489,7 @@ mod tests {
 
         assert_eq!(app_mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
         assert_eq!(core_mapping.active_fol_model, Some(TypecheckCapabilityModel::Core));
-        assert_eq!(alloc_mapping.active_fol_model, Some(TypecheckCapabilityModel::Alloc));
+        assert_eq!(alloc_mapping.active_fol_model, Some(TypecheckCapabilityModel::Mem));
 
         fs::remove_dir_all(root).ok();
     }
@@ -505,7 +505,7 @@ mod tests {
             concat!(
                 "pro[] build(): non = {\n",
                 "    var graph = .build().graph();\n",
-                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"mem\" });\n",
                 "};\n",
             ),
         )
@@ -523,7 +523,7 @@ mod tests {
 
         let mapping = map_document_workspace(&root.join("notes.fol"), &EditorConfig::default())
             .expect("mapping should succeed for package-local helper file");
-        assert_eq!(mapping.active_fol_model, Some(TypecheckCapabilityModel::Alloc));
+        assert_eq!(mapping.active_fol_model, Some(TypecheckCapabilityModel::Mem));
 
         fs::remove_dir_all(root).ok();
     }

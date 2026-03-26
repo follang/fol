@@ -210,7 +210,7 @@ fn lsp_server_locks_dot_intrinsic_completion_matrix() {
 
 #[test]
 fn lsp_server_filters_echo_from_core_and_alloc_dot_completion() {
-    for (model, expected_echo) in [("core", false), ("alloc", false), ("std", true)] {
+    for (model, expected_echo) in [("core", false), ("mem", false), ("std", true)] {
         let (root, uri) = sample_package_root(&format!("completion_dot_model_{model}"));
         fs::write(
             root.join("build.fol"),

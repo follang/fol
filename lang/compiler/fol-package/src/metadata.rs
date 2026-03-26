@@ -984,7 +984,7 @@ mod tests {
                 "pro[] build(): non = {\n",
                 "    var build = .build();\n",
                 "    build.meta({ name = \"demo\", version = \"1.0.0\" });\n",
-                "    build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://github.com/bresilla/logtiny.git\", version = \"tag:v0.1.1\", hash = \"77df4240d6f0\" });\n",
+                "    build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://github.com/bresilla/logtiny.git\", version = \"tag:v0.1.2\", hash = \"f49abfa1038f\" });\n",
                 "}\n",
             ),
         );
@@ -1000,16 +1000,16 @@ mod tests {
         assert_eq!(
             metadata.dependencies[0].git_version,
             Some(fol_build::GitDependencyVersionSelector::Tag(
-                "v0.1.1".to_string()
+                "v0.1.2".to_string()
             ))
         );
         assert_eq!(
             metadata.dependencies[0].git_hash.as_deref(),
-            Some("77df4240d6f0")
+            Some("f49abfa1038f")
         );
         assert_eq!(
             metadata.dependencies[0].git_locator_string(),
-            "https://github.com/bresilla/logtiny.git#tag:v0.1.1#hash:77df4240d6f0"
+            "https://github.com/bresilla/logtiny.git#tag:v0.1.2#hash:f49abfa1038f"
         );
 
         fs::remove_dir_all(build_path.parent().unwrap()).ok();

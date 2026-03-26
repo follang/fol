@@ -222,7 +222,7 @@ mod tests {
         let alloc_emitted = emit_main_rs_for_config(
             &session,
             &BackendConfig {
-                fol_model: BackendFolModel::Alloc,
+                fol_model: BackendFolModel::Mem,
                 ..BackendConfig::default()
             },
         )
@@ -375,7 +375,7 @@ mod tests {
         let artifact = emit_generated_crate_skeleton_for_config(
             &session,
             &BackendConfig {
-                fol_model: BackendFolModel::Alloc,
+                fol_model: BackendFolModel::Mem,
                 ..BackendConfig::default()
             },
         )
@@ -434,7 +434,7 @@ mod tests {
         let artifact = emit_generated_crate_skeleton_for_config(
             &session,
             &BackendConfig {
-                fol_model: BackendFolModel::Alloc,
+                fol_model: BackendFolModel::Mem,
                 ..BackendConfig::default()
             },
         )
@@ -526,7 +526,7 @@ mod tests {
         assert!(!core_snapshot.contains("use fol_runtime::alloc"));
         assert!(!core_snapshot.contains("use fol_runtime::std"));
 
-        let alloc_root = temp_root("alloc_len_emit");
+        let alloc_root = temp_root("mem_len_emit");
         let alloc_fixture = write_fixture(
             &alloc_root,
             concat!(
@@ -540,7 +540,7 @@ mod tests {
         let alloc_artifact = emit_generated_crate_skeleton_for_config(
             &alloc_session,
             &BackendConfig {
-                fol_model: BackendFolModel::Alloc,
+                fol_model: BackendFolModel::Mem,
                 ..BackendConfig::default()
             },
         )

@@ -10,7 +10,7 @@ pro[] build(): non = {
     var alloclib = graph.add_static_lib({
         name = "alloclib",
         root = "alloc/lib.fol",
-        fol_model = "alloc",
+        fol_model = "mem",
     });
     var tool = graph.add_exe({
         name = "tool",

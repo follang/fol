@@ -291,10 +291,10 @@ mod tests {
         let lockfile = PackageLockfile::new(vec![PackageLockEntry {
             alias: "logtiny".to_string(),
             source_kind: PackageDependencySourceKind::Git,
-            locator: "git+https://github.com/bresilla/logtiny.git#tag:v0.1.1#hash:77df4240d6f0"
+            locator: "git+https://github.com/bresilla/logtiny.git#tag:v0.1.2#hash:f49abfa1038f"
                 .to_string(),
-            selected_revision: "77df4240d6f0a28590fc5b8dce8b648b63c17540".to_string(),
-            materialized_root: ".fol/pkg/git/github.com/bresilla/logtiny/rev_77df4240d6f0a28590fc5b8dce8b648b63c17540"
+            selected_revision: "f49abfa1038f0f5a3a2e09b9b3dd533182551006".to_string(),
+            materialized_root: ".fol/pkg/git/github.com/bresilla/logtiny/rev_f49abfa1038f0f5a3a2e09b9b3dd533182551006"
                 .to_string(),
         }]);
 
@@ -302,7 +302,7 @@ mod tests {
         let reparsed = parse_package_lockfile(&rendered)
             .expect("structured git lockfile locator should roundtrip");
 
-        assert!(rendered.contains("#tag:v0.1.1#hash:77df4240d6f0"));
+        assert!(rendered.contains("#tag:v0.1.2#hash:f49abfa1038f"));
         assert_eq!(reparsed, lockfile);
     }
 }

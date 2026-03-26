@@ -64,7 +64,7 @@ pub fn editor_model_capability(model: TypecheckCapabilityModel) -> EditorModelCa
             heap: false,
             hosted_runtime: false,
         },
-        TypecheckCapabilityModel::Alloc => EditorModelCapability {
+        TypecheckCapabilityModel::Mem => EditorModelCapability {
             heap: true,
             hosted_runtime: false,
         },
@@ -126,7 +126,7 @@ mod tests {
     }
 
     #[test]
-    fn editor_model_capabilities_follow_core_alloc_std_shape() {
+    fn editor_model_capabilities_follow_core_mem_std_shape() {
         assert_eq!(
             editor_model_capability(TypecheckCapabilityModel::Core),
             super::EditorModelCapability {
@@ -135,7 +135,7 @@ mod tests {
             }
         );
         assert_eq!(
-            editor_model_capability(TypecheckCapabilityModel::Alloc),
+            editor_model_capability(TypecheckCapabilityModel::Mem),
             super::EditorModelCapability {
                 heap: true,
                 hosted_runtime: false,
@@ -153,7 +153,7 @@ mod tests {
             EditorTypeFamily::String
         ));
         assert!(editor_type_family_available_in_model(
-            TypecheckCapabilityModel::Alloc,
+            TypecheckCapabilityModel::Mem,
             EditorTypeFamily::String
         ));
     }
@@ -202,7 +202,7 @@ mod tests {
             echo
         ));
         assert!(!editor_intrinsic_available_in_model(
-            TypecheckCapabilityModel::Alloc,
+            TypecheckCapabilityModel::Mem,
             echo
         ));
         assert!(editor_intrinsic_available_in_model(
@@ -249,7 +249,7 @@ mod tests {
                 [(echo, false), (len, true)],
             ),
             (
-                TypecheckCapabilityModel::Alloc,
+                TypecheckCapabilityModel::Mem,
                 super::EditorModelCapability {
                     heap: true,
                     hosted_runtime: false,

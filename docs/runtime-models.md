@@ -23,7 +23,7 @@ Import reminder:
 Recommended style:
 
 - always spell `fol_model` explicitly in `build.fol`
-- treat `core`, `alloc`, and `std` as contract choices, not convenience labels
+- treat `core`, `mem`, and `std` as contract choices, not convenience labels
 - do not treat `std` as the informal baseline just because the current backend
   emits hosted Rust
 
@@ -81,7 +81,7 @@ fun[] label(): str = {
 };
 ```
 
-### `alloc`
+### `mem`
 
 Meaning:
 
@@ -103,7 +103,7 @@ Still forbidden:
 - hosted `run` / `test` execution semantics
 - process/console/filesystem/network services
 
-Choose `alloc` when:
+Choose `mem` when:
 
 - the artifact needs strings or dynamic containers
 - the artifact still should not depend on hosted OS/runtime services
@@ -121,7 +121,7 @@ Forbidden example:
 
 ```fol
 fun[] main(): int = {
-    .echo("alloc-nope");
+    .echo("mem-nope");
     return 0;
 };
 ```
@@ -130,7 +130,7 @@ fun[] main(): int = {
 
 Meaning:
 
-- hosted runtime services on top of `alloc`
+- hosted runtime services on top of `mem`
 
 Adds:
 
@@ -166,7 +166,7 @@ surfaces automatically.
 ## Quick selection rule
 
 - pick `core` first if the artifact can stay array-only and no-heap
-- move to `alloc` only when you actually need `str` or dynamic containers
+- move to `mem` only when you actually need `str` or dynamic containers
 - move to `std` only when you actually need hosted runtime behavior
 
 The intent is to keep capability growth explicit. `std` is not the semantic
@@ -185,7 +185,7 @@ graph.add_static_lib({
 });
 ```
 
-Move to `alloc` when the artifact itself genuinely needs heap-backed strings or
+Move to `mem` when the artifact itself genuinely needs heap-backed strings or
 dynamic containers:
 
 ```fol
@@ -193,7 +193,7 @@ var graph = .build().graph();
 graph.add_static_lib({
     name = "text",
     root = "src/lib.fol",
-    fol_model = "alloc",
+    fol_model = "mem",
 });
 ```
 
@@ -212,15 +212,15 @@ graph.add_exe({
 Direct boundary reminder:
 
 - a `core` artifact must not declare `str`, `seq`, `vec`, `set`, or `map`
-- an `alloc` artifact must not call `.echo(...)`
+- a `mem` artifact must not call `.echo(...)`
 
 Transitive boundary reminder:
 
-- a `core` artifact still cannot consume heap-backed API from an `alloc`
+- a `core` artifact still cannot consume heap-backed API from a `mem`
   dependency
-- an `alloc` artifact still cannot consume hosted-only API from a `std`
+- a `mem` artifact still cannot consume hosted-only API from a `std`
   dependency
-- a `std` artifact may consume both `core` and `alloc` dependencies in one
+- a `std` artifact may consume both `core` and `mem` dependencies in one
   graph
 
 ## Transitive boundary rule
@@ -230,11 +230,11 @@ the dependency's own artifact boundary.
 
 That means:
 
-- a `core` artifact cannot consume heap-backed API from an `alloc` package just
-  because the dependency itself was declared with `fol_model = "alloc"`
-- a `core` or `alloc` artifact cannot reach `.echo(...)` indirectly through an
+- a `core` artifact cannot consume heap-backed API from a `mem` package just
+  because the dependency itself was declared with `fol_model = "mem"`
+- a `core` or `mem` artifact cannot reach `.echo(...)` indirectly through an
   imported `std` package
-- a `std` artifact may consume `core` and `alloc` packages in the same graph
+- a `std` artifact may consume `core` and `mem` packages in the same graph
 
 The consuming artifact model always wins.
 
@@ -243,7 +243,7 @@ The consuming artifact model always wins.
 | Model   | Heap | Hosted runtime | Typical artifact shape |
 |---------|------|----------------|------------------------|
 | `core`  | no   | no             | embedded logic, fixed-shape libs |
-| `alloc` | yes  | no             | heap utilities, container-heavy libs |
+| `mem` | yes  | no             | heap utilities, container-heavy libs |
 | `std`   | yes  | yes            | CLIs, host tools, integration executables |
 
 ## Current implementation status
@@ -253,7 +253,7 @@ Implemented today:
 - `.echo(...)` requires `std`
 - `str`, `vec`, `seq`, `set`, and `map` are rejected in `core`
 - array `.len(...)` stays valid in `core`
-- dynamic/string `.len(...)` requires `alloc` or `std`
+- dynamic/string `.len(...)` requires `mem` or `std`
 - routed `run` / `test` reject non-`std` artifacts
 - emitted Rust imports the matching `fol_runtime::{core,alloc,std}` module
 - `fol-runtime` is the single runtime crate with internal `core` / `alloc` /

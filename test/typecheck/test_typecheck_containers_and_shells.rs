@@ -659,7 +659,7 @@ fn alloc_model_accepts_dynamic_length_queries() {
             ),
         )],
         TypecheckConfig {
-            capability_model: TypecheckCapabilityModel::Alloc,
+            capability_model: TypecheckCapabilityModel::Mem,
         },
     );
 
@@ -671,7 +671,7 @@ fn alloc_model_accepts_dynamic_length_queries() {
                 .and_then(|node| node.inferred_type)
                 .and_then(|type_id| typed.type_table().get(type_id)),
             Some(&CheckedType::Builtin(BuiltinType::Int)),
-            "Expected {name} to retain dynamic .len(...) support in 'fol_model = alloc'",
+            "Expected {name} to retain dynamic .len(...) support in 'fol_model = mem'",
         );
     }
 }

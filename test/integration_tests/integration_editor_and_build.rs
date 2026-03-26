@@ -77,16 +77,24 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     target
 }
 
+fn expected_runtime_import_for_model(model: &str) -> String {
+    let runtime_module = match model {
+        "mem" => "alloc",
+        other => other,
+    };
+    format!("use fol_runtime::{runtime_module} as rt;")
+}
+
 fn positive_runtime_model_examples() -> &'static [(&'static str, &'static str)] {
     &[
         ("examples/core_blink_shape", "core"),
         ("examples/core_defer", "core"),
         ("examples/core_records", "core"),
         ("examples/core_surface_showcase", "core"),
-        ("examples/alloc_defaults", "alloc"),
-        ("examples/alloc_containers", "alloc"),
-        ("examples/alloc_collections", "alloc"),
-        ("examples/alloc_surface_showcase", "alloc"),
+        ("examples/alloc_defaults", "mem"),
+        ("examples/alloc_containers", "mem"),
+        ("examples/alloc_collections", "mem"),
+        ("examples/alloc_surface_showcase", "mem"),
         ("examples/std_bundled_fmt", "std"),
         ("examples/std_cli", "std"),
         ("examples/std_echo_min", "std"),
@@ -767,7 +775,7 @@ fn test_build_fixture_alloc_model_supports_string_values() {
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
-            String::from_utf8_lossy(&build.stdout).contains("fol_model=alloc"),
+            String::from_utf8_lossy(&build.stdout).contains("fol_model=mem"),
             "alloc string fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&build.stdout),
             String::from_utf8_lossy(&build.stderr)
@@ -805,7 +813,7 @@ fn test_build_fixture_alloc_model_supports_full_heap_surface() {
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
-        String::from_utf8_lossy(&build.stdout).contains("fol_model=alloc"),
+        String::from_utf8_lossy(&build.stdout).contains("fol_model=mem"),
         "alloc full-surface fixture should surface its model in the build summary: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
@@ -1002,7 +1010,7 @@ fn test_build_fixture_mixed_models_workspace_keeps_per_artifact_models() {
     );
     assert_eq!(
         alloc.fol_model,
-        fol_package::build_artifact::BuildArtifactFolModel::Alloc
+        fol_package::build_artifact::BuildArtifactFolModel::Mem
     );
     assert_eq!(
         tool.fol_model,
@@ -1069,7 +1077,7 @@ fn test_core_artifact_rejects_transitive_alloc_pkg_dependency() {
     write_formal_model_package(
         &store_root.join("alloclib"),
         "alloclib",
-        "alloc",
+        "mem",
         "lib.fol",
         "fun[exp] helper(): str = {\n    return \"ok\";\n};\n",
     );
@@ -1147,7 +1155,7 @@ fn test_alloc_artifact_accepts_transitive_alloc_pkg_dependency() {
     write_formal_model_package(
         &store_root.join("alloclib"),
         "alloclib",
-        "alloc",
+        "mem",
         "lib.fol",
         concat!(
             "fun[exp] size(): int = {\n",
@@ -1159,7 +1167,7 @@ fn test_alloc_artifact_accepts_transitive_alloc_pkg_dependency() {
     write_model_app_package(
         &app_root,
         "app",
-        "alloc",
+        "mem",
         concat!(
             "use alloclib: pkg = {alloclib};\n",
             "fun[] main(): int = {\n",
@@ -1176,7 +1184,7 @@ fn test_alloc_artifact_accepts_transitive_alloc_pkg_dependency() {
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
-    assert!(String::from_utf8_lossy(&build.stdout).contains("fol_model=alloc"));
+    assert!(String::from_utf8_lossy(&build.stdout).contains("fol_model=mem"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
@@ -1196,7 +1204,7 @@ fn test_alloc_artifact_rejects_transitive_std_echo_dependency() {
     write_model_app_package(
         &app_root,
         "app",
-        "alloc",
+        "mem",
         concat!(
             "use stdlib: pkg = {stdlib};\n",
             "fun[] main(): int = {\n",
@@ -1215,7 +1223,7 @@ fn test_alloc_artifact_rejects_transitive_std_echo_dependency() {
         stderr
     );
     assert!(stderr.contains("'.echo(...)' requires 'fol_model = std'"));
-    assert!(stderr.contains("current artifact model is 'alloc'"));
+    assert!(stderr.contains("current artifact model is 'mem'"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
@@ -1235,7 +1243,7 @@ fn test_std_artifact_accepts_mixed_core_and_alloc_pkg_dependencies() {
     write_formal_model_package(
         &store_root.join("alloclib"),
         "alloclib",
-        "alloc",
+        "mem",
         "lib.fol",
         concat!(
             "fun[exp] size(): int = {\n",
@@ -1302,7 +1310,7 @@ fn test_std_consumer_of_alloc_pkg_dependency_emits_std_runtime_only() {
     write_formal_model_package(
         &store_root.join("alloclib"),
         "alloclib",
-        "alloc",
+        "mem",
         "lib.fol",
         concat!(
             "fun[exp] size(): int = {\n",
@@ -1349,7 +1357,7 @@ fn test_core_illegal_dependency_failure_happens_before_emission() {
     write_formal_model_package(
         &store_root.join("alloclib"),
         "alloclib",
-        "alloc",
+        "mem",
         "lib.fol",
         "fun[exp] helper(): str = {\n    return \"ok\";\n};\n",
     );
@@ -1387,7 +1395,7 @@ fn test_build_fixtures_emit_runtime_imports_for_each_model() {
     let cases = [
         ("core", "fun[] main(): int = {\n    return 7;\n};\n"),
         (
-            "alloc",
+            "mem",
             "fun[] main(): str = {\n    return \"alloc-ready\";\n};\n",
         ),
         ("std", "fun[] main(): int = {\n    return .echo(7);\n};\n"),
@@ -1432,7 +1440,7 @@ fn test_build_fixtures_emit_runtime_imports_for_each_model() {
             .expect("generated backend source should exist");
         let source =
             std::fs::read_to_string(&generated).expect("generated backend source should load");
-        let expected_import = format!("use fol_runtime::{model} as rt;");
+        let expected_import = expected_runtime_import_for_model(model);
 
         assert!(
             source.contains(&expected_import),
@@ -1537,10 +1545,10 @@ fn test_cli_example_build_summaries_surface_expected_models() {
         ("examples/core_defer", "fol_model=core"),
         ("examples/core_records", "fol_model=core"),
         ("examples/core_surface_showcase", "fol_model=core"),
-        ("examples/alloc_defaults", "fol_model=alloc"),
-        ("examples/alloc_containers", "fol_model=alloc"),
-        ("examples/alloc_collections", "fol_model=alloc"),
-        ("examples/alloc_surface_showcase", "fol_model=alloc"),
+        ("examples/alloc_defaults", "fol_model=mem"),
+        ("examples/alloc_containers", "fol_model=mem"),
+        ("examples/alloc_collections", "fol_model=mem"),
+        ("examples/alloc_surface_showcase", "fol_model=mem"),
         ("examples/std_bundled_fmt", "fol_model=std"),
         ("examples/std_cli", "fol_model=std"),
         ("examples/std_echo_min", "fol_model=std"),
@@ -1760,7 +1768,7 @@ fn test_build_rejects_std_imports_under_alloc_model() {
             "    var build = .build();\n",
             "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
             "    var graph = build.graph();\n",
-            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"mem\" });\n",
             "    graph.install(app);\n",
             "};\n",
         ),
@@ -1776,7 +1784,7 @@ fn test_build_rejects_std_imports_under_alloc_model() {
     let stderr = String::from_utf8_lossy(&build.stderr);
     assert!(!build.status.success(), "alloc std-import app should fail");
     assert!(
-        stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'alloc'"),
+        stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'mem'"),
         "alloc std-import app should keep the capability diagnostic: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
@@ -2214,7 +2222,7 @@ fn test_build_dependency_surfaces_stay_empty_without_explicit_exports() {
                 "    var build = .build();\n",
                 "    build.meta({ name = \"shared\", version = \"0.1.0\" });\n",
                 "    var graph = build.graph();\n",
-                "    var lib = graph.add_static_lib({ name = \"shared\", root = \"src/root.fol\", fol_model = \"alloc\" });\n",
+                "    var lib = graph.add_static_lib({ name = \"shared\", root = \"src/root.fol\", fol_model = \"mem\" });\n",
                 "    graph.install(lib);\n",
                 "    return;\n",
                 "};\n",
@@ -2366,7 +2374,7 @@ fn test_cli_build_rejects_negative_build_surface_examples() {
                     "    var build = .build();\n",
                     "    build.meta({ name = \"shared\", version = \"0.1.0\" });\n",
                     "    var graph = build.graph();\n",
-                    "    var lib = graph.add_static_lib({ name = \"shared\", root = \"src/root.fol\", fol_model = \"alloc\" });\n",
+                    "    var lib = graph.add_static_lib({ name = \"shared\", root = \"src/root.fol\", fol_model = \"mem\" });\n",
                     "    graph.install(lib);\n",
                     "    return;\n",
                     "};\n",
@@ -2484,7 +2492,7 @@ fn test_cli_build_and_run_mixed_model_example_workspace() {
     }));
     assert!(artifacts.iter().any(|a| {
         a.name == "alloclib"
-            && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Alloc
+            && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Mem
     }));
     assert!(artifacts.iter().any(|a| {
         a.name == "tool" && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Std
@@ -2561,7 +2569,7 @@ fn test_cli_run_rejects_alloc_example_route() {
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"alloc\",\n",
+            "        fol_model = \"mem\",\n",
             "    });\n",
             "    graph.add_run(app);\n",
             "    return;\n",
@@ -2578,7 +2586,7 @@ fn test_cli_run_rejects_alloc_example_route() {
     let run = run_fol_in_dir(&root, &["code", "run"]);
     let stderr = String::from_utf8_lossy(&run.stderr);
     assert!(!run.status.success(), "alloc route should be rejected");
-    assert!(stderr.contains("fol_model = alloc"));
+    assert!(stderr.contains("fol_model = mem"));
     assert!(stderr.contains("run requires 'fol_model = std'"));
 
     std::fs::remove_dir_all(&temp_root).ok();
@@ -2599,7 +2607,7 @@ fn test_cli_test_rejects_alloc_example_route() {
             "    var tests = graph.add_test({\n",
             "        name = \"demo-tests\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"alloc\",\n",
+            "        fol_model = \"mem\",\n",
             "    });\n",
             "    return;\n",
             "};\n",
@@ -2633,7 +2641,7 @@ fn test_cli_run_rejects_ambiguous_non_std_models_with_resolved_models() {
             "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = build.graph();\n",
             "    var blink = graph.add_exe({ name = \"blink\", root = \"src/blink.fol\", fol_model = \"core\" });\n",
-            "    var heap = graph.add_exe({ name = \"heap\", root = \"src/heap.fol\", fol_model = \"alloc\" });\n",
+            "    var heap = graph.add_exe({ name = \"heap\", root = \"src/heap.fol\", fol_model = \"mem\" });\n",
             "    graph.install(blink);\n",
             "    graph.install(heap);\n",
             "    return;\n",
@@ -2656,7 +2664,7 @@ fn test_cli_run_rejects_ambiguous_non_std_models_with_resolved_models() {
     let stderr = String::from_utf8_lossy(&run.stderr);
     assert!(!run.status.success(), "mixed non-std route should be rejected");
     assert!(stderr.contains("requires an explicit named step"));
-    assert!(stderr.contains("resolved model(s): core, alloc"));
+    assert!(stderr.contains("resolved model(s): core, mem"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
@@ -2862,8 +2870,8 @@ fn test_std_logtiny_git_example_builds_against_local_git_remote() {
                 "target = \"git+https://github.com/bresilla/logtiny.git\",",
                 &format!("target = \"git+file://{}\",", remote_root.display()),
             )
-            .replace("version = \"tag:v0.1.1\",", "version = \"tag:v0.1.0\",")
-            .replace("hash = \"77df4240d6f0\",", &format!("hash = \"{short_hash}\",")),
+            .replace("version = \"tag:v0.1.2\",", "version = \"tag:v0.1.0\",")
+            .replace("hash = \"f49abfa1038f\",", &format!("hash = \"{short_hash}\",")),
     )
     .expect("git example build file should rewrite");
 
@@ -2948,10 +2956,10 @@ fn test_std_logtiny_git_example_supports_branch_tag_commit_and_hash_fields() {
                 "target = \"git+https://github.com/bresilla/logtiny.git\",",
                 &target_line,
             )
-            .replace("version = \"tag:v0.1.1\",", &version_line);
+            .replace("version = \"tag:v0.1.2\",", &version_line);
         let build_source = match hash_line {
-            Some(hash_line) => build_source.replace("hash = \"77df4240d6f0\",", &hash_line),
-            None => build_source.replace("        hash = \"77df4240d6f0\",\n", ""),
+            Some(hash_line) => build_source.replace("hash = \"f49abfa1038f\",", &hash_line),
+            None => build_source.replace("        hash = \"f49abfa1038f\",\n", ""),
         };
         std::fs::write(
             &build_path,
@@ -3002,7 +3010,7 @@ fn test_mixed_model_example_keeps_graph_models_and_std_emission() {
     }));
     assert!(artifacts.iter().any(|a| {
         a.name == "alloclib"
-            && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Alloc
+            && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Mem
     }));
     assert!(artifacts.iter().any(|a| {
         a.name == "tool" && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Std
@@ -3033,7 +3041,7 @@ fn test_work_info_surfaces_model_distribution_for_mixed_model_example() {
         stdout,
         String::from_utf8_lossy(&info.stderr)
     );
-    assert!(stdout.contains("artifact_models=core=1,alloc=1,std=1"));
+    assert!(stdout.contains("artifact_models=core=1,mem=1,std=1"));
 }
 
 #[test]
@@ -3140,7 +3148,7 @@ fn test_positive_runtime_model_examples_build_with_expected_models_and_runtime_i
                 .expect("generated backend source should exist");
             let source =
                 std::fs::read_to_string(&generated).expect("generated backend source should load");
-            let expected_import = format!("use fol_runtime::{expected_model} as rt;");
+            let expected_import = expected_runtime_import_for_model(expected_model);
             assert!(
                 source.contains(&expected_import),
                 "positive runtime model example '{path}' should emit '{expected_import}' in {:?}:\n{}",
@@ -3202,7 +3210,7 @@ fn test_runtime_model_regression_matrix_stays_coherent_across_layers() {
         (
             "test/app/build/model_alloc_surface_full",
             true,
-            Some("fol_model=alloc"),
+            Some("fol_model=mem"),
         ),
         (
             "examples/fail_core_heap_reject",
@@ -3351,7 +3359,7 @@ fn test_build_fixture_alloc_model_rejects_echo() {
         stderr
     );
     assert!(stderr.contains("'.echo(...)' requires 'fol_model = std'"));
-    assert!(stderr.contains("current artifact model is 'alloc'"));
+    assert!(stderr.contains("current artifact model is 'mem'"));
 }
 
 #[test]
@@ -3617,7 +3625,7 @@ fn test_cli_code_build_keeps_alloc_echo_boundary_diagnostic() {
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"alloc\",\n",
+            "        fol_model = \"mem\",\n",
             "    });\n",
             "    graph.install(app);\n",
             "    return;\n",
@@ -3637,7 +3645,7 @@ fn test_cli_code_build_keeps_alloc_echo_boundary_diagnostic() {
     assert!(!output.status.success(), "alloc echo boundary should fail");
     assert!(
         stderr
-            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'alloc'"),
+            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'mem'"),
         "CLI should preserve the alloc echo boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&output.stdout),
         stderr
@@ -3866,8 +3874,8 @@ fn test_frontend_fetches_public_logtiny_from_github() {
     create_app_with_git_dependency_from_url(
         &app_root,
         "git+https://github.com/bresilla/logtiny.git",
-        Some("tag:v0.1.1"),
-        Some("77df4240d6f0"),
+        Some("tag:v0.1.2"),
+        Some("f49abfa1038f"),
     );
 
     let output = run_fol_in_dir(&app_root, &["pack", "fetch"]);
@@ -3903,20 +3911,20 @@ fn test_frontend_fetches_public_logtiny_version_matrix_from_github() {
         (
             "tag",
             "git+https://github.com/bresilla/logtiny.git",
-            Some("tag:v0.1.1"),
+            Some("tag:v0.1.2"),
             None,
         ),
         (
             "commit",
             "git+https://github.com/bresilla/logtiny.git",
-            Some("commit:77df4240d6f0a28590fc5b8dce8b648b63c17540"),
+            Some("commit:f49abfa1038f0f5a3a2e09b9b3dd533182551006"),
             None,
         ),
         (
             "hash",
             "git+https://github.com/bresilla/logtiny.git",
             Some("branch:develop"),
-            Some("77df4240d6f0"),
+            Some("f49abfa1038f"),
         ),
     ];
 

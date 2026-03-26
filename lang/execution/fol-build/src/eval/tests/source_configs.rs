@@ -120,7 +120,7 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
     );
     assert_eq!(
         evaluated.evaluated.artifacts[1].fol_model,
-        BuildArtifactFolModel::Alloc
+        BuildArtifactFolModel::Mem
     );
     assert_eq!(
         evaluated.evaluated.artifacts[2].fol_model,
@@ -128,7 +128,7 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
     );
     assert_eq!(
         evaluated.evaluated.artifacts[3].fol_model,
-        BuildArtifactFolModel::Alloc
+        BuildArtifactFolModel::Mem
     );
     assert_eq!(
         evaluated.evaluated.artifacts[1].kind,
@@ -169,7 +169,7 @@ fn build_source_evaluator_rejects_unknown_artifact_fol_models() {
     assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
     assert_eq!(
         error.message(),
-        "artifact fol_model must be one of: core, alloc, std (got 'hosted')"
+        "artifact fol_model must be one of: core, mem, std (got 'hosted')"
     );
 }
 

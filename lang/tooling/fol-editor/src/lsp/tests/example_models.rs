@@ -256,14 +256,14 @@ fn lsp_server_reports_transitive_model_boundaries_for_real_workspaces() {
         (
             "transitive_core_alloc",
             "core",
-            "alloc",
+            "mem",
             "fun[exp] label(): str = {\n    return \"heap\";\n};\n",
             "fun[] main(): int = {\n    return .len(shared.label());\n};\n",
             "str requires heap support and is unavailable in 'fol_model = core'",
         ),
         (
             "transitive_alloc_std",
-            "alloc",
+            "mem",
             "std",
             "fun[exp] ping(): int = {\n    return .echo(7);\n};\n",
             "fun[] main(): int = {\n    return shared.ping();\n};\n",

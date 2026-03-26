@@ -16,14 +16,14 @@ pro[] build(): non = {
         alias = "logtiny_tag",
         source = "git",
         target = "git+https://github.com/bresilla/logtiny.git",
-        version = "tag:v0.1.1",
+        version = "tag:v0.1.2",
     });
 
     build.add_dep({
         alias = "logtiny_commit",
         source = "git",
         target = "git+https://github.com/bresilla/logtiny.git",
-        version = "commit:77df4240d6f0a28590fc5b8dce8b648b63c17540",
+        version = "commit:f49abfa1038f0f5a3a2e09b9b3dd533182551006",
     });
 
     build.add_dep({
@@ -31,6 +31,6 @@ pro[] build(): non = {
         source = "git",
         target = "git+https://github.com/bresilla/logtiny.git",
         version = "branch:develop",
-        hash = "77df4240d6f0",
+        hash = "f49abfa1038f",
     });
 };

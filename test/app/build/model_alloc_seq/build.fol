@@ -5,7 +5,7 @@ pro[] build(): non = {
     var app = graph.add_exe({
         name = "model_alloc_seq",
         root = "src/main.fol",
-        fol_model = "alloc",
+        fol_model = "mem",
     });
 
     graph.install(app);

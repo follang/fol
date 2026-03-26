@@ -245,7 +245,7 @@ mod tests {
             artifacts: vec![DependencyArtifactSurface {
                 name: "logtiny".to_string(),
                 artifact_kind: "static-lib".to_string(),
-                fol_model: "alloc".to_string(),
+                fol_model: "mem".to_string(),
             }],
             steps: vec![DependencyStepSurface {
                 name: "test".to_string(),
@@ -327,7 +327,7 @@ mod tests {
             artifacts: vec![DependencyArtifactSurface {
                 name: "logtiny".to_string(),
                 artifact_kind: "static-lib".to_string(),
-                fol_model: "alloc".to_string(),
+                fol_model: "mem".to_string(),
             }],
         };
         let steps = DependencyStepSurfaceSet {

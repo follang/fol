@@ -843,7 +843,7 @@ impl BuildBodyExecutor {
                             BuildEvaluationError::new(
                                 BuildEvaluationErrorKind::InvalidInput,
                                 format!(
-                                    "artifact fol_model must be one of: core, alloc, std (got '{}')",
+                                    "artifact fol_model must be one of: core, mem, std (got '{}')",
                                     raw
                                 ),
                             )

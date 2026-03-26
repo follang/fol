@@ -112,7 +112,7 @@ That means:
 | Model | Type completion | Intrinsic completion | Diagnostics focus | Example packages |
 |-------|-----------------|----------------------|-------------------|------------------|
 | `core` | scalar, array, record, entry, shell surfaces only | no `std`-only intrinsics, no heap-only guidance | reject `str`, dynamic containers, dynamic `.len(...)`, `.echo(...)` | `examples/core_blink_shape`, `examples/core_defer`, `examples/core_records`, `examples/core_surface_showcase` |
-| `alloc` | `core` types plus `str`, `vec`, `seq`, `set`, `map` | no `std`-only intrinsics | reject `.echo(...)`; allow heap-backed strings and containers | `examples/alloc_defaults`, `examples/alloc_containers`, `examples/alloc_collections`, `examples/alloc_surface_showcase` |
+| `mem` | `core` types plus `str`, `vec`, `seq`, `set`, `map` | no `std`-only intrinsics | reject `.echo(...)`; allow heap-backed strings and containers | `examples/alloc_defaults`, `examples/alloc_containers`, `examples/alloc_collections`, `examples/alloc_surface_showcase` |
 | `std` | all currently implemented type surfaces | all currently implemented V1 intrinsics valid for host artifacts | ordinary semantic/type diagnostics plus hosted-runtime behavior | `examples/std_bundled_fmt`, `examples/std_cli`, `examples/std_echo_min`, `examples/std_named_calls`, `examples/std_surface_showcase` |
 
 For mixed-model workspaces, editor tests should also cover
@@ -140,7 +140,7 @@ Editor-facing expectations:
   `fol_model`
 - ambiguous package-local files should stay conservative and avoid bleeding a
   narrower model into unrelated helpers
-- build files that declare `fol_model = "core" | "alloc" | "std"` should stay
+- build files that declare `fol_model = "core" | "mem" | "std"` should stay
   discoverable in semantic token and tree-sitter coverage
 - negative model examples such as `examples/fail_core_heap_reject` and
   `examples/fail_alloc_echo` should keep surfacing the same LSP boundary class
@@ -152,7 +152,7 @@ The minimum test gates for editor sync are:
 - compiler constants match tree-sitter query name families
 - compiler intrinsics match editor highlight/completion name families
 - model-boundary diagnostics match between LSP and build-mode compilation
-- real example packages for `core`, `alloc`, and `std` stay editor-readable
+- real example packages for `core`, `mem`, and `std` stay editor-readable
 
 ## Contributor rule
 
@@ -195,7 +195,7 @@ When you add or change a language feature, the editor sync bar is:
      or `symbols.scm`
    - keep structural edits minimal and covered by tests
 6. If the feature changes `fol_model` legality:
-   - add or update `core` / `alloc` / `std` editor example coverage
+   - add or update `core` / `mem` / `std` editor example coverage
    - verify LSP diagnostics match `fol code build`
 
 The intended workflow is:

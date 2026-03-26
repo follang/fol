@@ -12,10 +12,10 @@ FOL currently keeps three layers separate:
   `panic(...)`
 - `core`:
   the minimal runtime model with no heap and no OS/runtime services
-- `alloc`:
+- `mem`:
   heap-backed library/runtime support without OS/runtime services
 - `std`:
-  hosted/runtime services on top of `alloc`, such as console, filesystem,
+  hosted/runtime services on top of `mem`, such as console, filesystem,
   networking, serialization, and other richer services
 
 This split is not a source-level import trick and not an object-system feature.
@@ -76,7 +76,7 @@ through the current runtime layer where policy matters. The runtime contract is
 being split by `fol-model`, so the rule is:
 
 - `core` artifacts must not rely on heap-backed or hosted facilities
-- `alloc` artifacts may use heap-backed facilities but not hosted services
+- `mem` artifacts may use heap-backed facilities but not hosted services
 - `std` artifacts may use hosted services
 
 In the current implementation that means:
@@ -135,7 +135,7 @@ Current `V1` rule:
 
 In the current compiler, `.len(...)` is the only implemented query intrinsic.
 Under the runtime model split, array `.len(...)` belongs to `core`, while
-string and dynamic-container `.len(...)` belongs to `alloc`/`std`.
+string and dynamic-container `.len(...)` belongs to `mem`/`std`.
 
 ### Diagnostic
 
@@ -149,7 +149,7 @@ Current `V1` rule:
 - it emits the value through the `std` runtime hook
 - it then forwards the same value unchanged
 
-`.echo(...)` belongs to `std`, not `core` or `alloc`.
+`.echo(...)` belongs to `std`, not `core` or `mem`.
 
 So this is valid:
 

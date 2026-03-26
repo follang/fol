@@ -214,13 +214,13 @@ fn artifact_model_distribution_line(workspace: &FrontendWorkspace) -> Option<Str
         for artifact in &evaluated.evaluated.artifacts {
             match artifact.fol_model {
                 BuildArtifactFolModel::Core => core += 1,
-                BuildArtifactFolModel::Alloc => alloc += 1,
+                BuildArtifactFolModel::Mem => alloc += 1,
                 BuildArtifactFolModel::Std => std += 1,
             }
         }
     }
 
-    Some(format!("artifact_models=core={core},alloc={alloc},std={std}"))
+    Some(format!("artifact_models=core={core},mem={alloc},std={std}"))
 }
 
 #[cfg(test)]
@@ -254,7 +254,7 @@ mod tests {
                 "    var graph = build.graph();\n",
                 "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
                 "    graph.add_static_lib({ name = \"corelib\", root = \"src/core.fol\", fol_model = \"core\" });\n",
-                "    graph.add_static_lib({ name = \"alloclib\", root = \"src/alloc.fol\", fol_model = \"alloc\" });\n",
+                "    graph.add_static_lib({ name = \"alloclib\", root = \"src/alloc.fol\", fol_model = \"mem\" });\n",
                 "    return;\n",
                 "};\n",
             ),
@@ -273,7 +273,7 @@ mod tests {
 
         let result = work_info(&workspace);
 
-        assert!(result.summary.contains("artifact_models=core=1,alloc=1,std=1"));
+        assert!(result.summary.contains("artifact_models=core=1,mem=1,std=1"));
 
         fs::remove_dir_all(&root).ok();
     }

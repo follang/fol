@@ -1241,7 +1241,7 @@ fn echo_intrinsic_requires_std_fol_model_in_alloc() {
             "fun[] main(): int = {\n    return .echo(1);\n};\n",
         )],
         TypecheckConfig {
-            capability_model: TypecheckCapabilityModel::Alloc,
+            capability_model: TypecheckCapabilityModel::Mem,
         },
     );
 
@@ -1250,7 +1250,7 @@ fn echo_intrinsic_requires_std_fol_model_in_alloc() {
     assert!(errors[0]
         .message()
         .contains("'.echo(...)' requires 'fol_model = std'"));
-    assert!(errors[0].message().contains("current artifact model is 'alloc'"));
+    assert!(errors[0].message().contains("current artifact model is 'mem'"));
 }
 
 #[test]

@@ -1,20 +1,25 @@
-# PLAN: Bundled FOL Library Root At `lang/library/std`
+# PLAN: Rename `alloc` Model To `mem`
 
-This plan introduces a bundled FOL standard-library source tree under:
+This plan performs a full cutover from:
 
-- `lang/library/std`
+- `fol_model = "alloc"`
+
+to:
+
+- `fol_model = "mem"`
 
 The intent is:
 
-- `std` is part of the FOL distribution
-- `std` is written mostly in FOL
-- `std` is not an external dependency the user downloads separately
-- `std` is not part of the compiler implementation crates
-- `core` and `mem` remain non-importable runtime/compiler capability layers implemented in Rust
-- `use std ...` resolves against the bundled shipped library root
-- `use std ...` is only legal when `fol_model = "std"`
+- keep the three capability modes:
+  - `core`
+  - `mem`
+  - `std`
+- keep `core` and `mem` as non-importable compiler/runtime capability layers
+- keep only `std` as the importable library namespace
+- remove `alloc` as the public model spelling everywhere
 
-This is a packaging and toolchain-distribution change, not a rewrite of the compiler into FOL.
+This is a naming and architecture-alignment change across compiler, runtime, tooling,
+tests, docs, and examples. It is not a request to create a public `mem` library.
 
 ---
 
@@ -22,510 +27,517 @@ This is a packaging and toolchain-distribution change, not a rewrite of the comp
 
 The resulting model must be:
 
-- runtime/compiler capability substrate:
+- user-facing build choice:
+  - `fol_model = "core"`
+  - `fol_model = "mem"`
+  - `fol_model = "std"`
+- source-level imports:
+  - only `std` is importable
+  - `core` and `mem` are not importable
+- runtime/compiler substrate:
   - `core`
   - `mem`
   - `std`
-- only `std` is an importable bundled library namespace
-- `core` and `mem` are selected through `fol_model`, not imported from source code
-- shipped FOL library root:
-  - `lang/library/std`
-- default toolchain behavior:
-  - bundled `std` is mounted automatically
-- override behavior:
-  - explicit std-root override may remain only for development/testing
-  - no user-facing requirement to configure std manually
+- bundled std rules remain unchanged:
+  - `use std ...` is forbidden in `core`
+  - `use std ...` is forbidden in `mem`
+  - `use std ...` is allowed in `std`
 
 Non-goals for this plan:
 
-- do not rewrite runtime/compiler implementation into FOL
-- do not create public bundled `core` or `mem` library trees
-- do not make `core` or `mem` importable namespaces
-- do not try to build the full giant std library in one pass
-- do not add compatibility back for external ad-hoc std roots as the normal path
+- do not keep `alloc` as compatibility spelling
+- do not add dual parsing for `alloc | mem`
+- do not add migration warnings
+- do not invent a public `mem` import namespace
+- do not change the current bundled std plan into `std.mem`
 
 ---
 
-## Epoch 1: Contract And Filesystem Layout
+## Epoch 1: Contract Freeze And Scan Lock
 
 ### Slice 1
-Status: complete
+Status: completed
 
-Add `lang/library/` to the repo layout and document its role.
+Write the top-level naming contract into active docs.
 
 Completion criteria:
 
-- `lang/library/` exists in the tree
-- docs state that bundled FOL libraries live there
+- docs explicitly say the three modes are `core`, `mem`, `std`
+- docs explicitly say `alloc` is no longer a valid model name
 
 ### Slice 2
-Status: complete
+Status: completed
 
-Add `lang/library/std/` as the canonical bundled standard-library root.
+Add one compiler-owned naming matrix test.
 
 Completion criteria:
 
-- `lang/library/std/` exists
-- repository conventions document it as the canonical std package root
+- a test asserts the canonical public model spellings are exactly:
+  - `core`
+  - `mem`
+  - `std`
 
 ### Slice 3
-Status: complete
+Status: completed
 
-Write a concise toolchain-facing design note for bundled std semantics.
+Audit the repo for all active `alloc` model spellings and group them by subsystem.
 
 Completion criteria:
 
-- note explains shipped std vs runtime/compiler substrate
-- note explains that users should not download std separately
+- plan execution notes identify:
+  - compiler/runtime surfaces
+  - frontend/tooling surfaces
+  - examples/fixtures
+  - docs/book
 
 ### Slice 4
-Status: complete
+Status: completed
 
-Audit existing docs and examples that still imply manual std-root configuration as the normal path.
+Freeze the rule that only the runtime substrate may still use “allocation” wording in purely internal comments where it is not the public model name.
 
 Completion criteria:
 
-- all such sites are listed before behavior changes start
+- docs/tests/public diagnostics are pinned to `mem`
+- internal implementation wording is allowed only when it refers to heap allocation as a concept, not the model name
 
 ---
 
-## Epoch 2: Frontend Default Std Root Resolution
+## Epoch 2: Public Model Parsing And Validation
 
 ### Slice 5
-Status: complete
+Status: completed
 
-Add one canonical helper that computes the bundled std root from the repo/toolchain layout.
+Change build-surface parsing/validation so only `mem` is accepted as the middle model.
 
 Completion criteria:
 
-- frontend/package/resolver use one shared helper for the default bundled std root
+- `fol_model = "mem"` parses and validates
+- `fol_model = "alloc"` is rejected
 
 ### Slice 6
-Status: complete
+Status: completed
 
-Make frontend commands default to bundled `lang/library/std` when no override is given.
+Remove `alloc` from public model enums/string conversions in package/build-facing types.
 
 Completion criteria:
 
-- compile/build/check/run/test paths pick bundled std automatically
+- package/build public types render `mem`
+- no public package/build string conversion still emits `alloc`
 
 ### Slice 7
-Status: complete
+Status: completed
 
-Keep explicit std-root override only as a development/testing escape hatch.
+Add direct negative tests for `fol_model = "alloc"` in build files.
 
 Completion criteria:
 
-- override still works
-- docs clearly mark it as override behavior, not normal setup
+- negative tests fail explicitly on the old spelling
 
 ### Slice 8
-Status: complete
+Status: completed
 
-Update workspace/config loading so missing explicit std-root no longer means “no std available” when bundled std exists.
+Update build diagnostics to point only at `core`, `mem`, `std`.
 
 Completion criteria:
 
-- workspace configs without std-root still resolve bundled std by default
+- invalid-model diagnostics list only the new canonical set
 
 ### Slice 9
-Status: complete
+Status: completed
 
-Harden frontend diagnostics around bundled std discovery.
+Update workspace/build metadata extraction so artifact models serialize as `mem`.
 
 Completion criteria:
 
-- diagnostics distinguish:
-  - bundled std missing from toolchain layout
-  - explicit override missing
-  - `use std` forbidden by model
+- extracted artifact metadata no longer emits `alloc`
 
 ---
 
-## Epoch 3: Package And Resolver Integration
+## Epoch 3: Typecheck Capability Model Cutover
 
 ### Slice 10
-Status: complete
+Status: completed
 
-Route package-session configuration to the bundled std root by default.
+Rename the public capability model variant from `Alloc` to `Mem` in typecheck-facing APIs.
 
 Completion criteria:
 
-- package session gets bundled std without explicit caller plumbing everywhere
+- typecheck public/config-facing APIs use `Mem`
 
 ### Slice 11
-Status: complete
+Status: pending
 
-Route resolver-session configuration to the bundled std root by default.
+Update typecheck diagnostics from `alloc` wording to `mem`.
 
 Completion criteria:
 
-- resolver tests no longer require explicit std-root in the normal positive path
+- hosted-surface rejection messages say:
+  - current artifact model is `mem`
 
 ### Slice 12
-Status: complete
+Status: pending
 
-Preserve model gating: bundled std resolution must still fail under non-`std` models when `use std` appears.
+Keep heap-backed capability behavior unchanged while renaming the visible model.
 
 Completion criteria:
 
-- bundled std availability does not weaken `fol_model` legality rules
+- `str`, `seq`, `vec`, `set`, `map`, dynamic `.len(...)` remain legal in `mem`
+- hosted-only surfaces remain illegal in `mem`
 
 ### Slice 13
-Status: complete
+Status: pending
 
-Update std import resolution tests to prefer bundled std fixtures over ad-hoc explicit std-root setup where appropriate.
+Add capability tests that prove `mem` is behavior-preserving relative to the former middle tier.
 
 Completion criteria:
 
-- positive std import tests use the new default path in at least one canonical suite
+- one matrix test proves:
+  - `core` rejects heap
+  - `mem` accepts heap
+  - `mem` rejects hosted std
+  - `std` accepts hosted std
+
+---
+
+## Epoch 4: Runtime And Backend Naming Cutover
 
 ### Slice 14
-Status: complete
+Status: pending
 
-Keep one focused suite for explicit std-root override behavior.
+Rename backend public model enums/strings from `Alloc` to `Mem`.
 
 Completion criteria:
 
-- override behavior remains tested without dominating normal-path tests
-
----
-
-## Epoch 4: Seed Bundled Std Package
+- backend config surfaces render `mem`
 
 ### Slice 15
-Status: complete
+Status: pending
 
-Create the first minimal bundled std package structure under `lang/library/std`.
+Rename runtime-tier selection strings from `alloc` to `mem` in emitted metadata and traces.
 
 Completion criteria:
 
-- package root is structurally valid
-- build/package metadata is valid under the current build model
+- emitted trace/report surfaces use `mem`
 
 ### Slice 16
-Status: complete
+Status: pending
 
-Add one minimal module in bundled std that is safe and tiny.
+Decide runtime module-path strategy and apply it consistently.
 
 Completion criteria:
 
-- module is written in FOL
-- module compiles as part of std import tests
+- either:
+  - runtime module path is renamed from `fol_runtime::alloc` to `fol_runtime::mem`
+- or:
+  - runtime module path stays internal and docs/tests clearly distinguish internal path vs public model name
+
+Note:
+
+- this slice must choose one path and remove the other
+- no dual public wording
 
 ### Slice 17
-Status: complete
+Status: pending
 
-Add one honest hosted-oriented module namespace placeholder.
+Update backend emission tests to the chosen `mem` contract.
 
 Completion criteria:
 
-- `std` tree clearly leaves room for:
-  - `io`
-  - `os`
-  - later growth
+- emitted-Rust/import tests reflect the final chosen naming strategy
 
 ### Slice 18
-Status: complete
+Status: pending
 
-Write one positive example that imports bundled std from the shipped tree rather than a temporary fixture root.
+Update backend/build summaries so model lines show `mem`.
 
 Completion criteria:
 
-- integration test proves bundled std is actually being used
+- build summaries no longer show `fol_model=alloc`
 
 ---
 
-## Epoch 5: Development Workflow And Overrides
+## Epoch 5: Frontend Routing And Reporting
 
 ### Slice 19
-Status: complete
+Status: pending
 
-Define the expected contributor workflow for editing bundled std locally.
+Update routed build/run/test planning to use `mem` in model distribution and diagnostics.
 
 Completion criteria:
 
-- docs explain how to iterate on `lang/library/std`
-- docs explain when to use override flags
+- routed summaries use `mem`
+- ambiguity diagnostics use `mem`
 
 ### Slice 20
-Status: complete
+Status: pending
 
-Ensure CLI/dev workflows can still point to an alternate std root for experimentation.
+Update `work info` / `work status` model-distribution reporting.
 
 Completion criteria:
 
-- explicit override path is covered by tests
+- distribution text becomes:
+  - `core=...`
+  - `mem=...`
+  - `std=...`
 
 ### Slice 21
-Status: complete
+Status: pending
 
-Audit editor/LSP workspace logic to ensure bundled std can be discovered without special manual config.
+Update scaffolding templates so generated examples and projects use `mem`.
 
 Completion criteria:
 
-- editor can resolve bundled std in normal repo usage
+- no scaffold emits `fol_model = "alloc"`
 
 ### Slice 22
-Status: complete
+Status: pending
 
-Add LSP/regression coverage for bundled std discovery.
+Add CLI integration tests for `mem` routing and old `alloc` rejection.
 
 Completion criteria:
 
-- hover/navigation/diagnostics work against bundled std without explicit std-root wiring
+- routed CLI tests cover:
+  - `mem` positive path
+  - old `alloc` negative path
 
 ---
 
-## Epoch 6: Docs, Book, And User Story
+## Epoch 6: Editor, LSP, And Tree-Sitter
 
 ### Slice 23
-Status: complete
+Status: pending
 
-Update build/runtime-model docs to say std ships with FOL.
+Rename editor workspace model recovery from `Alloc` to `Mem`.
 
 Completion criteria:
 
-- docs stop implying users fetch or separately install std
-- docs state that only `std` is imported from source code
-- docs state that `core` and `mem` remain model/capability choices only
+- editor active-model recovery uses `Mem`
 
 ### Slice 24
-Status: complete
+Status: pending
 
-Update book sections that discuss `use std` to describe bundled shipped std.
+Update LSP diagnostics, hover, and completion tests to `mem`.
 
 Completion criteria:
 
-- book wording matches the new toolchain story
-- no book page suggests `use core` or `use mem`
+- model-aware LSP tests use `mem`
+- no active LSP test still expects `alloc`
 
 ### Slice 25
-Status: complete
+Status: pending
 
-Add a concise “what ships with FOL” section.
+Update build-file semantic-token and tree-sitter tests for `mem`.
 
 Completion criteria:
 
-- docs distinguish:
-  - compiler/runtime substrate
-  - bundled std library source
-  - optional external dependencies
+- build-file token/highlight tests use `core/mem/std`
 
 ### Slice 26
-Status: complete
+Status: pending
 
-Update examples/docs that currently use temporary synthetic std fixtures as if they were the normal model.
+Audit compiler-backed editor sync helpers for stale `alloc` wording.
 
 Completion criteria:
 
-- docs point at bundled std for the normal case
+- no active editor sync helper advertises `alloc` as a public model spelling
 
 ---
 
-## Epoch 7: Test Fixture Cleanup
+## Epoch 7: Example And Fixture Migration
 
 ### Slice 27
-Status: complete
+Status: pending
 
-Audit tests that create ad-hoc std fixture trees and classify them.
+Rename or replace example packages whose names or expectations encode `alloc` as the public model.
 
 Completion criteria:
 
-- tests are grouped into:
-  - normal bundled-std tests
-  - explicit override tests
-  - special isolated resolver tests
+- example package names and assertions align with `mem` where they refer to the model
 
 ### Slice 28
-Status: complete
+Status: pending
 
-Migrate the normal-path frontend integration tests to bundled std.
+Migrate build fixtures from `model_alloc_*` naming to `model_mem_*` where the name is model-facing.
 
 Completion criteria:
 
-- normal compile/build integration no longer needs ad-hoc std roots
+- checked-in model fixtures use `mem`
 
 ### Slice 29
-Status: complete
+Status: pending
 
-Migrate the normal-path resolver tests to bundled std where practical.
+Update positive example summaries/import assertions from `alloc` to `mem`.
 
 Completion criteria:
 
-- at least one canonical resolver std-resolution suite uses bundled std
+- normal example integration coverage expects `mem`
 
 ### Slice 30
-Status: complete
+Status: pending
 
-Keep isolated synthetic std fixtures only where they are clearly needed for narrow resolver behavior.
+Update negative examples and their diagnostics from `alloc` to `mem`.
 
 Completion criteria:
 
-- remaining synthetic std fixtures are justified and documented in tests
-
----
-
-## Epoch 8: Shipped Std Package Hardening
+- negative hosted-boundary examples use `mem`
 
 ### Slice 31
-Status: complete
+Status: pending
 
-Add a minimal build/package manifest for bundled std that matches the current `.build()` model.
+Add at least one new canonical `mem` showcase example so the new name is visible in the shipped example set.
 
 Completion criteria:
 
-- bundled std has valid package/build metadata under current rules
+- example tree contains one obvious positive `mem` example
+
+---
+
+## Epoch 8: Transitive Boundary Hardening Under `mem`
 
 ### Slice 32
-Status: complete
+Status: pending
 
-Add one tiny exported symbol/module and one importer test package.
+Update transitive boundary tests from `alloc` to `mem`.
 
 Completion criteria:
 
-- importing bundled std works through the normal package path
+- `core -> mem` failure path is pinned
+- `mem -> mem` success path is pinned
+- `mem -> std` hosted rejection is pinned
 
 ### Slice 33
-Status: complete
+Status: pending
 
-Add one negative test proving `use std` still fails under `fol_model = "core"`.
+Update runtime import cleanliness tests for the renamed middle model.
 
 Completion criteria:
 
-- bundled std presence does not bypass model gating
+- cross-package emission audits use `mem`
 
 ### Slice 34
-Status: complete
+Status: pending
 
-Add one negative test proving `use std` still fails under `fol_model = "mem"`.
+Update mixed-model workspace tests from `core/alloc/std` to `core/mem/std`.
 
 Completion criteria:
 
-- mem-mode rejection is explicit and stable
+- mixed-workspace coverage surfaces `mem`
 
 ### Slice 35
-Status: complete
+Status: pending
 
-Add one positive hosted example package that relies on bundled std and runs.
+Add one regression test proving that a stale `alloc` model in a dependency fixture fails before planning/emission.
 
 Completion criteria:
 
-- bundled std is exercised in a runnable end-to-end example
+- the old spelling is rejected early even in transitive/mixed setups
 
 ---
 
-## Epoch 9: Tooling And Distribution Hardening
+## Epoch 9: Docs, Book, And Contributor Guidance
 
 ### Slice 36
-Status: complete
+Status: pending
 
-Audit initialization/scaffolding commands so new std-mode projects do not teach manual std dependency setup.
+Update runtime-model docs from `alloc` to `mem`.
 
 Completion criteria:
 
-- scaffolded projects rely on bundled std implicitly
+- [docs/runtime-models.md](/home/bresilla/data/code/bresilla/fol/docs/runtime-models.md) uses only `core/mem/std`
 
 ### Slice 37
-Status: complete
+Status: pending
 
-Audit build summaries and info/report surfaces for std-root wording.
+Update build book examples and wording from `alloc` to `mem`.
 
 Completion criteria:
 
-- summaries refer to bundled std or explicit override accurately
+- build book examples use `fol_model = "mem"`
 
 ### Slice 38
-Status: complete
+Status: pending
 
-Add one integration suite that asserts bundled std discovery across:
-
-- compile
-- build
-- run
-- editor/LSP
+Update user/tooling docs that mention the middle model.
 
 Completion criteria:
 
-- one suite catches cross-layer bundled-std drift
+- tooling docs use `mem`
 
 ### Slice 39
-Status: complete
+Status: pending
 
-Audit backend/integration tests that currently inject temporary std roots for emitted Rust checks and convert the normal path to bundled std where possible.
+Update contributor guidance in `AGENTS.md` if it still references `alloc` as a model name.
 
 Completion criteria:
 
-- emitted-Rust tests use bundled std in at least one normal-path coverage suite
+- contributor guidance matches `core/mem/std`
+
+### Slice 40
+Status: pending
+
+Update any roadmap/progress notes that still describe `alloc` as the public model.
+
+Completion criteria:
+
+- active project notes use `mem`
 
 ---
 
-## Epoch 10: Final Cleanup And Follow-Up Readiness
-
-### Slice 40
-Status: complete
-
-Create a short roadmap note for how std grows inside `lang/library/std`.
-
-Completion criteria:
-
-- note explains that std starts small and grows gradually
+## Epoch 10: Final Repo Sweep And Closure
 
 ### Slice 41
-Status: complete
+Status: pending
 
-Define the first intended std module families without implementing the whole library.
+Perform a repo-wide sweep for stale public `alloc` model strings.
 
 Completion criteria:
 
-- roadmap names likely first families such as:
-  - `std.io`
-  - `std.os`
-  - one small utility/text family if needed
+- remaining `alloc` hits are only:
+  - internal implementation comments about memory allocation
+  - intentionally chosen internal runtime names if retained by design
 
 ### Slice 42
-Status: complete
+Status: pending
 
-Audit naming consistency around “bundled std”, “standard library”, and “std root”.
+Audit diagnostics snapshots and human-readable integration expectations for stale `alloc` wording.
 
 Completion criteria:
 
-- wording is consistent across docs, tests, and diagnostics
+- no active user-facing diagnostic still says `alloc` as the model name
 
 ### Slice 43
-Status: complete
+Status: pending
 
-Remove stale assumptions that std is external user-managed package content.
+Run a final example/build/doc sync audit.
 
 Completion criteria:
 
-- no active docs or tests imply that users normally fetch std separately
+- docs point at real `mem` examples
+- integration suites match the renamed examples/fixtures
 
 ### Slice 44
-Status: complete
+Status: pending
 
-Perform a final repo-wide scan for:
-
-- stale std-root assumptions
-- stale docs
-- tests that still treat synthetic std as the normal path
-- missing `lang/library/std` references
+Close the plan with one final green-state scan.
 
 Completion criteria:
 
-- scan is clean before plan closure
+- `make build` passes
+- `make test` passes
+- worktree is clean
+- plan is fully marked complete
 
 ---
 
 ## Success Criteria
 
-This plan is complete when all of the following are true:
+The plan is complete when:
 
-- `lang/library/std` exists and is the canonical bundled std source root
-- frontend/package/resolver default to bundled std automatically
-- explicit std-root override remains only as a development/testing override
-- bundled std is exercised by real positive tests and examples
-- `use std` still respects `fol_model = "std"` and remains illegal under `core` and `mem`
-- docs and tests consistently treat `core` and `mem` as non-importable model choices
-- docs explain that std ships with FOL and does not need separate download
-- the repo no longer treats temporary custom std roots as the normal user path
+- the public middle model is `mem` everywhere
+- `alloc` is no longer accepted as a public `fol_model` spelling
+- user-facing docs, diagnostics, and examples consistently say:
+  - `core`
+  - `mem`
+  - `std`
+- `core` and `mem` remain non-importable capability modes
+- only `std` remains the bundled importable standard library namespace
