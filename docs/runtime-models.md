@@ -15,6 +15,11 @@ It is:
 - a semantic capability boundary
 - a backend/runtime linkage boundary
 
+Import reminder:
+
+- only `std` is an importable source-level library namespace
+- `core` and `mem` are compiler/runtime capability choices, not `use` targets
+
 Recommended style:
 
 - always spell `fol_model` explicitly in `build.fol`

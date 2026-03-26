@@ -258,7 +258,7 @@ Completion criteria:
 - explicit override path is covered by tests
 
 ### Slice 21
-Status: pending
+Status: complete
 
 Audit editor/LSP workspace logic to ensure bundled std can be discovered without special manual config.
 
@@ -267,7 +267,7 @@ Completion criteria:
 - editor can resolve bundled std in normal repo usage
 
 ### Slice 22
-Status: pending
+Status: complete
 
 Add LSP/regression coverage for bundled std discovery.
 
@@ -280,7 +280,7 @@ Completion criteria:
 ## Epoch 6: Docs, Book, And User Story
 
 ### Slice 23
-Status: pending
+Status: complete
 
 Update build/runtime-model docs to say std ships with FOL.
 
@@ -291,7 +291,7 @@ Completion criteria:
 - docs state that `core` and `mem` remain model/capability choices only
 
 ### Slice 24
-Status: pending
+Status: complete
 
 Update book sections that discuss `use std` to describe bundled shipped std.
 
@@ -301,7 +301,7 @@ Completion criteria:
 - no book page suggests `use core` or `use mem`
 
 ### Slice 25
-Status: pending
+Status: complete
 
 Add a concise “what ships with FOL” section.
 
@@ -313,7 +313,7 @@ Completion criteria:
   - optional external dependencies
 
 ### Slice 26
-Status: pending
+Status: complete
 
 Update examples/docs that currently use temporary synthetic std fixtures as if they were the normal model.
 
@@ -326,7 +326,7 @@ Completion criteria:
 ## Epoch 7: Test Fixture Cleanup
 
 ### Slice 27
-Status: pending
+Status: complete
 
 Audit tests that create ad-hoc std fixture trees and classify them.
 
@@ -338,7 +338,7 @@ Completion criteria:
   - special isolated resolver tests
 
 ### Slice 28
-Status: pending
+Status: complete
 
 Migrate the normal-path frontend integration tests to bundled std.
 
@@ -347,7 +347,7 @@ Completion criteria:
 - normal compile/build integration no longer needs ad-hoc std roots
 
 ### Slice 29
-Status: pending
+Status: complete
 
 Migrate the normal-path resolver tests to bundled std where practical.
 
@@ -356,7 +356,7 @@ Completion criteria:
 - at least one canonical resolver std-resolution suite uses bundled std
 
 ### Slice 30
-Status: pending
+Status: complete
 
 Keep isolated synthetic std fixtures only where they are clearly needed for narrow resolver behavior.
 

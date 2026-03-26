@@ -84,6 +84,8 @@ use super::*;
     fn test_cli_resolves_std_imports_with_explicit_std_root_configuration() {
         use std::fs;
 
+        // Keep one narrow override suite. Normal CLI flows should use bundled
+        // std without requiring this flag.
         let temp_root = unique_temp_root("cli_std_root_import");
         let std_root = temp_root.join("std");
         let app_root = temp_root.join("app");
@@ -230,29 +232,17 @@ use super::*;
         use std::fs;
 
         let temp_root = unique_temp_root("cli_dump_lowered_std");
-        let std_root = temp_root.join("std");
         let app_root = temp_root.join("app");
-        fs::create_dir_all(std_root.join("fmt"))
-            .expect("Should create the standard-library fixture directory");
         fs::create_dir_all(&app_root)
             .expect("Should create the importing package root fixture directory");
         fs::write(
-            std_root.join("fmt/value.fol"),
-            "var[exp] answer: int = 42;\n",
-        )
-        .expect("Should write the standard-library export fixture");
-        fs::write(
             app_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n};\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
         )
         .expect("Should write the std import fixture");
 
         let output = run_fol(&[
             "--dump-lowered",
-            "--std-root",
-            std_root
-                .to_str()
-                .expect("Temporary std-root fixture path should be valid UTF-8"),
             app_root
                 .to_str()
                 .expect("Temporary app fixture path should be valid UTF-8"),

@@ -67,6 +67,8 @@ fn test_resolver_resolves_std_package_roots_from_the_bundled_std_root_by_default
 
 #[test]
 fn test_resolver_resolves_std_namespace_roots_from_an_explicit_override() {
+    // This is the focused override-path suite. The normal resolver path should
+    // prefer bundled std without extra wiring.
     let temp_root = unique_temp_root("std_namespace_root");
     let std_root = temp_root.join("std");
     let app_root = temp_root.join("app");

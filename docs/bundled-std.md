@@ -19,6 +19,27 @@ Implementation split:
 - `core` and `mem` remain compiler/runtime capability layers in Rust
 - `std` is the importable bundled library and should grow mostly in FOL
 
+## What Ships With FOL
+
+The FOL distribution should be read as three separate pieces:
+
+- compiler and runtime substrate:
+  - parser
+  - resolver
+  - typechecker
+  - backend
+  - runtime-owned `core` and `mem` capability support
+- bundled library source:
+  - `lang/library/std`
+- optional external dependencies:
+  - added through `.build().add_dep(...)`
+  - not required for normal `std` usage
+
+Import rule:
+
+- only `std` is imported from source code
+- `core` and `mem` are selected through `fol_model`, not imported
+
 An explicit std-root override may still exist for development and testing, but it is not the normal user path.
 
 ## Editing Bundled Std

@@ -3,8 +3,8 @@ use fol_editor::{
     editor_highlight_file, editor_tree_generate_bundle, fol_tree_sitter_highlights_query,
     fol_tree_sitter_locals_query, fol_tree_sitter_symbols_query, EditorConfig,
     EditorDocumentUri, EditorLspServer, JsonRpcId, JsonRpcNotification, JsonRpcRequest,
-    LspCompletionContext, LspCompletionList, LspCompletionParams, LspPosition,
-    LspTextDocumentIdentifier,
+    LspCompletionContext, LspCompletionList, LspCompletionParams, LspDefinitionParams, LspLocation,
+    LspPosition, LspTextDocumentIdentifier,
 };
 
 fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) {
@@ -210,4 +210,39 @@ fn test_editor_sync_suite_lsp_completion_respects_model_examples() {
 
     std::fs::remove_dir_all(core_root).ok();
     std::fs::remove_dir_all(std_root).ok();
+}
+
+#[test]
+fn test_editor_sync_suite_lsp_handles_bundled_std_definition_requests_without_override() {
+    let source = "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::math::answer();\n};\n";
+    let root = copied_example_root("examples/std_bundled_fmt");
+    let source_path = root.join("src/main.fol");
+    std::fs::write(&source_path, source).expect("should write example source");
+    let uri = EditorDocumentUri::from_file_path(source_path)
+        .expect("example uri should build")
+        .as_str()
+        .to_string();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_lsp_document(&mut server, uri.clone(), source);
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(3403),
+            method: "textDocument/definition".to_string(),
+            params: Some(
+                serde_json::to_value(LspDefinitionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 22,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _definition: Option<LspLocation> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    std::fs::remove_dir_all(root).ok();
 }

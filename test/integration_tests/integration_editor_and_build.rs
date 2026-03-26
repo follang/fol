@@ -87,6 +87,7 @@ fn positive_runtime_model_examples() -> &'static [(&'static str, &'static str)] 
         ("examples/alloc_containers", "alloc"),
         ("examples/alloc_collections", "alloc"),
         ("examples/alloc_surface_showcase", "alloc"),
+        ("examples/std_bundled_fmt", "std"),
         ("examples/std_cli", "std"),
         ("examples/std_echo_min", "std"),
         ("examples/std_named_calls", "std"),

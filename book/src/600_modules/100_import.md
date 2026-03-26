@@ -51,13 +51,22 @@ This makes `loc` useful for local workspace code, experiments, and monorepo-styl
 
 ### `std`
 
-`std` works like `loc`, except the directory is resolved from the toolchain's standard-library root.
+`std` works like `loc`, except the directory is resolved from the toolchain's
+bundled standard-library root.
 
 So:
 
 - `std` imports are directory-backed
 - they are owned by the FOL toolchain
+- they ship with FOL under `lang/library/std`
 - they do not need user-managed package metadata in source code
+- users do not add `std` through `.build().add_dep(...)`
+
+Also note:
+
+- `std` is the importable library namespace
+- `core` and `mem` are capability modes selected through `fol_model`
+- `core` and `mem` are not imported with `use`
 
 ### `pkg`
 
@@ -117,30 +126,22 @@ So `use` and the build routine serve different jobs:
 - `use` = consume functionality
 - `pro[] build()` in `build.fol` = define package/build surface
 
-## System libraries
-This is how including other libraries works, for example include `fmt` module from standard library:
+## Standard library
+This is how including other libraries works, for example include `fmt` module from the bundled standard library:
 ```
 use fmt: std = {"fmt"};
 
-pro main: ini = {
-    fmt::log.warn("Last warning!...")
-}
+fun[] main(): int = {
+    return fmt::math::answer();
+};
 ```
-To use only the `log` namespace of `fmt` module:
+To use only one namespace of `fmt`:
 ```
-use log: std = {"fmt/log"};
+use math: std = {"fmt/math"};
 
-pro[] main: int = {
-    log.warn("Last warning!...")
-}
-```
-But let's say you only wanna use ONLY the `warn` functionality of `log` namespace from `fmt` module:
-```
-use warn: std = {"fmt/log"};
-
-pro[] main: int = {
-    warn("Last warning!...")
-}
+fun[] main(): int = {
+    return math::answer();
+};
 ```
 ## Local libraries
 To include a local package or namespace, point `loc` at the directory:

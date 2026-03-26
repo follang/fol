@@ -30,6 +30,7 @@ fn lsp_server_opens_real_model_example_packages_cleanly() {
     for example in [
         "examples/core_defer",
         "examples/alloc_defaults",
+        "examples/std_bundled_fmt",
         "examples/std_echo_min",
     ] {
         let (root, uri) = copied_example_package_root(example);
@@ -58,6 +59,11 @@ fn lsp_server_reports_model_aware_diagnostics_for_real_example_roots() {
             "examples/alloc_defaults",
             "fun[] main(): int = {\n    return .echo(7);\n};\n",
             Some("'.echo(...)' requires 'fol_model = std'"),
+        ),
+        (
+            "examples/std_bundled_fmt",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::math::answer();\n};\n",
+            None,
         ),
         (
             "examples/std_echo_min",
@@ -97,6 +103,7 @@ fn lsp_server_returns_semantic_tokens_for_real_model_examples() {
     for example in [
         "examples/core_defer",
         "examples/alloc_defaults",
+        "examples/std_bundled_fmt",
         "examples/std_echo_min",
     ] {
         let (root, uri) = copied_example_package_root(example);
@@ -166,6 +173,20 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
             }),
             vec!["len", "eq", "not"],
             vec!["echo"],
+        ),
+        (
+            "examples/std_bundled_fmt",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::math::;\n};\n",
+            LspPosition {
+                line: 1,
+                character: 22,
+            },
+            Some(LspCompletionContext {
+                trigger_kind: Some(2),
+                trigger_character: Some(":".to_string()),
+            }),
+            vec!["answer"],
+            vec![],
         ),
         (
             "examples/std_echo_min",

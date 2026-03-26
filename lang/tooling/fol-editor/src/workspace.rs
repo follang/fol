@@ -419,6 +419,20 @@ mod tests {
     }
 
     #[test]
+    fn workspace_mapping_recovers_bundled_std_example_model_without_override() {
+        let root = copied_example_root("examples/std_bundled_fmt");
+        let document = root.join("src/main.fol");
+
+        let mapping =
+            map_document_workspace(&document, &EditorConfig::default()).expect("mapping should succeed");
+
+        assert_eq!(mapping.package_root, Some(root.clone()));
+        assert_eq!(mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn workspace_mapping_uses_matching_artifact_root_in_mixed_model_package() {
         let root = temp_root("mapping_model_mixed");
         let src = root.join("src");
