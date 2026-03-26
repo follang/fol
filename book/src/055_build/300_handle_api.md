@@ -41,7 +41,16 @@ The producer names can stay concrete:
 - `dep.generated(...)`
 
 But path consumers should read those values through one common model instead of
-hand-written special cases for every producer.
+hand-written special cases for every producer. In practice the public rule is:
+
+- producers stay specific
+- consumers validate the incoming path by:
+  - path class: file or dir
+  - provenance: source, local generated, or dependency-exported
+
+So `install_file`, `run.add_file_arg`, and `artifact.add_generated` now reject
+wrong path provenance with exact diagnostics instead of falling through to
+generic handle errors.
 
 ## Artifact
 
@@ -106,8 +115,11 @@ run.add_arg("--config").add_arg("config/default.toml");
 
 ### `run.add_file_arg`
 
-Appends either a source-file handle or a generated output handle as a path
-argument.
+Appends any file-class path handle that the run surface can consume:
+
+- source-file handles
+- local generated outputs
+- dependency-exported file/path handles
 
 ```fol
 var defaults = graph.file_from_root("config/defaults.toml");
@@ -138,6 +150,19 @@ var cfg = emit_cfg();
 app.add_generated(cfg);
 run.add_file_arg(cfg);
 graph.install_file({ name = "install-cfg", source = cfg });
+```
+
+Dependency-exported file/path handles compose the same way on file consumers:
+
+```fol
+var dep = build.add_dep({
+    alias = "shared",
+    source = "loc",
+    target = "deps/shared",
+});
+var shared_schema = dep.path("schema");
+run.add_file_arg(shared_schema);
+graph.install_file({ name = "schema", source = shared_schema });
 ```
 
 ### `run.add_dir_arg`

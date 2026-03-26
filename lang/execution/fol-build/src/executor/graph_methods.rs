@@ -2,6 +2,7 @@ use crate::api::{
     CopyFileRequest, DependencyRequest, ExecutableRequest, InstallDirRequest, InstallFileRequest,
     SharedLibraryRequest, StaticLibraryRequest, TestArtifactRequest, WriteFileRequest,
 };
+use crate::api::{PathHandleClass, PathHandleProvenance};
 use crate::artifact::BuildArtifactFolModel;
 use crate::codegen::{CodegenRequest, SystemToolRequest};
 use crate::eval::{
@@ -59,50 +60,6 @@ impl BuildBodyExecutor {
             _ => Err(BuildEvaluationError::new(
                 BuildEvaluationErrorKind::InvalidInput,
                 format!("{method} config is invalid: '{field_name}' must be a source-file handle"),
-            )),
-        }
-    }
-
-    fn resolve_source_dir_config(
-        &self,
-        method: &str,
-        fields: &[fol_parser::ast::RecordInitField],
-        field_name: &str,
-    ) -> Result<String, BuildEvaluationError> {
-        let field = fields
-            .iter()
-            .find(|field| field.name == field_name)
-            .ok_or_else(|| {
-                BuildEvaluationError::new(
-                    BuildEvaluationErrorKind::InvalidInput,
-                    format!("{method} config is invalid: missing '{field_name}'"),
-                )
-            })?;
-        match &field.value {
-            AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
-                Some(ExecValue::SourceDir { path }) => Ok(path.clone()),
-                Some(ExecValue::SourceFile { .. }) => Err(BuildEvaluationError::new(
-                    BuildEvaluationErrorKind::InvalidInput,
-                    format!(
-                        "{method} config is invalid: '{field_name}' must be a source-dir handle, not a source-file handle"
-                    ),
-                )),
-                Some(ExecValue::GeneratedFile { .. }) => Err(BuildEvaluationError::new(
-                    BuildEvaluationErrorKind::InvalidInput,
-                    format!(
-                        "{method} config is invalid: '{field_name}' must be a source-dir handle, not a generated-output handle"
-                    ),
-                )),
-                _ => Err(BuildEvaluationError::new(
-                    BuildEvaluationErrorKind::InvalidInput,
-                    format!(
-                        "{method} config is invalid: '{field_name}' must be a source-dir handle"
-                    ),
-                )),
-            },
-            _ => Err(BuildEvaluationError::new(
-                BuildEvaluationErrorKind::InvalidInput,
-                format!("{method} config is invalid: '{field_name}' must be a source-dir handle"),
             )),
         }
     }
@@ -320,43 +277,28 @@ impl BuildBodyExecutor {
                             "install_file config is invalid: missing 'source'".to_string(),
                         )
                     })?;
-                let kind = match &source_field.value {
-                    AstNode::Identifier {
-                        name: handle_name, ..
-                    } => match self.scope.get(handle_name.as_str()) {
-                        Some(ExecValue::GeneratedFile {
-                            name: generated_name,
-                            ..
-                        }) => {
-                            BuildEvaluationOperationKind::InstallGeneratedFile {
-                                name: name.clone(),
-                                generated_name: generated_name.clone(),
-                            }
-                        }
-                        Some(ExecValue::SourceFile { path }) => {
-                            BuildEvaluationOperationKind::InstallFile(InstallFileRequest {
-                                name: name.clone(),
-                                path: path.clone(),
-                                depends_on: Vec::new(),
-                            })
-                        }
-                        Some(ExecValue::SourceDir { .. }) => {
-                            return Err(BuildEvaluationError::new(
-                                BuildEvaluationErrorKind::InvalidInput,
-                                "install_file config is invalid: 'source' must be a source-file handle or generated-output handle, not a source-dir handle".to_string(),
-                            ))
-                        }
-                        _ => {
-                            return Err(BuildEvaluationError::new(
-                                BuildEvaluationErrorKind::InvalidInput,
-                                "install_file config is invalid: 'source' must be a source-file handle or generated-output handle".to_string(),
-                            ))
-                        }
+                let resolved = self.resolve_path_handle(&source_field.value).ok_or_else(|| {
+                    BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        "install_file config is invalid: 'source' must be a source-file handle or generated-output handle".to_string(),
+                    )
+                })?;
+                let kind = match resolved.descriptor.class {
+                    PathHandleClass::File => match resolved.generated_name {
+                        Some(generated_name) => BuildEvaluationOperationKind::InstallGeneratedFile {
+                            name: name.clone(),
+                            generated_name,
+                        },
+                        None => BuildEvaluationOperationKind::InstallFile(InstallFileRequest {
+                            name: name.clone(),
+                            path: resolved.descriptor.relative_path.clone(),
+                            depends_on: Vec::new(),
+                        }),
                     },
-                    _ => {
+                    PathHandleClass::Dir => {
                         return Err(BuildEvaluationError::new(
                             BuildEvaluationErrorKind::InvalidInput,
-                            "install_file config is invalid: 'source' must be a source-file handle or generated-output handle".to_string(),
+                            "install_file config is invalid: 'source' must be a source-file handle or generated-output handle, not a source-dir handle".to_string(),
                         ))
                     }
                 };
@@ -373,7 +315,36 @@ impl BuildBodyExecutor {
                 let name = self
                     .resolve_field_string(fields, "name")
                     .ok_or_else(|| self.unsupported(method))?;
-                let path = self.resolve_source_dir_config(method, fields, "source")?;
+                let source = fields
+                    .iter()
+                    .find(|field| field.name == "source")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let resolved = self.resolve_path_handle(&source.value).ok_or_else(|| {
+                    BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        "install_dir config is invalid: 'source' must be a source-dir handle"
+                            .to_string(),
+                    )
+                })?;
+                let path = match resolved.descriptor.class {
+                    PathHandleClass::Dir => resolved.descriptor.relative_path.clone(),
+                    PathHandleClass::File => {
+                        let actual = match resolved.descriptor.provenance {
+                            PathHandleProvenance::Source => "source-file handle",
+                            PathHandleProvenance::Generated => "generated-output handle",
+                            PathHandleProvenance::DependencyGenerated => {
+                                "dependency-generated-output handle"
+                            }
+                            PathHandleProvenance::DependencyPath => "dependency-path handle",
+                        };
+                        return Err(BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            format!(
+                                "install_dir config is invalid: 'source' must be a source-dir handle, not a {actual}"
+                            ),
+                        ));
+                    }
+                };
                 self.output.operations.push(BuildEvaluationOperation {
                     origin,
                     kind: BuildEvaluationOperationKind::InstallDir(InstallDirRequest {

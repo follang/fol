@@ -1088,3 +1088,66 @@ fn build_source_evaluator_rejects_run_add_file_arg_with_source_dir_handle() {
         "add_file_arg config is invalid: run.add_file_arg requires a source-file handle or generated-output handle, not a source-dir handle"
     );
 }
+
+#[test]
+fn build_source_evaluator_rejects_artifact_add_generated_with_dependency_path_handle() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    var dep = build.add_dep({ alias = \"shared\", source = \"pkg\", target = \"shared\" });\n",
+        "    var graph = build.graph();\n",
+        "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    var schema = dep.path(\"schema\");\n",
+        "    app.add_generated(schema);\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("artifact.add_generated should reject dependency path handles");
+
+    assert_eq!(
+        error.message(),
+        "add_generated config is invalid: artifact.add_generated requires a local generated-output handle, not a dependency path handle"
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_install_dir_with_dependency_path_handle() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    var dep = build.add_dep({ alias = \"shared\", source = \"pkg\", target = \"shared\" });\n",
+        "    var graph = build.graph();\n",
+        "    var schema = dep.path(\"schema\");\n",
+        "    graph.install_dir({ name = \"assets\", source = schema });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("install_dir should reject dependency path handles");
+
+    assert_eq!(
+        error.message(),
+        "install_dir config is invalid: 'source' must be a source-dir handle, not a dependency-path handle"
+    );
+}

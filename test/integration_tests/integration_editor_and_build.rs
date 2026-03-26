@@ -1517,7 +1517,7 @@ fn test_cli_build_rejects_negative_build_surface_examples() {
                     "    return;\n",
                     "};\n",
                 )),
-                "unknown generated file",
+                "requires a local generated-output handle, not a dependency path handle",
             ),
             (
                 "fail_dep_invalid_args",

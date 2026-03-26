@@ -326,19 +326,19 @@ shape:
 
 - add a canonical runtime/type representation for generalized path handles
 
-### Slice 21
+### Slice 21 (complete)
 
 - update consumers so they validate path-handle capabilities by kind rather than
   by unrelated ad hoc branches
 
-### Slice 22
+### Slice 22 (complete)
 
 - add exact diagnostics for bad path-handle use:
   - file where dir is required
   - dir where file is required
   - path handle of the wrong provenance
 
-### Slice 23
+### Slice 23 (complete)
 
 - update build docs and examples so path composition uses the broader path model
   consistently

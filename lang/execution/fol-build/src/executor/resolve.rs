@@ -1,12 +1,47 @@
+use crate::api::PathHandleProvenance;
 use crate::artifact::BuildArtifactFolModel;
 use crate::eval::{BuildEvaluationError, BuildEvaluationErrorKind};
 use fol_parser::ast::{AstNode, Literal, RecordInitField};
 use std::collections::BTreeMap;
 
 use super::core::BuildBodyExecutor;
-use super::types::{ExecArtifact, ExecConfigValue, ExecValue};
+use super::types::{ExecArtifact, ExecConfigValue, ExecValue, ResolvedPathHandle};
 
 impl BuildBodyExecutor {
+    fn generated_path_provenance(name: &str) -> PathHandleProvenance {
+        if name.starts_with("dep::") && name.contains("::generated::") {
+            PathHandleProvenance::DependencyGenerated
+        } else if name.starts_with("dep::") && name.contains("::path::") {
+            PathHandleProvenance::DependencyPath
+        } else {
+            PathHandleProvenance::Generated
+        }
+    }
+
+    pub(super) fn resolve_path_handle(&self, node: &AstNode) -> Option<ResolvedPathHandle> {
+        let AstNode::Identifier { name, .. } = node else {
+            return None;
+        };
+        match self.scope.get(name.as_str()) {
+            Some(ExecValue::SourceFile { path }) => Some(ResolvedPathHandle::file(
+                path.clone(),
+                PathHandleProvenance::Source,
+            )),
+            Some(ExecValue::SourceDir { path }) => Some(ResolvedPathHandle::dir(
+                path.clone(),
+                PathHandleProvenance::Source,
+            )),
+            Some(ExecValue::GeneratedFile { name, path, .. }) => {
+                Some(ResolvedPathHandle::generated(
+                    path.clone(),
+                    Self::generated_path_provenance(name),
+                    name.clone(),
+                ))
+            }
+            _ => None,
+        }
+    }
+
     pub(super) fn resolve_string(&self, node: &AstNode) -> Option<String> {
         match node {
             AstNode::Literal(Literal::String(s)) => Some(s.clone()),

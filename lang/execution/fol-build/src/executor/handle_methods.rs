@@ -1,4 +1,4 @@
-use crate::api::DependencyRequest;
+use crate::api::{DependencyRequest, PathHandleClass, PathHandleProvenance};
 use crate::eval::{
     BuildEvaluationError, BuildEvaluationOperation, BuildEvaluationOperationKind,
     BuildEvaluationRunArgKind,
@@ -528,12 +528,47 @@ impl BuildBodyExecutor {
                 let [arg] = args else {
                     return Err(self.unsupported(method));
                 };
-                let generated_name = match arg {
-                    AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
-                        Some(ExecValue::GeneratedFile { name, .. }) => name.clone(),
-                        _ => return Err(self.unsupported(method)),
-                    },
-                    _ => return Err(self.unsupported(method)),
+                let resolved = self.resolve_path_handle(arg).ok_or_else(|| {
+                    self.invalid_config(
+                        method,
+                        "artifact.add_generated requires a local generated-output handle",
+                    )
+                })?;
+                let generated_name = match (
+                    resolved.descriptor.class,
+                    resolved.descriptor.provenance,
+                    resolved.generated_name,
+                ) {
+                    (PathHandleClass::File, PathHandleProvenance::Generated, Some(name)) => name,
+                    (PathHandleClass::File, PathHandleProvenance::Source, _) => {
+                        return Err(self.invalid_config(
+                            method,
+                            "artifact.add_generated requires a local generated-output handle, not a source-file handle",
+                        ))
+                    }
+                    (PathHandleClass::Dir, PathHandleProvenance::Source, _) => {
+                        return Err(self.invalid_config(
+                            method,
+                            "artifact.add_generated requires a local generated-output handle, not a source-dir handle",
+                        ))
+                    }
+                    (
+                        PathHandleClass::File,
+                        PathHandleProvenance::DependencyGenerated
+                            | PathHandleProvenance::DependencyPath,
+                        _,
+                    ) => {
+                        return Err(self.invalid_config(
+                            method,
+                            "artifact.add_generated requires a local generated-output handle, not a dependency path handle",
+                        ))
+                    }
+                    _ => {
+                        return Err(self.invalid_config(
+                            method,
+                            "artifact.add_generated requires a local generated-output handle",
+                        ))
+                    }
                 };
                 self.output.operations.push(BuildEvaluationOperation {
                     origin: None,
@@ -572,31 +607,24 @@ impl BuildBodyExecutor {
                 let [arg] = args else {
                     return Err(self.unsupported(method));
                 };
-                let (kind, value) = match arg {
-                    AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
-                        Some(ExecValue::GeneratedFile { name, .. }) => {
-                            (BuildEvaluationRunArgKind::GeneratedFile, name.clone())
-                        }
-                        Some(ExecValue::SourceFile { path }) => {
-                            (BuildEvaluationRunArgKind::Path, path.clone())
-                        }
-                        Some(ExecValue::SourceDir { .. }) => {
-                            return Err(self.invalid_config(
-                                method,
-                                "run.add_file_arg requires a source-file handle or generated-output handle, not a source-dir handle",
-                            ))
-                        }
-                        _ => {
-                            return Err(self.invalid_config(
-                                method,
-                                "run.add_file_arg requires a source-file handle or generated-output handle",
-                            ))
-                        }
-                    },
-                    _ => {
+                let resolved = self.resolve_path_handle(arg).ok_or_else(|| {
+                    self.invalid_config(
+                        method,
+                        "run.add_file_arg requires a source-file handle or generated-output handle",
+                    )
+                })?;
+                let (kind, value) = match (resolved.descriptor.class, resolved.generated_name) {
+                    (PathHandleClass::File, Some(generated_name)) => {
+                        (BuildEvaluationRunArgKind::GeneratedFile, generated_name)
+                    }
+                    (PathHandleClass::File, None) => (
+                        BuildEvaluationRunArgKind::Path,
+                        resolved.descriptor.relative_path.clone(),
+                    ),
+                    (PathHandleClass::Dir, _) => {
                         return Err(self.invalid_config(
                             method,
-                            "run.add_file_arg requires a source-file handle or generated-output handle",
+                            "run.add_file_arg requires a source-file handle or generated-output handle, not a source-dir handle",
                         ))
                     }
                 };
