@@ -1159,7 +1159,7 @@ fn execute_workspace_build_route_rejects_run_for_selected_core_model_artifacts()
 #[test]
 fn execute_workspace_build_route_rejects_test_for_selected_mem_model_artifacts() {
     let root = std::env::temp_dir().join(format!(
-        "fol_frontend_build_route_alloc_test_{}_{}",
+        "fol_frontend_build_route_mem_test_{}_{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -1300,7 +1300,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
     ));
     fs::create_dir_all(root.join("app")).unwrap();
     fs::create_dir_all(root.join("core")).unwrap();
-    fs::create_dir_all(root.join("alloc")).unwrap();
+    fs::create_dir_all(root.join("mem")).unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
@@ -1310,7 +1310,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
             "    var graph = .graph();\n",
             "    graph.add_exe({ name = \"tool\", root = \"app/main.fol\", fol_model = \"std\" });\n",
             "    graph.add_static_lib({ name = \"blink\", root = \"core/lib.fol\", fol_model = \"core\" });\n",
-            "    graph.add_static_lib({ name = \"heap\", root = \"alloc/lib.fol\", fol_model = \"mem\" });\n",
+            "    graph.add_static_lib({ name = \"heap\", root = \"mem/lib.fol\", fol_model = \"mem\" });\n",
             "    return;\n",
             "};\n",
         ),
@@ -1327,7 +1327,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
     )
     .unwrap();
     fs::write(
-        root.join("alloc/lib.fol"),
+        root.join("mem/lib.fol"),
         "fun[] helper(): int = {\n    var values: seq[int] = {1};\n    return .len(values);\n};\n",
     )
     .unwrap();

@@ -208,6 +208,12 @@ mod tests {
                 pid = std::process::id(),
             )
         );
+        assert!(
+            !fs::read_to_string(root.join("build.fol"))
+                .unwrap()
+                .contains("fol_model = \"alloc\""),
+            "scaffolded build.fol should not emit the stale alloc model spelling"
+        );
 
         fs::remove_dir_all(root).ok();
     }

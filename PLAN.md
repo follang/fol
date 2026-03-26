@@ -281,7 +281,7 @@ Completion criteria:
   - `std=...`
 
 ### Slice 21
-Status: pending
+Status: completed
 
 Update scaffolding templates so generated examples and projects use `mem`.
 
@@ -290,7 +290,7 @@ Completion criteria:
 - no scaffold emits `fol_model = "alloc"`
 
 ### Slice 22
-Status: pending
+Status: completed
 
 Add CLI integration tests for `mem` routing and old `alloc` rejection.
 
@@ -305,7 +305,7 @@ Completion criteria:
 ## Epoch 6: Editor, LSP, And Tree-Sitter
 
 ### Slice 23
-Status: pending
+Status: completed
 
 Rename editor workspace model recovery from `Alloc` to `Mem`.
 
@@ -314,7 +314,7 @@ Completion criteria:
 - editor active-model recovery uses `Mem`
 
 ### Slice 24
-Status: pending
+Status: completed
 
 Update LSP diagnostics, hover, and completion tests to `mem`.
 
@@ -324,7 +324,7 @@ Completion criteria:
 - no active LSP test still expects `alloc`
 
 ### Slice 25
-Status: pending
+Status: completed
 
 Update build-file semantic-token and tree-sitter tests for `mem`.
 
@@ -333,7 +333,7 @@ Completion criteria:
 - build-file token/highlight tests use `core/mem/std`
 
 ### Slice 26
-Status: pending
+Status: completed
 
 Audit compiler-backed editor sync helpers for stale `alloc` wording.
 
@@ -346,7 +346,7 @@ Completion criteria:
 ## Epoch 7: Example And Fixture Migration
 
 ### Slice 27
-Status: pending
+Status: completed
 
 Rename or replace example packages whose names or expectations encode `alloc` as the public model.
 
@@ -355,7 +355,7 @@ Completion criteria:
 - example package names and assertions align with `mem` where they refer to the model
 
 ### Slice 28
-Status: pending
+Status: completed
 
 Migrate build fixtures from `model_alloc_*` naming to `model_mem_*` where the name is model-facing.
 
@@ -364,7 +364,7 @@ Completion criteria:
 - checked-in model fixtures use `mem`
 
 ### Slice 29
-Status: pending
+Status: completed
 
 Update positive example summaries/import assertions from `alloc` to `mem`.
 
@@ -373,7 +373,7 @@ Completion criteria:
 - normal example integration coverage expects `mem`
 
 ### Slice 30
-Status: pending
+Status: completed
 
 Update negative examples and their diagnostics from `alloc` to `mem`.
 

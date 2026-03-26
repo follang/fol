@@ -1,4 +1,4 @@
-fun[exp] alloc_total(): int = {
+fun[exp] mem_total(): int = {
     var values: seq[int] = {1, 2, 3};
     return .len(values);
 };

@@ -757,15 +757,15 @@ fn lsp_server_keeps_model_context_through_hover_for_core_mem_and_std() {
 fn lsp_server_keeps_model_context_isolated_across_mixed_workspace_packages() {
     let (root, _) = copied_example_package_root("examples/mixed_models_workspace");
     let core_uri = format!("file://{}", root.join("core/lib.fol").display());
-    let alloc_uri = format!("file://{}", root.join("alloc/lib.fol").display());
+    let mem_uri = format!("file://{}", root.join("alloc/lib.fol").display());
     let std_uri = format!("file://{}", root.join("app/main.fol").display());
     let core_text = fs::read_to_string(root.join("core/lib.fol")).unwrap();
-    let alloc_text = fs::read_to_string(root.join("alloc/lib.fol")).unwrap();
+    let mem_text = fs::read_to_string(root.join("alloc/lib.fol")).unwrap();
     let std_text = fs::read_to_string(root.join("app/main.fol")).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     open_document(&mut server, core_uri.clone(), &core_text);
-    open_document(&mut server, alloc_uri.clone(), &alloc_text);
+    open_document(&mut server, mem_uri.clone(), &mem_text);
     open_document(&mut server, std_uri.clone(), &std_text);
 
     for (id, uri, line, character, expected) in [
@@ -778,7 +778,7 @@ fn lsp_server_keeps_model_context_isolated_across_mixed_workspace_packages() {
         ),
         (
             781_i64,
-            alloc_uri.as_str(),
+            mem_uri.as_str(),
             1_u32,
             12_u32,
             fol_typecheck::TypecheckCapabilityModel::Mem,

@@ -91,10 +91,10 @@ fn positive_runtime_model_examples() -> &'static [(&'static str, &'static str)] 
         ("examples/core_defer", "core"),
         ("examples/core_records", "core"),
         ("examples/core_surface_showcase", "core"),
-        ("examples/alloc_defaults", "mem"),
-        ("examples/alloc_containers", "mem"),
-        ("examples/alloc_collections", "mem"),
-        ("examples/alloc_surface_showcase", "mem"),
+        ("examples/mem_defaults", "mem"),
+        ("examples/mem_containers", "mem"),
+        ("examples/mem_collections", "mem"),
+        ("examples/mem_surface_showcase", "mem"),
         ("examples/std_bundled_fmt", "std"),
         ("examples/std_cli", "std"),
         ("examples/std_echo_min", "std"),
@@ -758,68 +758,68 @@ fn test_build_fixture_d_options_accepts_option_overrides() {
 }
 
 #[test]
-fn test_build_fixture_alloc_model_supports_string_values() {
-    let root = build_fixture_root("model_alloc_str");
+fn test_build_fixture_mem_model_supports_string_values() {
+    let root = build_fixture_root("model_mem_str");
 
     let build = run_fol_in_dir(&root, &["code", "build"]);
     assert!(
         build.status.success(),
-        "alloc string fixture should build: stdout=\n{}\nstderr=\n{}",
+        "mem string fixture should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
         String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
-        "alloc string fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+        "mem string fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
             String::from_utf8_lossy(&build.stdout).contains("fol_model=mem"),
-            "alloc string fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
+            "mem string fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&build.stdout),
             String::from_utf8_lossy(&build.stderr)
         );
 }
 
 #[test]
-fn test_build_fixture_alloc_model_supports_sequences() {
-    let root = build_fixture_root("model_alloc_seq");
+fn test_build_fixture_mem_model_supports_sequences() {
+    let root = build_fixture_root("model_mem_seq");
 
     let build = run_fol_in_dir(&root, &["code", "build"]);
     assert!(
         build.status.success(),
-        "alloc sequence fixture should build: stdout=\n{}\nstderr=\n{}",
+        "mem sequence fixture should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
         String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
-        "alloc sequence fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+        "mem sequence fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
 }
 
 #[test]
-fn test_build_fixture_alloc_model_supports_full_heap_surface() {
-    let root = build_fixture_root("model_alloc_surface_full");
+fn test_build_fixture_mem_model_supports_full_heap_surface() {
+    let root = build_fixture_root("model_mem_surface_full");
 
     let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
     assert!(
         build.status.success(),
-        "alloc full-surface fixture should build: stdout=\n{}\nstderr=\n{}",
+        "mem full-surface fixture should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
         String::from_utf8_lossy(&build.stdout).contains("fol_model=mem"),
-        "alloc full-surface fixture should surface its model in the build summary: stdout=\n{}\nstderr=\n{}",
+        "mem full-surface fixture should surface its model in the build summary: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
-        .expect("alloc full-surface fixture should emit main.rs");
+        .expect("mem full-surface fixture should emit main.rs");
     let emitted = std::fs::read_to_string(&generated).expect("generated main should load");
     assert!(emitted.contains("use fol_runtime::alloc as rt;"));
 }
@@ -869,13 +869,13 @@ fn test_build_fixture_std_model_runs_echo_programs() {
 }
 
 #[test]
-fn test_build_fixture_std_model_supports_hosted_alloc_surfaces() {
+fn test_build_fixture_std_model_supports_hosted_mem_surfaces() {
     let root = build_fixture_root("model_std_hosted_alloc");
 
     let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
     assert!(
         build.status.success(),
-        "std hosted-alloc fixture should build: stdout=\n{}\nstderr=\n{}",
+        "std hosted-mem fixture should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
@@ -891,23 +891,23 @@ fn test_build_fixture_std_model_supports_hosted_alloc_surfaces() {
                 None
             }
         })
-        .expect("std hosted-alloc build should report a binary path")
+        .expect("std hosted-mem build should report a binary path")
         .trim()
         .to_string();
 
     let run = Command::new(&binary)
         .output()
-        .expect("std hosted-alloc fixture binary should execute");
+        .expect("std hosted-mem fixture binary should execute");
     assert!(
         run.status.success(),
-        "std hosted-alloc fixture binary should run: stdout=\n{}\nstderr=\n{}",
+        "std hosted-mem fixture binary should run: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&run.stdout),
         String::from_utf8_lossy(&run.stderr)
     );
     let stdout = String::from_utf8_lossy(&run.stdout);
     assert!(
         stdout.contains("std-ready"),
-        "std hosted-alloc fixture should print through std runtime: stdout=\n{}\nstderr=\n{}",
+        "std hosted-mem fixture should print through std runtime: stdout=\n{}\nstderr=\n{}",
         stdout,
         String::from_utf8_lossy(&run.stderr)
     );
@@ -998,10 +998,10 @@ fn test_build_fixture_mixed_models_workspace_keeps_per_artifact_models() {
         .iter()
         .find(|a| a.name == "corelib")
         .expect("corelib");
-    let alloc = artifacts
+    let mem = artifacts
         .iter()
-        .find(|a| a.name == "alloclib")
-        .expect("alloclib");
+        .find(|a| a.name == "memlib")
+        .expect("memlib");
     let tool = artifacts.iter().find(|a| a.name == "tool").expect("tool");
 
     assert_eq!(
@@ -1009,7 +1009,7 @@ fn test_build_fixture_mixed_models_workspace_keeps_per_artifact_models() {
         fol_package::build_artifact::BuildArtifactFolModel::Core
     );
     assert_eq!(
-        alloc.fol_model,
+        mem.fol_model,
         fol_package::build_artifact::BuildArtifactFolModel::Mem
     );
     assert_eq!(
@@ -1070,13 +1070,13 @@ fn test_core_artifact_accepts_transitive_core_pkg_dependency() {
 }
 
 #[test]
-fn test_core_artifact_rejects_transitive_alloc_pkg_dependency() {
-    let temp_root = unique_temp_root("model_core_dep_alloc");
+fn test_core_artifact_rejects_transitive_mem_pkg_dependency() {
+    let temp_root = unique_temp_root("model_core_dep_mem");
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
-        &store_root.join("alloclib"),
-        "alloclib",
+        &store_root.join("memlib"),
+        "memlib",
         "mem",
         "lib.fol",
         "fun[exp] helper(): str = {\n    return \"ok\";\n};\n",
@@ -1086,9 +1086,9 @@ fn test_core_artifact_rejects_transitive_alloc_pkg_dependency() {
         "app",
         "core",
         concat!(
-            "use alloclib: pkg = {alloclib};\n",
+            "use memlib: pkg = {memlib};\n",
             "fun[] main(): int = {\n",
-            "    var value: str = alloclib::src::helper();\n",
+            "    var value: str = memlib::src::helper();\n",
             "    return 0;\n",
             "};\n",
         ),
@@ -1099,7 +1099,7 @@ fn test_core_artifact_rejects_transitive_alloc_pkg_dependency() {
     let stderr = String::from_utf8_lossy(&build.stderr);
     assert!(
         !build.status.success(),
-        "core->alloc pkg dependency should fail: stdout=\n{}\nstderr=\n{}",
+        "core->mem pkg dependency should fail: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
@@ -1148,13 +1148,13 @@ fn test_core_artifact_rejects_transitive_std_pkg_dependency() {
 }
 
 #[test]
-fn test_alloc_artifact_accepts_transitive_alloc_pkg_dependency() {
-    let temp_root = unique_temp_root("model_alloc_dep_alloc");
+fn test_mem_artifact_accepts_transitive_mem_pkg_dependency() {
+    let temp_root = unique_temp_root("model_mem_dep_mem");
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
-        &store_root.join("alloclib"),
-        "alloclib",
+        &store_root.join("memlib"),
+        "memlib",
         "mem",
         "lib.fol",
         concat!(
@@ -1169,9 +1169,9 @@ fn test_alloc_artifact_accepts_transitive_alloc_pkg_dependency() {
         "app",
         "mem",
         concat!(
-            "use alloclib: pkg = {alloclib};\n",
+            "use memlib: pkg = {memlib};\n",
             "fun[] main(): int = {\n",
-            "    return alloclib::src::size();\n",
+            "    return memlib::src::size();\n",
             "};\n",
         ),
         false,
@@ -1180,7 +1180,7 @@ fn test_alloc_artifact_accepts_transitive_alloc_pkg_dependency() {
     let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build"]);
     assert!(
         build.status.success(),
-        "alloc->alloc pkg dependency should build: stdout=\n{}\nstderr=\n{}",
+        "mem->mem pkg dependency should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
@@ -1190,8 +1190,8 @@ fn test_alloc_artifact_accepts_transitive_alloc_pkg_dependency() {
 }
 
 #[test]
-fn test_alloc_artifact_rejects_transitive_std_echo_dependency() {
-    let temp_root = unique_temp_root("model_alloc_dep_std");
+fn test_mem_artifact_rejects_transitive_std_echo_dependency() {
+    let temp_root = unique_temp_root("model_mem_dep_std");
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
@@ -1218,7 +1218,7 @@ fn test_alloc_artifact_rejects_transitive_std_echo_dependency() {
     let stderr = String::from_utf8_lossy(&build.stderr);
     assert!(
         !build.status.success(),
-        "alloc should reject transitive std echo dependency: stdout=\n{}\nstderr=\n{}",
+        "mem should reject transitive std echo dependency: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
@@ -1229,8 +1229,8 @@ fn test_alloc_artifact_rejects_transitive_std_echo_dependency() {
 }
 
 #[test]
-fn test_std_artifact_accepts_mixed_core_and_alloc_pkg_dependencies() {
-    let temp_root = unique_temp_root("model_std_dep_core_alloc");
+fn test_std_artifact_accepts_mixed_core_and_mem_pkg_dependencies() {
+    let temp_root = unique_temp_root("model_std_dep_core_mem");
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
@@ -1241,8 +1241,8 @@ fn test_std_artifact_accepts_mixed_core_and_alloc_pkg_dependencies() {
         "fun[exp] answer(): int = {\n    return 5;\n};\n",
     );
     write_formal_model_package(
-        &store_root.join("alloclib"),
-        "alloclib",
+        &store_root.join("memlib"),
+        "memlib",
         "mem",
         "lib.fol",
         concat!(
@@ -1258,9 +1258,9 @@ fn test_std_artifact_accepts_mixed_core_and_alloc_pkg_dependencies() {
         "std",
         concat!(
             "use corelib: pkg = {corelib};\n",
-            "use alloclib: pkg = {alloclib};\n",
+            "use memlib: pkg = {memlib};\n",
             "fun[] main(): int = {\n",
-            "    return .echo(corelib::src::answer() + alloclib::src::size());\n",
+            "    return .echo(corelib::src::answer() + memlib::src::size());\n",
             "};\n",
         ),
         true,
@@ -1303,13 +1303,13 @@ fn test_std_artifact_accepts_mixed_core_and_alloc_pkg_dependencies() {
 }
 
 #[test]
-fn test_std_consumer_of_alloc_pkg_dependency_emits_std_runtime_only() {
-    let temp_root = unique_temp_root("model_std_dep_alloc_emit");
+fn test_std_consumer_of_mem_pkg_dependency_emits_std_runtime_only() {
+    let temp_root = unique_temp_root("model_std_dep_mem_emit");
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
-        &store_root.join("alloclib"),
-        "alloclib",
+        &store_root.join("memlib"),
+        "memlib",
         "mem",
         "lib.fol",
         concat!(
@@ -1324,9 +1324,9 @@ fn test_std_consumer_of_alloc_pkg_dependency_emits_std_runtime_only() {
         "app",
         "std",
         concat!(
-            "use alloclib: pkg = {alloclib};\n",
+            "use memlib: pkg = {memlib};\n",
             "fun[] main(): int = {\n",
-            "    return .echo(alloclib::src::size());\n",
+            "    return .echo(memlib::src::size());\n",
             "};\n",
         ),
         true,
@@ -1335,12 +1335,12 @@ fn test_std_consumer_of_alloc_pkg_dependency_emits_std_runtime_only() {
     let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build", "--keep-build-dir"]);
     assert!(
         build.status.success(),
-        "std alloc-consumer build should succeed: stdout=\n{}\nstderr=\n{}",
+        "std mem-consumer build should succeed: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     let emitted = find_file_by_name(&app_root.join(".fol/build"), "main.rs")
-        .expect("std alloc-consumer should emit main.rs");
+        .expect("std mem-consumer should emit main.rs");
     let source = std::fs::read_to_string(&emitted).expect("generated main should load");
     assert!(source.contains("use fol_runtime::std as rt;"));
     assert!(!source.contains("use fol_runtime::alloc as rt;"));
@@ -1351,12 +1351,12 @@ fn test_std_consumer_of_alloc_pkg_dependency_emits_std_runtime_only() {
 
 #[test]
 fn test_core_illegal_dependency_failure_happens_before_emission() {
-    let temp_root = unique_temp_root("model_core_dep_alloc_no_emit");
+    let temp_root = unique_temp_root("model_core_dep_mem_no_emit");
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
-        &store_root.join("alloclib"),
-        "alloclib",
+        &store_root.join("memlib"),
+        "memlib",
         "mem",
         "lib.fol",
         "fun[exp] helper(): str = {\n    return \"ok\";\n};\n",
@@ -1366,9 +1366,9 @@ fn test_core_illegal_dependency_failure_happens_before_emission() {
         "app",
         "core",
         concat!(
-            "use alloclib: pkg = {alloclib};\n",
+            "use memlib: pkg = {memlib};\n",
             "fun[] main(): int = {\n",
-            "    var value: str = alloclib::src::helper();\n",
+            "    var value: str = memlib::src::helper();\n",
             "    return 0;\n",
             "};\n",
         ),
@@ -1378,13 +1378,13 @@ fn test_core_illegal_dependency_failure_happens_before_emission() {
     let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build", "--keep-build-dir"]);
     assert!(
         !build.status.success(),
-        "illegal core alloc-consumer should fail: stdout=\n{}\nstderr=\n{}",
+        "illegal core mem-consumer should fail: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
         find_file_by_name(&app_root.join(".fol/build"), "main.rs").is_none(),
-        "illegal core alloc-consumer should fail before Rust emission"
+        "illegal core mem-consumer should fail before Rust emission"
     );
 
     std::fs::remove_dir_all(&temp_root).ok();
@@ -1396,7 +1396,7 @@ fn test_build_fixtures_emit_runtime_imports_for_each_model() {
         ("core", "fun[] main(): int = {\n    return 7;\n};\n"),
         (
             "mem",
-            "fun[] main(): str = {\n    return \"alloc-ready\";\n};\n",
+            "fun[] main(): str = {\n    return \"mem-ready\";\n};\n",
         ),
         ("std", "fun[] main(): int = {\n    return .echo(7);\n};\n"),
     ];
@@ -1484,14 +1484,14 @@ fn test_cli_build_emits_rust_for_model_examples() {
         ("examples/core_defer", "use fol_runtime::core as rt;"),
         ("examples/core_records", "use fol_runtime::core as rt;"),
         ("examples/core_surface_showcase", "use fol_runtime::core as rt;"),
-        ("examples/alloc_defaults", "use fol_runtime::alloc as rt;"),
-        ("examples/alloc_containers", "use fol_runtime::alloc as rt;"),
+        ("examples/mem_defaults", "use fol_runtime::alloc as rt;"),
+        ("examples/mem_containers", "use fol_runtime::alloc as rt;"),
         (
-            "examples/alloc_collections",
+            "examples/mem_collections",
             "use fol_runtime::alloc as rt;",
         ),
         (
-            "examples/alloc_surface_showcase",
+            "examples/mem_surface_showcase",
             "use fol_runtime::alloc as rt;",
         ),
         ("examples/std_cli", "use fol_runtime::std as rt;"),
@@ -1545,10 +1545,10 @@ fn test_cli_example_build_summaries_surface_expected_models() {
         ("examples/core_defer", "fol_model=core"),
         ("examples/core_records", "fol_model=core"),
         ("examples/core_surface_showcase", "fol_model=core"),
-        ("examples/alloc_defaults", "fol_model=mem"),
-        ("examples/alloc_containers", "fol_model=mem"),
-        ("examples/alloc_collections", "fol_model=mem"),
-        ("examples/alloc_surface_showcase", "fol_model=mem"),
+        ("examples/mem_defaults", "fol_model=mem"),
+        ("examples/mem_containers", "fol_model=mem"),
+        ("examples/mem_collections", "fol_model=mem"),
+        ("examples/mem_surface_showcase", "fol_model=mem"),
         ("examples/std_bundled_fmt", "fol_model=std"),
         ("examples/std_cli", "fol_model=std"),
         ("examples/std_echo_min", "fol_model=std"),
@@ -1757,8 +1757,8 @@ fn test_build_rejects_std_imports_under_core_model() {
 }
 
 #[test]
-fn test_build_rejects_std_imports_under_alloc_model() {
-    let temp_root = unique_temp_root("build_alloc_use_std_reject");
+fn test_build_rejects_std_imports_under_mem_model() {
+    let temp_root = unique_temp_root("build_mem_use_std_reject");
     let app_root = temp_root.join("app");
     std::fs::create_dir_all(app_root.join("src")).expect("should create app source root");
     std::fs::write(
@@ -1782,10 +1782,10 @@ fn test_build_rejects_std_imports_under_alloc_model() {
 
     let build = run_fol_in_dir(&app_root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&build.stderr);
-    assert!(!build.status.success(), "alloc std-import app should fail");
+    assert!(!build.status.success(), "mem std-import app should fail");
     assert!(
         stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'mem'"),
-        "alloc std-import app should keep the capability diagnostic: stdout=\n{}\nstderr=\n{}",
+        "mem std-import app should keep the capability diagnostic: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
@@ -2491,7 +2491,7 @@ fn test_cli_build_and_run_mixed_model_example_workspace() {
             && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Core
     }));
     assert!(artifacts.iter().any(|a| {
-        a.name == "alloclib"
+        a.name == "memlib"
             && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Mem
     }));
     assert!(artifacts.iter().any(|a| {
@@ -2555,8 +2555,8 @@ fn test_cli_run_rejects_core_example_route() {
 }
 
 #[test]
-fn test_cli_run_rejects_alloc_example_route() {
-    let temp_root = unique_temp_root("run_alloc_route_reject");
+fn test_cli_run_rejects_mem_example_route() {
+    let temp_root = unique_temp_root("run_mem_route_reject");
     let root = temp_root.join("demo");
     std::fs::create_dir_all(root.join("src")).expect("should create source root");
     std::fs::write(
@@ -2579,13 +2579,13 @@ fn test_cli_run_rejects_alloc_example_route() {
     .expect("should write build file");
     std::fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): str = {\n    return \"alloc\";\n};\n",
+        "fun[] main(): str = {\n    return \"mem\";\n};\n",
     )
     .expect("should write source");
 
     let run = run_fol_in_dir(&root, &["code", "run"]);
     let stderr = String::from_utf8_lossy(&run.stderr);
-    assert!(!run.status.success(), "alloc route should be rejected");
+    assert!(!run.status.success(), "mem route should be rejected");
     assert!(stderr.contains("fol_model = mem"));
     assert!(stderr.contains("run requires 'fol_model = std'"));
 
@@ -2593,8 +2593,8 @@ fn test_cli_run_rejects_alloc_example_route() {
 }
 
 #[test]
-fn test_cli_test_rejects_alloc_example_route() {
-    let temp_root = unique_temp_root("test_alloc_route_reject");
+fn test_cli_test_rejects_mem_example_route() {
+    let temp_root = unique_temp_root("test_mem_route_reject");
     let root = temp_root.join("demo");
     std::fs::create_dir_all(root.join("src")).expect("should create source root");
     std::fs::write(
@@ -2616,13 +2616,13 @@ fn test_cli_test_rejects_alloc_example_route() {
     .expect("should write build file");
     std::fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): str = {\n    return \"alloc\";\n};\n",
+        "fun[] main(): str = {\n    return \"mem\";\n};\n",
     )
     .expect("should write source");
 
     let run = run_fol_in_dir(&root, &["code", "test"]);
     let stderr = String::from_utf8_lossy(&run.stderr);
-    assert!(!run.status.success(), "alloc test route should be rejected");
+    assert!(!run.status.success(), "mem test route should be rejected");
     assert!(stderr.contains("test requires 'fol_model = std'"));
 
     std::fs::remove_dir_all(&temp_root).ok();
@@ -2747,10 +2747,10 @@ fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
         ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
         ("examples/core_defer", "use fol_runtime::core as rt;"),
         (
-            "examples/alloc_collections",
+            "examples/mem_collections",
             "use fol_runtime::alloc as rt;",
         ),
-        ("examples/alloc_defaults", "use fol_runtime::alloc as rt;"),
+        ("examples/mem_defaults", "use fol_runtime::alloc as rt;"),
         (
             "examples/build_generated_dirs",
             "use fol_runtime::std as rt;",
@@ -2797,7 +2797,7 @@ fn test_model_examples_keep_runtime_imports_clean_across_emitted_rust_trees() {
             Some("use fol_runtime::std"),
         ),
         (
-            "examples/alloc_collections",
+            "examples/mem_collections",
             "use fol_runtime::alloc as rt;",
             None,
             Some("use fol_runtime::std"),
@@ -3009,7 +3009,7 @@ fn test_mixed_model_example_keeps_graph_models_and_std_emission() {
             && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Core
     }));
     assert!(artifacts.iter().any(|a| {
-        a.name == "alloclib"
+        a.name == "memlib"
             && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Mem
     }));
     assert!(artifacts.iter().any(|a| {
@@ -3055,10 +3055,10 @@ fn test_docs_reference_real_example_packages() {
         "examples/core_defer",
         "examples/core_records",
         "examples/core_surface_showcase",
-        "examples/alloc_defaults",
-        "examples/alloc_containers",
-        "examples/alloc_collections",
-        "examples/alloc_surface_showcase",
+        "examples/mem_defaults",
+        "examples/mem_containers",
+        "examples/mem_collections",
+        "examples/mem_surface_showcase",
         "examples/std_bundled_fmt",
         "examples/std_cli",
         "examples/std_echo_min",
@@ -3103,7 +3103,7 @@ fn test_docs_reference_real_example_packages() {
             }
             let name = path.file_name()?.to_str()?;
             let is_runtime_model_example = name.starts_with("core_")
-                || name.starts_with("alloc_")
+                || name.starts_with("mem_")
                 || name.starts_with("std_")
                 || name == "mixed_models_workspace";
             is_runtime_model_example.then(|| format!("examples/{name}"))
@@ -3168,7 +3168,7 @@ fn test_negative_runtime_model_examples_fail_with_expected_boundary_class() {
             "str requires heap support and is unavailable in 'fol_model = core'",
         ),
         (
-            "examples/fail_alloc_echo",
+            "examples/fail_mem_echo",
             None,
             "'.echo(...)' requires 'fol_model = std'",
         ),
@@ -3208,7 +3208,7 @@ fn test_runtime_model_regression_matrix_stays_coherent_across_layers() {
             Some("fol_model=core"),
         ),
         (
-            "test/app/build/model_alloc_surface_full",
+            "test/app/build/model_mem_surface_full",
             true,
             Some("fol_model=mem"),
         ),
@@ -3348,13 +3348,13 @@ fn test_build_fixtures_core_model_reject_forbidden_surfaces() {
 }
 
 #[test]
-fn test_build_fixture_alloc_model_rejects_echo() {
-    let root = build_fixture_root("model_alloc_reject_echo");
+fn test_build_fixture_mem_model_rejects_echo() {
+    let root = build_fixture_root("model_mem_reject_echo");
     let build = run_fol_in_dir(&root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&build.stderr);
     assert!(
         !build.status.success(),
-        "alloc echo fixture should fail: stdout=\n{}\nstderr=\n{}",
+        "mem echo fixture should fail: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
@@ -3383,40 +3383,40 @@ fn test_negative_core_model_example_fails_with_heap_boundary_diagnostic() {
 }
 
 #[test]
-fn test_negative_alloc_model_example_fails_with_hosted_boundary_diagnostic() {
-    let root = temp_example_root("examples/fail_alloc_echo");
+fn test_negative_mem_model_example_fails_with_hosted_boundary_diagnostic() {
+    let root = temp_example_root("examples/fail_mem_echo");
     let build = run_fol_in_dir(&root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&build.stderr);
 
     assert!(
         !build.status.success(),
-        "negative alloc model example should fail: stdout=\n{}\nstderr=\n{}",
+        "negative mem model example should fail: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
     assert!(
         stderr.contains("'.echo(...)' requires 'fol_model = std'"),
-        "negative alloc model example should keep the hosted-boundary wording: stdout=\n{}\nstderr=\n{}",
+        "negative mem model example should keep the hosted-boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
 }
 
 #[test]
-fn test_negative_transitive_core_alloc_boundary_example_fails_cleanly() {
+fn test_negative_transitive_core_mem_boundary_example_fails_cleanly() {
     let root = temp_example_root("examples/fail_core_alloc_boundary");
     let build = run_fol_in_dir(&root.join("app"), &["code", "build"]);
     let stderr = String::from_utf8_lossy(&build.stderr);
 
     assert!(
         !build.status.success(),
-        "negative transitive core/alloc example should fail: stdout=\n{}\nstderr=\n{}",
+        "negative transitive core/mem example should fail: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
     assert!(
         stderr.contains("str requires heap support and is unavailable in 'fol_model = core'"),
-        "negative transitive core/alloc example should keep the heap-boundary wording: stdout=\n{}\nstderr=\n{}",
+        "negative transitive core/mem example should keep the heap-boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
@@ -3611,8 +3611,8 @@ fn test_cli_code_build_keeps_core_string_boundary_diagnostic() {
 }
 
 #[test]
-fn test_cli_code_build_keeps_alloc_echo_boundary_diagnostic() {
-    let temp_root = unique_temp_root("build_alloc_echo_boundary");
+fn test_cli_code_build_keeps_mem_echo_boundary_diagnostic() {
+    let temp_root = unique_temp_root("build_mem_echo_boundary");
     let root = temp_root.join("demo");
     std::fs::create_dir_all(root.join("src")).expect("should create source root");
     std::fs::write(
@@ -3642,11 +3642,11 @@ fn test_cli_code_build_keeps_alloc_echo_boundary_diagnostic() {
     let output = run_fol_in_dir(&root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    assert!(!output.status.success(), "alloc echo boundary should fail");
+    assert!(!output.status.success(), "mem echo boundary should fail");
     assert!(
         stderr
             .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'mem'"),
-        "CLI should preserve the alloc echo boundary wording: stdout=\n{}\nstderr=\n{}",
+        "CLI should preserve the mem echo boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&output.stdout),
         stderr
     );

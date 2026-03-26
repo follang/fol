@@ -1,12 +1,12 @@
 pro[] build(): non = {
     var build = .build();
-    build.meta({ name = "model_alloc_str", version = "0.1.0" });
+    build.meta({ name = "mem_defaults", version = "0.1.0" });
     var graph = build.graph();
     var app = graph.add_exe({
-        name = "model_alloc_str",
+        name = "mem-defaults",
         root = "src/main.fol",
         fol_model = "mem",
     });
-
     graph.install(app);
+    return;
 };

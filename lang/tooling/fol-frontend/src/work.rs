@@ -254,7 +254,7 @@ mod tests {
                 "    var graph = build.graph();\n",
                 "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
                 "    graph.add_static_lib({ name = \"corelib\", root = \"src/core.fol\", fol_model = \"core\" });\n",
-                "    graph.add_static_lib({ name = \"alloclib\", root = \"src/alloc.fol\", fol_model = \"mem\" });\n",
+                "    graph.add_static_lib({ name = \"memlib\", root = \"src/mem.fol\", fol_model = \"mem\" });\n",
                 "    return;\n",
                 "};\n",
             ),

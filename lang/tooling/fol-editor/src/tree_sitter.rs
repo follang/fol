@@ -727,7 +727,7 @@ mod tests {
         );
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(stdout.contains("core"));
-        assert!(stdout.contains("alloc"));
+        assert!(stdout.contains("mem"));
         assert!(stdout.contains("std"));
         assert!(stdout.contains("property"));
 

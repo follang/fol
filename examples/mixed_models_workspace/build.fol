@@ -7,8 +7,8 @@ pro[] build(): non = {
         root = "core/lib.fol",
         fol_model = "core",
     });
-    var alloclib = graph.add_static_lib({
-        name = "alloclib",
+    var memlib = graph.add_static_lib({
+        name = "memlib",
         root = "alloc/lib.fol",
         fol_model = "mem",
     });
@@ -18,7 +18,7 @@ pro[] build(): non = {
         fol_model = "std",
     });
     graph.install(corelib);
-    graph.install(alloclib);
+    graph.install(memlib);
     graph.install(tool);
     graph.add_run(tool);
     return;

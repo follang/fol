@@ -316,7 +316,7 @@ pro[] build(): non = {
 
     var heaplib = graph.add_static_lib({
         name = "heaplib",
-        root = "src/alloc/lib.fol",
+        root = "src/mem/lib.fol",
         fol_model = "mem",
     });
 
@@ -334,10 +334,10 @@ pro[] build(): non = {
 - `examples/core_defer`
 - `examples/core_records`
 - `examples/core_surface_showcase`
-- `examples/alloc_defaults`
-- `examples/alloc_containers`
-- `examples/alloc_collections`
-- `examples/alloc_surface_showcase`
+- `examples/mem_defaults`
+- `examples/mem_containers`
+- `examples/mem_collections`
+- `examples/mem_surface_showcase`
 - `examples/std_cli`
 - `examples/std_bundled_fmt`
 - `examples/std_echo_min`
@@ -349,5 +349,5 @@ pro[] build(): non = {
 Negative example packages:
 
 - `examples/fail_core_heap_reject`
-- `examples/fail_alloc_echo`
+- `examples/fail_mem_echo`
 - `examples/fail_core_alloc_boundary`
