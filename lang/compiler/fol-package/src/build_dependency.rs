@@ -193,7 +193,7 @@ pub fn project_dependency_surface(
             })
             .collect::<Result<Vec<_>, PackageError>>()?
     } else {
-        projected_modules
+        Vec::new()
     };
 
     let artifacts = if exec_output
@@ -227,7 +227,7 @@ pub fn project_dependency_surface(
             })
             .collect::<Result<Vec<_>, PackageError>>()?
     } else {
-        projected_artifacts
+        Vec::new()
     };
 
     let steps = if exec_output
@@ -261,7 +261,7 @@ pub fn project_dependency_surface(
             })
             .collect::<Result<Vec<_>, PackageError>>()?
     } else {
-        projected_steps
+        Vec::new()
     };
 
     let generated_outputs = if exec_output
@@ -297,7 +297,7 @@ pub fn project_dependency_surface(
             })
             .collect::<Result<Vec<_>, PackageError>>()?
     } else {
-        projected_generated_outputs
+        Vec::new()
     };
 
     Ok(DependencyBuildSurface {
@@ -370,7 +370,7 @@ mod tests {
     }
 
     #[test]
-    fn projected_dependency_surface_keeps_default_exposed_shapes_deterministic() {
+    fn projected_dependency_surface_keeps_source_import_roots_without_build_exports() {
         let root = unique_temp_root("projected_surface");
         fs::create_dir_all(root.join("src/root")).expect("fixture root should exist");
         fs::write(
@@ -422,32 +422,10 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["src/root"]
         );
-        assert_eq!(
-            surface
-                .modules
-                .iter()
-                .map(|module| module.name.as_str())
-                .collect::<Vec<_>>(),
-            vec!["codec"]
-        );
-        assert_eq!(
-            surface
-                .artifacts
-                .iter()
-                .map(|artifact| artifact.name.as_str())
-                .collect::<Vec<_>>(),
-            vec!["json"]
-        );
-        assert!(surface.steps.iter().any(|step| step.name == "docs"));
-        assert!(surface.steps.iter().any(|step| step.name == "install"));
-        assert_eq!(
-            surface
-                .generated_outputs
-                .iter()
-                .map(|output| output.name.as_str())
-                .collect::<Vec<_>>(),
-            vec!["schema"]
-        );
+        assert!(surface.modules.is_empty());
+        assert!(surface.artifacts.is_empty());
+        assert!(surface.steps.is_empty());
+        assert!(surface.generated_outputs.is_empty());
 
         fs::remove_dir_all(&root).expect("fixture root should be removable");
     }
@@ -536,6 +514,54 @@ mod tests {
                 .collect::<Vec<_>>(),
             vec!["src"]
         );
+
+        fs::remove_dir_all(&root).expect("fixture root should be removable");
+    }
+
+    #[test]
+    fn projected_dependency_surface_keeps_source_roots_even_when_build_exports_are_empty() {
+        let root = unique_temp_root("source_imports_without_build_exports");
+        fs::create_dir_all(root.join("src/root")).expect("fixture root should exist");
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"json\", version = \"1.0.0\" });\n",
+                "    return;\n",
+                "}\n",
+            ),
+        )
+        .expect("build fixture should be written");
+        fs::write(
+            root.join("src/root/main.fol"),
+            "var[exp] answer: int = 42;\n",
+        )
+        .expect("source fixture should be written");
+
+        let mut stream = FileStream::from_folder(root.to_str().expect("temp path should be utf-8"))
+            .expect("folder stream should open");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("package syntax should parse");
+
+        let surface =
+            project_dependency_surface("json", &root, &syntax).expect("surface should project");
+
+        assert_eq!(
+            surface
+                .source_roots
+                .iter()
+                .map(|root| root.relative_path.as_str())
+                .collect::<Vec<_>>(),
+            vec!["src/root"]
+        );
+        assert!(surface.modules.is_empty());
+        assert!(surface.artifacts.is_empty());
+        assert!(surface.steps.is_empty());
+        assert!(surface.generated_outputs.is_empty());
 
         fs::remove_dir_all(&root).expect("fixture root should be removable");
     }

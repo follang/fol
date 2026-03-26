@@ -1,8 +1,8 @@
-use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root};
 use super::super::{
     EditorLspServer, JsonRpcId, JsonRpcRequest, LspCompletionList, LspCompletionParams,
     LspPosition, LspTextDocumentIdentifier,
 };
+use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root};
 use crate::EditorConfig;
 use std::fs;
 
@@ -38,8 +38,7 @@ fn lsp_server_handles_completion_requests() {
         .unwrap()
         .unwrap();
 
-    let completion: LspCompletionList =
-        serde_json::from_value(completion.result.unwrap()).unwrap();
+    let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
     assert!(!completion.is_incomplete);
     assert!(completion.items.iter().any(|item| item.label == "value"));
     assert!(
@@ -87,8 +86,7 @@ fn lsp_server_keeps_plain_completion_available_when_typecheck_fails() {
         .unwrap()
         .unwrap();
 
-    let completion: LspCompletionList =
-        serde_json::from_value(completion.result.unwrap()).unwrap();
+    let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
     assert!(completion.items.iter().any(|item| item.label == "value"));
     assert!(completion.items.iter().any(|item| item.label == "helper"));
 
@@ -127,8 +125,7 @@ fn lsp_server_returns_routine_parameter_completions() {
         .unwrap()
         .unwrap();
 
-    let completion: LspCompletionList =
-        serde_json::from_value(completion.result.unwrap()).unwrap();
+    let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
     assert!(completion.items.iter().any(|item| item.label == "total"));
     assert!(
         completion
@@ -174,8 +171,7 @@ fn lsp_server_returns_builtin_type_completions_in_type_positions() {
         .unwrap()
         .unwrap();
 
-    let completion: LspCompletionList =
-        serde_json::from_value(completion.result.unwrap()).unwrap();
+    let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
     let labels = completion
         .items
         .iter()
@@ -300,7 +296,62 @@ fn lsp_server_returns_build_surface_completions_in_build_files() {
         .collect::<Vec<_>>();
     assert!(labels.contains(&"meta".to_string()));
     assert!(labels.contains(&"add_dep".to_string()));
+    assert!(labels.contains(&"export_module".to_string()));
+    assert!(labels.contains(&"export_artifact".to_string()));
+    assert!(labels.contains(&"export_step".to_string()));
+    assert!(labels.contains(&"export_output".to_string()));
     assert!(labels.contains(&"graph".to_string()));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_returns_graph_path_handle_completions_in_build_files() {
+    let (root, _) = sample_package_root("completion_graph_paths");
+    let build_file = root.join("build.fol");
+    fs::write(
+        &build_file,
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = fs::read_to_string(&build_file).unwrap();
+    let uri = format!("file://{}", build_file.display());
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(502),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 10,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+
+    let labels = serde_json::from_value::<LspCompletionList>(completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(labels.contains(&"file_from_root".to_string()));
+    assert!(labels.contains(&"dir_from_root".to_string()));
 
     fs::remove_dir_all(root).ok();
 }
@@ -397,8 +448,7 @@ fn lsp_server_returns_visible_named_type_completions_in_type_positions() {
         .unwrap()
         .unwrap();
 
-    let completion: LspCompletionList =
-        serde_json::from_value(completion.result.unwrap()).unwrap();
+    let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
     let labels = completion
         .items
         .iter()
@@ -447,8 +497,7 @@ fn lsp_server_locks_type_completion_matrix() {
         .unwrap()
         .unwrap();
 
-    let completion: LspCompletionList =
-        serde_json::from_value(completion.result.unwrap()).unwrap();
+    let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
     let labels = completion
         .items
         .iter()
@@ -545,8 +594,7 @@ fn lsp_server_returns_same_package_namespace_members_after_qualification() {
         .unwrap()
         .unwrap();
 
-    let completion: LspCompletionList =
-        serde_json::from_value(completion.result.unwrap()).unwrap();
+    let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
     assert!(completion.items.iter().any(|item| item.label == "helper"));
 
     fs::remove_dir_all(root).ok();
@@ -595,8 +643,7 @@ fn lsp_server_keeps_local_and_imported_namespace_members_separate() {
         .unwrap()
         .unwrap();
 
-    let completion: LspCompletionList =
-        serde_json::from_value(completion.result.unwrap()).unwrap();
+    let completion: LspCompletionList = serde_json::from_value(completion.result.unwrap()).unwrap();
     let labels = completion
         .items
         .iter()

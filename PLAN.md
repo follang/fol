@@ -426,19 +426,19 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
 
 ## Epoch 7: Tighten Dependency Import/Build Surface Separation
 
-### Slice 41
+### Slice 41 (complete)
 
 - now that explicit exports exist, re-audit the boundary between:
   - source imports (`use alias: pkg = {...}`)
   - build-surface dependency handle queries
 - document the exact separation again
 
-### Slice 42
+### Slice 42 (complete)
 
 - remove obsolete dependency projection code or assumptions that are superseded
   by explicit exports
 
-### Slice 43
+### Slice 43 (complete)
 
 - add negative tests proving:
   - exported build surfaces do not silently change source import rules
@@ -446,23 +446,23 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
 
 ## Epoch 8: Examples And Docs
 
-### Slice 44
+### Slice 44 (complete)
 
 - add one standalone example focused on explicit dependency exports
 
-### Slice 45
+### Slice 45 (complete)
 
 - add one standalone example focused on source-path handles
 
-### Slice 46
+### Slice 46 (complete)
 
 - add one standalone example focused on dependency mode selection
 
-### Slice 47
+### Slice 47 (complete)
 
 - add one standalone example focused on described custom steps
 
-### Slice 48
+### Slice 48 (complete)
 
 - update the build book sections:
   - `100_build_file.md`
@@ -475,7 +475,7 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
 
 ## Epoch 9: Editor And Tooling Audit
 
-### Slice 49
+### Slice 49 (complete)
 
 - audit editor/LSP completion and tree-sitter sync for:
   - new build export methods
@@ -487,7 +487,7 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
 
 ## Epoch 10: Final Cleanup
 
-### Slice 50
+### Slice 50 (complete)
 
 - final repo-wide scan for:
   - stale build docs

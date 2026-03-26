@@ -28,9 +28,10 @@ capability classes.
 
 ### Dependency Handles
 
-Direct dependencies should not stay only as metadata declarations.
+Direct dependencies are now real build values instead of only metadata
+declarations.
 
-The intended shape is:
+The current shape is:
 
 ```fol
 var logtiny = build.add_dep({
@@ -48,15 +49,13 @@ var logtiny_lib = logtiny.artifact("logtiny");
 var logtiny_gen = logtiny.generated("bindings");
 ```
 
-That makes dependencies real build values instead of only package-loader data.
-
 The current dependency import model stays explicit:
 
 - ordinary source imports still resolve by alias projection under `.fol/pkg/<alias>`
 - dependency handles query the build-facing surface of that package
+- dependency handles only see explicit exports from the dependency package
 
-The next public layer on top of that is explicit exports from the dependency
-package itself:
+That public contract is:
 
 ```fol
 build.export_module({ name = "api", module = codec });
@@ -65,31 +64,25 @@ build.export_step({ name = "check", step = docs });
 build.export_output({ name = "schema", output = bindings });
 ```
 
-Projection remains the fallback during the transition, but explicit exports are
-the preferred public contract.
-
 This keeps source imports and build-surface queries separate instead of
 collapsing them into one implicit registry.
 
 ### Output Handles
 
-Generated and copied files should not remain fragmented into unrelated special
-cases.
-
-The intended capability is one output-handle family that can represent:
+Generated and copied files now use one output-handle family that can represent:
 
 - files written by `graph.write_file(...)`
 - files copied by `graph.copy_file(...)`
 - captured stdout from run/system-tool/codegen steps
 - generated files exported by dependency packages
 
-This should behave like one composable build value, not a pile of unrelated
-string paths. That handle family is now the current direction for local and
-dependency-generated outputs alike.
+This behaves like one composable build value instead of a pile of unrelated
+string paths. The same handle family now covers local and dependency-generated
+outputs alike.
 
 ### Explicit Dependency Arguments
 
-Dependencies should eventually accept explicit forwarded build arguments:
+Dependencies now accept explicit forwarded build arguments:
 
 ```fol
 var dep = build.add_dep({
@@ -112,9 +105,8 @@ The important rule is explicitness:
 
 ### Install Prefix
 
-The build graph should describe what gets installed, but the output prefix
-should remain a user/tool choice rather than something hardcoded into the
-package.
+The build graph now describes what gets installed, while the output prefix
+stays a user/tool choice rather than something hardcoded into the package.
 
 That means FOL should continue to separate:
 

@@ -81,10 +81,14 @@ source scope. Equivalent to Zig's `artifact.root_module.addImport(name, dep)`.
 Modules from dependencies are accessed via `dep.module(name)`:
 
 ```fol
-var dep    = graph.dependency("mylib", "local:../mylib");
+var build  = .build();
+var dep    = build.add_dep({ alias = "mylib", source = "loc", target = "../mylib" });
 var logger = dep.module("logger");
 app.import(logger);
 ```
+
+`dep.module(name)` resolves only explicitly exported build modules. It does not
+change the ordinary package import rules used in source files.
 
 ## Generated Files
 

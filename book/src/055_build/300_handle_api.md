@@ -214,17 +214,8 @@ Declared dependency modes:
 - `lazy`
 - `on-demand`
 
-The default surface is still projected deterministically from the dependency
-package:
-
-- ordinary package source roots
-- named graph modules
-- installed artifacts
-- named steps
-- generated outputs
-
-Packages can now narrow and rename the build-facing part of that surface
-explicitly from their own `build.fol`:
+Dependency-handle queries resolve only names that the dependency explicitly
+exports from its own `build.fol`:
 
 ```fol
 var build = .build();
@@ -236,8 +227,12 @@ build.export_module({ name = "api", module = codec });
 build.export_artifact({ name = "runtime", artifact = lib });
 ```
 
-When explicit exports exist, dependency-handle lookups prefer those exported
-names over accidental projection.
+If a dependency does not export a build-facing module, artifact, step, or
+generated output, dependency handles do not see it.
+
+Source import roots remain separate. A dependency can still be imported in
+ordinary package source through its alias even when it exports no build-facing
+handles at all.
 
 Import resolution still follows the current alias-projection model under
 `.fol/pkg/<alias>`. Dependency handles do not replace ordinary package imports;

@@ -2,9 +2,7 @@ use super::{
     canonical_directory_root, infer_package_root, parse_directory_package_syntax,
     resolve_directory_path, PackageSession,
 };
-use crate::{
-    PackageConfig, PackageIdentity, PackageSourceKind, PreparedPackage,
-};
+use crate::{PackageConfig, PackageIdentity, PackageSourceKind, PreparedPackage};
 use fol_parser::ast::{AstParser, ParsedPackage, UsePathSegment};
 use fol_stream::FileStream;
 use std::fs;
@@ -238,9 +236,8 @@ fn parse_directory_package_syntax_loads_folder_packages() {
     assert_eq!(parsed.package, "dep");
     assert_eq!(parsed.source_units.len(), 1);
 
-    fs::remove_dir_all(&temp_root).expect(
-        "Temporary package-session fixture directory should be removable after the test",
-    );
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary package-session fixture directory should be removable after the test");
 }
 
 #[test]
@@ -263,9 +260,8 @@ fn package_session_can_load_local_directory_packages() {
     assert_eq!(loaded.source_kind(), PackageSourceKind::Local);
     assert_eq!(session.cached_package_count(), 1);
 
-    fs::remove_dir_all(&temp_root).expect(
-        "Temporary package-session fixture directory should be removable after the test",
-    );
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary package-session fixture directory should be removable after the test");
 }
 
 #[test]
@@ -297,9 +293,8 @@ fn package_session_rejects_local_directory_targets_that_define_build_fol() {
         "Local directory import errors should explain that formal package roots belong to pkg",
     );
 
-    fs::remove_dir_all(&temp_root).expect(
-        "Temporary package-session fixture directory should be removable after the test",
-    );
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary package-session fixture directory should be removable after the test");
 }
 
 #[test]
@@ -324,9 +319,8 @@ fn package_session_reuses_cached_local_directory_packages() {
     assert_eq!(first.identity, second.identity);
     assert_eq!(session.cached_package_count(), 1);
 
-    fs::remove_dir_all(&temp_root).expect(
-        "Temporary package-session fixture directory should be removable after the test",
-    );
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary package-session fixture directory should be removable after the test");
 }
 
 #[test]
@@ -359,9 +353,8 @@ fn package_session_can_load_standard_directory_packages() {
     assert_eq!(loaded.source_kind(), PackageSourceKind::Standard);
     assert_eq!(session.cached_package_count(), 1);
 
-    fs::remove_dir_all(&temp_root).expect(
-        "Temporary package-session fixture directory should be removable after the test",
-    );
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary package-session fixture directory should be removable after the test");
 }
 
 #[test]
@@ -474,13 +467,9 @@ fn parse_directory_package_syntax_keeps_build_files_for_pkg_roots() {
 
     assert_eq!(parsed.source_units.len(), 2);
     assert!(
-        parsed
-            .source_units
-            .iter()
-            .all(|unit| {
-                !unit.path.ends_with("build.fol")
-                    && !unit.path.ends_with("package.fol")
-            }),
+        parsed.source_units.iter().all(|unit| {
+            !unit.path.ends_with("build.fol") && !unit.path.ends_with("package.fol")
+        }),
         "Pkg source parsing should keep legacy package control files out of the parsed source set",
     );
     assert!(
@@ -672,11 +661,20 @@ fn package_session_projects_dependency_surfaces_for_formal_pkg_roots() {
     let surface = surfaces
         .find("json")
         .expect("surface should be keyed by package name");
-    assert!(surface.source_roots.iter().any(|root| root.relative_path == "src/root"));
-    assert!(surface.modules.iter().any(|module| module.name == "codec"));
-    assert!(surface.artifacts.iter().any(|artifact| artifact.name == "json"));
-    assert!(surface.steps.iter().any(|step| step.name == "docs"));
-    assert!(surface.generated_outputs.iter().any(|output| output.name == "schema"));
+    assert!(surface
+        .source_roots
+        .iter()
+        .any(|root| root.relative_path == "src/root"));
+    assert!(surface.modules.iter().any(|module| module.name == "api"));
+    assert!(surface
+        .artifacts
+        .iter()
+        .any(|artifact| artifact.name == "runtime"));
+    assert!(surface.steps.iter().any(|step| step.name == "check"));
+    assert!(surface
+        .generated_outputs
+        .iter()
+        .any(|output| output.name == "schema-api"));
 
     fs::remove_dir_all(&temp_root)
         .expect("Temporary package-store fixture should be removable after the test");

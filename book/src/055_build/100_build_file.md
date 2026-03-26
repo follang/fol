@@ -106,6 +106,9 @@ The public layering is:
 - `.build()` for package-level build context
 - `build.meta({...})` for package metadata
 - `build.add_dep({...})` for one direct dependency
+- `build.export_module({...})`, `build.export_artifact({...})`,
+  `build.export_step({...})`, and `build.export_output({...})` for the
+  dependency-facing build surface this package exposes
 - `build.graph()` for artifact and step graph work
 
 The public surface includes:
@@ -238,6 +241,25 @@ Transitive dependencies stay declared in each dependency package's own
 Nothing is forwarded implicitly from the parent build. If a dependency should
 see `target`, `optimize`, or a package-specific option, pass it explicitly in
 `args`.
+
+### Explicit Dependency Exports
+
+Dependency handles only see build-facing names that the dependency package
+exports from its own `build.fol`.
+
+```fol
+var graph = build.graph();
+var codec = graph.add_module({ name = "codec", root = "src/codec.fol" });
+var lib = graph.add_static_lib({ name = "json", root = "src/main.fol" });
+var docs = graph.step("docs", "Validate the package");
+
+build.export_module({ name = "api", module = codec });
+build.export_artifact({ name = "runtime", artifact = lib });
+build.export_step({ name = "check", step = docs });
+```
+
+Ordinary source imports still resolve by dependency alias under `.fol/pkg`.
+Build-handle queries stay separate from source imports.
 
 ### `build.graph()`
 

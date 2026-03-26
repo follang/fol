@@ -419,14 +419,7 @@ var prefix = graph.install_prefix();
 
 ## Dependencies
 
-### `graph.dependency`
-
-Declares a reference to another package in the workspace or as a fetched
-dependency. Returns a `Dependency` handle.
-
-```fol
-var deps = graph.dependency("mylib", "local:../mylib");
-```
+Direct dependencies are declared on `build.add_dep({...})`, not on `graph`.
 
 See [Handle API](./300_handle_api.md) for querying modules, artifacts, steps,
 and generated outputs from a `Dependency` handle.

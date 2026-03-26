@@ -76,3 +76,15 @@ Use this section for:
 - build options and `-D` flags
 - artifact types, modules, and generated files
 - dependency handles and unified output handles
+
+## Standalone Examples
+
+These checked-in example packages exercise the current public build surface:
+
+- `examples/build_dep_exports`
+- `examples/build_source_paths`
+- `examples/build_dep_modes`
+- `examples/build_described_steps`
+- `examples/build_dep_handles`
+- `examples/build_output_handles`
+- `examples/build_install_prefix`
