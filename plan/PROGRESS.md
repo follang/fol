@@ -248,7 +248,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
 - Qualified identifiers, qualified calls, qualified type names, and inquiry targets
   resolve through namespace and import-alias roots.
 - `use loc` imports resolve against the loaded package and namespace scope set.
-- `use std` imports resolve against explicit configured std roots.
+- `use std` imports resolve against the bundled std root by default, with explicit `--std-root` available only as an override path.
 - `use pkg` imports resolve against explicit configured package-store roots.
 - Historical package loading used `build.fol` plus `build.fol`.
 - Current direction removes `build.fol` completely and moves package metadata and
@@ -373,8 +373,7 @@ Authority rule for this file: code and active tests win over older docs, plans, 
   and `shared_lib` are preserved as inert package-build records for future V4
   C ABI work and are not active resolver semantics today.
 - The CLI now treats parse-clean but resolution-bad programs as failing compiles.
-- The CLI now accepts both `--std-root` and `--package-store-root` so the current
-  `loc/std/pkg` resolver contract is available end to end.
+- The CLI accepts both `--std-root` and `--package-store-root`; bundled std is the normal path, and `--std-root` remains only as an explicit override for development and tests.
 - Recursive `pkg` dependencies now load through `build.fol` dependency records, and
   repeated shared package roots are deduped through canonical package identity.
 - Integration coverage now includes full happy-path resolution, cross-file import

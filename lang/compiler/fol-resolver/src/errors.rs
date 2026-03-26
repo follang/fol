@@ -433,10 +433,10 @@ mod tests {
     }
 
     #[test]
-    fn resolver_error_to_diagnostic_adds_help_for_missing_std_root() {
+    fn resolver_error_to_diagnostic_adds_help_for_missing_bundled_std_or_override() {
         let diagnostic = ResolverError::new(
             ResolverErrorKind::InvalidInput,
-            "resolver std import 'fmt' requires an explicit std root",
+            "resolver std import 'fmt' requires bundled std at '/tmp/std' or an explicit --std-root <DIR> override",
         )
         .to_diagnostic();
 

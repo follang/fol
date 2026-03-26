@@ -40,7 +40,7 @@ Import rule:
 - only `std` is imported from source code
 - `core` and `mem` are selected through `fol_model`, not imported
 
-An explicit std-root override may still exist for development and testing, but it is not the normal user path.
+An explicit `--std-root <DIR>` override may still exist for development and testing, but it is not the normal user path.
 
 ## Editing Bundled Std
 
@@ -50,7 +50,7 @@ Normal local iteration should edit:
 
 Normal compiler and CLI flows should pick it up automatically without extra flags.
 
-Use an explicit std-root override only when you deliberately want to:
+Use an explicit `--std-root <DIR>` override only when you deliberately want to:
 
 - test an alternate std checkout
 - isolate resolver/import behavior with a synthetic std tree

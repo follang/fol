@@ -472,7 +472,7 @@ Completion criteria:
 - note explains that std starts small and grows gradually
 
 ### Slice 41
-Status: pending
+Status: complete
 
 Define the first intended std module families without implementing the whole library.
 
@@ -484,7 +484,7 @@ Completion criteria:
   - one small utility/text family if needed
 
 ### Slice 42
-Status: pending
+Status: complete
 
 Audit naming consistency around “bundled std”, “standard library”, and “std root”.
 
@@ -493,7 +493,7 @@ Completion criteria:
 - wording is consistent across docs, tests, and diagnostics
 
 ### Slice 43
-Status: pending
+Status: complete
 
 Remove stale assumptions that std is external user-managed package content.
 
@@ -502,7 +502,7 @@ Completion criteria:
 - no active docs or tests imply that users normally fetch std separately
 
 ### Slice 44
-Status: pending
+Status: complete
 
 Perform a final repo-wide scan for:
 
