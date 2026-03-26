@@ -1,1 +1,5 @@
-var[exp] bundled_std_ready: int = 1;
+use fmt: loc = {"fmt"};
+
+fun[exp] shipped_answer(): int = {
+    return fmt::answer();
+};

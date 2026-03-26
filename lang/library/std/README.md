@@ -16,18 +16,20 @@ Use an explicit `--std-root <DIR>` override only for development and testing.
 
 `core` and `mem` are not imported from here. They remain compiler/runtime capability modes.
 
-## Growth Roadmap
+## Bootstrap Scope
 
 `std` should start small and grow gradually.
 
-Near-term intended families:
+The current bundled bootstrap surface is intentionally tiny:
 
-- `fmt`
-- `io`
-- `os`
+- `std.fmt.answer(): int`
+- `std.fmt.double(int): int`
+- `std.fmt.math.answer(): int`
 
-The immediate goal is not a giant library rewrite. The goal is:
+That is enough to prove:
 
-- ship a small real bundled std in FOL
-- prove imports and hosted execution against that tree
-- grow module families intentionally as the language surface matures
+- the toolchain ships a real importable `std`
+- bundled std resolves without extra dependency setup
+- FOL-authored std modules compile and run under `fol_model = "std"`
+
+`std.io` and `std.os` are deferred until they contain honest user-facing APIs.

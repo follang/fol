@@ -1,1 +1,3 @@
-var[exp] std_answer: int = 7;
+fun[exp] answer(): int = {
+    return 7;
+};

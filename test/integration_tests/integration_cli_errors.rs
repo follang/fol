@@ -350,7 +350,7 @@ use super::*;
         fs::create_dir_all(&temp_root).expect("Should create resolver fixture root");
         fs::write(
             temp_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
         )
         .expect("Should write missing explicit std-root fixture");
 

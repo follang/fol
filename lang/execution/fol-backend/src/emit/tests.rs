@@ -1084,7 +1084,7 @@ mod tests {
                 "use fmt: std = {\"fmt\"};\n",
                 "use math: pkg = {math};\n",
                 "fun[] main(): int = {\n",
-                "    return loc_answer + std_answer + math::src::pkg_answer;\n",
+                "    return loc_answer + fmt::answer() + math::src::pkg_answer;\n",
                 "};\n",
             ),
         )
@@ -1096,7 +1096,7 @@ mod tests {
         .expect("shared");
         fs::write(
             std_root.join("fmt").join("lib.fol"),
-            "var[exp] std_answer: int = 3;\n",
+            "fun[exp] answer(): int = {\n    return 3;\n};\n",
         )
         .expect("std");
         fs::write(
@@ -1311,7 +1311,7 @@ mod tests {
                 "use fmt: std = {\"fmt\"};\n",
                 "use math: pkg = {math};\n",
                 "fun[] main(): int = {\n",
-                "    return loc_answer + std_answer + math::src::pkg_answer;\n",
+                "    return loc_answer + fmt::answer() + math::src::pkg_answer;\n",
                 "};\n",
             ),
         )
@@ -1323,7 +1323,7 @@ mod tests {
         .expect("shared");
         fs::write(
             std_root.join("fmt").join("lib.fol"),
-            "var[exp] std_answer: int = 3;\n",
+            "fun[exp] answer(): int = {\n    return 3;\n};\n",
         )
         .expect("std");
         fs::write(

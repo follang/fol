@@ -1722,6 +1722,40 @@ fn test_bundled_std_package_root_builds_under_the_current_model() {
 }
 
 #[test]
+fn test_bundled_std_tree_stays_source_only_and_bootstrap_honest() {
+    let root = repo_root().join("lang/library/std");
+
+    assert!(
+        root.join("build.fol").exists(),
+        "bundled std should ship a real build.fol package root"
+    );
+    assert!(
+        root.join("lib.fol").exists(),
+        "bundled std should ship a real root source file"
+    );
+    assert!(
+        root.join("fmt/lib.fol").exists(),
+        "bundled std bootstrap should ship std.fmt"
+    );
+    assert!(
+        root.join("fmt/math/lib.fol").exists(),
+        "bundled std bootstrap should ship std.fmt.math"
+    );
+    assert!(
+        !root.join("io/lib.fol").exists(),
+        "bundled std should not ship a public std.io module before it has honest source"
+    );
+    assert!(
+        !root.join("os/lib.fol").exists(),
+        "bundled std should not ship a public std.os module before it has honest source"
+    );
+    assert!(
+        !root.join(".fol").exists(),
+        "bundled std tree should stay source-only in the repo"
+    );
+}
+
+#[test]
 fn test_build_rejects_std_imports_under_core_model() {
     let temp_root = unique_temp_root("build_core_use_std_reject");
     let app_root = temp_root.join("app");
@@ -1741,7 +1775,7 @@ fn test_build_rejects_std_imports_under_core_model() {
     .expect("should write app build");
     std::fs::write(
         app_root.join("src/main.fol"),
-        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
+        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
     )
     .expect("should write app source");
 
@@ -1776,7 +1810,7 @@ fn test_build_rejects_std_imports_under_mem_model() {
     .expect("should write app build");
     std::fs::write(
         app_root.join("src/main.fol"),
-        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
+        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
     )
     .expect("should write app source");
 

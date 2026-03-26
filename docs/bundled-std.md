@@ -42,6 +42,28 @@ Import rule:
 
 An explicit `--std-root <DIR>` override may still exist for development and testing, but it is not the normal user path.
 
+## Bootstrap Surface
+
+The bundled shipped std is intentionally small right now.
+
+Current public bootstrap modules:
+
+- `std.fmt`
+- `std.fmt.math`
+
+Current bootstrap routines:
+
+- `fmt::answer(): int`
+- `fmt::double(int): int`
+- `fmt::math::answer(): int`
+
+That keeps the first shipped std honest:
+
+- real FOL package
+- real import path
+- real hosted example coverage
+- no fake placeholder `std.io` or `std.os` modules yet
+
 ## Editing Bundled Std
 
 Normal local iteration should edit:

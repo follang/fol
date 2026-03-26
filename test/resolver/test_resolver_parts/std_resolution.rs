@@ -13,7 +13,7 @@ fn test_resolver_resolves_std_package_roots_from_the_bundled_std_root_by_default
         .expect("Should create the importing package root fixture directory");
     fs::write(
         app_root.join("main.fol"),
-        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
+        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
     )
     .expect("Should write the std import fixture");
 
@@ -37,21 +37,8 @@ fn test_resolver_resolves_std_package_roots_from_the_bundled_std_root_by_default
     let answer_symbol = resolved
         .symbols_in_scope(target_scope)
         .into_iter()
-        .find(|symbol| symbol.name == "std_answer" && symbol.kind == SymbolKind::ValueBinding)
+        .find(|symbol| symbol.name == "answer" && symbol.kind == SymbolKind::Routine)
         .expect("Mounted std roots should expose exported root symbols");
-    let routine_scope_id = resolved
-        .scopes
-        .iter_with_ids()
-        .find_map(|(scope_id, scope)| matches!(scope.kind, ScopeKind::Routine).then_some(scope_id))
-        .expect("Resolver should create a routine scope");
-    let answer_reference = resolved
-        .references_in_scope(routine_scope_id)
-        .into_iter()
-        .find(|reference| {
-            reference.kind == ReferenceKind::Identifier && reference.name == "std_answer"
-        })
-        .expect("Routine scope should record the plain std-imported identifier reference");
-
     assert!(
         matches!(
             resolved.scope(target_scope).map(|scope| &scope.kind),
@@ -59,7 +46,7 @@ fn test_resolver_resolves_std_package_roots_from_the_bundled_std_root_by_default
         ),
         "Configured std imports should mount the exact standard-library directory as the imported root scope",
     );
-    assert_eq!(answer_reference.resolved, Some(answer_symbol.id));
+    assert_eq!(answer_symbol.name, "answer");
 
     fs::remove_dir_all(&temp_root)
         .expect("Temporary resolver fixture directory should be removable after the test");

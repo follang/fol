@@ -132,7 +132,7 @@ This is how including other libraries works, for example include `fmt` module fr
 use fmt: std = {"fmt"};
 
 fun[] main(): int = {
-    return fmt::math::answer();
+    return fmt::answer();
 };
 ```
 To use only one namespace of `fmt`:

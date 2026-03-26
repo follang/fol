@@ -3,7 +3,3 @@ use math: loc = {"math"};
 fun[exp] answer(): int = {
     return math::answer();
 };
-
-fun[exp] double(value: int): int = {
-    return value + value;
-};

@@ -385,13 +385,16 @@ fn app_harness_root_helpers_support_std_and_pkg_layouts() {
             "use fmt: std = {\"fmt\"};\n",
             "use math: pkg = {math};\n",
             "fun[] main(): int = {\n",
-            "    return std_answer;\n",
+            "    return fmt::answer();\n",
             "};\n",
         ),
     )
     .expect("app source");
-    fs::write(std_root.join("fmt").join("lib.fol"), "var[exp] std_answer: int = 3;\n")
-        .expect("std source");
+    fs::write(
+        std_root.join("fmt").join("lib.fol"),
+        "fun[exp] answer(): int = {\n    return 3;\n};\n",
+    )
+    .expect("std source");
     fs::write(math_root.join("build.fol"), "name: math\nversion: 0.1.0\n")
         .expect("pkg manifest");
     fs::write(

@@ -59,7 +59,7 @@ use super::*;
         fs::create_dir_all(&temp_root).expect("Should create bundled std import fixture root");
         fs::write(
             temp_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
         )
         .expect("Should write bundled std import fixture");
 
@@ -95,12 +95,12 @@ use super::*;
             .expect("Should create the importing package root fixture directory");
         fs::write(
             std_root.join("fmt/value.fol"),
-            "var[exp] answer: int = 42;\n",
+            "fun[exp] answer(): int = {\n    return 42;\n};\n",
         )
         .expect("Should write the standard-library export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n};\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer();\n};\n",
         )
         .expect("Should write the std import fixture");
 
@@ -237,7 +237,7 @@ use super::*;
             .expect("Should create the importing package root fixture directory");
         fs::write(
             app_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
         )
         .expect("Should write the std import fixture");
 
