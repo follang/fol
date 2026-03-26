@@ -214,7 +214,7 @@ shape:
   - generated dir exports
   - general path exports
 
-### Slice 5
+### Slice 5 (complete)
 
 - design a path-oriented explicit export surface
 - recommended direction:

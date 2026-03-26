@@ -244,6 +244,25 @@ The next missing export kinds are:
 - broader path
 - generated dir
 
+The intended next public shape is:
+
+```fol
+var cfg = graph.file_from_root("config/default.toml");
+var assets = graph.dir_from_root("assets");
+var schema = graph.write_file({
+    name = "schema",
+    path = "gen/schema.fol",
+    contents = "ok",
+});
+
+build.export_file({ name = "config", file = cfg });
+build.export_dir({ name = "assets", dir = assets });
+build.export_path({ name = "schema", path = schema });
+```
+
+That direction keeps path exports explicit and typed instead of collapsing back
+into ad hoc string registries.
+
 Source import roots remain separate. A dependency can still be imported in
 ordinary package source through its alias even when it exports no build-facing
 handles at all.
