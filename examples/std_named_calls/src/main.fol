@@ -1,3 +1,5 @@
+use io: std = {io};
+
 fun[] banner(prefix: str = "std", extras: ... str): str = {
     return prefix + extras[0] + extras[1];
 };
@@ -5,6 +7,6 @@ fun[] banner(prefix: str = "std", extras: ... str): str = {
 fun[] main(): int = {
     var parts: seq[str] = {"-ok", "-ready"};
     var text: str = banner(prefix = "host", ...parts);
-    var shown: str = .echo(text);
+    var shown: str = io::echo_str(text);
     return 7;
 };

@@ -130,6 +130,63 @@ use super::*;
     }
 
     #[test]
+    fn test_cli_explicit_std_root_override_can_swap_bundled_std_for_dev_tests() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_std_root_override_swap");
+        let std_root = temp_root.join("std");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(std_root.join("fmt"))
+            .expect("Should create the override std fmt directory");
+        fs::create_dir_all(&app_root)
+            .expect("Should create the importing package root fixture directory");
+        fs::write(
+            std_root.join("fmt/lib.fol"),
+            "fun[exp] shadow(): int = {\n    return 42;\n};\n",
+        )
+        .expect("Should write the override std fmt fixture");
+        fs::write(
+            app_root.join("main.fol"),
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::shadow();\n};\n",
+        )
+        .expect("Should write the std import fixture");
+
+        let default_output = run_fol(&[app_root
+            .to_str()
+            .expect("Temporary app fixture path should be valid UTF-8")]);
+        assert!(
+            !default_output.status.success(),
+            "Without --std-root the bundled std should stay canonical and reject override-only names: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&default_output.stdout),
+            String::from_utf8_lossy(&default_output.stderr)
+        );
+
+        let override_output = run_fol(&[
+            "--std-root",
+            std_root
+                .to_str()
+                .expect("Temporary std-root fixture path should be valid UTF-8"),
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&override_output.stdout);
+
+        assert!(
+            override_output.status.success(),
+            "Explicit --std-root should intentionally swap bundled std during tests, got status {:?} and output:\n{}",
+            override_output.status.code(),
+            stdout,
+        );
+        assert!(
+            stdout.contains("Compilation successful"),
+            "Human CLI output should still report a successful compile for override std imports",
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_accepts_explicit_package_store_root_configuration() {
         use std::fs;
 

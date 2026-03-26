@@ -113,7 +113,7 @@ That means:
 |-------|-----------------|----------------------|-------------------|------------------|
 | `core` | scalar, array, record, entry, shell surfaces only | no `std`-only intrinsics, no heap-only guidance | reject `str`, dynamic containers, dynamic `.len(...)`, `.echo(...)` | `examples/core_blink_shape`, `examples/core_defer`, `examples/core_records`, `examples/core_surface_showcase` |
 | `mem` | `core` types plus `str`, `vec`, `seq`, `set`, `map` | no `std`-only intrinsics | reject `.echo(...)`; allow heap-backed strings and containers | `examples/mem_defaults`, `examples/mem_containers`, `examples/mem_collections`, `examples/mem_surface_showcase` |
-| `std` | all currently implemented type surfaces | all currently implemented V1 intrinsics valid for host artifacts | ordinary semantic/type diagnostics plus hosted-runtime behavior | `examples/std_bundled_fmt`, `examples/std_cli`, `examples/std_echo_min`, `examples/std_named_calls`, `examples/std_surface_showcase` |
+| `std` | all currently implemented type surfaces | all currently implemented V1 intrinsics valid for host artifacts | ordinary semantic/type diagnostics plus hosted-runtime behavior | `examples/std_bundled_fmt`, `examples/std_bundled_io`, `examples/std_cli`, `examples/std_echo_min`, `examples/std_named_calls`, `examples/std_surface_showcase` |
 
 For mixed-model workspaces, editor tests should also cover
 `examples/mixed_models_workspace`.
@@ -197,6 +197,10 @@ When you add or change a language feature, the editor sync bar is:
 6. If the feature changes `fol_model` legality:
    - add or update `core` / `mem` / `std` editor example coverage
    - verify LSP diagnostics match `fol code build`
+7. If the feature adds or changes bundled `std` public names:
+   - update bundled std examples that should demonstrate the new names
+   - add or update LSP completion plus hover/definition coverage
+   - add or update tree-sitter real-example highlight coverage
 
 The intended workflow is:
 

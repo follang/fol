@@ -351,3 +351,4 @@ Negative example packages:
 - `examples/fail_core_heap_reject`
 - `examples/fail_mem_echo`
 - `examples/fail_core_alloc_boundary`
+- `examples/fail_core_std_import`

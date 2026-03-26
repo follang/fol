@@ -645,6 +645,17 @@ fn std_bundled_fmt_example_compiles_and_runs() {
 }
 
 #[test]
+fn std_bundled_io_example_compiles_and_runs() {
+    let fixture = PathBuf::from("examples/std_bundled_io");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
 fn pkg_basic_import_fixture_compiles_and_runs() {
     let root = fixture_root("pkg_basic_import");
     let app_root = root.join("app");

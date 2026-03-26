@@ -75,6 +75,16 @@ That keeps the first shipped std honest:
 - real hosted example coverage
 - no fake placeholder `std.os` module yet
 
+Canonical bootstrap example packages:
+
+- `examples/std_bundled_fmt`
+- `examples/std_bundled_io`
+
+Older hosted std examples should use bundled std modules when one already exists.
+That means current echo-based examples should prefer `std.io` instead of calling
+`.echo(...)` directly unless the example is explicitly about the primitive
+substrate.
+
 ## Editing Bundled Std
 
 Normal local iteration should edit:

@@ -249,6 +249,41 @@ fn test_resolver_reports_missing_bundled_std_modules_cleanly() {
 }
 
 #[test]
+fn test_resolver_reports_exact_missing_bundled_std_module_paths() {
+    let temp_root = unique_temp_root("bundled_std_missing_nested_module");
+    let app_root = temp_root.join("app");
+    fs::create_dir_all(&app_root).expect("Should create the importing package root fixture directory");
+    fs::write(
+        app_root.join("main.fol"),
+        "use math: std = {fmt/missing};\nfun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .expect("Should write the missing nested bundled std module fixture");
+
+    let errors = try_resolve_package_from_folder_with_config(
+        app_root
+            .to_str()
+            .expect("Temporary resolver fixture path should be valid UTF-8"),
+        ResolverConfig {
+            std_root: None,
+            package_store_root: None,
+        },
+    )
+    .expect_err("Resolver should reject missing bundled nested std module targets");
+
+    assert!(
+        errors.iter().any(|error| {
+            error.kind() == ResolverErrorKind::InvalidInput
+                && error.to_string().contains("resolver std import target")
+                && error.to_string().contains("fmt/missing")
+        }),
+        "Resolver should report missing bundled std modules with the exact nested module path",
+    );
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary resolver fixture directory should be removable after the test");
+}
+
+#[test]
 fn test_resolver_reports_missing_std_targets_explicitly() {
     let temp_root = unique_temp_root("std_missing_target");
     let std_root = temp_root.join("std");

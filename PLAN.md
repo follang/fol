@@ -297,7 +297,7 @@ Completion criteria:
 - unresolved `std` imports fail cleanly with exact module paths
 
 ### Slice 23
-Status: pending
+Status: complete
 
 Ensure bundled std package/module names stay stable in diagnostics.
 
@@ -306,7 +306,7 @@ Completion criteria:
 - diagnostics mention the actual bundled std package/module layout
 
 ### Slice 24
-Status: pending
+Status: complete
 
 Add one regression proving explicit `--std-root` override can swap the bundled std during tests without changing the normal path.
 
@@ -320,7 +320,7 @@ Completion criteria:
 ## Epoch 7: Examples And Real User Paths
 
 ### Slice 25
-Status: pending
+Status: complete
 
 Add a canonical `std.fmt` example package.
 
@@ -329,7 +329,7 @@ Completion criteria:
 - one new example clearly demonstrates `std.fmt`
 
 ### Slice 26
-Status: pending
+Status: complete
 
 Add a canonical `std.io` example package.
 
@@ -338,7 +338,7 @@ Completion criteria:
 - one new example clearly demonstrates `std.io`
 
 ### Slice 27
-Status: pending
+Status: complete
 
 Update existing `std` examples to use the bundled modules where appropriate.
 
@@ -347,7 +347,7 @@ Completion criteria:
 - old examples stop bypassing the bundled std surface when a bundled module now exists
 
 ### Slice 28
-Status: pending
+Status: complete
 
 Add one negative example proving `use std` under non-`std` models fails through the bundled library path.
 
@@ -360,7 +360,7 @@ Completion criteria:
 ## Epoch 8: Editor And Tree-Sitter Hardening
 
 ### Slice 29
-Status: pending
+Status: complete
 
 Add LSP completion coverage for the shipped bundled std modules.
 
@@ -369,7 +369,7 @@ Completion criteria:
 - completions reflect the real `std` package tree
 
 ### Slice 30
-Status: pending
+Status: complete
 
 Add hover/definition coverage for bundled std imports.
 
@@ -378,7 +378,7 @@ Completion criteria:
 - editor navigation works against real shipped std source
 
 ### Slice 31
-Status: pending
+Status: complete
 
 Audit tree-sitter/highlight coverage for bundled std import examples.
 
@@ -387,7 +387,7 @@ Completion criteria:
 - build/source examples that import std stay highlighted sanely
 
 ### Slice 32
-Status: pending
+Status: complete
 
 Update editor-sync docs for bundled std module growth.
 

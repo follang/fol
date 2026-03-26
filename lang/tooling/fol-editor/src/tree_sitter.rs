@@ -1128,6 +1128,14 @@ mod tests {
                 ["keyword.exception", "type.builtin"].as_slice(),
             ),
             (
+                repo_root().join("examples/std_bundled_fmt/src/main.fol"),
+                ["keyword.import", "function", "type"].as_slice(),
+            ),
+            (
+                repo_root().join("examples/std_bundled_io/src/main.fol"),
+                ["keyword.import", "function", "type"].as_slice(),
+            ),
+            (
                 repo_root().join("examples/std_echo_min/src/main.fol"),
                 ["function.builtin", "operator"].as_slice(),
             ),

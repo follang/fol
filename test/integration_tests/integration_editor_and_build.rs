@@ -3249,6 +3249,11 @@ fn test_negative_runtime_model_examples_fail_with_expected_boundary_class() {
             Some("app"),
             "str requires heap support and is unavailable in 'fol_model = core'",
         ),
+        (
+            "examples/fail_core_std_import",
+            None,
+            "'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'core'",
+        ),
     ];
 
     for (path, subdir, expected_message) in cases {
@@ -3489,6 +3494,26 @@ fn test_negative_transitive_core_mem_boundary_example_fails_cleanly() {
     assert!(
         stderr.contains("str requires heap support and is unavailable in 'fol_model = core'"),
         "negative transitive core/mem example should keep the heap-boundary wording: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+}
+
+#[test]
+fn test_negative_core_std_import_example_fails_with_std_boundary_diagnostic() {
+    let root = temp_example_root("examples/fail_core_std_import");
+    let build = run_fol_in_dir(&root, &["code", "build"]);
+    let stderr = String::from_utf8_lossy(&build.stderr);
+
+    assert!(
+        !build.status.success(),
+        "negative core std-import example should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+    assert!(
+        stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'core'"),
+        "negative core std-import example should keep the bundled std boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );

@@ -1,4 +1,6 @@
+use io: std = {io};
+
 fun[] main(): int = {
-    var shown: int = .echo(9);
+    var shown: int = io::echo_int(9);
     return 9;
 };
