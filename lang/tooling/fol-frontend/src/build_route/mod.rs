@@ -359,6 +359,15 @@ fn validate_dependency_queries_for_member(
             fol_package::BuildRuntimeDependencyQueryKind::Step => {
                 surface.find_step(&query.query_name).is_some()
             }
+            fol_package::BuildRuntimeDependencyQueryKind::File => {
+                surface.find_file(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::Dir => {
+                surface.find_dir(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::Path => {
+                surface.find_path(&query.query_name).is_some()
+            }
             fol_package::BuildRuntimeDependencyQueryKind::GeneratedOutput => {
                 surface.find_generated_output(&query.query_name).is_some()
             }
@@ -430,6 +439,9 @@ fn dependency_query_kind_label(kind: fol_package::BuildRuntimeDependencyQueryKin
         fol_package::BuildRuntimeDependencyQueryKind::Module => "module",
         fol_package::BuildRuntimeDependencyQueryKind::Artifact => "artifact",
         fol_package::BuildRuntimeDependencyQueryKind::Step => "step",
+        fol_package::BuildRuntimeDependencyQueryKind::File => "file",
+        fol_package::BuildRuntimeDependencyQueryKind::Dir => "dir",
+        fol_package::BuildRuntimeDependencyQueryKind::Path => "path",
         fol_package::BuildRuntimeDependencyQueryKind::GeneratedOutput => "generated output",
     }
 }

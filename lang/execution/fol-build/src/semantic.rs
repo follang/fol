@@ -410,6 +410,15 @@ pub fn canonical_handle_method_signatures() -> Vec<BuildSemanticMethodSignature>
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "step")
             .with_param(BuildSemanticMethodParameter::scalar("name"))
             .returning(BuildSemanticTypeFamily::DependencyStepHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "file")
+            .with_param(BuildSemanticMethodParameter::scalar("name"))
+            .returning(BuildSemanticTypeFamily::SourceFileHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "dir")
+            .with_param(BuildSemanticMethodParameter::scalar("name"))
+            .returning(BuildSemanticTypeFamily::SourceDirHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "path")
+            .with_param(BuildSemanticMethodParameter::scalar("name"))
+            .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::DependencyHandle, "generated")
             .with_param(BuildSemanticMethodParameter::scalar("name"))
             .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
@@ -1107,6 +1116,27 @@ mod tests {
                     && signature.name == "generated"
             })
             .expect("dependency generated signature should exist");
+        let dependency_file = signatures
+            .iter()
+            .find(|signature| {
+                signature.receiver == BuildSemanticTypeFamily::DependencyHandle
+                    && signature.name == "file"
+            })
+            .expect("dependency file signature should exist");
+        let dependency_dir = signatures
+            .iter()
+            .find(|signature| {
+                signature.receiver == BuildSemanticTypeFamily::DependencyHandle
+                    && signature.name == "dir"
+            })
+            .expect("dependency dir signature should exist");
+        let dependency_path = signatures
+            .iter()
+            .find(|signature| {
+                signature.receiver == BuildSemanticTypeFamily::DependencyHandle
+                    && signature.name == "path"
+            })
+            .expect("dependency path signature should exist");
 
         assert_eq!(step.returns, Some(BuildSemanticTypeFamily::StepHandle));
         assert_eq!(run.returns, Some(BuildSemanticTypeFamily::RunHandle));
@@ -1120,6 +1150,18 @@ mod tests {
         );
         assert_eq!(
             dependency_generated.returns,
+            Some(BuildSemanticTypeFamily::GeneratedFileHandle)
+        );
+        assert_eq!(
+            dependency_file.returns,
+            Some(BuildSemanticTypeFamily::SourceFileHandle)
+        );
+        assert_eq!(
+            dependency_dir.returns,
+            Some(BuildSemanticTypeFamily::SourceDirHandle)
+        );
+        assert_eq!(
+            dependency_path.returns,
             Some(BuildSemanticTypeFamily::GeneratedFileHandle)
         );
     }

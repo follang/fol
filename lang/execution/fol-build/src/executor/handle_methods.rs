@@ -405,7 +405,10 @@ impl BuildBodyExecutor {
             }
             ExecValue::Build => Err(self.unsupported(method)),
             ExecValue::Dependency { alias }
-                if matches!(method, "module" | "artifact" | "step" | "generated") =>
+                if matches!(
+                    method,
+                    "module" | "artifact" | "step" | "file" | "dir" | "path" | "generated"
+                ) =>
             {
                 let alias = alias.clone();
                 let [name_arg] = args else {
@@ -418,6 +421,9 @@ impl BuildBodyExecutor {
                     "module" => BuildRuntimeDependencyQueryKind::Module,
                     "artifact" => BuildRuntimeDependencyQueryKind::Artifact,
                     "step" => BuildRuntimeDependencyQueryKind::Step,
+                    "file" => BuildRuntimeDependencyQueryKind::File,
+                    "dir" => BuildRuntimeDependencyQueryKind::Dir,
+                    "path" => BuildRuntimeDependencyQueryKind::Path,
                     "generated" => BuildRuntimeDependencyQueryKind::GeneratedOutput,
                     _ => return Err(self.unsupported(method)),
                 };
@@ -432,6 +438,17 @@ impl BuildBodyExecutor {
                     "module" => ExecValue::DependencyModule { alias, query_name },
                     "artifact" => ExecValue::DependencyArtifact { alias, query_name },
                     "step" => ExecValue::DependencyStep { alias, query_name },
+                    "file" => ExecValue::SourceFile {
+                        path: format!("$dep/{alias}/{query_name}"),
+                    },
+                    "dir" => ExecValue::SourceDir {
+                        path: format!("$dep/{alias}/{query_name}"),
+                    },
+                    "path" => ExecValue::GeneratedFile {
+                        name: format!("dep::{alias}::path::{query_name}"),
+                        path: format!("$dep/{alias}/{query_name}"),
+                        kind: BuildRuntimeGeneratedFileKind::ToolOutput,
+                    },
                     "generated" => ExecValue::GeneratedFile {
                         name: format!("dep::{alias}::generated::{query_name}"),
                         path: format!("$dep/{alias}/{query_name}"),

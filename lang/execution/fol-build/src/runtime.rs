@@ -162,6 +162,9 @@ pub enum BuildRuntimeDependencyQueryKind {
     Module,
     Artifact,
     Step,
+    File,
+    Dir,
+    Path,
     GeneratedOutput,
 }
 
@@ -511,7 +514,7 @@ mod tests {
         let query = BuildRuntimeDependencyQuery {
             dependency_alias: "core".to_string(),
             query_name: "bindings".to_string(),
-            kind: BuildRuntimeDependencyQueryKind::GeneratedOutput,
+            kind: BuildRuntimeDependencyQueryKind::Path,
         };
 
         assert_eq!(dependency.alias, "core");
@@ -524,7 +527,7 @@ mod tests {
             dependency.evaluation_mode,
             Some(DependencyBuildEvaluationMode::Lazy)
         );
-        assert_eq!(query.kind, BuildRuntimeDependencyQueryKind::GeneratedOutput);
+        assert_eq!(query.kind, BuildRuntimeDependencyQueryKind::Path);
         assert_eq!(query.query_name, "bindings");
     }
 

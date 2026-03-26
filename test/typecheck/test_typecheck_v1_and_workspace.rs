@@ -1028,6 +1028,9 @@ fn build_typechecking_accepts_dependency_handle_method_calls() {
             "    var module = dep.module(\"root\");\n",
             "    var artifact = dep.artifact(\"corelib\");\n",
             "    var step = dep.step(\"check\");\n",
+            "    var file = dep.file(\"config\");\n",
+            "    var dir = dep.dir(\"assets\");\n",
+            "    var path = dep.path(\"schema\");\n",
             "    var generated = dep.generated(\"bindings\");\n",
             "    return;\n",
             "};\n",
@@ -1038,6 +1041,9 @@ fn build_typechecking_accepts_dependency_handle_method_calls() {
     let _ = find_typed_symbol(&typed, "module", SymbolKind::ValueBinding);
     let _ = find_typed_symbol(&typed, "artifact", SymbolKind::ValueBinding);
     let _ = find_typed_symbol(&typed, "step", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "file", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "dir", SymbolKind::ValueBinding);
+    let _ = find_typed_symbol(&typed, "path", SymbolKind::ValueBinding);
     let _ = find_typed_symbol(&typed, "generated", SymbolKind::ValueBinding);
 }
 

@@ -501,6 +501,9 @@ fn build_source_evaluator_keeps_full_dependency_surface_usage_together() {
         "    var module = dep.module(\"root\");\n",
         "    var artifact = dep.artifact(\"corelib\");\n",
         "    var step = dep.step(\"check\");\n",
+        "    var file = dep.file(\"config\");\n",
+        "    var dir = dep.dir(\"assets\");\n",
+        "    var path = dep.path(\"schema\");\n",
         "    var generated = dep.generated(\"bindings\");\n",
         "    return;\n",
         "}\n",
@@ -530,10 +533,13 @@ fn build_source_evaluator_keeps_full_dependency_surface_usage_together() {
         evaluated.evaluated.dependencies[0].evaluation_mode,
         Some(crate::DependencyBuildEvaluationMode::OnDemand)
     );
-    assert_eq!(evaluated.evaluated.dependency_queries.len(), 4);
+    assert_eq!(evaluated.evaluated.dependency_queries.len(), 7);
     assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Module));
     assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Artifact));
     assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Step));
+    assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::File));
+    assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Dir));
+    assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Path));
     assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::GeneratedOutput));
 }
 
@@ -547,6 +553,9 @@ fn build_source_evaluator_keeps_dependency_queries_precise_for_build_add_dep_han
         "    var module = dep.module(\"root\");\n",
         "    var artifact = dep.artifact(\"corelib\");\n",
         "    var step = dep.step(\"check\");\n",
+        "    var file = dep.file(\"config\");\n",
+        "    var dir = dep.dir(\"assets\");\n",
+        "    var path = dep.path(\"schema\");\n",
         "    var generated = dep.generated(\"bindings\");\n",
         "    return;\n",
         "}\n",
@@ -567,7 +576,7 @@ fn build_source_evaluator_keeps_dependency_queries_precise_for_build_add_dep_han
 
     assert_eq!(evaluated.evaluated.dependencies.len(), 1);
     assert_eq!(evaluated.evaluated.dependencies[0].alias, "core");
-    assert_eq!(evaluated.evaluated.dependency_queries.len(), 4);
+    assert_eq!(evaluated.evaluated.dependency_queries.len(), 7);
     assert!(evaluated
         .evaluated
         .dependency_queries
@@ -589,6 +598,27 @@ fn build_source_evaluator_keeps_dependency_queries_precise_for_build_add_dep_han
         .any(|query| query.dependency_alias == "core"
             && query.query_name == "check"
             && query.kind == BuildRuntimeDependencyQueryKind::Step));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "core"
+            && query.query_name == "config"
+            && query.kind == BuildRuntimeDependencyQueryKind::File));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "core"
+            && query.query_name == "assets"
+            && query.kind == BuildRuntimeDependencyQueryKind::Dir));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "core"
+            && query.query_name == "schema"
+            && query.kind == BuildRuntimeDependencyQueryKind::Path));
     assert!(evaluated
         .evaluated
         .dependency_queries

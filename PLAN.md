@@ -252,7 +252,7 @@ shape:
   - wrong handle kind passed to file/dir/path exports
   - unresolved exported path targets
 
-### Slice 11
+### Slice 11 (complete)
 
 - add one integration example package exporting:
   - a module
@@ -263,7 +263,7 @@ shape:
 
 ## Epoch 3: Add Dependency Path Queries
 
-### Slice 12
+### Slice 12 (complete)
 
 - design public dependency-handle queries for the new path exports
 - recommended direction:
@@ -276,17 +276,17 @@ shape:
   - `dep.step(...)`
   - `dep.generated(...)`
 
-### Slice 13
+### Slice 13 (complete)
 
 - add semantic signatures and typed handle results for dependency file/dir/path
   queries
 
-### Slice 14
+### Slice 14 (complete)
 
 - dependency handles should resolve explicitly exported path names first
 - querying a missing export should produce exact diagnostics
 
-### Slice 15
+### Slice 15 (complete)
 
 - update path consumers to accept dependency-exported file/dir/path handles where
   appropriate
@@ -295,12 +295,12 @@ shape:
   - run file args
   - artifact generated/path attachment where valid
 
-### Slice 16
+### Slice 16 (complete)
 
 - add evaluator tests for cross-package path consumption through dependency
   handles
 
-### Slice 17
+### Slice 17 (complete)
 
 - add integration coverage for one package exporting named paths and another
   package installing or passing them to a tool step

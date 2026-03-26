@@ -874,6 +874,7 @@ fn test_cli_build_emits_rust_for_model_examples() {
         ("examples/build_dep_handles", "use fol_runtime::std as rt;"),
         ("examples/build_dep_args", "use fol_runtime::std as rt;"),
         ("examples/build_dep_exports", "use fol_runtime::std as rt;"),
+        ("examples/build_dep_paths", "use fol_runtime::std as rt;"),
         ("examples/build_dep_modes", "use fol_runtime::std as rt;"),
         (
             "examples/build_described_steps",
@@ -934,6 +935,7 @@ fn test_cli_example_build_summaries_surface_expected_models() {
         ("examples/build_dep_handles", "fol_model=std"),
         ("examples/build_dep_args", "fol_model=std"),
         ("examples/build_dep_exports", "fol_model=std"),
+        ("examples/build_dep_paths", "fol_model=std"),
         ("examples/build_dep_modes", "fol_model=std"),
         ("examples/build_described_steps", "fol_model=std"),
         ("examples/build_install_prefix", "fol_model=std"),
@@ -1261,6 +1263,89 @@ fn test_build_dep_exports_example_keeps_only_explicit_build_surfaces() {
         .any(|query| query.dependency_alias == "shared"
             && query.query_name == "schema"
             && query.kind == fol_package::BuildRuntimeDependencyQueryKind::GeneratedOutput));
+}
+
+#[test]
+fn test_build_dep_paths_example_keeps_explicit_path_surfaces_and_queries() {
+    let root = temp_example_root("examples/build_dep_paths");
+    let shared_root = root.join("deps/shared");
+    let mut stream = fol_stream::FileStream::from_folder(
+        shared_root
+            .to_str()
+            .expect("shared example path should be utf-8"),
+    )
+    .expect("shared package stream should open");
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = fol_parser::ast::AstParser::new();
+    let syntax = parser
+        .parse_package(&mut lexer)
+        .expect("shared package syntax should parse");
+
+    let surface =
+        fol_package::build_dependency::project_dependency_surface("shared", &shared_root, &syntax)
+            .expect("explicit path export surface should project");
+
+    assert_eq!(
+        surface
+            .files
+            .iter()
+            .map(|file| file.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["defaults"]
+    );
+    assert_eq!(
+        surface
+            .dirs
+            .iter()
+            .map(|dir| dir.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["public"]
+    );
+    assert_eq!(
+        surface
+            .paths
+            .iter()
+            .map(|path| path.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["schema-path"]
+    );
+
+    let build_path = root.join("build.fol");
+    let source =
+        std::fs::read_to_string(&build_path).expect("dep path example should keep a build.fol");
+    let request = BuildEvaluationRequest {
+        package_root: root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+    let evaluated = evaluate_build_source(&request, &build_path, &source)
+        .expect("dep path example should evaluate")
+        .expect("dep path example should produce a graph");
+
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "defaults"
+            && query.kind == fol_package::BuildRuntimeDependencyQueryKind::File));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "public"
+            && query.kind == fol_package::BuildRuntimeDependencyQueryKind::Dir));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "schema-path"
+            && query.kind == fol_package::BuildRuntimeDependencyQueryKind::Path));
 }
 
 #[test]

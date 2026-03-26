@@ -354,6 +354,76 @@ fn build_source_evaluator_keeps_mixed_source_dependency_surface_queries_precise(
 }
 
 #[test]
+fn build_source_evaluator_accepts_dependency_path_handles_in_consumers() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    var shared = build.add_dep({ alias = \"shared\", source = \"pkg\", target = \"shared\" });\n",
+        "    var graph = build.graph();\n",
+        "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    var run = graph.add_run(app);\n",
+        "    var config = shared.file(\"config\");\n",
+        "    var assets = shared.dir(\"assets\");\n",
+        "    var schema = shared.path(\"schema\");\n",
+        "    run.add_file_arg(config);\n",
+        "    app.add_generated(schema);\n",
+        "    graph.install_file({ name = \"config\", source = config });\n",
+        "    graph.install_dir({ name = \"assets\", source = assets });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("dependency path handles should evaluate")
+        .expect("build body should produce operations");
+
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "config"
+            && query.kind == crate::runtime::BuildRuntimeDependencyQueryKind::File));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "assets"
+            && query.kind == crate::runtime::BuildRuntimeDependencyQueryKind::Dir));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "schema"
+            && query.kind == crate::runtime::BuildRuntimeDependencyQueryKind::Path));
+    assert_eq!(evaluated.result.graph.installs().len(), 2);
+    assert!(evaluated
+        .result
+        .graph
+        .installs()
+        .iter()
+        .any(|install| install.name == "config"));
+    assert!(evaluated
+        .result
+        .graph
+        .installs()
+        .iter()
+        .any(|install| install.name == "assets"));
+}
+
+#[test]
 fn build_source_evaluator_keeps_generated_handles_through_local_helpers() {
     let source = concat!(
         "fun[] emit_cfg() = {\n",
@@ -486,20 +556,21 @@ fn build_source_and_generated_handles_compose_across_run_and_install_surfaces() 
         .graph
         .run_config_for(crate::graph::BuildStepId(0))
         .expect("run config should exist");
-    assert!(run_cfg
-        .args
-        .iter()
-        .any(|arg| matches!(arg, crate::graph::BuildRunArg::Path(path) if path == "config/defaults.toml")));
-    assert!(run_cfg
-        .args
-        .iter()
-        .any(|arg| matches!(arg, crate::graph::BuildRunArg::GeneratedFile(crate::graph::BuildGeneratedFileId(0)))));
+    assert!(run_cfg.args.iter().any(
+        |arg| matches!(arg, crate::graph::BuildRunArg::Path(path) if path == "config/defaults.toml")
+    ));
+    assert!(run_cfg.args.iter().any(|arg| matches!(
+        arg,
+        crate::graph::BuildRunArg::GeneratedFile(crate::graph::BuildGeneratedFileId(0))
+    )));
 
     let installs = evaluated.result.graph.installs();
     assert!(installs.iter().any(|install| install.name == "defaults"
         && install.projected_destination == "/opt/demo/config/defaults.toml"));
-    assert!(installs.iter().any(|install| install.name == "assets"
-        && install.projected_destination == "/opt/demo/assets"));
+    assert!(installs
+        .iter()
+        .any(|install| install.name == "assets"
+            && install.projected_destination == "/opt/demo/assets"));
 }
 
 #[test]
