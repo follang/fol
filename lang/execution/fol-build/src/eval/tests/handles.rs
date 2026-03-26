@@ -382,9 +382,10 @@ fn build_source_evaluator_projects_install_destinations_under_selected_prefix() 
         "    var graph = .build().graph();\n",
         "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
         "    var cfg = graph.write_file({ name = \"cfg\", path = \"config/generated.toml\", contents = \"ok\" });\n",
+        "    var assets = graph.dir_from_root(\"assets\");\n",
         "    graph.install(app);\n",
         "    graph.install_file({ name = \"generated-cfg\", source = cfg });\n",
-        "    graph.install_dir({ name = \"assets\", path = \"assets\" });\n",
+        "    graph.install_dir({ name = \"assets\", source = assets });\n",
         "    return;\n",
         "}\n",
     );
@@ -414,6 +415,59 @@ fn build_source_evaluator_projects_install_destinations_under_selected_prefix() 
         .iter()
         .any(|install| install.name == "assets"
             && install.projected_destination == "/opt/demo/assets"));
+}
+
+#[test]
+fn build_source_and_generated_handles_compose_across_run_and_install_surfaces() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    var run = graph.add_run(app);\n",
+        "    var defaults = graph.file_from_root(\"config/defaults.toml\");\n",
+        "    var assets = graph.dir_from_root(\"assets\");\n",
+        "    var copied = graph.copy_file({ name = \"copied-defaults\", source = defaults, path = \"config/copied.toml\" });\n",
+        "    run.add_file_arg(defaults);\n",
+        "    run.add_file_arg(copied);\n",
+        "    graph.install_file({ name = \"defaults\", source = defaults });\n",
+        "    graph.install_dir({ name = \"assets\", source = assets });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            install_prefix: "/opt/demo".to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("source and generated handles should compose")
+        .expect("build body should produce operations");
+
+    let run_cfg = evaluated
+        .result
+        .graph
+        .run_config_for(crate::graph::BuildStepId(0))
+        .expect("run config should exist");
+    assert!(run_cfg
+        .args
+        .iter()
+        .any(|arg| matches!(arg, crate::graph::BuildRunArg::Path(path) if path == "config/defaults.toml")));
+    assert!(run_cfg
+        .args
+        .iter()
+        .any(|arg| matches!(arg, crate::graph::BuildRunArg::GeneratedFile(crate::graph::BuildGeneratedFileId(0)))));
+
+    let installs = evaluated.result.graph.installs();
+    assert!(installs.iter().any(|install| install.name == "defaults"
+        && install.projected_destination == "/opt/demo/config/defaults.toml"));
+    assert!(installs.iter().any(|install| install.name == "assets"
+        && install.projected_destination == "/opt/demo/assets"));
 }
 
 #[test]

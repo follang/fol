@@ -169,10 +169,11 @@ under the prefix by kind:
 
 ### `graph.install_file`
 
-Installs either a source-path file or a generated output handle.
+Installs either a source-file handle or a generated output handle.
 
 ```fol
-graph.install_file({ name = "defaults", path = "config/defaults.toml" });
+var defaults = graph.file_from_root("config/defaults.toml");
+graph.install_file({ name = "defaults", source = defaults });
 ```
 
 ```fol
@@ -189,10 +190,11 @@ Returns an `Install` handle.
 
 ### `graph.install_dir`
 
-Installs a directory by path.
+Installs a source directory handle.
 
 ```fol
-graph.install_dir("assets/");
+var assets = graph.dir_from_root("assets");
+graph.install_dir({ name = "assets", source = assets });
 ```
 
 Returns an `Install` handle.
@@ -329,12 +331,13 @@ Returns a `GeneratedFile` handle.
 
 ### `graph.copy_file`
 
-Declares a file to be copied from a source path.
+Declares a file to be copied from a source-file handle.
 
 ```fol
+var template = graph.file_from_root("config/template.toml");
 var cfg = graph.copy_file({
     name   = "config",
-    source = "config/template.toml",
+    source = template,
     dest   = "gen/config.toml",
 });
 ```
@@ -376,15 +379,24 @@ Codegen kinds: `fol-to-fol`, `schema`, `asset-preprocess`.
 
 ## Path Utilities
 
-### `graph.path_from_root`
+### `graph.file_from_root`
 
-Returns an absolute path by joining the package root with a relative subpath.
+Returns a source-file handle rooted under the package root.
 
 ```fol
-var cfg = graph.path_from_root("config/default.toml");
+var cfg = graph.file_from_root("config/default.toml");
 ```
 
-Useful when passing file paths to `add_run` args.
+Useful when passing source files into `copy_file`, `install_file`, or
+`run.add_file_arg`.
+
+### `graph.dir_from_root`
+
+Returns a source-dir handle rooted under the package root.
+
+```fol
+var assets = graph.dir_from_root("assets");
+```
 
 ### `graph.build_root`
 

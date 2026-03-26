@@ -13,9 +13,10 @@ pro[] build(): non = {
         path = "config/defaults.toml",
         contents = "value=7",
     });
+    var assets = graph.dir_from_root("assets");
 
     graph.install(app);
     graph.install_file({ name = "defaults", source = defaults });
-    graph.install_dir({ name = "assets", path = "assets" });
+    graph.install_dir({ name = "assets", source = assets });
     return;
 };

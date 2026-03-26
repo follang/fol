@@ -181,7 +181,8 @@ fn build_source_evaluator_supports_object_style_copy_file_configs() {
     let source = concat!(
         "pro[] build(): non = {\n",
         "    var graph = .build().graph();\n",
-        "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
+        "    var logo = graph.file_from_root(\"assets/logo.svg\");\n",
+        "    var asset = graph.copy_file({ name = \"asset\", source = logo, path = \"gen/logo.svg\" });\n",
         "    return;\n",
         "}\n",
     );
@@ -281,7 +282,8 @@ fn build_source_evaluator_keeps_generated_outputs_in_evaluated_programs() {
         "pro[] build(): non = {\n",
         "    var graph = .build().graph();\n",
         "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
-        "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
+        "    var logo = graph.file_from_root(\"assets/logo.svg\");\n",
+        "    var asset = graph.copy_file({ name = \"asset\", source = logo, path = \"gen/logo.svg\" });\n",
         "    return;\n",
         "}\n",
     );
@@ -320,7 +322,8 @@ fn build_source_evaluator_keeps_mixed_generated_output_families() {
         "pro[] build(): non = {\n",
         "    var graph = .build().graph();\n",
         "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
-        "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
+        "    var logo = graph.file_from_root(\"assets/logo.svg\");\n",
+        "    var asset = graph.copy_file({ name = \"asset\", source = logo, path = \"gen/logo.svg\" });\n",
         "    var tool = graph.add_system_tool({ tool = \"flatc\", output = \"gen/schema.fol\" });\n",
         "    var codegen = graph.add_codegen({ kind = \"schema\", input = \"schema/api.yaml\", output = \"gen/api.fol\" });\n",
         "    return;\n",
@@ -806,5 +809,94 @@ fn build_source_evaluator_rejects_export_kind_handle_mismatches() {
     assert_eq!(
         error.message(),
         "build.export_artifact config is invalid: build.export_artifact requires handle field 'artifact'"
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_copy_file_with_source_dir_handle() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var assets = graph.dir_from_root(\"assets\");\n",
+        "    graph.copy_file({ name = \"asset\", source = assets, path = \"gen/logo.svg\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("copy_file should reject source-dir handles");
+
+    assert_eq!(
+        error.message(),
+        "copy_file config is invalid: 'source' must be a source-file handle, not a source-dir handle"
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_install_dir_with_source_file_handle() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var defaults = graph.file_from_root(\"config/defaults.toml\");\n",
+        "    graph.install_dir({ name = \"assets\", source = defaults });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("install_dir should reject source-file handles");
+
+    assert_eq!(
+        error.message(),
+        "install_dir config is invalid: 'source' must be a source-dir handle, not a source-file handle"
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_run_add_file_arg_with_source_dir_handle() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    var run = graph.add_run(app);\n",
+        "    var assets = graph.dir_from_root(\"assets\");\n",
+        "    run.add_file_arg(assets);\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("run.add_file_arg should reject source-dir handles");
+
+    assert_eq!(
+        error.message(),
+        "add_file_arg config is invalid: run.add_file_arg requires a source-file handle or generated-output handle, not a source-dir handle"
     );
 }

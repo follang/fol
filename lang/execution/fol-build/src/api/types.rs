@@ -323,6 +323,16 @@ pub struct GeneratedFileHandle {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceFileHandle {
+    pub relative_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceDirHandle {
+    pub relative_path: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DependencyRequest {
     pub alias: String,
     pub package: String,

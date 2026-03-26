@@ -1172,7 +1172,7 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
                     "};\n",
                 ),
                 None,
-                "install_file",
+                "source-file handle or generated-output handle",
             ),
             (
                 "fail_install_projection",
@@ -1181,12 +1181,13 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
                     "    var build = .build();\n",
                     "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
                     "    var graph = build.graph();\n",
-                    "    graph.install_dir({ name = \"assets\", path = \"\" });\n",
+                    "    var assets = graph.dir_from_root(\"\");\n",
+                    "    graph.install_dir({ name = \"assets\", source = assets });\n",
                     "    return;\n",
                     "};\n",
                 ),
                 None,
-                "directory target must not be empty",
+                "dir_from_root requires a non-empty relative path",
             ),
         ];
 

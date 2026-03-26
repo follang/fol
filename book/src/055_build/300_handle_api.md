@@ -66,16 +66,19 @@ run.add_arg("--config").add_arg("config/default.toml");
 
 ### `run.add_file_arg`
 
-Appends a generated output handle as a path argument.
+Appends either a source-file handle or a generated output handle as a path
+argument.
 
 ```fol
+var defaults = graph.file_from_root("config/defaults.toml");
 var cfg = graph.copy_file({
     name   = "config",
-    source = "config/defaults.toml",
+    source = defaults,
     dest   = "gen/config.toml",
 });
 var run = graph.add_run(app);
 run.add_file_arg(cfg);
+run.add_file_arg(defaults);
 ```
 
 Equivalent to Zig's `run.addFileArg(file)`.

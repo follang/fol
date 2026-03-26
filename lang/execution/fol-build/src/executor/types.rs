@@ -52,6 +52,12 @@ pub(super) enum ExecValue {
     Module {
         name: String,
     },
+    SourceFile {
+        path: String,
+    },
+    SourceDir {
+        path: String,
+    },
     GeneratedFile {
         name: String,
         path: String,

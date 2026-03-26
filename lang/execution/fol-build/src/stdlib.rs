@@ -139,6 +139,8 @@ mod tests {
         assert!(families.contains(&BuildSemanticTypeFamily::DependencyStepHandle));
         assert!(families.contains(&BuildSemanticTypeFamily::DependencyGeneratedOutputHandle));
         assert!(families.contains(&BuildSemanticTypeFamily::GeneratedFileHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::SourceFileHandle));
+        assert!(families.contains(&BuildSemanticTypeFamily::SourceDirHandle));
     }
 
     #[test]
@@ -165,6 +167,8 @@ mod tests {
         assert!(graph_names.contains(&"add_system_tool"));
         assert!(graph_names.contains(&"add_codegen"));
         assert!(graph_names.contains(&"dependency"));
+        assert!(graph_names.contains(&"file_from_root"));
+        assert!(graph_names.contains(&"dir_from_root"));
         assert!(graph_names.contains(&"standard_target"));
         assert!(graph_names.contains(&"standard_optimize"));
         assert!(graph_names.contains(&"option"));

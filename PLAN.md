@@ -258,7 +258,7 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
 
 ## Epoch 3: Complete The Path Handle Model
 
-### Slice 14
+### Slice 14 (complete)
 
 - audit current path-like values:
   - `graph.path_from_root(...)`
@@ -268,7 +268,7 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
   - generated output handles
   - dependency generated outputs
 
-### Slice 15
+### Slice 15 (complete)
 
 - define a new public path-handle family above current `OutputHandle`
 - recommended family members:
@@ -277,12 +277,12 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
   - generated output
   - dependency generated output
 
-### Slice 16
+### Slice 16 (complete)
 
 - add API/types for source file and source dir handles in
   `lang/execution/fol-build/src/api/types.rs`
 
-### Slice 17
+### Slice 17 (complete)
 
 - make `graph.path_from_root(...)` return a source-file handle instead of a raw string
 - if necessary, split into:
@@ -290,39 +290,39 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
   - `graph.dir_from_root(...)`
   and delete the ambiguous old path form
 
-### Slice 18
+### Slice 18 (complete)
 
 - update `graph.copy_file(...)` so `source` can accept a source-file handle
   instead of only a raw string
 
-### Slice 19
+### Slice 19 (complete)
 
 - update `graph.install_file(...)` so it accepts:
   - source-file handle
   - generated-output handle
   and rejects unrelated values exactly
 
-### Slice 20
+### Slice 20 (complete)
 
 - update `graph.install_dir(...)` so it accepts a source-dir handle instead of
   only a raw string path
 
-### Slice 21
+### Slice 21 (complete)
 
 - update `run.add_file_arg(...)` to accept source-file handles where sensible
 
-### Slice 22
+### Slice 22 (complete)
 
 - keep generated-output composition stable after the path-handle expansion
 
-### Slice 23
+### Slice 23 (complete)
 
 - add exact diagnostics for:
   - file/dir kind mismatch
   - passing dir handle where file handle is required
   - passing arbitrary scalar where a path handle is required
 
-### Slice 24
+### Slice 24 (complete)
 
 - add build-eval and integration tests for:
   - source file handles

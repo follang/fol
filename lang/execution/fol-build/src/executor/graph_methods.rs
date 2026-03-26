@@ -19,6 +19,94 @@ use super::option_helpers::{
 };
 
 impl BuildBodyExecutor {
+    fn resolve_source_file_config(
+        &self,
+        method: &str,
+        fields: &[fol_parser::ast::RecordInitField],
+        field_name: &str,
+    ) -> Result<String, BuildEvaluationError> {
+        let field = fields
+            .iter()
+            .find(|field| field.name == field_name)
+            .ok_or_else(|| {
+                BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::InvalidInput,
+                    format!("{method} config is invalid: missing '{field_name}'"),
+                )
+            })?;
+        match &field.value {
+            AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
+                Some(ExecValue::SourceFile { path }) => Ok(path.clone()),
+                Some(ExecValue::SourceDir { .. }) => Err(BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::InvalidInput,
+                    format!(
+                        "{method} config is invalid: '{field_name}' must be a source-file handle, not a source-dir handle"
+                    ),
+                )),
+                Some(ExecValue::GeneratedFile { .. }) => Err(BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::InvalidInput,
+                    format!(
+                        "{method} config is invalid: '{field_name}' must be a source-file handle, not a generated-output handle"
+                    ),
+                )),
+                _ => Err(BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::InvalidInput,
+                    format!(
+                        "{method} config is invalid: '{field_name}' must be a source-file handle"
+                    ),
+                )),
+            },
+            _ => Err(BuildEvaluationError::new(
+                BuildEvaluationErrorKind::InvalidInput,
+                format!("{method} config is invalid: '{field_name}' must be a source-file handle"),
+            )),
+        }
+    }
+
+    fn resolve_source_dir_config(
+        &self,
+        method: &str,
+        fields: &[fol_parser::ast::RecordInitField],
+        field_name: &str,
+    ) -> Result<String, BuildEvaluationError> {
+        let field = fields
+            .iter()
+            .find(|field| field.name == field_name)
+            .ok_or_else(|| {
+                BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::InvalidInput,
+                    format!("{method} config is invalid: missing '{field_name}'"),
+                )
+            })?;
+        match &field.value {
+            AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
+                Some(ExecValue::SourceDir { path }) => Ok(path.clone()),
+                Some(ExecValue::SourceFile { .. }) => Err(BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::InvalidInput,
+                    format!(
+                        "{method} config is invalid: '{field_name}' must be a source-dir handle, not a source-file handle"
+                    ),
+                )),
+                Some(ExecValue::GeneratedFile { .. }) => Err(BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::InvalidInput,
+                    format!(
+                        "{method} config is invalid: '{field_name}' must be a source-dir handle, not a generated-output handle"
+                    ),
+                )),
+                _ => Err(BuildEvaluationError::new(
+                    BuildEvaluationErrorKind::InvalidInput,
+                    format!(
+                        "{method} config is invalid: '{field_name}' must be a source-dir handle"
+                    ),
+                )),
+            },
+            _ => Err(BuildEvaluationError::new(
+                BuildEvaluationErrorKind::InvalidInput,
+                format!("{method} config is invalid: '{field_name}' must be a source-dir handle"),
+            )),
+        }
+    }
+
     pub(super) fn eval_graph_method(
         &mut self,
         method: &str,
@@ -209,36 +297,56 @@ impl BuildBodyExecutor {
                 let name = self
                     .resolve_field_string(fields, "name")
                     .ok_or_else(|| self.unsupported(method))?;
-                self.output.operations.push(BuildEvaluationOperation {
-                    origin,
-                    kind: if let Some(generated_name) = fields
-                        .iter()
-                        .find(|field| field.name == "path" || field.name == "source")
-                        .and_then(|field| match &field.value {
-                            AstNode::Identifier { name, .. } => match self.scope.get(name.as_str())
-                            {
-                                Some(ExecValue::GeneratedFile { name, .. }) => Some(name.clone()),
-                                _ => None,
-                            },
-                            _ => None,
-                        })
-                    {
-                        BuildEvaluationOperationKind::InstallGeneratedFile {
-                            name: name.clone(),
-                            generated_name,
+                let source_field = fields
+                    .iter()
+                    .find(|field| field.name == "path" || field.name == "source")
+                    .ok_or_else(|| {
+                        BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            "install_file config is invalid: missing 'source'".to_string(),
+                        )
+                    })?;
+                let kind = match &source_field.value {
+                    AstNode::Identifier {
+                        name: handle_name, ..
+                    } => match self.scope.get(handle_name.as_str()) {
+                        Some(ExecValue::GeneratedFile {
+                            name: generated_name,
+                            ..
+                        }) => {
+                            BuildEvaluationOperationKind::InstallGeneratedFile {
+                                name: name.clone(),
+                                generated_name: generated_name.clone(),
+                            }
                         }
-                    } else {
-                        let path = self
-                            .resolve_field_string(fields, "path")
-                            .or_else(|| self.resolve_field_string(fields, "source"))
-                            .ok_or_else(|| self.unsupported(method))?;
-                        BuildEvaluationOperationKind::InstallFile(InstallFileRequest {
-                            name: name.clone(),
-                            path,
-                            depends_on: Vec::new(),
-                        })
+                        Some(ExecValue::SourceFile { path }) => {
+                            BuildEvaluationOperationKind::InstallFile(InstallFileRequest {
+                                name: name.clone(),
+                                path: path.clone(),
+                                depends_on: Vec::new(),
+                            })
+                        }
+                        Some(ExecValue::SourceDir { .. }) => {
+                            return Err(BuildEvaluationError::new(
+                                BuildEvaluationErrorKind::InvalidInput,
+                                "install_file config is invalid: 'source' must be a source-file handle or generated-output handle, not a source-dir handle".to_string(),
+                            ))
+                        }
+                        _ => {
+                            return Err(BuildEvaluationError::new(
+                                BuildEvaluationErrorKind::InvalidInput,
+                                "install_file config is invalid: 'source' must be a source-file handle or generated-output handle".to_string(),
+                            ))
+                        }
                     },
-                });
+                    _ => {
+                        return Err(BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            "install_file config is invalid: 'source' must be a source-file handle or generated-output handle".to_string(),
+                        ))
+                    }
+                };
+                self.output.operations.push(BuildEvaluationOperation { origin, kind });
                 Ok(Some(ExecValue::Install { name }))
             }
 
@@ -249,10 +357,7 @@ impl BuildBodyExecutor {
                 let name = self
                     .resolve_field_string(fields, "name")
                     .ok_or_else(|| self.unsupported(method))?;
-                let path = self
-                    .resolve_field_string(fields, "path")
-                    .or_else(|| self.resolve_field_string(fields, "source"))
-                    .ok_or_else(|| self.unsupported(method))?;
+                let path = self.resolve_source_dir_config(method, fields, "source")?;
                 self.output.operations.push(BuildEvaluationOperation {
                     origin,
                     kind: BuildEvaluationOperationKind::InstallDir(InstallDirRequest {
@@ -305,10 +410,7 @@ impl BuildBodyExecutor {
                 let name = self
                     .resolve_field_string(fields, "name")
                     .ok_or_else(|| self.unsupported(method))?;
-                let source_path = self
-                    .resolve_field_string(fields, "source")
-                    .or_else(|| self.resolve_field_string(fields, "source_path"))
-                    .ok_or_else(|| self.unsupported(method))?;
+                let source_path = self.resolve_source_file_config(method, fields, "source")?;
                 let destination_path = self
                     .resolve_field_string(fields, "path")
                     .or_else(|| self.resolve_field_string(fields, "destination"))
@@ -468,12 +570,52 @@ impl BuildBodyExecutor {
                 Ok(Some(ExecValue::Module { name }))
             }
 
-            "path_from_root" => {
+            "file_from_root" => {
                 let subpath = match args {
-                    [arg] => self.resolve_string(arg).unwrap_or_default(),
-                    _ => String::new(),
+                    [arg] => self.resolve_string(arg).ok_or_else(|| {
+                        BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            "file_from_root requires one string path argument".to_string(),
+                        )
+                    })?,
+                    _ => {
+                        return Err(BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            "file_from_root requires one string path argument".to_string(),
+                        ))
+                    }
                 };
-                Ok(Some(ExecValue::Str(format!("$root/{subpath}"))))
+                if subpath.trim().is_empty() {
+                    return Err(BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        "file_from_root requires a non-empty relative path".to_string(),
+                    ));
+                }
+                Ok(Some(ExecValue::SourceFile { path: subpath }))
+            }
+
+            "dir_from_root" => {
+                let subpath = match args {
+                    [arg] => self.resolve_string(arg).ok_or_else(|| {
+                        BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            "dir_from_root requires one string path argument".to_string(),
+                        )
+                    })?,
+                    _ => {
+                        return Err(BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            "dir_from_root requires one string path argument".to_string(),
+                        ))
+                    }
+                };
+                if subpath.trim().is_empty() {
+                    return Err(BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        "dir_from_root requires a non-empty relative path".to_string(),
+                    ));
+                }
+                Ok(Some(ExecValue::SourceDir { path: subpath }))
             }
 
             "build_root" => Ok(Some(ExecValue::Str(self.package_root_str.clone()))),

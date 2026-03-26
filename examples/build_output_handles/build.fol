@@ -14,9 +14,10 @@ pro[] build(): non = {
         path = "config/generated.toml",
         contents = "mode=demo",
     });
+    var banner_src = graph.file_from_root("assets/banner.txt");
     var banner = graph.copy_file({
         name = "banner",
-        source = "assets/banner.txt",
+        source = banner_src,
         path = "config/banner.txt",
     });
 

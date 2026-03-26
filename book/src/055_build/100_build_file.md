@@ -253,7 +253,7 @@ The build executor enforces a capability model. Allowed operations:
 
 - graph mutation (adding artifacts, steps, options)
 - option reads (`.build().graph().standard_target()`, `.build().graph().standard_optimize()`, etc.)
-- path joining and normalization (`.build().graph().path_from_root(...)`)
+- source-path handles (`.build().graph().file_from_root(...)`, `.build().graph().dir_from_root(...)`)
 - basic string and container operations
 - controlled file generation (`.build().graph().write_file(...)`, `.build().graph().copy_file(...)`)
 - controlled process execution (`.build().graph().add_system_tool(...)`)

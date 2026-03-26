@@ -59,6 +59,8 @@ pub enum BuildSemanticTypeFamily {
     DependencyStepHandle,
     DependencyGeneratedOutputHandle,
     GeneratedFileHandle,
+    SourceFileHandle,
+    SourceDirHandle,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -138,6 +140,14 @@ impl BuildSemanticType {
             "GeneratedFile",
             BuildSemanticTypeFamily::GeneratedFileHandle,
         )
+    }
+
+    pub fn source_file_handle() -> Self {
+        Self::types_named("SourceFile", BuildSemanticTypeFamily::SourceFileHandle)
+    }
+
+    pub fn source_dir_handle() -> Self {
+        Self::types_named("SourceDir", BuildSemanticTypeFamily::SourceDirHandle)
     }
 
     pub fn module_handle() -> Self {
@@ -308,8 +318,12 @@ pub fn canonical_graph_method_signatures() -> Vec<BuildSemanticMethodSignature> 
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_module")
             .with_param(BuildSemanticMethodParameter::record("config"))
             .returning(BuildSemanticTypeFamily::ModuleHandle),
-        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "path_from_root")
-            .with_param(BuildSemanticMethodParameter::scalar("subpath")),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "file_from_root")
+            .with_param(BuildSemanticMethodParameter::scalar("subpath"))
+            .returning(BuildSemanticTypeFamily::SourceFileHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "dir_from_root")
+            .with_param(BuildSemanticMethodParameter::scalar("subpath"))
+            .returning(BuildSemanticTypeFamily::SourceDirHandle),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "build_root"),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "install_prefix"),
     ]
@@ -736,6 +750,8 @@ mod tests {
             BuildSemanticType::generated_file_handle().name,
             "GeneratedFile"
         );
+        assert_eq!(BuildSemanticType::source_file_handle().name, "SourceFile");
+        assert_eq!(BuildSemanticType::source_dir_handle().name, "SourceDir");
     }
 
     #[test]
@@ -794,6 +810,8 @@ mod tests {
         assert!(names.contains(&"add_system_tool"));
         assert!(names.contains(&"add_codegen"));
         assert!(names.contains(&"dependency"));
+        assert!(names.contains(&"file_from_root"));
+        assert!(names.contains(&"dir_from_root"));
     }
 
     #[test]
@@ -951,6 +969,12 @@ mod tests {
         let add_codegen = signatures
             .iter()
             .find(|signature| signature.name == "add_codegen");
+        let file_from_root = signatures
+            .iter()
+            .find(|signature| signature.name == "file_from_root");
+        let dir_from_root = signatures
+            .iter()
+            .find(|signature| signature.name == "dir_from_root");
 
         assert_eq!(
             add_exe.and_then(|signature| signature.returns),
@@ -971,6 +995,14 @@ mod tests {
         assert_eq!(
             add_codegen.and_then(|signature| signature.returns),
             Some(BuildSemanticTypeFamily::GeneratedFileHandle)
+        );
+        assert_eq!(
+            file_from_root.and_then(|signature| signature.returns),
+            Some(BuildSemanticTypeFamily::SourceFileHandle)
+        );
+        assert_eq!(
+            dir_from_root.and_then(|signature| signature.returns),
+            Some(BuildSemanticTypeFamily::SourceDirHandle)
         );
     }
 

@@ -432,19 +432,40 @@ impl BuildBodyExecutor {
                 let [arg] = args else {
                     return Err(self.unsupported(method));
                 };
-                let gen_name = match arg {
+                let (kind, value) = match arg {
                     AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
-                        Some(ExecValue::GeneratedFile { name, .. }) => name.clone(),
-                        _ => return Err(self.unsupported(method)),
+                        Some(ExecValue::GeneratedFile { name, .. }) => {
+                            (BuildEvaluationRunArgKind::GeneratedFile, name.clone())
+                        }
+                        Some(ExecValue::SourceFile { path }) => {
+                            (BuildEvaluationRunArgKind::Path, path.clone())
+                        }
+                        Some(ExecValue::SourceDir { .. }) => {
+                            return Err(self.invalid_config(
+                                method,
+                                "run.add_file_arg requires a source-file handle or generated-output handle, not a source-dir handle",
+                            ))
+                        }
+                        _ => {
+                            return Err(self.invalid_config(
+                                method,
+                                "run.add_file_arg requires a source-file handle or generated-output handle",
+                            ))
+                        }
                     },
-                    _ => return Err(self.unsupported(method)),
+                    _ => {
+                        return Err(self.invalid_config(
+                            method,
+                            "run.add_file_arg requires a source-file handle or generated-output handle",
+                        ))
+                    }
                 };
                 self.output.operations.push(BuildEvaluationOperation {
                     origin: None,
                     kind: BuildEvaluationOperationKind::RunAddArg {
                         run_name,
-                        kind: BuildEvaluationRunArgKind::GeneratedFile,
-                        value: gen_name,
+                        kind,
+                        value,
                     },
                 });
                 Ok(Some(receiver))

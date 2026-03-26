@@ -22,9 +22,9 @@ pub use api::{
     BuildOptionValue, DependencyArgValue, DependencyHandle, DependencyRequest, ExecutableRequest,
     InstallArtifactRequest, InstallDirRequest, InstallFileRequest, InstallHandle, OutputHandle,
     OutputHandleKind, OutputHandleLocator, RunHandle, RunRequest, SharedLibraryRequest,
-    StandardOptimizeOption, StandardOptimizeRequest, StandardTargetOption, StandardTargetRequest,
-    StaticLibraryRequest, StepHandle, StepRequest, TestArtifactRequest, UserOption,
-    UserOptionRequest,
+    SourceDirHandle, SourceFileHandle, StandardOptimizeOption, StandardOptimizeRequest,
+    StandardTargetOption, StandardTargetRequest, StaticLibraryRequest, StepHandle, StepRequest,
+    TestArtifactRequest, UserOption, UserOptionRequest,
 };
 pub use artifact::{
     project_graph_artifacts, BuildArtifactDefinition, BuildArtifactFolModel, BuildArtifactLinkage,

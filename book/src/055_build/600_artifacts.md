@@ -58,8 +58,10 @@ graph.install(core);
 Files and directories can also be installed directly:
 
 ```fol
-graph.install_file("config/defaults.toml");
-graph.install_dir("assets/");
+var defaults = graph.file_from_root("config/defaults.toml");
+var assets = graph.dir_from_root("assets");
+graph.install_file({ name = "defaults", source = defaults });
+graph.install_dir({ name = "assets", source = assets });
 ```
 
 ## Modules
