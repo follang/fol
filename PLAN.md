@@ -186,6 +186,8 @@ Completion criteria:
   - array `.len(...)`
 
 ### Slice 9
+Status: complete
+
 Add direct positive fixtures proving `alloc` allows heap-only surfaces without accidentally requiring `std`.
 
 Completion criteria:
