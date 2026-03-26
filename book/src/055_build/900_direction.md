@@ -45,8 +45,9 @@ The remaining gaps that still matter are:
   values
 - no dependency-handle queries for exported files, dirs, or general paths
 - path capability is still split across multiple public handle families
-- dependency modes are public, but their behavior is still lighter than their
-  names suggest
+- dependency modes are public and preserved end to end, but only package-store
+  eager preloading is fully distinct today; deeper deferred preparation can
+  still become more aggressive later
 - CLI/help/reporting still under-exposes step, install, and output information
 - there is still no typed system-library surface
 - generated-directory workflows are still thin compared to generated-file flows

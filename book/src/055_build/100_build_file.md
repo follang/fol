@@ -207,9 +207,21 @@ Supported dependency modes:
 - `lazy`
 - `on-demand`
 
-The public mode is preserved as declared. Some deeper dependency preparation is
-still earlier-stage internally today, so treat the current runtime behavior as
-honest-but-not-yet-maximally-lazy.
+Current semantics:
+
+- `eager`
+  direct package-store dependencies are prepared immediately during package
+  loading
+- `lazy`
+  dependency metadata is kept, but package-store preparation is deferred until a
+  later build/import path needs it
+- `on-demand`
+  same deferred loading rule as `lazy`, but user-facing summaries keep the
+  stronger intent visible
+
+`fol code fetch` still walks declared dependencies so it can materialize and pin
+the workspace graph. The mode is surfaced in fetch/build summaries instead of
+being dropped.
 
 Forwarded dependency args stay explicit:
 

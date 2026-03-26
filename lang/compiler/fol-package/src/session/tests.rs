@@ -810,6 +810,59 @@ fn package_session_preloads_transitive_pkg_dependencies() {
 }
 
 #[test]
+fn package_session_only_preloads_eager_pkg_dependencies() {
+    let temp_root = unique_temp_root("eager_only_pkg_preload");
+    let store_root = temp_root.join("store");
+    fs::create_dir_all(store_root.join("core/src/root"))
+        .expect("Should create eager dependency fixture");
+    fs::create_dir_all(store_root.join("json/src/root"))
+        .expect("Should create dependent package fixture");
+    fs::write(
+        store_root.join("core/build.fol"),
+        formal_build_fixture("core", &[]),
+    )
+    .expect("Should write eager dependency build fixture");
+    fs::write(
+        store_root.join("core/src/root/value.fol"),
+        "var[exp] shared: int = 7;\n",
+    )
+    .expect("Should write eager dependency source fixture");
+    fs::write(
+        store_root.join("json/build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"json\", version = \"1.0.0\" });\n",
+            "    build.add_dep({ alias = \"core\", source = \"pkg\", target = \"core\", mode = \"lazy\" });\n",
+            "};\n",
+        ),
+    )
+    .expect("Should write dependent package build fixture");
+    fs::write(
+        store_root.join("json/src/root/value.fol"),
+        "var[exp] answer: int = 1;\n",
+    )
+    .expect("Should write dependent package source fixture");
+    let mut session = PackageSession::new();
+
+    let loaded = session
+        .load_package_from_store(
+            &store_root,
+            &[UsePathSegment {
+                separator: None,
+                spelling: "json".to_string(),
+            }],
+        )
+        .expect("Package session should load the direct package");
+
+    assert_eq!(loaded.identity.display_name, "json");
+    assert_eq!(session.cached_package_count(), 1);
+
+    fs::remove_dir_all(&temp_root)
+        .expect("Temporary package-store fixture should be removable after the test");
+}
+
+#[test]
 fn package_session_reports_explicit_pkg_dependency_cycles() {
     let temp_root = unique_temp_root("cyclic_pkg_graph");
     let store_root = temp_root.join("store");

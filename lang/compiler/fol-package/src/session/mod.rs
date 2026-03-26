@@ -1,7 +1,8 @@
 use crate::{
     build_dependency::{project_dependency_surface, DependencyBuildSurfaceSet},
-    metadata::PackageDependencySourceKind, PackageBuildDefinition, PackageBuildMode, PackageConfig,
-    PackageError, PackageErrorKind, PackageIdentity, PackageSourceKind, PreparedPackage,
+    metadata::PackageDependencySourceKind,
+    PackageBuildDefinition, PackageBuildMode, PackageConfig, PackageError, PackageErrorKind,
+    PackageIdentity, PackageSourceKind, PreparedPackage,
 };
 use fol_lexer::lexer::stage3::Elements;
 use fol_parser::ast::{AstParser, ParsedPackage, SyntaxOrigin, UsePathSegment};
@@ -246,6 +247,7 @@ impl PackageSession {
         if let Some(store_root) = store_root {
             for dependency in metadata.dependencies.iter().filter(|dependency| {
                 dependency.source_kind == PackageDependencySourceKind::PackageStore
+                    && dependency.evaluation_mode == fol_build::DependencyBuildEvaluationMode::Eager
             }) {
                 let path_segments = dependency
                     .target
@@ -328,8 +330,8 @@ pub fn parse_directory_package_syntax(
             format!("package root '{}' is not valid UTF-8", root.display()),
         )
     })?;
-    let sources = Source::init_with_package(root_str, SourceType::Folder, display_name)
-        .map_err(|error| {
+    let sources =
+        Source::init_with_package(root_str, SourceType::Folder, display_name).map_err(|error| {
             PackageError::new(
                 PackageErrorKind::InvalidInput,
                 format!(
@@ -354,7 +356,8 @@ pub fn parse_directory_package_syntax(
 
     parser.parse_package(&mut lexer).map_err(|diagnostics| {
         let mut iter = diagnostics.into_iter();
-        let first = iter.next()
+        let first = iter
+            .next()
             .expect("parse_package should produce at least one error");
         let origin = first.primary_location().map(|loc| SyntaxOrigin {
             file: loc.file.clone(),
@@ -368,11 +371,9 @@ pub fn parse_directory_package_syntax(
             first.message
         );
         let mut error = match origin {
-            Some(origin) => PackageError::with_origin(
-                PackageErrorKind::InvalidInput,
-                message,
-                origin,
-            ),
+            Some(origin) => {
+                PackageError::with_origin(PackageErrorKind::InvalidInput, message, origin)
+            }
             None => PackageError::new(PackageErrorKind::InvalidInput, message),
         };
         for extra in iter {

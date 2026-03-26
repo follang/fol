@@ -79,6 +79,89 @@ fn fetch_round_trip_prepares_and_reports_local_workspace_packages() {
 }
 
 #[test]
+fn fetch_summary_surfaces_dependency_modes_for_mixed_sources() {
+    let root = temp_root("mode_summary");
+    let app = root.join("app");
+    let shared = root.join("deps/shared");
+    let store_root = root.join(".fol/pkg");
+    let remote = root.join("remote-logtiny");
+
+    fs::create_dir_all(app.join("src")).expect("should create app package");
+    fs::create_dir_all(shared.join("src")).expect("should create local dependency");
+    fs::create_dir_all(store_root.join("core/src")).expect("should create store dependency");
+    create_git_package_repo(&remote, "logtiny", "0.1.0");
+
+    fs::write(
+        app.join("build.fol"),
+        format!(
+            concat!(
+                "pro[] build(): non = {{\n",
+                "    var build = .build();\n",
+                "    build.meta({{ name = \"app\", version = \"0.1.0\" }});\n",
+                "    build.add_dep({{ alias = \"shared\", source = \"loc\", target = \"../deps/shared\", mode = \"lazy\" }});\n",
+                "    build.add_dep({{ alias = \"core\", source = \"pkg\", target = \"core\", mode = \"eager\" }});\n",
+                "    build.add_dep({{ alias = \"logtiny\", source = \"git\", target = \"git+file://{}\", mode = \"on-demand\" }});\n",
+                "    var graph = build.graph();\n",
+                "    var exe = graph.add_exe({{ name = \"app\", root = \"src/main.fol\" }});\n",
+                "    graph.install(exe);\n",
+                "}};\n",
+            ),
+            remote.display()
+        ),
+    )
+    .expect("should write app build");
+    fs::write(
+        app.join("src/main.fol"),
+        "fun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .expect("should write app source");
+    fs::write(shared.join("build.fol"), semantic_lib_build("shared"))
+        .expect("should write local dep build");
+    fs::write(shared.join("src/lib.fol"), "var[exp] level: int = 1;\n")
+        .expect("should write local dep source");
+    fs::write(
+        store_root.join("core/build.fol"),
+        semantic_lib_build("core"),
+    )
+    .expect("should write store dep build");
+    fs::write(
+        store_root.join("core/src/lib.fol"),
+        "var[exp] base: int = 2;\n",
+    )
+    .expect("should write store dep source");
+
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(app.clone())],
+        std_root_override: None,
+        package_store_root_override: Some(store_root.clone()),
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let result = fetch_workspace(&workspace).expect("fetch should succeed");
+
+    assert!(result
+        .summary
+        .contains("dependency modes: eager=1, lazy=1, on-demand=1"));
+    assert!(result
+        .artifacts
+        .iter()
+        .any(|artifact| artifact.label == "shared:loc:lazy"));
+    assert!(result
+        .artifacts
+        .iter()
+        .any(|artifact| artifact.label == "core:pkg:eager"));
+    assert!(result
+        .artifacts
+        .iter()
+        .any(|artifact| artifact.label == "logtiny:git:on-demand"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn fetch_round_trip_prefers_frontend_config_store_root_in_artifacts() {
     let root = temp_root("config_store");
     let app = root.join("app");
@@ -321,8 +404,11 @@ fn create_app_with_git_dep(app: &Path, remote: &Path) {
 
 fn create_git_package_repo(root: &Path, name: &str, version: &str) {
     fs::create_dir_all(root.join("src")).expect("package repo should be creatable");
-    fs::write(root.join("build.fol"), semantic_lib_build(name).replace("0.1.0", version))
-        .expect("package build should be writable");
+    fs::write(
+        root.join("build.fol"),
+        semantic_lib_build(name).replace("0.1.0", version),
+    )
+    .expect("package build should be writable");
     fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1;\n")
         .expect("package source should be writable");
     git(root, &["init"]);

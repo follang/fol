@@ -279,6 +279,17 @@ Declared dependency modes:
 - `lazy`
 - `on-demand`
 
+Current behavior:
+
+- `eager`
+  prepares package-store dependencies up front during formal package loading
+- `lazy`
+  keeps the declaration and defers package-store preparation until a later
+  import/build path needs it
+- `on-demand`
+  preserves the strongest deferred intent and stays visible in summaries and
+  fetch results
+
 Dependency-handle queries resolve only names that the dependency explicitly
 exports from its own `build.fol`:
 

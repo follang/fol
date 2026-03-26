@@ -2,6 +2,7 @@ use crate::{
     FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendConfig,
     FrontendError, FrontendResult, FrontendWorkspace,
 };
+use fol_package::{DependencyBuildEvaluationMode, PackageDependencySourceKind};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -20,15 +21,19 @@ pub struct FrontendPackagePreparation {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ResolvedDependencyPackage {
+    alias: String,
     root: PathBuf,
     name: String,
     version: String,
+    source_kind: PackageDependencySourceKind,
+    evaluation_mode: DependencyBuildEvaluationMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct FetchResolution {
     preparation: FrontendPackagePreparation,
     resolved_packages: Vec<ResolvedDependencyPackage>,
+    resolved_dependencies: Vec<ResolvedDependencyPackage>,
     lockfile: fol_package::PackageLockfile,
     lockfile_path: PathBuf,
     package_store_root: PathBuf,
@@ -77,6 +82,27 @@ fn copy_package_projection(from: &Path, to: &Path) -> FrontendResult<()> {
     Ok(())
 }
 
+fn render_dependency_mode_summary(dependencies: &[ResolvedDependencyPackage]) -> Option<String> {
+    if dependencies.is_empty() {
+        return None;
+    }
+    let eager = dependencies
+        .iter()
+        .filter(|dep| dep.evaluation_mode == DependencyBuildEvaluationMode::Eager)
+        .count();
+    let lazy = dependencies
+        .iter()
+        .filter(|dep| dep.evaluation_mode == DependencyBuildEvaluationMode::Lazy)
+        .count();
+    let on_demand = dependencies
+        .iter()
+        .filter(|dep| dep.evaluation_mode == DependencyBuildEvaluationMode::OnDemand)
+        .count();
+    Some(format!(
+        "dependency modes: eager={eager}, lazy={lazy}, on-demand={on_demand}"
+    ))
+}
+
 fn project_git_dependency_alias(
     package_store_root: &Path,
     alias: &str,
@@ -113,9 +139,8 @@ pub fn prepare_workspace_packages(
         .iter()
         .map(|member| {
             let build_path = member.root.join("build.fol");
-            let metadata =
-                fol_package::parse_package_metadata_from_build(&build_path)
-                    .map_err(FrontendError::from)?;
+            let metadata = fol_package::parse_package_metadata_from_build(&build_path)
+                .map_err(FrontendError::from)?;
             fol_package::parse_package_build(&build_path).map_err(FrontendError::from)?;
 
             Ok(FrontendPreparedPackage {
@@ -159,7 +184,7 @@ pub fn fetch_workspace_with_config(
     let mut result = FrontendCommandResult::new(
         "fetch",
         format!(
-            "prepared {} workspace package(s) and resolved {} package root(s) into {}{}{}",
+            "prepared {} workspace package(s) and resolved {} package root(s) into {}{}{}{}",
             resolution.preparation.packages.len(),
             resolution.resolved_packages.len(),
             resolution.package_store_root.display(),
@@ -175,7 +200,16 @@ pub fn fetch_workspace_with_config(
                 format!("; pruned {} stale git materialization(s)", stale_pruned)
             } else {
                 String::new()
-            }
+            },
+            resolution
+                .resolved_dependencies
+                .is_empty()
+                .then(String::new)
+                .unwrap_or_else(|| {
+                    render_dependency_mode_summary(&resolution.resolved_dependencies)
+                        .map(|summary| format!("; {summary}"))
+                        .unwrap_or_default()
+                })
         ),
     );
     result.artifacts.push(FrontendArtifactSummary::new(
@@ -198,14 +232,30 @@ pub fn fetch_workspace_with_config(
         "lockfile",
         Some(resolution.lockfile_path),
     ));
-    for package in resolution.resolved_packages {
+    for package in &resolution.resolved_packages {
         result.artifacts.push(FrontendArtifactSummary::new(
             FrontendArtifactKind::PackageRoot,
-            package.name,
+            package.name.clone(),
+            Some(package.root.clone()),
+        ));
+    }
+    for package in resolution.resolved_dependencies {
+        result.artifacts.push(FrontendArtifactSummary::new(
+            FrontendArtifactKind::PackageRoot,
+            format!(
+                "{}:{}:{}",
+                package.alias,
+                match package.source_kind {
+                    PackageDependencySourceKind::Local => "loc",
+                    PackageDependencySourceKind::PackageStore => "pkg",
+                    PackageDependencySourceKind::Git => "git",
+                },
+                package.evaluation_mode.as_str()
+            ),
             Some(package.root),
         ));
     }
-    Ok(result)
+    return Ok(result);
 }
 
 pub fn fetch_workspace(workspace: &FrontendWorkspace) -> FrontendResult<FrontendCommandResult> {
@@ -258,6 +308,7 @@ fn resolve_workspace_fetch(
         .collect::<Vec<_>>();
     let mut seen_roots = BTreeSet::new();
     let mut resolved_packages = Vec::new();
+    let mut resolved_dependencies = Vec::new();
     let mut git_lock_entries = Vec::new();
     let mut seen_lock_keys = BTreeSet::new();
     let existing_lockfile = if config.locked_fetch {
@@ -282,13 +333,15 @@ fn resolve_workspace_fetch(
         let build_path = canonical_root.join("build.fol");
         let metadata = fol_package::parse_package_metadata_from_build(&build_path)
             .map_err(FrontendError::from)?;
-        fol_package::parse_package_build(&build_path)
-            .map_err(FrontendError::from)?;
+        fol_package::parse_package_build(&build_path).map_err(FrontendError::from)?;
 
         resolved_packages.push(ResolvedDependencyPackage {
+            alias: metadata.name.clone(),
             root: canonical_root.clone(),
             name: metadata.name.clone(),
             version: metadata.version.clone(),
+            source_kind: PackageDependencySourceKind::Local,
+            evaluation_mode: DependencyBuildEvaluationMode::Eager,
         });
 
         for dependency in metadata.dependencies {
@@ -301,6 +354,14 @@ fn resolve_workspace_fetch(
                         .map_err(FrontendError::from)?;
                     fol_package::parse_package_build(&dependency_build)
                         .map_err(FrontendError::from)?;
+                    resolved_dependencies.push(ResolvedDependencyPackage {
+                        alias: dependency.alias.clone(),
+                        root: dependency_root.clone(),
+                        name: dependency.alias.clone(),
+                        version: String::new(),
+                        source_kind: PackageDependencySourceKind::Local,
+                        evaluation_mode: dependency.evaluation_mode,
+                    });
                     queued_roots.push(dependency_root);
                 }
                 fol_package::PackageDependencySourceKind::PackageStore => {
@@ -312,6 +373,14 @@ fn resolve_workspace_fetch(
                             &locator_use_path_segments(&locator),
                         )
                         .map_err(FrontendError::from)?;
+                    resolved_dependencies.push(ResolvedDependencyPackage {
+                        alias: dependency.alias.clone(),
+                        root: PathBuf::from(loaded.identity.canonical_root.clone()),
+                        name: loaded.identity.display_name.clone(),
+                        version: String::new(),
+                        source_kind: PackageDependencySourceKind::PackageStore,
+                        evaluation_mode: dependency.evaluation_mode,
+                    });
                     queued_roots.push(PathBuf::from(loaded.identity.canonical_root));
                 }
                 fol_package::PackageDependencySourceKind::Git => {
@@ -362,6 +431,14 @@ fn resolve_workspace_fetch(
                     let loaded = package_session
                         .load_materialized_package(&materialization.store_root)
                         .map_err(FrontendError::from)?;
+                    resolved_dependencies.push(ResolvedDependencyPackage {
+                        alias: dependency.alias.clone(),
+                        root: PathBuf::from(loaded.identity.canonical_root.clone()),
+                        name: loaded.identity.display_name.clone(),
+                        version: String::new(),
+                        source_kind: PackageDependencySourceKind::Git,
+                        evaluation_mode: dependency.evaluation_mode,
+                    });
                     queued_roots.push(PathBuf::from(loaded.identity.canonical_root.clone()));
 
                     let lock_key = format!(
@@ -410,6 +487,7 @@ fn resolve_workspace_fetch(
     Ok(FetchResolution {
         preparation,
         resolved_packages,
+        resolved_dependencies,
         lockfile,
         lockfile_path: lockfile_path(workspace),
         package_store_root,
@@ -808,8 +886,7 @@ mod tests {
             ),
         )
         .expect("should write app manifest");
-        fs::write(app.join("build.fol"), semantic_bin_build())
-            .expect("should write app build");
+        fs::write(app.join("build.fol"), semantic_bin_build()).expect("should write app build");
         fs::write(app.join("src/main.fol"), "var[exp] answer: int = 1;\n")
             .expect("should write app source");
 

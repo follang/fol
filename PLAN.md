@@ -345,7 +345,7 @@ shape:
 
 ## Epoch 5: Make Dependency Modes Behave More Concretely
 
-### Slice 24
+### Slice 24 (complete)
 
 - audit current use of dependency modes in:
   - build evaluator
@@ -354,19 +354,19 @@ shape:
   - fetch flows
   - docs/examples
 
-### Slice 25
+### Slice 25 (complete)
 
 - define the concrete intended behavior:
   - `eager`: preload and validate dependency surface immediately
   - `lazy`: delay expensive preparation until dependency handle/build import use
   - `on-demand`: only prepare when the graph or frontend path truly requires it
 
-### Slice 26
+### Slice 26 (complete)
 
 - preserve dependency mode through all current metadata/execution layers
 - no silent dropping during prepare/fetch/build planning
 
-### Slice 27
+### Slice 27 (complete)
 
 - fetch/package logic should surface the chosen dependency modes clearly in tests
   and summaries where relevant
@@ -376,7 +376,7 @@ shape:
 - add diagnostics for contradictory or unsupported mode usage if any current
   path cannot honor the requested mode yet
 
-### Slice 29
+### Slice 29 (complete)
 
 - add integration coverage with mixed dependency modes across:
   - `loc`
