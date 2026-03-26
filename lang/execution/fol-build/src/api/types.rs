@@ -307,11 +307,46 @@ pub struct OutputHandle {
     pub locator: OutputHandleLocator,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathHandleClass {
+    File,
+    Dir,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PathHandleProvenance {
+    Source,
+    Generated,
+    DependencyGenerated,
+    DependencyPath,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PathHandle {
+    pub class: PathHandleClass,
+    pub provenance: PathHandleProvenance,
+    pub relative_path: String,
+}
+
 impl OutputHandle {
     pub fn generated_file_id(&self) -> Option<crate::graph::BuildGeneratedFileId> {
         match self.locator {
             OutputHandleLocator::GeneratedFile(id) => Some(id),
             OutputHandleLocator::DependencyGeneratedOutput { .. } => None,
+        }
+    }
+
+    pub fn path_handle(&self, relative_path: impl Into<String>) -> PathHandle {
+        let provenance = match self.locator {
+            OutputHandleLocator::GeneratedFile(_) => PathHandleProvenance::Generated,
+            OutputHandleLocator::DependencyGeneratedOutput { .. } => {
+                PathHandleProvenance::DependencyGenerated
+            }
+        };
+        PathHandle {
+            class: PathHandleClass::File,
+            provenance,
+            relative_path: relative_path.into(),
         }
     }
 }
@@ -326,9 +361,29 @@ pub struct SourceFileHandle {
     pub relative_path: String,
 }
 
+impl SourceFileHandle {
+    pub fn path_handle(&self) -> PathHandle {
+        PathHandle {
+            class: PathHandleClass::File,
+            provenance: PathHandleProvenance::Source,
+            relative_path: self.relative_path.clone(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SourceDirHandle {
     pub relative_path: String,
+}
+
+impl SourceDirHandle {
+    pub fn path_handle(&self) -> PathHandle {
+        PathHandle {
+            class: PathHandleClass::Dir,
+            provenance: PathHandleProvenance::Source,
+            relative_path: self.relative_path.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -21,10 +21,11 @@ pub use api::{
     validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildArtifactHandle,
     BuildOptionValue, DependencyArgValue, DependencyHandle, DependencyRequest, ExecutableRequest,
     InstallArtifactRequest, InstallDirRequest, InstallFileRequest, InstallHandle, OutputHandle,
-    OutputHandleKind, OutputHandleLocator, RunHandle, RunRequest, SharedLibraryRequest,
-    SourceDirHandle, SourceFileHandle, StandardOptimizeOption, StandardOptimizeRequest,
-    StandardTargetOption, StandardTargetRequest, StaticLibraryRequest, StepHandle, StepRequest,
-    TestArtifactRequest, UserOption, UserOptionRequest,
+    OutputHandleKind, OutputHandleLocator, PathHandle, PathHandleClass, PathHandleProvenance,
+    RunHandle, RunRequest, SharedLibraryRequest, SourceDirHandle, SourceFileHandle,
+    StandardOptimizeOption, StandardOptimizeRequest, StandardTargetOption, StandardTargetRequest,
+    StaticLibraryRequest, StepHandle, StepRequest, TestArtifactRequest, UserOption,
+    UserOptionRequest,
 };
 pub use artifact::{
     project_graph_artifacts, BuildArtifactDefinition, BuildArtifactFolModel, BuildArtifactLinkage,

@@ -4,9 +4,9 @@ mod tests {
         validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
         CopyFileRequest, DependencyArgValue, DependencyRequest, ExecutableRequest,
         InstallArtifactRequest, InstallDirRequest, InstallFileRequest, OutputHandle,
-        OutputHandleKind, OutputHandleLocator, RunRequest, SharedLibraryRequest,
-        StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest, StepRequest,
-        TestArtifactRequest, UserOptionRequest, WriteFileRequest,
+        OutputHandleKind, OutputHandleLocator, PathHandleClass, PathHandleProvenance, RunRequest,
+        SharedLibraryRequest, StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest,
+        StepRequest, TestArtifactRequest, UserOptionRequest, WriteFileRequest,
     };
     use crate::codegen::{
         CodegenKind, CodegenRequest, GeneratedFileInstallProjection, SystemToolRequest,
@@ -27,6 +27,44 @@ mod tests {
         let api = BuildApi::new(&mut graph);
 
         assert!(api.graph().steps().is_empty());
+    }
+
+    #[test]
+    fn canonical_path_handle_representation_covers_source_and_output_values() {
+        let source_file = crate::api::SourceFileHandle {
+            relative_path: "config/defaults.toml".to_string(),
+        };
+        let source_dir = crate::api::SourceDirHandle {
+            relative_path: "assets".to_string(),
+        };
+        let generated = OutputHandle {
+            kind: OutputHandleKind::WrittenFile,
+            locator: OutputHandleLocator::GeneratedFile(crate::graph::BuildGeneratedFileId(0)),
+        };
+        let dependency_generated = OutputHandle {
+            kind: OutputHandleKind::DependencyGeneratedOutput,
+            locator: OutputHandleLocator::DependencyGeneratedOutput {
+                dependency_alias: "shared".to_string(),
+                output_name: "schema".to_string(),
+            },
+        };
+
+        assert_eq!(source_file.path_handle().class, PathHandleClass::File);
+        assert_eq!(
+            source_file.path_handle().provenance,
+            PathHandleProvenance::Source
+        );
+        assert_eq!(source_dir.path_handle().class, PathHandleClass::Dir);
+        assert_eq!(
+            generated.path_handle("gen/schema.fol").provenance,
+            PathHandleProvenance::Generated
+        );
+        assert_eq!(
+            dependency_generated
+                .path_handle("$dep/shared/schema")
+                .provenance,
+            PathHandleProvenance::DependencyGenerated
+        );
     }
 
     #[test]

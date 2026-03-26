@@ -322,7 +322,7 @@ shape:
 - internal variants may remain specialized, but the public consumption model
   should converge
 
-### Slice 20
+### Slice 20 (complete)
 
 - add a canonical runtime/type representation for generalized path handles
 
