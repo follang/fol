@@ -26,6 +26,31 @@ This already covers the core FOL build contract:
 The next useful pieces are not more random graph methods. They are missing
 capability classes.
 
+### Round 3 Gap Audit
+
+The current public build surface is materially stronger than it was before:
+
+- dependency handles are real values
+- explicit build exports exist
+- source file and source dir handles exist
+- generated outputs use one composable handle family
+- dependency modes are public
+- install-prefix projection is real
+- step descriptions are real
+- typed system tools exist
+
+The remaining gaps that still matter are:
+
+- no named dependency exports for source files, source dirs, or broader path
+  values
+- no dependency-handle queries for exported files, dirs, or general paths
+- path capability is still split across multiple public handle families
+- dependency modes are public, but their behavior is still lighter than their
+  names suggest
+- CLI/help/reporting still under-exposes step, install, and output information
+- there is still no typed system-library surface
+- generated-directory workflows are still thin compared to generated-file flows
+
 ### Dependency Handles
 
 Direct dependencies are now real build values instead of only metadata

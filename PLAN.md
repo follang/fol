@@ -1,4 +1,4 @@
-# Zig Gap Round 2 Plan
+# Zig Gap Round 3 Plan
 
 This plan defines the next build-system round after the completed:
 
@@ -6,45 +6,62 @@ This plan defines the next build-system round after the completed:
 - `.build().add_dep(...)`
 - `.build().graph()`
 - dependency handles
-- unified generated-output handles
-- explicit dependency arg forwarding
+- explicit dependency exports
+- source file and source dir handles
+- unified output handles
+- dependency arg forwarding
+- dependency evaluation modes
 - install-prefix projection
+- step descriptions
+- typed system tools
 
-The goal of this round is to close the next set of gaps that still separate
-FOL build from the high-value parts of Zig's build system.
+The goal of this round is to close the next practical gaps that still separate
+FOL build from the most useful parts of Zig's build system, without copying Zig
+blindly and without introducing public legacy shims.
 
 This plan is based on:
 
-- an actual repo scan of the current build surface and tests
-- the current FOL build docs under `book/src/055_build`
-- the official Zig build-system docs and release-note material on dependency
-  access, build options, install prefix separation, and lazy path usage
+- a fresh repo scan of the current build API, build evaluator, frontend, editor,
+  and example coverage
+- the current FOL build book under `book/src/055_build`
+- the Zig build-system guide and the 0.11, 0.12, and 0.14 release-note material
+  around dependency access, lazy path usage, lazy dependencies, step summaries,
+  and system integration
 
 Grounding inside this repo:
 
 - build API: `lang/execution/fol-build/src/api/build_api.rs`
 - build API types: `lang/execution/fol-build/src/api/types.rs`
 - dependency surface model: `lang/execution/fol-build/src/dependency.rs`
+- runtime handle model: `lang/execution/fol-build/src/runtime.rs`
 - semantic registry: `lang/execution/fol-build/src/semantic.rs`
 - graph execution: `lang/execution/fol-build/src/executor/graph_methods.rs`
 - handle execution: `lang/execution/fol-build/src/executor/handle_methods.rs`
 - build evaluation from source: `lang/execution/fol-build/src/eval/source.rs`
 - build plan replay: `lang/execution/fol-build/src/eval/plan.rs`
 - step/cache/report model: `lang/execution/fol-build/src/step.rs`
-- frontend build routing: `lang/tooling/fol-frontend/src/build_route/mod.rs`
-- package preparation: `lang/compiler/fol-package/src/session/mod.rs`
-- current examples and integration tests:
-  - `examples/build_*`
-  - `test/integration_tests/integration_editor_and_build.rs`
+- dependency projection: `lang/compiler/fol-package/src/build_dependency.rs`
+- package prep/loading: `lang/compiler/fol-package/src/session/mod.rs`
+- frontend routed build planning: `lang/tooling/fol-frontend/src/build_route/mod.rs`
+- frontend direct/build execution: `lang/tooling/fol-frontend/src/compile/mod.rs`
+- frontend direct compilation path: `lang/tooling/fol-frontend/src/direct.rs`
+- editor/LSP build tests: `lang/tooling/fol-editor/src/lsp/tests/*`
+- current standalone examples:
+  - `examples/build_dep_*`
+  - `examples/build_output_handles`
+  - `examples/build_install_prefix`
+  - `examples/build_source_paths`
+  - `examples/build_system_tool`
 
 ## Primary Targets
 
-1. make dependency exposure explicit instead of only auto-projected
-2. finish the path-handle model so source files and directories are first-class
-3. expose public dependency evaluation modes (`eager`, `lazy`, `on-demand`)
-4. improve step/help ergonomics with real step descriptions and better default-step UX
-5. add a first serious system-integration surface
-6. harden docs/examples/editor/tests around the final public build shape
+1. add named dependency path exports and path queries
+2. move toward one broader path-handle capability instead of split path families
+3. make dependency evaluation modes behave more concretely
+4. improve build help/reporting/install visibility at the CLI level
+5. add a typed public system-library surface
+6. support generated-directory style workflows cleanly
+7. strengthen option forwarding and dependency configuration ergonomics
 
 ## Design Decisions
 
@@ -64,472 +81,472 @@ pro[] build(): non = {
 }
 ```
 
-### 2. Dependency handles should expose declared exports, not only implicit projections
+### 2. Do not replace explicit dependency exports
 
-Today dependency handles query a deterministic projected surface:
+The previous round made explicit exports the real build-facing contract.
 
-- modules
-- artifacts
-- steps
-- generated outputs
-- source roots
+This round extends that model instead of replacing it:
 
-That is useful, but still too implicit.
+- keep `export_module`
+- keep `export_artifact`
+- keep `export_step`
+- keep `export_output`
+- add path-oriented exports beside them
 
-The next public model should let the dependency package declare what it exposes
-for build consumption.
+### 3. Path capability should converge, not multiply
 
-The chosen direction for this plan:
+Today the public build surface has multiple path-like families:
 
-- keep deterministic fallback projection while building the new model
-- but move the public examples/docs/tests toward explicit export declarations
-- end state should prefer explicit export names over accidental projection
+- source file handles
+- source dir handles
+- output handles
+- dependency generated-output handles
 
-### 3. Path handles should cover both generated and source-backed paths
+The next step should unify consumers and metadata around a more general path
+family, even if the internal representation still has specialized variants.
 
-Today `OutputHandle` unifies:
+Publicly, the direction should feel like:
 
-- `write_file`
-- `copy_file`
-- `run.capture_stdout`
-- dependency generated outputs
+- one broader path capability
+- strongly typed producers
+- consumers accept the right path classes without string escape hatches
 
-But plain source paths and directories are still mostly strings.
+### 4. Dependency modes should become semantically meaningful
 
-The next model should introduce one higher-level path handle family that can
-represent:
-
-- source file under package root
-- source directory under package root
-- generated file
-- copied file
-- captured stdout
-- dependency generated output
-- dependency exported source file/dir, if exposed
-
-This is the FOL equivalent of the capability Zig gets from `LazyPath`,
-without copying the name blindly.
-
-### 4. Dependency evaluation mode should become a real public config field
-
-The repo already has:
+Public dependency modes already exist:
 
 - `eager`
 - `lazy`
 - `on-demand`
 
-internally in `DependencyBuildEvaluationMode`, but the public `.build().add_dep`
-surface does not yet expose them cleanly.
+This round should give them clearer semantics in:
 
-This round makes those public.
+- metadata extraction
+- package preparation
+- fetch behavior
+- build evaluation diagnostics
+- examples and docs
 
-### 5. Step descriptions are worth adding now
+### 5. System integration must stay typed and narrow
 
-Zig's `zig build --help` is useful because steps are not just names; they also
-have descriptions and user-facing meaning.
+Do not add a giant “shell escape” build language.
 
-FOL should add:
+This round may add:
 
-- optional step description
-- clearer default-step reporting
-- better CLI/help surfacing
+- system library requests
+- search paths / framework / pkg-config-like typed requests
+- generated directory outputs
 
-### 6. System integration should start narrow and typed
+It must not add:
 
-Do not jump directly to a giant native-toolchain DSL.
+- arbitrary stringly “do anything” linker DSLs
+- compatibility wrappers around old ad hoc helpers
 
-Start with typed, explicit public surfaces for:
+### 6. CLI/help/reporting should describe the real build graph
 
-- system commands/tools
-- environment values
-- optionally system libraries / pkg-config style requests
+The build graph now carries more structure than the CLI exposes.
 
-If a system-library surface is added, it must be explicit and typed, not a
-catch-all stringly escape hatch.
+This round should improve:
+
+- step help
+- install prefix surfacing
+- exported dependency surfaces
+- selected dependency modes
+- produced outputs and destinations
+
+without inventing fake parallelism claims.
 
 ### 7. No legacy shims
 
-If a new export/path/step/help/system surface replaces an older ad hoc shape:
+If a broader path model or system-library surface replaces an older ad hoc
+shape:
 
-- remove old docs
-- remove obsolete helper wording
+- remove stale docs
+- remove stale examples
+- remove stale tests
 - do not keep dual public guidance
 
-## Epoch 1: Freeze The New Public Direction
+## Epoch 1: Freeze The Round 3 Direction
 
 ### Slice 1 (complete)
 
-- audit current docs/examples/tests for the next gaps:
-  - dependency exports are still described as only projected
-  - source paths are still string-based
-  - dependency evaluation modes are still mostly internal
-  - steps do not have descriptions/help-grade output
-  - system integration is still underpowered
+- audit current docs/examples/tests for the remaining gaps:
+  - no path-oriented dependency exports
+  - no general dependency path queries
+  - dependency modes are still weak semantically
+  - no public system-library surface
+  - CLI help/reporting still under-exposes step/output/install detail
+  - generated-directory workflows are still thin
 - no behavior change
 
-### Slice 2 (complete)
+### Slice 2
 
-- add a short build-architecture note in the book describing the next public
-  layers:
-  - `.build().add_dep(... mode = ...)`
-  - explicit dependency exports
-  - path handles
-  - step descriptions
-  - system integration handles
-- keep this repo-specific, not a generic Zig essay
+- add a short book architecture note describing this round:
+  - path exports
+  - broader path handles
+  - stronger dependency modes
+  - system-library surface
+  - generated directories
+  - improved build help/reporting
+- keep it repo-specific, not a generic Zig essay
 
-### Slice 3 (complete)
+### Slice 3
 
 - record explicit non-goals for this round:
-  - no source-level build manifest file
-  - no public `Graph` type name
-  - no compatibility API for replaced string-only helpers
-  - no fake parallel execution claims
+  - no new control file
+  - no public `Graph`
+  - no compatibility string-path fallback API
+  - no fake build parallelism claims
+  - no broad shell-script DSL
 
-## Epoch 2: Add Explicit Dependency Export Declarations
+## Epoch 2: Add Named Dependency Path Exports
 
-### Slice 4 (complete)
+### Slice 4
 
-- inventory how dependency surfaces are projected today from prepared packages
-- document exactly which pieces are implicit today:
-  - source roots
-  - modules
-  - artifacts
-  - steps
-  - generated outputs
-
-### Slice 5 (complete)
-
-- design one explicit export declaration surface in `build.fol`
-- recommended direction:
-  - export methods on `build` or `graph`, not package metadata
-  - examples:
-    - `build.export_module({ name = "core", module = lib_mod })`
-    - `build.export_artifact({ name = "corelib", artifact = lib })`
-    - `build.export_step({ name = "check", step = check })`
-    - `build.export_output({ name = "bindings", output = generated })`
-- keep names concise and symmetric with the current build API
-
-### Slice 6 (complete)
-
-- add semantic signatures for explicit dependency export methods
-- return values should remain chainable or `non` as appropriate
-- make receiver placement coherent with the existing `.build()` layering
-
-### Slice 7 (complete)
-
-- add runtime representation for explicitly exported dependency surfaces
-- keep export names separate from projected/internal names
-
-### Slice 8 (complete)
-
-- wire export evaluation through the build executor
-- exporting a handle should record stable surface metadata
-
-### Slice 9 (complete)
-
-- package preparation should persist explicit exported surfaces on formal packages
-- keep deterministic behavior when no explicit export exists yet
-
-### Slice 10 (complete)
-
-- dependency handles should prefer explicit exports when present
-- fall back to current projection only where required by this transition round
-
-### Slice 11 (complete)
-
-- add precise diagnostics for:
-  - duplicate export names
-  - export kind/handle mismatch
-  - querying names that are not exported
-
-### Slice 12 (complete)
-
-- add build-eval tests for explicit export declarations and consumption
-
-### Slice 13 (complete)
-
-- add integration tests showing one package exporting:
+- inventory current explicit dependency export model:
   - module
   - artifact
   - step
   - generated output
-  and another package consuming those through dependency handles
+- document what is missing:
+  - source file exports
+  - source dir exports
+  - generated dir exports
+  - general path exports
 
-## Epoch 3: Complete The Path Handle Model
+### Slice 5
 
-### Slice 14 (complete)
+- design a path-oriented explicit export surface
+- recommended direction:
+  - `build.export_file({ name = "config", file = source_file })`
+  - `build.export_dir({ name = "assets", dir = source_dir })`
+  - `build.export_path({ name = "schema", path = output })`
+- keep it symmetric with the current explicit-export model
 
-- audit current path-like values:
-  - `graph.path_from_root(...)`
-  - strings passed to `copy_file`
-  - strings passed to `install_file`
-  - strings passed to `install_dir`
-  - generated output handles
-  - dependency generated outputs
+### Slice 6
 
-### Slice 15 (complete)
+- add semantic signatures and runtime representation for the new path exports
+- keep export names separate from internal path identity
 
-- define a new public path-handle family above current `OutputHandle`
-- recommended family members:
-  - source file
-  - source dir
-  - generated output
-  - dependency generated output
+### Slice 7
 
-### Slice 16 (complete)
+- build executor should record explicit path exports in stable dependency-surface
+  metadata
 
-- add API/types for source file and source dir handles in
-  `lang/execution/fol-build/src/api/types.rs`
+### Slice 8
 
-### Slice 17 (complete)
+- package dependency-surface projection should persist explicit path exports on
+  prepared packages
 
-- make `graph.path_from_root(...)` return a source-file handle instead of a raw string
-- if necessary, split into:
-  - `graph.file_from_root(...)`
-  - `graph.dir_from_root(...)`
-  and delete the ambiguous old path form
+### Slice 9
 
-### Slice 18 (complete)
+- add build-eval tests for:
+  - exporting source file handles
+  - exporting source dir handles
+  - exporting output handles through the path export surface
 
-- update `graph.copy_file(...)` so `source` can accept a source-file handle
-  instead of only a raw string
+### Slice 10
 
-### Slice 19 (complete)
+- add diagnostics for:
+  - duplicate path export names
+  - wrong handle kind passed to file/dir/path exports
+  - unresolved exported path targets
 
-- update `graph.install_file(...)` so it accepts:
-  - source-file handle
-  - generated-output handle
-  and rejects unrelated values exactly
+### Slice 11
 
-### Slice 20 (complete)
+- add one integration example package exporting:
+  - a module
+  - an artifact
+  - a generated output
+  - a source file
+  - a source dir
 
-- update `graph.install_dir(...)` so it accepts a source-dir handle instead of
-  only a raw string path
+## Epoch 3: Add Dependency Path Queries
 
-### Slice 21 (complete)
+### Slice 12
 
-- update `run.add_file_arg(...)` to accept source-file handles where sensible
+- design public dependency-handle queries for the new path exports
+- recommended direction:
+  - `dep.file("config")`
+  - `dep.dir("assets")`
+  - `dep.path("schema")`
+- keep them coherent with:
+  - `dep.module(...)`
+  - `dep.artifact(...)`
+  - `dep.step(...)`
+  - `dep.generated(...)`
 
-### Slice 22 (complete)
+### Slice 13
 
-- keep generated-output composition stable after the path-handle expansion
+- add semantic signatures and typed handle results for dependency file/dir/path
+  queries
 
-### Slice 23 (complete)
+### Slice 14
 
-- add exact diagnostics for:
-  - file/dir kind mismatch
-  - passing dir handle where file handle is required
-  - passing arbitrary scalar where a path handle is required
+- dependency handles should resolve explicitly exported path names first
+- querying a missing export should produce exact diagnostics
 
-### Slice 24 (complete)
+### Slice 15
 
-- add build-eval and integration tests for:
-  - source file handles
-  - source dir handles
-  - mixed source/generated composition
+- update path consumers to accept dependency-exported file/dir/path handles where
+  appropriate
+- expected consumers:
+  - install file/dir
+  - run file args
+  - artifact generated/path attachment where valid
 
-## Epoch 4: Make Dependency Evaluation Mode Public
+### Slice 16
 
-### Slice 25 (complete)
+- add evaluator tests for cross-package path consumption through dependency
+  handles
 
-- extend `.build().add_dep({...})` to accept `mode`
-- public accepted values:
-  - `eager`
-  - `lazy`
-  - `on-demand`
+### Slice 17
 
-### Slice 26 (complete)
+- add integration coverage for one package exporting named paths and another
+  package installing or passing them to a tool step
 
-- add semantic typing and exact config diagnostics for dependency mode
+## Epoch 4: Broaden The Path Handle Model
 
-### Slice 27 (complete)
+### Slice 18
 
-- thread public mode into dependency request/runtime/preparation structures
+- audit current path-like handle families and consumers
+- document the current split:
+  - `SourceFileHandle`
+  - `SourceDirHandle`
+  - generated/output handles
+  - dependency generated-output handles
 
-### Slice 28 (complete)
+### Slice 19
 
-- define frontend/package semantics for each mode:
-  - when it is fetched
-  - when it is prepared
-  - when it is fully evaluated
-- document this honestly if the runtime still behaves partly eagerly underneath
+- design one broader public path-handle family
+- internal variants may remain specialized, but the public consumption model
+  should converge
 
-### Slice 29 (complete)
+### Slice 20
 
-- add tests for public dependency mode acceptance and exact diagnostics
+- add a canonical runtime/type representation for generalized path handles
 
-### Slice 30 (complete)
+### Slice 21
 
-- add at least one example package that uses mixed dependency modes
+- update consumers so they validate path-handle capabilities by kind rather than
+  by unrelated ad hoc branches
 
-## Epoch 5: Improve Step Help And User-Facing Step Ergonomics
+### Slice 22
 
-### Slice 31 (complete)
+- add exact diagnostics for bad path-handle use:
+  - file where dir is required
+  - dir where file is required
+  - path handle of the wrong provenance
 
-- extend `graph.step(...)` to accept an optional description
-- keep old no-description shape only if it is the same canonical call form;
-  otherwise replace it directly
+### Slice 23
 
-### Slice 32 (complete)
+- update build docs and examples so path composition uses the broader path model
+  consistently
 
-- persist step descriptions in graph/runtime/step-report data
+## Epoch 5: Make Dependency Modes Behave More Concretely
 
-### Slice 33 (complete)
+### Slice 24
 
-- teach frontend summaries and `build --help`-style output to show:
+- audit current use of dependency modes in:
+  - build evaluator
+  - metadata extraction
+  - package session
+  - fetch flows
+  - docs/examples
+
+### Slice 25
+
+- define the concrete intended behavior:
+  - `eager`: preload and validate dependency surface immediately
+  - `lazy`: delay expensive preparation until dependency handle/build import use
+  - `on-demand`: only prepare when the graph or frontend path truly requires it
+
+### Slice 26
+
+- preserve dependency mode through all current metadata/execution layers
+- no silent dropping during prepare/fetch/build planning
+
+### Slice 27
+
+- fetch/package logic should surface the chosen dependency modes clearly in tests
+  and summaries where relevant
+
+### Slice 28
+
+- add diagnostics for contradictory or unsupported mode usage if any current
+  path cannot honor the requested mode yet
+
+### Slice 29
+
+- add integration coverage with mixed dependency modes across:
+  - `loc`
+  - `pkg`
+  - `git`
+
+## Epoch 6: Improve Step Help And Build Reporting
+
+### Slice 30
+
+- audit current frontend build help/summary/reporting surfaces
+- list where step descriptions and output details are currently lost
+
+### Slice 31
+
+- improve unknown-step diagnostics further so they list:
   - step name
-  - default-step kind if any
-  - description if present
+  - default kind
+  - description
+  - maybe selected artifact label when relevant
 
-### Slice 34 (complete)
+### Slice 32
 
-- improve diagnostics when the user asks for an unknown named step:
-  - show known steps
-  - prefer descriptions where available
+- improve build summaries so they surface:
+  - install prefix
+  - selected fol models
+  - dependency mode summaries where relevant
+  - produced output counts
 
-### Slice 35 (complete)
+### Slice 33
 
-- add tests for described steps in:
-  - build eval
-  - build route planning
-  - CLI output/help reporting
+- improve routed build planning summaries so step/output/install context is easier
+  to read in tests and user-facing output
 
-## Epoch 6: Add A Narrow System Integration Surface
+### Slice 34
 
-### Slice 36 (complete)
+- add integration tests that lock the improved help/reporting output
 
-- audit current system tool / codegen support and define the smallest good
-  public expansion
+## Epoch 7: Add A Typed System-Library Surface
 
-### Slice 37 (complete)
+### Slice 35
 
-- choose one or both of these initial public surfaces:
-  - typed system-command environment/file arguments
-  - typed system-library request surface
+- audit current system-tool support and backend/native gaps
+- define the narrow first public system-library surface
 
-### Slice 38 (complete)
+### Slice 36
 
-- if system-library support is added, make it explicit and typed:
-  - library name
-  - mode/static-shared preference if any
-  - provider strategy if any
-- do not add a vague stringly escape hatch
+- design typed API methods, likely on `graph`
+- recommended direction:
+  - `graph.add_system_lib({ name = "ssl" })`
+  - optional typed fields for:
+    - kind
+    - search path handle or path string if necessary
+    - framework flag on relevant targets
+    - pkg-config style probe mode if added
 
-This round chose the narrower typed system-command surface only, so no
-system-library API was added here.
+### Slice 37
 
-### Slice 39 (complete)
+- add semantic signatures and runtime representation for the system-library
+  requests
 
-- wire the chosen system integration requests into graph/runtime/step reporting
+### Slice 38
 
-### Slice 40 (complete)
+- backend/build planning should preserve these requests through emitted build
+  configuration even if support is initially narrow
 
-- add tests and one standalone example for the new system integration surface
+### Slice 39
 
-## Epoch 7: Tighten Dependency Import/Build Surface Separation
+- add diagnostics for:
+  - invalid system-library config shapes
+  - unsupported target/library combinations where known
 
-### Slice 41 (complete)
+### Slice 40
 
-- now that explicit exports exist, re-audit the boundary between:
-  - source imports (`use alias: pkg = {...}`)
-  - build-surface dependency handle queries
-- document the exact separation again
+- add one standalone example package using the typed system-library surface
 
-### Slice 42 (complete)
+## Epoch 8: Support Generated Directories
 
-- remove obsolete dependency projection code or assumptions that are superseded
-  by explicit exports
+### Slice 41
 
-### Slice 43 (complete)
+- audit current generated-file flows and identify where generated directories are
+  missing
 
-- add negative tests proving:
-  - exported build surfaces do not silently change source import rules
-  - source imports do not silently expose non-exported build surfaces
+### Slice 42
 
-## Epoch 8: Examples And Docs
+- design one public generated-dir/output-dir surface
+- recommended direction:
+  - system tool or codegen requests may produce a named directory handle
+  - install/run consumers can accept it where valid
 
-### Slice 44 (complete)
+### Slice 43
 
-- add one standalone example focused on explicit dependency exports
+- add runtime/type support for generated directory outputs
 
-### Slice 45 (complete)
+### Slice 44
 
-- add one standalone example focused on source-path handles
+- extend install and path-consumer logic to accept generated directory handles
 
-### Slice 46 (complete)
+### Slice 45
 
-- add one standalone example focused on dependency mode selection
+- add evaluator/integration tests for:
+  - generated dir production
+  - generated dir installation
+  - generated dir export/query through dependencies if the model supports it
 
-### Slice 47 (complete)
+## Epoch 9: Improve Dependency Config Ergonomics
 
-- add one standalone example focused on described custom steps
+### Slice 46
 
-### Slice 48 (complete)
+- audit current dependency arg forwarding and compare it to the real use cases in
+  examples/tests
 
-- update the build book sections:
-  - `100_build_file.md`
-  - `200_graph_api.md`
-  - `300_handle_api.md`
-  - `400_options.md`
-  - `900_direction.md`
-- remove wording that still describes these as only future direction if they
-  land in this round
+### Slice 47
 
-## Epoch 9: Editor And Tooling Audit
+- add stronger support for common forwarded build config values where missing:
+  - target
+  - optimize
+  - user options
+  - maybe environment selection if explicitly chosen
 
-### Slice 49 (complete)
+### Slice 48
 
-- audit editor/LSP completion and tree-sitter sync for:
-  - new build export methods
-  - new path-handle methods
-  - dependency mode field names
-  - step description config fields
-  - system integration surface names
-- add regression tests for the new build-only completion items
+- tighten diagnostics for missing/invalid forwarded dependency config values so
+  they fail early and clearly
 
-## Epoch 10: Final Cleanup
+## Epoch 10: Final Hardening
 
-### Slice 50 (complete)
+### Slice 49
 
-- final repo-wide scan for:
-  - stale build docs
-  - dead helpers from the old projection-only model
-  - duplicate path-handle representations
-  - stale example text that still teaches weaker surfaces
+- add standalone examples for:
+  - explicit path exports
+  - dependency path queries
+  - mixed dependency modes
+  - system library use
+  - generated directories
 
-## Suggested Execution Order
+### Slice 50
 
-Recommended order:
+- harden editor/LSP/build integration coverage so new build members and handles
+  appear in:
+  - completion
+  - hover where applicable
+  - build-fixture integration coverage
 
-1. Epoch 2
-2. Epoch 3
-3. Epoch 4
-4. Epoch 5
-5. Epoch 6
-6. Epoch 7
-7. Epoch 8
-8. Epoch 9
-9. Epoch 10
+### Slice 51
 
-Reason:
+- audit and update the build book:
+  - remove stale wording about projection-only dependency surfaces
+  - describe path exports and dependency path queries
+  - describe dependency modes honestly
+  - document system-library scope honestly
 
-- explicit dependency exports and full path handles are the biggest remaining
-  structural gaps
-- public dependency mode is already half-present internally
-- step/help improvements depend on the stabilized public graph surface
-- system integration should come after the handle model is clearer
-- docs/examples/editor work should lock the final surface after behavior lands
+### Slice 52
 
-## Exit Criteria
+- final cleanup:
+  - remove stale helper wording in tests/docs/examples
+  - keep only the chosen public build story
+  - ensure all new examples are referenced by docs and tested
 
-This round is complete when:
+## Completion Criteria
 
-- dependency-facing build surfaces can be exported explicitly by a dependency
-  package and queried predictably by consumers
-- source files and directories are first-class path handles instead of mostly
-  raw strings
-- dependency modes are public on `.build().add_dep({...})`
-- step descriptions show up in frontend/help/reporting
-- one narrow but real system integration surface exists and is tested
-- the book/examples/editor/tests all reflect the final public build API
+This round is complete when all of the following are true:
+
+- dependency packages can explicitly export named file/dir/path surfaces
+- dependent packages can query and consume those path exports through dependency
+  handles
+- the public path model feels broader and less fragmented
+- dependency modes are preserved and exercised meaningfully
+- CLI/build help and summaries expose step/output/install information better
+- a typed public system-library surface exists
+- generated-directory workflows are covered
+- docs, examples, editor coverage, and integration tests all match the final
+  chosen build story
