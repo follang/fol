@@ -167,12 +167,55 @@ pub(super) fn build_evaluated_program(
                         .resolve(&result.resolved_options)
                         .map(|resolved| (name.clone(), resolved))
                         .ok_or_else(|| {
-                            BuildEvaluationError::new(
-                                BuildEvaluationErrorKind::InvalidInput,
-                                format!(
+                            let detail = match value {
+                                crate::DependencyArgValue::OptionRef(option_name) => {
+                                    match result.option_declarations.find(option_name) {
+                                        Some(crate::BuildOptionDeclaration::StandardTarget(_)) => {
+                                            format!(
+                                                "dependency '{}' requires resolved target option '{}' for arg '{}'",
+                                                request.alias, option_name, name
+                                            )
+                                        }
+                                        Some(crate::BuildOptionDeclaration::StandardOptimize(
+                                            _,
+                                        )) => {
+                                            format!(
+                                                "dependency '{}' requires resolved optimize option '{}' for arg '{}'",
+                                                request.alias, option_name, name
+                                            )
+                                        }
+                                        Some(crate::BuildOptionDeclaration::User(decl)) => {
+                                            let option_kind = match decl.kind {
+                                                crate::BuildOptionKind::Target => "target",
+                                                crate::BuildOptionKind::Optimize => "optimize",
+                                                crate::BuildOptionKind::Bool => "bool",
+                                                crate::BuildOptionKind::Int => "int",
+                                                crate::BuildOptionKind::String => "string",
+                                                crate::BuildOptionKind::Enum => "enum",
+                                                crate::BuildOptionKind::Path => "path",
+                                            };
+                                            format!(
+                                                "dependency '{}' requires resolved {} option '{}' for arg '{}'",
+                                                request.alias,
+                                                option_kind,
+                                                option_name,
+                                                name
+                                            )
+                                        }
+                                        None => format!(
+                                            "dependency '{}' requires a resolved option '{}' for arg '{}'",
+                                            request.alias, option_name, name
+                                        ),
+                                    }
+                                }
+                                _ => format!(
                                     "dependency '{}' requires a resolved option for arg '{}'",
                                     request.alias, name
                                 ),
+                            };
+                            BuildEvaluationError::new(
+                                BuildEvaluationErrorKind::InvalidInput,
+                                detail,
                             )
                         })
                 })

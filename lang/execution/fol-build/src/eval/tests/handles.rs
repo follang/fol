@@ -200,6 +200,67 @@ fn build_source_evaluator_keeps_explicit_dependency_args_on_build_handles() {
 }
 
 #[test]
+fn build_source_evaluator_allows_evaluated_option_expressions_in_dependency_args() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    var graph = build.graph();\n",
+        "    build.add_dep({\n",
+        "        alias = \"json\",\n",
+        "        source = \"pkg\",\n",
+        "        target = \"json\",\n",
+        "        args = {\n",
+        "            target = graph.standard_target(),\n",
+        "            optimize = graph.standard_optimize(),\n",
+        "            jobs = graph.option({ name = \"jobs\", kind = \"int\", default = 4 }),\n",
+        "        },\n",
+        "    });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let mut options = std::collections::BTreeMap::new();
+    options.insert("target".to_string(), "thumbv7em-none-eabi".to_string());
+    options.insert("optimize".to_string(), "release-safe".to_string());
+    options.insert("jobs".to_string(), "16".to_string());
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            options,
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("evaluated option expressions should work")
+        .expect("build body should produce operations");
+
+    assert_eq!(
+        evaluated.evaluated.dependencies[0]
+            .args
+            .get("target")
+            .map(String::as_str),
+        Some("thumbv7em-none-eabi")
+    );
+    assert_eq!(
+        evaluated.evaluated.dependencies[0]
+            .args
+            .get("optimize")
+            .map(String::as_str),
+        Some("release-safe")
+    );
+    assert_eq!(
+        evaluated.evaluated.dependencies[0]
+            .args
+            .get("jobs")
+            .map(String::as_str),
+        Some("16")
+    );
+}
+
+#[test]
 fn build_source_evaluator_rejects_missing_required_dependency_option_args() {
     let source = concat!(
         "pro[] build(): non = {\n",
@@ -227,9 +288,10 @@ fn build_source_evaluator_rejects_missing_required_dependency_option_args() {
     let error = evaluate_build_source(&request, &build_path, source)
         .expect_err("missing required dependency option args should fail");
 
-    assert!(error
-        .message()
-        .contains("dependency 'json' requires a resolved option for arg 'use_fast_parser'"));
+    assert_eq!(
+        error.message(),
+        "dependency 'json' requires resolved bool option 'use_fast_parser' for arg 'use_fast_parser'"
+    );
 }
 
 #[test]
@@ -659,7 +721,7 @@ fn build_source_evaluator_rejects_invalid_dependency_arg_shapes_with_exact_diagn
 
     assert_eq!(
         error.message(),
-        "build.add_dep config is invalid: dependency arg 'target' must be bool, int, str, or an option handle"
+        "build.add_dep config is invalid: dependency arg 'target' must evaluate to bool, int, str, or an option handle"
     );
 }
 

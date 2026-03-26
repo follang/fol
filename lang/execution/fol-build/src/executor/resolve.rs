@@ -130,7 +130,7 @@ impl BuildBodyExecutor {
     }
 
     pub(super) fn resolve_dependency_args(
-        &self,
+        &mut self,
         fields: &[RecordInitField],
     ) -> Result<
         Option<BTreeMap<String, crate::api::DependencyArgValue>>,
@@ -150,44 +150,28 @@ impl BuildBodyExecutor {
         };
         let mut args = BTreeMap::new();
         for field in arg_fields {
-            let value = match &field.value {
-                AstNode::Literal(Literal::Boolean(value)) => {
-                    crate::api::DependencyArgValue::Bool(*value)
+            let value = match self.eval_expr(&field.value)? {
+                Some(ExecValue::Bool(value)) => crate::api::DependencyArgValue::Bool(value),
+                Some(ExecValue::Str(value)) => crate::api::DependencyArgValue::String(value),
+                Some(ExecValue::Target(option_name))
+                | Some(ExecValue::Optimize(option_name))
+                | Some(ExecValue::OptionRef(option_name)) => {
+                    crate::api::DependencyArgValue::OptionRef(option_name)
                 }
-                AstNode::Literal(Literal::Integer(value)) => {
-                    crate::api::DependencyArgValue::Int(*value)
-                }
-                AstNode::Literal(Literal::String(value)) => {
-                    crate::api::DependencyArgValue::String(value.clone())
-                }
-                AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
-                    Some(ExecValue::Target(option_name))
-                    | Some(ExecValue::Optimize(option_name))
-                    | Some(ExecValue::OptionRef(option_name)) => {
-                        crate::api::DependencyArgValue::OptionRef(option_name.clone())
-                    }
-                    Some(ExecValue::Str(value)) => {
-                        crate::api::DependencyArgValue::String(value.clone())
+                Some(_) | None => match &field.value {
+                    AstNode::Literal(Literal::Integer(value)) => {
+                        crate::api::DependencyArgValue::Int(*value)
                     }
                     _ => {
                         return Err(crate::eval::BuildEvaluationError::new(
                             crate::eval::BuildEvaluationErrorKind::InvalidInput,
                             format!(
-                                "build.add_dep config is invalid: dependency arg '{}' must be bool, int, str, or an option handle",
+                                "build.add_dep config is invalid: dependency arg '{}' must evaluate to bool, int, str, or an option handle",
                                 field.name
                             ),
                         ))
                     }
                 },
-                _ => {
-                    return Err(crate::eval::BuildEvaluationError::new(
-                        crate::eval::BuildEvaluationErrorKind::InvalidInput,
-                        format!(
-                            "build.add_dep config is invalid: dependency arg '{}' must be bool, int, str, or an option handle",
-                            field.name
-                        ),
-                    ))
-                }
             };
             args.insert(field.name.clone(), value);
         }

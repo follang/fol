@@ -1631,7 +1631,7 @@ fn test_cli_build_rejects_negative_build_surface_examples() {
                     "};\n",
                 ),
                 None,
-                "dependency arg 'target' must be bool, int, str, or an option handle",
+                "dependency arg 'target' must evaluate to bool, int, str, or an option handle",
             ),
             (
                 "fail_output_handle_usage",

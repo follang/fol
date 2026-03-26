@@ -489,7 +489,7 @@ shape:
 - audit current dependency arg forwarding and compare it to the real use cases in
   examples/tests
 
-### Slice 47
+### Slice 47 (complete)
 
 - add stronger support for common forwarded build config values where missing:
   - target
@@ -497,7 +497,7 @@ shape:
   - user options
   - maybe environment selection if explicitly chosen
 
-### Slice 48
+### Slice 48 (complete)
 
 - tighten diagnostics for missing/invalid forwarded dependency config values so
   they fail early and clearly
