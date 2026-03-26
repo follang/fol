@@ -216,6 +216,11 @@ pub struct BuildArtifactHandle {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SystemLibraryHandle {
+    pub request: crate::native::SystemLibraryRequest,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StepRequest {
     pub name: String,
     pub description: Option<String>,

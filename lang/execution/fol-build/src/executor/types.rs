@@ -76,6 +76,9 @@ pub(super) enum ExecValue {
     Dependency {
         alias: String,
     },
+    SystemLibrary {
+        request: crate::native::SystemLibraryRequest,
+    },
     DependencyModule {
         alias: String,
         query_name: String,

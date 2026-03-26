@@ -18,6 +18,7 @@ pub struct PackageGitSelector {
     pub branch: Option<String>,
     pub tag: Option<String>,
     pub rev: Option<String>,
+    pub hash: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -268,6 +269,7 @@ fn split_repository_and_selector(raw: &str) -> Result<(String, PackageGitSelecto
             "branch" => set_selector_value(raw, &mut selector.branch, "branch", value.trim())?,
             "tag" => set_selector_value(raw, &mut selector.tag, "tag", value.trim())?,
             "rev" => set_selector_value(raw, &mut selector.rev, "rev", value.trim())?,
+            "hash" => set_selector_value(raw, &mut selector.hash, "hash", value.trim())?,
             other => {
                 return Err(PackageError::new(
                     PackageErrorKind::InvalidInput,
@@ -423,6 +425,7 @@ mod tests {
                 branch: Some("main".to_string()),
                 tag: None,
                 rev: None,
+                hash: None,
             },
         );
 
@@ -557,6 +560,44 @@ mod tests {
     }
 
     #[test]
+    fn package_locator_parses_hash_selectors() {
+        let locator =
+            parse_package_locator("https://github.com/follang/json.git?hash=0123456789abcdef")
+                .expect("hash selectors should parse");
+
+        assert_eq!(
+            locator
+                .git
+                .as_ref()
+                .and_then(|git| git.selector.hash.as_deref()),
+            Some("0123456789abcdef")
+        );
+    }
+
+    #[test]
+    fn package_locator_allows_branch_and_hash_together() {
+        let locator = parse_package_locator(
+            "https://github.com/follang/json.git?branch=main&hash=0123456789abcdef",
+        )
+        .expect("branch plus hash should parse");
+
+        assert_eq!(
+            locator
+                .git
+                .as_ref()
+                .and_then(|git| git.selector.branch.as_deref()),
+            Some("main")
+        );
+        assert_eq!(
+            locator
+                .git
+                .as_ref()
+                .and_then(|git| git.selector.hash.as_deref()),
+            Some("0123456789abcdef")
+        );
+    }
+
+    #[test]
     fn package_locator_normalizes_git_identity_across_transport_forms() {
         let https = parse_package_locator("https://GitHub.com/follang/json.git")
             .expect("https git locator should parse");
@@ -628,6 +669,19 @@ mod tests {
         assert!(
             error.to_string().contains("may only specify 'branch' once"),
             "duplicate selectors should explain the exact duplicated key",
+        );
+    }
+
+    #[test]
+    fn package_locator_rejects_duplicate_hash_selectors() {
+        let error =
+            parse_package_locator("https://github.com/follang/json.git?hash=abc&hash=def")
+                .expect_err("git locators should reject duplicate hash selectors");
+
+        assert_eq!(error.kind(), crate::PackageErrorKind::InvalidInput);
+        assert!(
+            error.to_string().contains("may only specify 'hash' once"),
+            "duplicate hash selectors should explain the exact duplicated key",
         );
     }
 

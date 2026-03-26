@@ -78,12 +78,34 @@ fn init_git_repo(root: &std::path::Path) {
     }
 }
 
+fn git_output(root: &std::path::Path, args: &[&str]) -> String {
+    let output = std::process::Command::new("git")
+        .args(args)
+        .current_dir(root)
+        .output()
+        .expect("should run git command");
+    assert!(output.status.success(), "git {:?} should succeed", args);
+    String::from_utf8_lossy(&output.stdout).trim().to_string()
+}
+
 fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
     let source = repo_root().join("xtra/logtiny");
     copy_dir_all(&source, root);
     std::fs::remove_dir_all(root.join(".git")).ok();
     std::fs::remove_dir_all(root.join(".fol")).ok();
     init_git_repo(root);
+    let rename = std::process::Command::new("git")
+        .args(["branch", "-M", "main"])
+        .current_dir(root)
+        .status()
+        .expect("should rename default branch");
+    assert!(rename.success(), "git branch -M main should succeed");
+    let tag = std::process::Command::new("git")
+        .args(["tag", "v0.1.0"])
+        .current_dir(root)
+        .status()
+        .expect("should create initial tag");
+    assert!(tag.success(), "git tag v0.1.0 should succeed");
 }
 
 #[test]
@@ -1935,6 +1957,52 @@ fn test_std_logtiny_git_example_builds_against_local_git_remote() {
         String::from_utf8_lossy(&run.stdout),
         String::from_utf8_lossy(&run.stderr)
     );
+}
+
+#[test]
+fn test_std_logtiny_git_example_supports_branch_tag_rev_and_hash_selectors() {
+    let remote_root = unique_temp_root("logtiny_selector_remote");
+    create_git_remote_from_logtiny_fixture(&remote_root);
+    let selected_revision = git_output(&remote_root, &["rev-parse", "HEAD"]);
+    let short_hash = &selected_revision[..12];
+    let cases = [
+        format!("git+file://{}?branch=main", remote_root.display()),
+        format!("git+file://{}?tag=v0.1.0", remote_root.display()),
+        format!("git+file://{}?rev={}", remote_root.display(), selected_revision),
+        format!(
+            "git+file://{}?branch=main&hash={}",
+            remote_root.display(),
+            short_hash
+        ),
+    ];
+
+    for locator in cases {
+        let example_root = temp_example_root("examples/std_logtiny_git");
+        let build_path = example_root.join("build.fol");
+        let build_source =
+            std::fs::read_to_string(&build_path).expect("git example build file should load");
+        std::fs::write(
+            &build_path,
+            build_source.replace("git+https://github.com/bresilla/logtiny.git", &locator),
+        )
+        .expect("git example build file should rewrite");
+
+        let fetch = run_fol_in_dir(&example_root, &["pack", "fetch"]);
+        assert!(
+            fetch.status.success(),
+            "git selector example should fetch for '{locator}': stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&fetch.stdout),
+            String::from_utf8_lossy(&fetch.stderr)
+        );
+
+        let build = run_fol_in_dir(&example_root, &["code", "build"]);
+        assert!(
+            build.status.success(),
+            "git selector example should build for '{locator}': stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+    }
 }
 
 #[test]

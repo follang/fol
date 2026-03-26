@@ -183,6 +183,32 @@ impl PackageGitSourceSession {
         .map(|value| value.trim().to_string())
     }
 
+    fn verify_selected_revision(
+        &self,
+        locator: &PackageLocator,
+        selected_revision: &str,
+    ) -> Result<(), PackageError> {
+        let Some(expected_hash) = locator
+            .git
+            .as_ref()
+            .and_then(|git| git.selector.hash.as_deref())
+        else {
+            return Ok(());
+        };
+
+        if selected_revision.starts_with(expected_hash) {
+            return Ok(());
+        }
+
+        Err(PackageError::new(
+            PackageErrorKind::InvalidInput,
+            format!(
+                "git dependency '{}' resolved revision '{}' does not match required hash '{}'",
+                locator.raw, selected_revision, expected_hash
+            ),
+        ))
+    }
+
     pub fn materialize_revision(
         &self,
         locator: &PackageLocator,
@@ -203,6 +229,7 @@ impl PackageGitSourceSession {
         } else {
             revision.trim().to_string()
         };
+        self.verify_selected_revision(locator, &selected_revision)?;
         let materialization = PackageGitMaterialization::new(
             &self.cache_base_root,
             &self.store_base_root,
@@ -422,6 +449,74 @@ mod tests {
     }
 
     #[test]
+    fn git_source_session_verifies_branch_plus_hash_selectors() {
+        let temp_root = temp_root("branch_hash");
+        let remote = temp_root.join("remote");
+        create_package_repo(&remote, "0.1.0");
+        let expected_revision = git_output(&remote, &["rev-parse", "HEAD"]);
+
+        let session =
+            PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
+        let locator = parse_package_locator(&format!(
+            "git+file://{}?branch=main&hash={}",
+            remote.display(),
+            expected_revision
+        ))
+        .expect("branch plus hash locator should parse");
+
+        let materialization = session
+            .materialize_selected_revision(&locator)
+            .expect("branch plus hash materialization should succeed");
+
+        assert_eq!(materialization.selected_revision, expected_revision);
+        std::fs::remove_dir_all(temp_root).ok();
+    }
+
+    #[test]
+    fn git_source_session_verifies_tag_selectors() {
+        let temp_root = temp_root("tag");
+        let remote = temp_root.join("remote");
+        create_package_repo(&remote, "0.1.0");
+        let expected_revision = git_output(&remote, &["rev-parse", "HEAD"]);
+
+        let session =
+            PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
+        let locator = parse_package_locator(&format!("git+file://{}?tag=v0.1.0", remote.display()))
+            .expect("tag locator should parse");
+
+        let materialization = session
+            .materialize_selected_revision(&locator)
+            .expect("tag materialization should succeed");
+
+        assert_eq!(materialization.selected_revision, expected_revision);
+        std::fs::remove_dir_all(temp_root).ok();
+    }
+
+    #[test]
+    fn git_source_session_rejects_hash_mismatches() {
+        let temp_root = temp_root("hash_mismatch");
+        let remote = temp_root.join("remote");
+        create_package_repo(&remote, "0.1.0");
+
+        let session =
+            PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
+        let locator = parse_package_locator(&format!(
+            "git+file://{}?branch=main&hash=deadbeef",
+            remote.display()
+        ))
+        .expect("hash mismatch locator should parse");
+
+        let error = session
+            .materialize_selected_revision(&locator)
+            .expect_err("mismatched hash should fail");
+
+        assert!(error
+            .message()
+            .contains("does not match required hash 'deadbeef'"));
+        std::fs::remove_dir_all(temp_root).ok();
+    }
+
+    #[test]
     fn offline_git_source_session_requires_a_warm_cache() {
         let temp_root = temp_root("offline");
         let remote = temp_root.join("remote");
@@ -478,10 +573,12 @@ mod tests {
             .expect("package source should be writable");
 
         git(root, &["init"]);
+        git(root, &["branch", "-M", "main"]);
         git(root, &["config", "user.name", "FOL"]);
         git(root, &["config", "user.email", "fol@example.com"]);
         git(root, &["add", "."]);
         git(root, &["commit", "-m", "init"]);
+        git(root, &["tag", "v0.1.0"]);
     }
 
     fn git(root: &Path, args: &[&str]) {
@@ -491,5 +588,15 @@ mod tests {
             .status()
             .expect("git command should run");
         assert!(status.success(), "git {:?} should succeed", args);
+    }
+
+    fn git_output(root: &Path, args: &[&str]) -> String {
+        let output = Command::new("git")
+            .args(args)
+            .current_dir(root)
+            .output()
+            .expect("git command should run");
+        assert!(output.status.success(), "git {:?} should succeed", args);
+        String::from_utf8_lossy(&output.stdout).trim().to_string()
     }
 }
