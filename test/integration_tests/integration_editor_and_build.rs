@@ -745,6 +745,22 @@ fn test_build_fixture_core_model_rejects_heap_backed_surfaces() {
 }
 
 #[test]
+fn test_build_fixture_core_model_supports_full_foundation_surface() {
+    let root = build_fixture_root("model_core_surface_full");
+    let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+    assert!(
+        build.status.success(),
+        "core full-surface fixture should build: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        String::from_utf8_lossy(&build.stderr)
+    );
+    let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+        .expect("core full-surface fixture should emit main.rs");
+    let emitted = std::fs::read_to_string(&generated).expect("generated main should load");
+    assert!(emitted.contains("use fol_runtime::core as rt;"));
+}
+
+#[test]
 fn test_build_fixture_core_model_supports_foundation_surface() {
     let root = build_fixture_root("model_core_foundation");
 

@@ -170,6 +170,8 @@ Completion criteria:
   - routed run/test refusal for alloc artifacts where relevant
 
 ### Slice 8
+Status: complete
+
 Add direct positive fixtures proving `core` still allows its intended minimal surface.
 
 Completion criteria:
