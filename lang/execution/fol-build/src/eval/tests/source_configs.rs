@@ -1,5 +1,6 @@
 use super::super::{
-    evaluate_build_source, BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationRequest,
+    evaluate_build_source, BuildEvaluationErrorKind, BuildEvaluationInputs,
+    BuildEvaluationOperationKind, BuildEvaluationRequest,
 };
 use crate::artifact::BuildArtifactFolModel;
 use crate::option::{BuildOptimizeMode, BuildTargetTriple};
@@ -215,7 +216,9 @@ fn build_source_evaluator_supports_object_style_system_tool_configs() {
     let source = concat!(
         "pro[] build(): non = {\n",
         "    var graph = .build().graph();\n",
-        "    var bindings = graph.add_system_tool({ tool = \"flatc\", output = \"gen/schema.fol\" });\n",
+        "    var schema = graph.file_from_root(\"schema/api.yaml\");\n",
+        "    var defaults = graph.write_file({ name = \"defaults\", path = \"gen/defaults.txt\", contents = \"strict\" });\n",
+        "    var bindings = graph.add_system_tool({ tool = \"flatc\", args = { \"--fol\" }, file_args = { schema, defaults }, env = { MODE = \"strict\" }, output = \"gen/schema.fol\" });\n",
         "    return;\n",
         "}\n",
     );
@@ -241,6 +244,22 @@ fn build_source_evaluator_supports_object_style_system_tool_configs() {
         evaluated.result.graph.generated_files()[0].name,
         "gen/schema.fol"
     );
+    assert_eq!(evaluated.evaluated.program.operations.len(), 3);
+    match &evaluated.evaluated.program.operations[2].kind {
+        BuildEvaluationOperationKind::SystemTool(request) => {
+            assert_eq!(request.tool, "flatc");
+            assert_eq!(request.args, vec!["--fol".to_string()]);
+            assert_eq!(
+                request.file_args,
+                vec![
+                    "schema/api.yaml".to_string(),
+                    "gen/defaults.txt".to_string()
+                ]
+            );
+            assert_eq!(request.env.get("MODE").map(String::as_str), Some("strict"));
+        }
+        other => panic!("expected system tool op, got {other:?}"),
+    }
 }
 
 #[test]

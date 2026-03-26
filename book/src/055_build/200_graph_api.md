@@ -353,9 +353,11 @@ Declares a system tool invocation that produces a file.
 
 ```fol
 var packed = graph.add_system_tool({
-    tool   = "wasm-pack",
-    args   = ["build", "--target", "web"],
-    output = "gen/app.wasm",
+    tool = "flatc",
+    args = { "--fol" },
+    file_args = { schema, defaults },
+    env = { MODE = "strict" },
+    output = "gen/schema.fol",
 });
 ```
 
@@ -363,6 +365,19 @@ Returns a `GeneratedFile` handle.
 
 The generated file is keyed by the output path. Use this handle with
 `step.attach(...)` or `artifact.add_generated(...)`.
+
+Typed fields:
+
+- `tool`
+  required tool name
+- `args`
+  optional string arguments
+- `file_args`
+  optional source-file or generated-output handles passed as file arguments
+- `env`
+  optional string-to-string environment map
+- `output`
+  required generated output path
 
 ### `graph.add_codegen`
 

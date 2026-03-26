@@ -18,6 +18,7 @@ pro[] build(): non = {
     var runtime = shared.artifact("runtime");
     var install = shared.step("install");
     var schema = shared.generated("schema");
+    app.import(api);
     graph.install(app);
     graph.add_run(app);
     return;

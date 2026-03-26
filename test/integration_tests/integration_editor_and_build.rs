@@ -887,6 +887,7 @@ fn test_cli_build_emits_rust_for_model_examples() {
             "examples/build_output_handles",
             "use fol_runtime::std as rt;",
         ),
+        ("examples/build_system_tool", "use fol_runtime::std as rt;"),
         ("examples/build_source_paths", "use fol_runtime::std as rt;"),
         ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
         ("examples/core_defer", "use fol_runtime::core as rt;"),
@@ -937,6 +938,7 @@ fn test_cli_example_build_summaries_surface_expected_models() {
         ("examples/build_described_steps", "fol_model=std"),
         ("examples/build_install_prefix", "fol_model=std"),
         ("examples/build_output_handles", "fol_model=std"),
+        ("examples/build_system_tool", "fol_model=std"),
         ("examples/build_source_paths", "fol_model=std"),
         ("examples/core_blink_shape", "fol_model=core"),
         ("examples/core_defer", "fol_model=core"),
@@ -1215,6 +1217,50 @@ fn test_build_dep_exports_example_keeps_only_explicit_build_surfaces() {
             .collect::<Vec<_>>(),
         vec!["schema"]
     );
+
+    let build_path = root.join("build.fol");
+    let source =
+        std::fs::read_to_string(&build_path).expect("dep export example should keep a build.fol");
+    let request = BuildEvaluationRequest {
+        package_root: root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+    let evaluated = evaluate_build_source(&request, &build_path, &source)
+        .expect("dep export example should evaluate")
+        .expect("dep export example should produce a graph");
+
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "api"
+            && query.kind == fol_package::BuildRuntimeDependencyQueryKind::Module));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "runtime"
+            && query.kind == fol_package::BuildRuntimeDependencyQueryKind::Artifact));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "install"
+            && query.kind == fol_package::BuildRuntimeDependencyQueryKind::Step));
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "schema"
+            && query.kind == fol_package::BuildRuntimeDependencyQueryKind::GeneratedOutput));
 }
 
 #[test]
@@ -1319,6 +1365,44 @@ fn test_build_described_steps_example_surfaces_known_step_descriptions() {
         .iter()
         .any(|step| step.name == "bundle"
             && step.description.as_deref() == Some("Assemble the release bundle")));
+}
+
+#[test]
+fn test_build_system_tool_example_keeps_typed_tool_inputs() {
+    let root = temp_example_root("examples/build_system_tool");
+    let build_path = root.join("build.fol");
+    let source =
+        std::fs::read_to_string(&build_path).expect("system tool example should keep a build.fol");
+    let request = BuildEvaluationRequest {
+        package_root: root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+    let evaluated = evaluate_build_source(&request, &build_path, &source)
+        .expect("system tool example should evaluate")
+        .expect("system tool example should produce a graph");
+
+    let generated = evaluated
+        .result
+        .graph
+        .generated_files()
+        .iter()
+        .find(|generated| {
+            generated.kind == fol_package::BuildGeneratedFileKind::CaptureOutput
+                && generated.name == "gen/schema.fol"
+        })
+        .expect("system tool example should keep the generated output");
+    assert_eq!(generated.name, "gen/schema.fol");
+    assert!(evaluated
+        .result
+        .graph
+        .steps()
+        .iter()
+        .any(|step| step.name == "codegen"
+            && step.description.as_deref() == Some("Generate schema bindings")));
 }
 
 #[test]
@@ -1571,6 +1655,7 @@ fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
             "use fol_runtime::alloc as rt;",
         ),
         ("examples/alloc_defaults", "use fol_runtime::alloc as rt;"),
+        ("examples/build_system_tool", "use fol_runtime::std as rt;"),
         ("examples/std_cli", "use fol_runtime::std as rt;"),
         ("examples/std_echo_min", "use fol_runtime::std as rt;"),
     ];
@@ -1730,6 +1815,7 @@ fn test_docs_reference_real_example_packages() {
         "examples/build_dep_exports",
         "examples/build_dep_modes",
         "examples/build_described_steps",
+        "examples/build_system_tool",
         "examples/build_source_paths",
         "examples/build_dep_handles",
         "examples/build_output_handles",

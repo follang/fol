@@ -247,7 +247,7 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
 
 - add build-eval tests for explicit export declarations and consumption
 
-### Slice 13
+### Slice 13 (complete)
 
 - add integration tests showing one package exporting:
   - module
@@ -388,7 +388,7 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
   - show known steps
   - prefer descriptions where available
 
-### Slice 35
+### Slice 35 (complete)
 
 - add tests for described steps in:
   - build eval
@@ -397,18 +397,18 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
 
 ## Epoch 6: Add A Narrow System Integration Surface
 
-### Slice 36
+### Slice 36 (complete)
 
 - audit current system tool / codegen support and define the smallest good
   public expansion
 
-### Slice 37
+### Slice 37 (complete)
 
 - choose one or both of these initial public surfaces:
   - typed system-command environment/file arguments
   - typed system-library request surface
 
-### Slice 38
+### Slice 38 (complete)
 
 - if system-library support is added, make it explicit and typed:
   - library name
@@ -416,11 +416,14 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
   - provider strategy if any
 - do not add a vague stringly escape hatch
 
-### Slice 39
+This round chose the narrower typed system-command surface only, so no
+system-library API was added here.
+
+### Slice 39 (complete)
 
 - wire the chosen system integration requests into graph/runtime/step reporting
 
-### Slice 40
+### Slice 40 (complete)
 
 - add tests and one standalone example for the new system integration surface
 

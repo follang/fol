@@ -128,6 +128,30 @@ The current reporting direction is:
 - skipped-by-foreign-run-policy
 - produced outputs
 
+### System Integration
+
+System integration now exists as a narrow typed surface through
+`graph.add_system_tool({...})`.
+
+The current typed inputs are:
+
+- `tool`
+- `args`
+- `file_args`
+- `env`
+- `output`
+
+That is intentionally smaller than a full native-toolchain DSL. It is enough
+to model external build tools without collapsing back into vague stringly build
+helpers.
+
+What is still missing here:
+
+- first-class system-library requests
+- provider selection
+- richer native linking policy
+- parallel command execution
+
 ## What This Does Not Mean
 
 This direction does not mean:

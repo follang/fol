@@ -6,17 +6,17 @@ use crate::artifact::BuildArtifactFolModel;
 use crate::codegen::{CodegenRequest, SystemToolRequest};
 use crate::eval::{
     BuildEvaluationError, BuildEvaluationErrorKind, BuildEvaluationInstallArtifactRequest,
-    BuildEvaluationOperation, BuildEvaluationOperationKind,
-    BuildEvaluationRunRequest, BuildEvaluationStepRequest,
+    BuildEvaluationOperation, BuildEvaluationOperationKind, BuildEvaluationRunRequest,
+    BuildEvaluationStepRequest,
 };
 use crate::runtime::{BuildRuntimeGeneratedFile, BuildRuntimeGeneratedFileKind};
 use fol_parser::ast::AstNode;
 
-use super::core::{BuildBodyExecutor, is_valid_identifier};
-use super::types::{ExecArtifact, ExecValue};
+use super::core::{is_valid_identifier, BuildBodyExecutor};
 use super::option_helpers::{
     build_option_kind, option_exec_value, parse_option_default, parse_option_kind,
 };
+use super::types::{ExecArtifact, ExecValue};
 
 impl BuildBodyExecutor {
     fn resolve_source_file_config(
@@ -164,7 +164,10 @@ impl BuildBodyExecutor {
                 if !is_valid_identifier(&name) {
                     return Err(BuildEvaluationError::new(
                         BuildEvaluationErrorKind::InvalidInput,
-                        format!("invalid option name '{}': names must match [a-z][a-z0-9_-]*", name),
+                        format!(
+                            "invalid option name '{}': names must match [a-z][a-z0-9_-]*",
+                            name
+                        ),
                     ));
                 }
                 let kind_str = self
@@ -195,7 +198,10 @@ impl BuildBodyExecutor {
                 if !is_valid_identifier(&name) {
                     return Err(BuildEvaluationError::new(
                         BuildEvaluationErrorKind::InvalidInput,
-                        format!("invalid step name '{}': names must match [a-z][a-z0-9_-]*", name),
+                        format!(
+                            "invalid step name '{}': names must match [a-z][a-z0-9_-]*",
+                            name
+                        ),
                     ));
                 }
                 let (description, depends_on_start) = match args.get(1) {
@@ -354,7 +360,9 @@ impl BuildBodyExecutor {
                         ))
                     }
                 };
-                self.output.operations.push(BuildEvaluationOperation { origin, kind });
+                self.output
+                    .operations
+                    .push(BuildEvaluationOperation { origin, kind });
                 Ok(Some(ExecValue::Install { name }))
             }
 
@@ -452,6 +460,9 @@ impl BuildBodyExecutor {
                 let tool = self
                     .resolve_field_string(fields, "tool")
                     .ok_or_else(|| self.unsupported(method))?;
+                let args = self.resolve_field_string_list(fields, "args")?;
+                let file_args = self.resolve_field_path_list(fields, "file_args")?;
+                let env = self.resolve_field_string_map(fields, "env")?;
                 let output = self
                     .resolve_field_string(fields, "output")
                     .or_else(|| self.resolve_field_string(fields, "path"))
@@ -460,7 +471,9 @@ impl BuildBodyExecutor {
                     origin,
                     kind: BuildEvaluationOperationKind::SystemTool(SystemToolRequest {
                         tool: tool.clone(),
-                        args: Vec::new(),
+                        args,
+                        file_args,
+                        env,
                         outputs: vec![output.clone()],
                     }),
                 });
@@ -519,9 +532,8 @@ impl BuildBodyExecutor {
             }
 
             "dependency" => {
-                let (alias, package, forwarded_args, evaluation_mode) = if let [AstNode::RecordInit {
-                    fields, ..
-                }] = args
+                let (alias, package, forwarded_args, evaluation_mode) = if let [AstNode::RecordInit { fields, .. }] =
+                    args
                 {
                     let alias = self
                         .resolve_field_string(fields, "alias")
@@ -541,7 +553,12 @@ impl BuildBodyExecutor {
                     let package = self
                         .resolve_string(package_arg)
                         .ok_or_else(|| self.unsupported(method))?;
-                    (alias, package, std::collections::BTreeMap::<String, crate::api::DependencyArgValue>::new(), None)
+                    (
+                        alias,
+                        package,
+                        std::collections::BTreeMap::<String, crate::api::DependencyArgValue>::new(),
+                        None,
+                    )
                 } else {
                     return Err(self.unsupported(method));
                 };
@@ -651,10 +668,12 @@ impl BuildBodyExecutor {
                 let root_field = fields
                     .iter()
                     .find(|f| f.name == "root" || f.name == "root_module")
-                    .ok_or_else(|| BuildEvaluationError::new(
-                        BuildEvaluationErrorKind::InvalidInput,
-                        format!("{method} config is invalid: artifact config requires 'root'"),
-                    ))?;
+                    .ok_or_else(|| {
+                        BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            format!("{method} config is invalid: artifact config requires 'root'"),
+                        )
+                    })?;
                 let root_module = self
                     .parse_config_value(&root_field.value, &["path", "string", "target"])
                     .ok_or_else(|| BuildEvaluationError::new(

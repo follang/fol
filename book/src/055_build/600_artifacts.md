@@ -112,7 +112,19 @@ A generated file must be connected to the graph entity that depends on it.
 Attach to a step (the step triggers its production):
 
 ```fol
-var gen  = graph.add_system_tool({ tool = "protoc", output = "gen/types.fol" });
+var schema = graph.file_from_root("schema/api.yaml");
+var defaults = graph.write_file({
+    name = "defaults",
+    path = "gen/defaults.txt",
+    contents = "strict",
+});
+var gen  = graph.add_system_tool({
+    tool = "flatc",
+    args = { "--fol" },
+    file_args = { schema, defaults },
+    env = { MODE = "strict" },
+    output = "gen/types.fol",
+});
 var step = graph.step("proto");
 step.attach(gen);
 ```

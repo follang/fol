@@ -9,9 +9,7 @@ use crate::api::{
     StandardOptimizeRequest, StandardTargetRequest, UserOptionRequest, WriteFileRequest,
 };
 use crate::codegen::{CodegenKind, CodegenRequest, SystemToolRequest};
-use crate::option::{
-    BuildOptimizeMode, BuildOptionDeclaration, BuildTargetTriple,
-};
+use crate::option::{BuildOptimizeMode, BuildOptionDeclaration, BuildTargetTriple};
 use fol_parser::ast::SyntaxOrigin;
 use std::collections::BTreeMap;
 
@@ -54,15 +52,13 @@ fn build_evaluator_replays_standard_and_user_option_operations() {
             },
             BuildEvaluationOperation {
                 origin: None,
-                kind: BuildEvaluationOperationKind::StandardOptimize(
-                    StandardOptimizeRequest::new("optimize"),
-                ),
+                kind: BuildEvaluationOperationKind::StandardOptimize(StandardOptimizeRequest::new(
+                    "optimize",
+                )),
             },
             BuildEvaluationOperation {
                 origin: None,
-                kind: BuildEvaluationOperationKind::Option(UserOptionRequest::bool(
-                    "strip", false,
-                )),
+                kind: BuildEvaluationOperationKind::Option(UserOptionRequest::bool("strip", false)),
             },
         ],
     };
@@ -241,9 +237,7 @@ fn build_evaluator_replays_option_declarations_and_input_overrides() {
             },
             BuildEvaluationOperation {
                 origin: None,
-                kind: BuildEvaluationOperationKind::Option(UserOptionRequest::bool(
-                    "strip", false,
-                )),
+                kind: BuildEvaluationOperationKind::Option(UserOptionRequest::bool("strip", false)),
             },
         ],
     };
@@ -285,9 +279,9 @@ fn build_evaluator_uses_typed_target_and_optimize_inputs_without_duplicate_optio
             },
             BuildEvaluationOperation {
                 origin: None,
-                kind: BuildEvaluationOperationKind::StandardOptimize(
-                    StandardOptimizeRequest::new("optimize"),
-                ),
+                kind: BuildEvaluationOperationKind::StandardOptimize(StandardOptimizeRequest::new(
+                    "optimize",
+                )),
             },
         ],
     };
@@ -332,6 +326,8 @@ fn build_evaluator_replays_generated_file_and_codegen_operations() {
                 kind: BuildEvaluationOperationKind::SystemTool(SystemToolRequest {
                     tool: "schema-gen".to_string(),
                     args: vec!["api.yaml".to_string()],
+                    file_args: vec!["schema/api.yaml".to_string()],
+                    env: std::collections::BTreeMap::new(),
                     outputs: vec!["gen/api.fol".to_string()],
                 }),
             },

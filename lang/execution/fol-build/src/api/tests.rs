@@ -486,6 +486,11 @@ mod tests {
             .add_system_tool(SystemToolRequest {
                 tool: "schema-gen".to_string(),
                 args: vec!["api.yaml".to_string()],
+                file_args: vec!["schema/api.yaml".to_string()],
+                env: std::collections::BTreeMap::from([(
+                    "SCHEMA_MODE".to_string(),
+                    "strict".to_string(),
+                )]),
                 outputs: vec!["gen/api.fol".to_string()],
             })
             .expect("system tool should succeed");

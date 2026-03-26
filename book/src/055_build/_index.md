@@ -88,3 +88,4 @@ These checked-in example packages exercise the current public build surface:
 - `examples/build_dep_handles`
 - `examples/build_output_handles`
 - `examples/build_install_prefix`
+- `examples/build_system_tool`
