@@ -48,7 +48,7 @@ FOL is moving toward a build-selected runtime model:
 
 - `core`
   no heap, no OS
-- `alloc`
+- `mem`
   adds heap-backed facilities, still no OS
 - `std`
   adds OS/runtime services
@@ -71,15 +71,15 @@ For the runtime split:
 
 - arrays, scalars, records, routines, control flow, `defer`, and
   `opt[...]`/`err[...]` belong to `core`
-- heap-backed `str`, `vec`, `seq`, `set`, and `map` belong to `alloc`
+- heap-backed `str`, `vec`, `seq`, `set`, and `map` belong to `mem`
 - `.echo(...)` and hosted process/runtime behavior belong to `std`
 
 Current contract:
 
 - `core` means no heap and no OS/runtime services
-- `alloc` means heap-backed runtime facilities without hosted process/OS
+- `mem` means heap-backed runtime facilities without hosted process/OS
   services
-- `std` means hosted runtime services on top of `alloc`
+- `std` means hosted runtime services on top of `mem`
 
 Current implementation honesty note:
 

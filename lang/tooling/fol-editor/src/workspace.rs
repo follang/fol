@@ -484,12 +484,12 @@ mod tests {
             map_document_workspace(&root.join("app/main.fol"), &EditorConfig::default()).unwrap();
         let core_mapping =
             map_document_workspace(&root.join("core/lib.fol"), &EditorConfig::default()).unwrap();
-        let alloc_mapping =
-            map_document_workspace(&root.join("alloc/lib.fol"), &EditorConfig::default()).unwrap();
+        let mem_mapping =
+            map_document_workspace(&root.join("mem/lib.fol"), &EditorConfig::default()).unwrap();
 
         assert_eq!(app_mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
         assert_eq!(core_mapping.active_fol_model, Some(TypecheckCapabilityModel::Core));
-        assert_eq!(alloc_mapping.active_fol_model, Some(TypecheckCapabilityModel::Mem));
+        assert_eq!(mem_mapping.active_fol_model, Some(TypecheckCapabilityModel::Mem));
 
         fs::remove_dir_all(root).ok();
     }

@@ -382,7 +382,7 @@ Completion criteria:
 - negative hosted-boundary examples use `mem`
 
 ### Slice 31
-Status: pending
+Status: completed
 
 Add at least one new canonical `mem` showcase example so the new name is visible in the shipped example set.
 
@@ -395,7 +395,7 @@ Completion criteria:
 ## Epoch 8: Transitive Boundary Hardening Under `mem`
 
 ### Slice 32
-Status: pending
+Status: completed
 
 Update transitive boundary tests from `alloc` to `mem`.
 
@@ -406,7 +406,7 @@ Completion criteria:
 - `mem -> std` hosted rejection is pinned
 
 ### Slice 33
-Status: pending
+Status: completed
 
 Update runtime import cleanliness tests for the renamed middle model.
 
@@ -415,7 +415,7 @@ Completion criteria:
 - cross-package emission audits use `mem`
 
 ### Slice 34
-Status: pending
+Status: completed
 
 Update mixed-model workspace tests from `core/alloc/std` to `core/mem/std`.
 
@@ -424,7 +424,7 @@ Completion criteria:
 - mixed-workspace coverage surfaces `mem`
 
 ### Slice 35
-Status: pending
+Status: completed
 
 Add one regression test proving that a stale `alloc` model in a dependency fixture fails before planning/emission.
 
@@ -437,7 +437,7 @@ Completion criteria:
 ## Epoch 9: Docs, Book, And Contributor Guidance
 
 ### Slice 36
-Status: pending
+Status: completed
 
 Update runtime-model docs from `alloc` to `mem`.
 
@@ -446,7 +446,7 @@ Completion criteria:
 - [docs/runtime-models.md](/home/bresilla/data/code/bresilla/fol/docs/runtime-models.md) uses only `core/mem/std`
 
 ### Slice 37
-Status: pending
+Status: completed
 
 Update build book examples and wording from `alloc` to `mem`.
 
@@ -455,7 +455,7 @@ Completion criteria:
 - build book examples use `fol_model = "mem"`
 
 ### Slice 38
-Status: pending
+Status: completed
 
 Update user/tooling docs that mention the middle model.
 
@@ -464,7 +464,7 @@ Completion criteria:
 - tooling docs use `mem`
 
 ### Slice 39
-Status: pending
+Status: completed
 
 Update contributor guidance in `AGENTS.md` if it still references `alloc` as a model name.
 
@@ -473,7 +473,7 @@ Completion criteria:
 - contributor guidance matches `core/mem/std`
 
 ### Slice 40
-Status: pending
+Status: completed
 
 Update any roadmap/progress notes that still describe `alloc` as the public model.
 
@@ -486,7 +486,7 @@ Completion criteria:
 ## Epoch 10: Final Repo Sweep And Closure
 
 ### Slice 41
-Status: pending
+Status: completed
 
 Perform a repo-wide sweep for stale public `alloc` model strings.
 
@@ -497,7 +497,7 @@ Completion criteria:
   - intentionally chosen internal runtime names if retained by design
 
 ### Slice 42
-Status: pending
+Status: completed
 
 Audit diagnostics snapshots and human-readable integration expectations for stale `alloc` wording.
 
@@ -506,7 +506,7 @@ Completion criteria:
 - no active user-facing diagnostic still says `alloc` as the model name
 
 ### Slice 43
-Status: pending
+Status: completed
 
 Run a final example/build/doc sync audit.
 
@@ -516,7 +516,7 @@ Completion criteria:
 - integration suites match the renamed examples/fixtures
 
 ### Slice 44
-Status: pending
+Status: completed
 
 Close the plan with one final green-state scan.
 

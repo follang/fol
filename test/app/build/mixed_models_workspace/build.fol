@@ -9,7 +9,7 @@ pro[] build(): non = {
     });
     var memlib = graph.add_static_lib({
         name = "memlib",
-        root = "alloc/lib.fol",
+        root = "mem/lib.fol",
         fol_model = "mem",
     });
     var tool = graph.add_exe({

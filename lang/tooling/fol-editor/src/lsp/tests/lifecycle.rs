@@ -757,10 +757,10 @@ fn lsp_server_keeps_model_context_through_hover_for_core_mem_and_std() {
 fn lsp_server_keeps_model_context_isolated_across_mixed_workspace_packages() {
     let (root, _) = copied_example_package_root("examples/mixed_models_workspace");
     let core_uri = format!("file://{}", root.join("core/lib.fol").display());
-    let mem_uri = format!("file://{}", root.join("alloc/lib.fol").display());
+    let mem_uri = format!("file://{}", root.join("mem/lib.fol").display());
     let std_uri = format!("file://{}", root.join("app/main.fol").display());
     let core_text = fs::read_to_string(root.join("core/lib.fol")).unwrap();
-    let mem_text = fs::read_to_string(root.join("alloc/lib.fol")).unwrap();
+    let mem_text = fs::read_to_string(root.join("mem/lib.fol")).unwrap();
     let std_text = fs::read_to_string(root.join("app/main.fol")).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 

@@ -2658,7 +2658,7 @@ fn test_cli_run_rejects_ambiguous_non_std_models_with_resolved_models() {
         root.join("src/heap.fol"),
         "fun[] main(): int = {\n    var shown: str = \"ok\";\n    return 0;\n};\n",
     )
-    .expect("should write alloc source");
+    .expect("should write mem source");
 
     let run = run_fol_in_dir(&root, &["code", "run"]);
     let stderr = String::from_utf8_lossy(&run.stderr);

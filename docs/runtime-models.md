@@ -256,9 +256,8 @@ Implemented today:
 - dynamic/string `.len(...)` requires `mem` or `std`
 - routed `run` / `test` reject non-`std` artifacts
 - emitted Rust imports the matching internal runtime module
-- public `fol_model = "mem"` currently maps to the internal
-  `fol_runtime::alloc` module path
-- `fol-runtime` is the single runtime crate with internal `core` / `alloc` /
+- public `fol_model = "mem"` currently maps to the internal heap runtime module
+- `fol-runtime` is the single runtime crate with internal `core`, heap, and
   `std` ownership
 
 ## Runtime export contract
@@ -270,19 +269,19 @@ public surfaces.
   - no heap-backed types
   - no hosted hooks like `.echo(...)`
   - no hosted process-outcome helpers
-- `fol_runtime::alloc`
+- internal heap runtime module
   - heap-backed strings and dynamic containers
   - still no hosted hooks like `.echo(...)`
   - still no hosted process-outcome helpers
 - `fol_runtime::std`
   - hosted hooks such as `.echo(...)`
   - hosted process-outcome helpers
-  - alloc-tier heap types re-exported for host artifacts
+  - mem-tier heap types re-exported for host artifacts
 
 Backend authors should not import a wider tier than the lowered artifact
 actually requires. `core` emission should stay `core`-only. `mem` emission
-currently routes through the internal `fol_runtime::alloc` module and must not
-silently widen to `std`. `std` is the only tier that may rely on
+currently routes through the internal heap runtime module and must not silently
+widen to `std`. `std` is the only tier that may rely on
 hosted runtime entry and console hooks.
 
 ## Editor note
