@@ -19,6 +19,8 @@ pub struct ExtractedPackageDependencyDecl {
     pub source: String,
     pub target: String,
     pub evaluation_mode: DependencyBuildEvaluationMode,
+    pub git_version: Option<String>,
+    pub git_hash: Option<String>,
     pub origin: Option<SyntaxOrigin>,
 }
 
@@ -35,6 +37,8 @@ pub struct PackageDependencyDecl {
     pub source_kind: PackageDependencySourceKind,
     pub target: String,
     pub evaluation_mode: DependencyBuildEvaluationMode,
+    pub git_version: Option<fol_build::GitDependencyVersionSelector>,
+    pub git_hash: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,6 +49,22 @@ pub struct PackageMetadata {
     pub description: Option<String>,
     pub license: Option<String>,
     pub dependencies: Vec<PackageDependencyDecl>,
+}
+
+impl PackageDependencyDecl {
+    pub fn git_locator_string(&self) -> String {
+        let mut rendered = self.target.clone();
+        if let Some(version) = &self.git_version {
+            rendered.push('#');
+            rendered.push_str(&version.render());
+        }
+        if let Some(hash) = &self.git_hash {
+            rendered.push('#');
+            rendered.push_str("hash:");
+            rendered.push_str(hash);
+        }
+        rendered
+    }
 }
 
 pub fn parse_package_metadata_from_build(path: &Path) -> Result<PackageMetadata, PackageError> {
@@ -276,12 +296,18 @@ fn collect_dependency_decls(
                 let mut source = None;
                 let mut target = None;
                 let mut evaluation_mode = DependencyBuildEvaluationMode::Eager;
+                let mut git_version = None;
+                let mut git_hash = None;
                 for field in record_fields {
                     let value = resolve_string_value(&field.value, string_bindings);
                     match field.name.as_str() {
                         "alias" => alias = value,
                         "source" => source = value,
                         "target" => target = value,
+                        "version" => {
+                            git_version = value;
+                        }
+                        "hash" => git_hash = value,
                         "mode" => {
                             if let Some(value) = value {
                                 if let Some(parsed_mode) =
@@ -300,6 +326,8 @@ fn collect_dependency_decls(
                         source,
                         target,
                         evaluation_mode,
+                        git_version,
+                        git_hash,
                         origin,
                     });
                 }
@@ -486,18 +514,77 @@ fn materialize_package_metadata_from_build(
             });
         }
         let source_target = format!("{}:{}", dependency.source, dependency.target);
+        let dependency_origin = dependency.origin.clone().unwrap_or_else(|| SyntaxOrigin {
+            file: Some(path.to_string_lossy().to_string()),
+            line: 1,
+            column: 1,
+            length: dependency.alias.len().max(1),
+        });
         let mut parsed = parse_dependency_decl(
             path,
             &dependency.alias,
             &source_target,
-            dependency.origin.unwrap_or_else(|| SyntaxOrigin {
-                file: Some(path.to_string_lossy().to_string()),
-                line: 1,
-                column: 1,
-                length: dependency.alias.len().max(1),
-            }),
+            dependency_origin.clone(),
         )?;
         parsed.evaluation_mode = dependency.evaluation_mode;
+        parsed.git_version = match dependency.git_version.as_deref() {
+            Some(raw) => Some(
+                fol_build::GitDependencyVersionSelector::parse(raw).ok_or_else(|| {
+                    PackageError::with_origin(
+                        PackageErrorKind::InvalidInput,
+                        format!(
+                            "package dependency '{}' in '{}' must use version 'branch:<name>', 'tag:<name>', or 'commit:<sha>' (got '{}')",
+                            parsed.alias,
+                            path.display(),
+                            raw
+                        ),
+                        dependency_origin.clone(),
+                    )
+                })?,
+            ),
+            None => None,
+        };
+        parsed.git_hash = match dependency.git_hash.clone() {
+            Some(hash) if hash.trim().is_empty() => {
+                return Err(PackageError::with_origin(
+                    PackageErrorKind::InvalidInput,
+                    format!(
+                        "package dependency '{}' in '{}' must not use an empty git hash",
+                        parsed.alias,
+                        path.display()
+                    ),
+                    dependency_origin.clone(),
+                ));
+            }
+            other => other,
+        };
+        match parsed.source_kind {
+            PackageDependencySourceKind::Git => {}
+            _ => {
+                if parsed.git_version.is_some() {
+                    return Err(PackageError::with_origin(
+                        PackageErrorKind::InvalidInput,
+                        format!(
+                            "package dependency '{}' in '{}' may use 'version' only for git sources",
+                            parsed.alias,
+                            path.display()
+                        ),
+                        dependency_origin.clone(),
+                    ));
+                }
+                if parsed.git_hash.is_some() {
+                    return Err(PackageError::with_origin(
+                        PackageErrorKind::InvalidInput,
+                        format!(
+                            "package dependency '{}' in '{}' may use 'hash' only for git sources",
+                            parsed.alias,
+                            path.display()
+                        ),
+                        dependency_origin.clone(),
+                    ));
+                }
+            }
+        }
         materialized_deps.push(parsed);
     }
 
@@ -613,6 +700,8 @@ fn parse_dependency_decl(
         source_kind,
         target: target.to_string(),
         evaluation_mode: DependencyBuildEvaluationMode::Eager,
+        git_version: None,
+        git_hash: None,
     })
 }
 

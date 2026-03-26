@@ -377,8 +377,17 @@ mod tests {
     fn git_source_session_plans_separate_cache_and_store_roots() {
         let session =
             PackageGitSourceSession::new("/tmp/demo/.fol/cache/git", "/tmp/demo/.fol/pkg/git");
-        let locator = parse_package_locator("https://github.com/bresilla/logtiny.git?tag=v1")
-            .expect("git locator should parse");
+        let locator = PackageLocator::git(
+            "https://github.com/bresilla/logtiny.git#tag:v1",
+            PackageGitTransport::Https,
+            "https://github.com/bresilla/logtiny.git",
+            PackageGitSelector {
+                branch: None,
+                tag: Some("v1".to_string()),
+                rev: None,
+                hash: None,
+            },
+        );
 
         let materialization = session
             .plan_materialization(&locator, "abc123")
@@ -457,12 +466,21 @@ mod tests {
 
         let session =
             PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
-        let locator = parse_package_locator(&format!(
-            "git+file://{}?branch=main&hash={}",
-            remote.display(),
-            expected_revision
-        ))
-        .expect("branch plus hash locator should parse");
+        let locator = PackageLocator::git(
+            format!(
+                "git+file://{}#branch:main#hash:{}",
+                remote.display(),
+                expected_revision
+            ),
+            PackageGitTransport::Git,
+            format!("file://{}", remote.display()),
+            PackageGitSelector {
+                branch: Some("main".to_string()),
+                tag: None,
+                rev: None,
+                hash: Some(expected_revision.clone()),
+            },
+        );
 
         let materialization = session
             .materialize_selected_revision(&locator)
@@ -481,8 +499,17 @@ mod tests {
 
         let session =
             PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
-        let locator = parse_package_locator(&format!("git+file://{}?tag=v0.1.0", remote.display()))
-            .expect("tag locator should parse");
+        let locator = PackageLocator::git(
+            format!("git+file://{}#tag:v0.1.0", remote.display()),
+            PackageGitTransport::Git,
+            format!("file://{}", remote.display()),
+            PackageGitSelector {
+                branch: None,
+                tag: Some("v0.1.0".to_string()),
+                rev: None,
+                hash: None,
+            },
+        );
 
         let materialization = session
             .materialize_selected_revision(&locator)
@@ -500,11 +527,17 @@ mod tests {
 
         let session =
             PackageGitSourceSession::new(temp_root.join("cache"), temp_root.join("store"));
-        let locator = parse_package_locator(&format!(
-            "git+file://{}?branch=main&hash=deadbeef",
-            remote.display()
-        ))
-        .expect("hash mismatch locator should parse");
+        let locator = PackageLocator::git(
+            format!("git+file://{}#branch:main#hash:deadbeef", remote.display()),
+            PackageGitTransport::Git,
+            format!("file://{}", remote.display()),
+            PackageGitSelector {
+                branch: Some("main".to_string()),
+                tag: None,
+                rev: None,
+                hash: Some("deadbeef".to_string()),
+            },
+        );
 
         let error = session
             .materialize_selected_revision(&locator)
@@ -561,12 +594,9 @@ mod tests {
         std::fs::create_dir_all(root.join("src")).expect("package repo should be creatable");
         std::fs::write(
             root.join("build.fol"),
-            format!("name: logtiny\nversion: {version}\n"),
-        )
-        .expect("package metadata should be writable");
-        std::fs::write(
-            root.join("build.fol"),
-            "pro[] build(): non = {\n    return graph\n}\n",
+            format!(
+                "pro[] build(): non = {{\n    var build = .build();\n    build.meta({{ name = \"logtiny\", version = \"{version}\" }});\n}}\n"
+            ),
         )
             .expect("package build should be writable");
         std::fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1\n")

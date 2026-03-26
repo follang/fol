@@ -3,6 +3,37 @@ use crate::graph::{BuildOptionId, BuildOptionKind};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GitDependencyVersionSelector {
+    Branch(String),
+    Tag(String),
+    Commit(String),
+}
+
+impl GitDependencyVersionSelector {
+    pub fn parse(raw: &str) -> Option<Self> {
+        let (kind, value) = raw.split_once(':')?;
+        let value = value.trim();
+        if value.is_empty() {
+            return None;
+        }
+        match kind.trim() {
+            "branch" => Some(Self::Branch(value.to_string())),
+            "tag" => Some(Self::Tag(value.to_string())),
+            "commit" => Some(Self::Commit(value.to_string())),
+            _ => None,
+        }
+    }
+
+    pub fn render(&self) -> String {
+        match self {
+            Self::Branch(value) => format!("branch:{value}"),
+            Self::Tag(value) => format!("tag:{value}"),
+            Self::Commit(value) => format!("commit:{value}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StandardTargetRequest {
     pub name: String,
     pub default: Option<String>,
@@ -397,6 +428,8 @@ pub struct DependencyRequest {
     pub package: String,
     pub args: BTreeMap<String, DependencyArgValue>,
     pub evaluation_mode: Option<DependencyBuildEvaluationMode>,
+    pub git_version: Option<GitDependencyVersionSelector>,
+    pub git_hash: Option<String>,
     pub surface: Option<DependencyBuildSurface>,
 }
 

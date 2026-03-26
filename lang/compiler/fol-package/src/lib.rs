@@ -40,6 +40,7 @@ pub use build::{
 pub use build_api::{
     validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildArtifactHandle,
     BuildOptionValue, DependencyHandle, DependencyRequest, ExecutableRequest,
+    GitDependencyVersionSelector,
     InstallArtifactRequest, InstallDirRequest, InstallFileRequest, InstallHandle, RunHandle,
     RunRequest, SharedLibraryRequest, StandardOptimizeOption, StandardOptimizeRequest,
     StandardTargetOption, StandardTargetRequest, StaticLibraryRequest, StepHandle, StepRequest,

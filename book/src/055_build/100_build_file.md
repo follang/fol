@@ -181,6 +181,8 @@ Typical fields belong here:
 - `alias`
 - `source`
 - `target`
+- `version`
+- `hash`
 - `mode`
 - `args`
 
@@ -199,7 +201,22 @@ build.add_dep({
     target = "json",
     mode = "lazy",
 });
+
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "tag:v0.1.1",
+    hash = "77df4240d6f0",
+});
 ```
+
+For git dependencies:
+
+- `target` is only the repository locator
+- `version` chooses `branch:<name>`, `tag:<name>`, or `commit:<sha>`
+- `hash` is optional commit-prefix verification
+- selector query params in `target` are not supported
 
 Supported dependency modes:
 

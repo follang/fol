@@ -1,552 +1,457 @@
-# Zig Gap Round 3 Plan
+# Git Dependency Selector Cutover Plan
 
-This plan defines the next build-system round after the completed:
+This plan replaces the current git dependency selector surface:
 
-- `.build().meta(...)`
-- `.build().add_dep(...)`
-- `.build().graph()`
-- dependency handles
-- explicit dependency exports
-- source file and source dir handles
-- unified output handles
-- dependency arg forwarding
-- dependency evaluation modes
-- install-prefix projection
-- step descriptions
-- typed system tools
+- selectors embedded inside `target`
+- examples like `git+https://github.com/org/repo.git?branch=main`
+- optional `?tag=...`
+- optional `?rev=...`
+- optional `?hash=...`
 
-The goal of this round is to close the next practical gaps that still separate
-FOL build from the most useful parts of Zig's build system, without copying Zig
-blindly and without introducing public legacy shims.
-
-This plan is based on:
-
-- a fresh repo scan of the current build API, build evaluator, frontend, editor,
-  and example coverage
-- the current FOL build book under `book/src/055_build`
-- the Zig build-system guide and the 0.11, 0.12, and 0.14 release-note material
-  around dependency access, lazy path usage, lazy dependencies, step summaries,
-  and system integration
-
-Grounding inside this repo:
-
-- build API: `lang/execution/fol-build/src/api/build_api.rs`
-- build API types: `lang/execution/fol-build/src/api/types.rs`
-- dependency surface model: `lang/execution/fol-build/src/dependency.rs`
-- runtime handle model: `lang/execution/fol-build/src/runtime.rs`
-- semantic registry: `lang/execution/fol-build/src/semantic.rs`
-- graph execution: `lang/execution/fol-build/src/executor/graph_methods.rs`
-- handle execution: `lang/execution/fol-build/src/executor/handle_methods.rs`
-- build evaluation from source: `lang/execution/fol-build/src/eval/source.rs`
-- build plan replay: `lang/execution/fol-build/src/eval/plan.rs`
-- step/cache/report model: `lang/execution/fol-build/src/step.rs`
-- dependency projection: `lang/compiler/fol-package/src/build_dependency.rs`
-- package prep/loading: `lang/compiler/fol-package/src/session/mod.rs`
-- frontend routed build planning: `lang/tooling/fol-frontend/src/build_route/mod.rs`
-- frontend direct/build execution: `lang/tooling/fol-frontend/src/compile/mod.rs`
-- frontend direct compilation path: `lang/tooling/fol-frontend/src/direct.rs`
-- editor/LSP build tests: `lang/tooling/fol-editor/src/lsp/tests/*`
-- current standalone examples:
-  - `examples/build_dep_*`
-  - `examples/build_output_handles`
-  - `examples/build_install_prefix`
-  - `examples/build_source_paths`
-  - `examples/build_system_tool`
-
-## Primary Targets
-
-1. add named dependency path exports and path queries
-2. move toward one broader path-handle capability instead of split path families
-3. make dependency evaluation modes behave more concretely
-4. improve build help/reporting/install visibility at the CLI level
-5. add a typed public system-library surface
-6. support generated-directory style workflows cleanly
-7. strengthen option forwarding and dependency configuration ergonomics
-
-## Design Decisions
-
-These decisions are part of the plan unless replaced deliberately.
-
-### 1. Keep `.build()` as the only top-level build entry
-
-Do not reintroduce public `Graph`, `Build`, or manifest files.
-
-Public shape stays:
+with a structured build API:
 
 ```fol
 pro[] build(): non = {
     var build = .build();
-    build.meta({ name = "app", version = "0.1.0" });
-    var graph = build.graph();
+
+    build.add_dep({
+        alias = "logtiny",
+        source = "git",
+        target = "git+https://github.com/bresilla/logtiny.git",
+        version = "tag:v0.1.1",
+        hash = "77df4240d6f0",
+    });
 }
 ```
 
-### 2. Do not replace explicit dependency exports
+The goal is:
+
+1. keep `target` as only the repository locator
+2. move selector policy into explicit fields
+3. keep hash verification explicit and separate
+4. remove query-param selectors entirely
+5. verify the real flow against `xtra/logtiny`
+
+This follows the repo policy:
+
+- no legacy shims
+- no compatibility parsing path
+- no dual public syntax
+
+If the new structured surface is chosen, the old `?branch=...`, `?tag=...`,
+`?rev=...`, and `?hash=...` form must be deleted, not deprecated.
+
+## Current Grounding
+
+The current implementation that this plan will replace lives in:
+
+- locator parsing:
+  [lang/compiler/fol-package/src/locator.rs](/home/bresilla/data/code/bresilla/fol/lang/compiler/fol-package/src/locator.rs)
+- git revision resolution and materialization:
+  [lang/compiler/fol-package/src/git.rs](/home/bresilla/data/code/bresilla/fol/lang/compiler/fol-package/src/git.rs)
+- package metadata extraction from `build.fol`:
+  [lang/compiler/fol-package/src/metadata.rs](/home/bresilla/data/code/bresilla/fol/lang/compiler/fol-package/src/metadata.rs)
+- build evaluator dependency request parsing:
+  [lang/execution/fol-build/src/executor/handle_methods.rs](/home/bresilla/data/code/bresilla/fol/lang/execution/fol-build/src/executor/handle_methods.rs)
+  [lang/execution/fol-build/src/executor/resolve.rs](/home/bresilla/data/code/bresilla/fol/lang/execution/fol-build/src/executor/resolve.rs)
+- dependency request types:
+  [lang/execution/fol-build/src/api/types.rs](/home/bresilla/data/code/bresilla/fol/lang/execution/fol-build/src/api/types.rs)
+- frontend fetch / lockfile behavior:
+  [lang/tooling/fol-frontend/src/fetch.rs](/home/bresilla/data/code/bresilla/fol/lang/tooling/fol-frontend/src/fetch.rs)
+  [lang/compiler/fol-package/src/lockfile.rs](/home/bresilla/data/code/bresilla/fol/lang/compiler/fol-package/src/lockfile.rs)
+- current examples/tests:
+  [examples/std_logtiny_git](/home/bresilla/data/code/bresilla/fol/examples/std_logtiny_git)
+  [xtra/logtiny](/home/bresilla/data/code/bresilla/fol/xtra/logtiny)
+  [test/integration_tests/integration_editor_and_build.rs](/home/bresilla/data/code/bresilla/fol/test/integration_tests/integration_editor_and_build.rs)
+
+## New Public Contract
+
+For git dependencies:
+
+- `target` must be only the repository locator
+- `version` is optional
+- `hash` is optional
+
+Allowed forms:
+
+```fol
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+});
+```
+
+```fol
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "branch:develop",
+});
+```
+
+```fol
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "tag:v0.1.1",
+});
+```
+
+```fol
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "commit:77df4240d6f0a28590fc5b8dce8b648b63c17540",
+});
+```
+
+```fol
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "branch:develop",
+    hash = "77df4240d6f0",
+});
+```
+
+Semantic rules:
+
+- `version` accepted schemes:
+  - `branch:<name>`
+  - `tag:<name>`
+  - `commit:<sha>`
+- `hash` means required commit-prefix verification
+- `version` absent means remote `HEAD`
+- `hash` may be used with or without `version`
 
-The previous round made explicit exports the real build-facing contract.
+Rejected:
 
-This round extends that model instead of replacing it:
+- selectors inside `target`
+- `version = "rev:..."`
+- multiple version selectors
+- empty `version`
+- empty `hash`
 
-- keep `export_module`
-- keep `export_artifact`
-- keep `export_step`
-- keep `export_output`
-- add path-oriented exports beside them
+## Epoch 1: Freeze The New Contract
 
-### 3. Path capability should converge, not multiply
+### Slice 1
+Status: complete
 
-Today the public build surface has multiple path-like families:
+- document the new public contract in the build book
+- explicitly state:
+  - `target` is repository only
+  - `version` carries selection
+  - `hash` carries verification
+- explicitly state old query-param selectors are removed
 
-- source file handles
-- source dir handles
-- output handles
-- dependency generated-output handles
+### Slice 2
+Status: complete
 
-The next step should unify consumers and metadata around a more general path
-family, even if the internal representation still has specialized variants.
+- update standalone examples in docs to the new structured shape
+- remove any public-facing `?branch=`, `?tag=`, `?rev=`, `?hash=` examples
 
-Publicly, the direction should feel like:
+### Slice 3
+Status: complete
 
-- one broader path capability
-- strongly typed producers
-- consumers accept the right path classes without string escape hatches
+- add one short architecture note to `PLAN.md` / book direction docs:
+  - structured dependency config is preferred over query-param encoding
 
-### 4. Dependency modes should become semantically meaningful
+## Epoch 2: Add Structured Dependency Fields
 
-Public dependency modes already exist:
+### Slice 4
+Status: complete
 
-- `eager`
-- `lazy`
-- `on-demand`
+- extend dependency config parsing in the build evaluator to accept:
+  - `version`
+  - `hash`
+- only for `source = "git"`
 
-This round should give them clearer semantics in:
+### Slice 5
+Status: complete
 
-- metadata extraction
-- package preparation
-- fetch behavior
-- build evaluation diagnostics
-- examples and docs
+- extend dependency request types so git dependencies carry structured selector
+  data instead of only an opaque target string
 
-### 5. System integration must stay typed and narrow
+### Slice 6
+Status: complete
 
-Do not add a giant “shell escape” build language.
+- define an internal selector model:
+  - none
+  - branch
+  - tag
+  - commit
+- define separate optional verification hash
 
-This round may add:
+### Slice 7
+Status: complete
 
-- system library requests
-- search paths / framework / pkg-config-like typed requests
-- generated directory outputs
+- add semantic registry coverage for the new config fields
+- ensure build-editor completion/help sees `version` and `hash`
 
-It must not add:
+## Epoch 3: Delete Query-Param Selector Parsing
 
-- arbitrary stringly “do anything” linker DSLs
-- compatibility wrappers around old ad hoc helpers
+### Slice 8
+Status: complete
 
-### 6. CLI/help/reporting should describe the real build graph
+- remove `branch`, `tag`, `rev`, `hash` parsing from git locator query params
+- keep repository locator parsing only
 
-The build graph now carries more structure than the CLI exposes.
+### Slice 9
+Status: complete
 
-This round should improve:
+- simplify `PackageGitSelector` / locator model to reflect the new split
+- locator should no longer be responsible for public selector parsing
 
-- step help
-- install prefix surfacing
-- exported dependency surfaces
-- selected dependency modes
-- produced outputs and destinations
+### Slice 10
+Status: complete
 
-without inventing fake parallelism claims.
+- delete tests that assert query-param selectors parse
+- replace them with tests that query-param selectors are rejected
 
-### 7. No legacy shims
+### Slice 11
+Status: complete
 
-If a broader path model or system-library surface replaces an older ad hoc
-shape:
+- make the rejection diagnostic explicit:
+  - selector query params are no longer supported
+  - use `version` and `hash` fields on `build.add_dep(...)`
 
-- remove stale docs
-- remove stale examples
-- remove stale tests
-- do not keep dual public guidance
+## Epoch 4: Version Field Parsing And Validation
 
-## Epoch 1: Freeze The Round 3 Direction
+### Slice 12
+Status: complete
 
-### Slice 1 (complete)
+- implement parser/validator for:
+  - `branch:<name>`
+  - `tag:<name>`
+  - `commit:<sha>`
 
-- audit current docs/examples/tests for the remaining gaps:
-  - no path-oriented dependency exports
-  - no general dependency path queries
-  - dependency modes are still weak semantically
-  - no public system-library surface
-  - CLI help/reporting still under-exposes step/output/install detail
-  - generated-directory workflows are still thin
-- no behavior change
+### Slice 13
+Status: complete
 
-### Slice 2 (complete)
+- reject malformed `version` values with exact diagnostics:
+  - missing `:`
+  - unknown selector kind
+  - empty branch/tag/commit payload
 
-- add a short book architecture note describing this round:
-  - path exports
-  - broader path handles
-  - stronger dependency modes
-  - system-library surface
-  - generated directories
-  - improved build help/reporting
-- keep it repo-specific, not a generic Zig essay
+### Slice 14
+Status: complete
 
-### Slice 3 (complete)
+- reject `version` on non-git dependencies with exact diagnostics
 
-- record explicit non-goals for this round:
-  - no new control file
-  - no public `Graph`
-  - no compatibility string-path fallback API
-  - no fake build parallelism claims
-  - no broad shell-script DSL
+### Slice 15
+Status: complete
 
-## Epoch 2: Add Named Dependency Path Exports
+- reject `hash` on non-git dependencies with exact diagnostics
 
-### Slice 4 (complete)
+### Slice 16
+Status: complete
 
-- inventory current explicit dependency export model:
-  - module
-  - artifact
-  - step
-  - generated output
-- document what is missing:
-  - source file exports
-  - source dir exports
-  - generated dir exports
-  - general path exports
+- reject empty-string `hash`
 
-### Slice 5 (complete)
+## Epoch 5: Wire Structured Selectors Into Git Resolution
 
-- design a path-oriented explicit export surface
-- recommended direction:
-  - `build.export_file({ name = "config", file = source_file })`
-  - `build.export_dir({ name = "assets", dir = source_dir })`
-  - `build.export_path({ name = "schema", path = output })`
-- keep it symmetric with the current explicit-export model
+### Slice 17
+Status: complete
 
-### Slice 6 (complete)
+- change git revision resolution to use structured selector data from dependency
+  requests instead of query params embedded in locators
 
-- add semantic signatures and runtime representation for the new path exports
-- keep export names separate from internal path identity
+### Slice 18
+Status: complete
 
-### Slice 7 (complete)
+- map `version = "branch:..."` to remote branch resolution
 
-- build executor should record explicit path exports in stable dependency-surface
-  metadata
+### Slice 19
+Status: complete
 
-### Slice 8 (complete)
+- map `version = "tag:..."` to remote tag resolution
 
-- package dependency-surface projection should persist explicit path exports on
-  prepared packages
+### Slice 20
+Status: complete
 
-### Slice 9 (complete)
+- map `version = "commit:..."` to direct commit pinning
 
-- add build-eval tests for:
-  - exporting source file handles
-  - exporting source dir handles
-  - exporting output handles through the path export surface
+### Slice 21
 
-### Slice 10 (complete)
+- keep `hash` verification as resolved-commit prefix checking
 
-- add diagnostics for:
-  - duplicate path export names
-  - wrong handle kind passed to file/dir/path exports
-  - unresolved exported path targets
+### Slice 22
 
-### Slice 11 (complete)
+- make the mismatch diagnostic exact and stable:
+  - include dependency locator
+  - include resolved revision
+  - include required hash
 
-- add one integration example package exporting:
-  - a module
-  - an artifact
-  - a generated output
-  - a source file
-  - a source dir
+## Epoch 6: Metadata, Fetch, And Lockfile Integration
 
-## Epoch 3: Add Dependency Path Queries
+### Slice 23
 
-### Slice 12 (complete)
+- change package metadata extraction from `build.fol` so it captures:
+  - repo locator
+  - version selector
+  - hash
+- do not keep selector info encoded in `target`
 
-- design public dependency-handle queries for the new path exports
-- recommended direction:
-  - `dep.file("config")`
-  - `dep.dir("assets")`
-  - `dep.path("schema")`
-- keep them coherent with:
-  - `dep.module(...)`
-  - `dep.artifact(...)`
-  - `dep.step(...)`
-  - `dep.generated(...)`
+### Slice 24
 
-### Slice 13 (complete)
+- update frontend fetch resolution to use structured selector fields
 
-- add semantic signatures and typed handle results for dependency file/dir/path
-  queries
+### Slice 25
 
-### Slice 14 (complete)
+- ensure eager/lazy/on-demand behavior remains unchanged under the new model
 
-- dependency handles should resolve explicitly exported path names first
-- querying a missing export should produce exact diagnostics
+### Slice 26
 
-### Slice 15 (complete)
+- update lockfile rendering/parsing if needed so stored entries remain sufficient
+  to reproduce exact pinned git state
 
-- update path consumers to accept dependency-exported file/dir/path handles where
-  appropriate
-- expected consumers:
-  - install file/dir
-  - run file args
-  - artifact generated/path attachment where valid
+### Slice 27
 
-### Slice 16 (complete)
+- decide and implement whether lockfile should additionally record requested
+  `hash` or only selected revision
+- preferred direction:
+  - keep selected revision authoritative
+  - optionally keep requested hash for transparency if useful
 
-- add evaluator tests for cross-package path consumption through dependency
-  handles
+## Epoch 7: Tests For The New Public Surface
 
-### Slice 17 (complete)
+### Slice 28
 
-- add integration coverage for one package exporting named paths and another
-  package installing or passing them to a tool step
+- add evaluator tests for:
+  - plain repo target with no version
+  - branch version
+  - tag version
+  - commit version
+  - branch plus hash
 
-## Epoch 4: Broaden The Path Handle Model
+### Slice 29
 
-### Slice 18 (complete)
+- add evaluator tests for invalid config:
+  - bad `version`
+  - bad `hash`
+  - `version` on `pkg`
+  - `hash` on `loc`
 
-- audit current path-like handle families and consumers
-- document the current split:
-  - `SourceFileHandle`
-  - `SourceDirHandle`
-  - generated/output handles
-  - dependency generated-output handles
+### Slice 30
 
-### Slice 19 (complete)
+- add package metadata extraction tests for the new fields
 
-- design one broader public path-handle family
-- internal variants may remain specialized, but the public consumption model
-  should converge
+### Slice 31
 
-### Slice 20 (complete)
+- add frontend fetch tests that materialize local temp git repos using:
+  - branch
+  - tag
+  - commit
+  - branch plus hash
 
-- add a canonical runtime/type representation for generalized path handles
+### Slice 32
 
-### Slice 21 (complete)
+- add one explicit negative fetch test for hash mismatch
 
-- update consumers so they validate path-handle capabilities by kind rather than
-  by unrelated ad hoc branches
+## Epoch 8: Real `xtra/logtiny` Verification
 
-### Slice 22 (complete)
+### Slice 33
 
-- add exact diagnostics for bad path-handle use:
-  - file where dir is required
-  - dir where file is required
-  - path handle of the wrong provenance
+- update [xtra/logtiny/build.fol](/home/bresilla/data/code/bresilla/fol/xtra/logtiny/build.fol)
+  if needed so it remains a valid dependency target:
+  - metadata
+  - exported module
+  - optional exported artifact
 
-### Slice 23 (complete)
+### Slice 34
 
-- update build docs and examples so path composition uses the broader path model
-  consistently
+- verify `xtra/logtiny` directly with the local CLI:
+  - `code build`
+  - built binary execution if applicable
 
-## Epoch 5: Make Dependency Modes Behave More Concretely
+### Slice 35
 
-### Slice 24 (complete)
+- commit `xtra/logtiny` changes in its own repo with conventional commit title
 
-- audit current use of dependency modes in:
-  - build evaluator
-  - metadata extraction
-  - package session
-  - fetch flows
-  - docs/examples
+### Slice 36
 
-### Slice 25 (complete)
+- push the branch to its remote
 
-- define the concrete intended behavior:
-  - `eager`: preload and validate dependency surface immediately
-  - `lazy`: delay expensive preparation until dependency handle/build import use
-  - `on-demand`: only prepare when the graph or frontend path truly requires it
+### Slice 37
 
-### Slice 26 (complete)
+- add and push a real tag for verification
 
-- preserve dependency mode through all current metadata/execution layers
-- no silent dropping during prepare/fetch/build planning
+### Slice 38
 
-### Slice 27 (complete)
+- add integration coverage in this repo using the live GitHub `logtiny` repo for:
+  - branch
+  - tag
+  - commit
+  - branch plus hash
 
-- fetch/package logic should surface the chosen dependency modes clearly in tests
-  and summaries where relevant
+## Epoch 9: Migrate Examples And Remove Old Surface
 
-### Slice 28 (complete)
+### Slice 39
 
-- add diagnostics for contradictory or unsupported mode usage if any current
-  path cannot honor the requested mode yet
+- migrate [examples/std_logtiny_git/build.fol](/home/bresilla/data/code/bresilla/fol/examples/std_logtiny_git/build.fol)
+  to the new shape
 
-### Slice 29 (complete)
+### Slice 40
 
-- add integration coverage with mixed dependency modes across:
-  - `loc`
-  - `pkg`
-  - `git`
+- migrate any other examples that still use selector query params
 
-## Epoch 6: Improve Step Help And Build Reporting
+### Slice 41
 
-### Slice 30 (complete)
+- update integration fixtures and helper-generated build files to the new
+  structured fields
 
-- audit current frontend build help/summary/reporting surfaces
-- list where step descriptions and output details are currently lost
+### Slice 42
 
-### Slice 31 (complete)
+- remove all checked-in public examples of query-param selectors
 
-- improve unknown-step diagnostics further so they list:
-  - step name
-  - default kind
-  - description
-  - maybe selected artifact label when relevant
+## Epoch 10: Hardening And Final Cleanup
 
-### Slice 32 (complete)
+### Slice 43
 
-- improve build summaries so they surface:
-  - install prefix
-  - selected fol models
-  - dependency mode summaries where relevant
-  - produced output counts
+- audit editor/LSP build completion tests for `version` and `hash`
 
-### Slice 33 (complete)
+### Slice 44
 
-- improve routed build planning summaries so step/output/install context is easier
-  to read in tests and user-facing output
+- ensure diagnostics point users only to the new shape
 
-### Slice 34 (complete)
+### Slice 45
 
-- add integration tests that lock the improved help/reporting output
+- update build book chapters:
+  - dependency config
+  - git examples
+  - verification examples
 
-## Epoch 7: Add A Typed System-Library Surface
+### Slice 46
 
-### Slice 35 (complete)
+- add one standalone example package specifically for:
+  - git branch pin
+  - git tag pin
+  - git commit pin
+  - git hash verification
 
-- audit current system-tool support and backend/native gaps
-- define the narrow first public system-library surface
+### Slice 47
 
-### Slice 36 (complete)
+- remove stale code/comments/tests that still assume selector query params
 
-- design typed API methods, likely on `graph`
-- recommended direction:
-  - `graph.add_system_lib({ name = "ssl" })`
-  - optional typed fields for:
-    - kind
-    - search path handle or path string if necessary
-    - framework flag on relevant targets
-    - pkg-config style probe mode if added
+### Slice 48
 
-### Slice 37 (complete)
+- final full pass:
+  - `make build`
+  - `make test`
+  - worktree clean
 
-- add semantic signatures and runtime representation for the system-library
-  requests
+## Expected Outcome
 
-### Slice 38 (complete)
+At the end of this plan:
 
-- backend/build planning should preserve these requests through emitted build
-  configuration even if support is initially narrow
-
-### Slice 39 (complete)
-
-- add diagnostics for:
-  - invalid system-library config shapes
-  - unsupported target/library combinations where known
-
-### Slice 40 (complete)
-
-- add one standalone example package using the typed system-library surface
-
-## Epoch 8: Support Generated Directories
-
-### Slice 41 (complete)
-
-- audit current generated-file flows and identify where generated directories are
-  missing
-
-### Slice 42 (complete)
-
-- design one public generated-dir/output-dir surface
-- recommended direction:
-  - system tool or codegen requests may produce a named directory handle
-  - install/run consumers can accept it where valid
-
-### Slice 43 (complete)
-
-- add runtime/type support for generated directory outputs
-
-### Slice 44 (complete)
-
-- extend install and path-consumer logic to accept generated directory handles
-
-### Slice 45 (complete)
-
-- add evaluator/integration tests for:
-  - generated dir production
-  - generated dir installation
-  - generated dir export/query through dependencies if the model supports it
-
-## Epoch 9: Improve Dependency Config Ergonomics
-
-### Slice 46 (complete)
-
-- audit current dependency arg forwarding and compare it to the real use cases in
-  examples/tests
-
-### Slice 47 (complete)
-
-- add stronger support for common forwarded build config values where missing:
-  - target
-  - optimize
-  - user options
-  - maybe environment selection if explicitly chosen
-
-### Slice 48 (complete)
-
-- tighten diagnostics for missing/invalid forwarded dependency config values so
-  they fail early and clearly
-
-## Epoch 10: Final Hardening
-
-### Slice 49 (complete)
-
-- add standalone examples for:
-  - explicit path exports
-  - dependency path queries
-  - mixed dependency modes
-  - system library use
-  - generated directories
-
-### Slice 50 (complete)
-
-- harden editor/LSP/build integration coverage so new build members and handles
-  appear in:
-  - completion
-  - hover where applicable
-  - build-fixture integration coverage
-
-### Slice 51 (complete)
-
-- audit and update the build book:
-  - remove stale wording about projection-only dependency surfaces
-  - describe path exports and dependency path queries
-  - describe dependency modes honestly
-  - document system-library scope honestly
-
-### Slice 52 (complete)
-
-- final cleanup:
-  - remove stale helper wording in tests/docs/examples
-  - keep only the chosen public build story
-  - ensure all new examples are referenced by docs and tested
-
-## Completion Criteria
-
-This round is complete when all of the following are true:
-
-- dependency packages can explicitly export named file/dir/path surfaces
-- dependent packages can query and consume those path exports through dependency
-  handles
-- the public path model feels broader and less fragmented
-- dependency modes are preserved and exercised meaningfully
-- CLI/build help and summaries expose step/output/install information better
-- a typed public system-library surface exists
-- generated-directory workflows are covered
-- docs, examples, editor coverage, and integration tests all match the final
-  chosen build story
+- git repo locators are clean and selector-free
+- selector policy lives in explicit build fields
+- hash verification is explicit and first-class
+- old query-param selectors are gone
+- docs/examples/tests all teach only the new structured form
+- the flow is verified against the real `xtra/logtiny` dependency repo

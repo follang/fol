@@ -112,6 +112,47 @@ impl BuildBodyExecutor {
                         self.invalid_config(method, "dependency 'target' must not be empty")
                     );
                 }
+                let git_version = match self.resolve_field_string(fields, "version") {
+                    Some(version) => {
+                        if source != "git" {
+                            return Err(self.invalid_config(
+                                method,
+                                "dependency field 'version' is only valid for git dependencies",
+                            ));
+                        }
+                        Some(
+                            crate::GitDependencyVersionSelector::parse(version.as_str()).ok_or_else(
+                                || {
+                                    self.invalid_config(
+                                        method,
+                                        format!(
+                                            "dependency 'version' must be one of: branch:<name>, tag:<name>, commit:<sha> (got '{}')",
+                                            version
+                                        ),
+                                    )
+                                },
+                            )?,
+                        )
+                    }
+                    None => None,
+                };
+                let git_hash = match self.resolve_field_string(fields, "hash") {
+                    Some(hash) => {
+                        if source != "git" {
+                            return Err(self.invalid_config(
+                                method,
+                                "dependency field 'hash' is only valid for git dependencies",
+                            ));
+                        }
+                        if hash.trim().is_empty() {
+                            return Err(
+                                self.invalid_config(method, "dependency 'hash' must not be empty")
+                            );
+                        }
+                        Some(hash)
+                    }
+                    None => None,
+                };
                 let evaluation_mode = match self.resolve_field_string(fields, "mode") {
                     Some(mode) => crate::DependencyBuildEvaluationMode::parse(mode.as_str())
                         .ok_or_else(|| {
@@ -133,6 +174,8 @@ impl BuildBodyExecutor {
                         package,
                         args,
                         evaluation_mode: Some(evaluation_mode),
+                        git_version,
+                        git_hash,
                         surface: None,
                     }),
                 });

@@ -431,6 +431,8 @@ mod tests {
                     ),
                 ]),
                 evaluation_mode: Some(DependencyBuildEvaluationMode::Lazy),
+                git_version: None,
+                git_hash: None,
                 surface: Some(DependencyBuildSurface {
                     alias: "logtiny".to_string(),
                     exposure: crate::DependencyBuildExposure::default(),

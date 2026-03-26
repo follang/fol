@@ -118,6 +118,59 @@ fn project_git_dependency_alias(
     Ok(alias_root)
 }
 
+fn dependency_git_locator(
+    dependency: &fol_package::PackageDependencyDecl,
+) -> FrontendResult<fol_package::PackageLocator> {
+    let base = fol_package::parse_package_locator(&dependency.target).map_err(FrontendError::from)?;
+    let Some(mut git) = base.git.clone() else {
+        return Err(FrontendError::new(
+            crate::FrontendErrorKind::InvalidInput,
+            format!(
+                "git dependency '{}' must use a git repository target, got '{}'",
+                dependency.alias, dependency.target
+            ),
+        ));
+    };
+    git.selector = match &dependency.git_version {
+        Some(fol_package::GitDependencyVersionSelector::Branch(value)) => {
+            fol_package::PackageGitSelector {
+                branch: Some(value.clone()),
+                tag: None,
+                rev: None,
+                hash: dependency.git_hash.clone(),
+            }
+        }
+        Some(fol_package::GitDependencyVersionSelector::Tag(value)) => {
+            fol_package::PackageGitSelector {
+                branch: None,
+                tag: Some(value.clone()),
+                rev: None,
+                hash: dependency.git_hash.clone(),
+            }
+        }
+        Some(fol_package::GitDependencyVersionSelector::Commit(value)) => {
+            fol_package::PackageGitSelector {
+                branch: None,
+                tag: None,
+                rev: Some(value.clone()),
+                hash: dependency.git_hash.clone(),
+            }
+        }
+        None => fol_package::PackageGitSelector {
+            branch: None,
+            tag: None,
+            rev: None,
+            hash: dependency.git_hash.clone(),
+        },
+    };
+    Ok(fol_package::PackageLocator::git(
+        dependency.git_locator_string(),
+        git.transport,
+        git.repository,
+        git.selector,
+    ))
+}
+
 pub fn prepare_workspace_packages(
     workspace: &FrontendWorkspace,
 ) -> FrontendResult<FrontendPackagePreparation> {
@@ -384,8 +437,7 @@ fn resolve_workspace_fetch(
                     queued_roots.push(PathBuf::from(loaded.identity.canonical_root));
                 }
                 fol_package::PackageDependencySourceKind::Git => {
-                    let locator = fol_package::parse_package_locator(&dependency.target)
-                        .map_err(FrontendError::from)?;
+                    let locator = dependency_git_locator(&dependency)?;
                     let materialization = if let Some(lockfile) = &existing_lockfile {
                         let entry = lockfile
                             .entries
@@ -397,10 +449,12 @@ fn resolve_workspace_fetch(
                                     dependency.alias
                                 ))
                             })?;
-                        if entry.locator != locator.raw {
+                        if entry.locator != dependency.git_locator_string() {
                             return Err(lock_mismatch_error(format!(
                                 "git dependency '{}' points to '{}' in build.fol metadata but '{}' in fol.lock",
-                                dependency.alias, locator.raw, entry.locator
+                                dependency.alias,
+                                dependency.git_locator_string(),
+                                entry.locator
                             )));
                         }
                         let was_missing = !Path::new(&entry.materialized_root).is_dir();
@@ -449,10 +503,11 @@ fn resolve_workspace_fetch(
                         materialization.selected_revision
                     );
                     if seen_lock_keys.insert(lock_key) {
+                        let dependency_alias = dependency.alias.clone();
                         git_lock_entries.push(fol_package::PackageLockEntry {
-                            alias: dependency.alias,
+                            alias: dependency_alias,
                             source_kind: fol_package::PackageDependencySourceKind::Git,
-                            locator: locator.raw.clone(),
+                            locator: dependency.git_locator_string(),
                             selected_revision: materialization.selected_revision.clone(),
                             materialized_root: materialization
                                 .store_root

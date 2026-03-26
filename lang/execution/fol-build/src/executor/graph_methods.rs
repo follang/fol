@@ -701,6 +701,8 @@ impl BuildBodyExecutor {
                         package,
                         args: forwarded_args,
                         evaluation_mode,
+                        git_version: None,
+                        git_hash: None,
                         surface: None,
                     }),
                 });

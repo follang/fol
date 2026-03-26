@@ -197,6 +197,8 @@ fn build_evaluation_result_keeps_declared_dependency_requests() {
             DependencyArgValue::Int(4),
         )]),
         evaluation_mode: Some(crate::DependencyBuildEvaluationMode::Lazy),
+        git_version: None,
+        git_hash: None,
         surface: None,
     }];
     let result = BuildEvaluationResult::new(

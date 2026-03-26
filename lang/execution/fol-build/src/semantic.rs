@@ -600,6 +600,8 @@ pub fn canonical_build_context_config_shapes() -> Vec<BuildSemanticRecordShape> 
                 BuildSemanticRecordField::required("alias"),
                 BuildSemanticRecordField::required("source"),
                 BuildSemanticRecordField::required("target"),
+                BuildSemanticRecordField::optional("version"),
+                BuildSemanticRecordField::optional("hash"),
                 BuildSemanticRecordField::optional("mode"),
                 BuildSemanticRecordField::optional("args"),
             ],
