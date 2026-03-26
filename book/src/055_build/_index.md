@@ -113,3 +113,10 @@ These checked-in example packages exercise the current public build surface:
 - `examples/build_install_prefix`
 - `examples/build_system_lib`
 - `examples/build_system_tool`
+
+Runtime-model reminder:
+
+- examples that rely on hosted behavior such as `.echo(...)` or routed
+  execution should spell `fol_model = "std"`
+- `core` and `alloc` examples in the build book should stay free of hosted
+  assumptions

@@ -1,5 +1,11 @@
 # Container
 
+Model reminder:
+
+- examples here that call `.echo(...)` assume a `std` artifact context
+- `arr[...]` is valid in `core`
+- `vec[...]`, `seq[...]`, `set[...]`, and `map[...]` require `alloc` or `std`
+
 Containers are of compound types. They contain other primitive or constructed types. To access the types in container those brackets are used: `[]`, so:
 ```
 var container: type = { element, element, element }             // declaring a container

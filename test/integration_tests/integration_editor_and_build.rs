@@ -77,6 +77,24 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     target
 }
 
+fn positive_runtime_model_examples() -> &'static [(&'static str, &'static str)] {
+    &[
+        ("examples/core_blink_shape", "core"),
+        ("examples/core_defer", "core"),
+        ("examples/core_records", "core"),
+        ("examples/core_surface_showcase", "core"),
+        ("examples/alloc_defaults", "alloc"),
+        ("examples/alloc_containers", "alloc"),
+        ("examples/alloc_collections", "alloc"),
+        ("examples/alloc_surface_showcase", "alloc"),
+        ("examples/std_cli", "std"),
+        ("examples/std_echo_min", "std"),
+        ("examples/std_named_calls", "std"),
+        ("examples/std_surface_showcase", "std"),
+        ("examples/mixed_models_workspace", "std"),
+    ]
+}
+
 fn init_git_repo(root: &std::path::Path) {
     for args in [
         vec!["init"],
@@ -1456,15 +1474,21 @@ fn test_cli_build_emits_rust_for_model_examples() {
         ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
         ("examples/core_defer", "use fol_runtime::core as rt;"),
         ("examples/core_records", "use fol_runtime::core as rt;"),
+        ("examples/core_surface_showcase", "use fol_runtime::core as rt;"),
         ("examples/alloc_defaults", "use fol_runtime::alloc as rt;"),
         ("examples/alloc_containers", "use fol_runtime::alloc as rt;"),
         (
             "examples/alloc_collections",
             "use fol_runtime::alloc as rt;",
         ),
+        (
+            "examples/alloc_surface_showcase",
+            "use fol_runtime::alloc as rt;",
+        ),
         ("examples/std_cli", "use fol_runtime::std as rt;"),
         ("examples/std_echo_min", "use fol_runtime::std as rt;"),
         ("examples/std_named_calls", "use fol_runtime::std as rt;"),
+        ("examples/std_surface_showcase", "use fol_runtime::std as rt;"),
     ];
 
     for (path, expected_import) in cases {
@@ -1510,12 +1534,15 @@ fn test_cli_example_build_summaries_surface_expected_models() {
         ("examples/core_blink_shape", "fol_model=core"),
         ("examples/core_defer", "fol_model=core"),
         ("examples/core_records", "fol_model=core"),
+        ("examples/core_surface_showcase", "fol_model=core"),
         ("examples/alloc_defaults", "fol_model=alloc"),
         ("examples/alloc_containers", "fol_model=alloc"),
         ("examples/alloc_collections", "fol_model=alloc"),
+        ("examples/alloc_surface_showcase", "fol_model=alloc"),
         ("examples/std_cli", "fol_model=std"),
         ("examples/std_echo_min", "fol_model=std"),
         ("examples/std_named_calls", "fol_model=std"),
+        ("examples/std_surface_showcase", "fol_model=std"),
     ];
 
     for (path, expected_model) in cases {
@@ -1543,6 +1570,7 @@ fn test_cli_std_examples_run_and_print_expected_output() {
         ("examples/std_cli", "std-ready"),
         ("examples/std_echo_min", "9"),
         ("examples/std_named_calls", "host-ok-ready"),
+        ("examples/std_surface_showcase", "std-hosted-full"),
     ];
 
     for (path, expected_text) in cases {
@@ -2849,13 +2877,16 @@ fn test_docs_reference_real_example_packages() {
         "examples/core_blink_shape",
         "examples/core_defer",
         "examples/core_records",
+        "examples/core_surface_showcase",
         "examples/alloc_defaults",
         "examples/alloc_containers",
         "examples/alloc_collections",
+        "examples/alloc_surface_showcase",
         "examples/std_cli",
         "examples/std_echo_min",
         "examples/std_logtiny_git",
         "examples/std_named_calls",
+        "examples/std_surface_showcase",
         "examples/mixed_models_workspace",
     ];
     let build_examples = [
@@ -2912,6 +2943,158 @@ fn test_docs_reference_real_example_packages() {
         assert!(
             build_docs.contains(example),
             "build docs should mention {example}"
+        );
+    }
+}
+
+#[test]
+fn test_positive_runtime_model_examples_build_with_expected_models_and_runtime_imports() {
+    for (path, expected_model) in positive_runtime_model_examples() {
+        let root = temp_example_root(path);
+        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        let stdout = String::from_utf8_lossy(&build.stdout);
+        assert!(
+            build.status.success(),
+            "positive runtime model example '{path}' should build: stdout=\n{}\nstderr=\n{}",
+            stdout,
+            String::from_utf8_lossy(&build.stderr)
+        );
+        if *path != "examples/mixed_models_workspace" {
+            assert!(
+                stdout.contains(&format!("fol_model={expected_model}")),
+                "positive runtime model example '{path}' should surface model '{expected_model}': stdout=\n{}\nstderr=\n{}",
+                stdout,
+                String::from_utf8_lossy(&build.stderr)
+            );
+            let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+                .expect("generated backend source should exist");
+            let source =
+                std::fs::read_to_string(&generated).expect("generated backend source should load");
+            let expected_import = format!("use fol_runtime::{expected_model} as rt;");
+            assert!(
+                source.contains(&expected_import),
+                "positive runtime model example '{path}' should emit '{expected_import}' in {:?}:\n{}",
+                generated,
+                source
+            );
+        }
+    }
+}
+
+#[test]
+fn test_negative_runtime_model_examples_fail_with_expected_boundary_class() {
+    let cases = [
+        (
+            "examples/fail_core_heap_reject",
+            None,
+            "str requires heap support and is unavailable in 'fol_model = core'",
+        ),
+        (
+            "examples/fail_alloc_echo",
+            None,
+            "'.echo(...)' requires 'fol_model = std'",
+        ),
+        (
+            "examples/fail_core_alloc_boundary",
+            Some("app"),
+            "str requires heap support and is unavailable in 'fol_model = core'",
+        ),
+    ];
+
+    for (path, subdir, expected_message) in cases {
+        let root = temp_example_root(path);
+        let working_root = subdir.map(|value| root.join(value)).unwrap_or(root.clone());
+        let build = run_fol_in_dir(&working_root, &["code", "build"]);
+        let stderr = String::from_utf8_lossy(&build.stderr);
+        assert!(
+            !build.status.success(),
+            "negative runtime model example '{path}' should fail: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            stderr
+        );
+        assert!(
+            stderr.contains(expected_message),
+            "negative runtime model example '{path}' should report '{expected_message}': stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            stderr
+        );
+    }
+}
+
+#[test]
+fn test_runtime_model_regression_matrix_stays_coherent_across_layers() {
+    let direct_cases = [
+        (
+            "test/app/build/model_core_surface_full",
+            true,
+            Some("fol_model=core"),
+        ),
+        (
+            "test/app/build/model_alloc_surface_full",
+            true,
+            Some("fol_model=alloc"),
+        ),
+        (
+            "examples/fail_core_heap_reject",
+            false,
+            Some("str requires heap support and is unavailable in 'fol_model = core'"),
+        ),
+    ];
+
+    for (path, should_succeed, expected) in direct_cases {
+        let root = if path.starts_with("examples/") {
+            temp_example_root(path)
+        } else {
+            repo_root().join(path)
+        };
+        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        let combined = format!(
+            "{}\n{}",
+            String::from_utf8_lossy(&build.stdout),
+            String::from_utf8_lossy(&build.stderr)
+        );
+        assert_eq!(
+            build.status.success(),
+            should_succeed,
+            "runtime matrix direct case '{path}' should have success={should_succeed}: output=\n{combined}"
+        );
+        if let Some(expected) = expected {
+            assert!(
+                combined.contains(expected),
+                "runtime matrix direct case '{path}' should mention '{expected}': output=\n{combined}"
+            );
+        }
+    }
+
+    let mixed_root = temp_example_root("examples/mixed_models_workspace");
+    let run = run_fol_in_dir(&mixed_root, &["code", "run"]);
+    let run_stdout = String::from_utf8_lossy(&run.stdout);
+    assert!(run.status.success(), "mixed-model std run should succeed");
+    assert!(run_stdout.contains("7"));
+
+    let emitted_root = temp_example_root("examples/std_surface_showcase");
+    let build = run_fol_in_dir(&emitted_root, &["code", "build", "--keep-build-dir"]);
+    assert!(build.status.success(), "std emitted-import matrix should build");
+    let generated = find_file_by_name(&emitted_root.join(".fol/build"), "main.rs")
+        .expect("generated std source should exist");
+    let source = std::fs::read_to_string(generated).expect("generated std source should load");
+    assert!(source.contains("use fol_runtime::std as rt;"));
+}
+
+#[test]
+fn test_example_directories_stay_source_only_without_checked_in_build_artifacts() {
+    let examples_root = repo_root().join("examples");
+    for forbidden in [".fol", "package.yaml", "out.txt", "err.txt"] {
+        let output = std::process::Command::new("find")
+            .arg(&examples_root)
+            .args(["-name", forbidden])
+            .output()
+            .expect("find should succeed");
+        assert!(output.status.success(), "find should succeed for {forbidden}");
+        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        assert!(
+            stdout.is_empty(),
+            "examples should not keep checked-in '{forbidden}' artifacts:\n{stdout}"
         );
     }
 }
@@ -3016,6 +3199,46 @@ fn test_negative_core_model_example_fails_with_heap_boundary_diagnostic() {
     assert!(
         stderr.contains("str requires heap support and is unavailable in 'fol_model = core'"),
         "negative core model example should keep the heap-boundary wording: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+}
+
+#[test]
+fn test_negative_alloc_model_example_fails_with_hosted_boundary_diagnostic() {
+    let root = temp_example_root("examples/fail_alloc_echo");
+    let build = run_fol_in_dir(&root, &["code", "build"]);
+    let stderr = String::from_utf8_lossy(&build.stderr);
+
+    assert!(
+        !build.status.success(),
+        "negative alloc model example should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+    assert!(
+        stderr.contains("'.echo(...)' requires 'fol_model = std'"),
+        "negative alloc model example should keep the hosted-boundary wording: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+}
+
+#[test]
+fn test_negative_transitive_core_alloc_boundary_example_fails_cleanly() {
+    let root = temp_example_root("examples/fail_core_alloc_boundary");
+    let build = run_fol_in_dir(&root.join("app"), &["code", "build"]);
+    let stderr = String::from_utf8_lossy(&build.stderr);
+
+    assert!(
+        !build.status.success(),
+        "negative transitive core/alloc example should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+    assert!(
+        stderr.contains("str requires heap support and is unavailable in 'fol_model = core'"),
+        "negative transitive core/alloc example should keep the heap-boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );

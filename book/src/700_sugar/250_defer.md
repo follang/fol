@@ -15,6 +15,12 @@ This is control-flow sugar.
 It is not an ownership system, destructor system, object system, or async
 cleanup system.
 
+Model reminder:
+
+- the `.echo(...)` examples below assume `fol_model = "std"`
+- `defer` itself is not std-only; it is valid in `core`, `alloc`, and `std`
+  within the current V1 surface
+
 ## Basic form
 
 ```fol

@@ -519,6 +519,8 @@ Completion criteria:
 - integration harness asserts the exact failure class
 
 ### Slice 41
+Status: complete
+
 Add a standalone negative `alloc` misuse example package.
 
 Completion criteria:
@@ -526,6 +528,8 @@ Completion criteria:
 - package intentionally fails because of `.echo(...)` or hosted-only surface
 
 ### Slice 42
+Status: complete
+
 Add a standalone mixed dependency-boundary failure example.
 
 Completion criteria:
@@ -533,6 +537,8 @@ Completion criteria:
 - `core` consumer of `alloc` or `std` boundary is represented as a real package set
 
 ### Slice 43
+Status: complete
+
 Add one fuller positive example package per tier.
 
 Completion criteria:
@@ -542,6 +548,8 @@ Completion criteria:
 - `std` full example uses hosted runtime honestly
 
 ### Slice 44
+Status: complete
+
 Add integration tests that build all positive model examples and assert their summaries/runtime imports.
 
 Completion criteria:
@@ -549,6 +557,8 @@ Completion criteria:
 - one test suite walks all positive model examples
 
 ### Slice 45
+Status: complete
+
 Add integration tests that expect failure for all negative model examples.
 
 Completion criteria:
@@ -560,6 +570,8 @@ Completion criteria:
 ## Epoch 9: Documentation And Book Alignment
 
 ### Slice 46
+Status: complete
+
 Audit the build book for every `fol_model` mention and make the contract explicit wherever examples could imply more than is actually allowed.
 
 Completion criteria:
@@ -567,6 +579,8 @@ Completion criteria:
 - no build-book example accidentally uses a forbidden surface for its declared model
 
 ### Slice 47
+Status: complete
+
 Audit routine/container/sugar book chapters for examples that silently assume `std`.
 
 Completion criteria:
@@ -574,6 +588,8 @@ Completion criteria:
 - hosted examples either declare `std` context or are rewritten to be model-neutral
 
 ### Slice 48
+Status: complete
+
 Add a concise “choose your model” guide with transitive-boundary examples.
 
 Completion criteria:
@@ -586,6 +602,8 @@ Completion criteria:
 ## Epoch 10: Final Hardening And Audit Closure
 
 ### Slice 49
+Status: complete
+
 Add one top-level regression suite that combines:
 
 - direct legality
@@ -598,6 +616,8 @@ Completion criteria:
 - suite is broad enough to catch cross-layer drift in one place
 
 ### Slice 50
+Status: complete
+
 Audit all example directories and remove checked-in `.fol` generated artifacts that should not live in source examples.
 
 Completion criteria:
@@ -605,6 +625,8 @@ Completion criteria:
 - examples stay source-only unless a checked-in generated directory is intentional and documented
 
 ### Slice 51
+Status: complete
+
 Audit model-related diagnostics for consistency of wording.
 
 Completion criteria:
@@ -616,6 +638,8 @@ Completion criteria:
 - no mixed old wording remains
 
 ### Slice 52
+Status: complete
+
 Final repo-wide scan for stale assumptions.
 
 Completion criteria:

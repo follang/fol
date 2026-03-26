@@ -167,6 +167,57 @@ surfaces automatically.
 The intent is to keep capability growth explicit. `std` is not the semantic
 baseline for every artifact just because the current backend is hosted Rust.
 
+## Choose your model
+
+Use `core` when the artifact can stay array-only and fixed-shape:
+
+```fol
+var graph = .build().graph();
+graph.add_static_lib({
+    name = "math",
+    root = "src/lib.fol",
+    fol_model = "core",
+});
+```
+
+Move to `alloc` when the artifact itself genuinely needs heap-backed strings or
+dynamic containers:
+
+```fol
+var graph = .build().graph();
+graph.add_static_lib({
+    name = "text",
+    root = "src/lib.fol",
+    fol_model = "alloc",
+});
+```
+
+Move to `std` only when the artifact itself needs hosted behavior such as
+`.echo(...)` or routed host execution:
+
+```fol
+var graph = .build().graph();
+graph.add_exe({
+    name = "tool",
+    root = "src/main.fol",
+    fol_model = "std",
+});
+```
+
+Direct boundary reminder:
+
+- a `core` artifact must not declare `str`, `seq`, `vec`, `set`, or `map`
+- an `alloc` artifact must not call `.echo(...)`
+
+Transitive boundary reminder:
+
+- a `core` artifact still cannot consume heap-backed API from an `alloc`
+  dependency
+- an `alloc` artifact still cannot consume hosted-only API from a `std`
+  dependency
+- a `std` artifact may consume both `core` and `alloc` dependencies in one
+  graph
+
 ## Transitive boundary rule
 
 Capability legality is checked at the consuming artifact boundary, not only at
@@ -274,11 +325,20 @@ pro[] build(): non = {
 - `examples/core_blink_shape`
 - `examples/core_defer`
 - `examples/core_records`
+- `examples/core_surface_showcase`
 - `examples/alloc_defaults`
 - `examples/alloc_containers`
 - `examples/alloc_collections`
+- `examples/alloc_surface_showcase`
 - `examples/std_cli`
 - `examples/std_echo_min`
 - `examples/std_logtiny_git`
 - `examples/std_named_calls`
+- `examples/std_surface_showcase`
 - `examples/mixed_models_workspace`
+
+Negative example packages:
+
+- `examples/fail_core_heap_reject`
+- `examples/fail_alloc_echo`
+- `examples/fail_core_alloc_boundary`
