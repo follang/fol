@@ -36,6 +36,7 @@ pub enum BuildRuntimeGeneratedFileKind {
     Copy,
     ToolOutput,
     CodegenOutput,
+    GeneratedDir,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

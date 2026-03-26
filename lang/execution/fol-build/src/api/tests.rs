@@ -567,6 +567,38 @@ mod tests {
     }
 
     #[test]
+    fn build_api_generated_directory_helpers_keep_directory_kind() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+
+        let tool_dir = api
+            .add_system_tool_dir(SystemToolRequest {
+                tool: "assetpack".to_string(),
+                args: Vec::new(),
+                file_args: Vec::new(),
+                env: std::collections::BTreeMap::new(),
+                outputs: vec!["gen/assets".to_string()],
+            })
+            .expect("system tool dir should succeed");
+        let codegen_dir = api
+            .add_codegen_dir(CodegenRequest {
+                kind: CodegenKind::AssetPreprocess,
+                input: "assets/raw".to_string(),
+                output: "gen/packed".to_string(),
+            })
+            .expect("codegen dir should succeed");
+
+        assert_eq!(
+            api.graph().generated_files()[tool_dir.generated_file_id.index()].kind,
+            BuildGeneratedFileKind::GeneratedDir
+        );
+        assert_eq!(
+            api.graph().generated_files()[codegen_dir.generated_file_id.index()].kind,
+            BuildGeneratedFileKind::GeneratedDir
+        );
+    }
+
+    #[test]
     fn build_api_can_project_generated_file_installs() {
         let mut graph = BuildGraph::new();
         let mut api = BuildApi::new(&mut graph);

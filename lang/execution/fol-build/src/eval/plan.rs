@@ -221,6 +221,32 @@ pub fn evaluate_build_plan(
                 };
                 step_names.insert(name.clone(), handle.step_id);
             }
+            BuildEvaluationOperationKind::InstallGeneratedDir {
+                name,
+                generated_name,
+            } => {
+                let handle = if let Some(generated_id) =
+                    generated_names.get(generated_name).copied()
+                {
+                    api.install_generated_dir(name.clone(), generated_id)
+                        .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?
+                } else if let Some((alias, _kind, query_name)) =
+                    parse_dependency_output_identity(generated_name)
+                {
+                    api.install_dir(crate::InstallDirRequest {
+                        name: name.clone(),
+                        path: format!("$dep/{alias}/{query_name}"),
+                        depends_on: Vec::new(),
+                    })
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?
+                } else {
+                    return Err(evaluation_invalid_input(
+                        format!("unknown generated dir '{generated_name}' in graph.install_dir"),
+                        operation.origin.clone(),
+                    ));
+                };
+                step_names.insert(name.clone(), handle.step_id);
+            }
             BuildEvaluationOperationKind::InstallDir(operation_request) => {
                 let handle = api
                     .install_dir(operation_request.clone())
@@ -265,9 +291,27 @@ pub fn evaluate_build_plan(
                     generated_names.insert(output.clone(), handle.generated_file_id);
                 }
             }
+            BuildEvaluationOperationKind::SystemToolDir(operation_request) => {
+                let output = operation_request.outputs.first().ok_or_else(|| {
+                    evaluation_invalid_input(
+                        "graph.add_system_tool_dir requires one output directory".to_string(),
+                        operation.origin.clone(),
+                    )
+                })?;
+                let handle = api
+                    .add_system_tool_dir(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                generated_names.insert(output.clone(), handle.generated_file_id);
+            }
             BuildEvaluationOperationKind::Codegen(operation_request) => {
                 let handle = api
                     .add_codegen(operation_request.clone())
+                    .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
+                generated_names.insert(operation_request.output.clone(), handle.generated_file_id);
+            }
+            BuildEvaluationOperationKind::CodegenDir(operation_request) => {
+                let handle = api
+                    .add_codegen_dir(operation_request.clone())
                     .map_err(|error| evaluation_api_error(error, operation.origin.clone()))?;
                 generated_names.insert(operation_request.output.clone(), handle.generated_file_id);
             }
@@ -302,6 +346,18 @@ pub fn evaluate_build_plan(
                         )
                     })?;
                 api.artifact_link(artifact_id, linked_id);
+            }
+            BuildEvaluationOperationKind::ArtifactLinkSystemLibrary { artifact, request } => {
+                let artifact_id = artifact_names
+                    .get(artifact)
+                    .map(|h: &crate::api::BuildArtifactHandle| h.artifact_id)
+                    .ok_or_else(|| {
+                        evaluation_invalid_input(
+                            format!("unknown artifact '{artifact}' in artifact.link"),
+                            operation.origin.clone(),
+                        )
+                    })?;
+                api.artifact_link_system_library(artifact_id, request.clone());
             }
             BuildEvaluationOperationKind::ArtifactImport {
                 artifact,

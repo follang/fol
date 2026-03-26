@@ -881,6 +881,10 @@ fn test_cli_build_emits_rust_for_model_examples() {
             "use fol_runtime::std as rt;",
         ),
         (
+            "examples/build_generated_dirs",
+            "use fol_runtime::std as rt;",
+        ),
+        (
             "examples/build_install_prefix",
             "use fol_runtime::std as rt;",
         ),
@@ -939,6 +943,7 @@ fn test_cli_example_build_summaries_surface_expected_models() {
         ("examples/build_dep_paths", "fol_model=std"),
         ("examples/build_dep_modes", "fol_model=std"),
         ("examples/build_described_steps", "fol_model=std"),
+        ("examples/build_generated_dirs", "fol_model=std"),
         ("examples/build_install_prefix", "fol_model=std"),
         ("examples/build_output_handles", "fol_model=std"),
         ("examples/build_system_lib", "fol_model=std"),
@@ -1384,6 +1389,66 @@ fn test_build_dep_paths_example_keeps_explicit_path_surfaces_and_queries() {
 }
 
 #[test]
+fn test_build_generated_dirs_example_keeps_generated_dir_surfaces_and_queries() {
+    let root = temp_example_root("examples/build_generated_dirs");
+    let shared_root = root.join("deps/shared");
+    let mut stream = fol_stream::FileStream::from_folder(
+        shared_root
+            .to_str()
+            .expect("shared example path should be utf-8"),
+    )
+    .expect("shared package stream should open");
+    let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+    let mut parser = fol_parser::ast::AstParser::new();
+    let syntax = parser
+        .parse_package(&mut lexer)
+        .expect("shared package syntax should parse");
+
+    let surface =
+        fol_package::build_dependency::project_dependency_surface("shared", &shared_root, &syntax)
+            .expect("generated dir export surface should project");
+
+    assert_eq!(
+        surface
+            .dirs
+            .iter()
+            .map(|dir| dir.name.as_str())
+            .collect::<Vec<_>>(),
+        vec!["assets"]
+    );
+
+    let build_path = root.join("build.fol");
+    let source = std::fs::read_to_string(&build_path)
+        .expect("generated dir example should keep a build.fol");
+    let request = BuildEvaluationRequest {
+        package_root: root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+    let evaluated = evaluate_build_source(&request, &build_path, &source)
+        .expect("generated dir example should evaluate")
+        .expect("generated dir example should produce a graph");
+
+    assert!(evaluated
+        .evaluated
+        .dependency_queries
+        .iter()
+        .any(|query| query.dependency_alias == "shared"
+            && query.query_name == "assets"
+            && query.kind == fol_package::BuildRuntimeDependencyQueryKind::Dir));
+    assert!(evaluated
+        .result
+        .graph
+        .installs()
+        .iter()
+        .any(|install| install.name == "assets"
+            && install.kind == fol_package::BuildInstallKind::Directory));
+}
+
+#[test]
 fn test_build_dependency_surfaces_stay_empty_without_explicit_exports() {
     let root = unique_temp_root("dep_surface_requires_export");
     std::fs::create_dir_all(root.join("deps/shared/src"))
@@ -1775,6 +1840,10 @@ fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
             "use fol_runtime::alloc as rt;",
         ),
         ("examples/alloc_defaults", "use fol_runtime::alloc as rt;"),
+        (
+            "examples/build_generated_dirs",
+            "use fol_runtime::std as rt;",
+        ),
         ("examples/build_system_lib", "use fol_runtime::std as rt;"),
         ("examples/build_system_tool", "use fol_runtime::std as rt;"),
         ("examples/std_cli", "use fol_runtime::std as rt;"),
@@ -1936,6 +2005,7 @@ fn test_docs_reference_real_example_packages() {
         "examples/build_dep_exports",
         "examples/build_dep_modes",
         "examples/build_described_steps",
+        "examples/build_generated_dirs",
         "examples/build_system_lib",
         "examples/build_system_tool",
         "examples/build_source_paths",

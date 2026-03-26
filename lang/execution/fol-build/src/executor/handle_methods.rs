@@ -298,6 +298,11 @@ impl BuildBodyExecutor {
                                 AstNode::Identifier { name, .. } => {
                                     match self.scope.get(name.as_str()) {
                                         Some(ExecValue::SourceDir { path }) => path.clone(),
+                                        Some(ExecValue::GeneratedFile {
+                                            path,
+                                            kind: BuildRuntimeGeneratedFileKind::GeneratedDir,
+                                            ..
+                                        }) => path.clone(),
                                         _ => {
                                             return Err(self.invalid_config(
                                                 method,

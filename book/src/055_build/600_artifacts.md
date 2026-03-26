@@ -119,7 +119,9 @@ in the graph so the build system knows to produce them and what depends on them.
 | Write         | `graph.write_file`       | Written with literal string contents  |
 | Copy          | `graph.copy_file`        | Copied from a source path             |
 | Tool output   | `graph.add_system_tool`  | Produced by an external tool          |
+| Tool dir      | `graph.add_system_tool_dir` | Produced as a generated directory |
 | Codegen       | `graph.add_codegen`      | Produced by the FOL codegen pipeline  |
+| Codegen dir   | `graph.add_codegen_dir`  | Produced as a generated directory     |
 | Captured run  | `run.capture_stdout()`   | Stdout of a run step                  |
 
 ### Connecting Generated Files
@@ -167,6 +169,18 @@ var gen_output = gen_run.capture_stdout();
 
 var app_run = graph.add_run(app);
 app_run.add_file_arg(gen_output);
+```
+
+Generated directories can be installed or exported as dirs:
+
+```fol
+var assets = graph.add_system_tool_dir({
+    tool = "assetpack",
+    output_dir = "gen/assets",
+});
+
+build.export_dir({ name = "assets", dir = assets });
+graph.install_dir({ name = "assets", source = assets });
 ```
 
 ## Steps

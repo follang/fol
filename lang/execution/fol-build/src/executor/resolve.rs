@@ -1,6 +1,7 @@
-use crate::api::PathHandleProvenance;
+use crate::api::{PathHandleClass, PathHandleProvenance};
 use crate::artifact::BuildArtifactFolModel;
 use crate::eval::{BuildEvaluationError, BuildEvaluationErrorKind};
+use crate::runtime::BuildRuntimeGeneratedFileKind;
 use fol_parser::ast::{AstNode, Literal, RecordInitField};
 use std::collections::BTreeMap;
 
@@ -8,6 +9,16 @@ use super::core::BuildBodyExecutor;
 use super::types::{ExecArtifact, ExecConfigValue, ExecValue, ResolvedPathHandle};
 
 impl BuildBodyExecutor {
+    fn generated_handle_class(kind: BuildRuntimeGeneratedFileKind) -> PathHandleClass {
+        match kind {
+            BuildRuntimeGeneratedFileKind::GeneratedDir => PathHandleClass::Dir,
+            BuildRuntimeGeneratedFileKind::Write
+            | BuildRuntimeGeneratedFileKind::Copy
+            | BuildRuntimeGeneratedFileKind::ToolOutput
+            | BuildRuntimeGeneratedFileKind::CodegenOutput => PathHandleClass::File,
+        }
+    }
+
     fn generated_path_provenance(name: &str) -> PathHandleProvenance {
         if name.starts_with("dep::") && name.contains("::generated::") {
             PathHandleProvenance::DependencyGenerated
@@ -31,12 +42,14 @@ impl BuildBodyExecutor {
                 path.clone(),
                 PathHandleProvenance::Source,
             )),
-            Some(ExecValue::GeneratedFile { name, path, .. }) => {
-                Some(ResolvedPathHandle::generated(
+            Some(ExecValue::GeneratedFile { name, path, kind }) => {
+                let mut resolved = ResolvedPathHandle::generated(
                     path.clone(),
                     Self::generated_path_provenance(name),
                     name.clone(),
-                ))
+                );
+                resolved.descriptor.class = Self::generated_handle_class(*kind);
+                Some(resolved)
             }
             _ => None,
         }

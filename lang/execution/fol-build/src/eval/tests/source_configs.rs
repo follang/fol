@@ -29,7 +29,7 @@ fn build_source_evaluator_supports_object_style_dependency_configs() {
     let source = concat!(
         "pro[] build(): non = {\n",
         "    var graph = .build().graph();\n",
-        "    var core = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"lazy\" });\n",
+        "    var core = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"eager\" });\n",
         "    return;\n",
         "}\n",
     );
@@ -52,10 +52,39 @@ fn build_source_evaluator_supports_object_style_dependency_configs() {
     assert_eq!(evaluated.result.dependency_requests[0].package, "org/core");
     assert_eq!(
         evaluated.result.dependency_requests[0].evaluation_mode,
-        Some(crate::DependencyBuildEvaluationMode::Lazy)
+        Some(crate::DependencyBuildEvaluationMode::Eager)
     );
     assert_eq!(evaluated.evaluated.dependencies.len(), 1);
     assert_eq!(evaluated.evaluated.dependencies[0].alias, "core");
+}
+
+#[test]
+fn build_source_evaluator_rejects_non_eager_graph_dependency_modes() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"lazy\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("non-eager graph dependency modes should fail");
+
+    assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
+    assert_eq!(
+        error.message(),
+        "graph.dependency config is invalid: direct graph dependencies currently support only mode = 'eager'"
+    );
 }
 
 #[test]
@@ -499,6 +528,53 @@ fn build_source_evaluator_keeps_mixed_generated_output_families() {
 }
 
 #[test]
+fn build_source_evaluator_supports_generated_directory_outputs_and_installs() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    var graph = build.graph();\n",
+        "    var assets = graph.add_system_tool_dir({ tool = \"assetpack\", output_dir = \"gen/assets\" });\n",
+        "    build.export_dir({ name = \"assets\", dir = assets });\n",
+        "    graph.install_dir({ name = \"assets\", source = assets });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("generated directory configs should evaluate")
+        .expect("build body should produce a graph");
+
+    assert!(evaluated
+        .evaluated
+        .generated_files
+        .iter()
+        .any(|file| file.relative_path == "gen/assets"
+            && file.kind == BuildRuntimeGeneratedFileKind::GeneratedDir));
+    assert!(evaluated
+        .result
+        .installs
+        .iter()
+        .any(|install| install.name == "assets"
+            && install.kind == crate::BuildInstallKind::Directory));
+    assert!(evaluated
+        .evaluated
+        .dependency_exports
+        .iter()
+        .any(|export| export.name == "assets"
+            && export.kind == crate::BuildRuntimeDependencyExportKind::Dir));
+}
+
+#[test]
 fn build_source_evaluator_records_dependency_module_and_artifact_queries() {
     let source = concat!(
         "pro[] build(): non = {\n",
@@ -620,7 +696,7 @@ fn build_source_evaluator_keeps_full_dependency_surface_usage_together() {
     let source = concat!(
         "pro[] build(): non = {\n",
         "    var graph = .build().graph();\n",
-        "    var dep = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"on-demand\" });\n",
+        "    var dep = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"eager\" });\n",
         "    var module = dep.module(\"root\");\n",
         "    var artifact = dep.artifact(\"corelib\");\n",
         "    var step = dep.step(\"check\");\n",
@@ -654,7 +730,7 @@ fn build_source_evaluator_keeps_full_dependency_surface_usage_together() {
     assert_eq!(evaluated.evaluated.dependencies.len(), 1);
     assert_eq!(
         evaluated.evaluated.dependencies[0].evaluation_mode,
-        Some(crate::DependencyBuildEvaluationMode::OnDemand)
+        Some(crate::DependencyBuildEvaluationMode::Eager)
     );
     assert_eq!(evaluated.evaluated.dependency_queries.len(), 7);
     assert!(query_kinds.contains(&BuildRuntimeDependencyQueryKind::Module));

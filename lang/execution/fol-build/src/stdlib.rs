@@ -171,8 +171,10 @@ mod tests {
         assert!(graph_names.contains(&"write_file"));
         assert!(graph_names.contains(&"copy_file"));
         assert!(graph_names.contains(&"add_system_tool"));
+        assert!(graph_names.contains(&"add_system_tool_dir"));
         assert!(graph_names.contains(&"add_system_lib"));
         assert!(graph_names.contains(&"add_codegen"));
+        assert!(graph_names.contains(&"add_codegen_dir"));
         assert!(graph_names.contains(&"dependency"));
         assert!(graph_names.contains(&"file_from_root"));
         assert!(graph_names.contains(&"dir_from_root"));

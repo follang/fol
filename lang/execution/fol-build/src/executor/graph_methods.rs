@@ -327,8 +327,18 @@ impl BuildBodyExecutor {
                             .to_string(),
                     )
                 })?;
-                let path = match resolved.descriptor.class {
-                    PathHandleClass::Dir => resolved.descriptor.relative_path.clone(),
+                let kind = match resolved.descriptor.class {
+                    PathHandleClass::Dir => match resolved.generated_name {
+                        Some(generated_name) => BuildEvaluationOperationKind::InstallGeneratedDir {
+                            name: name.clone(),
+                            generated_name,
+                        },
+                        None => BuildEvaluationOperationKind::InstallDir(InstallDirRequest {
+                            name: name.clone(),
+                            path: resolved.descriptor.relative_path.clone(),
+                            depends_on: Vec::new(),
+                        }),
+                    },
                     PathHandleClass::File => {
                         let actual = match resolved.descriptor.provenance {
                             PathHandleProvenance::Source => "source-file handle",
@@ -346,14 +356,9 @@ impl BuildBodyExecutor {
                         ));
                     }
                 };
-                self.output.operations.push(BuildEvaluationOperation {
-                    origin,
-                    kind: BuildEvaluationOperationKind::InstallDir(InstallDirRequest {
-                        name: name.clone(),
-                        path,
-                        depends_on: Vec::new(),
-                    }),
-                });
+                self.output
+                    .operations
+                    .push(BuildEvaluationOperation { origin, kind });
                 Ok(Some(ExecValue::Install { name }))
             }
 
@@ -459,6 +464,42 @@ impl BuildBodyExecutor {
                     name: output.clone(),
                     path: output,
                     kind: BuildRuntimeGeneratedFileKind::ToolOutput,
+                }))
+            }
+
+            "add_system_tool_dir" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let tool = self
+                    .resolve_field_string(fields, "tool")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let args = self.resolve_field_string_list(fields, "args")?;
+                let file_args = self.resolve_field_path_list(fields, "file_args")?;
+                let env = self.resolve_field_string_map(fields, "env")?;
+                let output = self
+                    .resolve_field_string(fields, "output_dir")
+                    .ok_or_else(|| self.unsupported(method))?;
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::SystemToolDir(SystemToolRequest {
+                        tool: tool.clone(),
+                        args,
+                        file_args,
+                        env,
+                        outputs: vec![output.clone()],
+                    }),
+                });
+                let gen = BuildRuntimeGeneratedFile::new(
+                    tool.clone(),
+                    output.clone(),
+                    BuildRuntimeGeneratedFileKind::GeneratedDir,
+                );
+                self.output.generated_files.push(gen);
+                Ok(Some(ExecValue::GeneratedFile {
+                    name: output.clone(),
+                    path: output,
+                    kind: BuildRuntimeGeneratedFileKind::GeneratedDir,
                 }))
             }
 
@@ -575,6 +616,46 @@ impl BuildBodyExecutor {
                 }))
             }
 
+            "add_codegen_dir" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let kind_str = self
+                    .resolve_field_string(fields, "kind")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let input = self
+                    .resolve_field_string(fields, "input")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let output = self
+                    .resolve_field_string(fields, "output_dir")
+                    .ok_or_else(|| self.unsupported(method))?;
+                let codegen_kind = match kind_str.as_str() {
+                    "fol" | "fol-to-fol" => crate::CodegenKind::FolToFol,
+                    "schema" => crate::CodegenKind::Schema,
+                    "asset" | "asset-preprocess" => crate::CodegenKind::AssetPreprocess,
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.output.operations.push(BuildEvaluationOperation {
+                    origin,
+                    kind: BuildEvaluationOperationKind::CodegenDir(CodegenRequest {
+                        kind: codegen_kind,
+                        input,
+                        output: output.clone(),
+                    }),
+                });
+                let gen = BuildRuntimeGeneratedFile::new(
+                    output.clone(),
+                    output.clone(),
+                    BuildRuntimeGeneratedFileKind::GeneratedDir,
+                );
+                self.output.generated_files.push(gen);
+                Ok(Some(ExecValue::GeneratedFile {
+                    name: output.clone(),
+                    path: output,
+                    kind: BuildRuntimeGeneratedFileKind::GeneratedDir,
+                }))
+            }
+
             "dependency" => {
                 let (alias, package, forwarded_args, evaluation_mode) = if let [AstNode::RecordInit { fields, .. }] =
                     args
@@ -589,6 +670,13 @@ impl BuildBodyExecutor {
                     let mode = self
                         .resolve_field_string(fields, "mode")
                         .and_then(|v| crate::DependencyBuildEvaluationMode::parse(v.as_str()));
+                    if mode.is_some_and(|mode| mode != crate::DependencyBuildEvaluationMode::Eager)
+                    {
+                        return Err(BuildEvaluationError::new(
+                            BuildEvaluationErrorKind::InvalidInput,
+                            "graph.dependency config is invalid: direct graph dependencies currently support only mode = 'eager'".to_string(),
+                        ));
+                    }
                     (alias, package, forwarded_args, mode)
                 } else if let [alias_arg, package_arg] = args {
                     let alias = self

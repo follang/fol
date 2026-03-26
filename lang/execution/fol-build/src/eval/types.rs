@@ -174,15 +174,25 @@ pub enum BuildEvaluationOperationKind {
         name: String,
         generated_name: String,
     },
+    InstallGeneratedDir {
+        name: String,
+        generated_name: String,
+    },
     InstallDir(InstallDirRequest),
     WriteFile(WriteFileRequest),
     CopyFile(CopyFileRequest),
     SystemTool(SystemToolRequest),
+    SystemToolDir(SystemToolRequest),
     Codegen(CodegenRequest),
+    CodegenDir(CodegenRequest),
     Dependency(DependencyRequest),
     ArtifactLink {
         artifact: String,
         linked: String,
+    },
+    ArtifactLinkSystemLibrary {
+        artifact: String,
+        request: crate::native::SystemLibraryRequest,
     },
     ArtifactImport {
         artifact: String,

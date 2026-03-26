@@ -301,6 +301,7 @@ fn lsp_server_returns_build_surface_completions_in_build_files() {
     assert!(labels.contains(&"export_step".to_string()));
     assert!(labels.contains(&"export_output".to_string()));
     assert!(labels.contains(&"graph".to_string()));
+    assert!(!labels.contains(&"add_system_tool_dir".to_string()));
 
     fs::remove_dir_all(root).ok();
 }
@@ -352,6 +353,8 @@ fn lsp_server_returns_graph_path_handle_completions_in_build_files() {
         .collect::<Vec<_>>();
     assert!(labels.contains(&"file_from_root".to_string()));
     assert!(labels.contains(&"dir_from_root".to_string()));
+    assert!(labels.contains(&"add_system_tool_dir".to_string()));
+    assert!(labels.contains(&"add_codegen_dir".to_string()));
 
     fs::remove_dir_all(root).ok();
 }

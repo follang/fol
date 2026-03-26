@@ -259,6 +259,31 @@ impl<'a> BuildApi<'a> {
         })
     }
 
+    pub fn install_generated_dir(
+        &mut self,
+        name: impl Into<String>,
+        generated_file_id: crate::graph::BuildGeneratedFileId,
+    ) -> Result<InstallHandle, BuildApiError> {
+        let name = name.into();
+        validate_build_name(&name).map_err(super::types::BuildApiError::InvalidName)?;
+        let step_id = self
+            .graph
+            .add_step(crate::graph::BuildStepKind::Install, name.clone(), None);
+        let install_id = self.graph.add_install_with_target(
+            crate::graph::BuildInstallKind::Directory,
+            name.clone(),
+            Some(crate::graph::BuildInstallTarget::GeneratedFile(
+                generated_file_id,
+            )),
+            self.project_generated_install_destination(generated_file_id),
+        );
+        Ok(InstallHandle {
+            install_id,
+            step_id,
+            name,
+        })
+    }
+
     pub fn write_file(&mut self, request: WriteFileRequest) -> Result<OutputHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(super::types::BuildApiError::InvalidName)?;
         let generated_file_id = self
@@ -300,6 +325,24 @@ impl<'a> BuildApi<'a> {
             .collect())
     }
 
+    pub fn add_system_tool_dir(
+        &mut self,
+        request: SystemToolRequest,
+    ) -> Result<GeneratedFileHandle, BuildApiError> {
+        validate_build_name(&request.tool.replace('_', "-"))
+            .map_err(super::types::BuildApiError::InvalidName)?;
+        let output = request
+            .outputs
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| "generated-dir".to_string());
+        Ok(GeneratedFileHandle {
+            generated_file_id: self
+                .graph
+                .add_generated_file(crate::graph::BuildGeneratedFileKind::GeneratedDir, output),
+        })
+    }
+
     pub fn add_codegen(
         &mut self,
         request: CodegenRequest,
@@ -307,6 +350,17 @@ impl<'a> BuildApi<'a> {
         let generated_file_id = self
             .graph
             .add_generated_file(crate::graph::BuildGeneratedFileKind::Write, request.output);
+        Ok(GeneratedFileHandle { generated_file_id })
+    }
+
+    pub fn add_codegen_dir(
+        &mut self,
+        request: CodegenRequest,
+    ) -> Result<GeneratedFileHandle, BuildApiError> {
+        let generated_file_id = self.graph.add_generated_file(
+            crate::graph::BuildGeneratedFileKind::GeneratedDir,
+            request.output,
+        );
         Ok(GeneratedFileHandle { generated_file_id })
     }
 
@@ -404,6 +458,15 @@ impl<'a> BuildApi<'a> {
         linked_id: crate::graph::BuildArtifactId,
     ) {
         self.graph.add_artifact_link(artifact_id, linked_id);
+    }
+
+    pub fn artifact_link_system_library(
+        &mut self,
+        artifact_id: crate::graph::BuildArtifactId,
+        request: crate::native::SystemLibraryRequest,
+    ) {
+        self.graph
+            .add_artifact_system_library(artifact_id, &request);
     }
 
     pub fn artifact_import(

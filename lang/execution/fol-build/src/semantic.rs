@@ -323,10 +323,16 @@ pub fn canonical_graph_method_signatures() -> Vec<BuildSemanticMethodSignature> 
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_system_tool")
             .with_param(BuildSemanticMethodParameter::record("config"))
             .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_system_tool_dir")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_system_lib")
             .with_param(BuildSemanticMethodParameter::record("config"))
             .returning(BuildSemanticTypeFamily::SystemLibraryHandle),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_codegen")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_codegen_dir")
             .with_param(BuildSemanticMethodParameter::record("config"))
             .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "dependency")
@@ -874,8 +880,10 @@ mod tests {
         assert!(names.contains(&"write_file"));
         assert!(names.contains(&"copy_file"));
         assert!(names.contains(&"add_system_tool"));
+        assert!(names.contains(&"add_system_tool_dir"));
         assert!(names.contains(&"add_system_lib"));
         assert!(names.contains(&"add_codegen"));
+        assert!(names.contains(&"add_codegen_dir"));
         assert!(names.contains(&"dependency"));
         assert!(names.contains(&"file_from_root"));
         assert!(names.contains(&"dir_from_root"));

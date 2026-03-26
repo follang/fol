@@ -371,7 +371,7 @@ shape:
 - fetch/package logic should surface the chosen dependency modes clearly in tests
   and summaries where relevant
 
-### Slice 28
+### Slice 28 (complete)
 
 - add diagnostics for contradictory or unsupported mode usage if any current
   path cannot honor the requested mode yet
@@ -455,27 +455,27 @@ shape:
 
 ## Epoch 8: Support Generated Directories
 
-### Slice 41
+### Slice 41 (complete)
 
 - audit current generated-file flows and identify where generated directories are
   missing
 
-### Slice 42
+### Slice 42 (complete)
 
 - design one public generated-dir/output-dir surface
 - recommended direction:
   - system tool or codegen requests may produce a named directory handle
   - install/run consumers can accept it where valid
 
-### Slice 43
+### Slice 43 (complete)
 
 - add runtime/type support for generated directory outputs
 
-### Slice 44
+### Slice 44 (complete)
 
 - extend install and path-consumer logic to accept generated directory handles
 
-### Slice 45
+### Slice 45 (complete)
 
 - add evaluator/integration tests for:
   - generated dir production
@@ -484,7 +484,7 @@ shape:
 
 ## Epoch 9: Improve Dependency Config Ergonomics
 
-### Slice 46
+### Slice 46 (complete)
 
 - audit current dependency arg forwarding and compare it to the real use cases in
   examples/tests
@@ -504,7 +504,7 @@ shape:
 
 ## Epoch 10: Final Hardening
 
-### Slice 49
+### Slice 49 (complete)
 
 - add standalone examples for:
   - explicit path exports
@@ -513,7 +513,7 @@ shape:
   - system library use
   - generated directories
 
-### Slice 50
+### Slice 50 (complete)
 
 - harden editor/LSP/build integration coverage so new build members and handles
   appear in:
@@ -529,7 +529,7 @@ shape:
   - describe dependency modes honestly
   - document system-library scope honestly
 
-### Slice 52
+### Slice 52 (complete)
 
 - final cleanup:
   - remove stale helper wording in tests/docs/examples

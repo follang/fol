@@ -107,6 +107,7 @@ These checked-in example packages exercise the current public build surface:
 - `examples/build_source_paths`
 - `examples/build_dep_modes`
 - `examples/build_described_steps`
+- `examples/build_generated_dirs`
 - `examples/build_dep_handles`
 - `examples/build_output_handles`
 - `examples/build_install_prefix`

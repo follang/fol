@@ -60,6 +60,7 @@ pub enum BuildGeneratedFileKind {
     Write,
     Copy,
     CaptureOutput,
+    GeneratedDir,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,6 +94,8 @@ pub struct BuildArtifact {
     pub id: BuildArtifactId,
     pub kind: BuildArtifactKind,
     pub name: String,
+    pub library_paths: Vec<NativeLibraryPath>,
+    pub link_inputs: Vec<NativeLinkDirective>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -276,8 +279,14 @@ impl BuildGraph {
             id,
             kind,
             name: name.into(),
+            library_paths: Vec::new(),
+            link_inputs: Vec::new(),
         });
         id
+    }
+
+    pub fn artifact_mut(&mut self, artifact: BuildArtifactId) -> Option<&mut BuildArtifact> {
+        self.artifacts.get_mut(artifact.index())
     }
 
     pub fn add_module(&mut self, kind: BuildModuleKind, name: impl Into<String>) -> BuildModuleId {
@@ -413,6 +422,32 @@ impl BuildGraph {
         }
     }
 
+    pub fn add_artifact_system_library(
+        &mut self,
+        artifact: BuildArtifactId,
+        request: &crate::native::SystemLibraryRequest,
+    ) {
+        let Some(artifact) = self.artifact_mut(artifact) else {
+            return;
+        };
+        if let Some(search_path) = request.search_path.as_ref() {
+            let path = NativeLibraryPath {
+                origin: NativeSearchPathOrigin::System,
+                relative_path: search_path.clone(),
+            };
+            if !artifact.library_paths.contains(&path) {
+                artifact.library_paths.push(path);
+            }
+        }
+        let directive = NativeLinkDirective {
+            input: request.link_input(),
+            mode: request.mode,
+        };
+        if !artifact.link_inputs.contains(&directive) {
+            artifact.link_inputs.push(directive);
+        }
+    }
+
     pub fn artifact_links_for(
         &self,
         artifact: BuildArtifactId,
@@ -423,11 +458,7 @@ impl BuildGraph {
             .map(|l| l.linked)
     }
 
-    pub fn add_artifact_module_import(
-        &mut self,
-        artifact: BuildArtifactId,
-        module: BuildModuleId,
-    ) {
+    pub fn add_artifact_module_import(&mut self, artifact: BuildArtifactId, module: BuildModuleId) {
         if !self
             .artifact_module_imports
             .iter()
@@ -448,18 +479,16 @@ impl BuildGraph {
             .map(|i| i.module)
     }
 
-    pub fn add_step_attachment(
-        &mut self,
-        step: BuildStepId,
-        generated_file: BuildGeneratedFileId,
-    ) {
+    pub fn add_step_attachment(&mut self, step: BuildStepId, generated_file: BuildGeneratedFileId) {
         if !self
             .step_attachments
             .iter()
             .any(|a| a.step == step && a.generated_file == generated_file)
         {
-            self.step_attachments
-                .push(BuildStepAttachment { step, generated_file });
+            self.step_attachments.push(BuildStepAttachment {
+                step,
+                generated_file,
+            });
         }
     }
 
@@ -931,3 +960,4 @@ mod tests {
             .all(|error| error.kind == BuildGraphValidationErrorKind::InvalidInstallTarget));
     }
 }
+use crate::native::{NativeLibraryPath, NativeLinkDirective, NativeSearchPathOrigin};

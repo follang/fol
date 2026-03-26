@@ -271,6 +271,50 @@ Current scope is intentionally narrow:
 - frameworks must use `dynamic`
 - the build graph records native link intent without exposing a linker-script DSL
 
+## Dependency Config Notes
+
+Forwarded dependency args are already best suited for stable build config:
+
+- `target`
+- `optimize`
+- named user options
+
+The current build story intentionally does not treat dependency config as a
+general environment-selection surface. Keep forwarded dependency args explicit
+and typed rather than mixing them with ad hoc environment shaping.
+
+## Generated Directories
+
+### `graph.add_system_tool_dir`
+
+Declares a typed system-tool step that produces a directory handle.
+
+```fol
+var assets = graph.add_system_tool_dir({
+    tool = "assetpack",
+    output_dir = "gen/assets",
+});
+
+graph.install_dir({ name = "assets", source = assets });
+```
+
+### `graph.add_codegen_dir`
+
+Declares a codegen step that produces a directory handle.
+
+```fol
+var docs = graph.add_codegen_dir({
+    kind = "asset",
+    input = "assets/raw",
+    output_dir = "gen/packed",
+});
+```
+
+Generated directory handles are valid in directory-oriented consumers:
+
+- `graph.install_dir`
+- `build.export_dir`
+
 ## Current Execution Semantics
 
 Step execution is still serial today. The build graph keeps deterministic step
