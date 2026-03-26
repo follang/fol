@@ -54,8 +54,8 @@ package root.
 - `std`
   hosted/runtime services on top of `alloc`
 
-If omitted today, `fol_model` behaves like `std`, but the recommended style is
-to spell it explicitly so the artifact contract is visible in `build.fol`.
+The recommended style is to spell `fol_model` explicitly on every artifact so
+the capability contract is visible in `build.fol`.
 
 The important boundary is semantic and runtime-facing:
 
@@ -66,6 +66,8 @@ The important boundary is semantic and runtime-facing:
 - `alloc` artifacts may use heap-backed runtime types but not hosted services
 - `std` artifacts are the only artifacts that may use hosted services such as
   `.echo(...)` and ordinary host-executed `run` / `test`
+- `std` should not be treated as the informal baseline just because the current
+  backend is hosted
 
 Current implementation note:
 

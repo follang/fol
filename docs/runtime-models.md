@@ -15,6 +15,13 @@ It is:
 - a semantic capability boundary
 - a backend/runtime linkage boundary
 
+Recommended style:
+
+- always spell `fol_model` explicitly in `build.fol`
+- treat `core`, `alloc`, and `std` as contract choices, not convenience labels
+- do not treat `std` as the informal baseline just because the current backend
+  emits hosted Rust
+
 ## Tiers
 
 ### `core`
