@@ -1,8 +1,8 @@
+use super::error::{BuildEvaluationError, BuildEvaluationErrorKind};
 use super::plan::evaluate_build_plan;
 use super::types::{
     BuildEvaluationRequest, BuildEvaluationResult, EvaluatedBuildProgram, EvaluatedBuildSource,
 };
-use super::error::{BuildEvaluationError, BuildEvaluationErrorKind};
 use crate::executor::{BuildBodyExecutor, ExecutionOutput};
 use crate::runtime::{
     BuildExecutionRepresentation, BuildRuntimeArtifact, BuildRuntimeArtifactKind,
@@ -190,6 +190,7 @@ pub(super) fn build_evaluated_program(
         artifacts,
         generated_files: exec_output.generated_files.clone(),
         dependencies,
+        dependency_exports: exec_output.dependency_exports.clone(),
         dependency_queries: exec_output.dependency_queries.clone(),
         step_bindings,
         result: result.clone(),

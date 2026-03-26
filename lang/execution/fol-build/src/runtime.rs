@@ -140,6 +140,21 @@ pub struct BuildRuntimeDependency {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BuildRuntimeDependencyExportKind {
+    Module,
+    Artifact,
+    Step,
+    GeneratedOutput,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BuildRuntimeDependencyExport {
+    pub name: String,
+    pub target_name: String,
+    pub kind: BuildRuntimeDependencyExportKind,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BuildRuntimeDependencyQueryKind {
     Module,
     Artifact,

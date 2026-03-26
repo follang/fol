@@ -318,10 +318,28 @@ pub fn canonical_graph_method_signatures() -> Vec<BuildSemanticMethodSignature> 
 pub fn canonical_build_context_method_signatures() -> Vec<BuildSemanticMethodSignature> {
     vec![
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "meta")
-            .with_param(BuildSemanticMethodParameter::record("config")),
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::BuildContext)
+            .chainable(),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "add_dep")
             .with_param(BuildSemanticMethodParameter::record("config"))
             .returning(BuildSemanticTypeFamily::DependencyHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "export_module")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::BuildContext)
+            .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "export_artifact")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::BuildContext)
+            .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "export_step")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::BuildContext)
+            .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "export_output")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::BuildContext)
+            .chainable(),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "graph")
             .returning(BuildSemanticTypeFamily::Graph),
     ]
@@ -521,6 +539,34 @@ pub fn canonical_build_context_config_shapes() -> Vec<BuildSemanticRecordShape> 
                 BuildSemanticRecordField::optional("args"),
             ],
         ),
+        BuildSemanticRecordShape::build_context(
+            "BuildExportModuleConfig",
+            [
+                BuildSemanticRecordField::required("name"),
+                BuildSemanticRecordField::required("module"),
+            ],
+        ),
+        BuildSemanticRecordShape::build_context(
+            "BuildExportArtifactConfig",
+            [
+                BuildSemanticRecordField::required("name"),
+                BuildSemanticRecordField::required("artifact"),
+            ],
+        ),
+        BuildSemanticRecordShape::build_context(
+            "BuildExportStepConfig",
+            [
+                BuildSemanticRecordField::required("name"),
+                BuildSemanticRecordField::required("step"),
+            ],
+        ),
+        BuildSemanticRecordShape::build_context(
+            "BuildExportOutputConfig",
+            [
+                BuildSemanticRecordField::required("name"),
+                BuildSemanticRecordField::required("output"),
+            ],
+        ),
     ]
 }
 
@@ -616,9 +662,8 @@ pub fn canonical_chain_metadata() -> Vec<BuildSemanticChainMetadata> {
 mod tests {
     use super::{
         canonical_artifact_config_shapes, canonical_build_context_config_shapes,
-        canonical_chain_metadata,
-        canonical_build_context_method_signatures, canonical_graph_method_signatures,
-        canonical_handle_method_signatures,
+        canonical_build_context_method_signatures, canonical_chain_metadata,
+        canonical_graph_method_signatures, canonical_handle_method_signatures,
         canonical_option_config_shapes, canonical_option_value_kinds, BuildSemanticChainKind,
         BuildSemanticMethodParameter, BuildSemanticMethodSignature, BuildSemanticOptionValueKind,
         BuildSemanticParameterShape, BuildSemanticRecordShapeKind, BuildSemanticType,
@@ -759,9 +804,13 @@ mod tests {
             .map(|signature| signature.name.as_str())
             .collect::<Vec<_>>();
 
-        assert_eq!(signatures.len(), 3);
+        assert_eq!(signatures.len(), 7);
         assert!(names.contains(&"meta"));
         assert!(names.contains(&"add_dep"));
+        assert!(names.contains(&"export_module"));
+        assert!(names.contains(&"export_artifact"));
+        assert!(names.contains(&"export_step"));
+        assert!(names.contains(&"export_output"));
         assert!(names.contains(&"graph"));
         assert_eq!(
             signatures
@@ -770,12 +819,18 @@ mod tests {
                 .and_then(|signature| signature.returns),
             Some(BuildSemanticTypeFamily::DependencyHandle)
         );
+        assert!(signatures
+            .iter()
+            .filter(|signature| signature.name.starts_with("export_") || signature.name == "meta")
+            .all(|signature| signature.chainable));
     }
 
     #[test]
     fn canonical_build_context_graph_method_returns_graph_family() {
         let signatures = canonical_build_context_method_signatures();
-        let graph = signatures.iter().find(|signature| signature.name == "graph");
+        let graph = signatures
+            .iter()
+            .find(|signature| signature.name == "graph");
 
         assert_eq!(
             graph.and_then(|signature| signature.returns),
@@ -786,11 +841,18 @@ mod tests {
     #[test]
     fn canonical_build_context_config_shapes_cover_meta_and_dependency_records() {
         let shapes = canonical_build_context_config_shapes();
-        let names = shapes.iter().map(|shape| shape.name.as_str()).collect::<Vec<_>>();
+        let names = shapes
+            .iter()
+            .map(|shape| shape.name.as_str())
+            .collect::<Vec<_>>();
 
-        assert_eq!(shapes.len(), 2);
+        assert_eq!(shapes.len(), 6);
         assert!(names.contains(&"BuildMetaConfig"));
         assert!(names.contains(&"BuildDependencyConfig"));
+        assert!(names.contains(&"BuildExportModuleConfig"));
+        assert!(names.contains(&"BuildExportArtifactConfig"));
+        assert!(names.contains(&"BuildExportStepConfig"));
+        assert!(names.contains(&"BuildExportOutputConfig"));
         assert!(shapes
             .iter()
             .all(|shape| shape.kind == BuildSemanticRecordShapeKind::BuildContextConfig));
@@ -812,7 +874,10 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(required, vec!["name", "version"]);
-        assert!(meta.fields.iter().any(|field| field.name == "kind" && !field.required));
+        assert!(meta
+            .fields
+            .iter()
+            .any(|field| field.name == "kind" && !field.required));
         assert!(meta
             .fields
             .iter()
@@ -827,10 +892,17 @@ mod tests {
     fn canonical_build_context_surface_keeps_receiver_param_and_shape_contracts() {
         let methods = canonical_build_context_method_signatures();
         let shapes = canonical_build_context_config_shapes();
-        let meta = methods.iter().find(|signature| signature.name == "meta").unwrap();
+        let meta = methods
+            .iter()
+            .find(|signature| signature.name == "meta")
+            .unwrap();
         let add_dep = methods
             .iter()
             .find(|signature| signature.name == "add_dep")
+            .unwrap();
+        let export_module = methods
+            .iter()
+            .find(|signature| signature.name == "export_module")
             .unwrap();
         let graph = methods
             .iter()
@@ -842,14 +914,23 @@ mod tests {
             .all(|signature| signature.receiver == BuildSemanticTypeFamily::BuildContext));
         assert_eq!(meta.params.len(), 1);
         assert_eq!(meta.params[0].shape, BuildSemanticParameterShape::Record);
+        assert_eq!(meta.returns, Some(BuildSemanticTypeFamily::BuildContext));
         assert_eq!(add_dep.params.len(), 1);
         assert_eq!(add_dep.params[0].shape, BuildSemanticParameterShape::Record);
+        assert_eq!(export_module.params.len(), 1);
+        assert_eq!(
+            export_module.params[0].shape,
+            BuildSemanticParameterShape::Record
+        );
         assert!(graph.params.is_empty());
         assert_eq!(graph.returns, Some(BuildSemanticTypeFamily::Graph));
         assert!(shapes.iter().any(|shape| shape.name == "BuildMetaConfig"));
         assert!(shapes
             .iter()
             .any(|shape| shape.name == "BuildDependencyConfig"));
+        assert!(shapes
+            .iter()
+            .any(|shape| shape.name == "BuildExportModuleConfig"));
     }
 
     #[test]

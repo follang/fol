@@ -1,6 +1,5 @@
 use super::super::{
-    evaluate_build_source, BuildEvaluationErrorKind, BuildEvaluationInputs,
-    BuildEvaluationRequest,
+    evaluate_build_source, BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationRequest,
 };
 use crate::artifact::BuildArtifactFolModel;
 use crate::option::{BuildOptimizeMode, BuildTargetTriple};
@@ -682,5 +681,130 @@ fn build_source_evaluator_rejects_empty_artifact_roots_with_exact_diagnostics() 
     assert_eq!(
         error.message(),
         "add_exe config is invalid: artifact 'root' must not be empty"
+    );
+}
+
+#[test]
+fn build_source_evaluator_keeps_explicit_dependency_exports_precise() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    var graph = build.graph();\n",
+        "    var codec = graph.add_module({ name = \"codec\", root = \"src/codec.fol\" });\n",
+        "    var app = graph.add_static_lib({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    var docs = graph.step(\"docs\");\n",
+        "    var bindings = graph.write_file({ name = \"bindings\", path = \"gen/bindings.fol\", contents = \"ok\" });\n",
+        "    build.export_module({ name = \"api\", module = codec });\n",
+        "    build.export_artifact({ name = \"runtime\", artifact = app });\n",
+        "    build.export_step({ name = \"check\", step = docs });\n",
+        "    build.export_output({ name = \"schema\", output = bindings });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("explicit exports should evaluate")
+        .expect("build body should produce operations");
+
+    assert_eq!(evaluated.evaluated.dependency_exports.len(), 4);
+    assert!(evaluated
+        .evaluated
+        .dependency_exports
+        .iter()
+        .any(|export| export.name == "api"
+            && export.target_name == "codec"
+            && export.kind == crate::runtime::BuildRuntimeDependencyExportKind::Module));
+    assert!(evaluated
+        .evaluated
+        .dependency_exports
+        .iter()
+        .any(|export| export.name == "runtime"
+            && export.target_name == "demo"
+            && export.kind == crate::runtime::BuildRuntimeDependencyExportKind::Artifact));
+    assert!(evaluated
+        .evaluated
+        .dependency_exports
+        .iter()
+        .any(|export| export.name == "check"
+            && export.target_name == "docs"
+            && export.kind == crate::runtime::BuildRuntimeDependencyExportKind::Step));
+    assert!(evaluated
+        .evaluated
+        .dependency_exports
+        .iter()
+        .any(|export| export.name == "schema"
+            && export.target_name == "bindings"
+            && export.kind == crate::runtime::BuildRuntimeDependencyExportKind::GeneratedOutput));
+}
+
+#[test]
+fn build_source_evaluator_rejects_duplicate_export_names_per_kind() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    var graph = build.graph();\n",
+        "    var codec = graph.add_module({ name = \"codec\", root = \"src/codec.fol\" });\n",
+        "    var other = graph.add_module({ name = \"other\", root = \"src/other.fol\" });\n",
+        "    build.export_module({ name = \"api\", module = codec });\n",
+        "    build.export_module({ name = \"api\", module = other });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("duplicate export names should fail");
+
+    assert_eq!(
+        error.message(),
+        "export_module config is invalid: duplicate exported module name 'api'"
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_export_kind_handle_mismatches() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    var graph = build.graph();\n",
+        "    var codec = graph.add_module({ name = \"codec\", root = \"src/codec.fol\" });\n",
+        "    build.export_artifact({ name = \"runtime\", artifact = codec });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("export kind mismatches should fail");
+
+    assert_eq!(
+        error.message(),
+        "build.export_artifact config is invalid: build.export_artifact requires handle field 'artifact'"
     );
 }

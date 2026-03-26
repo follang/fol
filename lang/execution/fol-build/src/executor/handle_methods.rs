@@ -1,24 +1,59 @@
+use crate::api::DependencyRequest;
 use crate::eval::{
     BuildEvaluationError, BuildEvaluationOperation, BuildEvaluationOperationKind,
     BuildEvaluationRunArgKind,
 };
-use crate::api::DependencyRequest;
-use crate::runtime::{BuildRuntimeDependencyQuery, BuildRuntimeDependencyQueryKind, BuildRuntimeGeneratedFileKind};
+use crate::runtime::{
+    BuildRuntimeDependencyExport, BuildRuntimeDependencyExportKind, BuildRuntimeDependencyQuery,
+    BuildRuntimeDependencyQueryKind, BuildRuntimeGeneratedFileKind,
+};
 use fol_parser::ast::AstNode;
 
 use super::core::BuildBodyExecutor;
 use super::types::ExecValue;
 
 impl BuildBodyExecutor {
-    fn invalid_config(
-        &self,
-        method: &str,
-        detail: impl Into<String>,
-    ) -> BuildEvaluationError {
+    fn invalid_config(&self, method: &str, detail: impl Into<String>) -> BuildEvaluationError {
         BuildEvaluationError::new(
             crate::eval::BuildEvaluationErrorKind::InvalidInput,
             format!("{method} config is invalid: {}", detail.into()),
         )
+    }
+
+    fn validate_export_name(&self, method: &str, name: &str) -> Result<(), BuildEvaluationError> {
+        if !super::core::is_valid_identifier(name) {
+            return Err(self.invalid_config(
+                method,
+                format!("export name '{}' must match [a-z][a-z0-9_-]*", name),
+            ));
+        }
+        Ok(())
+    }
+
+    fn record_dependency_export(
+        &mut self,
+        method: &str,
+        export: BuildRuntimeDependencyExport,
+    ) -> Result<(), BuildEvaluationError> {
+        if self
+            .output
+            .dependency_exports
+            .iter()
+            .any(|existing| existing.kind == export.kind && existing.name == export.name)
+        {
+            let kind = match export.kind {
+                BuildRuntimeDependencyExportKind::Module => "module",
+                BuildRuntimeDependencyExportKind::Artifact => "artifact",
+                BuildRuntimeDependencyExportKind::Step => "step",
+                BuildRuntimeDependencyExportKind::GeneratedOutput => "output",
+            };
+            return Err(self.invalid_config(
+                method,
+                format!("duplicate exported {kind} name '{}'", export.name),
+            ));
+        }
+        self.output.dependency_exports.push(export);
+        Ok(())
     }
 
     pub(super) fn eval_handle_method(
@@ -32,39 +67,47 @@ impl BuildBodyExecutor {
                 let [AstNode::RecordInit { fields, .. }] = args else {
                     return Err(self.unsupported(method));
                 };
-                self.resolve_field_string(fields, "name")
-                    .ok_or_else(|| self.invalid_config(method, "build.meta requires string field 'name'"))?;
+                self.resolve_field_string(fields, "name").ok_or_else(|| {
+                    self.invalid_config(method, "build.meta requires string field 'name'")
+                })?;
                 self.resolve_field_string(fields, "version")
-                    .ok_or_else(|| self.invalid_config(method, "build.meta requires string field 'version'"))?;
+                    .ok_or_else(|| {
+                        self.invalid_config(method, "build.meta requires string field 'version'")
+                    })?;
                 Ok(Some(receiver))
             }
             ExecValue::Build if method == "add_dep" => {
                 let [AstNode::RecordInit { fields, .. }] = args else {
                     return Err(self.unsupported(method));
                 };
-                let alias = self
-                    .resolve_field_string(fields, "alias")
-                    .ok_or_else(|| self.invalid_config(method, "build.add_dep requires string field 'alias'"))?;
+                let alias = self.resolve_field_string(fields, "alias").ok_or_else(|| {
+                    self.invalid_config(method, "build.add_dep requires string field 'alias'")
+                })?;
                 if !super::core::is_valid_identifier(&alias) {
                     return Err(self.invalid_config(
                         method,
                         format!("dependency alias '{}' must match [a-z][a-z0-9_-]*", alias),
                     ));
                 }
-                let source = self
-                    .resolve_field_string(fields, "source")
-                    .ok_or_else(|| self.invalid_config(method, "build.add_dep requires string field 'source'"))?;
+                let source = self.resolve_field_string(fields, "source").ok_or_else(|| {
+                    self.invalid_config(method, "build.add_dep requires string field 'source'")
+                })?;
                 if !matches!(source.as_str(), "loc" | "pkg" | "git") {
                     return Err(self.invalid_config(
                         method,
-                        format!("dependency source must be one of: loc, pkg, git (got '{}')", source),
+                        format!(
+                            "dependency source must be one of: loc, pkg, git (got '{}')",
+                            source
+                        ),
                     ));
                 }
-                let package = self
-                    .resolve_field_string(fields, "target")
-                    .ok_or_else(|| self.invalid_config(method, "build.add_dep requires string field 'target'"))?;
+                let package = self.resolve_field_string(fields, "target").ok_or_else(|| {
+                    self.invalid_config(method, "build.add_dep requires string field 'target'")
+                })?;
                 if package.trim().is_empty() {
-                    return Err(self.invalid_config(method, "dependency 'target' must not be empty"));
+                    return Err(
+                        self.invalid_config(method, "dependency 'target' must not be empty")
+                    );
                 }
                 let args = self.resolve_dependency_args(fields)?.unwrap_or_default();
                 self.output.operations.push(BuildEvaluationOperation {
@@ -78,6 +121,158 @@ impl BuildBodyExecutor {
                     }),
                 });
                 Ok(Some(ExecValue::Dependency { alias }))
+            }
+            ExecValue::Build
+                if matches!(
+                    method,
+                    "export_module" | "export_artifact" | "export_step" | "export_output"
+                ) =>
+            {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let export_name = self.resolve_field_string(fields, "name").ok_or_else(|| {
+                    self.invalid_config(method, "export requires string field 'name'")
+                })?;
+                self.validate_export_name(method, &export_name)?;
+                let export = match method {
+                    "export_module" => {
+                        let target_name = match fields.iter().find(|field| field.name == "module") {
+                            Some(field) => match &field.value {
+                                AstNode::Identifier { name, .. } => {
+                                    match self.scope.get(name.as_str()) {
+                                        Some(ExecValue::Module { name }) => name.clone(),
+                                        _ => return Err(self.invalid_config(
+                                            method,
+                                            "build.export_module requires handle field 'module'",
+                                        )),
+                                    }
+                                }
+                                _ => {
+                                    return Err(self.invalid_config(
+                                        method,
+                                        "build.export_module requires handle field 'module'",
+                                    ))
+                                }
+                            },
+                            None => {
+                                return Err(self.invalid_config(
+                                    method,
+                                    "build.export_module requires handle field 'module'",
+                                ))
+                            }
+                        };
+                        BuildRuntimeDependencyExport {
+                            name: export_name,
+                            target_name,
+                            kind: BuildRuntimeDependencyExportKind::Module,
+                        }
+                    }
+                    "export_artifact" => {
+                        let target_name = match fields.iter().find(|field| field.name == "artifact")
+                        {
+                            Some(field) => match &field.value {
+                                AstNode::Identifier { name, .. } => match self
+                                    .scope
+                                    .get(name.as_str())
+                                {
+                                    Some(ExecValue::Artifact(artifact)) => artifact.name.clone(),
+                                    _ => return Err(self.invalid_config(
+                                        method,
+                                        "build.export_artifact requires handle field 'artifact'",
+                                    )),
+                                },
+                                _ => {
+                                    return Err(self.invalid_config(
+                                        method,
+                                        "build.export_artifact requires handle field 'artifact'",
+                                    ))
+                                }
+                            },
+                            None => {
+                                return Err(self.invalid_config(
+                                    method,
+                                    "build.export_artifact requires handle field 'artifact'",
+                                ))
+                            }
+                        };
+                        BuildRuntimeDependencyExport {
+                            name: export_name,
+                            target_name,
+                            kind: BuildRuntimeDependencyExportKind::Artifact,
+                        }
+                    }
+                    "export_step" => {
+                        let target_name =
+                            match fields.iter().find(|field| field.name == "step") {
+                                Some(field) => match &field.value {
+                                    AstNode::Identifier { name, .. } => {
+                                        match self.scope.get(name.as_str()) {
+                                            Some(ExecValue::Step { name })
+                                            | Some(ExecValue::Run { name })
+                                            | Some(ExecValue::Install { name }) => name.clone(),
+                                            _ => return Err(self.invalid_config(
+                                                method,
+                                                "build.export_step requires handle field 'step'",
+                                            )),
+                                        }
+                                    }
+                                    _ => {
+                                        return Err(self.invalid_config(
+                                            method,
+                                            "build.export_step requires handle field 'step'",
+                                        ))
+                                    }
+                                },
+                                None => {
+                                    return Err(self.invalid_config(
+                                        method,
+                                        "build.export_step requires handle field 'step'",
+                                    ))
+                                }
+                            };
+                        BuildRuntimeDependencyExport {
+                            name: export_name,
+                            target_name,
+                            kind: BuildRuntimeDependencyExportKind::Step,
+                        }
+                    }
+                    "export_output" => {
+                        let target_name = match fields.iter().find(|field| field.name == "output") {
+                            Some(field) => match &field.value {
+                                AstNode::Identifier { name, .. } => {
+                                    match self.scope.get(name.as_str()) {
+                                        Some(ExecValue::GeneratedFile { name, .. }) => name.clone(),
+                                        _ => return Err(self.invalid_config(
+                                            method,
+                                            "build.export_output requires handle field 'output'",
+                                        )),
+                                    }
+                                }
+                                _ => {
+                                    return Err(self.invalid_config(
+                                        method,
+                                        "build.export_output requires handle field 'output'",
+                                    ))
+                                }
+                            },
+                            None => {
+                                return Err(self.invalid_config(
+                                    method,
+                                    "build.export_output requires handle field 'output'",
+                                ))
+                            }
+                        };
+                        BuildRuntimeDependencyExport {
+                            name: export_name,
+                            target_name,
+                            kind: BuildRuntimeDependencyExportKind::GeneratedOutput,
+                        }
+                    }
+                    _ => return Err(self.unsupported(method)),
+                };
+                self.record_dependency_export(method, export)?;
+                Ok(Some(receiver))
             }
             ExecValue::Build if method == "graph" => {
                 let [] = args else {
@@ -103,11 +298,13 @@ impl BuildBodyExecutor {
                     "generated" => BuildRuntimeDependencyQueryKind::GeneratedOutput,
                     _ => return Err(self.unsupported(method)),
                 };
-                self.output.dependency_queries.push(BuildRuntimeDependencyQuery {
-                    dependency_alias: alias.clone(),
-                    query_name: query_name.clone(),
-                    kind,
-                });
+                self.output
+                    .dependency_queries
+                    .push(BuildRuntimeDependencyQuery {
+                        dependency_alias: alias.clone(),
+                        query_name: query_name.clone(),
+                        kind,
+                    });
                 let result = match method {
                     "module" => ExecValue::DependencyModule { alias, query_name },
                     "artifact" => ExecValue::DependencyArtifact { alias, query_name },
@@ -320,9 +517,9 @@ impl BuildBodyExecutor {
                 Ok(Some(receiver))
             }
 
-            ExecValue::Step { .. }
-            | ExecValue::Install { .. }
-            | ExecValue::Dependency { .. } => Err(self.unsupported(method)),
+            ExecValue::Step { .. } | ExecValue::Install { .. } | ExecValue::Dependency { .. } => {
+                Err(self.unsupported(method))
+            }
 
             _ => Ok(None),
         }

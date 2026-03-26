@@ -204,13 +204,30 @@ var dep = build.add_dep({
 Dependency handles query already-declared package dependencies. They do not add
 new graph mutations themselves.
 
-The exposed surface is projected deterministically from the dependency package:
+The default surface is still projected deterministically from the dependency
+package:
 
 - ordinary package source roots
 - named graph modules
 - installed artifacts
 - named steps
 - generated outputs
+
+Packages can now narrow and rename the build-facing part of that surface
+explicitly from their own `build.fol`:
+
+```fol
+var build = .build();
+var graph = build.graph();
+var codec = graph.add_module({ name = "codec", root = "src/codec.fol" });
+var lib = graph.add_static_lib({ name = "json", root = "src/main.fol" });
+
+build.export_module({ name = "api", module = codec });
+build.export_artifact({ name = "runtime", artifact = lib });
+```
+
+When explicit exports exist, dependency-handle lookups prefer those exported
+names over accidental projection.
 
 Import resolution still follows the current alias-projection model under
 `.fol/pkg/<alias>`. Dependency handles do not replace ordinary package imports;

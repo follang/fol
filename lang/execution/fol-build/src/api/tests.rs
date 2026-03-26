@@ -2,9 +2,9 @@
 mod tests {
     use super::super::{
         validate_build_name, BuildApi, BuildApiError, BuildApiNameError, BuildOptionValue,
-        CopyFileRequest, DependencyArgValue, DependencyRequest, ExecutableRequest, InstallArtifactRequest,
-        InstallDirRequest, InstallFileRequest, OutputHandle, OutputHandleKind,
-        OutputHandleLocator, RunRequest, SharedLibraryRequest,
+        CopyFileRequest, DependencyArgValue, DependencyRequest, ExecutableRequest,
+        InstallArtifactRequest, InstallDirRequest, InstallFileRequest, OutputHandle,
+        OutputHandleKind, OutputHandleLocator, RunRequest, SharedLibraryRequest,
         StandardOptimizeRequest, StandardTargetRequest, StaticLibraryRequest, StepRequest,
         TestArtifactRequest, UserOptionRequest, WriteFileRequest,
     };
@@ -388,6 +388,7 @@ mod tests {
                 evaluation_mode: Some(DependencyBuildEvaluationMode::Lazy),
                 surface: Some(DependencyBuildSurface {
                     alias: "logtiny".to_string(),
+                    exposure: crate::DependencyBuildExposure::default(),
                     modules: vec![DependencyModuleSurface {
                         name: "root".to_string(),
                         source_namespace: "logtiny::src".to_string(),

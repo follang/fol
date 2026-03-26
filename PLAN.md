@@ -1,44 +1,58 @@
-# Build-System Gap Plan
+# Zig Gap Round 2 Plan
 
-This plan covers the next build-system round after the current one-file
-`build.fol` model.
+This plan defines the next build-system round after the completed:
 
-Goal:
+- `.build().meta(...)`
+- `.build().add_dep(...)`
+- `.build().graph()`
+- dependency handles
+- unified generated-output handles
+- explicit dependency arg forwarding
+- install-prefix projection
 
-- keep the current FOL-first build surface
-- do not copy Zig mechanically
-- add the highest-value capabilities that Zig already proves out
-- avoid parallel legacy paths
+The goal of this round is to close the next set of gaps that still separate
+FOL build from the high-value parts of Zig's build system.
 
-Primary targets for this round:
+This plan is based on:
 
-1. public dependency handles from `.build().add_dep(...)`
-2. first-class generated output / lazy-path style handles
-3. per-dependency option forwarding
-4. stronger step execution and cache semantics
-5. cleaner install/output-prefix model
+- an actual repo scan of the current build surface and tests
+- the current FOL build docs under `book/src/055_build`
+- the official Zig build-system docs and release-note material on dependency
+  access, build options, install prefix separation, and lazy path usage
 
-This plan is grounded in the current implementation seams:
+Grounding inside this repo:
 
 - build API: `lang/execution/fol-build/src/api/build_api.rs`
-- build handle types: `lang/execution/fol-build/src/api/types.rs`
-- semantic surface: `lang/execution/fol-build/src/semantic.rs`
+- build API types: `lang/execution/fol-build/src/api/types.rs`
+- dependency surface model: `lang/execution/fol-build/src/dependency.rs`
+- semantic registry: `lang/execution/fol-build/src/semantic.rs`
 - graph execution: `lang/execution/fol-build/src/executor/graph_methods.rs`
 - handle execution: `lang/execution/fol-build/src/executor/handle_methods.rs`
-- build source evaluation: `lang/execution/fol-build/src/eval/source.rs`
-- step planning/cache model: `lang/execution/fol-build/src/step.rs`
-- dependency surface model: `lang/execution/fol-build/src/dependency.rs`
-- frontend fetch/build routing: `lang/tooling/fol-frontend/src/fetch.rs`
-- frontend compile resolver config: `lang/tooling/fol-frontend/src/compile/mod.rs`
-- current build docs: `book/src/055_build/*.md`
+- build evaluation from source: `lang/execution/fol-build/src/eval/source.rs`
+- build plan replay: `lang/execution/fol-build/src/eval/plan.rs`
+- step/cache/report model: `lang/execution/fol-build/src/step.rs`
+- frontend build routing: `lang/tooling/fol-frontend/src/build_route/mod.rs`
+- package preparation: `lang/compiler/fol-package/src/session/mod.rs`
+- current examples and integration tests:
+  - `examples/build_*`
+  - `test/integration_tests/integration_editor_and_build.rs`
+
+## Primary Targets
+
+1. make dependency exposure explicit instead of only auto-projected
+2. finish the path-handle model so source files and directories are first-class
+3. expose public dependency evaluation modes (`eager`, `lazy`, `on-demand`)
+4. improve step/help ergonomics with real step descriptions and better default-step UX
+5. add a first serious system-integration surface
+6. harden docs/examples/editor/tests around the final public build shape
 
 ## Design Decisions
 
-These should be treated as fixed unless a better design is chosen explicitly.
+These decisions are part of the plan unless replaced deliberately.
 
-### 1. Keep `.build()` as the top-level public entry
+### 1. Keep `.build()` as the only top-level build entry
 
-Do not reintroduce public `Graph` or `Build` type names.
+Do not reintroduce public `Graph`, `Build`, or manifest files.
 
 Public shape stays:
 
@@ -46,417 +60,444 @@ Public shape stays:
 pro[] build(): non = {
     var build = .build();
     build.meta({ name = "app", version = "0.1.0" });
-    build.add_dep({ alias = "logtiny", source = "git", target = "git+https://..." });
     var graph = build.graph();
 }
 ```
 
-### 2. `.build().add_dep(...)` should return a real dependency handle
+### 2. Dependency handles should expose declared exports, not only implicit projections
 
-Current internal machinery already supports dependency handles and queries.
-The public contract should become:
+Today dependency handles query a deterministic projected surface:
 
-```fol
-var logtiny = build.add_dep({
-    alias = "logtiny",
-    source = "git",
-    target = "git+https://github.com/bresilla/logtiny.git",
-});
-```
+- modules
+- artifacts
+- steps
+- generated outputs
+- source roots
 
-and later:
+That is useful, but still too implicit.
 
-```fol
-var logtiny_mod = logtiny.module("logtiny");
-var logtiny_lib = logtiny.artifact("logtiny");
-var logtiny_gen = logtiny.generated("bindings");
-```
+The next public model should let the dependency package declare what it exposes
+for build consumption.
 
-### 3. Add a unified path/output handle family
+The chosen direction for this plan:
 
-Zig uses `LazyPath`. FOL should not copy the name automatically, but it needs
-the same capability class:
+- keep deterministic fallback projection while building the new model
+- but move the public examples/docs/tests toward explicit export declarations
+- end state should prefer explicit export names over accidental projection
 
-- source path from package root
-- generated file from `write_file`
-- copied file from `copy_file`
-- captured stdout from run/system-tool/codegen
+### 3. Path handles should cover both generated and source-backed paths
+
+Today `OutputHandle` unifies:
+
+- `write_file`
+- `copy_file`
+- `run.capture_stdout`
+- dependency generated outputs
+
+But plain source paths and directories are still mostly strings.
+
+The next model should introduce one higher-level path handle family that can
+represent:
+
+- source file under package root
+- source directory under package root
+- generated file
+- copied file
+- captured stdout
 - dependency generated output
+- dependency exported source file/dir, if exposed
 
-The handle should compose across graph methods and handle methods.
+This is the FOL equivalent of the capability Zig gets from `LazyPath`,
+without copying the name blindly.
 
-### 4. Dependency forwarding must stay explicit
+### 4. Dependency evaluation mode should become a real public config field
 
-Do not auto-forward target/optimize/user options to dependencies.
+The repo already has:
 
-Public style should be explicit, for example:
+- `eager`
+- `lazy`
+- `on-demand`
 
-```fol
-var target = graph.standard_target();
-var optimize = graph.standard_optimize();
+internally in `DependencyBuildEvaluationMode`, but the public `.build().add_dep`
+surface does not yet expose them cleanly.
 
-var dep = build.add_dep({
-    alias = "json",
-    source = "pkg",
-    target = "json",
-    args = {
-        target = target,
-        optimize = optimize,
-        use_fast_parser = true,
-    },
-});
-```
+This round makes those public.
 
-### 5. Installation/output must remain user-directed, not hardcoded by package
+### 5. Step descriptions are worth adding now
 
-FOL should move closer to Zig’s separation of cache vs install prefix.
+Zig's `zig build --help` is useful because steps are not just names; they also
+have descriptions and user-facing meaning.
 
-The package author should declare what gets installed.
-The user/tool should choose where it lands.
+FOL should add:
 
-### 6. No compatibility layer for old surface
+- optional step description
+- clearer default-step reporting
+- better CLI/help surfacing
 
-If a new dependency/output/install shape is chosen:
+### 6. System integration should start narrow and typed
+
+Do not jump directly to a giant native-toolchain DSL.
+
+Start with typed, explicit public surfaces for:
+
+- system commands/tools
+- environment values
+- optionally system libraries / pkg-config style requests
+
+If a system-library surface is added, it must be explicit and typed, not a
+catch-all stringly escape hatch.
+
+### 7. No legacy shims
+
+If a new export/path/step/help/system surface replaces an older ad hoc shape:
 
 - remove old docs
-- remove fallback parsing
-- remove dual surface
+- remove obsolete helper wording
+- do not keep dual public guidance
 
-## Epoch 1: Freeze The Public Direction
+## Epoch 1: Freeze The New Public Direction
 
-### Slice 1 [complete]
+### Slice 1 (complete)
 
-- audit current build docs and tests for stale `.graph()`-first examples
-- record the intended public dependency/output story in docs comments
+- audit current docs/examples/tests for the next gaps:
+  - dependency exports are still described as only projected
+  - source paths are still string-based
+  - dependency evaluation modes are still mostly internal
+  - steps do not have descriptions/help-grade output
+  - system integration is still underpowered
 - no behavior change
 
-### Slice 2 [complete]
+### Slice 2 (complete)
 
-- add a book note comparing current FOL build goals against:
-  - dependency handles
+- add a short build-architecture note in the book describing the next public
+  layers:
+  - `.build().add_dep(... mode = ...)`
+  - explicit dependency exports
+  - path handles
+  - step descriptions
+  - system integration handles
+- keep this repo-specific, not a generic Zig essay
+
+### Slice 3 (complete)
+
+- record explicit non-goals for this round:
+  - no source-level build manifest file
+  - no public `Graph` type name
+  - no compatibility API for replaced string-only helpers
+  - no fake parallel execution claims
+
+## Epoch 2: Add Explicit Dependency Export Declarations
+
+### Slice 4 (complete)
+
+- inventory how dependency surfaces are projected today from prepared packages
+- document exactly which pieces are implicit today:
+  - source roots
+  - modules
+  - artifacts
+  - steps
   - generated outputs
-  - explicit dependency args
-  - install prefixes
-- keep this repo-facing, not a generic Zig essay
 
-### Slice 3 [complete]
+### Slice 5 (complete)
 
-- add a top-level architecture note for build surface layering:
-  - `.build()`
-  - `build.meta`
-  - `build.add_dep`
-  - `build.graph`
-  - dependency handles
-  - output handles
+- design one explicit export declaration surface in `build.fol`
+- recommended direction:
+  - export methods on `build` or `graph`, not package metadata
+  - examples:
+    - `build.export_module({ name = "core", module = lib_mod })`
+    - `build.export_artifact({ name = "corelib", artifact = lib })`
+    - `build.export_step({ name = "check", step = check })`
+    - `build.export_output({ name = "bindings", output = generated })`
+- keep names concise and symmetric with the current build API
 
-## Epoch 2: Promote Dependency Handles To The Public Surface
+### Slice 6 (complete)
 
-### Slice 4 [complete]
+- add semantic signatures for explicit dependency export methods
+- return values should remain chainable or `non` as appropriate
+- make receiver placement coherent with the existing `.build()` layering
 
-- extend `build.add_dep({...})` executor path so it returns a structured
-  dependency handle intentionally, not just metadata side-effects
-- tighten tests around returned dependency values
+### Slice 7 (complete)
 
-### Slice 5 [complete]
+- add runtime representation for explicitly exported dependency surfaces
+- keep export names separate from projected/internal names
 
-- define public semantic signatures for dependency handle methods:
-  - `module(name)`
-  - `artifact(name)`
-  - `step(name)`
-  - `generated(name)`
-- wire them into semantic registries
+### Slice 8 (complete)
 
-### Slice 6 [complete]
+- wire export evaluation through the build executor
+- exporting a handle should record stable surface metadata
 
-- expose dependency handles in build docs with one simple package example
-- document that these reflect exposed surfaces from the dependency package
+### Slice 9 (complete)
 
-### Slice 7 [complete]
+- package preparation should persist explicit exported surfaces on formal packages
+- keep deterministic behavior when no explicit export exists yet
 
-- add resolver/typecheck coverage for dependency-handle method calls inside
-  `build.fol`
-- make failures precise for unknown module/artifact/step/generated names
+### Slice 10 (complete)
 
-### Slice 8 [complete]
+- dependency handles should prefer explicit exports when present
+- fall back to current projection only where required by this transition round
 
-- harden executor and runtime query recording for dependency-handle lookups
-- ensure all dependency queries preserve alias + requested name + kind
+### Slice 11
 
-### Slice 9 [complete]
+- add precise diagnostics for:
+  - duplicate export names
+  - export kind/handle mismatch
+  - querying names that are not exported
 
-- add an end-to-end fixture where a dependency is:
-  - declared via `build.add_dep`
-  - queried via `dep.module(...)` or `dep.generated(...)`
-  - fed back into graph operations
+### Slice 12 (complete)
 
-## Epoch 3: Build A Unified Output Handle Model
+- add build-eval tests for explicit export declarations and consumption
 
-### Slice 10 [complete]
+### Slice 13
 
-- inventory current output-like values:
-  - `write_file`
-  - `copy_file`
-  - `run.capture_stdout`
-  - codegen outputs
+- add integration tests showing one package exporting:
+  - module
+  - artifact
+  - step
+  - generated output
+  and another package consuming those through dependency handles
+
+## Epoch 3: Complete The Path Handle Model
+
+### Slice 14
+
+- audit current path-like values:
+  - `graph.path_from_root(...)`
+  - strings passed to `copy_file`
+  - strings passed to `install_file`
+  - strings passed to `install_dir`
+  - generated output handles
   - dependency generated outputs
-  - source-root-relative file references
-- define one canonical internal handle family
 
-### Slice 11 [complete]
+### Slice 15
 
-- add explicit API/types for output handles in
+- define a new public path-handle family above current `OutputHandle`
+- recommended family members:
+  - source file
+  - source dir
+  - generated output
+  - dependency generated output
+
+### Slice 16
+
+- add API/types for source file and source dir handles in
   `lang/execution/fol-build/src/api/types.rs`
-- keep names repo-appropriate; avoid blindly copying `LazyPath`
 
-### Slice 12 [complete]
+### Slice 17
 
-- make `graph.write_file(...)` and `graph.copy_file(...)` return the unified
-  output handle instead of ad hoc generated-file values
+- make `graph.path_from_root(...)` return a source-file handle instead of a raw string
+- if necessary, split into:
+  - `graph.file_from_root(...)`
+  - `graph.dir_from_root(...)`
+  and delete the ambiguous old path form
 
-### Slice 13 [complete]
+### Slice 18
 
-- make `run.capture_stdout()` return the same unified output handle
-- ensure stdout capture is compatible with downstream graph consumers
+- update `graph.copy_file(...)` so `source` can accept a source-file handle
+  instead of only a raw string
 
-### Slice 14 [complete]
+### Slice 19
 
-- make dependency `generated(...)` return the same unified output handle class
+- update `graph.install_file(...)` so it accepts:
+  - source-file handle
+  - generated-output handle
+  and rejects unrelated values exactly
 
-### Slice 15 [complete]
+### Slice 20
 
-- add graph methods that accept output handles where path-like inputs make
-  sense today:
-  - `install_file`
-  - run file args
-  - artifact generated attachments
+- update `graph.install_dir(...)` so it accepts a source-dir handle instead of
+  only a raw string path
 
-### Slice 16 [complete]
+### Slice 21
 
-- add source-eval tests proving output handles can flow through local helpers
-  without degrading to strings
+- update `run.add_file_arg(...)` to accept source-file handles where sensible
 
-### Slice 17 [complete]
+### Slice 22
 
-- add book chapter section for output-handle composition with examples
+- keep generated-output composition stable after the path-handle expansion
 
-## Epoch 4: Explicit Dependency Argument Forwarding
+### Slice 23
 
-### Slice 18 [complete]
+- add exact diagnostics for:
+  - file/dir kind mismatch
+  - passing dir handle where file handle is required
+  - passing arbitrary scalar where a path handle is required
 
-- extend dependency request schema to accept `args = { ... }`
-- support scalar values first:
-  - `bool`
-  - `int`
-  - `str`
-  - option handles for target/optimize/path-like values
+### Slice 24
 
-### Slice 19 [complete]
+- add build-eval and integration tests for:
+  - source file handles
+  - source dir handles
+  - mixed source/generated composition
 
-- add semantic typing for dependency arg records
-- reject unknown field/value shapes cleanly
+## Epoch 4: Make Dependency Evaluation Mode Public
 
-### Slice 20 [complete]
+### Slice 25
 
-- thread dependency args through:
-  - build evaluation operations
-  - dependency runtime representation
-  - fetch/preparation structures if needed
+- extend `.build().add_dep({...})` to accept `mode`
+- public accepted values:
+  - `eager`
+  - `lazy`
+  - `on-demand`
 
-### Slice 21 [complete]
+### Slice 26
 
-- define how forwarded args influence dependency build evaluation:
-  - target
-  - optimize
-  - dependency-specific user options
+- add semantic typing and exact config diagnostics for dependency mode
 
-### Slice 22 [complete]
+### Slice 27
 
-- add package-loading tests for:
-  - forwarded target/optimize
-  - forwarded user bool/string/path/int options
-  - missing required dependency options
+- thread public mode into dependency request/runtime/preparation structures
 
-### Slice 23 [complete]
+### Slice 28
 
-- add book examples showing explicit forwarding
-- state clearly that nothing is implicitly inherited
+- define frontend/package semantics for each mode:
+  - when it is fetched
+  - when it is prepared
+  - when it is fully evaluated
+- document this honestly if the runtime still behaves partly eagerly underneath
 
-## Epoch 5: Tighten Dependency Surface Exposure
+### Slice 29
 
-### Slice 24 [complete]
+- add tests for public dependency mode acceptance and exact diagnostics
 
-- define what a dependency exposes by default:
-  - package source roots
-  - generated outputs
-  - installed artifacts
-  - named graph modules
-  - named steps
+### Slice 30
 
-### Slice 25 [complete]
+- add at least one example package that uses mixed dependency modes
 
-- make dependency surface projection deterministic and testable
-- remove ad hoc alias assumptions
+## Epoch 5: Improve Step Help And User-Facing Step Ergonomics
 
-### Slice 26 [complete]
+### Slice 31
 
-- decide whether imports should continue to resolve by alias projection under
-  `.fol/pkg/<alias>` or instead through a richer exposed-surface registry
-- document the chosen model and remove the unused one
+- extend `graph.step(...)` to accept an optional description
+- keep old no-description shape only if it is the same canonical call form;
+  otherwise replace it directly
 
-### Slice 27 [complete]
+### Slice 32
 
-- add regression tests for mixed local/pkg/git dependency exposure
-- include at least one imported generated-output case
+- persist step descriptions in graph/runtime/step-report data
 
-## Epoch 6: Strengthen Step Execution And Cache Semantics
+### Slice 33
 
-### Slice 28 [complete]
+- teach frontend summaries and `build --help`-style output to show:
+  - step name
+  - default-step kind if any
+  - description if present
 
-- audit what step cache keys currently model vs what frontend/backend actually
-  reuse
-- document the gap
+### Slice 34
 
-### Slice 29 [complete]
+- improve diagnostics when the user asks for an unknown named step:
+  - show known steps
+  - prefer descriptions where available
 
-- make produced outputs participate in step cache-key semantics where relevant
-- generated file changes should invalidate dependent steps predictably
+### Slice 35
 
-### Slice 30 [complete]
+- add tests for described steps in:
+  - build eval
+  - build route planning
+  - CLI output/help reporting
 
-- add explicit step execution reporting that distinguishes:
-  - requested
-  - executed
-  - skipped-from-cache
-  - skipped-by-foreign-run-policy
+## Epoch 6: Add A Narrow System Integration Surface
 
-### Slice 31 [complete]
+### Slice 36
 
-- make run/system-tool/codegen step summaries expose enough detail for frontend
-  reporting and tests
+- audit current system tool / codegen support and define the smallest good
+  public expansion
 
-### Slice 32 [complete]
+### Slice 37
 
-- add tests covering deterministic step ordering and cache invalidation
-  boundaries for:
-  - options
-  - artifact roots
-  - generated outputs
-  - dependency args
+- choose one or both of these initial public surfaces:
+  - typed system-command environment/file arguments
+  - typed system-library request surface
 
-### Slice 33 [complete]
+### Slice 38
 
-- if execution is still fully serial, document that honestly and add a follow-up
-  note for future parallel execution
-- do not fake parallelism in docs
+- if system-library support is added, make it explicit and typed:
+  - library name
+  - mode/static-shared preference if any
+  - provider strategy if any
+- do not add a vague stringly escape hatch
 
-## Epoch 7: Install Prefix And Output Layout
+### Slice 39
 
-### Slice 34 [complete]
+- wire the chosen system integration requests into graph/runtime/step reporting
 
-- audit current build root, cache root, git cache root, and install semantics
-- define a clean public model:
-  - cache/build internals
-  - user-visible install prefix
+### Slice 40
 
-### Slice 35 [complete]
+- add tests and one standalone example for the new system integration surface
 
-- add frontend config for install prefix selection, separate from build/cache
-- make default behavior deterministic for local development
+## Epoch 7: Tighten Dependency Import/Build Surface Separation
 
-### Slice 36 [complete]
+### Slice 41
 
-- teach `graph.install`, `graph.install_file`, and `graph.install_dir` to
-  project into the chosen install prefix model instead of only implicit paths
+- now that explicit exports exist, re-audit the boundary between:
+  - source imports (`use alias: pkg = {...}`)
+  - build-surface dependency handle queries
+- document the exact separation again
 
-### Slice 37 [complete]
+### Slice 42
 
-- add integration coverage verifying install roots can move without changing
-  build graph source
+- remove obsolete dependency projection code or assumptions that are superseded
+  by explicit exports
 
-### Slice 38 [complete]
+### Slice 43
 
-- update docs to match the install model and explicitly distinguish:
-  - build cache
-  - fetched package store
-  - install outputs
+- add negative tests proving:
+  - exported build surfaces do not silently change source import rules
+  - source imports do not silently expose non-exported build surfaces
 
-## Epoch 8: Reduce Ad Hoc Stringly Config Shapes
+## Epoch 8: Examples And Docs
 
-### Slice 39 [complete]
+### Slice 44
 
-- review artifact/dependency config records for fields still parsed mostly as
-  loose strings
-- identify where typed handles should replace strings
+- add one standalone example focused on explicit dependency exports
 
-### Slice 40 [complete]
+### Slice 45
 
-- improve dependency config validation:
-  - `source`
-  - `target`
-  - `args`
-  - alias rules
+- add one standalone example focused on source-path handles
 
-### Slice 41 [complete]
+### Slice 46
 
-- improve artifact config validation for:
-  - root source
-  - fol model
-  - target/optimize handles
+- add one standalone example focused on dependency mode selection
 
-### Slice 42 [complete]
+### Slice 47
 
-- add exact diagnostics for unsupported combinations instead of generic
-  “unsupported build method” failures
+- add one standalone example focused on described custom steps
 
-## Epoch 9: Docs, Examples, And Hardening
+### Slice 48
 
-### Slice 43 [complete]
+- update the build book sections:
+  - `100_build_file.md`
+  - `200_graph_api.md`
+  - `300_handle_api.md`
+  - `400_options.md`
+  - `900_direction.md`
+- remove wording that still describes these as only future direction if they
+  land in this round
 
-- add one standalone example focused on dependency handles
+## Epoch 9: Editor And Tooling Audit
 
-### Slice 44 [complete]
+### Slice 49
 
-- add one standalone example focused on generated-output handle composition
+- audit editor/LSP completion and tree-sitter sync for:
+  - new build export methods
+  - new path-handle methods
+  - dependency mode field names
+  - step description config fields
+  - system integration surface names
+- add regression tests for the new build-only completion items
 
-### Slice 45 [complete]
+## Epoch 10: Final Cleanup
 
-- add one standalone example focused on dependency arg forwarding
-
-### Slice 46 [complete]
-
-- add one standalone example focused on install prefix behavior
-
-### Slice 47 [complete]
-
-- add negative examples for:
-  - unknown dependency surface queries
-  - invalid dependency args
-  - invalid output-handle usage
-  - invalid install projections
-
-## Epoch 10: Cleanup And Final Audit
-
-### Slice 48 [complete]
-
-- remove stale internal `.graph()` wording from build diagnostics/tests/docs
-  that should now speak in terms of `.build()` and public handles
-
-### Slice 49 [complete]
-
-- audit editor/LSP completion for the new build-surface methods and handle
-  member names
-
-### Slice 50 [complete]
+### Slice 50
 
 - final repo-wide scan for:
   - stale build docs
-  - dead test helpers
-  - obsolete dependency projection code
-  - duplicate output-handle representations
+  - dead helpers from the old projection-only model
+  - duplicate path-handle representations
+  - stale example text that still teaches weaker surfaces
 
 ## Suggested Execution Order
 
-Recommended implementation order:
+Recommended order:
 
 1. Epoch 2
 2. Epoch 3
@@ -470,19 +511,22 @@ Recommended implementation order:
 
 Reason:
 
-- dependency handles are already half-present internally
-- output handles are the next biggest foundation
-- dependency args depend on both
-- install/output and cache reporting should come after the handle model is real
+- explicit dependency exports and full path handles are the biggest remaining
+  structural gaps
+- public dependency mode is already half-present internally
+- step/help improvements depend on the stabilized public graph surface
+- system integration should come after the handle model is clearer
+- docs/examples/editor work should lock the final surface after behavior lands
 
 ## Exit Criteria
 
-This plan is complete when:
+This round is complete when:
 
-- `.build().add_dep(...)` returns a first-class public dependency handle
-- dependency handles can query modules/artifacts/steps/generated outputs
-- generated outputs flow through one unified public handle model
-- dependency args can be forwarded explicitly and tested end to end
-- step/cache reporting is materially stronger and documented honestly
-- install/output layout is explicit and configurable
-- docs/examples reflect the final surface without fallback language
+- dependency-facing build surfaces can be exported explicitly by a dependency
+  package and queried predictably by consumers
+- source files and directories are first-class path handles instead of mostly
+  raw strings
+- dependency modes are public on `.build().add_dep({...})`
+- step descriptions show up in frontend/help/reporting
+- one narrow but real system integration surface exists and is tested
+- the book/examples/editor/tests all reflect the final public build API

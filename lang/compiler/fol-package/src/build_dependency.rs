@@ -31,25 +31,26 @@ pub fn project_dependency_surface(
     syntax: &ParsedPackage,
 ) -> Result<DependencyBuildSurface, PackageError> {
     let build_path = package_root.join("build.fol");
-    let (executor, body) = BuildBodyExecutor::from_file(&build_path).map_err(|error| {
-        PackageError::new(
-            PackageErrorKind::InvalidInput,
-            format!(
-                "package dependency surface projection could not parse build '{}': {}",
-                build_path.display(),
-                error
-            ),
-        )
-    })?
-    .ok_or_else(|| {
-        PackageError::new(
-            PackageErrorKind::InvalidInput,
-            format!(
-                "package dependency surface projection requires canonical build entry in '{}'",
-                build_path.display()
-            ),
-        )
-    })?;
+    let (executor, body) = BuildBodyExecutor::from_file(&build_path)
+        .map_err(|error| {
+            PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "package dependency surface projection could not parse build '{}': {}",
+                    build_path.display(),
+                    error
+                ),
+            )
+        })?
+        .ok_or_else(|| {
+            PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "package dependency surface projection requires canonical build entry in '{}'",
+                    build_path.display()
+                ),
+            )
+        })?;
     let exec_output = executor.execute(&body).map_err(|error| {
         PackageError::new(
             PackageErrorKind::InvalidInput,
@@ -104,7 +105,7 @@ pub fn project_dependency_surface(
     source_roots.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
     source_roots.dedup_by(|left, right| left.relative_path == right.relative_path);
 
-    let mut modules = exec_output
+    let mut projected_modules = exec_output
         .operations
         .iter()
         .filter_map(|operation| match &operation.kind {
@@ -115,10 +116,10 @@ pub fn project_dependency_surface(
             _ => None,
         })
         .collect::<Vec<_>>();
-    modules.sort_by(|left, right| left.name.cmp(&right.name));
-    modules.dedup_by(|left, right| left.name == right.name);
+    projected_modules.sort_by(|left, right| left.name.cmp(&right.name));
+    projected_modules.dedup_by(|left, right| left.name == right.name);
 
-    let mut artifacts = fol_build::project_graph_artifacts(&plan.graph)
+    let mut projected_artifacts = fol_build::project_graph_artifacts(&plan.graph)
         .into_iter()
         .map(|artifact| DependencyArtifactSurface {
             name: artifact.name,
@@ -134,10 +135,10 @@ pub fn project_dependency_surface(
             },
         })
         .collect::<Vec<_>>();
-    artifacts.sort_by(|left, right| left.name.cmp(&right.name));
-    artifacts.dedup_by(|left, right| left.name == right.name);
+    projected_artifacts.sort_by(|left, right| left.name.cmp(&right.name));
+    projected_artifacts.dedup_by(|left, right| left.name == right.name);
 
-    let mut steps = fol_build::project_graph_steps(&plan.graph)
+    let mut projected_steps = fol_build::project_graph_steps(&plan.graph)
         .into_iter()
         .map(|step| DependencyStepSurface {
             step_kind: step
@@ -147,10 +148,10 @@ pub fn project_dependency_surface(
             name: step.name,
         })
         .collect::<Vec<_>>();
-    steps.sort_by(|left, right| left.name.cmp(&right.name));
-    steps.dedup_by(|left, right| left.name == right.name);
+    projected_steps.sort_by(|left, right| left.name.cmp(&right.name));
+    projected_steps.dedup_by(|left, right| left.name == right.name);
 
-    let mut generated_outputs = exec_output
+    let mut projected_generated_outputs = exec_output
         .generated_files
         .iter()
         .map(|generated| DependencyGeneratedOutputSurface {
@@ -158,11 +159,166 @@ pub fn project_dependency_surface(
             relative_path: generated.relative_path.clone(),
         })
         .collect::<Vec<_>>();
-    generated_outputs.sort_by(|left, right| left.name.cmp(&right.name));
-    generated_outputs.dedup_by(|left, right| left.name == right.name);
+    projected_generated_outputs.sort_by(|left, right| left.name.cmp(&right.name));
+    projected_generated_outputs.dedup_by(|left, right| left.name == right.name);
+
+    let modules = if exec_output
+        .dependency_exports
+        .iter()
+        .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Module)
+    {
+        let projected = projected_modules
+            .into_iter()
+            .map(|module| (module.name.clone(), module))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        exec_output
+            .dependency_exports
+            .iter()
+            .filter(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Module)
+            .map(|export| {
+                let module = projected.get(&export.target_name).ok_or_else(|| {
+                    PackageError::new(
+                        PackageErrorKind::InvalidInput,
+                        format!(
+                            "package dependency surface projection could not resolve exported module '{}' from '{}'",
+                            export.target_name,
+                            build_path.display()
+                        ),
+                    )
+                })?;
+                Ok(DependencyModuleSurface {
+                    name: export.name.clone(),
+                    source_namespace: module.source_namespace.clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, PackageError>>()?
+    } else {
+        projected_modules
+    };
+
+    let artifacts = if exec_output
+        .dependency_exports
+        .iter()
+        .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Artifact)
+    {
+        let projected = projected_artifacts
+            .into_iter()
+            .map(|artifact| (artifact.name.clone(), artifact))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        exec_output
+            .dependency_exports
+            .iter()
+            .filter(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Artifact)
+            .map(|export| {
+                let artifact = projected.get(&export.target_name).ok_or_else(|| {
+                    PackageError::new(
+                        PackageErrorKind::InvalidInput,
+                        format!(
+                            "package dependency surface projection could not resolve exported artifact '{}' from '{}'",
+                            export.target_name,
+                            build_path.display()
+                        ),
+                    )
+                })?;
+                Ok(DependencyArtifactSurface {
+                    name: export.name.clone(),
+                    artifact_kind: artifact.artifact_kind.clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, PackageError>>()?
+    } else {
+        projected_artifacts
+    };
+
+    let steps = if exec_output
+        .dependency_exports
+        .iter()
+        .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Step)
+    {
+        let projected = projected_steps
+            .into_iter()
+            .map(|step| (step.name.clone(), step))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        exec_output
+            .dependency_exports
+            .iter()
+            .filter(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Step)
+            .map(|export| {
+                let step = projected.get(&export.target_name).ok_or_else(|| {
+                    PackageError::new(
+                        PackageErrorKind::InvalidInput,
+                        format!(
+                            "package dependency surface projection could not resolve exported step '{}' from '{}'",
+                            export.target_name,
+                            build_path.display()
+                        ),
+                    )
+                })?;
+                Ok(DependencyStepSurface {
+                    name: export.name.clone(),
+                    step_kind: step.step_kind.clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, PackageError>>()?
+    } else {
+        projected_steps
+    };
+
+    let generated_outputs = if exec_output
+        .dependency_exports
+        .iter()
+        .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::GeneratedOutput)
+    {
+        let projected = projected_generated_outputs
+            .into_iter()
+            .map(|output| (output.name.clone(), output))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        exec_output
+            .dependency_exports
+            .iter()
+            .filter(|export| {
+                export.kind == fol_build::BuildRuntimeDependencyExportKind::GeneratedOutput
+            })
+            .map(|export| {
+                let output = projected.get(&export.target_name).ok_or_else(|| {
+                    PackageError::new(
+                        PackageErrorKind::InvalidInput,
+                        format!(
+                            "package dependency surface projection could not resolve exported output '{}' from '{}'",
+                            export.target_name,
+                            build_path.display()
+                        ),
+                    )
+                })?;
+                Ok(DependencyGeneratedOutputSurface {
+                    name: export.name.clone(),
+                    relative_path: output.relative_path.clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, PackageError>>()?
+    } else {
+        projected_generated_outputs
+    };
 
     Ok(DependencyBuildSurface {
         alias: alias.to_string(),
+        exposure: DependencyBuildExposure {
+            modules_explicit: exec_output
+                .dependency_exports
+                .iter()
+                .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Module),
+            artifacts_explicit: exec_output
+                .dependency_exports
+                .iter()
+                .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Artifact),
+            steps_explicit: exec_output
+                .dependency_exports
+                .iter()
+                .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Step),
+            generated_outputs_explicit: exec_output.dependency_exports.iter().any(|export| {
+                export.kind == fol_build::BuildRuntimeDependencyExportKind::GeneratedOutput
+            }),
+        },
         modules,
         source_roots,
         artifacts,
@@ -174,7 +330,7 @@ pub fn project_dependency_surface(
 #[cfg(test)]
 mod tests {
     use super::{dependency_modules_from_exports, project_dependency_surface};
-    use crate::PreparedExportMount;
+    use crate::{DependencyBuildExposure, PreparedExportMount};
     use fol_parser::ast::AstParser;
     use fol_stream::FileStream;
     use std::fs;
@@ -234,14 +390,19 @@ mod tests {
             ),
         )
         .expect("build fixture should be written");
-        fs::write(root.join("src/root/main.fol"), "var[exp] answer: int = 42;\n")
-            .expect("source fixture should be written");
-        fs::write(root.join("src/root/codec.fol"), "var[exp] codec: int = 7;\n")
-            .expect("module fixture should be written");
+        fs::write(
+            root.join("src/root/main.fol"),
+            "var[exp] answer: int = 42;\n",
+        )
+        .expect("source fixture should be written");
+        fs::write(
+            root.join("src/root/codec.fol"),
+            "var[exp] codec: int = 7;\n",
+        )
+        .expect("module fixture should be written");
 
-        let mut stream =
-            FileStream::from_folder(root.to_str().expect("temp path should be utf-8"))
-                .expect("folder stream should open");
+        let mut stream = FileStream::from_folder(root.to_str().expect("temp path should be utf-8"))
+            .expect("folder stream should open");
         let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
         let mut parser = AstParser::new();
         let syntax = parser
@@ -252,6 +413,7 @@ mod tests {
             project_dependency_surface("json", &root, &syntax).expect("surface should project");
 
         assert_eq!(surface.alias, "json");
+        assert_eq!(surface.exposure, DependencyBuildExposure::default());
         assert_eq!(
             surface
                 .source_roots
@@ -261,7 +423,11 @@ mod tests {
             vec!["src/root"]
         );
         assert_eq!(
-            surface.modules.iter().map(|module| module.name.as_str()).collect::<Vec<_>>(),
+            surface
+                .modules
+                .iter()
+                .map(|module| module.name.as_str())
+                .collect::<Vec<_>>(),
             vec!["codec"]
         );
         assert_eq!(
@@ -281,6 +447,94 @@ mod tests {
                 .map(|output| output.name.as_str())
                 .collect::<Vec<_>>(),
             vec!["schema"]
+        );
+
+        fs::remove_dir_all(&root).expect("fixture root should be removable");
+    }
+
+    #[test]
+    fn projected_dependency_surface_prefers_explicit_exports_when_declared() {
+        let root = unique_temp_root("explicit_surface");
+        fs::create_dir_all(root.join("src")).expect("fixture root should exist");
+        fs::write(
+            root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"json\", version = \"1.0.0\" });\n",
+                "    var graph = build.graph();\n",
+                "    var codec = graph.add_module({ name = \"codec\", root = \"src/codec.fol\" });\n",
+                "    var app = graph.add_static_lib({ name = \"json\", root = \"src/main.fol\" });\n",
+                "    var schema = graph.write_file({ name = \"schema\", path = \"gen/schema.fol\", contents = \"ok\" });\n",
+                "    var docs = graph.step(\"docs\");\n",
+                "    build.export_module({ name = \"api\", module = codec });\n",
+                "    build.export_artifact({ name = \"runtime\", artifact = app });\n",
+                "    build.export_step({ name = \"check\", step = docs });\n",
+                "    build.export_output({ name = \"schema-api\", output = schema });\n",
+                "    return;\n",
+                "}\n",
+            ),
+        )
+        .expect("build fixture should be written");
+        fs::write(root.join("src/main.fol"), "var[exp] answer: int = 42;\n")
+            .expect("source fixture should be written");
+        fs::write(root.join("src/codec.fol"), "var[exp] codec: int = 7;\n")
+            .expect("module fixture should be written");
+
+        let mut stream = FileStream::from_folder(root.to_str().expect("temp path should be utf-8"))
+            .expect("folder stream should open");
+        let mut lexer = fol_lexer::lexer::stage3::Elements::init(&mut stream);
+        let mut parser = AstParser::new();
+        let syntax = parser
+            .parse_package(&mut lexer)
+            .expect("package syntax should parse");
+
+        let surface =
+            project_dependency_surface("json", &root, &syntax).expect("surface should project");
+
+        assert!(surface.exposure.modules_explicit);
+        assert!(surface.exposure.artifacts_explicit);
+        assert!(surface.exposure.steps_explicit);
+        assert!(surface.exposure.generated_outputs_explicit);
+        assert_eq!(
+            surface
+                .modules
+                .iter()
+                .map(|module| module.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["api"]
+        );
+        assert_eq!(
+            surface
+                .artifacts
+                .iter()
+                .map(|artifact| artifact.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["runtime"]
+        );
+        assert_eq!(
+            surface
+                .steps
+                .iter()
+                .map(|step| step.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["check"]
+        );
+        assert_eq!(
+            surface
+                .generated_outputs
+                .iter()
+                .map(|output| output.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["schema-api"]
+        );
+        assert_eq!(
+            surface
+                .source_roots
+                .iter()
+                .map(|root| root.relative_path.as_str())
+                .collect::<Vec<_>>(),
+            vec!["src"]
         );
 
         fs::remove_dir_all(&root).expect("fixture root should be removable");

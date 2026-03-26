@@ -52,9 +52,7 @@ pub(super) fn absorbed_build_workspace_fixture(label: &str) -> FrontendWorkspace
 #[test]
 fn workflow_mode_maps_package_build_modes_into_frontend_route_modes() {
     assert_eq!(
-        FrontendBuildWorkflowMode::from_package_build_mode(
-            fol_package::PackageBuildMode::Empty
-        ),
+        FrontendBuildWorkflowMode::from_package_build_mode(fol_package::PackageBuildMode::Empty),
         None
     );
     assert_eq!(
@@ -110,6 +108,7 @@ fn shared_graph_projection_helper_keeps_graph_steps_and_synthesizes_check() {
         artifacts: Vec::new(),
         generated_files: Vec::new(),
         dependencies: Vec::new(),
+        dependency_exports: Vec::new(),
         dependency_queries: Vec::new(),
         step_bindings: Vec::new(),
         result: fol_package::BuildEvaluationResult::new(
@@ -145,16 +144,25 @@ fn resolve_requested_step_execution_keeps_untargeted_non_std_models() {
     let resolved = super::super::resolve_requested_step_execution("run", &member_plans)
         .expect("untargeted routed run step should resolve");
 
-    assert_eq!(resolved.execution, super::super::FrontendStepExecutionKind::Run);
+    assert_eq!(
+        resolved.execution,
+        super::super::FrontendStepExecutionKind::Run
+    );
     assert!(resolved.selections.is_empty());
-    assert_eq!(resolved.available_models, vec![fol_backend::BackendFolModel::Core]);
+    assert_eq!(
+        resolved.available_models,
+        vec![fol_backend::BackendFolModel::Core]
+    );
 }
 
 #[test]
 fn workspace_route_model_guard_rejects_untargeted_non_std_models() {
     let error = super::super::ensure_std_workspace_route_models(
         "run",
-        &[fol_backend::BackendFolModel::Core, fol_backend::BackendFolModel::Alloc],
+        &[
+            fol_backend::BackendFolModel::Core,
+            fol_backend::BackendFolModel::Alloc,
+        ],
     )
     .expect_err("untargeted non-std routed run should be rejected");
 
@@ -167,22 +175,22 @@ fn workspace_route_model_guard_rejects_untargeted_non_std_models() {
 
 #[test]
 fn workspace_route_model_guard_accepts_untargeted_std_models() {
-    super::super::ensure_std_workspace_route_models(
-        "test",
-        &[fol_backend::BackendFolModel::Std],
-    )
-    .expect("untargeted std routed test should remain allowed");
+    super::super::ensure_std_workspace_route_models("test", &[fol_backend::BackendFolModel::Std])
+        .expect("untargeted std routed test should remain allowed");
 }
 
 #[test]
 fn semantic_member_planning_uses_graph_projected_build_run_and_check_steps() {
     let workspace = absorbed_build_workspace_fixture("compat_graph_plan");
 
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: workspace.members[0].root.clone(),
-        package_name: "app".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: workspace.members[0].root.clone(),
+            package_name: "app".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("semantic member planning should succeed");
 
     assert!(plan.steps.iter().any(|step| step.name == "build"));
@@ -233,7 +241,10 @@ fn requested_workspace_step_prefers_explicit_override_and_falls_back_to_command_
     let build = crate::CodeSubcommand::Build(crate::BuildCommand::default());
     let run = crate::CodeSubcommand::Run(crate::RunCommand::default());
 
-    assert_eq!(super::super::requested_workspace_step(&build, None), "build");
+    assert_eq!(
+        super::super::requested_workspace_step(&build, None),
+        "build"
+    );
     assert_eq!(super::super::requested_workspace_step(&run, None), "run");
     assert_eq!(
         super::super::requested_workspace_step(&build, Some("docs")),
@@ -301,11 +312,7 @@ fn workspace_route_planner_rejects_old_build_members() {
     ));
     fs::create_dir_all(root.join("src")).unwrap();
     fs::write(root.join("build.fol"), "name: old\nversion: 0.1.0\n").unwrap();
-    fs::write(
-        root.join("build.fol"),
-        "var[] answer: int = 42;\n",
-    )
-    .unwrap();
+    fs::write(root.join("build.fol"), "var[] answer: int = 42;\n").unwrap();
 
     let error = plan_workspace_build_route(
         &FrontendWorkspace {
@@ -341,11 +348,7 @@ fn workspace_route_planner_rejects_broken_modern_builds() {
     ));
     fs::create_dir_all(root.join("src")).unwrap();
     fs::write(root.join("build.fol"), "name: modern\nversion: 0.1.0\n").unwrap();
-    fs::write(
-        root.join("build.fol"),
-        "pro[] build(): non = {\n",
-    )
-    .unwrap();
+    fs::write(root.join("build.fol"), "pro[] build(): non = {\n").unwrap();
 
     let error = plan_workspace_build_route(
         &FrontendWorkspace {
@@ -515,11 +518,14 @@ fn build_body_step_calls_flow_into_member_execution_plans() {
     )
     .unwrap();
 
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .unwrap();
 
     assert!(plan.steps.iter().any(|step| step.name == "docs"));
@@ -559,11 +565,14 @@ fn build_body_step_dependencies_are_accepted_during_member_planning() {
     )
     .unwrap();
 
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .unwrap();
 
     assert!(plan.steps.iter().any(|step| step.name == "gen"));
@@ -600,11 +609,14 @@ fn custom_build_steps_plan_as_build_execution() {
         "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("custom build-like step should plan successfully");
 
     let docs = plan

@@ -1,8 +1,7 @@
 use super::super::{
-    canonical_graph_construction_capabilities, evaluate_build_source,
-    BuildEvaluationBoundary, BuildEvaluationErrorKind, BuildEvaluationInputs,
-    BuildEvaluationRequest, BuildRuntimeCapabilityModel, BuildEvaluationResult,
-    EvaluatedBuildProgram,
+    canonical_graph_construction_capabilities, evaluate_build_source, BuildEvaluationBoundary,
+    BuildEvaluationErrorKind, BuildEvaluationInputs, BuildEvaluationRequest, BuildEvaluationResult,
+    BuildRuntimeCapabilityModel, EvaluatedBuildProgram,
 };
 use crate::graph::BuildGraph;
 use crate::option::{BuildOptionDeclarationSet, ResolvedBuildOptionSet};
@@ -139,7 +138,10 @@ fn build_source_evaluator_keeps_explicit_dependency_args_on_build_handles() {
         Some(&crate::DependencyArgValue::Int(4))
     );
     assert_eq!(
-        evaluated.evaluated.dependencies[0].args.get("target").map(String::as_str),
+        evaluated.evaluated.dependencies[0]
+            .args
+            .get("target")
+            .map(String::as_str),
         Some("thumbv7em-none-eabi")
     );
     assert_eq!(
@@ -157,7 +159,10 @@ fn build_source_evaluator_keeps_explicit_dependency_args_on_build_handles() {
         Some("false")
     );
     assert_eq!(
-        evaluated.evaluated.dependencies[0].args.get("flavor").map(String::as_str),
+        evaluated.evaluated.dependencies[0]
+            .args
+            .get("flavor")
+            .map(String::as_str),
         Some("strict")
     );
 }
@@ -399,16 +404,16 @@ fn build_source_evaluator_projects_install_destinations_under_selected_prefix() 
         .expect("build body should produce operations");
 
     let installs = evaluated.result.graph.installs();
-    assert!(installs
-        .iter()
-        .any(|install| install.name == "install" && install.projected_destination == "/opt/demo/bin/demo"));
+    assert!(installs.iter().any(|install| install.name == "install"
+        && install.projected_destination == "/opt/demo/bin/demo"));
     assert!(installs
         .iter()
         .any(|install| install.name == "generated-cfg"
             && install.projected_destination == "/opt/demo/config/generated.toml"));
     assert!(installs
         .iter()
-        .any(|install| install.name == "assets" && install.projected_destination == "/opt/demo/assets"));
+        .any(|install| install.name == "assets"
+            && install.projected_destination == "/opt/demo/assets"));
 }
 
 #[test]
@@ -969,6 +974,7 @@ fn evaluated_build_program_surface_keeps_runtime_metadata_and_graph_result() {
             args: std::collections::BTreeMap::new(),
             evaluation_mode: None,
         }],
+        dependency_exports: Vec::new(),
         dependency_queries: Vec::new(),
         step_bindings: vec![crate::runtime::BuildRuntimeStepBinding::new(
             "run",
@@ -981,6 +987,7 @@ fn evaluated_build_program_surface_keeps_runtime_metadata_and_graph_result() {
     assert_eq!(evaluated.artifacts.len(), 1);
     assert_eq!(evaluated.generated_files.len(), 1);
     assert_eq!(evaluated.dependencies.len(), 1);
+    assert!(evaluated.dependency_exports.is_empty());
     assert_eq!(evaluated.step_bindings.len(), 1);
     assert_eq!(evaluated.result.package_root, "/pkg");
 }

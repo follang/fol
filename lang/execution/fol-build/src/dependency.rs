@@ -1,11 +1,20 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DependencyBuildSurface {
     pub alias: String,
+    pub exposure: DependencyBuildExposure,
     pub modules: Vec<DependencyModuleSurface>,
     pub source_roots: Vec<DependencySourceRootSurface>,
     pub artifacts: Vec<DependencyArtifactSurface>,
     pub steps: Vec<DependencyStepSurface>,
     pub generated_outputs: Vec<DependencyGeneratedOutputSurface>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct DependencyBuildExposure {
+    pub modules_explicit: bool,
+    pub artifacts_explicit: bool,
+    pub steps_explicit: bool,
+    pub generated_outputs_explicit: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -114,6 +123,18 @@ impl DependencyBuildSurfaceSet {
 }
 
 impl DependencyBuildSurface {
+    pub fn projected(alias: impl Into<String>) -> Self {
+        Self {
+            alias: alias.into(),
+            exposure: DependencyBuildExposure::default(),
+            modules: Vec::new(),
+            source_roots: Vec::new(),
+            artifacts: Vec::new(),
+            steps: Vec::new(),
+            generated_outputs: Vec::new(),
+        }
+    }
+
     pub fn find_module(&self, name: &str) -> Option<&DependencyModuleSurface> {
         self.modules.iter().find(|module| module.name == name)
     }
@@ -137,10 +158,10 @@ impl DependencyBuildSurface {
 mod tests {
     use super::{
         DependencyArtifactSurface, DependencyArtifactSurfaceSet, DependencyBuildEvaluationMode,
-        DependencyBuildHandle, DependencyBuildSurface, DependencyBuildSurfaceSet,
-        DependencyGeneratedOutputSurface, DependencyGeneratedOutputSurfaceSet,
-        DependencyModuleSurface, DependencyModuleSurfaceSet, DependencySourceRootSurface,
-        DependencyStepSurface, DependencyStepSurfaceSet,
+        DependencyBuildExposure, DependencyBuildHandle, DependencyBuildSurface,
+        DependencyBuildSurfaceSet, DependencyGeneratedOutputSurface,
+        DependencyGeneratedOutputSurfaceSet, DependencyModuleSurface, DependencyModuleSurfaceSet,
+        DependencySourceRootSurface, DependencyStepSurface, DependencyStepSurfaceSet,
     };
 
     #[test]
@@ -155,6 +176,7 @@ mod tests {
         let mut set = DependencyBuildSurfaceSet::new();
         set.add(DependencyBuildSurface {
             alias: "logtiny".to_string(),
+            exposure: DependencyBuildExposure::default(),
             modules: vec![DependencyModuleSurface {
                 name: "logtiny".to_string(),
                 source_namespace: "logtiny::src".to_string(),
@@ -258,6 +280,7 @@ mod tests {
         let mut set = DependencyBuildSurfaceSet::new();
         set.add(DependencyBuildSurface {
             alias: "core".to_string(),
+            exposure: DependencyBuildExposure::default(),
             modules: Vec::new(),
             source_roots: Vec::new(),
             artifacts: Vec::new(),
@@ -276,6 +299,12 @@ mod tests {
     fn dependency_surface_lookups_find_named_members() {
         let surface = DependencyBuildSurface {
             alias: "core".to_string(),
+            exposure: DependencyBuildExposure {
+                modules_explicit: true,
+                artifacts_explicit: false,
+                steps_explicit: false,
+                generated_outputs_explicit: true,
+            },
             modules: vec![DependencyModuleSurface {
                 name: "root".to_string(),
                 source_namespace: "core::src".to_string(),
@@ -322,6 +351,19 @@ mod tests {
                 .map(|output| output.relative_path.as_str()),
             Some("gen/bindings.fol")
         );
+        assert!(surface.exposure.modules_explicit);
+        assert!(surface.exposure.generated_outputs_explicit);
+        assert!(!surface.exposure.artifacts_explicit);
         assert!(surface.find_module("missing").is_none());
+    }
+
+    #[test]
+    fn projected_dependency_surface_starts_without_explicit_exposure_flags() {
+        let surface = DependencyBuildSurface::projected("demo");
+
+        assert_eq!(surface.alias, "demo");
+        assert_eq!(surface.exposure, DependencyBuildExposure::default());
+        assert!(surface.modules.is_empty());
+        assert!(surface.source_roots.is_empty());
     }
 }

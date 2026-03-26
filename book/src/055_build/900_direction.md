@@ -53,7 +53,20 @@ That makes dependencies real build values instead of only package-loader data.
 The current dependency import model stays explicit:
 
 - ordinary source imports still resolve by alias projection under `.fol/pkg/<alias>`
-- dependency handles query the projected build-facing surface of that package
+- dependency handles query the build-facing surface of that package
+
+The next public layer on top of that is explicit exports from the dependency
+package itself:
+
+```fol
+build.export_module({ name = "api", module = codec });
+build.export_artifact({ name = "runtime", artifact = lib });
+build.export_step({ name = "check", step = docs });
+build.export_output({ name = "schema", output = bindings });
+```
+
+Projection remains the fallback during the transition, but explicit exports are
+the preferred public contract.
 
 This keeps source imports and build-surface queries separate instead of
 collapsing them into one implicit registry.
@@ -131,6 +144,8 @@ This direction does not mean:
 - collapsing package metadata back into YAML
 - making dependency behavior implicit
 - turning the graph API into a stringly catch-all
+- introducing a separate build manifest file
+- pretending step execution is parallel before it is
 
 The current design constraint remains:
 
