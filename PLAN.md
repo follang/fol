@@ -179,7 +179,7 @@ shape:
   - generated-directory workflows are still thin
 - no behavior change
 
-### Slice 2
+### Slice 2 (complete)
 
 - add a short book architecture note describing this round:
   - path exports

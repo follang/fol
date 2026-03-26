@@ -77,6 +77,28 @@ Use this section for:
 - artifact types, modules, and generated files
 - dependency handles and unified output handles
 
+## Near-Term Architecture
+
+The next build round is about extending the existing explicit surface, not
+replacing it.
+
+The intended layering is:
+
+- `build.add_dep({...})` declares a direct dependency and returns a dependency
+  handle
+- `build.export_*({...})` declares the build-facing surface a package chooses to
+  expose
+- `graph.file_from_root(...)` and `graph.dir_from_root(...)` remain the typed
+  source-path producers
+- broader path-oriented exports and dependency path queries sit on top of those
+  producers instead of collapsing back into raw string paths
+- dependency modes, install reporting, and system integration should become more
+  concrete without changing the top-level `.build()` structure
+
+This means the near-term additions should look like richer values and richer
+queries on top of the current build graph, not a new manifest format and not a
+public `Graph` or `Build` type.
+
 ## Standalone Examples
 
 These checked-in example packages exercise the current public build surface:
