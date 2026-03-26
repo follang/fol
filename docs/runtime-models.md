@@ -60,6 +60,22 @@ Choose `core` when:
 - arrays and plain records are enough
 - console/process services are not part of the contract
 
+Allowed example:
+
+```fol
+fun[] checksum(values: arr[int, 3]): int = {
+    return .len(values) + values[0];
+};
+```
+
+Forbidden example:
+
+```fol
+fun[] label(): str = {
+    return "core-nope";
+};
+```
+
 ### `alloc`
 
 Meaning:
@@ -88,6 +104,23 @@ Choose `alloc` when:
 - the artifact still should not depend on hosted OS/runtime services
 - you want to keep heap usage explicit in `build.fol`
 
+Allowed example:
+
+```fol
+fun[] label(prefix: str, extras: ... str): str = {
+    return prefix + extras[0];
+};
+```
+
+Forbidden example:
+
+```fol
+fun[] main(): int = {
+    .echo("alloc-nope");
+    return 0;
+};
+```
+
 ### `std`
 
 Meaning:
@@ -106,6 +139,24 @@ Choose `std` when:
 - the artifact is a normal host tool or CLI
 - the artifact needs `.echo(...)`
 - the artifact is expected to run through `fol code run` or routed `test`
+
+Allowed example:
+
+```fol
+fun[] main(): int = {
+    var shown: int = .echo(9);
+    return 9;
+};
+```
+
+Forbidden example:
+
+```fol
+ali CounterPtr: ptr[int];
+```
+
+`std` widens runtime capability, but it does not opt into later V3/V4 language
+surfaces automatically.
 
 ## Quick selection rule
 

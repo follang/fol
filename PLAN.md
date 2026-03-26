@@ -105,6 +105,8 @@ Completion criteria:
   - dynamic `.len(...)`
 
 ### Slice 3
+Status: complete
+
 Add explicit documentation examples for allowed/forbidden surfaces per tier.
 
 Completion criteria:
