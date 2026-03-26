@@ -89,6 +89,8 @@ Completion criteria:
 - no doc still implies `std` is the baseline default in spirit
 
 ### Slice 2
+Status: complete
+
 Add a compiler-side test matrix that locks the canonical capability facts in one place.
 
 Completion criteria:

@@ -215,4 +215,100 @@ mod tests {
             len
         ));
     }
+
+    #[test]
+    fn compiler_owned_model_matrix_locks_runtime_capability_contract() {
+        let echo = EditorIntrinsicInfo {
+            name: "echo",
+            surface: IntrinsicSurface::DotRootCall,
+        };
+        let len = EditorIntrinsicInfo {
+            name: "len",
+            surface: IntrinsicSurface::DotRootCall,
+        };
+
+        let matrix = [
+            (
+                TypecheckCapabilityModel::Core,
+                super::EditorModelCapability {
+                    heap: false,
+                    hosted_runtime: false,
+                },
+                [
+                    (EditorTypeFamily::Scalar, true),
+                    (EditorTypeFamily::Array, true),
+                    (EditorTypeFamily::RecordLike, true),
+                    (EditorTypeFamily::OptionalShell, true),
+                    (EditorTypeFamily::ErrorShell, true),
+                    (EditorTypeFamily::String, false),
+                    (EditorTypeFamily::Vector, false),
+                    (EditorTypeFamily::Sequence, false),
+                    (EditorTypeFamily::Set, false),
+                    (EditorTypeFamily::Map, false),
+                ],
+                [(echo, false), (len, true)],
+            ),
+            (
+                TypecheckCapabilityModel::Alloc,
+                super::EditorModelCapability {
+                    heap: true,
+                    hosted_runtime: false,
+                },
+                [
+                    (EditorTypeFamily::Scalar, true),
+                    (EditorTypeFamily::Array, true),
+                    (EditorTypeFamily::RecordLike, true),
+                    (EditorTypeFamily::OptionalShell, true),
+                    (EditorTypeFamily::ErrorShell, true),
+                    (EditorTypeFamily::String, true),
+                    (EditorTypeFamily::Vector, true),
+                    (EditorTypeFamily::Sequence, true),
+                    (EditorTypeFamily::Set, true),
+                    (EditorTypeFamily::Map, true),
+                ],
+                [(echo, false), (len, true)],
+            ),
+            (
+                TypecheckCapabilityModel::Std,
+                super::EditorModelCapability {
+                    heap: true,
+                    hosted_runtime: true,
+                },
+                [
+                    (EditorTypeFamily::Scalar, true),
+                    (EditorTypeFamily::Array, true),
+                    (EditorTypeFamily::RecordLike, true),
+                    (EditorTypeFamily::OptionalShell, true),
+                    (EditorTypeFamily::ErrorShell, true),
+                    (EditorTypeFamily::String, true),
+                    (EditorTypeFamily::Vector, true),
+                    (EditorTypeFamily::Sequence, true),
+                    (EditorTypeFamily::Set, true),
+                    (EditorTypeFamily::Map, true),
+                ],
+                [(echo, true), (len, true)],
+            ),
+        ];
+
+        for (model, expected_capability, families, intrinsics) in matrix {
+            assert_eq!(editor_model_capability(model), expected_capability);
+            for (family, expected) in families {
+                assert_eq!(
+                    editor_type_family_available_in_model(model, family),
+                    expected,
+                    "type family availability drifted for model={} family={family:?}",
+                    model.as_str()
+                );
+            }
+            for (intrinsic, expected) in intrinsics {
+                assert_eq!(
+                    editor_intrinsic_available_in_model(model, intrinsic),
+                    expected,
+                    "intrinsic availability drifted for model={} intrinsic={}",
+                    model.as_str(),
+                    intrinsic.name
+                );
+            }
+        }
+    }
 }
