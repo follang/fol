@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f252c68b.js";
+            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -186,7 +186,7 @@
 <pre><code class="language-lua">vim.lsp.config("fol", {
   cmd = { "fol", "tool", "lsp" },
   filetypes = { "fol" },
-  root_markers = { "fol.work.yaml", "package.yaml", ".git" },
+  root_markers = { "fol.work.yaml", "build.fol", ".git" },
 })
 
 vim.lsp.enable("fol")
@@ -255,7 +255,7 @@ fol tool lsp
 <p>If <code>fol tool lsp</code> prints nothing and waits, that is correct.</p>
 <p>It is a stdio server, not an interactive shell command.</p>
 <p>If the server refuses to start, check that Neovim opened the file inside a
-directory tree that contains <code>package.yaml</code> or <code>fol.work.yaml</code>.</p>
+directory tree that contains <code>build.fol</code> or <code>fol.work.yaml</code>.</p>
 
                     </main>
 

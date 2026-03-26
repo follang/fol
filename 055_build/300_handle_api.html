@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f252c68b.js";
+            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -177,6 +177,60 @@
                         <h1 id="handle-api"><a class="header" href="#handle-api">Handle API</a></h1>
 <p>Graph methods return typed handles. Each handle type exposes its own set of
 methods for configuring relationships and behavior.</p>
+<h2 id="path-handle-audit"><a class="header" href="#path-handle-audit">Path Handle Audit</a></h2>
+<p>Before the broader path convergence work, the public build surface still splits
+path-like values across multiple families:</p>
+<ul>
+<li><code>SourceFile</code></li>
+<li><code>SourceDir</code></li>
+<li><code>GeneratedFile</code></li>
+<li>dependency-generated outputs returned by <code>dep.generated(...)</code></li>
+</ul>
+<p>Those values already compose in several places, but they do not yet read like
+one obvious path capability. This chapter keeps the current concrete names while
+the underlying path model converges.</p>
+<h2 id="path-convergence-direction"><a class="header" href="#path-convergence-direction">Path Convergence Direction</a></h2>
+<p>The intended direction is one broader path capability with:</p>
+<ul>
+<li>a path class:
+<ul>
+<li>file</li>
+<li>dir</li>
+</ul>
+</li>
+<li>a provenance:
+<ul>
+<li>source-root path</li>
+<li>local generated output</li>
+<li>dependency-exported path/output</li>
+</ul>
+</li>
+</ul>
+<p>The producer names can stay concrete:</p>
+<ul>
+<li><code>graph.file_from_root(...)</code></li>
+<li><code>graph.dir_from_root(...)</code></li>
+<li><code>graph.write_file(...)</code></li>
+<li><code>graph.copy_file(...)</code></li>
+<li><code>dep.file(...)</code></li>
+<li><code>dep.dir(...)</code></li>
+<li><code>dep.path(...)</code></li>
+<li><code>dep.generated(...)</code></li>
+</ul>
+<p>But path consumers should read those values through one common model instead of
+hand-written special cases for every producer. In practice the public rule is:</p>
+<ul>
+<li>producers stay specific</li>
+<li>consumers validate the incoming path by:
+<ul>
+<li>path class: file or dir</li>
+<li>provenance: source, local generated, or dependency-exported</li>
+</ul>
+</li>
+</ul>
+<p>So <code>install_file</code>, <code>run.add_file_arg</code>, and <code>artifact.add_generated</code> now reject
+wrong path provenance with exact diagnostics instead of falling through to
+generic handle errors.</p>
 <h2 id="artifact"><a class="header" href="#artifact">Artifact</a></h2>
 <p>The <code>Artifact</code> handle is returned by <code>add_exe</code>, <code>add_static_lib</code>,
 <code>add_shared_lib</code>, and <code>add_test</code>.</p>
@@ -196,7 +250,8 @@ app.import(utils);
 <p>Equivalent to Zig’s <code>artifact.root_module.addImport(name, module)</code>.</p>
 <h3 id="artifactadd_generated"><a class="header" href="#artifactadd_generated"><code>artifact.add_generated</code></a></h3>
 <p>Declares that this artifact depends on a generated file being produced before
-it can compile.</p>
+it can compile. The value stays a generated-output handle; it does not need to
+be converted back into a string path.</p>
 <pre><code class="language-fol">var schema = graph.add_codegen({
     kind   = "schema",
     input  = "schema/api.yaml",
@@ -215,16 +270,47 @@ chainable and return <code>Run</code>.</p>
 run.add_arg("--config").add_arg("config/default.toml");
 </code></pre>
 <h3 id="runadd_file_arg"><a class="header" href="#runadd_file_arg"><code>run.add_file_arg</code></a></h3>
-<p>Appends a generated file as a path argument.</p>
-<pre><code class="language-fol">var cfg = graph.copy_file({
+<p>Appends any file-class path handle that the run surface can consume:</p>
+<ul>
+<li>source-file handles</li>
+<li>local generated outputs</li>
+<li>dependency-exported file/path handles</li>
+</ul>
+<pre><code class="language-fol">var defaults = graph.file_from_root("config/defaults.toml");
+var cfg = graph.copy_file({
     name   = "config",
-    source = "config/defaults.toml",
+    source = defaults,
     dest   = "gen/config.toml",
 });
 var run = graph.add_run(app);
 run.add_file_arg(cfg);
+run.add_file_arg(defaults);
 </code></pre>
 <p>Equivalent to Zig’s <code>run.addFileArg(file)</code>.</p>
+<p>Generated-output handles compose across the graph surface:</p>
+<pre><code class="language-fol">fun[] emit_cfg() = {
+    return .build().graph().write_file({
+        name = "cfg",
+        path = "config/generated.toml",
+        contents = "ok",
+    });
+}
+
+var cfg = emit_cfg();
+app.add_generated(cfg);
+run.add_file_arg(cfg);
+graph.install_file({ name = "install-cfg", source = cfg });
+</code></pre>
+<p>Dependency-exported file/path handles compose the same way on file consumers:</p>
+<pre><code class="language-fol">var dep = build.add_dep({
+    alias = "shared",
+    source = "loc",
+    target = "deps/shared",
+});
+var shared_schema = dep.path("schema");
+run.add_file_arg(shared_schema);
+graph.install_file({ name = "schema", source = shared_schema });
+</code></pre>
 <h3 id="runadd_dir_arg"><a class="header" href="#runadd_dir_arg"><code>run.add_dir_arg</code></a></h3>
 <p>Appends a directory path as an argument.</p>
 <pre><code class="language-fol">var run = graph.add_run(app);
@@ -280,30 +366,102 @@ install.depend_on(check);
 </code></pre>
 <hr>
 <h2 id="dependency"><a class="header" href="#dependency">Dependency</a></h2>
-<p>The <code>Dependency</code> handle is returned by <code>graph.dependency</code>. It exposes the
+<p>The <code>Dependency</code> handle is returned by <code>build.add_dep({...})</code>. It exposes the
 public surface of another package.</p>
+<pre><code class="language-fol">var build = .build();
+var dep = build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "tag:v0.1.1",
+    hash = "77df4240d6f0",
+    mode = "lazy",
+});
+</code></pre>
+<p>Dependency handles query already-declared package dependencies. They do not add
+new graph mutations themselves.</p>
+<p>Declared dependency modes:</p>
+<ul>
+<li><code>eager</code></li>
+<li><code>lazy</code></li>
+<li><code>on-demand</code></li>
+</ul>
+<p>Current behavior:</p>
+<ul>
+<li><code>eager</code>
+prepares package-store dependencies up front during formal package loading</li>
+<li><code>lazy</code>
+keeps the declaration and defers package-store preparation until a later
+import/build path needs it</li>
+<li><code>on-demand</code>
+preserves the strongest deferred intent and stays visible in summaries and
+fetch results</li>
+</ul>
+<p>Dependency-handle queries resolve only names that the dependency explicitly
+exports from its own <code>build.fol</code>:</p>
+<pre><code class="language-fol">var build = .build();
+var graph = build.graph();
+var codec = graph.add_module({ name = "codec", root = "src/codec.fol" });
+var lib = graph.add_static_lib({ name = "json", root = "src/main.fol" });
+
+build.export_module({ name = "api", module = codec });
+build.export_artifact({ name = "runtime", artifact = lib });
+</code></pre>
+<p>If a dependency does not export a build-facing module, artifact, step, or
+generated output, dependency handles do not see it.</p>
+<p>The currently implemented explicit export kinds are:</p>
+<ul>
+<li>module</li>
+<li>artifact</li>
+<li>step</li>
+<li>generated output</li>
+</ul>
+<p>The next missing export kinds are:</p>
+<ul>
+<li>source file</li>
+<li>source dir</li>
+<li>broader path</li>
+<li>generated dir</li>
+</ul>
+<p>The intended next public shape is:</p>
+<pre><code class="language-fol">var cfg = graph.file_from_root("config/default.toml");
+var assets = graph.dir_from_root("assets");
+var schema = graph.write_file({
+    name = "schema",
+    path = "gen/schema.fol",
+    contents = "ok",
+});
+
+build.export_file({ name = "config", file = cfg });
+build.export_dir({ name = "assets", dir = assets });
+build.export_path({ name = "schema", path = schema });
+</code></pre>
+<p>That direction keeps path exports explicit and typed instead of collapsing back
+into ad hoc string registries.</p>
+<p>Source import roots remain separate. A dependency can still be imported in
+ordinary package source through its alias even when it exports no build-facing
+handles at all.</p>
+<p>Import resolution still follows the current alias-projection model under
+<code>.fol/pkg/&lt;alias&gt;</code>. Dependency handles do not replace ordinary package imports;
+they expose the build-facing surface of the already-declared dependency.</p>
 <h3 id="dependencymodule"><a class="header" href="#dependencymodule"><code>dependency.module</code></a></h3>
 <p>Resolves a named module from the dependency.</p>
-<pre><code class="language-fol">var dep    = graph.dependency("mylib", "local:../mylib");
-var module = dep.module("core");
+<pre><code class="language-fol">var module = dep.module("logtiny");
 app.import(module);
 </code></pre>
 <h3 id="dependencyartifact"><a class="header" href="#dependencyartifact"><code>dependency.artifact</code></a></h3>
 <p>Resolves a named artifact from the dependency.</p>
-<pre><code class="language-fol">var dep = graph.dependency("mylib", "local:../mylib");
-var lib = dep.artifact("mylib-static");
+<pre><code class="language-fol">var lib = dep.artifact("logtiny");
 app.link(lib);
 </code></pre>
 <h3 id="dependencystep"><a class="header" href="#dependencystep"><code>dependency.step</code></a></h3>
 <p>Resolves a named step from the dependency.</p>
-<pre><code class="language-fol">var dep  = graph.dependency("mylib", "local:../mylib");
-var step = dep.step("codegen");
+<pre><code class="language-fol">var step = dep.step("check");
 app_step.depend_on(step);
 </code></pre>
 <h3 id="dependencygenerated"><a class="header" href="#dependencygenerated"><code>dependency.generated</code></a></h3>
 <p>Resolves a named generated output from the dependency.</p>
-<pre><code class="language-fol">var dep   = graph.dependency("mylib", "local:../mylib");
-var types = dep.generated("types.fol");
+<pre><code class="language-fol">var types = dep.generated("bindings");
 app.add_generated(types);
 </code></pre>
 

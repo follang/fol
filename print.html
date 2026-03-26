@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f252c68b.js";
+            window.path_to_searchindex_js = "searchindex-9fa70407.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-aca3346a.js"></script>
@@ -508,7 +508,7 @@ fol &lt;group&gt; &lt;command&gt; --help
 directory or from an explicit path.</p>
 <p>It recognizes:</p>
 <ul>
-<li>package roots via <code>package.yaml</code></li>
+<li>package roots via <code>build.fol</code></li>
 <li>workspace roots via <code>fol.work.yaml</code></li>
 </ul>
 <p>A package root is one buildable package.</p>
@@ -771,7 +771,7 @@ fol tool format path/to/file.fol
 </code></pre>
 <p>as the language server entrypoint.</p>
 <p>Launch it from inside a discovered package or workspace root. The frontend
-looks upward for <code>package.yaml</code> or <code>fol.work.yaml</code> before starting the server.</p>
+looks upward for <code>build.fol</code> or <code>fol.work.yaml</code> before starting the server.</p>
 <p>Use:</p>
 <pre><code class="language-text">fol tool parse path/to/file.fol
 fol tool highlight path/to/file.fol
@@ -1338,7 +1338,7 @@ behavior, see <a href="#compiler-integration">Compiler Integration</a>.</p>
 <pre><code class="language-lua">vim.lsp.config("fol", {
   cmd = { "fol", "tool", "lsp" },
   filetypes = { "fol" },
-  root_markers = { "fol.work.yaml", "package.yaml", ".git" },
+  root_markers = { "fol.work.yaml", "build.fol", ".git" },
 })
 
 vim.lsp.enable("fol")
@@ -1407,7 +1407,7 @@ fol tool lsp
 <p>If <code>fol tool lsp</code> prints nothing and waits, that is correct.</p>
 <p>It is a stdio server, not an interactive shell command.</p>
 <p>If the server refuses to start, check that Neovim opened the file inside a
-directory tree that contains <code>package.yaml</code> or <code>fol.work.yaml</code>.</p>
+directory tree that contains <code>build.fol</code> or <code>fol.work.yaml</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="build-system"><a class="header" href="#build-system">Build System</a></h1>
 <p>FOL uses a Zig-style build model. The build specification is a normal FOL
@@ -1423,21 +1423,33 @@ is executed against a build graph IR instead of emitting backend code.</p>
 <h2 id="entry-point"><a class="header" href="#entry-point">Entry Point</a></h2>
 <p>Every buildable package must have a <code>build.fol</code> at its root with exactly one
 canonical entry:</p>
-<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+<pre><code class="language-fol">pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     ...
 }
 </code></pre>
-<p>The <code>graph</code> parameter is the injection surface. All build operations go through
-method calls on <code>graph</code> and on the handles it returns.</p>
+<p>The active build context is accessed explicitly through the build-only ambient
+accessor:</p>
+<pre><code class="language-fol">.build()
+</code></pre>
+<p>There is no injected <code>graph</code> parameter anymore. <code>.build()</code> returns an opaque
+build-only handle. Users do not name its type explicitly. Package metadata and
+direct dependencies are configured through that handle, and graph work is
+reached through <code>build.graph()</code>.</p>
 <h2 id="minimal-example"><a class="header" href="#minimal-example">Minimal Example</a></h2>
-<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+<pre><code class="language-fol">pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var app = graph.add_exe({ name = "app", root = "src/main.fol" });
     graph.install(app);
     graph.add_run(app);
 }
 </code></pre>
-<p>This registers an executable, marks it for installation, and binds a default
-run step.</p>
+<p>This registers package metadata, adds an executable, marks it for installation,
+and binds a default run step.</p>
 <h2 id="what-fol-build-owns"><a class="header" href="#what-fol-build-owns">What <code>fol-build</code> Owns</a></h2>
 <ul>
 <li><code>graph.rs</code> — build graph IR (steps, artifacts, modules, options, generated files)</li>
@@ -1460,6 +1472,40 @@ run step.</p>
 <li>control flow available inside <code>build.fol</code></li>
 <li>build options and <code>-D</code> flags</li>
 <li>artifact types, modules, and generated files</li>
+<li>dependency handles and unified output handles</li>
+</ul>
+<h2 id="near-term-architecture"><a class="header" href="#near-term-architecture">Near-Term Architecture</a></h2>
+<p>The next build round is about extending the existing explicit surface, not
+replacing it.</p>
+<p>The intended layering is:</p>
+<ul>
+<li><code>build.add_dep({...})</code> declares a direct dependency and returns a dependency
+handle</li>
+<li><code>build.export_*({...})</code> declares the build-facing surface a package chooses to
+expose</li>
+<li><code>graph.file_from_root(...)</code> and <code>graph.dir_from_root(...)</code> remain the typed
+source-path producers</li>
+<li>broader path-oriented exports and dependency path queries sit on top of those
+producers instead of collapsing back into raw string paths</li>
+<li>dependency modes, install reporting, and system integration should become more
+concrete without changing the top-level <code>.build()</code> structure</li>
+</ul>
+<p>This means the near-term additions should look like richer values and richer
+queries on top of the current build graph, not a new manifest format and not a
+public <code>Graph</code> or <code>Build</code> type.</p>
+<h2 id="standalone-examples"><a class="header" href="#standalone-examples">Standalone Examples</a></h2>
+<p>These checked-in example packages exercise the current public build surface:</p>
+<ul>
+<li><code>examples/build_dep_exports</code></li>
+<li><code>examples/build_source_paths</code></li>
+<li><code>examples/build_dep_modes</code></li>
+<li><code>examples/build_described_steps</code></li>
+<li><code>examples/build_generated_dirs</code></li>
+<li><code>examples/build_dep_handles</code></li>
+<li><code>examples/build_output_handles</code></li>
+<li><code>examples/build_install_prefix</code></li>
+<li><code>examples/build_system_lib</code></li>
+<li><code>examples/build_system_tool</code></li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="buildfol"><a class="header" href="#buildfol">build.fol</a></h1>
@@ -1471,11 +1517,11 @@ shares one namespace. <code>build.fol</code> is the one exception.</p>
 <p>Rules for <code>build.fol</code>:</p>
 <ul>
 <li>It is its own compilation unit — it does not see sibling <code>.fol</code> files</li>
-<li>It has one implicit import: the build stdlib (<code>fol/build</code>), providing <code>Graph</code>
-and all handle types</li>
+<li>It has one implicit build stdlib scope, exposing <code>.build()</code> and build-only
+handle methods</li>
 <li>It can define local helper <code>fun[]</code>, <code>pro[]</code>, and <code>typ</code> declarations</li>
 <li>Those local declarations are not exported to the package</li>
-<li>It must declare exactly one <code>pro[] build(graph: Graph): non</code> entry</li>
+<li>It must declare exactly one <code>pro[] build(): non</code> entry</li>
 <li>Additional <code>use</code> imports from the FOL stdlib are allowed</li>
 </ul>
 <h2 id="compilation-pipeline"><a class="header" href="#compilation-pipeline">Compilation Pipeline</a></h2>
@@ -1498,48 +1544,249 @@ and all handle types</li>
 use filesystem or network APIs, or contain more than one canonical entry.</p>
 <h2 id="canonical-entry"><a class="header" href="#canonical-entry">Canonical Entry</a></h2>
 <p>The entry must match exactly:</p>
-<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+<pre><code class="language-fol">pro[] build(): non = {
+    var build = .build();
+    var graph = build.graph();
     ...
 }
 </code></pre>
 <ul>
 <li><code>pro[]</code> — procedure with no receivers</li>
-<li>parameter name <code>graph</code>, type <code>Graph</code></li>
+<li>no parameters</li>
 <li>return type <code>non</code></li>
 </ul>
-<p>Missing entry, wrong signature, or duplicate entries are compile errors.</p>
+<p>The active build context is accessed explicitly through the ambient build-only
+accessor:</p>
+<pre><code class="language-fol">.build()
+</code></pre>
+<p><code>.build()</code> returns an opaque build-only handle. The handle type is not public
+language surface and should not be named explicitly in source code. Graph access
+is reached through <code>build.graph()</code>.</p>
+<p>Missing entry, wrong signature, duplicate entries, the old injected graph
+parameter form, or explicit <code>Graph</code> type syntax are compile errors.</p>
+<h2 id="ambient-build-api"><a class="header" href="#ambient-build-api">Ambient Build API</a></h2>
+<p>The canonical build shape is:</p>
+<pre><code class="language-fol">pro[] build(): non = {
+    var build = .build();
+
+    build.meta({
+        name = "app",
+        version = "0.1.0",
+        kind = "exe",
+    });
+
+    build.add_dep({
+        alias = "json",
+        source = "pkg",
+        target = "json",
+    });
+
+    var graph = build.graph();
+    var app = graph.add_exe({
+        name = "app",
+        root = "src/main.fol",
+    });
+    graph.install(app);
+    graph.add_run(app);
+}
+</code></pre>
+<p>The public layering is:</p>
+<ul>
+<li><code>.build()</code> for package-level build context</li>
+<li><code>build.meta({...})</code> for package metadata</li>
+<li><code>build.add_dep({...})</code> for one direct dependency</li>
+<li><code>build.export_module({...})</code>, <code>build.export_artifact({...})</code>,
+<code>build.export_step({...})</code>, and <code>build.export_output({...})</code> for the
+dependency-facing build surface this package exposes</li>
+<li><code>build.graph()</code> for artifact and step graph work</li>
+</ul>
+<p>The public surface includes:</p>
+<ul>
+<li>dependency handles returned from <code>build.add_dep({...})</code></li>
+<li>unified output handles for generated and copied files</li>
+<li>explicit dependency build arguments</li>
+<li>a cleaner install-prefix model</li>
+</ul>
+<p>Build/cache internals and installed outputs are separate:</p>
+<ul>
+<li>build root for emitted and intermediate build artifacts</li>
+<li>cache roots for reusable local state</li>
+<li>install prefix for user-visible installed outputs</li>
+</ul>
+<p>Do not put package metadata directly on the graph handle.</p>
 <h2 id="local-helpers"><a class="header" href="#local-helpers">Local Helpers</a></h2>
 <p><code>build.fol</code> can define helper functions visible only within itself:</p>
-<pre><code class="language-fol">fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
-    return graph.add_static_lib({ name = name, root = root });
+<pre><code class="language-fol">fun[] make_lib(name: str, root: str): Artifact = {
+    return .build().graph().add_static_lib({ name = name, root = root });
 }
 
-pro[] build(graph: Graph): non = {
-    var core = make_lib(graph, "core", "src/core/lib.fol");
-    var io   = make_lib(graph, "io",   "src/io/lib.fol");
+pro[] build(): non = {
+    var build = .build();
+    var graph = build.graph();
+    var core = make_lib("core", "src/core/lib.fol");
+    var io   = make_lib("io",   "src/io/lib.fol");
     var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
     app.link(core);
     app.link(io);
     graph.install(app);
 }
 </code></pre>
-<h2 id="packageyaml"><a class="header" href="#packageyaml">package.yaml</a></h2>
-<p>Every package needs a <code>package.yaml</code> alongside <code>build.fol</code>:</p>
-<pre><code class="language-yaml">name: my-app
-version: 1.0.0
+<p>Helpers may call <code>.build()</code> ambiently, but they do not name a public build or
+graph type in source.</p>
+<h2 id="package-control"><a class="header" href="#package-control">Package Control</a></h2>
+<p><code>build.fol</code> is the only package control file.</p>
+<p>Package metadata and direct dependencies are configured from inside
+<code>pro[] build(): non</code> through the ambient build context.</p>
+<h3 id="buildmeta"><a class="header" href="#buildmeta"><code>build.meta({...})</code></a></h3>
+<p><code>build.meta({...})</code> configures package metadata for the current package.</p>
+<p>Typical fields belong here:</p>
+<ul>
+<li><code>name</code></li>
+<li><code>version</code></li>
+<li><code>kind</code></li>
+<li><code>description</code></li>
+<li><code>license</code></li>
+</ul>
+<p>This is package identity and package description data.
+It is not graph mutation.</p>
+<h3 id="buildadd_dep"><a class="header" href="#buildadd_dep"><code>build.add_dep({...})</code></a></h3>
+<p><code>build.add_dep({...})</code> registers one direct dependency of the current package.</p>
+<p>Typical fields belong here:</p>
+<ul>
+<li><code>alias</code></li>
+<li><code>source</code></li>
+<li><code>target</code></li>
+<li><code>version</code></li>
+<li><code>hash</code></li>
+<li><code>mode</code></li>
+<li><code>args</code></li>
+</ul>
+<p>For example:</p>
+<pre><code class="language-fol">build.add_dep({
+    alias = "shared",
+    source = "loc",
+    target = "../shared",
+});
+
+build.add_dep({
+    alias = "json",
+    source = "pkg",
+    target = "json",
+    mode = "lazy",
+});
+
+build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "tag:v0.1.1",
+    hash = "77df4240d6f0",
+});
 </code></pre>
-<p>The build system reads <code>name</code> and <code>version</code> from the manifest. Dependencies
-declared in the manifest are made available to <code>build.fol</code> via
-<code>graph.dependency(...)</code>.</p>
+<p>For git dependencies:</p>
+<ul>
+<li><code>target</code> is only the repository locator</li>
+<li><code>version</code> chooses <code>branch:&lt;name&gt;</code>, <code>tag:&lt;name&gt;</code>, or <code>commit:&lt;sha&gt;</code></li>
+<li><code>hash</code> is optional commit-prefix verification</li>
+<li>selector query params in <code>target</code> are not supported</li>
+</ul>
+<p>See <a href="/home/bresilla/data/code/bresilla/fol/examples/build_git_dep_versions">examples/build_git_dep_versions</a>
+for a standalone package that shows branch, tag, commit, and hash-pinned git
+dependencies together.</p>
+<p>Supported dependency modes:</p>
+<ul>
+<li><code>eager</code></li>
+<li><code>lazy</code></li>
+<li><code>on-demand</code></li>
+</ul>
+<p>Current semantics:</p>
+<ul>
+<li><code>eager</code>
+direct package-store dependencies are prepared immediately during package
+loading</li>
+<li><code>lazy</code>
+dependency metadata is kept, but package-store preparation is deferred until a
+later build/import path needs it</li>
+<li><code>on-demand</code>
+same deferred loading rule as <code>lazy</code>, but user-facing summaries keep the
+stronger intent visible</li>
+</ul>
+<p><code>fol code fetch</code> still walks declared dependencies so it can materialize and pin
+the workspace graph. The mode is surfaced in fetch/build summaries instead of
+being dropped.</p>
+<p>Forwarded dependency args stay explicit:</p>
+<pre><code class="language-fol">var graph = build.graph();
+var target = graph.standard_target();
+var optimize = graph.standard_optimize();
+var fast = graph.option({ name = "use_fast_parser", kind = "bool", default = true });
+
+build.add_dep({
+    alias = "json",
+    source = "pkg",
+    target = "json",
+    mode = "lazy",
+    args = {
+        target = target,
+        optimize = optimize,
+        use_fast_parser = fast,
+        jobs = 4,
+        flavor = "strict",
+    },
+});
+</code></pre>
+<p>This declares direct dependencies only.
+Transitive dependencies stay declared in each dependency package’s own
+<code>build.fol</code>.</p>
+<p>Nothing is forwarded implicitly from the parent build. If a dependency should
+see <code>target</code>, <code>optimize</code>, or a package-specific option, pass it explicitly in
+<code>args</code>.</p>
+<h3 id="explicit-dependency-exports"><a class="header" href="#explicit-dependency-exports">Explicit Dependency Exports</a></h3>
+<p>Dependency handles only see build-facing names that the dependency package
+exports from its own <code>build.fol</code>.</p>
+<pre><code class="language-fol">var graph = build.graph();
+var codec = graph.add_module({ name = "codec", root = "src/codec.fol" });
+var lib = graph.add_static_lib({ name = "json", root = "src/main.fol" });
+var docs = graph.step("docs", "Validate the package");
+
+build.export_module({ name = "api", module = codec });
+build.export_artifact({ name = "runtime", artifact = lib });
+build.export_step({ name = "check", step = docs });
+</code></pre>
+<p>Ordinary source imports still resolve by dependency alias under <code>.fol/pkg</code>.
+Build-handle queries stay separate from source imports.</p>
+<h3 id="buildgraph"><a class="header" href="#buildgraph"><code>build.graph()</code></a></h3>
+<p><code>build.graph()</code> returns the opaque graph handle used for artifact and step
+construction.</p>
+<p>Graph-only work belongs here:</p>
+<ul>
+<li><code>add_exe</code></li>
+<li><code>add_static_lib</code></li>
+<li><code>install</code></li>
+<li><code>add_run</code></li>
+<li><code>standard_target</code></li>
+</ul>
+<p>Named steps may also carry an optional description:</p>
+<pre><code class="language-fol">var docs = graph.step("docs", "Generate documentation");
+</code></pre>
+<ul>
+<li><code>standard_optimize</code></li>
+<li><code>write_file</code></li>
+</ul>
+<p>That split keeps the build surface clear:</p>
+<ul>
+<li>package metadata through <code>build.meta</code></li>
+<li>direct dependencies through <code>build.add_dep</code></li>
+<li>artifact graph mutation through <code>build.graph()</code></li>
+</ul>
 <h2 id="capability-restrictions"><a class="header" href="#capability-restrictions">Capability Restrictions</a></h2>
 <p>The build executor enforces a capability model. Allowed operations:</p>
 <ul>
 <li>graph mutation (adding artifacts, steps, options)</li>
-<li>option reads (<code>graph.standard_target()</code>, <code>graph.standard_optimize()</code>, etc.)</li>
-<li>path joining and normalization (<code>graph.path_from_root(...)</code>)</li>
+<li>option reads (<code>.build().graph().standard_target()</code>, <code>.build().graph().standard_optimize()</code>, etc.)</li>
+<li>source-path handles (<code>.build().graph().file_from_root(...)</code>, <code>.build().graph().dir_from_root(...)</code>)</li>
 <li>basic string and container operations</li>
-<li>controlled file generation (<code>graph.write_file(...)</code>, <code>graph.copy_file(...)</code>)</li>
-<li>controlled process execution (<code>graph.add_system_tool(...)</code>)</li>
+<li>controlled file generation (<code>.build().graph().write_file(...)</code>, <code>.build().graph().copy_file(...)</code>)</li>
+<li>controlled process execution (<code>.build().graph().add_system_tool(...)</code>)</li>
 </ul>
 <p>Forbidden operations (produce a compile or runtime error):</p>
 <ul>
@@ -1552,8 +1799,23 @@ declared in the manifest are made available to <code>build.fol</code> via
 <p>These restrictions ensure build graphs are deterministic and portable.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="graph-api"><a class="header" href="#graph-api">Graph API</a></h1>
-<p>The <code>Graph</code> handle is the sole parameter to <code>pro[] build</code>. All build graph
-construction goes through method calls on it.</p>
+<p><code>build.graph()</code> is the public access point to the build graph in <code>build.fol</code>.
+All graph construction goes through method calls on the returned handle.</p>
+<p>This layer is intentionally narrower than the whole build surface:</p>
+<ul>
+<li>package metadata belongs on <code>build.meta({...})</code></li>
+<li>direct dependencies belong on <code>build.add_dep({...})</code></li>
+<li>future dependency queries and output handles sit above raw graph mutation and
+should not collapse back into ad hoc string-only graph APIs</li>
+</ul>
+<p>The canonical shape is:</p>
+<pre><code class="language-fol">pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
+    ...
+}
+</code></pre>
 <h2 id="artifacts"><a class="header" href="#artifacts">Artifacts</a></h2>
 <h3 id="graphadd_exe"><a class="header" href="#graphadd_exe"><code>graph.add_exe</code></a></h3>
 <p>Adds an executable artifact.</p>
@@ -1600,7 +1862,10 @@ runtime-contract level</li>
 should not yet be read as “finished embedded backend support”</li>
 </ul>
 <p>Mixed-model example:</p>
-<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+<pre><code class="language-fol">pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "workspace_tools", version = "0.1.0" });
+    var graph = build.graph();
     var corelib = graph.add_static_lib({
         name = "corelib",
         root = "core/lib.fol",
@@ -1653,16 +1918,35 @@ should not yet be read as “finished embedded backend support”</li>
 <pre><code class="language-fol">graph.install(app);
 </code></pre>
 <p>Returns an <code>Install</code> handle.</p>
+<p>Install projections use the selected install prefix. Artifact installs resolve
+under the prefix by kind:</p>
+<ul>
+<li>executables under <code>bin/</code></li>
+<li>libraries under <code>lib/</code></li>
+</ul>
 <h3 id="graphinstall_file"><a class="header" href="#graphinstall_file"><code>graph.install_file</code></a></h3>
-<p>Installs a file by path.</p>
-<pre><code class="language-fol">graph.install_file("config/defaults.toml");
+<p>Installs either a source-file handle or a generated output handle.</p>
+<pre><code class="language-fol">var defaults = graph.file_from_root("config/defaults.toml");
+graph.install_file({ name = "defaults", source = defaults });
+</code></pre>
+<pre><code class="language-fol">var cfg = graph.write_file({
+    name = "cfg",
+    path = "config/generated.toml",
+    contents = "ok",
+});
+
+graph.install_file({ name = "generated-cfg", source = cfg });
 </code></pre>
 <p>Returns an <code>Install</code> handle.</p>
 <h3 id="graphinstall_dir"><a class="header" href="#graphinstall_dir"><code>graph.install_dir</code></a></h3>
-<p>Installs a directory by path.</p>
-<pre><code class="language-fol">graph.install_dir("assets/");
+<p>Installs a source directory handle.</p>
+<pre><code class="language-fol">var assets = graph.dir_from_root("assets");
+graph.install_dir({ name = "assets", source = assets });
 </code></pre>
 <p>Returns an <code>Install</code> handle.</p>
+<p>The install prefix is selected by frontend/workspace configuration, not by the
+package itself. Changing the prefix should move projected install destinations
+without changing <code>build.fol</code>.</p>
 <h3 id="graphadd_run"><a class="header" href="#graphadd_run"><code>graph.add_run</code></a></h3>
 <p>Registers an artifact as a run target. Binds the default <code>run</code> step when only
 one executable exists and no explicit <code>run</code> step has been registered.</p>
@@ -1673,13 +1957,92 @@ one executable exists and no explicit <code>run</code> step has been registered.
 <h3 id="graphstep"><a class="header" href="#graphstep"><code>graph.step</code></a></h3>
 <p>Creates a named custom step.</p>
 <pre><code class="language-fol">var docs = graph.step("docs");
-var docs = graph.step("docs", "Generate documentation");  // with description
+var docs = graph.step("docs", "Generate documentation");
 </code></pre>
 <p>Returns a <code>Step</code> handle. See <a href="#handle-api">Handle API</a> for <code>Step</code> methods.</p>
 <p>Named steps are selectable on the command line:</p>
 <pre><code class="language-text">fol code build docs
 fol code build --step docs
 </code></pre>
+<p>When a description is present, frontend step planning and unknown-step
+diagnostics surface it as part of the available step catalog.</p>
+<h2 id="native-system-libraries"><a class="header" href="#native-system-libraries">Native System Libraries</a></h2>
+<h3 id="graphadd_system_lib"><a class="header" href="#graphadd_system_lib"><code>graph.add_system_lib</code></a></h3>
+<p>Declares a typed system-library request that can be linked into an artifact.</p>
+<pre><code class="language-fol">var ssl = graph.add_system_lib({
+    name = "ssl",
+    mode = "dynamic",
+    search_path = "/usr/lib",
+});
+
+app.link(ssl);
+</code></pre>
+<p>Supported config fields:</p>
+<ul>
+<li><code>name</code>
+required library or framework name</li>
+<li><code>mode</code>
+optional, defaults to <code>dynamic</code>, also accepts <code>static</code></li>
+<li><code>framework</code>
+optional bool, defaults to <code>false</code></li>
+<li><code>search_path</code>
+optional system library search root</li>
+</ul>
+<p>Current scope is intentionally narrow:</p>
+<ul>
+<li>library names are typed, not raw linker fragments</li>
+<li>frameworks are expressed through <code>framework = true</code></li>
+<li>frameworks must use <code>dynamic</code></li>
+<li>the build graph records native link intent without exposing a linker-script DSL</li>
+</ul>
+<h2 id="dependency-config-notes"><a class="header" href="#dependency-config-notes">Dependency Config Notes</a></h2>
+<p>Forwarded dependency args are already best suited for stable build config:</p>
+<ul>
+<li><code>target</code></li>
+<li><code>optimize</code></li>
+<li>named user options</li>
+</ul>
+<p>The current build story intentionally does not treat dependency config as a
+general environment-selection surface. Keep forwarded dependency args explicit
+and typed rather than mixing them with ad hoc environment shaping.</p>
+<h2 id="generated-directories"><a class="header" href="#generated-directories">Generated Directories</a></h2>
+<h3 id="graphadd_system_tool_dir"><a class="header" href="#graphadd_system_tool_dir"><code>graph.add_system_tool_dir</code></a></h3>
+<p>Declares a typed system-tool step that produces a directory handle.</p>
+<pre><code class="language-fol">var assets = graph.add_system_tool_dir({
+    tool = "assetpack",
+    output_dir = "gen/assets",
+});
+
+graph.install_dir({ name = "assets", source = assets });
+</code></pre>
+<h3 id="graphadd_codegen_dir"><a class="header" href="#graphadd_codegen_dir"><code>graph.add_codegen_dir</code></a></h3>
+<p>Declares a codegen step that produces a directory handle.</p>
+<pre><code class="language-fol">var docs = graph.add_codegen_dir({
+    kind = "asset",
+    input = "assets/raw",
+    output_dir = "gen/packed",
+});
+</code></pre>
+<p>Generated directory handles are valid in directory-oriented consumers:</p>
+<ul>
+<li><code>graph.install_dir</code></li>
+<li><code>build.export_dir</code></li>
+</ul>
+<h2 id="current-execution-semantics"><a class="header" href="#current-execution-semantics">Current Execution Semantics</a></h2>
+<p>Step execution is still serial today. The build graph keeps deterministic step
+ordering and explicit dependency edges, but it does not claim parallel
+execution yet.</p>
+<p>Current reporting distinguishes:</p>
+<ul>
+<li>requested</li>
+<li>executed</li>
+<li>skipped-from-cache</li>
+<li>skipped-by-foreign-run-policy</li>
+<li>produced outputs</li>
+</ul>
+<p>That reporting is intended for frontend summaries and tests. Produced outputs
+now participate in step cache-key semantics, so generated-file changes can
+invalidate dependent steps predictably.</p>
 <h2 id="options"><a class="header" href="#options">Options</a></h2>
 <h3 id="graphstandard_target"><a class="header" href="#graphstandard_target"><code>graph.standard_target</code></a></h3>
 <p>Reads the <code>-Dtarget</code> option. Returns a <code>Target</code> handle.</p>
@@ -1736,10 +2099,11 @@ Optional field: <code>default</code>.</p>
 </code></pre>
 <p>Returns a <code>GeneratedFile</code> handle.</p>
 <h3 id="graphcopy_file"><a class="header" href="#graphcopy_file"><code>graph.copy_file</code></a></h3>
-<p>Declares a file to be copied from a source path.</p>
-<pre><code class="language-fol">var cfg = graph.copy_file({
+<p>Declares a file to be copied from a source-file handle.</p>
+<pre><code class="language-fol">var template = graph.file_from_root("config/template.toml");
+var cfg = graph.copy_file({
     name   = "config",
-    source = "config/template.toml",
+    source = template,
     dest   = "gen/config.toml",
 });
 </code></pre>
@@ -1747,14 +2111,29 @@ Optional field: <code>default</code>.</p>
 <h3 id="graphadd_system_tool"><a class="header" href="#graphadd_system_tool"><code>graph.add_system_tool</code></a></h3>
 <p>Declares a system tool invocation that produces a file.</p>
 <pre><code class="language-fol">var packed = graph.add_system_tool({
-    tool   = "wasm-pack",
-    args   = ["build", "--target", "web"],
-    output = "gen/app.wasm",
+    tool = "flatc",
+    args = { "--fol" },
+    file_args = { schema, defaults },
+    env = { MODE = "strict" },
+    output = "gen/schema.fol",
 });
 </code></pre>
 <p>Returns a <code>GeneratedFile</code> handle.</p>
 <p>The generated file is keyed by the output path. Use this handle with
 <code>step.attach(...)</code> or <code>artifact.add_generated(...)</code>.</p>
+<p>Typed fields:</p>
+<ul>
+<li><code>tool</code>
+required tool name</li>
+<li><code>args</code>
+optional string arguments</li>
+<li><code>file_args</code>
+optional source-file or generated-output handles passed as file arguments</li>
+<li><code>env</code>
+optional string-to-string environment map</li>
+<li><code>output</code>
+required generated output path</li>
+</ul>
 <h3 id="graphadd_codegen"><a class="header" href="#graphadd_codegen"><code>graph.add_codegen</code></a></h3>
 <p>Declares a FOL codegen step.</p>
 <pre><code class="language-fol">var schema = graph.add_codegen({
@@ -1766,11 +2145,16 @@ Optional field: <code>default</code>.</p>
 <p>Returns a <code>GeneratedFile</code> handle.</p>
 <p>Codegen kinds: <code>fol-to-fol</code>, <code>schema</code>, <code>asset-preprocess</code>.</p>
 <h2 id="path-utilities"><a class="header" href="#path-utilities">Path Utilities</a></h2>
-<h3 id="graphpath_from_root"><a class="header" href="#graphpath_from_root"><code>graph.path_from_root</code></a></h3>
-<p>Returns an absolute path by joining the package root with a relative subpath.</p>
-<pre><code class="language-fol">var cfg = graph.path_from_root("config/default.toml");
+<h3 id="graphfile_from_root"><a class="header" href="#graphfile_from_root"><code>graph.file_from_root</code></a></h3>
+<p>Returns a source-file handle rooted under the package root.</p>
+<pre><code class="language-fol">var cfg = graph.file_from_root("config/default.toml");
 </code></pre>
-<p>Useful when passing file paths to <code>add_run</code> args.</p>
+<p>Useful when passing source files into <code>copy_file</code>, <code>install_file</code>, or
+<code>run.add_file_arg</code>.</p>
+<h3 id="graphdir_from_root"><a class="header" href="#graphdir_from_root"><code>graph.dir_from_root</code></a></h3>
+<p>Returns a source-dir handle rooted under the package root.</p>
+<pre><code class="language-fol">var assets = graph.dir_from_root("assets");
+</code></pre>
 <h3 id="graphbuild_root"><a class="header" href="#graphbuild_root"><code>graph.build_root</code></a></h3>
 <p>Returns the package root directory as an absolute path string.</p>
 <pre><code class="language-fol">var root = graph.build_root();
@@ -1780,17 +2164,67 @@ Optional field: <code>default</code>.</p>
 <pre><code class="language-fol">var prefix = graph.install_prefix();
 </code></pre>
 <h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
-<h3 id="graphdependency"><a class="header" href="#graphdependency"><code>graph.dependency</code></a></h3>
-<p>Declares a reference to another package in the workspace or as a fetched
-dependency. Returns a <code>Dependency</code> handle.</p>
-<pre><code class="language-fol">var deps = graph.dependency("mylib", "local:../mylib");
-</code></pre>
+<p>Direct dependencies are declared on <code>build.add_dep({...})</code>, not on <code>graph</code>.</p>
 <p>See <a href="#handle-api">Handle API</a> for querying modules, artifacts, steps,
 and generated outputs from a <code>Dependency</code> handle.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="handle-api"><a class="header" href="#handle-api">Handle API</a></h1>
 <p>Graph methods return typed handles. Each handle type exposes its own set of
 methods for configuring relationships and behavior.</p>
+<h2 id="path-handle-audit"><a class="header" href="#path-handle-audit">Path Handle Audit</a></h2>
+<p>Before the broader path convergence work, the public build surface still splits
+path-like values across multiple families:</p>
+<ul>
+<li><code>SourceFile</code></li>
+<li><code>SourceDir</code></li>
+<li><code>GeneratedFile</code></li>
+<li>dependency-generated outputs returned by <code>dep.generated(...)</code></li>
+</ul>
+<p>Those values already compose in several places, but they do not yet read like
+one obvious path capability. This chapter keeps the current concrete names while
+the underlying path model converges.</p>
+<h2 id="path-convergence-direction"><a class="header" href="#path-convergence-direction">Path Convergence Direction</a></h2>
+<p>The intended direction is one broader path capability with:</p>
+<ul>
+<li>a path class:
+<ul>
+<li>file</li>
+<li>dir</li>
+</ul>
+</li>
+<li>a provenance:
+<ul>
+<li>source-root path</li>
+<li>local generated output</li>
+<li>dependency-exported path/output</li>
+</ul>
+</li>
+</ul>
+<p>The producer names can stay concrete:</p>
+<ul>
+<li><code>graph.file_from_root(...)</code></li>
+<li><code>graph.dir_from_root(...)</code></li>
+<li><code>graph.write_file(...)</code></li>
+<li><code>graph.copy_file(...)</code></li>
+<li><code>dep.file(...)</code></li>
+<li><code>dep.dir(...)</code></li>
+<li><code>dep.path(...)</code></li>
+<li><code>dep.generated(...)</code></li>
+</ul>
+<p>But path consumers should read those values through one common model instead of
+hand-written special cases for every producer. In practice the public rule is:</p>
+<ul>
+<li>producers stay specific</li>
+<li>consumers validate the incoming path by:
+<ul>
+<li>path class: file or dir</li>
+<li>provenance: source, local generated, or dependency-exported</li>
+</ul>
+</li>
+</ul>
+<p>So <code>install_file</code>, <code>run.add_file_arg</code>, and <code>artifact.add_generated</code> now reject
+wrong path provenance with exact diagnostics instead of falling through to
+generic handle errors.</p>
 <h2 id="artifact"><a class="header" href="#artifact">Artifact</a></h2>
 <p>The <code>Artifact</code> handle is returned by <code>add_exe</code>, <code>add_static_lib</code>,
 <code>add_shared_lib</code>, and <code>add_test</code>.</p>
@@ -1810,7 +2244,8 @@ app.import(utils);
 <p>Equivalent to Zig’s <code>artifact.root_module.addImport(name, module)</code>.</p>
 <h3 id="artifactadd_generated"><a class="header" href="#artifactadd_generated"><code>artifact.add_generated</code></a></h3>
 <p>Declares that this artifact depends on a generated file being produced before
-it can compile.</p>
+it can compile. The value stays a generated-output handle; it does not need to
+be converted back into a string path.</p>
 <pre><code class="language-fol">var schema = graph.add_codegen({
     kind   = "schema",
     input  = "schema/api.yaml",
@@ -1829,16 +2264,47 @@ chainable and return <code>Run</code>.</p>
 run.add_arg("--config").add_arg("config/default.toml");
 </code></pre>
 <h3 id="runadd_file_arg"><a class="header" href="#runadd_file_arg"><code>run.add_file_arg</code></a></h3>
-<p>Appends a generated file as a path argument.</p>
-<pre><code class="language-fol">var cfg = graph.copy_file({
+<p>Appends any file-class path handle that the run surface can consume:</p>
+<ul>
+<li>source-file handles</li>
+<li>local generated outputs</li>
+<li>dependency-exported file/path handles</li>
+</ul>
+<pre><code class="language-fol">var defaults = graph.file_from_root("config/defaults.toml");
+var cfg = graph.copy_file({
     name   = "config",
-    source = "config/defaults.toml",
+    source = defaults,
     dest   = "gen/config.toml",
 });
 var run = graph.add_run(app);
 run.add_file_arg(cfg);
+run.add_file_arg(defaults);
 </code></pre>
 <p>Equivalent to Zig’s <code>run.addFileArg(file)</code>.</p>
+<p>Generated-output handles compose across the graph surface:</p>
+<pre><code class="language-fol">fun[] emit_cfg() = {
+    return .build().graph().write_file({
+        name = "cfg",
+        path = "config/generated.toml",
+        contents = "ok",
+    });
+}
+
+var cfg = emit_cfg();
+app.add_generated(cfg);
+run.add_file_arg(cfg);
+graph.install_file({ name = "install-cfg", source = cfg });
+</code></pre>
+<p>Dependency-exported file/path handles compose the same way on file consumers:</p>
+<pre><code class="language-fol">var dep = build.add_dep({
+    alias = "shared",
+    source = "loc",
+    target = "deps/shared",
+});
+var shared_schema = dep.path("schema");
+run.add_file_arg(shared_schema);
+graph.install_file({ name = "schema", source = shared_schema });
+</code></pre>
 <h3 id="runadd_dir_arg"><a class="header" href="#runadd_dir_arg"><code>run.add_dir_arg</code></a></h3>
 <p>Appends a directory path as an argument.</p>
 <pre><code class="language-fol">var run = graph.add_run(app);
@@ -1894,30 +2360,102 @@ install.depend_on(check);
 </code></pre>
 <hr>
 <h2 id="dependency"><a class="header" href="#dependency">Dependency</a></h2>
-<p>The <code>Dependency</code> handle is returned by <code>graph.dependency</code>. It exposes the
+<p>The <code>Dependency</code> handle is returned by <code>build.add_dep({...})</code>. It exposes the
 public surface of another package.</p>
+<pre><code class="language-fol">var build = .build();
+var dep = build.add_dep({
+    alias = "logtiny",
+    source = "git",
+    target = "git+https://github.com/bresilla/logtiny.git",
+    version = "tag:v0.1.1",
+    hash = "77df4240d6f0",
+    mode = "lazy",
+});
+</code></pre>
+<p>Dependency handles query already-declared package dependencies. They do not add
+new graph mutations themselves.</p>
+<p>Declared dependency modes:</p>
+<ul>
+<li><code>eager</code></li>
+<li><code>lazy</code></li>
+<li><code>on-demand</code></li>
+</ul>
+<p>Current behavior:</p>
+<ul>
+<li><code>eager</code>
+prepares package-store dependencies up front during formal package loading</li>
+<li><code>lazy</code>
+keeps the declaration and defers package-store preparation until a later
+import/build path needs it</li>
+<li><code>on-demand</code>
+preserves the strongest deferred intent and stays visible in summaries and
+fetch results</li>
+</ul>
+<p>Dependency-handle queries resolve only names that the dependency explicitly
+exports from its own <code>build.fol</code>:</p>
+<pre><code class="language-fol">var build = .build();
+var graph = build.graph();
+var codec = graph.add_module({ name = "codec", root = "src/codec.fol" });
+var lib = graph.add_static_lib({ name = "json", root = "src/main.fol" });
+
+build.export_module({ name = "api", module = codec });
+build.export_artifact({ name = "runtime", artifact = lib });
+</code></pre>
+<p>If a dependency does not export a build-facing module, artifact, step, or
+generated output, dependency handles do not see it.</p>
+<p>The currently implemented explicit export kinds are:</p>
+<ul>
+<li>module</li>
+<li>artifact</li>
+<li>step</li>
+<li>generated output</li>
+</ul>
+<p>The next missing export kinds are:</p>
+<ul>
+<li>source file</li>
+<li>source dir</li>
+<li>broader path</li>
+<li>generated dir</li>
+</ul>
+<p>The intended next public shape is:</p>
+<pre><code class="language-fol">var cfg = graph.file_from_root("config/default.toml");
+var assets = graph.dir_from_root("assets");
+var schema = graph.write_file({
+    name = "schema",
+    path = "gen/schema.fol",
+    contents = "ok",
+});
+
+build.export_file({ name = "config", file = cfg });
+build.export_dir({ name = "assets", dir = assets });
+build.export_path({ name = "schema", path = schema });
+</code></pre>
+<p>That direction keeps path exports explicit and typed instead of collapsing back
+into ad hoc string registries.</p>
+<p>Source import roots remain separate. A dependency can still be imported in
+ordinary package source through its alias even when it exports no build-facing
+handles at all.</p>
+<p>Import resolution still follows the current alias-projection model under
+<code>.fol/pkg/&lt;alias&gt;</code>. Dependency handles do not replace ordinary package imports;
+they expose the build-facing surface of the already-declared dependency.</p>
 <h3 id="dependencymodule"><a class="header" href="#dependencymodule"><code>dependency.module</code></a></h3>
 <p>Resolves a named module from the dependency.</p>
-<pre><code class="language-fol">var dep    = graph.dependency("mylib", "local:../mylib");
-var module = dep.module("core");
+<pre><code class="language-fol">var module = dep.module("logtiny");
 app.import(module);
 </code></pre>
 <h3 id="dependencyartifact"><a class="header" href="#dependencyartifact"><code>dependency.artifact</code></a></h3>
 <p>Resolves a named artifact from the dependency.</p>
-<pre><code class="language-fol">var dep = graph.dependency("mylib", "local:../mylib");
-var lib = dep.artifact("mylib-static");
+<pre><code class="language-fol">var lib = dep.artifact("logtiny");
 app.link(lib);
 </code></pre>
 <h3 id="dependencystep"><a class="header" href="#dependencystep"><code>dependency.step</code></a></h3>
 <p>Resolves a named step from the dependency.</p>
-<pre><code class="language-fol">var dep  = graph.dependency("mylib", "local:../mylib");
-var step = dep.step("codegen");
+<pre><code class="language-fol">var step = dep.step("check");
 app_step.depend_on(step);
 </code></pre>
 <h3 id="dependencygenerated"><a class="header" href="#dependencygenerated"><code>dependency.generated</code></a></h3>
 <p>Resolves a named generated output from the dependency.</p>
-<pre><code class="language-fol">var dep   = graph.dependency("mylib", "local:../mylib");
-var types = dep.generated("types.fol");
+<pre><code class="language-fol">var types = dep.generated("bindings");
 app.add_generated(types);
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -2101,13 +2639,16 @@ string lists are supported as loop iterables in <code>build.fol</code>.</p>
 <p><code>build.fol</code> can define helper <code>fun[]</code> and <code>pro[]</code> routines. They are visible
 only within the file — they are not exported to the package.</p>
 <h3 id="helper-function"><a class="header" href="#helper-function">Helper Function</a></h3>
-<pre><code class="language-fol">fun[] make_lib(graph: Graph, name: str, root: str): Artifact = {
-    return graph.add_static_lib({ name = name, root = root });
+<pre><code class="language-fol">fun[] make_lib(name: str, root: str): Artifact = {
+    return .build().graph().add_static_lib({ name = name, root = root });
 }
 
-pro[] build(graph: Graph): non = {
-    var core = make_lib(graph, "core", "src/core/lib.fol");
-    var io   = make_lib(graph, "io",   "src/io/lib.fol");
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
+    var core = make_lib("core", "src/core/lib.fol");
+    var io   = make_lib("io",   "src/io/lib.fol");
     var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
     app.link(core);
     app.link(io);
@@ -2115,37 +2656,44 @@ pro[] build(graph: Graph): non = {
     graph.add_run(app);
 }
 </code></pre>
-<p>The helper <code>make_lib</code> receives the <code>graph</code> handle as a parameter because
-<code>graph</code> is not a global — it is a parameter of <code>build</code>.</p>
+<p>The helper <code>make_lib</code> accesses the graph through <code>.build().graph()</code>. The graph
+handle is not a public type name and is not passed as a user-declared
+parameter.</p>
 <h3 id="helpers-calling-helpers"><a class="header" href="#helpers-calling-helpers">Helpers Calling Helpers</a></h3>
 <p>Helpers can call other helpers:</p>
 <pre><code class="language-fol">fun[] lib_root(name: str): str = {
     return "src/" + name + "/lib.fol";
 }
 
-fun[] add_lib(graph: Graph, name: str): Artifact = {
-    return graph.add_static_lib({ name = name, root = lib_root(name) });
+fun[] add_lib(name: str): Artifact = {
+    return .build().graph().add_static_lib({ name = name, root = lib_root(name) });
 }
 
-pro[] build(graph: Graph): non = {
-    var core = add_lib(graph, "core");
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
+    var core = add_lib("core");
     var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
     app.link(core);
     graph.install(app);
 }
 </code></pre>
 <h2 id="combined-example"><a class="header" href="#combined-example">Combined Example</a></h2>
-<pre><code class="language-fol">fun[] make_lib(graph: Graph, name: str): Artifact = {
-    return graph.add_static_lib({ name = name, root = name });
+<pre><code class="language-fol">fun[] make_lib(name: str): Artifact = {
+    return .build().graph().add_static_lib({ name = name, root = name });
 }
 
-pro[] build(graph: Graph): non = {
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var target   = graph.standard_target();
     var optimize = graph.standard_optimize();
     var strip    = graph.option({ name = "strip", kind = "bool", default = false });
 
     loop(name in {"core", "io", "net"}) {
-        make_lib(graph, name);
+        make_lib(name);
     };
 
     var app = graph.add_exe({
@@ -2207,6 +2755,17 @@ artifacts, modules, and generated files.</p>
 var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
 app.link(core);
 </code></pre>
+<p>Typed system-library requests can be linked the same way:</p>
+<pre><code class="language-fol">var ssl = graph.add_system_lib({ name = "ssl", mode = "dynamic" });
+app.link(ssl);
+</code></pre>
+<p>Framework-style requests use the same surface:</p>
+<pre><code class="language-fol">var metal = graph.add_system_lib({
+    name = "Metal",
+    framework = true,
+});
+app.link(metal);
+</code></pre>
 <p>Linking is transitive through the graph. If <code>core</code> itself links <code>utils</code>, <code>app</code>
 will also see <code>utils</code>.</p>
 <h3 id="installation"><a class="header" href="#installation">Installation</a></h3>
@@ -2215,8 +2774,10 @@ will also see <code>utils</code>.</p>
 graph.install(core);
 </code></pre>
 <p>Files and directories can also be installed directly:</p>
-<pre><code class="language-fol">graph.install_file("config/defaults.toml");
-graph.install_dir("assets/");
+<pre><code class="language-fol">var defaults = graph.file_from_root("config/defaults.toml");
+var assets = graph.dir_from_root("assets");
+graph.install_file({ name = "defaults", source = defaults });
+graph.install_dir({ name = "assets", source = assets });
 </code></pre>
 <h2 id="modules"><a class="header" href="#modules">Modules</a></h2>
 <p>Modules are named source units that can be shared across artifacts without
@@ -2228,10 +2789,13 @@ app.import(utils);
 <p><code>artifact.import(module)</code> makes the module visible in the importing artifact’s
 source scope. Equivalent to Zig’s <code>artifact.root_module.addImport(name, dep)</code>.</p>
 <p>Modules from dependencies are accessed via <code>dep.module(name)</code>:</p>
-<pre><code class="language-fol">var dep    = graph.dependency("mylib", "local:../mylib");
+<pre><code class="language-fol">var build  = .build();
+var dep    = build.add_dep({ alias = "mylib", source = "loc", target = "../mylib" });
 var logger = dep.module("logger");
 app.import(logger);
 </code></pre>
+<p><code>dep.module(name)</code> resolves only explicitly exported build modules. It does not
+change the ordinary package import rules used in source files.</p>
 <h2 id="generated-files-1"><a class="header" href="#generated-files-1">Generated Files</a></h2>
 <p>Generated files are outputs produced before compilation. They must be declared
 in the graph so the build system knows to produce them and what depends on them.</p>
@@ -2245,7 +2809,9 @@ in the graph so the build system knows to produce them and what depends on them.
 <tr><td>Write</td><td><code>graph.write_file</code></td><td>Written with literal string contents</td></tr>
 <tr><td>Copy</td><td><code>graph.copy_file</code></td><td>Copied from a source path</td></tr>
 <tr><td>Tool output</td><td><code>graph.add_system_tool</code></td><td>Produced by an external tool</td></tr>
+<tr><td>Tool dir</td><td><code>graph.add_system_tool_dir</code></td><td>Produced as a generated directory</td></tr>
 <tr><td>Codegen</td><td><code>graph.add_codegen</code></td><td>Produced by the FOL codegen pipeline</td></tr>
+<tr><td>Codegen dir</td><td><code>graph.add_codegen_dir</code></td><td>Produced as a generated directory</td></tr>
 <tr><td>Captured run</td><td><code>run.capture_stdout()</code></td><td>Stdout of a run step</td></tr>
 </tbody>
 </table>
@@ -2253,7 +2819,19 @@ in the graph so the build system knows to produce them and what depends on them.
 <h3 id="connecting-generated-files"><a class="header" href="#connecting-generated-files">Connecting Generated Files</a></h3>
 <p>A generated file must be connected to the graph entity that depends on it.</p>
 <p>Attach to a step (the step triggers its production):</p>
-<pre><code class="language-fol">var gen  = graph.add_system_tool({ tool = "protoc", output = "gen/types.fol" });
+<pre><code class="language-fol">var schema = graph.file_from_root("schema/api.yaml");
+var defaults = graph.write_file({
+    name = "defaults",
+    path = "gen/defaults.txt",
+    contents = "strict",
+});
+var gen  = graph.add_system_tool({
+    tool = "flatc",
+    args = { "--fol" },
+    file_args = { schema, defaults },
+    env = { MODE = "strict" },
+    output = "gen/types.fol",
+});
 var step = graph.step("proto");
 step.attach(gen);
 </code></pre>
@@ -2273,6 +2851,15 @@ var gen_output = gen_run.capture_stdout();
 
 var app_run = graph.add_run(app);
 app_run.add_file_arg(gen_output);
+</code></pre>
+<p>Generated directories can be installed or exported as dirs:</p>
+<pre><code class="language-fol">var assets = graph.add_system_tool_dir({
+    tool = "assetpack",
+    output_dir = "gen/assets",
+});
+
+build.export_dir({ name = "assets", dir = assets });
+graph.install_dir({ name = "assets", source = assets });
 </code></pre>
 <h2 id="steps-1"><a class="header" href="#steps-1">Steps</a></h2>
 <p>Steps are named build phases. The build system has several implicit steps
@@ -2324,7 +2911,10 @@ generated crate directly with <code>rustc</code>.</p>
 fol code build --target x86_64-pc-windows-gnu
 </code></pre>
 <p>or inside <code>build.fol</code>:</p>
-<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+<pre><code class="language-fol">pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var target = graph.standard_target();
     var app = graph.add_exe({
         name = "app",
@@ -5273,7 +5863,7 @@ Imports are for reaching another package or another namespace boundary.</p>
 <ul>
 <li>it points to a local directory</li>
 <li>that directory is scanned as a FOL package / namespace tree</li>
-<li>no <code>package.yaml</code> is required</li>
+<li>no <code>build.fol</code> is required</li>
 <li>no <code>build.fol</code> is required</li>
 </ul>
 <p>This makes <code>loc</code> useful for local workspace code, experiments, and monorepo-style sharing.</p>
@@ -5292,38 +5882,20 @@ It points at an installed package root that must define its identity and build s
 The package layer discovers that root first, and ordinary name resolution happens only after the package has been prepared.</p>
 <p>For a <code>pkg</code> package root:</p>
 <ul>
-<li><code>package.yaml</code> is required</li>
 <li><code>build.fol</code> is required</li>
-<li><code>package.yaml</code> stores metadata only</li>
-<li><code>build.fol</code> declares dependencies and exports</li>
+<li><code>build.fol</code> stores package metadata, direct dependencies, and build logic</li>
 </ul>
 <h2 id="package-metadata-and-build-files"><a class="header" href="#package-metadata-and-build-files">Package Metadata And Build Files</a></h2>
-<p>Formal packages use two files at the root:</p>
+<p>Formal packages use one control file at the root:</p>
 <ul>
-<li><code>package.yaml</code></li>
 <li><code>build.fol</code></li>
-</ul>
-<h3 id="packageyaml-1"><a class="header" href="#packageyaml-1"><code>package.yaml</code></a></h3>
-<p><code>package.yaml</code> is metadata only.
-It is intentionally not a normal <code>.fol</code> source file.</p>
-<p>Typical metadata belongs here:</p>
-<ul>
-<li>package name</li>
-<li>version</li>
-<li>package kind</li>
-<li>human-oriented description/license/author data</li>
-</ul>
-<p>What does <strong>not</strong> belong here:</p>
-<ul>
-<li><code>use</code></li>
-<li>dependency edges</li>
-<li>export wiring</li>
-<li>build logic</li>
 </ul>
 <h3 id="buildfol-1"><a class="header" href="#buildfol-1"><code>build.fol</code></a></h3>
 <p><code>build.fol</code> is the package build entry file.</p>
 <p>This file is responsible for:</p>
 <ul>
+<li>declaring package metadata</li>
+<li>declaring direct dependencies</li>
 <li>declaring package build logic</li>
 <li>declaring artifacts, steps, and generated outputs through the build API</li>
 <li>becoming the canonical package entrypoint for <code>fol code build/run/test/check</code></li>
@@ -5334,7 +5906,7 @@ The difference is that the package layer evaluates one canonical build routine i
 <p>Today that means:</p>
 <ul>
 <li><code>fol code build/run/test/check</code> starts from <code>build.fol</code></li>
-<li>the canonical entry is <code>pro[] build(graph: Graph): non</code></li>
+<li>the canonical entry is <code>pro[] build(): non</code></li>
 <li>old <code>def root: loc = ...</code> and <code>def build(...)</code> forms are not the build model</li>
 </ul>
 <p>So:</p>
@@ -5346,12 +5918,13 @@ The difference is that the package layer evaluates one canonical build routine i
 <p>That means:</p>
 <ul>
 <li>ordinary source <code>.fol</code> files use <code>use</code> to consume packages/namespaces</li>
-<li><code>build.fol</code> uses <code>pro[] build(graph: Graph): non</code> to mutate the build graph</li>
+<li><code>build.fol</code> uses <code>pro[] build(): non</code> plus <code>.build()</code> to configure package metadata,
+direct dependencies, and the build graph</li>
 </ul>
 <p>So <code>use</code> and the build routine serve different jobs:</p>
 <ul>
 <li><code>use</code> = consume functionality</li>
-<li><code>pro[] build(...)</code> in <code>build.fol</code> = define package/build surface</li>
+<li><code>pro[] build()</code> in <code>build.fol</code> = define package/build surface</li>
 </ul>
 <h2 id="system-libraries"><a class="header" href="#system-libraries">System libraries</a></h2>
 <p>This is how including other libraries works, for example include <code>fmt</code> module from standard library:</p>
@@ -5384,7 +5957,7 @@ pro[] main: int = {
 </code></pre>
 <p>That second form is namespace import, not “single file import”.
 If <code>space</code> contains multiple <code>.fol</code> files in the same folder, they still belong to the same imported namespace.</p>
-<p><code>loc</code> does not require <code>package.yaml</code> or <code>build.fol</code>.
+<p><code>loc</code> does not require <code>build.fol</code>.
 But if the target directory already defines <code>build.fol</code> at its root, that directory is treated as a formal package root and should be imported through <code>pkg</code>, not <code>loc</code>.</p>
 <h2 id="external-packages"><a class="header" href="#external-packages">External packages</a></h2>
 <p>External packages are imported through <code>pkg</code>:</p>
@@ -5393,11 +5966,9 @@ But if the target directory already defines <code>build.fol</code> at its root, 
 <p><code>pkg</code> imports are different from <code>loc</code> and <code>std</code>:</p>
 <ul>
 <li>the imported root is an installed package root</li>
-<li>that root must contain <code>package.yaml</code></li>
 <li>that root must contain <code>build.fol</code></li>
-<li><code>package.yaml</code> provides metadata only</li>
-<li><code>build.fol</code> is the package build entry file and currently defines dependencies,
-exports, and root declarations that package loading depends on</li>
+<li><code>build.fol</code> is the package control file and currently defines package metadata,
+dependencies, exports, and build declarations that package loading depends on</li>
 <li>raw transport URLs do not appear in source code; package acquisition and installed-package preparation are separate from ordinary source resolution</li>
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -5493,9 +6064,9 @@ pro[] main: int = {
 <li>subfolders extend the namespace path</li>
 <li><code>use</code> imports packages or namespaces</li>
 <li><code>hid</code> keeps a declaration private to one file</li>
-<li><code>loc</code> imports a local directory tree without package metadata</li>
+<li><code>loc</code> imports a local directory tree without a package control file</li>
 <li><code>std</code> imports a toolchain-owned directory tree</li>
-<li><code>pkg</code> imports a formal external package defined by <code>package.yaml</code> + <code>build.fol</code></li>
+<li><code>pkg</code> imports a formal external package defined by <code>build.fol</code></li>
 </ul>
 <p>This means FOL is <strong>not</strong> “one file = one module”.
 The package is the folder; the file is a source unit inside that package.</p>
@@ -5503,20 +6074,20 @@ The package is the folder; the file is a source unit inside that package.</p>
 <p>When a directory is treated as a package root, the exact contract depends on the import kind:</p>
 <ul>
 <li><code>loc</code>: plain local directory import, no package metadata required</li>
+<li><code>loc</code>: plain local directory import, no package control file required</li>
 <li><code>std</code>: toolchain standard-library directory import</li>
 <li><code>pkg</code>: installed external package import with explicit root files</li>
 </ul>
 <p>For <code>pkg</code>, the root is not just “a folder containing <code>.fol</code> files”.
 It is a formal package root with:</p>
 <ul>
-<li><code>package.yaml</code> for metadata</li>
-<li><code>build.fol</code> as the package build entry file</li>
+<li><code>build.fol</code> as the package control file</li>
 </ul>
 <p>This keeps the language model clean:</p>
 <ul>
 <li>source files <code>use</code> other namespaces/packages</li>
-<li>package build execution starts from <code>pro[] build(graph: Graph): non</code> in <code>build.fol</code></li>
-<li>package metadata lives in <code>package.yaml</code></li>
+<li>package build execution starts from <code>pro[] build(): non</code> in <code>build.fol</code></li>
+<li>package metadata and direct dependencies are configured through <code>.build()</code> inside <code>build.fol</code></li>
 <li>package loading happens before ordinary name resolution</li>
 </ul>
 <p><code>build.fol</code> itself is still ordinary FOL syntax.

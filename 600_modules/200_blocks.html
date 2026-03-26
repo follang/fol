@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f252c68b.js";
+            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -266,9 +266,9 @@ pro[] main: int = {
 <li>subfolders extend the namespace path</li>
 <li><code>use</code> imports packages or namespaces</li>
 <li><code>hid</code> keeps a declaration private to one file</li>
-<li><code>loc</code> imports a local directory tree without package metadata</li>
+<li><code>loc</code> imports a local directory tree without a package control file</li>
 <li><code>std</code> imports a toolchain-owned directory tree</li>
-<li><code>pkg</code> imports a formal external package defined by <code>package.yaml</code> + <code>build.fol</code></li>
+<li><code>pkg</code> imports a formal external package defined by <code>build.fol</code></li>
 </ul>
 <p>This means FOL is <strong>not</strong> “one file = one module”.
 The package is the folder; the file is a source unit inside that package.</p>
@@ -276,20 +276,20 @@ The package is the folder; the file is a source unit inside that package.</p>
 <p>When a directory is treated as a package root, the exact contract depends on the import kind:</p>
 <ul>
 <li><code>loc</code>: plain local directory import, no package metadata required</li>
+<li><code>loc</code>: plain local directory import, no package control file required</li>
 <li><code>std</code>: toolchain standard-library directory import</li>
 <li><code>pkg</code>: installed external package import with explicit root files</li>
 </ul>
 <p>For <code>pkg</code>, the root is not just “a folder containing <code>.fol</code> files”.
 It is a formal package root with:</p>
 <ul>
-<li><code>package.yaml</code> for metadata</li>
-<li><code>build.fol</code> as the package build entry file</li>
+<li><code>build.fol</code> as the package control file</li>
 </ul>
 <p>This keeps the language model clean:</p>
 <ul>
 <li>source files <code>use</code> other namespaces/packages</li>
-<li>package build execution starts from <code>pro[] build(graph: Graph): non</code> in <code>build.fol</code></li>
-<li>package metadata lives in <code>package.yaml</code></li>
+<li>package build execution starts from <code>pro[] build(): non</code> in <code>build.fol</code></li>
+<li>package metadata and direct dependencies are configured through <code>.build()</code> inside <code>build.fol</code></li>
 <li>package loading happens before ordinary name resolution</li>
 </ul>
 <p><code>build.fol</code> itself is still ordinary FOL syntax.

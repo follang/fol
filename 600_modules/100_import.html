@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f252c68b.js";
+            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -213,7 +213,7 @@ Imports are for reaching another package or another namespace boundary.</p>
 <ul>
 <li>it points to a local directory</li>
 <li>that directory is scanned as a FOL package / namespace tree</li>
-<li>no <code>package.yaml</code> is required</li>
+<li>no <code>build.fol</code> is required</li>
 <li>no <code>build.fol</code> is required</li>
 </ul>
 <p>This makes <code>loc</code> useful for local workspace code, experiments, and monorepo-style sharing.</p>
@@ -232,38 +232,20 @@ It points at an installed package root that must define its identity and build s
 The package layer discovers that root first, and ordinary name resolution happens only after the package has been prepared.</p>
 <p>For a <code>pkg</code> package root:</p>
 <ul>
-<li><code>package.yaml</code> is required</li>
 <li><code>build.fol</code> is required</li>
-<li><code>package.yaml</code> stores metadata only</li>
-<li><code>build.fol</code> declares dependencies and exports</li>
+<li><code>build.fol</code> stores package metadata, direct dependencies, and build logic</li>
 </ul>
 <h2 id="package-metadata-and-build-files"><a class="header" href="#package-metadata-and-build-files">Package Metadata And Build Files</a></h2>
-<p>Formal packages use two files at the root:</p>
+<p>Formal packages use one control file at the root:</p>
 <ul>
-<li><code>package.yaml</code></li>
 <li><code>build.fol</code></li>
-</ul>
-<h3 id="packageyaml"><a class="header" href="#packageyaml"><code>package.yaml</code></a></h3>
-<p><code>package.yaml</code> is metadata only.
-It is intentionally not a normal <code>.fol</code> source file.</p>
-<p>Typical metadata belongs here:</p>
-<ul>
-<li>package name</li>
-<li>version</li>
-<li>package kind</li>
-<li>human-oriented description/license/author data</li>
-</ul>
-<p>What does <strong>not</strong> belong here:</p>
-<ul>
-<li><code>use</code></li>
-<li>dependency edges</li>
-<li>export wiring</li>
-<li>build logic</li>
 </ul>
 <h3 id="buildfol"><a class="header" href="#buildfol"><code>build.fol</code></a></h3>
 <p><code>build.fol</code> is the package build entry file.</p>
 <p>This file is responsible for:</p>
 <ul>
+<li>declaring package metadata</li>
+<li>declaring direct dependencies</li>
 <li>declaring package build logic</li>
 <li>declaring artifacts, steps, and generated outputs through the build API</li>
 <li>becoming the canonical package entrypoint for <code>fol code build/run/test/check</code></li>
@@ -274,7 +256,7 @@ The difference is that the package layer evaluates one canonical build routine i
 <p>Today that means:</p>
 <ul>
 <li><code>fol code build/run/test/check</code> starts from <code>build.fol</code></li>
-<li>the canonical entry is <code>pro[] build(graph: Graph): non</code></li>
+<li>the canonical entry is <code>pro[] build(): non</code></li>
 <li>old <code>def root: loc = ...</code> and <code>def build(...)</code> forms are not the build model</li>
 </ul>
 <p>So:</p>
@@ -286,12 +268,13 @@ The difference is that the package layer evaluates one canonical build routine i
 <p>That means:</p>
 <ul>
 <li>ordinary source <code>.fol</code> files use <code>use</code> to consume packages/namespaces</li>
-<li><code>build.fol</code> uses <code>pro[] build(graph: Graph): non</code> to mutate the build graph</li>
+<li><code>build.fol</code> uses <code>pro[] build(): non</code> plus <code>.build()</code> to configure package metadata,
+direct dependencies, and the build graph</li>
 </ul>
 <p>So <code>use</code> and the build routine serve different jobs:</p>
 <ul>
 <li><code>use</code> = consume functionality</li>
-<li><code>pro[] build(...)</code> in <code>build.fol</code> = define package/build surface</li>
+<li><code>pro[] build()</code> in <code>build.fol</code> = define package/build surface</li>
 </ul>
 <h2 id="system-libraries"><a class="header" href="#system-libraries">System libraries</a></h2>
 <p>This is how including other libraries works, for example include <code>fmt</code> module from standard library:</p>
@@ -324,7 +307,7 @@ pro[] main: int = {
 </code></pre>
 <p>That second form is namespace import, not “single file import”.
 If <code>space</code> contains multiple <code>.fol</code> files in the same folder, they still belong to the same imported namespace.</p>
-<p><code>loc</code> does not require <code>package.yaml</code> or <code>build.fol</code>.
+<p><code>loc</code> does not require <code>build.fol</code>.
 But if the target directory already defines <code>build.fol</code> at its root, that directory is treated as a formal package root and should be imported through <code>pkg</code>, not <code>loc</code>.</p>
 <h2 id="external-packages"><a class="header" href="#external-packages">External packages</a></h2>
 <p>External packages are imported through <code>pkg</code>:</p>
@@ -333,11 +316,9 @@ But if the target directory already defines <code>build.fol</code> at its root, 
 <p><code>pkg</code> imports are different from <code>loc</code> and <code>std</code>:</p>
 <ul>
 <li>the imported root is an installed package root</li>
-<li>that root must contain <code>package.yaml</code></li>
 <li>that root must contain <code>build.fol</code></li>
-<li><code>package.yaml</code> provides metadata only</li>
-<li><code>build.fol</code> is the package build entry file and currently defines dependencies,
-exports, and root declarations that package loading depends on</li>
+<li><code>build.fol</code> is the package control file and currently defines package metadata,
+dependencies, exports, and build declarations that package loading depends on</li>
 <li>raw transport URLs do not appear in source code; package acquisition and installed-package preparation are separate from ordinary source resolution</li>
 </ul>
 

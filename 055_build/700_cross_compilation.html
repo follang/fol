@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f252c68b.js";
+            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -191,7 +191,10 @@ generated crate directly with <code>rustc</code>.</p>
 fol code build --target x86_64-pc-windows-gnu
 </code></pre>
 <p>or inside <code>build.fol</code>:</p>
-<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+<pre><code class="language-fol">pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var target = graph.standard_target();
     var app = graph.add_exe({
         name = "app",

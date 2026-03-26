@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-f252c68b.js";
+            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -188,21 +188,33 @@ is executed against a build graph IR instead of emitting backend code.</p>
 <h2 id="entry-point"><a class="header" href="#entry-point">Entry Point</a></h2>
 <p>Every buildable package must have a <code>build.fol</code> at its root with exactly one
 canonical entry:</p>
-<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+<pre><code class="language-fol">pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     ...
 }
 </code></pre>
-<p>The <code>graph</code> parameter is the injection surface. All build operations go through
-method calls on <code>graph</code> and on the handles it returns.</p>
+<p>The active build context is accessed explicitly through the build-only ambient
+accessor:</p>
+<pre><code class="language-fol">.build()
+</code></pre>
+<p>There is no injected <code>graph</code> parameter anymore. <code>.build()</code> returns an opaque
+build-only handle. Users do not name its type explicitly. Package metadata and
+direct dependencies are configured through that handle, and graph work is
+reached through <code>build.graph()</code>.</p>
 <h2 id="minimal-example"><a class="header" href="#minimal-example">Minimal Example</a></h2>
-<pre><code class="language-fol">pro[] build(graph: Graph): non = {
+<pre><code class="language-fol">pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "app", version = "0.1.0" });
+    var graph = build.graph();
     var app = graph.add_exe({ name = "app", root = "src/main.fol" });
     graph.install(app);
     graph.add_run(app);
 }
 </code></pre>
-<p>This registers an executable, marks it for installation, and binds a default
-run step.</p>
+<p>This registers package metadata, adds an executable, marks it for installation,
+and binds a default run step.</p>
 <h2 id="what-fol-build-owns"><a class="header" href="#what-fol-build-owns">What <code>fol-build</code> Owns</a></h2>
 <ul>
 <li><code>graph.rs</code> — build graph IR (steps, artifacts, modules, options, generated files)</li>
@@ -225,6 +237,40 @@ run step.</p>
 <li>control flow available inside <code>build.fol</code></li>
 <li>build options and <code>-D</code> flags</li>
 <li>artifact types, modules, and generated files</li>
+<li>dependency handles and unified output handles</li>
+</ul>
+<h2 id="near-term-architecture"><a class="header" href="#near-term-architecture">Near-Term Architecture</a></h2>
+<p>The next build round is about extending the existing explicit surface, not
+replacing it.</p>
+<p>The intended layering is:</p>
+<ul>
+<li><code>build.add_dep({...})</code> declares a direct dependency and returns a dependency
+handle</li>
+<li><code>build.export_*({...})</code> declares the build-facing surface a package chooses to
+expose</li>
+<li><code>graph.file_from_root(...)</code> and <code>graph.dir_from_root(...)</code> remain the typed
+source-path producers</li>
+<li>broader path-oriented exports and dependency path queries sit on top of those
+producers instead of collapsing back into raw string paths</li>
+<li>dependency modes, install reporting, and system integration should become more
+concrete without changing the top-level <code>.build()</code> structure</li>
+</ul>
+<p>This means the near-term additions should look like richer values and richer
+queries on top of the current build graph, not a new manifest format and not a
+public <code>Graph</code> or <code>Build</code> type.</p>
+<h2 id="standalone-examples"><a class="header" href="#standalone-examples">Standalone Examples</a></h2>
+<p>These checked-in example packages exercise the current public build surface:</p>
+<ul>
+<li><code>examples/build_dep_exports</code></li>
+<li><code>examples/build_source_paths</code></li>
+<li><code>examples/build_dep_modes</code></li>
+<li><code>examples/build_described_steps</code></li>
+<li><code>examples/build_generated_dirs</code></li>
+<li><code>examples/build_dep_handles</code></li>
+<li><code>examples/build_output_handles</code></li>
+<li><code>examples/build_install_prefix</code></li>
+<li><code>examples/build_system_lib</code></li>
+<li><code>examples/build_system_tool</code></li>
 </ul>
 
                     </main>
