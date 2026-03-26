@@ -147,6 +147,8 @@ Completion criteria:
   - mixed declarations in one file
 
 ### Slice 6
+Status: complete
+
 Expand direct compile-fail fixtures for `core` rejecting heap-backed expressions, not just declarations.
 
 Completion criteria:

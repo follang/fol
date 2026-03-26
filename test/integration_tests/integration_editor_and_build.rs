@@ -2187,6 +2187,18 @@ fn test_build_fixtures_core_model_reject_forbidden_surfaces() {
             "requires heap support and is unavailable in 'fol_model = core'",
         ),
         (
+            "model_core_reject_return_string",
+            "str requires heap support and is unavailable in 'fol_model = core'",
+        ),
+        (
+            "model_core_reject_body_vec",
+            "vec[...] requires heap support and is unavailable in 'fol_model = core'",
+        ),
+        (
+            "model_core_reject_dynamic_len_string",
+            "string literals require heap support and are unavailable in 'fol_model = core'",
+        ),
+        (
             "model_core_reject_echo",
             "'.echo(...)' requires 'fol_model = std'",
         ),
