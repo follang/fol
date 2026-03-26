@@ -3,6 +3,7 @@ use crate::{
     TypecheckErrorKind, TypecheckResult, TypedExportMount, TypedPackage, TypedProgram,
     TypedWorkspace,
 };
+use fol_parser::ast::FolType;
 use fol_resolver::{MountedSymbolProvenance, PackageIdentity, SymbolId};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -28,6 +29,7 @@ impl TypecheckSession {
         &mut self,
         resolved: fol_resolver::ResolvedProgram,
     ) -> TypecheckResult<TypedProgram> {
+        validate_import_capability_model(&resolved, self.config.capability_model)?;
         let mut typed =
             TypedProgram::from_resolved_with_model(resolved, self.config.capability_model);
         decls::lower_declaration_signatures(&mut typed)?;
@@ -118,6 +120,14 @@ impl TypecheckSession {
                 self.check_workspace_package(workspace, &dependency, typed_packages, in_progress)
             {
                 errors.append(&mut dependency_errors);
+            }
+        }
+
+        if errors.is_empty() {
+            if let Err(mut package_errors) =
+                validate_import_capability_model(&package.program, self.config.capability_model)
+            {
+                errors.append(&mut package_errors);
             }
         }
 
@@ -587,6 +597,39 @@ impl TypecheckSession {
 
         imported_cache.insert((source_identity.clone(), source_type_id), translated);
         Ok(translated)
+    }
+}
+
+fn validate_import_capability_model(
+    resolved: &fol_resolver::ResolvedProgram,
+    capability_model: crate::TypecheckCapabilityModel,
+) -> TypecheckResult<()> {
+    if capability_model == crate::TypecheckCapabilityModel::Std {
+        return Ok(());
+    }
+
+    let mut errors = Vec::new();
+    for import in resolved.imports.iter() {
+        if !matches!(import.path_type, FolType::Standard { .. }) {
+            continue;
+        }
+        let origin = resolved
+            .symbol(import.alias_symbol)
+            .and_then(|symbol| symbol.origin.clone());
+        let message = format!(
+            "'use ...: std = {{...}}' requires 'fol_model = std'; current artifact model is '{}'",
+            capability_model.as_str()
+        );
+        errors.push(match origin {
+            Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin),
+            None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
+        });
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
     }
 }
 

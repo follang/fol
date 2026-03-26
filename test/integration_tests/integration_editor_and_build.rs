@@ -1487,6 +1487,7 @@ fn test_cli_build_emits_rust_for_model_examples() {
             "use fol_runtime::alloc as rt;",
         ),
         ("examples/std_cli", "use fol_runtime::std as rt;"),
+        ("examples/std_bundled_fmt", "use fol_runtime::std as rt;"),
         ("examples/std_echo_min", "use fol_runtime::std as rt;"),
         ("examples/std_named_calls", "use fol_runtime::std as rt;"),
         ("examples/std_surface_showcase", "use fol_runtime::std as rt;"),
@@ -1540,6 +1541,7 @@ fn test_cli_example_build_summaries_surface_expected_models() {
         ("examples/alloc_containers", "fol_model=alloc"),
         ("examples/alloc_collections", "fol_model=alloc"),
         ("examples/alloc_surface_showcase", "fol_model=alloc"),
+        ("examples/std_bundled_fmt", "fol_model=std"),
         ("examples/std_cli", "fol_model=std"),
         ("examples/std_echo_min", "fol_model=std"),
         ("examples/std_named_calls", "fol_model=std"),
@@ -1568,6 +1570,7 @@ fn test_cli_example_build_summaries_surface_expected_models() {
 #[test]
 fn test_cli_std_examples_run_and_print_expected_output() {
     let cases = [
+        ("examples/std_bundled_fmt", "7"),
         ("examples/std_cli", "std-ready"),
         ("examples/std_echo_min", "9"),
         ("examples/std_named_calls", "host-ok-ready"),
@@ -1614,6 +1617,170 @@ fn test_cli_std_examples_run_and_print_expected_output() {
             String::from_utf8_lossy(&run.stderr)
         );
     }
+}
+
+#[test]
+fn test_bundled_std_discovery_stays_coherent_across_cli_and_editor() {
+    use fol_editor::{
+        EditorConfig, EditorDocumentUri, EditorLspServer, JsonRpcId, JsonRpcNotification,
+        JsonRpcRequest, LspDefinitionParams, LspDidOpenTextDocumentParams, LspPosition,
+        LspTextDocumentIdentifier, LspTextDocumentItem,
+    };
+
+    let root = temp_example_root("examples/std_bundled_fmt");
+    let build = run_fol_in_dir(&root, &["code", "build"]);
+    assert!(
+        build.status.success(),
+        "bundled std example should build: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        String::from_utf8_lossy(&build.stderr)
+    );
+
+    let run = run_fol_in_dir(&root, &["code", "run"]);
+    assert!(
+        run.status.success(),
+        "bundled std example should run: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&run.stdout),
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&run.stdout).contains("7"),
+        "bundled std example should print through hosted std flow: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&run.stdout),
+        String::from_utf8_lossy(&run.stderr)
+    );
+
+    let source_path = root.join("src/main.fol");
+    let source = std::fs::read_to_string(&source_path).expect("example source should load");
+    let uri = EditorDocumentUri::from_file_path(source_path)
+        .expect("example uri should build")
+        .as_str()
+        .to_string();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didOpen".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidOpenTextDocumentParams {
+                    text_document: LspTextDocumentItem {
+                        uri: uri.clone(),
+                        language_id: "fol".to_string(),
+                        version: 1,
+                        text: source,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .expect("didOpen should succeed");
+    assert!(
+        diagnostics
+            .iter()
+            .all(|published| published.diagnostics.is_empty()),
+        "bundled std example should stay editor-clean without override: {diagnostics:#?}"
+    );
+
+    let definition = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(3991),
+            method: "textDocument/definition".to_string(),
+            params: Some(
+                serde_json::to_value(LspDefinitionParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    position: LspPosition {
+                        line: 2,
+                        character: 27,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .expect("definition request should succeed");
+    assert!(definition.is_some(), "bundled std definition request should complete");
+}
+
+#[test]
+fn test_bundled_std_package_root_builds_under_the_current_model() {
+    let root = repo_root().join("lang/library/std");
+    let build = run_fol_in_dir(&root, &["code", "check"]);
+    assert!(
+        build.status.success(),
+        "bundled std package root should build: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        String::from_utf8_lossy(&build.stderr)
+    );
+}
+
+#[test]
+fn test_build_rejects_std_imports_under_core_model() {
+    let temp_root = unique_temp_root("build_core_use_std_reject");
+    let app_root = temp_root.join("app");
+    std::fs::create_dir_all(app_root.join("src")).expect("should create app source root");
+    std::fs::write(
+        app_root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+            "    graph.install(app);\n",
+            "};\n",
+        ),
+    )
+    .expect("should write app build");
+    std::fs::write(
+        app_root.join("src/main.fol"),
+        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
+    )
+    .expect("should write app source");
+
+    let build = run_fol_in_dir(&app_root, &["code", "build"]);
+    let stderr = String::from_utf8_lossy(&build.stderr);
+    assert!(!build.status.success(), "core std-import app should fail");
+    assert!(
+        stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'core'"),
+        "core std-import app should keep the capability diagnostic: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+}
+
+#[test]
+fn test_build_rejects_std_imports_under_alloc_model() {
+    let temp_root = unique_temp_root("build_alloc_use_std_reject");
+    let app_root = temp_root.join("app");
+    std::fs::create_dir_all(app_root.join("src")).expect("should create app source root");
+    std::fs::write(
+        app_root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
+            "    graph.install(app);\n",
+            "};\n",
+        ),
+    )
+    .expect("should write app build");
+    std::fs::write(
+        app_root.join("src/main.fol"),
+        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
+    )
+    .expect("should write app source");
+
+    let build = run_fol_in_dir(&app_root, &["code", "build"]);
+    let stderr = String::from_utf8_lossy(&build.stderr);
+    assert!(!build.status.success(), "alloc std-import app should fail");
+    assert!(
+        stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'alloc'"),
+        "alloc std-import app should keep the capability diagnostic: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
 }
 
 #[test]
@@ -2583,6 +2750,7 @@ fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
         ("examples/build_system_lib", "use fol_runtime::std as rt;"),
         ("examples/build_system_tool", "use fol_runtime::std as rt;"),
         ("examples/std_cli", "use fol_runtime::std as rt;"),
+        ("examples/std_bundled_fmt", "use fol_runtime::std as rt;"),
         ("examples/std_echo_min", "use fol_runtime::std as rt;"),
     ];
 

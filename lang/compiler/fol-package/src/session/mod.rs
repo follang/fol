@@ -10,7 +10,7 @@ use fol_stream::{FileStream, Source, SourceType};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct PackageSession {
     config: PackageConfig,
     prepared_packages: BTreeMap<PackageIdentity, PreparedPackage>,
@@ -19,7 +19,7 @@ pub struct PackageSession {
 
 impl PackageSession {
     pub fn new() -> Self {
-        Self::default()
+        Self::with_config(PackageConfig::default())
     }
 
     pub fn with_config(config: PackageConfig) -> Self {
@@ -293,6 +293,12 @@ impl PackageSession {
         let prepared = prepared_result?;
         self.cache_package(prepared.clone());
         Ok(prepared)
+    }
+}
+
+impl Default for PackageSession {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

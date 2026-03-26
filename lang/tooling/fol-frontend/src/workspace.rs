@@ -2,6 +2,7 @@ use crate::{
     DiscoveredRoot, FrontendConfig, FrontendError, FrontendErrorKind, FrontendResult, PackageRoot,
     WorkspaceRoot,
 };
+use fol_package::available_bundled_std_root;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -103,7 +104,9 @@ impl FrontendWorkspace {
         ];
 
         if let Some(std_root) = &self.std_root_override {
-            lines.push(format!("std_root={}", std_root.display()));
+            lines.push(format!("std_root=override:{}", std_root.display()));
+        } else if let Some(std_root) = available_bundled_std_root() {
+            lines.push(format!("std_root=bundled:{}", std_root.display()));
         }
         if let Some(package_store_root) = &self.package_store_root_override {
             lines.push(format!(
@@ -588,16 +591,16 @@ mod tests {
     fn workspace_info_summary_renders_stable_core_fields() {
         let workspace = FrontendWorkspace::new(WorkspaceRoot::new(PathBuf::from("/tmp/demo")));
 
-        assert_eq!(
-            workspace.info_summary_lines(),
-            vec![
-                "root=/tmp/demo".to_string(),
-                "members=0".to_string(),
-                "build_root=/tmp/demo/.fol/build".to_string(),
-                "cache_root=/tmp/demo/.fol/cache".to_string(),
-                "git_cache_root=/tmp/demo/.fol/cache/git".to_string(),
-                "install_prefix=/tmp/demo/.fol/install".to_string(),
-            ]
+        let lines = workspace.info_summary_lines();
+        assert!(lines.contains(&"root=/tmp/demo".to_string()));
+        assert!(lines.contains(&"members=0".to_string()));
+        assert!(lines.contains(&"build_root=/tmp/demo/.fol/build".to_string()));
+        assert!(lines.contains(&"cache_root=/tmp/demo/.fol/cache".to_string()));
+        assert!(lines.contains(&"git_cache_root=/tmp/demo/.fol/cache/git".to_string()));
+        assert!(lines.contains(&"install_prefix=/tmp/demo/.fol/install".to_string()));
+        assert!(
+            lines.iter().any(|line| line.starts_with("std_root=bundled:")),
+            "workspace info should surface bundled std by default: {lines:?}"
         );
     }
 
@@ -615,7 +618,7 @@ mod tests {
         };
 
         let lines = workspace.info_summary_lines();
-        assert!(lines.contains(&"std_root=/tmp/demo/std".to_string()));
+        assert!(lines.contains(&"std_root=override:/tmp/demo/std".to_string()));
         assert!(lines.contains(&"package_store_root=/tmp/demo/.fol/pkg".to_string()));
     }
 

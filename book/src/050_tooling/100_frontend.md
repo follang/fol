@@ -26,6 +26,12 @@ The frontend owns:
 - shell completions
 - user-facing summaries and workflow errors
 
+Bundled std reminder:
+
+- hosted binary scaffolds should default to `fol_model = "std"`
+- scaffolded projects should rely on bundled `std`
+- scaffolding should not teach manual std dependency setup
+
 Compiler truth remains in the compiler crates.
 
 ## Public Command Groups

@@ -29,6 +29,12 @@ Use `work` for:
 - inspecting workspace structure
 - seeing member and dependency state
 
+Scaffold reminder:
+
+- `fol work init --bin` creates a hosted binary package with `fol_model = "std"`
+- scaffolded packages rely on bundled `std` automatically
+- scaffolded packages do not add `std` as an explicit dependency
+
 ## Pack
 
 Package acquisition commands:

@@ -1,5 +1,6 @@
 use fmt: std = {"fmt"};
 
 fun[] main(): int = {
-    return fmt::math::answer();
+    var shown: int = .echo(fmt::math::answer());
+    return 0;
 };

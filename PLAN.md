@@ -369,7 +369,7 @@ Completion criteria:
 ## Epoch 8: Shipped Std Package Hardening
 
 ### Slice 31
-Status: pending
+Status: complete
 
 Add a minimal build/package manifest for bundled std that matches the current `.build()` model.
 
@@ -378,7 +378,7 @@ Completion criteria:
 - bundled std has valid package/build metadata under current rules
 
 ### Slice 32
-Status: pending
+Status: complete
 
 Add one tiny exported symbol/module and one importer test package.
 
@@ -387,7 +387,7 @@ Completion criteria:
 - importing bundled std works through the normal package path
 
 ### Slice 33
-Status: pending
+Status: complete
 
 Add one negative test proving `use std` still fails under `fol_model = "core"`.
 
@@ -396,7 +396,7 @@ Completion criteria:
 - bundled std presence does not bypass model gating
 
 ### Slice 34
-Status: pending
+Status: complete
 
 Add one negative test proving `use std` still fails under `fol_model = "mem"`.
 
@@ -405,7 +405,7 @@ Completion criteria:
 - mem-mode rejection is explicit and stable
 
 ### Slice 35
-Status: pending
+Status: complete
 
 Add one positive hosted example package that relies on bundled std and runs.
 
@@ -418,7 +418,7 @@ Completion criteria:
 ## Epoch 9: Tooling And Distribution Hardening
 
 ### Slice 36
-Status: pending
+Status: complete
 
 Audit initialization/scaffolding commands so new std-mode projects do not teach manual std dependency setup.
 
@@ -427,7 +427,7 @@ Completion criteria:
 - scaffolded projects rely on bundled std implicitly
 
 ### Slice 37
-Status: pending
+Status: complete
 
 Audit build summaries and info/report surfaces for std-root wording.
 
@@ -436,7 +436,7 @@ Completion criteria:
 - summaries refer to bundled std or explicit override accurately
 
 ### Slice 38
-Status: pending
+Status: complete
 
 Add one integration suite that asserts bundled std discovery across:
 
@@ -450,7 +450,7 @@ Completion criteria:
 - one suite catches cross-layer bundled-std drift
 
 ### Slice 39
-Status: pending
+Status: complete
 
 Audit backend/integration tests that currently inject temporary std roots for emitted Rust checks and convert the normal path to bundled std where possible.
 
@@ -463,7 +463,7 @@ Completion criteria:
 ## Epoch 10: Final Cleanup And Follow-Up Readiness
 
 ### Slice 40
-Status: pending
+Status: complete
 
 Create a short roadmap note for how std grows inside `lang/library/std`.
 

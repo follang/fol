@@ -5,6 +5,7 @@ use crate::{
 };
 use fol_build::{evaluate_build_source, BuildEvaluationInputs, BuildEvaluationRequest};
 use fol_package::build_artifact::BuildArtifactFolModel;
+use fol_package::available_bundled_std_root;
 pub fn work_info(workspace: &FrontendWorkspace) -> FrontendCommandResult {
     let mut summary = workspace.info_summary_lines();
     if let Some(distribution) = artifact_model_distribution_line(workspace) {
@@ -119,6 +120,11 @@ pub fn work_status(
         format!("package-store-root={}", package_store_root.display()),
         format!("git-store-root={}", git_store_root.display()),
     ];
+    if let Some(std_root) = &workspace.std_root_override {
+        summary.push(format!("std-root=override:{}", std_root.display()));
+    } else if let Some(std_root) = available_bundled_std_root() {
+        summary.push(format!("std-root=bundled:{}", std_root.display()));
+    }
 
     if let Some(lockfile) = &lockfile {
         summary.push(format!(
@@ -230,6 +236,7 @@ mod tests {
 
         assert_eq!(result.command, "work info");
         assert!(result.summary.contains("root=/tmp/demo"));
+        assert!(result.summary.contains("std_root=bundled:"));
         assert_eq!(result.artifacts.len(), 1);
     }
 
@@ -363,6 +370,7 @@ mod tests {
         assert_eq!(result.command, "work status");
         assert!(result.summary.contains("lockfile=present"));
         assert!(result.summary.contains("locked-git-dependencies=1"));
+        assert!(result.summary.contains("std-root=bundled:"));
         assert!(result
             .summary
             .contains("logtiny [git+https://github.com/bresilla/logtiny] @ abcdef123456"));

@@ -39,7 +39,7 @@ pub(crate) struct LoadedPackage {
     pub program: ResolvedProgram,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct ResolverSession {
     config: ResolverConfig,
     package_session: PackageSession,
@@ -49,7 +49,7 @@ pub struct ResolverSession {
 
 impl ResolverSession {
     pub fn new() -> Self {
-        Self::default()
+        Self::with_config(ResolverConfig::default())
     }
 
     pub fn with_config(config: ResolverConfig) -> Self {
@@ -241,6 +241,12 @@ impl ResolverSession {
             ResolverErrorKind::ImportCycle,
             format!("import cycle detected while loading package roots: {cycle}"),
         )
+    }
+}
+
+impl Default for ResolverSession {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
