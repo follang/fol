@@ -3,6 +3,20 @@
 Graph methods return typed handles. Each handle type exposes its own set of
 methods for configuring relationships and behavior.
 
+## Path Handle Audit
+
+Before the broader path convergence work, the public build surface still splits
+path-like values across multiple families:
+
+- `SourceFile`
+- `SourceDir`
+- `GeneratedFile`
+- dependency-generated outputs returned by `dep.generated(...)`
+
+Those values already compose in several places, but they do not yet read like
+one obvious path capability. This chapter keeps the current concrete names while
+the underlying path model converges.
+
 ## Artifact
 
 The `Artifact` handle is returned by `add_exe`, `add_static_lib`,

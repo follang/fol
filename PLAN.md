@@ -307,7 +307,7 @@ shape:
 
 ## Epoch 4: Broaden The Path Handle Model
 
-### Slice 18
+### Slice 18 (complete)
 
 - audit current path-like handle families and consumers
 - document the current split:

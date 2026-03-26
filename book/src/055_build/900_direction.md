@@ -51,6 +51,20 @@ The remaining gaps that still matter are:
 - there is still no typed system-library surface
 - generated-directory workflows are still thin compared to generated-file flows
 
+### Path Handle Split Today
+
+The current path-like values are still exposed through separate concrete
+families:
+
+- `SourceFile`
+- `SourceDir`
+- `GeneratedFile`
+- dependency-generated output handles
+
+That split is honest today, but it is not the final intended feel. The next
+path round should preserve the strong producer distinctions while making path
+consumers behave as though they are working against one broader path capability.
+
 ### Dependency Handles
 
 Direct dependencies are now real build values instead of only metadata
