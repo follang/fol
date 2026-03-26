@@ -277,10 +277,12 @@ Status: complete
 - map `version = "commit:..."` to direct commit pinning
 
 ### Slice 21
+Status: complete
 
 - keep `hash` verification as resolved-commit prefix checking
 
 ### Slice 22
+Status: complete
 
 - make the mismatch diagnostic exact and stable:
   - include dependency locator
@@ -290,6 +292,7 @@ Status: complete
 ## Epoch 6: Metadata, Fetch, And Lockfile Integration
 
 ### Slice 23
+Status: complete
 
 - change package metadata extraction from `build.fol` so it captures:
   - repo locator
@@ -298,19 +301,23 @@ Status: complete
 - do not keep selector info encoded in `target`
 
 ### Slice 24
+Status: complete
 
 - update frontend fetch resolution to use structured selector fields
 
 ### Slice 25
+Status: complete
 
 - ensure eager/lazy/on-demand behavior remains unchanged under the new model
 
 ### Slice 26
+Status: complete
 
 - update lockfile rendering/parsing if needed so stored entries remain sufficient
   to reproduce exact pinned git state
 
 ### Slice 27
+Status: complete
 
 - decide and implement whether lockfile should additionally record requested
   `hash` or only selected revision
@@ -321,6 +328,7 @@ Status: complete
 ## Epoch 7: Tests For The New Public Surface
 
 ### Slice 28
+Status: complete
 
 - add evaluator tests for:
   - plain repo target with no version
@@ -330,6 +338,7 @@ Status: complete
   - branch plus hash
 
 ### Slice 29
+Status: complete
 
 - add evaluator tests for invalid config:
   - bad `version`
@@ -338,10 +347,12 @@ Status: complete
   - `hash` on `loc`
 
 ### Slice 30
+Status: complete
 
 - add package metadata extraction tests for the new fields
 
 ### Slice 31
+Status: complete
 
 - add frontend fetch tests that materialize local temp git repos using:
   - branch
@@ -350,6 +361,7 @@ Status: complete
   - branch plus hash
 
 ### Slice 32
+Status: complete
 
 - add one explicit negative fetch test for hash mismatch
 

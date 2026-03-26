@@ -970,6 +970,47 @@ mod tests {
             metadata.dependencies[1].evaluation_mode,
             DependencyBuildEvaluationMode::OnDemand
         );
+        assert_eq!(metadata.dependencies[1].git_version, None);
+        assert_eq!(metadata.dependencies[1].git_hash, None);
+
+        fs::remove_dir_all(build_path.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn build_metadata_materializer_keeps_structured_git_dependency_fields() {
+        let build_path = write_build_fixture(
+            "build_dep_materialize_git_fields",
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"1.0.0\" });\n",
+                "    build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://github.com/bresilla/logtiny.git\", version = \"tag:v0.1.1\", hash = \"77df4240d6f0\" });\n",
+                "}\n",
+            ),
+        );
+
+        let metadata = parse_package_metadata_from_build(&build_path)
+            .expect("build metadata should materialize structured git dependency fields");
+
+        assert_eq!(metadata.dependencies.len(), 1);
+        assert_eq!(
+            metadata.dependencies[0].target,
+            "https://github.com/bresilla/logtiny.git"
+        );
+        assert_eq!(
+            metadata.dependencies[0].git_version,
+            Some(fol_build::GitDependencyVersionSelector::Tag(
+                "v0.1.1".to_string()
+            ))
+        );
+        assert_eq!(
+            metadata.dependencies[0].git_hash.as_deref(),
+            Some("77df4240d6f0")
+        );
+        assert_eq!(
+            metadata.dependencies[0].git_locator_string(),
+            "https://github.com/bresilla/logtiny.git#tag:v0.1.1#hash:77df4240d6f0"
+        );
 
         fs::remove_dir_all(build_path.parent().unwrap()).ok();
     }

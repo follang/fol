@@ -62,6 +62,141 @@ fn build_source_evaluator_accepts_build_metadata_and_dependency_calls() {
         evaluated.result.dependency_requests[0].evaluation_mode,
         Some(crate::DependencyBuildEvaluationMode::Lazy)
     );
+    assert_eq!(evaluated.result.dependency_requests[0].git_version, None);
+    assert_eq!(evaluated.result.dependency_requests[0].git_hash, None);
+}
+
+#[test]
+fn build_source_evaluator_keeps_structured_git_dependency_selectors() {
+    let cases = [
+        (
+            "version = \"branch:main\",\n        hash = \"deadbeef\",",
+            Some(crate::GitDependencyVersionSelector::Branch("main".to_string())),
+            Some("deadbeef"),
+        ),
+        (
+            "version = \"tag:v0.1.0\",",
+            Some(crate::GitDependencyVersionSelector::Tag("v0.1.0".to_string())),
+            None,
+        ),
+        (
+            "version = \"commit:abc123def456\",",
+            Some(crate::GitDependencyVersionSelector::Commit(
+                "abc123def456".to_string(),
+            )),
+            None,
+        ),
+    ];
+
+    for (extra_fields, expected_version, expected_hash) in cases {
+        let source = format!(
+            concat!(
+                "pro[] build(): non = {{\n",
+                "    var build = .build();\n",
+                "    build.meta({{ name = \"demo\", version = \"0.1.0\" }});\n",
+                "    build.add_dep({{\n",
+                "        alias = \"logtiny\",\n",
+                "        source = \"git\",\n",
+                "        target = \"git+https://example.com/logtiny\",\n",
+                "        {extra_fields}\n",
+                "    }});\n",
+                "    return;\n",
+                "}}\n",
+            ),
+            extra_fields = extra_fields
+        );
+        let (package_root, build_path) = temp_build_package(&source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, &source)
+            .expect("structured git dependency selectors should evaluate")
+            .expect("build body should produce operations");
+
+        assert_eq!(
+            evaluated.result.dependency_requests[0].git_version,
+            expected_version
+        );
+        assert_eq!(
+            evaluated.result.dependency_requests[0].git_hash.as_deref(),
+            expected_hash
+        );
+    }
+}
+
+#[test]
+fn build_source_evaluator_rejects_invalid_git_dependency_selector_configs() {
+    let cases = [
+        (
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://example.com/logtiny\", version = \"rev:abc123\" });\n",
+                "    return;\n",
+                "}\n",
+            ),
+            "dependency 'version' must be one of: branch:<name>, tag:<name>, commit:<sha>",
+        ),
+        (
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"json\", source = \"pkg\", target = \"json\", version = \"branch:main\" });\n",
+                "    return;\n",
+                "}\n",
+            ),
+            "dependency field 'version' is only valid for git dependencies",
+        ),
+        (
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"shared\", source = \"loc\", target = \"../shared\", hash = \"deadbeef\" });\n",
+                "    return;\n",
+                "}\n",
+            ),
+            "dependency field 'hash' is only valid for git dependencies",
+        ),
+        (
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"logtiny\", source = \"git\", target = \"git+https://example.com/logtiny\", hash = \"\" });\n",
+                "    return;\n",
+                "}\n",
+            ),
+            "dependency 'hash' must not be empty",
+        ),
+    ];
+
+    for (source, expected) in cases {
+        let (package_root, build_path) = temp_build_package(source);
+        let request = BuildEvaluationRequest {
+            package_root: package_root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: package_root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let error = evaluate_build_source(&request, &build_path, source)
+            .expect_err("invalid git dependency selector config should fail");
+        assert!(
+            error.message().contains(expected),
+            "expected '{expected}', got '{error}'",
+        );
+    }
 }
 
 #[test]

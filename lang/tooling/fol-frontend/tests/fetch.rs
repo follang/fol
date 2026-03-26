@@ -363,6 +363,82 @@ fn locked_fetch_repairs_missing_pinned_materializations_from_warm_cache() {
     fs::remove_dir_all(root).ok();
 }
 
+#[test]
+fn fetch_supports_git_dependency_version_and_hash_fields() {
+    let root = temp_root("git_versions");
+    let app = root.join("app");
+    let remote = root.join("remote-logtiny");
+    create_git_package_repo(&remote, "logtiny", "0.1.0");
+    let revision = git_output(&remote, &["rev-parse", "HEAD"]);
+    let short_hash = &revision[..12];
+
+    let cases = vec![
+        (Some("branch:main".to_string()), None),
+        (Some("tag:v0.1.0".to_string()), None),
+        (Some(format!("commit:{revision}")), None),
+        (
+            Some("branch:main".to_string()),
+            Some(short_hash.to_string()),
+        ),
+        (None, None),
+    ];
+
+    for (index, (version, hash)) in cases.iter().enumerate() {
+        let case_root = root.join(format!("case-{index}"));
+        let case_app = case_root.join("app");
+        create_app_with_git_dep_spec(
+            &case_app,
+            &remote,
+            version.as_deref(),
+            hash.as_deref(),
+            None,
+        );
+        let workspace = git_dep_workspace(&case_root, &case_app);
+
+        let result = fetch_workspace(&workspace).expect("fetch should succeed");
+        assert_eq!(result.command, "fetch");
+        let lockfile = fol_package::parse_package_lockfile(
+            &fs::read_to_string(case_root.join("fol.lock")).expect("lockfile should exist"),
+        )
+        .expect("lockfile should parse");
+        assert_eq!(lockfile.entries.len(), 1);
+        if let Some(version) = version {
+            assert!(
+                lockfile.entries[0].locator.contains(version),
+                "lockfile locator should keep requested version selector"
+            );
+        }
+        if let Some(hash) = hash {
+            assert!(
+                lockfile.entries[0].locator.contains(hash),
+                "lockfile locator should keep requested hash"
+            );
+        }
+    }
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn fetch_reports_hash_mismatch_for_structured_git_dependencies() {
+    let root = temp_root("git_hash_mismatch");
+    let app = root.join("app");
+    let remote = root.join("remote-logtiny");
+    create_git_package_repo(&remote, "logtiny", "0.1.0");
+    create_app_with_git_dep_spec(&app, &remote, Some("branch:main"), Some("deadbeef"), None);
+
+    let workspace = git_dep_workspace(&root, &app);
+    let error = fetch_workspace(&workspace).expect_err("hash mismatch should fail");
+
+    assert!(
+        error
+            .message()
+            .contains("does not match required hash 'deadbeef'"),
+        "hash mismatch should keep the required hash in the diagnostic",
+    );
+    fs::remove_dir_all(root).ok();
+}
+
 fn git_dep_workspace(root: &Path, app: &Path) -> FrontendWorkspace {
     FrontendWorkspace {
         root: WorkspaceRoot::new(root.to_path_buf()),
@@ -376,7 +452,26 @@ fn git_dep_workspace(root: &Path, app: &Path) -> FrontendWorkspace {
 }
 
 fn create_app_with_git_dep(app: &Path, remote: &Path) {
+    create_app_with_git_dep_spec(app, remote, None, None, None);
+}
+
+fn create_app_with_git_dep_spec(
+    app: &Path,
+    remote: &Path,
+    version: Option<&str>,
+    hash: Option<&str>,
+    mode: Option<&str>,
+) {
     fs::create_dir_all(app.join("src")).expect("should create app package");
+    let version_field = version
+        .map(|value| format!("        version = \"{value}\",\n"))
+        .unwrap_or_default();
+    let hash_field = hash
+        .map(|value| format!("        hash = \"{value}\",\n"))
+        .unwrap_or_default();
+    let mode_field = mode
+        .map(|value| format!(", mode = \"{value}\""))
+        .unwrap_or_default();
     fs::write(
         app.join("build.fol"),
         format!(
@@ -384,14 +479,23 @@ fn create_app_with_git_dep(app: &Path, remote: &Path) {
                 "pro[] build(): non = {{\n",
                 "    var build = .build();\n",
                 "    build.meta({{ name = \"app\", version = \"0.1.0\" }});\n",
-                "    build.add_dep({{ alias = \"logtiny\", source = \"git\", target = \"git+file://{}\" }});\n",
+                "    build.add_dep({{\n",
+                "        alias = \"logtiny\",\n",
+                "        source = \"git\",\n",
+                "        target = \"git+file://{}\"{mode_field},\n",
+                "{version_field}",
+                "{hash_field}",
+                "    }});\n",
                 "    var graph = build.graph();\n",
                 "    var app = graph.add_exe({{ name = \"app\", root = \"src/main.fol\" }});\n",
                 "    graph.install(app);\n",
                 "    graph.add_run(app);\n",
                 "}};\n",
             ),
-            remote.display()
+            remote.display(),
+            mode_field = mode_field,
+            version_field = version_field,
+            hash_field = hash_field,
         ),
     )
     .expect("should write app build");
@@ -425,4 +529,14 @@ fn git(root: &Path, args: &[&str]) {
         .status()
         .expect("git command should run");
     assert!(status.success(), "git {:?} should succeed", args);
+}
+
+fn git_output(root: &Path, args: &[&str]) -> String {
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(root)
+        .output()
+        .expect("git command should run");
+    assert!(output.status.success(), "git {:?} should succeed", args);
+    String::from_utf8_lossy(&output.stdout).trim().to_string()
 }
