@@ -201,6 +201,8 @@ Completion criteria:
   - no `.echo(...)`
 
 ### Slice 10
+Status: complete
+
 Add direct positive fixtures proving `std` remains minimal and honest.
 
 Completion criteria:

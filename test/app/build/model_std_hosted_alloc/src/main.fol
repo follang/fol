@@ -1,0 +1,9 @@
+fun[] banner(prefix: str = "std", extras: ... str): str = {
+    return prefix + extras[0];
+};
+
+fun[] main(): int = {
+    var extras: seq[str] = {"-ready"};
+    var shown: str = .echo(banner(...extras));
+    return .len(shown);
+};

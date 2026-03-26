@@ -748,6 +748,51 @@ fn test_build_fixture_std_model_runs_echo_programs() {
 }
 
 #[test]
+fn test_build_fixture_std_model_supports_hosted_alloc_surfaces() {
+    let root = build_fixture_root("model_std_hosted_alloc");
+
+    let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+    assert!(
+        build.status.success(),
+        "std hosted-alloc fixture should build: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        String::from_utf8_lossy(&build.stderr)
+    );
+    let build_stdout = String::from_utf8_lossy(&build.stdout);
+    assert!(build_stdout.contains("fol_model=std"));
+    let binary = build_stdout
+        .lines()
+        .find_map(|line| {
+            let plain = strip_ansi(line);
+            if plain.contains("binary") {
+                plain.split_whitespace().last().map(str::to_string)
+            } else {
+                None
+            }
+        })
+        .expect("std hosted-alloc build should report a binary path")
+        .trim()
+        .to_string();
+
+    let run = Command::new(&binary)
+        .output()
+        .expect("std hosted-alloc fixture binary should execute");
+    assert!(
+        run.status.success(),
+        "std hosted-alloc fixture binary should run: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&run.stdout),
+        String::from_utf8_lossy(&run.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&run.stdout);
+    assert!(
+        stdout.contains("std-ready"),
+        "std hosted-alloc fixture should print through std runtime: stdout=\n{}\nstderr=\n{}",
+        stdout,
+        String::from_utf8_lossy(&run.stderr)
+    );
+}
+
+#[test]
 fn test_build_fixture_core_model_rejects_heap_backed_surfaces() {
     let root = build_fixture_root("model_core_heap_reject");
 
