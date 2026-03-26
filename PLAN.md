@@ -117,6 +117,8 @@ Completion criteria:
   - `std`
 
 ### Slice 4
+Status: complete
+
 Add a top-level integration test that asserts the docs’ example package list stays in sync with the actual example directories.
 
 Completion criteria:

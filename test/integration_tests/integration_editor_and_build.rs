@@ -2123,6 +2123,30 @@ fn test_docs_reference_real_example_packages() {
             "runtime docs should mention {example}"
         );
     }
+    let actual_runtime_examples = std::fs::read_dir(repo_root().join("examples"))
+        .expect("examples root should exist")
+        .filter_map(|entry| {
+            let entry = entry.ok()?;
+            let path = entry.path();
+            if !path.is_dir() {
+                return None;
+            }
+            let name = path.file_name()?.to_str()?;
+            let is_runtime_model_example = name.starts_with("core_")
+                || name.starts_with("alloc_")
+                || name.starts_with("std_")
+                || name == "mixed_models_workspace";
+            is_runtime_model_example.then(|| format!("examples/{name}"))
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    let documented_runtime_examples = runtime_examples
+        .iter()
+        .map(|example| (*example).to_string())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        actual_runtime_examples, documented_runtime_examples,
+        "runtime model docs should track the full current set of runtime-model example packages"
+    );
     for example in build_examples {
         assert!(
             build_docs.contains(example),
