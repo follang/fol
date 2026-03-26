@@ -1,13 +1,28 @@
 use super::super::{
-    execute_workspace_build_route, plan_member_execution, plan_workspace_build_route,
-    FrontendBuildWorkflowMode, FrontendMemberBuildRoute, FrontendStepExecutionKind,
-    FrontendWorkspaceBuildRequest,
+    execute_workspace_build_route, plan_workspace_build_route, FrontendBuildWorkflowMode,
+    FrontendMemberBuildRoute, FrontendStepExecutionKind, FrontendWorkspaceBuildRequest,
 };
 use crate::{
     FrontendArtifactKind, FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot,
     WorkspaceRoot,
 };
 use std::fs;
+
+fn plan_member_execution(
+    member: &FrontendMemberBuildRoute,
+    config: &FrontendConfig,
+) -> crate::FrontendResult<super::super::FrontendMemberExecutionPlan> {
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(member.member_root.clone()),
+        members: vec![PackageRoot::new(member.member_root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: member.member_root.join(".fol/build"),
+        cache_root: member.member_root.join(".fol/cache"),
+        git_cache_root: member.member_root.join(".fol/cache/git"),
+    };
+    super::super::plan_member_execution(&workspace, member, config)
+}
 
 fn emitted_main_rs_from_result(result: &crate::FrontendCommandResult) -> String {
     let crate_root = result
@@ -52,11 +67,14 @@ fn cli_selected_custom_graph_steps_flow_into_the_routed_member_plan() {
         &crate::CodeSubcommand::Build(crate::BuildCommand::default()),
         Some("docs"),
     );
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("member planning should surface the custom docs step");
 
     assert_eq!(requested_step, "docs");
@@ -95,11 +113,14 @@ fn custom_run_steps_plan_as_run_execution() {
         "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("custom run step should plan successfully");
 
     let serve = plan
@@ -156,11 +177,14 @@ fn explicit_named_run_steps_select_the_requested_artifact_when_multiple_runnable
         "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("member planning should keep named run step selections");
 
     let admin = plan
@@ -218,11 +242,14 @@ fn named_build_steps_can_target_matching_artifacts_when_multiple_builds_exist() 
     )
     .unwrap();
 
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("member planning should keep named build step selections");
 
     let admin = plan
@@ -278,11 +305,14 @@ fn default_build_step_is_marked_ambiguous_when_multiple_executables_exist() {
     )
     .unwrap();
 
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("member planning should succeed");
 
     let build = plan
@@ -390,11 +420,14 @@ fn configured_executable_roots_drive_default_build_and_run_step_planning() {
         "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("configured add_exe root should drive routed planning");
 
     let build = plan
@@ -467,11 +500,14 @@ fn object_style_artifact_build_bodies_drive_default_build_and_run_step_planning(
         "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("object style add_exe should drive routed planning");
 
     let build = plan
@@ -533,11 +569,14 @@ fn workspace_route_plans_modern_build_members_through_default_graph_planning() {
         "fun[] main(): int = {\n    return 0\n};\n",
     )
     .unwrap();
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("modern member should plan through the default graph");
 
     assert!(plan.steps.iter().any(|step| step.name == "build"));
@@ -572,11 +611,14 @@ fn workspace_route_plans_modern_check_steps_even_without_a_runnable_binary() {
     )
     .unwrap();
     fs::write(root.join("src/lib.fol"), "var[exp] answer: int = 42;\n").unwrap();
-    let plan = plan_member_execution(&FrontendMemberBuildRoute {
-        member_root: root.clone(),
-        package_name: "demo".to_string(),
-        mode: FrontendBuildWorkflowMode::Modern,
-    }, &FrontendConfig::default())
+    let plan = plan_member_execution(
+        &FrontendMemberBuildRoute {
+            member_root: root.clone(),
+            package_name: "demo".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
     .expect("modern member without an executable should still plan check");
 
     let check = plan
@@ -779,9 +821,9 @@ fn execute_workspace_build_route_rejects_dynamic_len_for_core_model_artifacts() 
 
     assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
     assert_eq!(error.diagnostics().len(), 1);
-    assert!(error.diagnostics()[0]
-        .message
-        .contains("string literals require heap support and are unavailable in 'fol_model = core'"));
+    assert!(error.diagnostics()[0].message.contains(
+        "string literals require heap support and are unavailable in 'fol_model = core'"
+    ));
 
     fs::remove_dir_all(root).ok();
 }

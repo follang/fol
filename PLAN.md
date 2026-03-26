@@ -236,7 +236,7 @@ If a new export/path/step/help/system surface replaces an older ad hoc shape:
 - dependency handles should prefer explicit exports when present
 - fall back to current projection only where required by this transition round
 
-### Slice 11
+### Slice 11 (complete)
 
 - add precise diagnostics for:
   - duplicate export names

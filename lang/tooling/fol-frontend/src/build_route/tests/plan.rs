@@ -1,10 +1,26 @@
 use super::super::{
-    execute_workspace_build_route, plan_member_execution, plan_workspace_build_route,
-    FrontendBuildStep, FrontendBuildWorkflowMode, FrontendMemberBuildRoute,
-    FrontendStepExecutionKind, FrontendWorkspaceBuildRequest, FrontendWorkspaceBuildRoute,
+    execute_workspace_build_route, plan_workspace_build_route, FrontendBuildStep,
+    FrontendBuildWorkflowMode, FrontendMemberBuildRoute, FrontendStepExecutionKind,
+    FrontendWorkspaceBuildRequest, FrontendWorkspaceBuildRoute,
 };
 use crate::{FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot, WorkspaceRoot};
 use std::{fs, path::PathBuf};
+
+fn plan_member_execution(
+    member: &FrontendMemberBuildRoute,
+    config: &FrontendConfig,
+) -> crate::FrontendResult<super::super::FrontendMemberExecutionPlan> {
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(member.member_root.clone()),
+        members: vec![PackageRoot::new(member.member_root.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: member.member_root.join(".fol/build"),
+        cache_root: member.member_root.join(".fol/cache"),
+        git_cache_root: member.member_root.join(".fol/cache/git"),
+    };
+    super::super::plan_member_execution(&workspace, member, config)
+}
 
 pub(super) fn absorbed_build_workspace_fixture(label: &str) -> FrontendWorkspace {
     let root = std::env::temp_dir().join(format!(
@@ -245,6 +261,89 @@ fn semantic_member_planning_uses_graph_projected_build_run_and_check_steps() {
     assert!(plan.steps.iter().any(|step| step.name == "check"));
 
     fs::remove_dir_all(&workspace.root.root).ok();
+}
+
+#[test]
+fn semantic_member_planning_rejects_dependency_queries_for_missing_exports() {
+    let root = std::env::temp_dir().join(format!(
+        "fol_frontend_build_route_missing_export_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time before epoch")
+            .as_nanos()
+    ));
+    let app = root.join("app");
+    let shared = app.join("deps/shared");
+    fs::create_dir_all(app.join("src")).unwrap();
+    fs::create_dir_all(shared.join("src")).unwrap();
+    fs::write(
+        app.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    var dep = build.add_dep({ alias = \"shared\", source = \"loc\", target = \"deps/shared\" });\n",
+            "    var graph = build.graph();\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    var bindings = dep.generated(\"bindings\");\n",
+            "    graph.install(app);\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        app.join("src/main.fol"),
+        "fun[] main(): int = {\n    return 0\n};\n",
+    )
+    .unwrap();
+    fs::write(
+        shared.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"shared\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    var lib = graph.add_static_lib({ name = \"shared\", root = \"src/root.fol\" });\n",
+            "    graph.install(lib);\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        shared.join("src/root.fol"),
+        "fun[] helper(): int = {\n    return 1\n};\n",
+    )
+    .unwrap();
+
+    let workspace = FrontendWorkspace {
+        root: WorkspaceRoot::new(root.clone()),
+        members: vec![PackageRoot::new(app.clone())],
+        std_root_override: None,
+        package_store_root_override: None,
+        build_root: root.join(".fol/build"),
+        cache_root: root.join(".fol/cache"),
+        git_cache_root: root.join(".fol/cache/git"),
+    };
+
+    let error = super::super::plan_member_execution(
+        &workspace,
+        &FrontendMemberBuildRoute {
+            member_root: app,
+            package_name: "app".to_string(),
+            mode: FrontendBuildWorkflowMode::Modern,
+        },
+        &FrontendConfig::default(),
+    )
+    .expect_err("missing exported dependency surfaces should fail planning");
+
+    assert!(error
+        .message()
+        .contains("dependency 'shared' does not export generated output 'bindings'"));
+
+    fs::remove_dir_all(&root).ok();
 }
 
 #[test]

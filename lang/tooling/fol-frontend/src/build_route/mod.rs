@@ -1,5 +1,5 @@
 use crate::{FrontendError, FrontendErrorKind, FrontendProfile, FrontendResult, FrontendWorkspace};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[cfg(test)]
 mod tests;
@@ -158,7 +158,7 @@ pub fn execute_workspace_build_route(
     let member_plans = route
         .members
         .iter()
-        .map(|member| plan_member_execution(member, config))
+        .map(|member| plan_member_execution(workspace, member, config))
         .collect::<FrontendResult<Vec<_>>>()?;
     let requested_step = request.requested_step.as_str();
     if !member_plans
@@ -230,13 +230,15 @@ pub fn execute_workspace_build_route(
 }
 
 pub(crate) fn plan_member_execution(
+    workspace: &FrontendWorkspace,
     member: &FrontendMemberBuildRoute,
     config: &crate::FrontendConfig,
 ) -> FrontendResult<FrontendMemberExecutionPlan> {
-    plan_member_execution_from_build_source(member, config)
+    plan_member_execution_from_build_source(workspace, member, config)
 }
 
 fn plan_member_execution_from_build_source(
+    workspace: &FrontendWorkspace,
     member: &FrontendMemberBuildRoute,
     config: &crate::FrontendConfig,
 ) -> FrontendResult<FrontendMemberExecutionPlan> {
@@ -256,7 +258,13 @@ fn plan_member_execution_from_build_source(
             .install_prefix_override
             .as_ref()
             .map(|path| path.display().to_string())
-            .unwrap_or_else(|| member.member_root.join(".fol/install").display().to_string()),
+            .unwrap_or_else(|| {
+                member
+                    .member_root
+                    .join(".fol/install")
+                    .display()
+                    .to_string()
+            }),
         ..fol_package::BuildEvaluationInputs::default()
     };
     if let Some(target_str) = &config.build_target_override {
@@ -289,13 +297,141 @@ fn plan_member_execution_from_build_source(
             ),
         ));
     };
+    validate_dependency_queries_for_member(workspace, config, member, &evaluated)?;
 
-    plan_member_execution_from_graph(
-        member,
-        &evaluated.result.graph,
-        &evaluated.evaluated,
-        true,
-    )
+    plan_member_execution_from_graph(member, &evaluated.result.graph, &evaluated.evaluated, true)
+}
+
+fn validate_dependency_queries_for_member(
+    workspace: &FrontendWorkspace,
+    config: &crate::FrontendConfig,
+    member: &FrontendMemberBuildRoute,
+    evaluated: &fol_package::build_eval::EvaluatedBuildSource,
+) -> FrontendResult<()> {
+    if evaluated.evaluated.dependency_queries.is_empty() {
+        return Ok(());
+    }
+
+    let metadata =
+        fol_package::parse_package_metadata_from_build(&member.member_root.join("build.fol"))
+            .map_err(FrontendError::from)?;
+    let package_store_root = config
+        .package_store_root_override
+        .clone()
+        .or_else(|| workspace.package_store_root_override.clone())
+        .unwrap_or_else(|| workspace.root.root.join(".fol").join("pkg"));
+
+    for query in &evaluated.evaluated.dependency_queries {
+        let metadata_dependency = metadata
+            .dependencies
+            .iter()
+            .find(|dependency| dependency.alias == query.dependency_alias);
+        let evaluated_dependency = evaluated
+            .result
+            .dependency_requests
+            .iter()
+            .find(|dependency| dependency.alias == query.dependency_alias);
+        let dependency_root = dependency_root_for_query(
+            &member.member_root,
+            &package_store_root,
+            metadata_dependency,
+            evaluated_dependency,
+        )?;
+        let syntax = fol_package::parse_directory_package_syntax(
+            &dependency_root,
+            &query.dependency_alias,
+            fol_package::PackageSourceKind::Package,
+        )
+        .map_err(FrontendError::from)?;
+        let surface = fol_package::build_dependency::project_dependency_surface(
+            &query.dependency_alias,
+            &dependency_root,
+            &syntax,
+        )
+        .map_err(FrontendError::from)?;
+        let exported = match query.kind {
+            fol_package::BuildRuntimeDependencyQueryKind::Module => {
+                surface.find_module(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::Artifact => {
+                surface.find_artifact(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::Step => {
+                surface.find_step(&query.query_name).is_some()
+            }
+            fol_package::BuildRuntimeDependencyQueryKind::GeneratedOutput => {
+                surface.find_generated_output(&query.query_name).is_some()
+            }
+        };
+        if !exported {
+            return Err(FrontendError::new(
+                FrontendErrorKind::InvalidInput,
+                format!(
+                    "dependency '{}' does not export {} '{}'",
+                    query.dependency_alias,
+                    dependency_query_kind_label(query.kind),
+                    query.query_name
+                ),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn dependency_root_for_query(
+    member_root: &Path,
+    package_store_root: &Path,
+    metadata_dependency: Option<&fol_package::PackageDependencyDecl>,
+    evaluated_dependency: Option<&fol_package::DependencyRequest>,
+) -> FrontendResult<PathBuf> {
+    if let Some(dependency) = metadata_dependency {
+        return Ok(match dependency.source_kind {
+            fol_package::PackageDependencySourceKind::Local => member_root.join(&dependency.target),
+            fol_package::PackageDependencySourceKind::PackageStore => {
+                package_store_root.join(&dependency.target)
+            }
+            fol_package::PackageDependencySourceKind::Git => {
+                package_store_root.join(&dependency.alias)
+            }
+        });
+    }
+
+    if let Some(dependency) = evaluated_dependency {
+        let local_root = member_root.join(&dependency.package);
+        if local_root.join("build.fol").is_file() {
+            return Ok(local_root);
+        }
+        let package_root = package_store_root.join(&dependency.package);
+        if package_root.join("build.fol").is_file() {
+            return Ok(package_root);
+        }
+        let alias_root = package_store_root.join(&dependency.alias);
+        if alias_root.join("build.fol").is_file() {
+            return Ok(alias_root);
+        }
+    }
+
+    let alias = metadata_dependency
+        .map(|dependency| dependency.alias.as_str())
+        .or_else(|| evaluated_dependency.map(|dependency| dependency.alias.as_str()))
+        .unwrap_or("<unknown>");
+    Err(FrontendError::new(
+        FrontendErrorKind::InvalidInput,
+        format!(
+            "build dependency query references undeclared dependency alias '{}'",
+            alias
+        ),
+    ))
+}
+
+fn dependency_query_kind_label(kind: fol_package::BuildRuntimeDependencyQueryKind) -> &'static str {
+    match kind {
+        fol_package::BuildRuntimeDependencyQueryKind::Module => "module",
+        fol_package::BuildRuntimeDependencyQueryKind::Artifact => "artifact",
+        fol_package::BuildRuntimeDependencyQueryKind::Step => "step",
+        fol_package::BuildRuntimeDependencyQueryKind::GeneratedOutput => "generated output",
+    }
 }
 
 pub(crate) fn plan_member_execution_from_graph(
