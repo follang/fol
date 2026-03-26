@@ -160,8 +160,11 @@ fn create_app_with_git_dep(app: &Path, remote: &Path) {
 
 fn create_git_package_repo(root: &Path, name: &str, version: &str) {
     fs::create_dir_all(root.join("src")).expect("package repo should be creatable");
-    fs::write(root.join("build.fol"), semantic_lib_build(name).replace("0.1.0", version))
-        .expect("package build should be writable");
+    fs::write(
+        root.join("build.fol"),
+        semantic_lib_build(name).replace("0.1.0", version),
+    )
+    .expect("package build should be writable");
     fs::write(root.join("src/lib.fol"), "var[exp] level: int = 1;\n")
         .expect("package source should be writable");
     git(root, &["init"]);
@@ -192,6 +195,8 @@ fn build_command_reports_emitted_crate_and_binary_through_public_api() {
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
     assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::EmittedRust);
     assert_eq!(result.artifacts[2].kind, FrontendArtifactKind::Binary);
+    assert!(result.summary.contains("install_prefix="));
+    assert!(result.summary.contains("outputs=2"));
     assert!(result.artifacts[2]
         .path
         .as_ref()
@@ -226,6 +231,22 @@ fn build_command_scopes_binary_outputs_by_selected_target() {
         "{}",
         binary.display()
     );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn build_command_summary_surfaces_install_prefix_and_outputs() {
+    let root = temp_root("build_summary");
+    let workspace = sample_workspace(&root);
+
+    let result = build_workspace(&workspace).expect("build should succeed");
+
+    assert!(result.summary.contains(&format!(
+        "install_prefix={}",
+        workspace.install_prefix.display()
+    )));
+    assert!(result.summary.contains("outputs=2"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -283,7 +304,7 @@ fn test_command_traverses_all_runnable_workspace_members_through_public_api() {
             "};\n",
         ),
     )
-        .expect("should write tools build");
+    .expect("should write tools build");
     fs::write(
         tools_src.join("main.fol"),
         "fun[] main(): int = {\n    return 0\n};\n",

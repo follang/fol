@@ -1079,6 +1079,39 @@ fn test_build_install_prefix_moves_without_changing_build_source() {
 }
 
 #[test]
+fn test_cli_build_summary_surfaces_install_prefix_and_outputs() {
+    let root = temp_example_root("examples/build_install_prefix");
+    let install_prefix = root.join(".custom-install");
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_fol"))
+        .args(["code", "build"])
+        .env("FOL_INSTALL_PREFIX", &install_prefix)
+        .current_dir(&root)
+        .output()
+        .expect("should run fol CLI in directory");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    assert!(
+        output.status.success(),
+        "install-prefix example should build: stdout=\n{}\nstderr=\n{}",
+        stdout,
+        stderr
+    );
+    assert!(
+        stdout.contains(&format!("install_prefix={}", install_prefix.display())),
+        "build summary should surface install prefix: stdout=\n{}\nstderr=\n{}",
+        stdout,
+        stderr
+    );
+    assert!(
+        stdout.contains("outputs="),
+        "build summary should surface output count: stdout=\n{}\nstderr=\n{}",
+        stdout,
+        stderr
+    );
+}
+
+#[test]
 fn test_build_output_handle_example_keeps_generated_handles_composed() {
     let root = temp_example_root("examples/build_output_handles");
     let build_path = root.join("build.fol");

@@ -398,7 +398,7 @@ shape:
   - description
   - maybe selected artifact label when relevant
 
-### Slice 32
+### Slice 32 (complete)
 
 - improve build summaries so they surface:
   - install prefix
@@ -411,7 +411,7 @@ shape:
 - improve routed build planning summaries so step/output/install context is easier
   to read in tests and user-facing output
 
-### Slice 34
+### Slice 34 (complete)
 
 - add integration tests that lock the improved help/reporting output
 

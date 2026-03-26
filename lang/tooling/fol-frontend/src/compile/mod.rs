@@ -34,6 +34,14 @@ where
     format!("fol_model={rendered}")
 }
 
+fn produced_artifact_count(result: &FrontendCommandResult) -> usize {
+    result
+        .artifacts
+        .iter()
+        .filter(|artifact| artifact.kind != FrontendArtifactKind::BuildRoot)
+        .count()
+}
+
 pub fn check_workspace_with_config(
     workspace: &FrontendWorkspace,
     config: &FrontendConfig,
@@ -169,10 +177,12 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
         .iter()
         .filter(|artifact| artifact.kind == FrontendArtifactKind::Binary)
         .count();
+    let output_count = produced_artifact_count(&result);
     result.summary = format!(
-        "built {binary_count} workspace package(s) into {} ({})",
+        "built {binary_count} workspace package(s) into {} ({}, install_prefix={}, outputs={output_count})",
         output_root.display(),
-        summarize_fol_models(selections.iter().map(|selection| selection.fol_model))
+        summarize_fol_models(selections.iter().map(|selection| selection.fol_model)),
+        workspace.install_prefix.display()
     );
     Ok(result)
 }
