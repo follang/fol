@@ -201,7 +201,7 @@ shape:
 
 ## Epoch 2: Add Named Dependency Path Exports
 
-### Slice 4
+### Slice 4 (complete)
 
 - inventory current explicit dependency export model:
   - module

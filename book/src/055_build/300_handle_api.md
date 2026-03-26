@@ -230,6 +230,20 @@ build.export_artifact({ name = "runtime", artifact = lib });
 If a dependency does not export a build-facing module, artifact, step, or
 generated output, dependency handles do not see it.
 
+The currently implemented explicit export kinds are:
+
+- module
+- artifact
+- step
+- generated output
+
+The next missing export kinds are:
+
+- source file
+- source dir
+- broader path
+- generated dir
+
 Source import roots remain separate. A dependency can still be imported in
 ordinary package source through its alias even when it exports no build-facing
 handles at all.
