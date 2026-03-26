@@ -92,3 +92,48 @@ fn lsp_server_returns_semantic_tokens_for_build_files() {
             .any(|token| token.0 == 0 && token.3 == 1 && token.2 >= 5)
     );
 }
+
+#[test]
+fn lsp_server_keeps_build_file_semantic_tokens_for_all_model_declarations() {
+    let (root, _uri) = sample_package_root("semantic_tokens_build_models");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.add_static_lib({ name = \"corelib\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+            "    graph.add_static_lib({ name = \"alloclib\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
+            "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let build_uri = format!("file://{}", root.join("build.fol").display());
+    let build_text = fs::read_to_string(root.join("build.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, build_uri.clone(), &build_text);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(953),
+            method: "textDocument/semanticTokens/full".to_string(),
+            params: Some(
+                serde_json::to_value(LspSemanticTokensParams {
+                    text_document: LspTextDocumentIdentifier { uri: build_uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let tokens: LspSemanticTokens = serde_json::from_value(response.result.unwrap()).unwrap();
+    let decoded = decode_semantic_tokens(&tokens.data);
+
+    assert!(
+        decoded.iter().filter(|token| token.0 >= 2 && token.0 <= 4).count() >= 6,
+        "build files with core/alloc/std declarations should keep semantic tokens on all model lines: {decoded:?}"
+    );
+
+    fs::remove_dir_all(root).ok();
+}

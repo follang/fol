@@ -415,6 +415,8 @@ Completion criteria:
 ## Epoch 6: Runtime Module Boundary Hardening
 
 ### Slice 31
+Status: complete
+
 Audit `fol-runtime` public exports so `core`, `alloc`, and `std` module surfaces stay intentionally different.
 
 Completion criteria:
@@ -423,6 +425,8 @@ Completion criteria:
 - tests pin that `alloc` does not expose hosted hooks like `echo`
 
 ### Slice 32
+Status: complete
+
 Add runtime tests that assert tier capability flags and exported helper families stay aligned.
 
 Completion criteria:
@@ -430,6 +434,8 @@ Completion criteria:
 - tests cover `HAS_HEAP`, `HAS_OS`, module names, and allowed helper exports
 
 ### Slice 33
+Status: complete
+
 Add a no-accidental-reexport test for tier modules.
 
 Completion criteria:
@@ -437,6 +443,8 @@ Completion criteria:
 - if `alloc` or `std` symbols are accidentally re-exported through `core`, tests fail
 
 ### Slice 34
+Status: complete
+
 Document the runtime-tier export contract for backend authors.
 
 Completion criteria:
@@ -448,6 +456,8 @@ Completion criteria:
 ## Epoch 7: Editor And LSP Model Hardening
 
 ### Slice 35
+Status: complete
+
 Add LSP diagnostics tests for transitive model-boundary failures in real workspaces, not only open-file direct errors.
 
 Completion criteria:
@@ -455,6 +465,8 @@ Completion criteria:
 - editor surfaces transitive boundary diagnostics from the real compiler pipeline
 
 ### Slice 36
+Status: complete
+
 Add LSP completion tests for ambiguous multi-artifact packages.
 
 Completion criteria:
@@ -466,6 +478,8 @@ Completion criteria:
   - ambiguous mixed package with no unique artifact mapping
 
 ### Slice 37
+Status: complete
+
 Add hover/semantic snapshot tests for mixed-model workspaces with routed files under different packages.
 
 Completion criteria:
@@ -473,6 +487,8 @@ Completion criteria:
 - active model tracking does not bleed across packages or artifacts
 
 ### Slice 38
+Status: complete
+
 Add tree-sitter/editor integration tests ensuring build-file model declarations stay discoverable and stable.
 
 Completion criteria:
@@ -480,6 +496,8 @@ Completion criteria:
 - editor tests cover `fol_model = "core" | "alloc" | "std"` in build files
 
 ### Slice 39
+Status: complete
+
 Add editor docs that explain model-aware diagnostics and completion behavior.
 
 Completion criteria:
@@ -491,6 +509,8 @@ Completion criteria:
 ## Epoch 8: Example Packages And Negative Example Suites
 
 ### Slice 40
+Status: complete
+
 Add a standalone negative `core` misuse example package.
 
 Completion criteria:

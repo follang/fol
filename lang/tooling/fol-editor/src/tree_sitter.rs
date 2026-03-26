@@ -711,6 +711,30 @@ mod tests {
     }
 
     #[test]
+    fn generated_bundle_highlights_keep_build_file_model_declarations_queryable() {
+        let root = build_bundle_root("model_build_file");
+        let output = run_tree_sitter_query(
+            &root,
+            &root.join("queries/fol/highlights.scm"),
+            &repo_root().join("examples/mixed_models_workspace/build.fol"),
+        );
+
+        assert!(
+            output.status.success(),
+            "tree-sitter highlight query failed for build model declarations:\nstdout:\n{}\nstderr:\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("core"));
+        assert!(stdout.contains("alloc"));
+        assert!(stdout.contains("std"));
+        assert!(stdout.contains("property"));
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn invalid_highlight_query_node_references_fail_bundle_validation() {
         let root = build_bundle_root("invalid");
         let query_path = root.join("queries/fol/highlights.scm");

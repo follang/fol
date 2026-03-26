@@ -1,4 +1,4 @@
-use super::helpers::{open_document, sample_package_root, temp_root};
+use super::helpers::{copied_example_package_root, open_document, sample_package_root, temp_root};
 use super::super::{
     analysis::{
         analysis_stage_counts, analyze_document_diagnostics_call_count,
@@ -751,6 +751,74 @@ fn lsp_server_keeps_model_context_through_hover_for_core_alloc_and_std() {
     assert_semantic_model_via_hover("core", fol_typecheck::TypecheckCapabilityModel::Core);
     assert_semantic_model_via_hover("alloc", fol_typecheck::TypecheckCapabilityModel::Alloc);
     assert_semantic_model_via_hover("std", fol_typecheck::TypecheckCapabilityModel::Std);
+}
+
+#[test]
+fn lsp_server_keeps_model_context_isolated_across_mixed_workspace_packages() {
+    let (root, _) = copied_example_package_root("examples/mixed_models_workspace");
+    let core_uri = format!("file://{}", root.join("core/lib.fol").display());
+    let alloc_uri = format!("file://{}", root.join("alloc/lib.fol").display());
+    let std_uri = format!("file://{}", root.join("app/main.fol").display());
+    let core_text = fs::read_to_string(root.join("core/lib.fol")).unwrap();
+    let alloc_text = fs::read_to_string(root.join("alloc/lib.fol")).unwrap();
+    let std_text = fs::read_to_string(root.join("app/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    open_document(&mut server, core_uri.clone(), &core_text);
+    open_document(&mut server, alloc_uri.clone(), &alloc_text);
+    open_document(&mut server, std_uri.clone(), &std_text);
+
+    for (id, uri, line, character, expected) in [
+        (
+            780_i64,
+            core_uri.as_str(),
+            1_u32,
+            12_u32,
+            fol_typecheck::TypecheckCapabilityModel::Core,
+        ),
+        (
+            781_i64,
+            alloc_uri.as_str(),
+            1_u32,
+            12_u32,
+            fol_typecheck::TypecheckCapabilityModel::Alloc,
+        ),
+        (
+            782_i64,
+            std_uri.as_str(),
+            3_u32,
+            12_u32,
+            fol_typecheck::TypecheckCapabilityModel::Std,
+        ),
+    ] {
+        let hover = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(id),
+                method: "textDocument/hover".to_string(),
+                params: Some(
+                    serde_json::to_value(LspHoverParams {
+                        text_document: LspTextDocumentIdentifier {
+                            uri: uri.to_string(),
+                        },
+                        position: LspPosition { line, character },
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+        let _hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+
+        let snapshot = server
+            .session
+            .semantic_snapshots
+            .get(uri)
+            .expect("hover should cache a semantic snapshot");
+        assert_eq!(snapshot.snapshot.active_fol_model, Some(expected));
+    }
+
+    fs::remove_dir_all(root).ok();
 }
 
 #[test]

@@ -228,3 +228,89 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
         fs::remove_dir_all(root).ok();
     }
 }
+
+#[test]
+fn lsp_server_reports_transitive_model_boundaries_for_real_workspaces() {
+    let cases = [
+        (
+            "transitive_core_alloc",
+            "core",
+            "alloc",
+            "fun[exp] label(): str = {\n    return \"heap\";\n};\n",
+            "fun[] main(): int = {\n    return .len(shared.label());\n};\n",
+            "str requires heap support and is unavailable in 'fol_model = core'",
+        ),
+        (
+            "transitive_alloc_std",
+            "alloc",
+            "std",
+            "fun[exp] ping(): int = {\n    return .echo(7);\n};\n",
+            "fun[] main(): int = {\n    return shared.ping();\n};\n",
+            "'.echo(...)' requires 'fol_model = std'",
+        ),
+    ];
+
+    for (label, app_model, dep_model, dep_source, app_source, expected_message) in cases {
+        let root = super::helpers::temp_root(label);
+        let app_src = root.join("app/src");
+        let shared_src = root.join("shared/src");
+        fs::create_dir_all(&app_src).unwrap();
+        fs::create_dir_all(&shared_src).unwrap();
+
+        fs::write(
+            root.join("app/build.fol"),
+            format!(
+                concat!(
+                    "pro[] build(): non = {{\n",
+                    "    var build = .build();\n",
+                    "    build.meta({{ name = \"app\", version = \"0.1.0\" }});\n",
+                    "    var graph = build.graph();\n",
+                    "    graph.add_exe({{ name = \"app\", root = \"src/main.fol\", fol_model = \"{}\" }});\n",
+                    "    return;\n",
+                    "}};\n",
+                ),
+                app_model
+            ),
+        )
+        .unwrap();
+        fs::write(
+            root.join("shared/build.fol"),
+            format!(
+                concat!(
+                    "pro[] build(): non = {{\n",
+                    "    var build = .build();\n",
+                    "    build.meta({{ name = \"shared\", version = \"0.1.0\" }});\n",
+                    "    var graph = build.graph();\n",
+                    "    graph.add_static_lib({{ name = \"shared\", root = \"src/lib.fol\", fol_model = \"{}\" }});\n",
+                    "    return;\n",
+                    "}};\n",
+                ),
+                dep_model
+            ),
+        )
+        .unwrap();
+        fs::write(
+            root.join("app/src/main.fol"),
+            format!("use shared: loc = {{\"../shared\"}};\n\n{app_source}"),
+        )
+        .unwrap();
+        fs::write(root.join("shared/src/lib.fol"), dep_source).unwrap();
+
+        let uri = format!("file://{}", root.join("app/src/main.fol").display());
+        let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        let diagnostics = open_document(&mut server, uri, &text);
+        let messages = diagnostics
+            .iter()
+            .flat_map(|published| published.diagnostics.iter())
+            .map(|diagnostic| diagnostic.message.as_str())
+            .collect::<Vec<_>>();
+
+        assert!(
+            messages.iter().any(|message| message.contains(expected_message)),
+            "workspace '{label}' should surface transitive model error '{expected_message}', got: {messages:?}"
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+}

@@ -207,6 +207,10 @@ pub use error::{RuntimeError, RuntimeErrorKind};
 mod tests {
     use super::*;
 
+    const CORE_SOURCE: &str = include_str!("core.rs");
+    const ALLOC_SOURCE: &str = include_str!("alloc.rs");
+    const STD_SOURCE: &str = include_str!("std.rs");
+
     #[test]
     fn crate_name_matches_expected_runtime_identity() {
         assert_eq!(crate_name(), "fol-runtime");
@@ -239,6 +243,66 @@ mod tests {
         assert_eq!(std::tier_name(), "std");
         assert!(std::HAS_HEAP);
         assert!(std::HAS_OS);
+    }
+
+    #[test]
+    fn runtime_model_module_exports_stay_intentionally_distinct() {
+        assert!(!CORE_SOURCE.contains("FolStr("));
+        assert!(!CORE_SOURCE.contains("FolVec("));
+        assert!(!CORE_SOURCE.contains("FolSeq("));
+        assert!(!CORE_SOURCE.contains("pub fn echo"));
+        assert!(!CORE_SOURCE.contains("pub use crate::alloc::"));
+        assert!(!CORE_SOURCE.contains("FolProcessOutcome"));
+
+        assert!(ALLOC_SOURCE.contains("pub struct FolStr"));
+        assert!(ALLOC_SOURCE.contains("pub struct FolVec"));
+        assert!(ALLOC_SOURCE.contains("pub struct FolSeq"));
+        assert!(!ALLOC_SOURCE.contains("pub fn echo"));
+        assert!(!ALLOC_SOURCE.contains("FolProcessOutcome"));
+
+        assert!(STD_SOURCE.contains("pub fn echo"));
+        assert!(STD_SOURCE.contains("FolProcessOutcome"));
+        assert!(STD_SOURCE.contains("pub use crate::alloc::{FolMap, FolSeq, FolSet, FolStr, FolVec};"));
+    }
+
+    #[test]
+    fn runtime_model_flags_and_helpers_freeze_backend_contract() {
+        assert_eq!(core::capabilities().name, "core");
+        assert_eq!(alloc::capabilities().name, "alloc");
+        assert_eq!(std::capabilities().name, "std");
+
+        assert!(!core::capabilities().has_heap);
+        assert!(!core::capabilities().has_os);
+        assert!(alloc::capabilities().has_heap);
+        assert!(!alloc::capabilities().has_os);
+        assert!(std::capabilities().has_heap);
+        assert!(std::capabilities().has_os);
+
+        let core_len: fn(&[i64; 2]) -> i64 = core::len::<[i64; 2]>;
+        let alloc_len: fn(&alloc::FolStr) -> i64 = alloc::len::<alloc::FolStr>;
+        let std_echo: fn(alloc::FolStr) -> alloc::FolStr = std::echo::<alloc::FolStr>;
+
+        assert_eq!(core_len(&[1, 2]), 2);
+        assert_eq!(alloc_len(&alloc::FolStr::from("Ada")), 3);
+        assert_eq!(std_echo(alloc::FolStr::from("ok")), alloc::FolStr::from("ok"));
+    }
+
+    #[test]
+    fn core_source_stays_free_of_accidental_heap_or_hosted_reexports() {
+        for forbidden in [
+            "FolStr",
+            "FolVec",
+            "FolSeq",
+            "FolSet",
+            "FolMap",
+            "echo",
+            "FolProcessOutcome",
+        ] {
+            assert!(
+                !CORE_SOURCE.contains(forbidden),
+                "core runtime tier should not expose '{forbidden}' through source reexports"
+            );
+        }
     }
 
     #[test]

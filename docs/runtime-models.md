@@ -203,6 +203,29 @@ Implemented today:
 - `fol-runtime` is the single runtime crate with internal `core` / `alloc` /
   `std` ownership
 
+## Runtime export contract
+
+The backend should treat the three runtime modules as intentionally different
+public surfaces.
+
+- `fol_runtime::core`
+  - no heap-backed types
+  - no hosted hooks like `.echo(...)`
+  - no hosted process-outcome helpers
+- `fol_runtime::alloc`
+  - heap-backed strings and dynamic containers
+  - still no hosted hooks like `.echo(...)`
+  - still no hosted process-outcome helpers
+- `fol_runtime::std`
+  - hosted hooks such as `.echo(...)`
+  - hosted process-outcome helpers
+  - alloc-tier heap types re-exported for host artifacts
+
+Backend authors should not import a wider tier than the lowered artifact
+actually requires. `core` emission should stay `core`-only. `alloc` emission
+must not silently widen to `std`. `std` is the only tier that may rely on
+hosted runtime entry and console hooks.
+
 ## Editor note
 
 The editor should follow the same model split.

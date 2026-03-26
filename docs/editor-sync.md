@@ -133,6 +133,16 @@ When the file does not map to one specific routed artifact:
 That keeps mixed-model packages deterministic and avoids silently bleeding one
 artifact model into unrelated helper files.
 
+Editor-facing expectations:
+
+- real transitive model-boundary failures should surface through LSP
+- files mapped to a single artifact should use that artifact's exact
+  `fol_model`
+- ambiguous package-local files should stay conservative and avoid bleeding a
+  narrower model into unrelated helpers
+- build files that declare `fol_model = "core" | "alloc" | "std"` should stay
+  discoverable in semantic token and tree-sitter coverage
+
 ## Test gates
 
 The minimum test gates for editor sync are:

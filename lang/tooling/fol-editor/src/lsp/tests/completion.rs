@@ -250,6 +250,132 @@ fn lsp_server_filters_heap_type_surfaces_from_core_type_completion() {
 }
 
 #[test]
+fn lsp_server_handles_completion_for_single_and_ambiguous_model_package_files() {
+    let (root, _) = sample_package_root("completion_mixed_model_package");
+    fs::create_dir_all(root.join("test")).unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.add_exe({ name = \"host\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+            "    graph.add_test({ name = \"suite\", root = \"test/app.fol\", fol_model = \"core\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): int = {\n    return .echo(7);\n};\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("test/app.fol"),
+        "fun[] main(): int = {\n    var values: arr[int, 2] = {1, 2};\n    return .len(values);\n};\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("notes.fol"),
+        "fun[] helper(): int = {\n    return .;\n};\n",
+    )
+    .unwrap();
+
+    let std_uri = format!("file://{}", root.join("src/main.fol").display());
+    let core_uri = format!("file://{}", root.join("test/app.fol").display());
+    let notes_uri = format!("file://{}", root.join("notes.fol").display());
+    let std_text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let core_text = fs::read_to_string(root.join("test/app.fol")).unwrap();
+    let notes_text = fs::read_to_string(root.join("notes.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    open_document(&mut server, std_uri.clone(), &std_text);
+    open_document(&mut server, core_uri.clone(), &core_text);
+    open_document(&mut server, notes_uri.clone(), &notes_text);
+
+    let std_completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(390),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: std_uri.clone() },
+                    position: LspPosition { line: 1, character: 12 },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let std_labels = serde_json::from_value::<LspCompletionList>(std_completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(std_labels.iter().any(|label| label == "echo"));
+
+    let core_completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(391),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: core_uri.clone() },
+                    position: LspPosition { line: 2, character: 12 },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let core_labels = serde_json::from_value::<LspCompletionList>(core_completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(!core_labels.iter().any(|label| label == "echo"));
+    assert!(core_labels.iter().any(|label| label == "len"));
+
+    let notes_completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(392),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: notes_uri },
+                    position: LspPosition { line: 1, character: 12 },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let notes_labels = serde_json::from_value::<LspCompletionList>(notes_completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(
+        notes_labels.iter().any(|label| label == "echo"),
+        "ambiguous package-local files should not overfilter to a non-std model: {notes_labels:?}"
+    );
+    assert!(
+        notes_labels.iter().any(|label| label == "len"),
+        "ambiguous package-local files should still expose shared root completions: {notes_labels:?}"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_returns_build_surface_completions_in_build_files() {
     let (root, _) = sample_package_root("completion_build_surface");
     let build_file = root.join("build.fol");

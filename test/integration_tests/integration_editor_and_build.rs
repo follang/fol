@@ -3002,6 +3002,26 @@ fn test_build_fixture_alloc_model_rejects_echo() {
 }
 
 #[test]
+fn test_negative_core_model_example_fails_with_heap_boundary_diagnostic() {
+    let root = temp_example_root("examples/fail_core_heap_reject");
+    let build = run_fol_in_dir(&root, &["code", "build"]);
+    let stderr = String::from_utf8_lossy(&build.stderr);
+
+    assert!(
+        !build.status.success(),
+        "negative core model example should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+    assert!(
+        stderr.contains("str requires heap support and is unavailable in 'fol_model = core'"),
+        "negative core model example should keep the heap-boundary wording: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+}
+
+#[test]
 fn test_cli_code_build_rejects_old_root_build_syntax() {
     let root = unique_temp_root("old_root_build_syntax");
     std::fs::create_dir_all(root.join("src")).expect("should create source root");
