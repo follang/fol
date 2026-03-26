@@ -316,7 +316,7 @@ shape:
   - generated/output handles
   - dependency generated-output handles
 
-### Slice 19
+### Slice 19 (complete)
 
 - design one broader public path-handle family
 - internal variants may remain specialized, but the public consumption model

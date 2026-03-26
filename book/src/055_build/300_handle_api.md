@@ -17,6 +17,32 @@ Those values already compose in several places, but they do not yet read like
 one obvious path capability. This chapter keeps the current concrete names while
 the underlying path model converges.
 
+## Path Convergence Direction
+
+The intended direction is one broader path capability with:
+
+- a path class:
+  - file
+  - dir
+- a provenance:
+  - source-root path
+  - local generated output
+  - dependency-exported path/output
+
+The producer names can stay concrete:
+
+- `graph.file_from_root(...)`
+- `graph.dir_from_root(...)`
+- `graph.write_file(...)`
+- `graph.copy_file(...)`
+- `dep.file(...)`
+- `dep.dir(...)`
+- `dep.path(...)`
+- `dep.generated(...)`
+
+But path consumers should read those values through one common model instead of
+hand-written special cases for every producer.
+
 ## Artifact
 
 The `Artifact` handle is returned by `add_exe`, `add_static_lib`,

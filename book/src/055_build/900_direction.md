@@ -65,6 +65,18 @@ That split is honest today, but it is not the final intended feel. The next
 path round should preserve the strong producer distinctions while making path
 consumers behave as though they are working against one broader path capability.
 
+The intended public feel is:
+
+- producers remain explicit
+- consumers validate against one common path model
+- diagnostics name both:
+  - the required path class
+  - the actual path provenance when that matters
+
+That means this round does not need to delete `SourceFile`, `SourceDir`, or
+`GeneratedFile` immediately. It does need to stop treating every consumer as a
+fresh handwritten branch over those concrete producers.
+
 ### Dependency Handles
 
 Direct dependencies are now real build values instead of only metadata
