@@ -770,11 +770,20 @@ fn resolve_requested_step_execution(
             continue;
         };
         if step.ambiguous_selection {
+            let resolved = if step.available_models.is_empty() {
+                "unknown".to_string()
+            } else {
+                step.available_models
+                    .iter()
+                    .map(|model| model.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            };
             return Err(FrontendError::new(
                 FrontendErrorKind::InvalidInput,
                 format!(
-                    "workspace build execution step '{}' matches multiple artifacts and requires an explicit named step",
-                    requested_step
+                    "workspace build execution step '{}' matches multiple artifacts and requires an explicit named step; resolved model(s): {}",
+                    requested_step, resolved
                 ),
             ));
         }

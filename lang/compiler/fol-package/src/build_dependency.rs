@@ -133,6 +133,7 @@ pub fn project_dependency_surface(
                 }
                 fol_build::BuildArtifactModelKind::DocsBundle => "docs".to_string(),
             },
+            fol_model: artifact.target.fol_model.as_str().to_string(),
         })
         .collect::<Vec<_>>();
     projected_artifacts.sort_by(|left, right| left.name.cmp(&right.name));
@@ -223,6 +224,7 @@ pub fn project_dependency_surface(
                 Ok(DependencyArtifactSurface {
                     name: export.name.clone(),
                     artifact_kind: artifact.artifact_kind.clone(),
+                    fol_model: artifact.fol_model.clone(),
                 })
             })
             .collect::<Result<Vec<_>, PackageError>>()?

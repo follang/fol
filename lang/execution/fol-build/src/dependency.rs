@@ -106,6 +106,7 @@ pub struct DependencySourceRootSurface {
 pub struct DependencyArtifactSurface {
     pub name: String,
     pub artifact_kind: String,
+    pub fol_model: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -244,6 +245,7 @@ mod tests {
             artifacts: vec![DependencyArtifactSurface {
                 name: "logtiny".to_string(),
                 artifact_kind: "static-lib".to_string(),
+                fol_model: "alloc".to_string(),
             }],
             steps: vec![DependencyStepSurface {
                 name: "test".to_string(),
@@ -325,6 +327,7 @@ mod tests {
             artifacts: vec![DependencyArtifactSurface {
                 name: "logtiny".to_string(),
                 artifact_kind: "static-lib".to_string(),
+                fol_model: "alloc".to_string(),
             }],
         };
         let steps = DependencyStepSurfaceSet {
@@ -414,6 +417,7 @@ mod tests {
             artifacts: vec![DependencyArtifactSurface {
                 name: "corelib".to_string(),
                 artifact_kind: "static-lib".to_string(),
+                fol_model: "core".to_string(),
             }],
             steps: vec![DependencyStepSurface {
                 name: "check".to_string(),

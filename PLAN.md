@@ -215,6 +215,8 @@ Completion criteria:
 ## Epoch 3: Transitive Dependency Model Boundaries
 
 ### Slice 11
+Status: complete
+
 Add tests where a `core` artifact depends on a `core` library and stays valid.
 
 Completion criteria:
@@ -222,6 +224,8 @@ Completion criteria:
 - success-path transitive `core -> core` example exists
 
 ### Slice 12
+Status: complete
+
 Add tests where a `core` artifact depends on an `alloc` library exporting heap-backed API and must fail.
 
 Completion criteria:
@@ -230,6 +234,8 @@ Completion criteria:
 - diagnostic points at the heap-backed boundary clearly
 
 ### Slice 13
+Status: complete
+
 Add tests where a `core` artifact depends on a `std` library or hosted-only export and must fail.
 
 Completion criteria:
@@ -237,6 +243,8 @@ Completion criteria:
 - diagnostic is explicit about `std`-only surface or hosted boundary
 
 ### Slice 14
+Status: complete
+
 Add tests where an `alloc` artifact depends on another `alloc` library and stays valid.
 
 Completion criteria:
@@ -244,6 +252,8 @@ Completion criteria:
 - success-path `alloc -> alloc` example exists
 
 ### Slice 15
+Status: complete
+
 Add tests where an `alloc` artifact indirectly reaches `.echo(...)` through a dependency and must fail.
 
 Completion criteria:
@@ -251,6 +261,8 @@ Completion criteria:
 - failure proves `.echo(...)` does not leak through imported packages
 
 ### Slice 16
+Status: complete
+
 Add tests where a `std` artifact consumes `core` and `alloc` dependencies in one graph and succeeds.
 
 Completion criteria:
@@ -258,6 +270,8 @@ Completion criteria:
 - positive mixed dependency graph exists and runs
 
 ### Slice 17
+Status: complete
+
 Add tests where transitive dependency exports preserve model identity in prepared package metadata.
 
 Completion criteria:
@@ -265,6 +279,8 @@ Completion criteria:
 - prepared package/build-route metadata exposes enough to assert transitive model facts in tests
 
 ### Slice 18
+Status: complete
+
 Document the transitive-boundary rule explicitly.
 
 Completion criteria:
@@ -276,6 +292,8 @@ Completion criteria:
 ## Epoch 4: Workspace Routing And Mixed-Artifact Hardening
 
 ### Slice 19
+Status: complete
+
 Add routed workspace tests for ambiguous mixed-model packages where `run` should fail because selection is not uniquely `std`.
 
 Completion criteria:
@@ -283,6 +301,8 @@ Completion criteria:
 - routed `run` diagnostics mention resolved models
 
 ### Slice 20
+Status: complete
+
 Add routed workspace tests for step-selected execution crossing model boundaries.
 
 Completion criteria:

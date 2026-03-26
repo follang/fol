@@ -167,6 +167,21 @@ surfaces automatically.
 The intent is to keep capability growth explicit. `std` is not the semantic
 baseline for every artifact just because the current backend is hosted Rust.
 
+## Transitive boundary rule
+
+Capability legality is checked at the consuming artifact boundary, not only at
+the dependency's own artifact boundary.
+
+That means:
+
+- a `core` artifact cannot consume heap-backed API from an `alloc` package just
+  because the dependency itself was declared with `fol_model = "alloc"`
+- a `core` or `alloc` artifact cannot reach `.echo(...)` indirectly through an
+  imported `std` package
+- a `std` artifact may consume `core` and `alloc` packages in the same graph
+
+The consuming artifact model always wins.
+
 ## Guarantees by model
 
 | Model   | Heap | Hosted runtime | Typical artifact shape |

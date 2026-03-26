@@ -108,6 +108,84 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
     assert!(tag.success(), "git tag v0.1.0 should succeed");
 }
 
+fn run_fol_with_store_in_dir(
+    dir: &std::path::Path,
+    store_root: &std::path::Path,
+    args: &[&str],
+) -> std::process::Output {
+    std::process::Command::new(env!("CARGO_BIN_EXE_fol"))
+        .args(["--package-store-root"])
+        .arg(store_root)
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .expect("should run fol CLI with explicit package-store root")
+}
+
+fn write_formal_model_package(
+    root: &std::path::Path,
+    name: &str,
+    fol_model: &str,
+    source_name: &str,
+    source: &str,
+) {
+    std::fs::create_dir_all(root.join("src")).expect("should create package source root");
+    std::fs::write(
+        root.join("build.fol"),
+        format!(
+            concat!(
+                "pro[] build(): non = {{\n",
+                "    var build = .build();\n",
+                "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
+                "    var graph = build.graph();\n",
+                "    var lib = graph.add_static_lib({{ name = \"{name}\", root = \"src/{source_name}\", fol_model = \"{fol_model}\" }});\n",
+                "    graph.install(lib);\n",
+                "}};\n",
+            ),
+            name = name,
+            source_name = source_name,
+            fol_model = fol_model,
+        ),
+    )
+    .expect("should write package build");
+    std::fs::write(root.join("src").join(source_name), source).expect("should write package source");
+}
+
+fn write_model_app_package(
+    root: &std::path::Path,
+    name: &str,
+    fol_model: &str,
+    source: &str,
+    add_run: bool,
+) {
+    std::fs::create_dir_all(root.join("src")).expect("should create app source root");
+    let run_line = if add_run {
+        "    graph.add_run(app);\n"
+    } else {
+        ""
+    };
+    std::fs::write(
+        root.join("build.fol"),
+        format!(
+            concat!(
+                "pro[] build(): non = {{\n",
+                "    var build = .build();\n",
+                "    build.meta({{ name = \"{name}\", version = \"0.1.0\" }});\n",
+                "    var graph = build.graph();\n",
+                "    var app = graph.add_exe({{ name = \"{name}\", root = \"src/main.fol\", fol_model = \"{fol_model}\" }});\n",
+                "    graph.install(app);\n",
+                "{run_line}",
+                "}};\n",
+            ),
+            name = name,
+            fol_model = fol_model,
+            run_line = run_line,
+        ),
+    )
+    .expect("should write app build");
+    std::fs::write(root.join("src/main.fol"), source).expect("should write app source");
+}
+
 #[test]
 fn test_editor_file_commands_cover_build_fol_entry_files() {
     let parse = run_fol(&[
@@ -909,6 +987,276 @@ fn test_build_fixture_mixed_models_workspace_keeps_per_artifact_models() {
         String::from_utf8_lossy(&run.stdout),
         String::from_utf8_lossy(&run.stderr)
     );
+}
+
+#[test]
+fn test_core_artifact_accepts_transitive_core_pkg_dependency() {
+    let temp_root = unique_temp_root("model_core_dep_core");
+    let store_root = temp_root.join("store");
+    let app_root = temp_root.join("app");
+    write_formal_model_package(
+        &store_root.join("corelib"),
+        "corelib",
+        "core",
+        "lib.fol",
+        "fun[exp] answer(): int = {\n    return 7;\n};\n",
+    );
+    write_model_app_package(
+        &app_root,
+        "app",
+        "core",
+        concat!(
+            "use corelib: pkg = {corelib};\n",
+            "fun[] main(): int = {\n",
+            "    return corelib::src::answer();\n",
+            "};\n",
+        ),
+        false,
+    );
+
+    let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build"]);
+    assert!(
+        build.status.success(),
+        "core->core pkg dependency should build: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        String::from_utf8_lossy(&build.stderr)
+    );
+    assert!(String::from_utf8_lossy(&build.stdout).contains("fol_model=core"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn test_core_artifact_rejects_transitive_alloc_pkg_dependency() {
+    let temp_root = unique_temp_root("model_core_dep_alloc");
+    let store_root = temp_root.join("store");
+    let app_root = temp_root.join("app");
+    write_formal_model_package(
+        &store_root.join("alloclib"),
+        "alloclib",
+        "alloc",
+        "lib.fol",
+        "fun[exp] helper(): str = {\n    return \"ok\";\n};\n",
+    );
+    write_model_app_package(
+        &app_root,
+        "app",
+        "core",
+        concat!(
+            "use alloclib: pkg = {alloclib};\n",
+            "fun[] main(): int = {\n",
+            "    var value: str = alloclib::src::helper();\n",
+            "    return 0;\n",
+            "};\n",
+        ),
+        false,
+    );
+
+    let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build"]);
+    let stderr = String::from_utf8_lossy(&build.stderr);
+    assert!(
+        !build.status.success(),
+        "core->alloc pkg dependency should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+    assert!(stderr.contains("str requires heap support and is unavailable in 'fol_model = core'"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn test_core_artifact_rejects_transitive_std_pkg_dependency() {
+    let temp_root = unique_temp_root("model_core_dep_std");
+    let store_root = temp_root.join("store");
+    let app_root = temp_root.join("app");
+    write_formal_model_package(
+        &store_root.join("stdlib"),
+        "stdlib",
+        "std",
+        "lib.fol",
+        "fun[exp] helper(): int = {\n    return .echo(1);\n};\n",
+    );
+    write_model_app_package(
+        &app_root,
+        "app",
+        "core",
+        concat!(
+            "use stdlib: pkg = {stdlib};\n",
+            "fun[] main(): int = {\n",
+            "    return stdlib::src::helper();\n",
+            "};\n",
+        ),
+        false,
+    );
+
+    let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build"]);
+    let stderr = String::from_utf8_lossy(&build.stderr);
+    assert!(
+        !build.status.success(),
+        "core->std pkg dependency should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+    assert!(stderr.contains("'.echo(...)' requires 'fol_model = std'"));
+    assert!(stderr.contains("current artifact model is 'core'"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn test_alloc_artifact_accepts_transitive_alloc_pkg_dependency() {
+    let temp_root = unique_temp_root("model_alloc_dep_alloc");
+    let store_root = temp_root.join("store");
+    let app_root = temp_root.join("app");
+    write_formal_model_package(
+        &store_root.join("alloclib"),
+        "alloclib",
+        "alloc",
+        "lib.fol",
+        concat!(
+            "fun[exp] size(): int = {\n",
+            "    var values: seq[int] = {1, 2, 3};\n",
+            "    return .len(values);\n",
+            "};\n",
+        ),
+    );
+    write_model_app_package(
+        &app_root,
+        "app",
+        "alloc",
+        concat!(
+            "use alloclib: pkg = {alloclib};\n",
+            "fun[] main(): int = {\n",
+            "    return alloclib::src::size();\n",
+            "};\n",
+        ),
+        false,
+    );
+
+    let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build"]);
+    assert!(
+        build.status.success(),
+        "alloc->alloc pkg dependency should build: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        String::from_utf8_lossy(&build.stderr)
+    );
+    assert!(String::from_utf8_lossy(&build.stdout).contains("fol_model=alloc"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn test_alloc_artifact_rejects_transitive_std_echo_dependency() {
+    let temp_root = unique_temp_root("model_alloc_dep_std");
+    let store_root = temp_root.join("store");
+    let app_root = temp_root.join("app");
+    write_formal_model_package(
+        &store_root.join("stdlib"),
+        "stdlib",
+        "std",
+        "lib.fol",
+        "fun[exp] helper(): int = {\n    return .echo(1);\n};\n",
+    );
+    write_model_app_package(
+        &app_root,
+        "app",
+        "alloc",
+        concat!(
+            "use stdlib: pkg = {stdlib};\n",
+            "fun[] main(): int = {\n",
+            "    return stdlib::src::helper();\n",
+            "};\n",
+        ),
+        false,
+    );
+
+    let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build"]);
+    let stderr = String::from_utf8_lossy(&build.stderr);
+    assert!(
+        !build.status.success(),
+        "alloc should reject transitive std echo dependency: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+    assert!(stderr.contains("'.echo(...)' requires 'fol_model = std'"));
+    assert!(stderr.contains("current artifact model is 'alloc'"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn test_std_artifact_accepts_mixed_core_and_alloc_pkg_dependencies() {
+    let temp_root = unique_temp_root("model_std_dep_core_alloc");
+    let store_root = temp_root.join("store");
+    let app_root = temp_root.join("app");
+    write_formal_model_package(
+        &store_root.join("corelib"),
+        "corelib",
+        "core",
+        "lib.fol",
+        "fun[exp] answer(): int = {\n    return 5;\n};\n",
+    );
+    write_formal_model_package(
+        &store_root.join("alloclib"),
+        "alloclib",
+        "alloc",
+        "lib.fol",
+        concat!(
+            "fun[exp] size(): int = {\n",
+            "    var values: seq[int] = {1, 2, 3};\n",
+            "    return .len(values);\n",
+            "};\n",
+        ),
+    );
+    write_model_app_package(
+        &app_root,
+        "app",
+        "std",
+        concat!(
+            "use corelib: pkg = {corelib};\n",
+            "use alloclib: pkg = {alloclib};\n",
+            "fun[] main(): int = {\n",
+            "    return .echo(corelib::src::answer() + alloclib::src::size());\n",
+            "};\n",
+        ),
+        true,
+    );
+
+    let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build", "--keep-build-dir"]);
+    let build_stdout = String::from_utf8_lossy(&build.stdout);
+    assert!(
+        build.status.success(),
+        "std mixed pkg dependency graph should build: stdout=\n{}\nstderr=\n{}",
+        build_stdout,
+        String::from_utf8_lossy(&build.stderr)
+    );
+    assert!(build_stdout.contains("fol_model=std"));
+    let binary = build_stdout
+        .lines()
+        .find_map(|line| {
+            let plain = strip_ansi(line);
+            if plain.contains("binary") {
+                plain.split_whitespace().last().map(str::to_string)
+            } else {
+                None
+            }
+        })
+        .expect("std mixed dependency build should report a binary path")
+        .trim()
+        .to_string();
+    let run = Command::new(&binary)
+        .output()
+        .expect("std mixed dependency binary should execute");
+    assert!(
+        run.status.success(),
+        "std mixed dependency binary should run: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&run.stdout),
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert!(String::from_utf8_lossy(&run.stdout).contains("8"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
 }
 
 #[test]
@@ -1968,6 +2316,85 @@ fn test_cli_test_rejects_alloc_example_route() {
     let stderr = String::from_utf8_lossy(&run.stderr);
     assert!(!run.status.success(), "alloc test route should be rejected");
     assert!(stderr.contains("test requires 'fol_model = std'"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn test_cli_run_rejects_ambiguous_non_std_models_with_resolved_models() {
+    let temp_root = unique_temp_root("run_mixed_route_reject");
+    let root = temp_root.join("demo");
+    std::fs::create_dir_all(root.join("src")).expect("should create source root");
+    std::fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    var blink = graph.add_exe({ name = \"blink\", root = \"src/blink.fol\", fol_model = \"core\" });\n",
+            "    var heap = graph.add_exe({ name = \"heap\", root = \"src/heap.fol\", fol_model = \"alloc\" });\n",
+            "    graph.install(blink);\n",
+            "    graph.install(heap);\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .expect("should write build file");
+    std::fs::write(
+        root.join("src/blink.fol"),
+        "fun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .expect("should write core source");
+    std::fs::write(
+        root.join("src/heap.fol"),
+        "fun[] main(): int = {\n    var shown: str = \"ok\";\n    return 0;\n};\n",
+    )
+    .expect("should write alloc source");
+
+    let run = run_fol_in_dir(&root, &["code", "run"]);
+    let stderr = String::from_utf8_lossy(&run.stderr);
+    assert!(!run.status.success(), "mixed non-std route should be rejected");
+    assert!(stderr.contains("requires an explicit named step"));
+    assert!(stderr.contains("resolved model(s): core, alloc"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
+fn test_cli_run_rejects_explicit_core_run_step_with_step_model_detail() {
+    let temp_root = unique_temp_root("run_explicit_core_step_reject");
+    let root = temp_root.join("demo");
+    std::fs::create_dir_all(root.join("src")).expect("should create source root");
+    std::fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    var blink = graph.add_exe({ name = \"blink\", root = \"src/blink.fol\", fol_model = \"core\" });\n",
+            "    graph.add_run(blink);\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .expect("should write build file");
+    std::fs::write(
+        root.join("src/blink.fol"),
+        "fun[] main(): int = {\n    return 0;\n};\n",
+    )
+    .expect("should write core source");
+
+    let run = run_fol_in_dir(&root, &["code", "run", "--step", "run"]);
+    let stderr = String::from_utf8_lossy(&run.stderr);
+    assert!(
+        !run.status.success(),
+        "explicit core run step route should be rejected"
+    );
+    assert!(stderr.contains("workspace build step 'run' resolves artifact 'blink'"));
+    assert!(stderr.contains("'fol_model = core'"));
+    assert!(stderr.contains("run requires 'fol_model = std'"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }

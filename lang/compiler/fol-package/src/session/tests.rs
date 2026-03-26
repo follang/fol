@@ -669,7 +669,7 @@ fn package_session_projects_dependency_surfaces_for_formal_pkg_roots() {
     assert!(surface
         .artifacts
         .iter()
-        .any(|artifact| artifact.name == "runtime"));
+        .any(|artifact| artifact.name == "runtime" && artifact.fol_model == "alloc"));
     assert!(surface.steps.iter().any(|step| step.name == "check"));
     assert!(surface
         .generated_outputs
