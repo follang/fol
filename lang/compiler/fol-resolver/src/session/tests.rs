@@ -47,6 +47,17 @@ fn session_config_can_be_provided_explicitly() {
 }
 
 #[test]
+fn session_defaults_std_root_to_bundled_tree_when_unspecified() {
+    let session = ResolverSession::with_config(ResolverConfig::default());
+
+    assert_eq!(
+        session.config().std_root,
+        fol_package::available_bundled_std_root()
+            .map(|path| path.to_string_lossy().to_string())
+    );
+}
+
+#[test]
 fn inferred_package_root_uses_common_parent_of_parsed_source_units() {
     let parsed = parse_package("../../../test/parser/source_units");
     let inferred = infer_package_root(&parsed).expect("Should infer a common package root");

@@ -124,7 +124,7 @@ pub use build_step::{
     BuildStepEventKind, BuildStepExecutionRequest, BuildStepExecutionResult, BuildStepPlanError,
     BuildStepReport,
 };
-pub use config::PackageConfig;
+pub use config::{available_bundled_std_root, bundled_std_root, effective_std_root, PackageConfig};
 pub use errors::{PackageError, PackageErrorKind};
 pub use fol_parser::ast::ParsedSourceUnitKind;
 pub use git::{

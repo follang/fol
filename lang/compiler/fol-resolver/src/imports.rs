@@ -126,16 +126,18 @@ fn resolve_standard_target_from_disk(
     import: &crate::ResolvedImport,
 ) -> Result<ScopeId, ResolverError> {
     let std_root = session.config().std_root.as_deref().ok_or_else(|| {
+        let bundled = fol_package::bundled_std_root();
         ResolverError::new(
             ResolverErrorKind::InvalidInput,
             format!(
-                "resolver std import '{}' requires an explicit std root",
+                "resolver std import '{}' requires bundled std at '{}' or an explicit --std-root <DIR> override",
                 import
                     .path_segments
                     .iter()
                     .map(|segment| segment.spelling.as_str())
                     .collect::<Vec<_>>()
-                    .join("/")
+                    .join("/"),
+                bundled.display(),
             ),
         )
     })?;

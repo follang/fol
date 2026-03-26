@@ -149,7 +149,9 @@ impl ToDiagnostic for ResolverError {
             diagnostic =
                 diagnostic.with_note("supported import source kinds are loc, std, and pkg");
         }
-        if self.message.contains("requires an explicit std root") {
+        if self.message.contains("requires an explicit std root")
+            || self.message.contains("requires bundled std at")
+        {
             diagnostic = diagnostic.with_help("rerun with --std-root <DIR>");
         }
         if self

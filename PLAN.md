@@ -1,651 +1,519 @@
-# PLAN
+# PLAN: Bundled FOL Library Root At `lang/library/std`
 
-## Goal
+This plan introduces a bundled FOL standard-library source tree under:
 
-Harden the `core` / `alloc` / `std` runtime-model split so it behaves like a real semantic and runtime boundary across:
+- `lang/library/std`
 
-- build evaluation
-- package/session loading
-- typecheck
-- lowering/backend emission
-- routed frontend execution
-- editor/LSP
-- examples, docs, and negative fixtures
+The intent is:
 
-This plan is about hardening, not adding a fourth mode or expanding the language surface.
+- `std` is part of the FOL distribution
+- `std` is written mostly in FOL
+- `std` is not an external dependency the user downloads separately
+- `std` is not part of the compiler implementation crates
+- `core` and `mem` remain non-importable runtime/compiler capability layers implemented in Rust
+- `use std ...` resolves against the bundled shipped library root
+- `use std ...` is only legal when `fol_model = "std"`
 
-## Current Scan Summary
-
-The scan shows the model split is already implemented and documented, but the remaining risk is mostly in boundary enforcement and regression coverage.
-
-High-signal existing enforcement already present:
-
-- typecheck capability gates in:
-  - `lang/compiler/fol-typecheck/src/decls.rs`
-  - `lang/compiler/fol-typecheck/src/exprs/calls.rs`
-  - `test/typecheck/test_typecheck_containers_and_shells.rs`
-- routed workspace execution gates in:
-  - `lang/tooling/fol-frontend/src/build_route/mod.rs`
-  - `lang/tooling/fol-frontend/src/build_route/tests/exec.rs`
-- backend runtime-tier selection in:
-  - `lang/execution/fol-backend/src/config.rs`
-  - `lang/execution/fol-backend/src/emit/tests.rs`
-- runtime module boundaries in:
-  - `lang/execution/fol-runtime/src/core.rs`
-  - `lang/execution/fol-runtime/src/alloc.rs`
-  - `lang/execution/fol-runtime/src/std.rs`
-- editor model-aware semantics in:
-  - `lang/tooling/fol-editor/src/lsp/semantic.rs`
-  - `lang/tooling/fol-editor/src/lsp/tests/lifecycle.rs`
-  - `lang/tooling/fol-editor/src/lsp/tests/completion.rs`
-  - `lang/tooling/fol-editor/src/lsp/tests/completion_namespaced.rs`
-- docs/examples baseline in:
-  - `docs/runtime-models.md`
-  - `examples/core_*`
-  - `examples/alloc_*`
-  - `examples/std_*`
-  - `examples/mixed_models_workspace`
-
-Remaining weak spots from the scan:
-
-- transitive dependency model-boundary coverage is still thinner than direct-package coverage
-- mixed-workspace route selection coverage is stronger for success paths than for subtle failure paths
-- emitted Rust/runtime import auditing exists, but not for enough mixed dependency/model combinations
-- example coverage is mostly positive-path; negative example packages for model misuse are still light
-- editor model-awareness exists, but ambiguous package contexts and cross-artifact file mapping need stronger regression tests
-- docs are mostly aligned, but they still need explicit “allowed / forbidden / indirect boundary” examples per tier
-
-## Rules For This Plan
-
-For each slice:
-
-- add tests in the same commit as the fix/feature
-- run `make build`
-- then run `make test`
-- only commit if both pass
-- mark the slice complete in `PLAN.md` in the same commit
-
-No compatibility paths. If a new stricter model rule is chosen, the old looser path is deleted.
+This is a packaging and toolchain-distribution change, not a rewrite of the compiler into FOL.
 
 ---
 
-## Epoch 1: Freeze The Runtime-Model Contract
+## Design Freeze
+
+The resulting model must be:
+
+- runtime/compiler capability substrate:
+  - `core`
+  - `mem`
+  - `std`
+- only `std` is an importable bundled library namespace
+- `core` and `mem` are selected through `fol_model`, not imported from source code
+- shipped FOL library root:
+  - `lang/library/std`
+- default toolchain behavior:
+  - bundled `std` is mounted automatically
+- override behavior:
+  - explicit std-root override may remain only for development/testing
+  - no user-facing requirement to configure std manually
+
+Non-goals for this plan:
+
+- do not rewrite runtime/compiler implementation into FOL
+- do not create public bundled `core` or `mem` library trees
+- do not make `core` or `mem` importable namespaces
+- do not try to build the full giant std library in one pass
+- do not add compatibility back for external ad-hoc std roots as the normal path
+
+---
+
+## Epoch 1: Contract And Filesystem Layout
 
 ### Slice 1
 Status: complete
 
-Audit `docs/runtime-models.md`, `book/src/055_build/200_graph_api.md`, and relevant book pages so they all say the same thing about:
-
-- `core`
-- `alloc`
-- `std`
-- `.echo(...)`
-- dynamic `.len(...)`
-- routed `run` / `test`
+Add `lang/library/` to the repo layout and document its role.
 
 Completion criteria:
 
-- docs use the same contract wording
-- no doc still implies `std` is the baseline default in spirit
+- `lang/library/` exists in the tree
+- docs state that bundled FOL libraries live there
 
 ### Slice 2
 Status: complete
 
-Add a compiler-side test matrix that locks the canonical capability facts in one place.
+Add `lang/library/std/` as the canonical bundled standard-library root.
 
 Completion criteria:
 
-- one test file or module checks the authoritative capability matrix for:
-  - heap
-  - OS/runtime
-  - strings
-  - dynamic containers
-  - `.echo(...)`
-  - array `.len(...)`
-  - dynamic `.len(...)`
+- `lang/library/std/` exists
+- repository conventions document it as the canonical std package root
 
 ### Slice 3
 Status: complete
 
-Add explicit documentation examples for allowed/forbidden surfaces per tier.
+Write a concise toolchain-facing design note for bundled std semantics.
 
 Completion criteria:
 
-- docs include one positive and one forbidden example for each of:
-  - `core`
-  - `alloc`
-  - `std`
+- note explains shipped std vs runtime/compiler substrate
+- note explains that users should not download std separately
 
 ### Slice 4
 Status: complete
 
-Add a top-level integration test that asserts the docs’ example package list stays in sync with the actual example directories.
+Audit existing docs and examples that still imply manual std-root configuration as the normal path.
 
 Completion criteria:
 
-- if a listed model example is missing, tests fail
-- if a package is renamed and docs drift, tests fail
+- all such sites are listed before behavior changes start
 
 ---
 
-## Epoch 2: Harden Direct Model Boundary Rejections
+## Epoch 2: Frontend Default Std Root Resolution
 
 ### Slice 5
 Status: complete
 
-Expand direct compile-fail fixtures for `core` rejecting heap-backed types.
+Add one canonical helper that computes the bundled std root from the repo/toolchain layout.
 
 Completion criteria:
 
-- negative fixtures cover:
-  - explicit `str`
-  - inferred string literal
-  - `vec`
-  - `seq`
-  - `set`
-  - `map`
-  - mixed declarations in one file
+- frontend/package/resolver use one shared helper for the default bundled std root
 
 ### Slice 6
 Status: complete
 
-Expand direct compile-fail fixtures for `core` rejecting heap-backed expressions, not just declarations.
+Make frontend commands default to bundled `lang/library/std` when no override is given.
 
 Completion criteria:
 
-- negative fixtures cover expression-level uses such as:
-  - returning string literals
-  - binding dynamic containers in routine bodies
-  - dynamic `.len(...)`
+- compile/build/check/run/test paths pick bundled std automatically
 
 ### Slice 7
 Status: complete
 
-Expand direct compile-fail fixtures for `alloc` rejecting `.echo(...)` and hosted assumptions.
+Keep explicit std-root override only as a development/testing escape hatch.
 
 Completion criteria:
 
-- negative fixtures cover:
-  - `.echo(...)`
-  - routed run/test refusal for alloc artifacts where relevant
+- override still works
+- docs clearly mark it as override behavior, not normal setup
 
 ### Slice 8
 Status: complete
 
-Add direct positive fixtures proving `core` still allows its intended minimal surface.
+Update workspace/config loading so missing explicit std-root no longer means “no std available” when bundled std exists.
 
 Completion criteria:
 
-- positive examples cover:
-  - arrays
-  - records
-  - entries
-  - methods
-  - `defer`
-  - shells
-  - array `.len(...)`
+- workspace configs without std-root still resolve bundled std by default
 
 ### Slice 9
 Status: complete
 
-Add direct positive fixtures proving `alloc` allows heap-only surfaces without accidentally requiring `std`.
+Harden frontend diagnostics around bundled std discovery.
 
 Completion criteria:
 
-- positive examples cover:
-  - `str`
-  - `seq`
-  - `vec`
-  - defaults/variadics if used there
-  - dynamic `.len(...)`
-  - no `.echo(...)`
+- diagnostics distinguish:
+  - bundled std missing from toolchain layout
+  - explicit override missing
+  - `use std` forbidden by model
+
+---
+
+## Epoch 3: Package And Resolver Integration
 
 ### Slice 10
 Status: complete
 
-Add direct positive fixtures proving `std` remains minimal and honest.
+Route package-session configuration to the bundled std root by default.
 
 Completion criteria:
 
-- at least one `std` example is only `.echo(...)`
-- at least one `std` example uses alloc-tier types plus hosted behavior
-
----
-
-## Epoch 3: Transitive Dependency Model Boundaries
+- package session gets bundled std without explicit caller plumbing everywhere
 
 ### Slice 11
-Status: complete
+Status: pending
 
-Add tests where a `core` artifact depends on a `core` library and stays valid.
+Route resolver-session configuration to the bundled std root by default.
 
 Completion criteria:
 
-- success-path transitive `core -> core` example exists
+- resolver tests no longer require explicit std-root in the normal positive path
 
 ### Slice 12
-Status: complete
+Status: pending
 
-Add tests where a `core` artifact depends on an `alloc` library exporting heap-backed API and must fail.
+Preserve model gating: bundled std resolution must still fail under non-`std` models when `use std` appears.
 
 Completion criteria:
 
-- failure is caught before backend emission
-- diagnostic points at the heap-backed boundary clearly
+- bundled std availability does not weaken `fol_model` legality rules
 
 ### Slice 13
-Status: complete
+Status: pending
 
-Add tests where a `core` artifact depends on a `std` library or hosted-only export and must fail.
+Update std import resolution tests to prefer bundled std fixtures over ad-hoc explicit std-root setup where appropriate.
 
 Completion criteria:
 
-- diagnostic is explicit about `std`-only surface or hosted boundary
+- positive std import tests use the new default path in at least one canonical suite
 
 ### Slice 14
-Status: complete
+Status: pending
 
-Add tests where an `alloc` artifact depends on another `alloc` library and stays valid.
+Keep one focused suite for explicit std-root override behavior.
 
 Completion criteria:
 
-- success-path `alloc -> alloc` example exists
+- override behavior remains tested without dominating normal-path tests
+
+---
+
+## Epoch 4: Seed Bundled Std Package
 
 ### Slice 15
-Status: complete
+Status: pending
 
-Add tests where an `alloc` artifact indirectly reaches `.echo(...)` through a dependency and must fail.
+Create the first minimal bundled std package structure under `lang/library/std`.
 
 Completion criteria:
 
-- failure proves `.echo(...)` does not leak through imported packages
+- package root is structurally valid
+- build/package metadata is valid under the current build model
 
 ### Slice 16
-Status: complete
+Status: pending
 
-Add tests where a `std` artifact consumes `core` and `alloc` dependencies in one graph and succeeds.
+Add one minimal module in bundled std that is safe and tiny.
 
 Completion criteria:
 
-- positive mixed dependency graph exists and runs
+- module is written in FOL
+- module compiles as part of std import tests
 
 ### Slice 17
-Status: complete
+Status: pending
 
-Add tests where transitive dependency exports preserve model identity in prepared package metadata.
+Add one honest hosted-oriented module namespace placeholder.
 
 Completion criteria:
 
-- prepared package/build-route metadata exposes enough to assert transitive model facts in tests
+- `std` tree clearly leaves room for:
+  - `io`
+  - `os`
+  - later growth
 
 ### Slice 18
-Status: complete
+Status: pending
 
-Document the transitive-boundary rule explicitly.
+Write one positive example that imports bundled std from the shipped tree rather than a temporary fixture root.
 
 Completion criteria:
 
-- docs say capability legality is checked at the consuming artifact boundary, not just where a dependency was compiled
+- integration test proves bundled std is actually being used
 
 ---
 
-## Epoch 4: Workspace Routing And Mixed-Artifact Hardening
+## Epoch 5: Development Workflow And Overrides
 
 ### Slice 19
-Status: complete
+Status: pending
 
-Add routed workspace tests for ambiguous mixed-model packages where `run` should fail because selection is not uniquely `std`.
+Define the expected contributor workflow for editing bundled std locally.
 
 Completion criteria:
 
-- routed `run` diagnostics mention resolved models
+- docs explain how to iterate on `lang/library/std`
+- docs explain when to use override flags
 
 ### Slice 20
-Status: complete
+Status: pending
 
-Add routed workspace tests for step-selected execution crossing model boundaries.
+Ensure CLI/dev workflows can still point to an alternate std root for experimentation.
 
 Completion criteria:
 
-- selecting a non-`std` step for `run`/`test` fails with explicit step/model details
+- explicit override path is covered by tests
 
 ### Slice 21
-Status: complete
+Status: pending
 
-Add routed build tests for mixed-model workspaces that include all three models and multiple packages.
+Audit editor/LSP workspace logic to ensure bundled std can be discovered without special manual config.
 
 Completion criteria:
 
-- build summary exposes all three models stably
+- editor can resolve bundled std in normal repo usage
 
 ### Slice 22
-Status: complete
+Status: pending
 
-Add routed check/build/test regression tests where package members have same root but different artifact models.
+Add LSP/regression coverage for bundled std discovery.
 
 Completion criteria:
 
-- selection logic stays correct for multi-artifact package roots
+- hover/navigation/diagnostics work against bundled std without explicit std-root wiring
+
+---
+
+## Epoch 6: Docs, Book, And User Story
 
 ### Slice 23
-Status: complete
+Status: pending
 
-Add frontend `work`/summary tests that surface model distribution across the workspace.
+Update build/runtime-model docs to say std ships with FOL.
 
 Completion criteria:
 
-- `work` surfaces expose model information clearly enough for debugging
+- docs stop implying users fetch or separately install std
+- docs state that only `std` is imported from source code
+- docs state that `core` and `mem` remain model/capability choices only
 
 ### Slice 24
-Status: complete
+Status: pending
 
-Tighten routed diagnostics to distinguish:
-
-- not runnable because model is wrong
-- not runnable because selection is ambiguous
-- not runnable because no entry exists
+Update book sections that discuss `use std` to describe bundled shipped std.
 
 Completion criteria:
 
-- regression tests pin all three diagnostic classes
-
----
-
-## Epoch 5: Backend And Emitted Rust Audits
+- book wording matches the new toolchain story
+- no book page suggests `use core` or `use mem`
 
 ### Slice 25
-Status: complete
+Status: pending
 
-Expand backend emission tests for direct `core`, `alloc`, and `std` crates to assert imports stay model-pure.
+Add a concise “what ships with FOL” section.
 
 Completion criteria:
 
-- `core` emitted modules import only `fol_runtime::core` plus non-tier support modules
-- `alloc` emitted modules do not import `fol_runtime::std`
+- docs distinguish:
+  - compiler/runtime substrate
+  - bundled std library source
+  - optional external dependencies
 
 ### Slice 26
-Status: complete
+Status: pending
 
-Add mixed-workspace emitted-source tests where different artifacts in one workspace emit different runtime module imports.
+Update examples/docs that currently use temporary synthetic std fixtures as if they were the normal model.
 
 Completion criteria:
 
-- emitted source audit covers one workspace with all three models
+- docs point at bundled std for the normal case
+
+---
+
+## Epoch 7: Test Fixture Cleanup
 
 ### Slice 27
-Status: complete
+Status: pending
 
-Add emitted-source tests for cross-package dependency consumption with different models.
+Audit tests that create ad-hoc std fixture trees and classify them.
 
 Completion criteria:
 
-- a `std` consumer of `alloc` still emits correct imports
-- a `core` illegal consumer fails before emission
+- tests are grouped into:
+  - normal bundled-std tests
+  - explicit override tests
+  - special isolated resolver tests
 
 ### Slice 28
-Status: complete
+Status: pending
 
-Audit instruction rendering tests for hidden alloc/std leakage into core rendering paths.
+Migrate the normal-path frontend integration tests to bundled std.
 
 Completion criteria:
 
-- backend instruction tests explicitly assert no alloc/std helper names leak into core-only emission
+- normal compile/build integration no longer needs ad-hoc std roots
 
 ### Slice 29
-Status: complete
+Status: pending
 
-Add backend tests covering runtime helper selection for `.len(...)` and recoverable hooks by model.
+Migrate the normal-path resolver tests to bundled std where practical.
 
 Completion criteria:
 
-- array `.len(...)` in `core` stays legal
-- dynamic `.len(...)` path is only rendered for alloc/std-legal lowered programs
+- at least one canonical resolver std-resolution suite uses bundled std
 
 ### Slice 30
-Status: complete
+Status: pending
 
-Add a top-level regression test that walks emitted Rust trees and fails if model-forbidden runtime imports appear.
+Keep isolated synthetic std fixtures only where they are clearly needed for narrow resolver behavior.
 
 Completion criteria:
 
-- helper test scans emitted files instead of only one hand-picked file
+- remaining synthetic std fixtures are justified and documented in tests
 
 ---
 
-## Epoch 6: Runtime Module Boundary Hardening
+## Epoch 8: Shipped Std Package Hardening
 
 ### Slice 31
-Status: complete
+Status: pending
 
-Audit `fol-runtime` public exports so `core`, `alloc`, and `std` module surfaces stay intentionally different.
+Add a minimal build/package manifest for bundled std that matches the current `.build()` model.
 
 Completion criteria:
 
-- tests pin that `core` does not re-export heap types
-- tests pin that `alloc` does not expose hosted hooks like `echo`
+- bundled std has valid package/build metadata under current rules
 
 ### Slice 32
-Status: complete
+Status: pending
 
-Add runtime tests that assert tier capability flags and exported helper families stay aligned.
+Add one tiny exported symbol/module and one importer test package.
 
 Completion criteria:
 
-- tests cover `HAS_HEAP`, `HAS_OS`, module names, and allowed helper exports
+- importing bundled std works through the normal package path
 
 ### Slice 33
-Status: complete
+Status: pending
 
-Add a no-accidental-reexport test for tier modules.
+Add one negative test proving `use std` still fails under `fol_model = "core"`.
 
 Completion criteria:
 
-- if `alloc` or `std` symbols are accidentally re-exported through `core`, tests fail
+- bundled std presence does not bypass model gating
 
 ### Slice 34
-Status: complete
+Status: pending
 
-Document the runtime-tier export contract for backend authors.
+Add one negative test proving `use std` still fails under `fol_model = "mem"`.
 
 Completion criteria:
 
-- docs say what each runtime module may import/use and what it must not expose
-
----
-
-## Epoch 7: Editor And LSP Model Hardening
+- mem-mode rejection is explicit and stable
 
 ### Slice 35
-Status: complete
+Status: pending
 
-Add LSP diagnostics tests for transitive model-boundary failures in real workspaces, not only open-file direct errors.
+Add one positive hosted example package that relies on bundled std and runs.
 
 Completion criteria:
 
-- editor surfaces transitive boundary diagnostics from the real compiler pipeline
+- bundled std is exercised in a runnable end-to-end example
+
+---
+
+## Epoch 9: Tooling And Distribution Hardening
 
 ### Slice 36
-Status: complete
+Status: pending
 
-Add LSP completion tests for ambiguous multi-artifact packages.
+Audit initialization/scaffolding commands so new std-mode projects do not teach manual std dependency setup.
 
 Completion criteria:
 
-- completion is filtered correctly when a file belongs to:
-  - one `core` artifact
-  - one `alloc` artifact
-  - one `std` artifact
-  - ambiguous mixed package with no unique artifact mapping
+- scaffolded projects rely on bundled std implicitly
 
 ### Slice 37
-Status: complete
+Status: pending
 
-Add hover/semantic snapshot tests for mixed-model workspaces with routed files under different packages.
+Audit build summaries and info/report surfaces for std-root wording.
 
 Completion criteria:
 
-- active model tracking does not bleed across packages or artifacts
+- summaries refer to bundled std or explicit override accurately
 
 ### Slice 38
-Status: complete
+Status: pending
 
-Add tree-sitter/editor integration tests ensuring build-file model declarations stay discoverable and stable.
+Add one integration suite that asserts bundled std discovery across:
+
+- compile
+- build
+- run
+- editor/LSP
 
 Completion criteria:
 
-- editor tests cover `fol_model = "core" | "alloc" | "std"` in build files
+- one suite catches cross-layer bundled-std drift
 
 ### Slice 39
-Status: complete
+Status: pending
 
-Add editor docs that explain model-aware diagnostics and completion behavior.
+Audit backend/integration tests that currently inject temporary std roots for emitted Rust checks and convert the normal path to bundled std where possible.
 
 Completion criteria:
 
-- `docs/editor-sync.md` and runtime-model docs agree on editor behavior
+- emitted-Rust tests use bundled std in at least one normal-path coverage suite
 
 ---
 
-## Epoch 8: Example Packages And Negative Example Suites
+## Epoch 10: Final Cleanup And Follow-Up Readiness
 
 ### Slice 40
-Status: complete
+Status: pending
 
-Add a standalone negative `core` misuse example package.
+Create a short roadmap note for how std grows inside `lang/library/std`.
 
 Completion criteria:
 
-- package intentionally fails because of heap-backed surface
-- integration harness asserts the exact failure class
+- note explains that std starts small and grows gradually
 
 ### Slice 41
-Status: complete
+Status: pending
 
-Add a standalone negative `alloc` misuse example package.
+Define the first intended std module families without implementing the whole library.
 
 Completion criteria:
 
-- package intentionally fails because of `.echo(...)` or hosted-only surface
+- roadmap names likely first families such as:
+  - `std.io`
+  - `std.os`
+  - one small utility/text family if needed
 
 ### Slice 42
-Status: complete
+Status: pending
 
-Add a standalone mixed dependency-boundary failure example.
+Audit naming consistency around “bundled std”, “standard library”, and “std root”.
 
 Completion criteria:
 
-- `core` consumer of `alloc` or `std` boundary is represented as a real package set
+- wording is consistent across docs, tests, and diagnostics
 
 ### Slice 43
-Status: complete
+Status: pending
 
-Add one fuller positive example package per tier.
+Remove stale assumptions that std is external user-managed package content.
 
 Completion criteria:
 
-- `core` full example uses several allowed surfaces
-- `alloc` full example uses heap features without hosted runtime
-- `std` full example uses hosted runtime honestly
+- no active docs or tests imply that users normally fetch std separately
 
 ### Slice 44
-Status: complete
+Status: pending
 
-Add integration tests that build all positive model examples and assert their summaries/runtime imports.
+Perform a final repo-wide scan for:
 
-Completion criteria:
-
-- one test suite walks all positive model examples
-
-### Slice 45
-Status: complete
-
-Add integration tests that expect failure for all negative model examples.
+- stale std-root assumptions
+- stale docs
+- tests that still treat synthetic std as the normal path
+- missing `lang/library/std` references
 
 Completion criteria:
 
-- one test suite walks all negative model examples
-
----
-
-## Epoch 9: Documentation And Book Alignment
-
-### Slice 46
-Status: complete
-
-Audit the build book for every `fol_model` mention and make the contract explicit wherever examples could imply more than is actually allowed.
-
-Completion criteria:
-
-- no build-book example accidentally uses a forbidden surface for its declared model
-
-### Slice 47
-Status: complete
-
-Audit routine/container/sugar book chapters for examples that silently assume `std`.
-
-Completion criteria:
-
-- hosted examples either declare `std` context or are rewritten to be model-neutral
-
-### Slice 48
-Status: complete
-
-Add a concise “choose your model” guide with transitive-boundary examples.
-
-Completion criteria:
-
-- docs show when to move from `core` to `alloc`, and from `alloc` to `std`
-- docs include one direct-dependency and one transitive-dependency example
-
----
-
-## Epoch 10: Final Hardening And Audit Closure
-
-### Slice 49
-Status: complete
-
-Add one top-level regression suite that combines:
-
-- direct legality
-- transitive legality
-- routed execution legality
-- emitted runtime import legality
-
-Completion criteria:
-
-- suite is broad enough to catch cross-layer drift in one place
-
-### Slice 50
-Status: complete
-
-Audit all example directories and remove checked-in `.fol` generated artifacts that should not live in source examples.
-
-Completion criteria:
-
-- examples stay source-only unless a checked-in generated directory is intentional and documented
-
-### Slice 51
-Status: complete
-
-Audit model-related diagnostics for consistency of wording.
-
-Completion criteria:
-
-- diagnostics consistently use:
-  - `fol_model = core`
-  - `fol_model = alloc`
-  - `fol_model = std`
-- no mixed old wording remains
-
-### Slice 52
-Status: complete
-
-Final repo-wide scan for stale assumptions.
-
-Completion criteria:
-
-- scan docs, examples, tests, frontend, backend, runtime, and editor for stale wording or model drift
-- mark plan complete only after the scan is clean
+- scan is clean before plan closure
 
 ---
 
@@ -653,10 +521,11 @@ Completion criteria:
 
 This plan is complete when all of the following are true:
 
-- direct and transitive model-boundary failures are locked by tests
-- routed `run` / `test` behavior is explicit and stable across mixed workspaces
-- emitted Rust imports are audited for model purity in more than one happy path
-- editor diagnostics and completion are model-aware even in mixed and ambiguous package layouts
-- positive and negative example packages exist for the model split
-- docs and book pages describe the same runtime-model contract everywhere
-- the repo has no stale assumption that `std` is the informal baseline
+- `lang/library/std` exists and is the canonical bundled std source root
+- frontend/package/resolver default to bundled std automatically
+- explicit std-root override remains only as a development/testing override
+- bundled std is exercised by real positive tests and examples
+- `use std` still respects `fol_model = "std"` and remains illegal under `core` and `mem`
+- docs and tests consistently treat `core` and `mem` as non-importable model choices
+- docs explain that std ships with FOL and does not need separate download
+- the repo no longer treats temporary custom std roots as the normal user path

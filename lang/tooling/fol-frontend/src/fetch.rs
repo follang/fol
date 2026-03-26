@@ -178,6 +178,9 @@ pub fn prepare_workspace_packages(
         std_root: workspace
             .std_root_override
             .as_ref()
+            .cloned()
+            .or_else(fol_package::available_bundled_std_root)
+            .as_ref()
             .map(|path| path.to_string_lossy().to_string()),
         package_store_root: workspace
             .package_store_root_override

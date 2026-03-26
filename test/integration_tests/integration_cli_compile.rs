@@ -52,6 +52,35 @@ use super::*;
     }
 
     #[test]
+    fn test_cli_resolves_std_imports_from_the_bundled_std_root_by_default() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_bundled_std_import");
+        fs::create_dir_all(&temp_root).expect("Should create bundled std import fixture root");
+        fs::write(
+            temp_root.join("main.fol"),
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
+        )
+        .expect("Should write bundled std import fixture");
+
+        let output = run_fol(&[
+            "--json",
+            temp_root
+                .to_str()
+                .expect("Temporary bundled std fixture path should be valid UTF-8"),
+        ]);
+
+        assert!(
+            output.status.success(),
+            "CLI should resolve std imports through the bundled std root by default, got status {:?} and output:\n{}",
+            output.status.code(),
+            String::from_utf8_lossy(&output.stdout)
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_resolves_std_imports_with_explicit_std_root_configuration() {
         use std::fs;
 

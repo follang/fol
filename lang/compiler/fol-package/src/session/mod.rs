@@ -23,6 +23,10 @@ impl PackageSession {
     }
 
     pub fn with_config(config: PackageConfig) -> Self {
+        let config = PackageConfig {
+            std_root: config.effective_std_root(),
+            ..config
+        };
         Self {
             config,
             prepared_packages: BTreeMap::new(),

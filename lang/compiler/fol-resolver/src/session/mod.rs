@@ -3,7 +3,7 @@ use crate::{
     model::{ResolvedProgram, ResolvedWorkspace},
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
-use fol_package::{PackageSession, PreparedPackage};
+use fol_package::{effective_std_root, PackageSession, PreparedPackage};
 use fol_parser::ast::{ParsedPackage, UsePathSegment};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -53,6 +53,10 @@ impl ResolverSession {
     }
 
     pub fn with_config(config: ResolverConfig) -> Self {
+        let config = ResolverConfig {
+            std_root: effective_std_root(config.std_root.as_deref()),
+            ..config
+        };
         Self {
             package_session: PackageSession::with_config(package_config_from_resolver(&config)),
             config,

@@ -342,19 +342,24 @@ use super::*;
     }
 
     #[test]
-    fn test_cli_json_resolver_errors_keep_help_for_missing_std_roots() {
+    fn test_cli_json_resolver_errors_keep_structured_fields_for_missing_explicit_std_overrides() {
         use std::fs;
 
-        let temp_root = unique_temp_root("cli_json_resolver_std_help");
+        let temp_root = unique_temp_root("cli_json_resolver_std_override");
+        let missing_std_root = temp_root.join("missing-std");
         fs::create_dir_all(&temp_root).expect("Should create resolver fixture root");
         fs::write(
             temp_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n};\n",
+            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return std_answer;\n};\n",
         )
-        .expect("Should write missing std-root fixture");
+        .expect("Should write missing explicit std-root fixture");
 
         let output = run_fol(&[
             "--json",
+            "--std-root",
+            missing_std_root
+                .to_str()
+                .expect("Missing explicit std-root path should be valid UTF-8"),
             temp_root
                 .to_str()
                 .expect("Resolver fixture path should be valid UTF-8"),
@@ -364,13 +369,14 @@ use super::*;
 
         assert!(
             !output.status.success(),
-            "Missing std-root fixture should fail"
+            "Missing explicit std-root override should fail"
         );
-        assert_eq!(
-            diagnostic["helps"].as_array().map(|items| items.len()),
-            Some(1)
-        );
-        assert_eq!(diagnostic["helps"][0], "rerun with --std-root <DIR>");
+        assert_eq!(diagnostic["code"], "R1001");
+        let message = diagnostic["message"]
+            .as_str()
+            .expect("Resolver diagnostic message should stay a string");
+        assert!(message.contains("does not exist"));
+        assert!(message.contains("missing-std"));
 
         fs::remove_dir_all(&temp_root).ok();
     }
@@ -550,4 +556,3 @@ use super::*;
 
         fs::remove_dir_all(&temp_root).ok();
     }
-

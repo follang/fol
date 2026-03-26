@@ -850,6 +850,7 @@ fn resolver_config(
             .std_root_override
             .clone()
             .or_else(|| workspace.std_root_override.clone())
+            .or_else(fol_package::available_bundled_std_root)
             .map(|path| path.to_string_lossy().to_string()),
         package_store_root: Some(package_store_root.to_string_lossy().to_string()),
     }
