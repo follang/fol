@@ -154,7 +154,7 @@ Completion criteria:
 - package session gets bundled std without explicit caller plumbing everywhere
 
 ### Slice 11
-Status: pending
+Status: complete
 
 Route resolver-session configuration to the bundled std root by default.
 
@@ -163,7 +163,7 @@ Completion criteria:
 - resolver tests no longer require explicit std-root in the normal positive path
 
 ### Slice 12
-Status: pending
+Status: complete
 
 Preserve model gating: bundled std resolution must still fail under non-`std` models when `use std` appears.
 
@@ -172,7 +172,7 @@ Completion criteria:
 - bundled std availability does not weaken `fol_model` legality rules
 
 ### Slice 13
-Status: pending
+Status: complete
 
 Update std import resolution tests to prefer bundled std fixtures over ad-hoc explicit std-root setup where appropriate.
 
@@ -181,7 +181,7 @@ Completion criteria:
 - positive std import tests use the new default path in at least one canonical suite
 
 ### Slice 14
-Status: pending
+Status: complete
 
 Keep one focused suite for explicit std-root override behavior.
 
@@ -194,7 +194,7 @@ Completion criteria:
 ## Epoch 4: Seed Bundled Std Package
 
 ### Slice 15
-Status: pending
+Status: complete
 
 Create the first minimal bundled std package structure under `lang/library/std`.
 
@@ -204,7 +204,7 @@ Completion criteria:
 - build/package metadata is valid under the current build model
 
 ### Slice 16
-Status: pending
+Status: complete
 
 Add one minimal module in bundled std that is safe and tiny.
 
@@ -214,7 +214,7 @@ Completion criteria:
 - module compiles as part of std import tests
 
 ### Slice 17
-Status: pending
+Status: complete
 
 Add one honest hosted-oriented module namespace placeholder.
 
@@ -226,7 +226,7 @@ Completion criteria:
   - later growth
 
 ### Slice 18
-Status: pending
+Status: complete
 
 Write one positive example that imports bundled std from the shipped tree rather than a temporary fixture root.
 
@@ -239,7 +239,7 @@ Completion criteria:
 ## Epoch 5: Development Workflow And Overrides
 
 ### Slice 19
-Status: pending
+Status: complete
 
 Define the expected contributor workflow for editing bundled std locally.
 
@@ -249,7 +249,7 @@ Completion criteria:
 - docs explain when to use override flags
 
 ### Slice 20
-Status: pending
+Status: complete
 
 Ensure CLI/dev workflows can still point to an alternate std root for experimentation.
 

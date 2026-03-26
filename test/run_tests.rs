@@ -84,6 +84,21 @@ mod integration_tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     }
 
+    fn copy_dir_all(src: &Path, dst: &Path) {
+        std::fs::create_dir_all(dst).expect("Should create copied directory root");
+        for entry in std::fs::read_dir(src).expect("Should read source directory") {
+            let entry = entry.expect("Should read source directory entry");
+            let file_type = entry.file_type().expect("Should read source file type");
+            let from = entry.path();
+            let to = dst.join(entry.file_name());
+            if file_type.is_dir() {
+                copy_dir_all(&from, &to);
+            } else {
+                std::fs::copy(&from, &to).expect("Should copy source file");
+            }
+        }
+    }
+
     fn example_package_roots() -> Vec<PathBuf> {
         let root = repo_root().join("test/app/formal");
         vec![
@@ -97,7 +112,12 @@ mod integration_tests {
     }
 
     fn build_fixture_root(name: &str) -> PathBuf {
-        repo_root().join("test/app/build").join(name)
+        let source = repo_root().join("test/app/build").join(name);
+        let temp_root = unique_temp_root(&format!("build_fixture_{name}"));
+        let target = temp_root.join("workspace");
+        copy_dir_all(&source, &target);
+        std::fs::remove_dir_all(target.join(".fol")).ok();
+        target
     }
 
     fn parse_cli_json(output: &std::process::Output) -> Value {

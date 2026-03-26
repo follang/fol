@@ -5,6 +5,8 @@ use crate::{
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::thread;
+use std::time::Duration;
 
 use super::skeleton::emit_generated_crate_skeleton_for_config;
 
@@ -215,6 +217,16 @@ fn built_binary_output_path(
         .join(package_name))
 }
 
+fn wait_for_emitted_path(path: &Path) -> bool {
+    for _ in 0..20 {
+        if path.exists() {
+            return true;
+        }
+        thread::sleep(Duration::from_millis(10));
+    }
+    false
+}
+
 pub fn build_runtime_rlib_with_rustc(
     paths: &BackendBuildPaths,
     machine_target: &BackendMachineTarget,
@@ -363,7 +375,7 @@ pub fn build_generated_crate_with_rustc(
             ),
         ));
     }
-    if !binary_path.exists() {
+    if !wait_for_emitted_path(&binary_path) {
         return Err(BackendError::new(
             BackendErrorKind::BuildFailure,
             format!(

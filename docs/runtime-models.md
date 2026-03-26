@@ -331,6 +331,7 @@ pro[] build(): non = {
 - `examples/alloc_collections`
 - `examples/alloc_surface_showcase`
 - `examples/std_cli`
+- `examples/std_bundled_fmt`
 - `examples/std_echo_min`
 - `examples/std_logtiny_git`
 - `examples/std_named_calls`

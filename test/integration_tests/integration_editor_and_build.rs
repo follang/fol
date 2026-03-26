@@ -2882,6 +2882,7 @@ fn test_docs_reference_real_example_packages() {
         "examples/alloc_containers",
         "examples/alloc_collections",
         "examples/alloc_surface_showcase",
+        "examples/std_bundled_fmt",
         "examples/std_cli",
         "examples/std_echo_min",
         "examples/std_logtiny_git",

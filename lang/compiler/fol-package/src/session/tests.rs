@@ -96,6 +96,16 @@ fn package_session_config_can_be_provided_explicitly() {
 }
 
 #[test]
+fn package_session_defaults_std_root_to_bundled_tree_when_unspecified() {
+    let session = PackageSession::with_config(PackageConfig::default());
+
+    assert_eq!(
+        session.config().std_root,
+        crate::available_bundled_std_root().map(|path| path.to_string_lossy().to_string())
+    );
+}
+
+#[test]
 fn package_session_caches_prepared_packages_by_identity() {
     let mut session = PackageSession::new();
     let identity = PackageIdentity {

@@ -604,10 +604,8 @@ fn loc_recoverable_calls_fixture_compiles_and_runs() {
 fn std_basic_import_fixture_compiles_and_runs() {
     let root = fixture_root("std_basic_import");
     let app_root = root.join("app");
-    let std_root = root.join("std");
 
-    let compile_output =
-        compile_app_with_roots_keep_build_dir_expect_success(&app_root, Some(&std_root), None);
+    let compile_output = compile_app_keep_build_dir_expect_success(&app_root);
     assert_artifact_paths_exist(&compile_output);
 
     let binary = built_binary_path(&compile_output);
@@ -621,16 +619,25 @@ fn std_basic_import_fixture_compiles_and_runs() {
 fn std_namespace_import_fixture_compiles_and_runs() {
     let root = fixture_root("std_namespace_import");
     let app_root = root.join("app");
-    let std_root = root.join("std");
 
-    let compile_output =
-        compile_app_with_roots_keep_build_dir_expect_success(&app_root, Some(&std_root), None);
+    let compile_output = compile_app_keep_build_dir_expect_success(&app_root);
     assert_artifact_paths_exist(&compile_output);
 
     let binary = built_binary_path(&compile_output);
     let run_output = Command::new(&binary)
         .output()
         .expect("should run compiled std namespace fixture");
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
+fn std_bundled_fmt_example_compiles_and_runs() {
+    let fixture = PathBuf::from("examples/std_bundled_fmt");
+
+    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    assert_artifact_paths_exist(&compile_output);
+
+    let run_output = compile_and_run_app(&fixture);
     assert_exit_code(&run_output, 0);
 }
 
