@@ -749,10 +749,15 @@ fn build_source_evaluator_keeps_explicit_dependency_exports_precise() {
         "    var codec = graph.add_module({ name = \"codec\", root = \"src/codec.fol\" });\n",
         "    var app = graph.add_static_lib({ name = \"demo\", root = \"src/main.fol\" });\n",
         "    var docs = graph.step(\"docs\");\n",
+        "    var config = graph.file_from_root(\"config/defaults.toml\");\n",
+        "    var assets = graph.dir_from_root(\"assets\");\n",
         "    var bindings = graph.write_file({ name = \"bindings\", path = \"gen/bindings.fol\", contents = \"ok\" });\n",
         "    build.export_module({ name = \"api\", module = codec });\n",
         "    build.export_artifact({ name = \"runtime\", artifact = app });\n",
         "    build.export_step({ name = \"check\", step = docs });\n",
+        "    build.export_file({ name = \"defaults\", file = config });\n",
+        "    build.export_dir({ name = \"public\", dir = assets });\n",
+        "    build.export_path({ name = \"schema-path\", path = bindings });\n",
         "    build.export_output({ name = \"schema\", output = bindings });\n",
         "    return;\n",
         "}\n",
@@ -771,7 +776,7 @@ fn build_source_evaluator_keeps_explicit_dependency_exports_precise() {
         .expect("explicit exports should evaluate")
         .expect("build body should produce operations");
 
-    assert_eq!(evaluated.evaluated.dependency_exports.len(), 4);
+    assert_eq!(evaluated.evaluated.dependency_exports.len(), 7);
     assert!(evaluated
         .evaluated
         .dependency_exports
@@ -793,6 +798,27 @@ fn build_source_evaluator_keeps_explicit_dependency_exports_precise() {
         .any(|export| export.name == "check"
             && export.target_name == "docs"
             && export.kind == crate::runtime::BuildRuntimeDependencyExportKind::Step));
+    assert!(evaluated
+        .evaluated
+        .dependency_exports
+        .iter()
+        .any(|export| export.name == "defaults"
+            && export.target_name == "config/defaults.toml"
+            && export.kind == crate::runtime::BuildRuntimeDependencyExportKind::File));
+    assert!(evaluated
+        .evaluated
+        .dependency_exports
+        .iter()
+        .any(|export| export.name == "public"
+            && export.target_name == "assets"
+            && export.kind == crate::runtime::BuildRuntimeDependencyExportKind::Dir));
+    assert!(evaluated
+        .evaluated
+        .dependency_exports
+        .iter()
+        .any(|export| export.name == "schema-path"
+            && export.target_name == "bindings"
+            && export.kind == crate::runtime::BuildRuntimeDependencyExportKind::Path));
     assert!(evaluated
         .evaluated
         .dependency_exports
@@ -862,6 +888,86 @@ fn build_source_evaluator_rejects_export_kind_handle_mismatches() {
         error.message(),
         "build.export_artifact config is invalid: build.export_artifact requires handle field 'artifact'"
     );
+}
+
+#[test]
+fn build_source_evaluator_rejects_path_export_handle_mismatches() {
+    let file_error = evaluate_export_path_mismatch(
+        "export_file",
+        "file",
+        "var assets = graph.dir_from_root(\"assets\");\n",
+        "assets",
+    )
+    .expect_err("export_file should reject source-dir handles");
+    assert_eq!(
+        file_error.message(),
+        "build.export_file config is invalid: build.export_file requires handle field 'file'"
+    );
+
+    let dir_error = evaluate_export_path_mismatch(
+        "export_dir",
+        "dir",
+        "var defaults = graph.file_from_root(\"config/defaults.toml\");\n",
+        "defaults",
+    )
+    .expect_err("export_dir should reject source-file handles");
+    assert_eq!(
+        dir_error.message(),
+        "build.export_dir config is invalid: build.export_dir requires handle field 'dir'"
+    );
+
+    let path_error = evaluate_export_path_mismatch(
+        "export_path",
+        "path",
+        "var defaults = graph.file_from_root(\"config/defaults.toml\");\n",
+        "defaults",
+    )
+    .expect_err("export_path should reject source-file handles");
+    assert_eq!(
+        path_error.message(),
+        "build.export_path config is invalid: build.export_path requires handle field 'path'"
+    );
+}
+
+fn evaluate_export_path_mismatch(
+    method: &str,
+    field_name: &str,
+    binding_source: &str,
+    binding_name: &str,
+) -> Result<crate::eval::EvaluatedBuildProgram, BuildEvaluationError> {
+    let source = format!(
+        concat!(
+            "pro[] build(): non = {{\n",
+            "    var build = .build();\n",
+            "    var graph = build.graph();\n",
+            "    {binding_source}",
+            "    build.{method}({{ name = \"demo\", {field_name} = {binding_name} }});\n",
+            "    return;\n",
+            "}}\n",
+        ),
+        binding_source = binding_source,
+        method = method,
+        field_name = field_name,
+        binding_name = binding_name,
+    );
+    let (package_root, build_path) = temp_build_package(&source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    evaluate_build_source(&request, &build_path, &source).and_then(|program| {
+        program.ok_or_else(|| {
+            BuildEvaluationError::new(
+                crate::eval::BuildEvaluationErrorKind::Unsupported,
+                "expected evaluated build body".to_string(),
+            )
+        })
+    })
 }
 
 #[test]

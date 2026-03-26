@@ -270,7 +270,7 @@ pub fn project_dependency_surface(
         .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::GeneratedOutput)
     {
         let projected = projected_generated_outputs
-            .into_iter()
+            .iter()
             .map(|output| (output.name.clone(), output))
             .collect::<std::collections::BTreeMap<_, _>>();
         exec_output
@@ -300,6 +300,76 @@ pub fn project_dependency_surface(
         Vec::new()
     };
 
+    let files = if exec_output
+        .dependency_exports
+        .iter()
+        .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::File)
+    {
+        exec_output
+            .dependency_exports
+            .iter()
+            .filter(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::File)
+            .map(|export| DependencyFileSurface {
+                name: export.name.clone(),
+                relative_path: export.target_name.clone(),
+            })
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+
+    let dirs = if exec_output
+        .dependency_exports
+        .iter()
+        .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Dir)
+    {
+        exec_output
+            .dependency_exports
+            .iter()
+            .filter(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Dir)
+            .map(|export| DependencyDirSurface {
+                name: export.name.clone(),
+                relative_path: export.target_name.clone(),
+            })
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+
+    let paths = if exec_output
+        .dependency_exports
+        .iter()
+        .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Path)
+    {
+        let projected = projected_generated_outputs
+            .iter()
+            .map(|output| (output.name.clone(), output))
+            .collect::<std::collections::BTreeMap<_, _>>();
+        exec_output
+            .dependency_exports
+            .iter()
+            .filter(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Path)
+            .map(|export| {
+                let path = projected.get(&export.target_name).ok_or_else(|| {
+                    PackageError::new(
+                        PackageErrorKind::InvalidInput,
+                        format!(
+                            "package dependency surface projection could not resolve exported path '{}' from '{}'",
+                            export.target_name,
+                            build_path.display()
+                        ),
+                    )
+                })?;
+                Ok(DependencyPathSurface {
+                    name: export.name.clone(),
+                    relative_path: path.relative_path.clone(),
+                })
+            })
+            .collect::<Result<Vec<_>, PackageError>>()?
+    } else {
+        Vec::new()
+    };
+
     Ok(DependencyBuildSurface {
         alias: alias.to_string(),
         exposure: DependencyBuildExposure {
@@ -315,6 +385,18 @@ pub fn project_dependency_surface(
                 .dependency_exports
                 .iter()
                 .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Step),
+            files_explicit: exec_output
+                .dependency_exports
+                .iter()
+                .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::File),
+            dirs_explicit: exec_output
+                .dependency_exports
+                .iter()
+                .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Dir),
+            paths_explicit: exec_output
+                .dependency_exports
+                .iter()
+                .any(|export| export.kind == fol_build::BuildRuntimeDependencyExportKind::Path),
             generated_outputs_explicit: exec_output.dependency_exports.iter().any(|export| {
                 export.kind == fol_build::BuildRuntimeDependencyExportKind::GeneratedOutput
             }),
@@ -323,6 +405,9 @@ pub fn project_dependency_surface(
         source_roots,
         artifacts,
         steps,
+        files,
+        dirs,
+        paths,
         generated_outputs,
     })
 }
@@ -444,20 +529,30 @@ mod tests {
                 "    var codec = graph.add_module({ name = \"codec\", root = \"src/codec.fol\" });\n",
                 "    var app = graph.add_static_lib({ name = \"json\", root = \"src/main.fol\" });\n",
                 "    var schema = graph.write_file({ name = \"schema\", path = \"gen/schema.fol\", contents = \"ok\" });\n",
+                "    var config = graph.file_from_root(\"config/defaults.toml\");\n",
+                "    var assets = graph.dir_from_root(\"assets\");\n",
                 "    var docs = graph.step(\"docs\");\n",
                 "    build.export_module({ name = \"api\", module = codec });\n",
                 "    build.export_artifact({ name = \"runtime\", artifact = app });\n",
                 "    build.export_step({ name = \"check\", step = docs });\n",
+                "    build.export_file({ name = \"defaults\", file = config });\n",
+                "    build.export_dir({ name = \"public\", dir = assets });\n",
+                "    build.export_path({ name = \"schema-path\", path = schema });\n",
                 "    build.export_output({ name = \"schema-api\", output = schema });\n",
                 "    return;\n",
                 "}\n",
             ),
         )
         .expect("build fixture should be written");
+        fs::create_dir_all(root.join("config")).expect("config fixture root should exist");
+        fs::create_dir_all(root.join("assets")).expect("assets fixture root should exist");
         fs::write(root.join("src/main.fol"), "var[exp] answer: int = 42;\n")
             .expect("source fixture should be written");
         fs::write(root.join("src/codec.fol"), "var[exp] codec: int = 7;\n")
             .expect("module fixture should be written");
+        fs::write(root.join("config/defaults.toml"), "ok = true\n")
+            .expect("file fixture should be written");
+        fs::write(root.join("assets/logo.txt"), "logo\n").expect("dir fixture should be written");
 
         let mut stream = FileStream::from_folder(root.to_str().expect("temp path should be utf-8"))
             .expect("folder stream should open");
@@ -473,6 +568,9 @@ mod tests {
         assert!(surface.exposure.modules_explicit);
         assert!(surface.exposure.artifacts_explicit);
         assert!(surface.exposure.steps_explicit);
+        assert!(surface.exposure.files_explicit);
+        assert!(surface.exposure.dirs_explicit);
+        assert!(surface.exposure.paths_explicit);
         assert!(surface.exposure.generated_outputs_explicit);
         assert_eq!(
             surface
@@ -497,6 +595,30 @@ mod tests {
                 .map(|step| step.name.as_str())
                 .collect::<Vec<_>>(),
             vec!["check"]
+        );
+        assert_eq!(
+            surface
+                .files
+                .iter()
+                .map(|file| file.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["defaults"]
+        );
+        assert_eq!(
+            surface
+                .dirs
+                .iter()
+                .map(|dir| dir.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["public"]
+        );
+        assert_eq!(
+            surface
+                .paths
+                .iter()
+                .map(|path| path.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["schema-path"]
         );
         assert_eq!(
             surface

@@ -1,6 +1,4 @@
-use crate::dependency::{
-    DependencyBuildEvaluationMode, DependencyBuildSurface,
-};
+use crate::dependency::{DependencyBuildEvaluationMode, DependencyBuildSurface};
 use crate::graph::{BuildOptionId, BuildOptionKind};
 use std::collections::BTreeMap;
 
@@ -371,6 +369,9 @@ pub struct DependencyHandle {
     pub modules: crate::dependency::DependencyModuleSurfaceSet,
     pub artifacts: crate::dependency::DependencyArtifactSurfaceSet,
     pub steps: crate::dependency::DependencyStepSurfaceSet,
+    pub files: crate::dependency::DependencyFileSurfaceSet,
+    pub dirs: crate::dependency::DependencyDirSurfaceSet,
+    pub paths: crate::dependency::DependencyPathSurfaceSet,
     pub generated_outputs: crate::dependency::DependencyGeneratedOutputSurfaceSet,
 }
 

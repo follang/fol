@@ -357,6 +357,18 @@ pub fn canonical_build_context_method_signatures() -> Vec<BuildSemanticMethodSig
             .with_param(BuildSemanticMethodParameter::record("config"))
             .returning(BuildSemanticTypeFamily::BuildContext)
             .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "export_file")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::BuildContext)
+            .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "export_dir")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::BuildContext)
+            .chainable(),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "export_path")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::BuildContext)
+            .chainable(),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::BuildContext, "export_output")
             .with_param(BuildSemanticMethodParameter::record("config"))
             .returning(BuildSemanticTypeFamily::BuildContext)
@@ -580,6 +592,27 @@ pub fn canonical_build_context_config_shapes() -> Vec<BuildSemanticRecordShape> 
             [
                 BuildSemanticRecordField::required("name"),
                 BuildSemanticRecordField::required("step"),
+            ],
+        ),
+        BuildSemanticRecordShape::build_context(
+            "BuildExportFileConfig",
+            [
+                BuildSemanticRecordField::required("name"),
+                BuildSemanticRecordField::required("file"),
+            ],
+        ),
+        BuildSemanticRecordShape::build_context(
+            "BuildExportDirConfig",
+            [
+                BuildSemanticRecordField::required("name"),
+                BuildSemanticRecordField::required("dir"),
+            ],
+        ),
+        BuildSemanticRecordShape::build_context(
+            "BuildExportPathConfig",
+            [
+                BuildSemanticRecordField::required("name"),
+                BuildSemanticRecordField::required("path"),
             ],
         ),
         BuildSemanticRecordShape::build_context(
@@ -830,12 +863,15 @@ mod tests {
             .map(|signature| signature.name.as_str())
             .collect::<Vec<_>>();
 
-        assert_eq!(signatures.len(), 7);
+        assert_eq!(signatures.len(), 10);
         assert!(names.contains(&"meta"));
         assert!(names.contains(&"add_dep"));
         assert!(names.contains(&"export_module"));
         assert!(names.contains(&"export_artifact"));
         assert!(names.contains(&"export_step"));
+        assert!(names.contains(&"export_file"));
+        assert!(names.contains(&"export_dir"));
+        assert!(names.contains(&"export_path"));
         assert!(names.contains(&"export_output"));
         assert!(names.contains(&"graph"));
         assert_eq!(
@@ -872,12 +908,15 @@ mod tests {
             .map(|shape| shape.name.as_str())
             .collect::<Vec<_>>();
 
-        assert_eq!(shapes.len(), 6);
+        assert_eq!(shapes.len(), 9);
         assert!(names.contains(&"BuildMetaConfig"));
         assert!(names.contains(&"BuildDependencyConfig"));
         assert!(names.contains(&"BuildExportModuleConfig"));
         assert!(names.contains(&"BuildExportArtifactConfig"));
         assert!(names.contains(&"BuildExportStepConfig"));
+        assert!(names.contains(&"BuildExportFileConfig"));
+        assert!(names.contains(&"BuildExportDirConfig"));
+        assert!(names.contains(&"BuildExportPathConfig"));
         assert!(names.contains(&"BuildExportOutputConfig"));
         assert!(shapes
             .iter()
@@ -957,6 +996,9 @@ mod tests {
         assert!(shapes
             .iter()
             .any(|shape| shape.name == "BuildExportModuleConfig"));
+        assert!(shapes
+            .iter()
+            .any(|shape| shape.name == "BuildExportFileConfig"));
     }
 
     #[test]

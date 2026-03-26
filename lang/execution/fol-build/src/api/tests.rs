@@ -409,6 +409,18 @@ mod tests {
                         name: "check".to_string(),
                         step_kind: "check".to_string(),
                     }],
+                    files: vec![crate::DependencyFileSurface {
+                        name: "config".to_string(),
+                        relative_path: "config/default.toml".to_string(),
+                    }],
+                    dirs: vec![crate::DependencyDirSurface {
+                        name: "assets".to_string(),
+                        relative_path: "assets".to_string(),
+                    }],
+                    paths: vec![crate::DependencyPathSurface {
+                        name: "schema".to_string(),
+                        relative_path: "gen/schema.fol".to_string(),
+                    }],
                     generated_outputs: vec![DependencyGeneratedOutputSurface {
                         name: "bindings".to_string(),
                         relative_path: "gen/bindings.fol".to_string(),
@@ -435,6 +447,9 @@ mod tests {
         assert_eq!(dependency.modules.modules.len(), 1);
         assert_eq!(dependency.artifacts.artifacts.len(), 1);
         assert_eq!(dependency.steps.steps.len(), 1);
+        assert_eq!(dependency.files.files.len(), 1);
+        assert_eq!(dependency.dirs.dirs.len(), 1);
+        assert_eq!(dependency.paths.paths.len(), 1);
         assert_eq!(dependency.generated_outputs.generated_outputs.len(), 1);
     }
 

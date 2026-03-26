@@ -1,14 +1,15 @@
 use crate::codegen::{CodegenRequest, GeneratedFileInstallProjection, SystemToolRequest};
 use crate::dependency::{
-    DependencyArtifactSurfaceSet, DependencyBuildHandle, DependencyGeneratedOutputSurfaceSet,
-    DependencyModuleSurfaceSet, DependencyStepSurfaceSet,
+    DependencyArtifactSurfaceSet, DependencyBuildHandle, DependencyDirSurfaceSet,
+    DependencyFileSurfaceSet, DependencyGeneratedOutputSurfaceSet, DependencyModuleSurfaceSet,
+    DependencyPathSurfaceSet, DependencyStepSurfaceSet,
 };
 use crate::graph::BuildGraph;
-use crate::graph::{BuildOptionKind};
+use crate::graph::BuildOptionKind;
 
 use super::types::{
-    validate_build_name, AddModuleRequest, BuildApiError, BuildArtifactHandle,
-    CopyFileRequest, DependencyHandle, DependencyRequest, ExecutableRequest, GeneratedFileHandle,
+    validate_build_name, AddModuleRequest, BuildApiError, BuildArtifactHandle, CopyFileRequest,
+    DependencyHandle, DependencyRequest, ExecutableRequest, GeneratedFileHandle,
     InstallArtifactRequest, InstallDirRequest, InstallFileRequest, InstallHandle, ModuleHandle,
     OutputHandle, OutputHandleKind, OutputHandleLocator, RunHandle, RunRequest,
     SharedLibraryRequest, StandardOptimizeOption, StandardOptimizeRequest, StandardTargetOption,
@@ -30,7 +31,10 @@ impl<'a> BuildApi<'a> {
         }
     }
 
-    pub fn with_install_prefix(graph: &'a mut BuildGraph, install_prefix: impl Into<String>) -> Self {
+    pub fn with_install_prefix(
+        graph: &'a mut BuildGraph,
+        install_prefix: impl Into<String>,
+    ) -> Self {
         Self {
             graph,
             install_prefix: install_prefix.into(),
@@ -214,16 +218,13 @@ impl<'a> BuildApi<'a> {
         for dependency in &request.depends_on {
             self.graph.add_step_dependency(step_id, *dependency);
         }
-        let generated = self.graph.add_generated_file(
-            crate::graph::BuildGeneratedFileKind::Copy,
-            request.path,
-        );
+        let generated = self
+            .graph
+            .add_generated_file(crate::graph::BuildGeneratedFileKind::Copy, request.path);
         let install_id = self.graph.add_install_with_target(
             crate::graph::BuildInstallKind::File,
             request.name.clone(),
-            Some(crate::graph::BuildInstallTarget::GeneratedFile(
-                generated,
-            )),
+            Some(crate::graph::BuildInstallTarget::GeneratedFile(generated)),
             self.project_prefixed_path(&install_path),
         );
         Ok(InstallHandle {
@@ -258,25 +259,18 @@ impl<'a> BuildApi<'a> {
         })
     }
 
-    pub fn write_file(
-        &mut self,
-        request: WriteFileRequest,
-    ) -> Result<OutputHandle, BuildApiError> {
+    pub fn write_file(&mut self, request: WriteFileRequest) -> Result<OutputHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(super::types::BuildApiError::InvalidName)?;
-        let generated_file_id = self.graph.add_generated_file(
-            crate::graph::BuildGeneratedFileKind::Write,
-            request.path,
-        );
+        let generated_file_id = self
+            .graph
+            .add_generated_file(crate::graph::BuildGeneratedFileKind::Write, request.path);
         Ok(OutputHandle {
             kind: OutputHandleKind::WrittenFile,
             locator: OutputHandleLocator::GeneratedFile(generated_file_id),
         })
     }
 
-    pub fn copy_file(
-        &mut self,
-        request: CopyFileRequest,
-    ) -> Result<OutputHandle, BuildApiError> {
+    pub fn copy_file(&mut self, request: CopyFileRequest) -> Result<OutputHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(super::types::BuildApiError::InvalidName)?;
         let generated_file_id = self.graph.add_generated_file(
             crate::graph::BuildGeneratedFileKind::Copy,
@@ -292,7 +286,8 @@ impl<'a> BuildApi<'a> {
         &mut self,
         request: SystemToolRequest,
     ) -> Result<Vec<GeneratedFileHandle>, BuildApiError> {
-        validate_build_name(&request.tool.replace('_', "-")).map_err(super::types::BuildApiError::InvalidName)?;
+        validate_build_name(&request.tool.replace('_', "-"))
+            .map_err(super::types::BuildApiError::InvalidName)?;
         Ok(request
             .outputs
             .into_iter()
@@ -309,10 +304,9 @@ impl<'a> BuildApi<'a> {
         &mut self,
         request: CodegenRequest,
     ) -> Result<GeneratedFileHandle, BuildApiError> {
-        let generated_file_id = self.graph.add_generated_file(
-            crate::graph::BuildGeneratedFileKind::Write,
-            request.output,
-        );
+        let generated_file_id = self
+            .graph
+            .add_generated_file(crate::graph::BuildGeneratedFileKind::Write, request.output);
         Ok(GeneratedFileHandle { generated_file_id })
     }
 
@@ -393,10 +387,7 @@ impl<'a> BuildApi<'a> {
         self.project_prefixed_path(&format!("{dir}/{}", artifact.name))
     }
 
-    pub fn add_module(
-        &mut self,
-        request: AddModuleRequest,
-    ) -> Result<ModuleHandle, BuildApiError> {
+    pub fn add_module(&mut self, request: AddModuleRequest) -> Result<ModuleHandle, BuildApiError> {
         validate_build_name(&request.name).map_err(super::types::BuildApiError::InvalidName)?;
         let module_id = self
             .graph
@@ -420,7 +411,8 @@ impl<'a> BuildApi<'a> {
         artifact_id: crate::graph::BuildArtifactId,
         module_id: crate::graph::BuildModuleId,
     ) {
-        self.graph.add_artifact_module_import(artifact_id, module_id);
+        self.graph
+            .add_artifact_module_import(artifact_id, module_id);
     }
 
     pub fn artifact_add_generated(
@@ -511,6 +503,24 @@ impl<'a> BuildApi<'a> {
                 .as_ref()
                 .map(|surface| DependencyStepSurfaceSet {
                     steps: surface.steps.clone(),
+                })
+                .unwrap_or_default(),
+            files: surface
+                .as_ref()
+                .map(|surface| DependencyFileSurfaceSet {
+                    files: surface.files.clone(),
+                })
+                .unwrap_or_default(),
+            dirs: surface
+                .as_ref()
+                .map(|surface| DependencyDirSurfaceSet {
+                    dirs: surface.dirs.clone(),
+                })
+                .unwrap_or_default(),
+            paths: surface
+                .as_ref()
+                .map(|surface| DependencyPathSurfaceSet {
+                    paths: surface.paths.clone(),
                 })
                 .unwrap_or_default(),
             generated_outputs: surface

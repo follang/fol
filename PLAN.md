@@ -223,29 +223,29 @@ shape:
   - `build.export_path({ name = "schema", path = output })`
 - keep it symmetric with the current explicit-export model
 
-### Slice 6
+### Slice 6 (complete)
 
 - add semantic signatures and runtime representation for the new path exports
 - keep export names separate from internal path identity
 
-### Slice 7
+### Slice 7 (complete)
 
 - build executor should record explicit path exports in stable dependency-surface
   metadata
 
-### Slice 8
+### Slice 8 (complete)
 
 - package dependency-surface projection should persist explicit path exports on
   prepared packages
 
-### Slice 9
+### Slice 9 (complete)
 
 - add build-eval tests for:
   - exporting source file handles
   - exporting source dir handles
   - exporting output handles through the path export surface
 
-### Slice 10
+### Slice 10 (complete)
 
 - add diagnostics for:
   - duplicate path export names

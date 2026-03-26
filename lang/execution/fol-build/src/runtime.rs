@@ -144,6 +144,9 @@ pub enum BuildRuntimeDependencyExportKind {
     Module,
     Artifact,
     Step,
+    File,
+    Dir,
+    Path,
     GeneratedOutput,
 }
 

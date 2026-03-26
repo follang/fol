@@ -45,6 +45,9 @@ impl BuildBodyExecutor {
                 BuildRuntimeDependencyExportKind::Module => "module",
                 BuildRuntimeDependencyExportKind::Artifact => "artifact",
                 BuildRuntimeDependencyExportKind::Step => "step",
+                BuildRuntimeDependencyExportKind::File => "file",
+                BuildRuntimeDependencyExportKind::Dir => "dir",
+                BuildRuntimeDependencyExportKind::Path => "path",
                 BuildRuntimeDependencyExportKind::GeneratedOutput => "output",
             };
             return Err(self.invalid_config(
@@ -138,7 +141,13 @@ impl BuildBodyExecutor {
             ExecValue::Build
                 if matches!(
                     method,
-                    "export_module" | "export_artifact" | "export_step" | "export_output"
+                    "export_module"
+                        | "export_artifact"
+                        | "export_step"
+                        | "export_file"
+                        | "export_dir"
+                        | "export_path"
+                        | "export_output"
                 ) =>
             {
                 let [AstNode::RecordInit { fields, .. }] = args else {
@@ -248,6 +257,107 @@ impl BuildBodyExecutor {
                             name: export_name,
                             target_name,
                             kind: BuildRuntimeDependencyExportKind::Step,
+                        }
+                    }
+                    "export_file" => {
+                        let target_name =
+                            match fields.iter().find(|field| field.name == "file") {
+                                Some(field) => match &field.value {
+                                    AstNode::Identifier { name, .. } => {
+                                        match self.scope.get(name.as_str()) {
+                                            Some(ExecValue::SourceFile { path }) => path.clone(),
+                                            _ => return Err(self.invalid_config(
+                                                method,
+                                                "build.export_file requires handle field 'file'",
+                                            )),
+                                        }
+                                    }
+                                    _ => {
+                                        return Err(self.invalid_config(
+                                            method,
+                                            "build.export_file requires handle field 'file'",
+                                        ))
+                                    }
+                                },
+                                None => {
+                                    return Err(self.invalid_config(
+                                        method,
+                                        "build.export_file requires handle field 'file'",
+                                    ))
+                                }
+                            };
+                        BuildRuntimeDependencyExport {
+                            name: export_name,
+                            target_name,
+                            kind: BuildRuntimeDependencyExportKind::File,
+                        }
+                    }
+                    "export_dir" => {
+                        let target_name = match fields.iter().find(|field| field.name == "dir") {
+                            Some(field) => match &field.value {
+                                AstNode::Identifier { name, .. } => {
+                                    match self.scope.get(name.as_str()) {
+                                        Some(ExecValue::SourceDir { path }) => path.clone(),
+                                        _ => {
+                                            return Err(self.invalid_config(
+                                                method,
+                                                "build.export_dir requires handle field 'dir'",
+                                            ))
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    return Err(self.invalid_config(
+                                        method,
+                                        "build.export_dir requires handle field 'dir'",
+                                    ))
+                                }
+                            },
+                            None => {
+                                return Err(self.invalid_config(
+                                    method,
+                                    "build.export_dir requires handle field 'dir'",
+                                ))
+                            }
+                        };
+                        BuildRuntimeDependencyExport {
+                            name: export_name,
+                            target_name,
+                            kind: BuildRuntimeDependencyExportKind::Dir,
+                        }
+                    }
+                    "export_path" => {
+                        let target_name = match fields.iter().find(|field| field.name == "path") {
+                            Some(field) => match &field.value {
+                                AstNode::Identifier { name, .. } => {
+                                    match self.scope.get(name.as_str()) {
+                                        Some(ExecValue::GeneratedFile { name, .. }) => name.clone(),
+                                        _ => {
+                                            return Err(self.invalid_config(
+                                                method,
+                                                "build.export_path requires handle field 'path'",
+                                            ))
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    return Err(self.invalid_config(
+                                        method,
+                                        "build.export_path requires handle field 'path'",
+                                    ))
+                                }
+                            },
+                            None => {
+                                return Err(self.invalid_config(
+                                    method,
+                                    "build.export_path requires handle field 'path'",
+                                ))
+                            }
+                        };
+                        BuildRuntimeDependencyExport {
+                            name: export_name,
+                            target_name,
+                            kind: BuildRuntimeDependencyExportKind::Path,
                         }
                     }
                     "export_output" => {

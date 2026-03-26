@@ -40,9 +40,11 @@ pub use codegen::{
 pub use dependency::{
     DependencyArtifactSurface, DependencyArtifactSurfaceSet, DependencyBuildEvaluationMode,
     DependencyBuildExposure, DependencyBuildHandle, DependencyBuildSurface,
-    DependencyBuildSurfaceSet, DependencyGeneratedOutputSurface,
+    DependencyBuildSurfaceSet, DependencyDirSurface, DependencyDirSurfaceSet,
+    DependencyFileSurface, DependencyFileSurfaceSet, DependencyGeneratedOutputSurface,
     DependencyGeneratedOutputSurfaceSet, DependencyModuleSurface, DependencyModuleSurfaceSet,
-    DependencySourceRootSurface, DependencyStepSurface, DependencyStepSurfaceSet,
+    DependencyPathSurface, DependencyPathSurfaceSet, DependencySourceRootSurface,
+    DependencyStepSurface, DependencyStepSurfaceSet,
 };
 pub use eval::{
     canonical_graph_construction_capabilities, evaluate_build_plan, evaluate_build_source,

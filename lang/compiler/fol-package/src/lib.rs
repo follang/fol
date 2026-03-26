@@ -59,9 +59,11 @@ pub use build_codegen::{
 pub use build_dependency::{
     dependency_modules_from_exports, DependencyArtifactSurface, DependencyArtifactSurfaceSet,
     DependencyBuildEvaluationMode, DependencyBuildHandle, DependencyBuildSurface,
-    DependencyBuildSurfaceSet, DependencyGeneratedOutputSurface,
+    DependencyBuildSurfaceSet, DependencyDirSurface, DependencyDirSurfaceSet,
+    DependencyFileSurface, DependencyFileSurfaceSet, DependencyGeneratedOutputSurface,
     DependencyGeneratedOutputSurfaceSet, DependencyModuleSurface, DependencyModuleSurfaceSet,
-    DependencySourceRootSurface, DependencyStepSurface, DependencyStepSurfaceSet,
+    DependencyPathSurface, DependencyPathSurfaceSet, DependencySourceRootSurface,
+    DependencyStepSurface, DependencyStepSurfaceSet,
 };
 pub use build_entry::{
     collect_build_entry_candidates, validate_build_entry_cardinality,
