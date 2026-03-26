@@ -1853,6 +1853,42 @@ fn test_cli_run_rejects_alloc_example_route() {
 }
 
 #[test]
+fn test_cli_test_rejects_alloc_example_route() {
+    let temp_root = unique_temp_root("test_alloc_route_reject");
+    let root = temp_root.join("demo");
+    std::fs::create_dir_all(root.join("src")).expect("should create source root");
+    std::fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    var tests = graph.add_test({\n",
+            "        name = \"demo-tests\",\n",
+            "        root = \"src/main.fol\",\n",
+            "        fol_model = \"alloc\",\n",
+            "    });\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .expect("should write build file");
+    std::fs::write(
+        root.join("src/main.fol"),
+        "fun[] main(): str = {\n    return \"alloc\";\n};\n",
+    )
+    .expect("should write source");
+
+    let run = run_fol_in_dir(&root, &["code", "test"]);
+    let stderr = String::from_utf8_lossy(&run.stderr);
+    assert!(!run.status.success(), "alloc test route should be rejected");
+    assert!(stderr.contains("test requires 'fol_model = std'"));
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
 fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
     let cases = [
         ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
@@ -2223,6 +2259,21 @@ fn test_build_fixtures_core_model_reject_forbidden_surfaces() {
                 stderr
             );
     }
+}
+
+#[test]
+fn test_build_fixture_alloc_model_rejects_echo() {
+    let root = build_fixture_root("model_alloc_reject_echo");
+    let build = run_fol_in_dir(&root, &["code", "build"]);
+    let stderr = String::from_utf8_lossy(&build.stderr);
+    assert!(
+        !build.status.success(),
+        "alloc echo fixture should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        stderr
+    );
+    assert!(stderr.contains("'.echo(...)' requires 'fol_model = std'"));
+    assert!(stderr.contains("current artifact model is 'alloc'"));
 }
 
 #[test]

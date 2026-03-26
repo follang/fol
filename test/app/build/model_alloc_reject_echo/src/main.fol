@@ -1,0 +1,4 @@
+fun[] main(): int = {
+    var shown: str = .echo("alloc-nope");
+    return .len(shown);
+};

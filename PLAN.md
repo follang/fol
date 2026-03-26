@@ -159,6 +159,8 @@ Completion criteria:
   - dynamic `.len(...)`
 
 ### Slice 7
+Status: complete
+
 Expand direct compile-fail fixtures for `alloc` rejecting `.echo(...)` and hosted assumptions.
 
 Completion criteria:
