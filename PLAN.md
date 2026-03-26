@@ -400,7 +400,7 @@ Completion criteria:
 ## Epoch 9: Docs And Book Alignment
 
 ### Slice 33
-Status: pending
+Status: complete
 
 Document the bundled std bootstrap in the build/book docs.
 
@@ -410,7 +410,7 @@ Completion criteria:
 - docs show normal usage without manual dependency setup
 
 ### Slice 34
-Status: pending
+Status: complete
 
 Document the first public std module APIs.
 
@@ -419,7 +419,7 @@ Completion criteria:
 - docs list the actual bootstrap `std.fmt` and `std.io` surfaces
 
 ### Slice 35
-Status: pending
+Status: complete
 
 Update runtime-model docs to describe the split clearly:
 
@@ -431,7 +431,7 @@ Completion criteria:
 - runtime-model docs stop sounding like `std` is only a mode and not a library
 
 ### Slice 36
-Status: pending
+Status: complete
 
 Update contributor guidance for bundled std growth.
 
@@ -448,7 +448,7 @@ Completion criteria:
 ## Epoch 10: Final Hardening And Closure
 
 ### Slice 37
-Status: pending
+Status: complete
 
 Run a bundled std example/build/doc sync audit.
 
@@ -458,7 +458,7 @@ Completion criteria:
 - examples use real shipped std modules
 
 ### Slice 38
-Status: pending
+Status: complete
 
 Add one top-level integration matrix for:
 
@@ -472,7 +472,7 @@ Completion criteria:
 - one integration suite pins the bootstrap contract across layers
 
 ### Slice 39
-Status: pending
+Status: complete
 
 Audit for stale placeholder/std-seed wording.
 
@@ -481,7 +481,7 @@ Completion criteria:
 - bootstrap std files/docs now describe the current real state, not the old seed state
 
 ### Slice 40
-Status: pending
+Status: complete
 
 Do a repo-wide sweep for accidental public `std` claims beyond what bootstrap actually ships.
 
@@ -490,7 +490,7 @@ Completion criteria:
 - docs/examples/tests do not imply a larger std than exists
 
 ### Slice 41
-Status: pending
+Status: complete
 
 Run a final build/test gate for the bootstrap std plan.
 
@@ -500,7 +500,7 @@ Completion criteria:
 - `make test` passes
 
 ### Slice 42
-Status: pending
+Status: complete
 
 Verify the bundled std tree stays source-only and clean after the full test suite.
 
@@ -509,7 +509,7 @@ Completion criteria:
 - no checked-in generated artifacts in bundled std
 
 ### Slice 43
-Status: pending
+Status: complete
 
 Close the plan with a final shipped-surface summary.
 
@@ -518,7 +518,7 @@ Completion criteria:
 - docs/tests make the actual bootstrap std surface obvious
 
 ### Slice 44
-Status: pending
+Status: complete
 
 Mark the plan complete on a clean worktree.
 

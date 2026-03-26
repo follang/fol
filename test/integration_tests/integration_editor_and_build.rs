@@ -3198,6 +3198,135 @@ fn test_docs_reference_real_example_packages() {
 }
 
 #[test]
+fn test_bundled_std_docs_and_readme_keep_the_shipped_surface_honest() {
+    let bundled_std_docs = std::fs::read_to_string(repo_root().join("docs/bundled-std.md"))
+        .expect("bundled std docs should exist");
+    let bundled_std_readme = std::fs::read_to_string(repo_root().join("lang/library/std/README.md"))
+        .expect("bundled std readme should exist");
+
+    for needle in [
+        "std.fmt",
+        "std.fmt.math",
+        "std.io",
+        "fmt::answer(): int",
+        "fmt::double(int): int",
+        "fmt::math::answer(): int",
+        "io::echo_int(int): int",
+        "io::echo_str(str): str",
+        "examples/std_bundled_fmt",
+        "examples/std_bundled_io",
+    ] {
+        assert!(
+            bundled_std_docs.contains(needle),
+            "bundled std docs should mention shipped surface item '{needle}'"
+        );
+        assert!(
+            bundled_std_readme.contains(needle),
+            "bundled std readme should mention shipped surface item '{needle}'"
+        );
+    }
+
+    for forbidden in ["std.os/lib.fol", "std.mem", "std.fs", "std.net"] {
+        assert!(
+            !bundled_std_docs.contains(forbidden),
+            "bundled std docs should not claim unshipped surface '{forbidden}'"
+        );
+        assert!(
+            !bundled_std_readme.contains(forbidden),
+            "bundled std readme should not claim unshipped surface '{forbidden}'"
+        );
+    }
+}
+
+#[test]
+fn test_bundled_std_bootstrap_contract_matrix_stays_coherent() {
+    use fol_editor::{
+        EditorConfig, EditorDocumentUri, EditorLspServer, JsonRpcId, JsonRpcNotification,
+        JsonRpcRequest, LspDidOpenTextDocumentParams, LspSemanticTokens,
+        LspSemanticTokensParams, LspTextDocumentIdentifier, LspTextDocumentItem,
+    };
+
+    let root = temp_example_root("examples/std_bundled_io");
+    let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+    assert!(
+        build.status.success(),
+        "bundled std contract matrix example should build: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        String::from_utf8_lossy(&build.stderr)
+    );
+    let stdout = String::from_utf8_lossy(&build.stdout);
+    assert!(stdout.contains("fol_model=std"));
+
+    let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+        .expect("bundled std contract matrix should emit backend source");
+    let source = std::fs::read_to_string(&generated).expect("generated source should load");
+    assert!(source.contains("use fol_runtime::std as rt;"));
+
+    let binary = stdout
+        .lines()
+        .find_map(|line| {
+            let plain = strip_ansi(line);
+            if plain.contains("binary") {
+                plain.split_whitespace().last().map(str::to_string)
+            } else {
+                None
+            }
+        })
+        .expect("bundled std contract matrix build should report a binary path");
+    let run = std::process::Command::new(binary.trim())
+        .output()
+        .expect("bundled std contract matrix binary should run");
+    assert!(run.status.success());
+    assert!(String::from_utf8_lossy(&run.stdout).contains("std-io"));
+
+    let source_path = root.join("src/main.fol");
+    let text = std::fs::read_to_string(&source_path).expect("example source should load");
+    let uri = EditorDocumentUri::from_file_path(source_path)
+        .expect("example uri should build")
+        .as_str()
+        .to_string();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = server
+        .handle_notification(JsonRpcNotification {
+            jsonrpc: "2.0".to_string(),
+            method: "textDocument/didOpen".to_string(),
+            params: Some(
+                serde_json::to_value(LspDidOpenTextDocumentParams {
+                    text_document: LspTextDocumentItem {
+                        uri: uri.clone(),
+                        language_id: "fol".to_string(),
+                        version: 1,
+                        text,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .expect("didOpen should succeed");
+    assert!(diagnostics.iter().all(|published| published.diagnostics.is_empty()));
+
+    let semantic = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(4991),
+            method: "textDocument/semanticTokens/full".to_string(),
+            params: Some(
+                serde_json::to_value(LspSemanticTokensParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                })
+                .unwrap(),
+            ),
+        })
+        .expect("semantic token request should succeed")
+        .expect("semantic token response should exist");
+    let tokens: LspSemanticTokens = serde_json::from_value(semantic.result.unwrap()).unwrap();
+    assert!(
+        !tokens.data.is_empty(),
+        "bundled std contract matrix should keep editor readability"
+    );
+}
+
+#[test]
 fn test_positive_runtime_model_examples_build_with_expected_models_and_runtime_imports() {
     for (path, expected_model) in positive_runtime_model_examples() {
         let root = temp_example_root(path);

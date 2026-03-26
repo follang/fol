@@ -67,6 +67,10 @@ Also note:
 - `std` is the importable library namespace
 - `core` and `mem` are capability modes selected through `fol_model`
 - `core` and `mem` are not imported with `use`
+- the bundled bootstrap surface is intentionally small right now:
+  - `std.fmt`
+  - `std.fmt.math`
+  - `std.io`
 
 ### `pkg`
 
@@ -141,6 +145,16 @@ use math: std = {"fmt/math"};
 
 fun[] main(): int = {
     return math::answer();
+};
+```
+
+Using the bundled `std.io` bootstrap surface:
+```
+use io: std = {"io"};
+
+fun[] main(): int = {
+    var shown: str = io::echo_str("hello");
+    return 7;
 };
 ```
 ## Local libraries

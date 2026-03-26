@@ -80,6 +80,14 @@ Canonical bootstrap example packages:
 - `examples/std_bundled_fmt`
 - `examples/std_bundled_io`
 
+Current shipped public routines:
+
+- `fmt::answer(): int`
+- `fmt::double(int): int`
+- `fmt::math::answer(): int`
+- `io::echo_int(int): int`
+- `io::echo_str(str): str`
+
 Older hosted std examples should use bundled std modules when one already exists.
 That means current echo-based examples should prefer `std.io` instead of calling
 `.echo(...)` directly unless the example is explicitly about the primitive

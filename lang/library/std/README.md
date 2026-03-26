@@ -38,3 +38,36 @@ That is enough to prove:
 substrate.
 
 `std.os` is still deferred until it has one honest user-facing API.
+
+## Shipped Surface Summary
+
+Current shipped bundled modules:
+
+- `std.fmt`
+- `std.fmt.math`
+- `std.io`
+
+Current shipped public routines:
+
+- `fmt::answer(): int`
+- `fmt::double(int): int`
+- `fmt::math::answer(): int`
+- `io::echo_int(int): int`
+- `io::echo_str(str): str`
+
+Canonical bootstrap examples:
+
+- `examples/std_bundled_fmt`
+- `examples/std_bundled_io`
+
+Anything outside that list should not be documented as already shipped.
+
+## Growth Rule
+
+When bundled `std` gains a new public name:
+
+- add or update a real example package
+- add or update CLI/integration coverage
+- add or update LSP/tree-sitter coverage
+- update this README and `docs/bundled-std.md`
+- update the relevant book pages

@@ -120,3 +120,9 @@ Runtime-model reminder:
   execution should spell `fol_model = "std"`
 - `core` and `mem` examples in the build book should stay free of hosted
   assumptions
+
+Bundled std reminder:
+
+- `std` ships with FOL under `lang/library/std`
+- users do not add `std` through `.build().add_dep(...)`
+- normal hosted packages should rely on bundled `std`, not manual std setup
