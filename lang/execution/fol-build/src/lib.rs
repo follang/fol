@@ -24,8 +24,8 @@ pub use api::{
     OutputHandleKind, OutputHandleLocator, PathHandle, PathHandleClass, PathHandleProvenance,
     RunHandle, RunRequest, SharedLibraryRequest, SourceDirHandle, SourceFileHandle,
     StandardOptimizeOption, StandardOptimizeRequest, StandardTargetOption, StandardTargetRequest,
-    StaticLibraryRequest, StepHandle, StepRequest, TestArtifactRequest, UserOption,
-    UserOptionRequest,
+    StaticLibraryRequest, StepHandle, StepRequest, SystemLibraryHandle, TestArtifactRequest,
+    UserOption, UserOptionRequest,
 };
 pub use artifact::{
     project_graph_artifacts, BuildArtifactDefinition, BuildArtifactFolModel, BuildArtifactLinkage,
@@ -67,7 +67,7 @@ pub use graph::{
 pub use native::{
     NativeArtifactDefinition, NativeArtifactKind, NativeArtifactSet, NativeIncludePath,
     NativeLibraryPath, NativeLinkDirective, NativeLinkInput, NativeLinkMode, NativePlatform,
-    NativeSearchPathOrigin,
+    NativeSearchPathOrigin, SystemLibraryRequest,
 };
 pub use option::{
     BuildOptimizeMode, BuildOptionDeclaration, BuildOptionDeclarationSet, BuildOptionOverride,

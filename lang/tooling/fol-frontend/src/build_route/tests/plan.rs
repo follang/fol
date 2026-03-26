@@ -639,6 +639,11 @@ fn absorbed_build_executor_rejects_unknown_named_steps() {
     assert!(error.message().contains("known steps:"));
     assert!(error.message().contains("build [default:build]"));
     assert!(error.message().contains("run [default:run]"));
+    assert!(error.message().contains("[artifact:demo]"));
+    assert!(error.message().contains("[models:std]"));
+    assert!(error
+        .message()
+        .contains("Run the default executable artifact"));
 
     fs::remove_dir_all(&workspace.root.root).ok();
 }

@@ -10,6 +10,7 @@ use crate::eval::{
     BuildEvaluationOperation, BuildEvaluationOperationKind, BuildEvaluationRunRequest,
     BuildEvaluationStepRequest,
 };
+use crate::native::{NativeLinkMode, SystemLibraryRequest};
 use crate::runtime::{BuildRuntimeGeneratedFile, BuildRuntimeGeneratedFileKind};
 use fol_parser::ast::AstNode;
 
@@ -458,6 +459,78 @@ impl BuildBodyExecutor {
                     name: output.clone(),
                     path: output,
                     kind: BuildRuntimeGeneratedFileKind::ToolOutput,
+                }))
+            }
+
+            "add_system_lib" => {
+                let [AstNode::RecordInit { fields, .. }] = args else {
+                    return Err(self.unsupported(method));
+                };
+                let name = self.resolve_field_string(fields, "name").ok_or_else(|| {
+                    BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        "add_system_lib config is invalid: missing 'name'".to_string(),
+                    )
+                })?;
+                if name.trim().is_empty() {
+                    return Err(BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        "add_system_lib config is invalid: 'name' must not be empty".to_string(),
+                    ));
+                }
+                let mode = match self.resolve_field_string(fields, "mode") {
+                    Some(mode) => match mode.as_str() {
+                        "static" => NativeLinkMode::Static,
+                        "dynamic" => NativeLinkMode::Dynamic,
+                        other => {
+                            return Err(BuildEvaluationError::new(
+                                BuildEvaluationErrorKind::InvalidInput,
+                                format!(
+                                    "add_system_lib config is invalid: library mode must be 'static' or 'dynamic' (got '{other}')"
+                                ),
+                            ))
+                        }
+                    },
+                    None => NativeLinkMode::Dynamic,
+                };
+                let framework = match fields.iter().find(|field| field.name == "framework") {
+                    Some(field) => match &field.value {
+                        AstNode::Literal(fol_parser::ast::Literal::Boolean(value)) => *value,
+                        AstNode::Identifier { name, .. } => {
+                            match self.scope.get(name.as_str()) {
+                                Some(ExecValue::Bool(value)) => *value,
+                                _ => return Err(BuildEvaluationError::new(
+                                    BuildEvaluationErrorKind::InvalidInput,
+                                    "add_system_lib config is invalid: 'framework' must be a bool"
+                                        .to_string(),
+                                )),
+                            }
+                        }
+                        _ => {
+                            return Err(BuildEvaluationError::new(
+                                BuildEvaluationErrorKind::InvalidInput,
+                                "add_system_lib config is invalid: 'framework' must be a bool"
+                                    .to_string(),
+                            ))
+                        }
+                    },
+                    None => false,
+                };
+                if framework && mode == NativeLinkMode::Static {
+                    return Err(BuildEvaluationError::new(
+                        BuildEvaluationErrorKind::InvalidInput,
+                        "add_system_lib config is invalid: framework libraries must use dynamic mode"
+                            .to_string(),
+                    ));
+                }
+                let search_path = self.resolve_field_string(fields, "search_path");
+                Ok(Some(ExecValue::SystemLibrary {
+                    request: SystemLibraryRequest {
+                        name,
+                        mode,
+                        framework,
+                        search_path,
+                    },
                 }))
             }
 

@@ -11,5 +11,6 @@ pub use types::{
     OutputHandleLocator, PathHandle, PathHandleClass, PathHandleProvenance, RunHandle, RunRequest,
     SharedLibraryRequest, SourceDirHandle, SourceFileHandle, StandardOptimizeOption,
     StandardOptimizeRequest, StandardTargetOption, StandardTargetRequest, StaticLibraryRequest,
-    StepHandle, StepRequest, TestArtifactRequest, UserOption, UserOptionRequest, WriteFileRequest,
+    StepHandle, StepRequest, SystemLibraryHandle, TestArtifactRequest, UserOption,
+    UserOptionRequest, WriteFileRequest,
 };

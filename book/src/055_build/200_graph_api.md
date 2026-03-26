@@ -237,6 +237,40 @@ fol code build --step docs
 When a description is present, frontend step planning and unknown-step
 diagnostics surface it as part of the available step catalog.
 
+## Native System Libraries
+
+### `graph.add_system_lib`
+
+Declares a typed system-library request that can be linked into an artifact.
+
+```fol
+var ssl = graph.add_system_lib({
+    name = "ssl",
+    mode = "dynamic",
+    search_path = "/usr/lib",
+});
+
+app.link(ssl);
+```
+
+Supported config fields:
+
+- `name`
+  required library or framework name
+- `mode`
+  optional, defaults to `dynamic`, also accepts `static`
+- `framework`
+  optional bool, defaults to `false`
+- `search_path`
+  optional system library search root
+
+Current scope is intentionally narrow:
+
+- library names are typed, not raw linker fragments
+- frameworks are expressed through `framework = true`
+- frameworks must use `dynamic`
+- the build graph records native link intent without exposing a linker-script DSL
+
 ## Current Execution Semantics
 
 Step execution is still serial today. The build graph keeps deterministic step

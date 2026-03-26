@@ -49,6 +49,7 @@ pub enum BuildSemanticTypeFamily {
     BuildContext,
     Graph,
     ArtifactHandle,
+    SystemLibraryHandle,
     ModuleHandle,
     StepHandle,
     RunHandle,
@@ -89,6 +90,13 @@ impl BuildSemanticType {
 
     pub fn artifact_handle() -> Self {
         Self::types_named("Artifact", BuildSemanticTypeFamily::ArtifactHandle)
+    }
+
+    pub fn system_library_handle() -> Self {
+        Self::types_named(
+            "SystemLibrary",
+            BuildSemanticTypeFamily::SystemLibraryHandle,
+        )
     }
 
     pub fn step_handle() -> Self {
@@ -315,6 +323,9 @@ pub fn canonical_graph_method_signatures() -> Vec<BuildSemanticMethodSignature> 
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_system_tool")
             .with_param(BuildSemanticMethodParameter::record("config"))
             .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_system_lib")
+            .with_param(BuildSemanticMethodParameter::record("config"))
+            .returning(BuildSemanticTypeFamily::SystemLibraryHandle),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::Graph, "add_codegen")
             .with_param(BuildSemanticMethodParameter::record("config"))
             .returning(BuildSemanticTypeFamily::GeneratedFileHandle),
@@ -427,6 +438,11 @@ pub fn canonical_handle_method_signatures() -> Vec<BuildSemanticMethodSignature>
             .with_param(BuildSemanticMethodParameter::handle(
                 "dep_artifact",
                 BuildSemanticTypeFamily::ArtifactHandle,
+            )),
+        BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::ArtifactHandle, "link")
+            .with_param(BuildSemanticMethodParameter::handle(
+                "system_lib",
+                BuildSemanticTypeFamily::SystemLibraryHandle,
             )),
         BuildSemanticMethodSignature::new(BuildSemanticTypeFamily::ArtifactHandle, "import")
             .with_param(BuildSemanticMethodParameter::handle(
@@ -858,6 +874,7 @@ mod tests {
         assert!(names.contains(&"write_file"));
         assert!(names.contains(&"copy_file"));
         assert!(names.contains(&"add_system_tool"));
+        assert!(names.contains(&"add_system_lib"));
         assert!(names.contains(&"add_codegen"));
         assert!(names.contains(&"dependency"));
         assert!(names.contains(&"file_from_root"));

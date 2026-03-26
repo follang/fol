@@ -929,6 +929,18 @@ fn render_step_catalog_entry(step: &FrontendMemberPlannedStep) -> String {
     if let Some(default_kind) = step.default_kind {
         rendered.push_str(&format!(" [default:{}]", default_kind.as_str()));
     }
+    if let Some(selection) = step.selection.as_ref() {
+        rendered.push_str(&format!(" [artifact:{}]", selection.label));
+    }
+    if !step.available_models.is_empty() {
+        let models = step
+            .available_models
+            .iter()
+            .map(|model| model.as_str())
+            .collect::<Vec<_>>()
+            .join(",");
+        rendered.push_str(&format!(" [models:{models}]"));
+    }
     if let Some(description) = step.description.as_deref() {
         rendered.push_str(&format!(" - {description}"));
     }

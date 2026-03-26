@@ -263,6 +263,129 @@ fn build_source_evaluator_supports_object_style_system_tool_configs() {
 }
 
 #[test]
+fn build_source_evaluator_supports_typed_system_library_configs() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    var graph = build.graph();\n",
+        "    var ssl = graph.add_system_lib({ name = \"ssl\", mode = \"dynamic\", search_path = \"/usr/lib\" });\n",
+        "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+        "    app.link(ssl);\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("system-library configs should evaluate")
+        .expect("build body should produce a graph");
+
+    assert_eq!(evaluated.result.graph.artifacts().len(), 1);
+    assert_eq!(evaluated.result.graph.artifacts()[0].library_paths.len(), 1);
+    assert_eq!(evaluated.result.graph.artifacts()[0].link_inputs.len(), 1);
+    assert_eq!(
+        evaluated.result.graph.artifacts()[0].link_inputs[0].input,
+        crate::native::NativeLinkInput::LibraryName("ssl".to_string())
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_invalid_system_library_modes() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    graph.add_system_lib({ name = \"ssl\", mode = \"ambient\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("invalid system-library mode should fail");
+
+    assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
+    assert_eq!(
+        error.message(),
+        "add_system_lib config is invalid: library mode must be 'static' or 'dynamic' (got 'ambient')"
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_non_boolean_framework_flags() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    graph.add_system_lib({ name = \"Metal\", framework = \"yes\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("non-bool framework flag should fail");
+
+    assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
+    assert_eq!(
+        error.message(),
+        "add_system_lib config is invalid: 'framework' must be a bool"
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_static_framework_requests() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    graph.add_system_lib({ name = \"Metal\", framework = true, mode = \"static\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("static framework requests should fail");
+
+    assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
+    assert_eq!(
+        error.message(),
+        "add_system_lib config is invalid: framework libraries must use dynamic mode"
+    );
+}
+
+#[test]
 fn build_source_evaluator_supports_object_style_codegen_configs() {
     let source = concat!(
         "pro[] build(): non = {\n",

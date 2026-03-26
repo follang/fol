@@ -385,12 +385,12 @@ shape:
 
 ## Epoch 6: Improve Step Help And Build Reporting
 
-### Slice 30
+### Slice 30 (complete)
 
 - audit current frontend build help/summary/reporting surfaces
 - list where step descriptions and output details are currently lost
 
-### Slice 31
+### Slice 31 (complete)
 
 - improve unknown-step diagnostics further so they list:
   - step name
@@ -406,7 +406,7 @@ shape:
   - dependency mode summaries where relevant
   - produced output counts
 
-### Slice 33
+### Slice 33 (complete)
 
 - improve routed build planning summaries so step/output/install context is easier
   to read in tests and user-facing output
@@ -417,12 +417,12 @@ shape:
 
 ## Epoch 7: Add A Typed System-Library Surface
 
-### Slice 35
+### Slice 35 (complete)
 
 - audit current system-tool support and backend/native gaps
 - define the narrow first public system-library surface
 
-### Slice 36
+### Slice 36 (complete)
 
 - design typed API methods, likely on `graph`
 - recommended direction:
@@ -433,23 +433,23 @@ shape:
     - framework flag on relevant targets
     - pkg-config style probe mode if added
 
-### Slice 37
+### Slice 37 (complete)
 
 - add semantic signatures and runtime representation for the system-library
   requests
 
-### Slice 38
+### Slice 38 (complete)
 
 - backend/build planning should preserve these requests through emitted build
   configuration even if support is initially narrow
 
-### Slice 39
+### Slice 39 (complete)
 
 - add diagnostics for:
   - invalid system-library config shapes
   - unsupported target/library combinations where known
 
-### Slice 40
+### Slice 40 (complete)
 
 - add one standalone example package using the typed system-library surface
 
@@ -521,7 +521,7 @@ shape:
   - hover where applicable
   - build-fixture integration coverage
 
-### Slice 51
+### Slice 51 (complete)
 
 - audit and update the build book:
   - remove stale wording about projection-only dependency surfaces

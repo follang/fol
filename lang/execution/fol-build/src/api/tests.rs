@@ -584,6 +584,35 @@ mod tests {
     }
 
     #[test]
+    fn build_api_can_link_artifacts_to_typed_system_libraries() {
+        let mut graph = BuildGraph::new();
+        let mut api = BuildApi::new(&mut graph);
+        let app = api
+            .add_executable(ExecutableRequest {
+                name: "demo".to_string(),
+                root_module: "src/main.fol".to_string(),
+            })
+            .expect("artifact should be created");
+
+        api.artifact_link_system_library(
+            app.artifact_id,
+            crate::native::SystemLibraryRequest {
+                name: "ssl".to_string(),
+                mode: crate::native::NativeLinkMode::Dynamic,
+                framework: false,
+                search_path: Some("/usr/lib".to_string()),
+            },
+        );
+
+        assert_eq!(api.graph().artifacts()[0].library_paths.len(), 1);
+        assert_eq!(api.graph().artifacts()[0].link_inputs.len(), 1);
+        assert_eq!(
+            api.graph().artifacts()[0].link_inputs[0].input,
+            crate::native::NativeLinkInput::LibraryName("ssl".to_string())
+        );
+    }
+
+    #[test]
     fn build_api_run_capture_stdout_returns_an_output_handle() {
         let mut graph = BuildGraph::new();
         let mut api = BuildApi::new(&mut graph);

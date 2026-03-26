@@ -43,6 +43,23 @@ var app  = graph.add_exe({ name = "app", root = "src/main.fol" });
 app.link(core);
 ```
 
+Typed system-library requests can be linked the same way:
+
+```fol
+var ssl = graph.add_system_lib({ name = "ssl", mode = "dynamic" });
+app.link(ssl);
+```
+
+Framework-style requests use the same surface:
+
+```fol
+var metal = graph.add_system_lib({
+    name = "Metal",
+    framework = true,
+});
+app.link(metal);
+```
+
 Linking is transitive through the graph. If `core` itself links `utils`, `app`
 will also see `utils`.
 

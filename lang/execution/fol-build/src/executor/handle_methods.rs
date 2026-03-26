@@ -481,20 +481,30 @@ impl BuildBodyExecutor {
                 let [arg] = args else {
                     return Err(self.unsupported(method));
                 };
-                let linked_name = match arg {
+                match arg {
                     AstNode::Identifier { name, .. } => match self.scope.get(name.as_str()) {
-                        Some(ExecValue::Artifact(a)) => a.name.clone(),
+                        Some(ExecValue::Artifact(a)) => {
+                            self.output.operations.push(BuildEvaluationOperation {
+                                origin: None,
+                                kind: BuildEvaluationOperationKind::ArtifactLink {
+                                    artifact: artifact_name,
+                                    linked: a.name.clone(),
+                                },
+                            });
+                        }
+                        Some(ExecValue::SystemLibrary { request }) => {
+                            self.output.operations.push(BuildEvaluationOperation {
+                                origin: None,
+                                kind: BuildEvaluationOperationKind::ArtifactLinkSystemLibrary {
+                                    artifact: artifact_name,
+                                    request: request.clone(),
+                                },
+                            });
+                        }
                         _ => return Err(self.unsupported(method)),
                     },
                     _ => return Err(self.unsupported(method)),
                 };
-                self.output.operations.push(BuildEvaluationOperation {
-                    origin: None,
-                    kind: BuildEvaluationOperationKind::ArtifactLink {
-                        artifact: artifact_name,
-                        linked: linked_name,
-                    },
-                });
                 Ok(Some(receiver))
             }
 

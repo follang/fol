@@ -1,10 +1,9 @@
 use crate::semantic::{
     canonical_artifact_config_shapes, canonical_build_context_config_shapes,
-    canonical_build_context_method_signatures,
-    canonical_chain_metadata, canonical_graph_method_signatures,
-    canonical_handle_method_signatures, canonical_option_config_shapes,
-    BuildSemanticMethodSignature, BuildSemanticRecordShape, BuildSemanticType,
-    BuildSemanticTypeFamily,
+    canonical_build_context_method_signatures, canonical_chain_metadata,
+    canonical_graph_method_signatures, canonical_handle_method_signatures,
+    canonical_option_config_shapes, BuildSemanticMethodSignature, BuildSemanticRecordShape,
+    BuildSemanticType, BuildSemanticTypeFamily,
 };
 
 /// The complete build stdlib scope injected into `build.fol` during resolution.
@@ -125,8 +124,7 @@ mod tests {
     fn stdlib_scope_canonical_covers_all_build_types() {
         let scope = BuildStdlibScope::canonical();
 
-        let families: Vec<BuildSemanticTypeFamily> =
-            scope.types.iter().map(|t| t.family).collect();
+        let families: Vec<BuildSemanticTypeFamily> = scope.types.iter().map(|t| t.family).collect();
 
         assert!(!families.contains(&BuildSemanticTypeFamily::BuildContext));
         assert!(families.contains(&BuildSemanticTypeFamily::ArtifactHandle));
@@ -147,8 +145,16 @@ mod tests {
     fn stdlib_scope_canonical_covers_core_graph_methods() {
         let scope = BuildStdlibScope::canonical();
 
-        let build_names: Vec<&str> = scope.build_methods.iter().map(|m| m.name.as_str()).collect();
-        let graph_names: Vec<&str> = scope.graph_methods.iter().map(|m| m.name.as_str()).collect();
+        let build_names: Vec<&str> = scope
+            .build_methods
+            .iter()
+            .map(|m| m.name.as_str())
+            .collect();
+        let graph_names: Vec<&str> = scope
+            .graph_methods
+            .iter()
+            .map(|m| m.name.as_str())
+            .collect();
 
         assert!(build_names.contains(&"meta"));
         assert!(build_names.contains(&"add_dep"));
@@ -165,6 +171,7 @@ mod tests {
         assert!(graph_names.contains(&"write_file"));
         assert!(graph_names.contains(&"copy_file"));
         assert!(graph_names.contains(&"add_system_tool"));
+        assert!(graph_names.contains(&"add_system_lib"));
         assert!(graph_names.contains(&"add_codegen"));
         assert!(graph_names.contains(&"dependency"));
         assert!(graph_names.contains(&"file_from_root"));
@@ -193,12 +200,11 @@ mod tests {
     fn stdlib_scope_find_handle_method_is_receiver_specific() {
         let scope = BuildStdlibScope::canonical();
 
-        let step_depend = scope
-            .find_handle_method(BuildSemanticTypeFamily::StepHandle, "depend_on");
-        let run_depend = scope
-            .find_handle_method(BuildSemanticTypeFamily::RunHandle, "depend_on");
-        let wrong_family = scope
-            .find_handle_method(BuildSemanticTypeFamily::ArtifactHandle, "depend_on");
+        let step_depend =
+            scope.find_handle_method(BuildSemanticTypeFamily::StepHandle, "depend_on");
+        let run_depend = scope.find_handle_method(BuildSemanticTypeFamily::RunHandle, "depend_on");
+        let wrong_family =
+            scope.find_handle_method(BuildSemanticTypeFamily::ArtifactHandle, "depend_on");
 
         assert!(step_depend.is_some());
         assert!(run_depend.is_some());
