@@ -870,6 +870,9 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
     fn test_cli_build_emits_rust_for_model_examples() {
         let cases = [
             ("examples/build_dep_handles", "use fol_runtime::std as rt;"),
+            ("examples/build_dep_args", "use fol_runtime::std as rt;"),
+            ("examples/build_install_prefix", "use fol_runtime::std as rt;"),
+            ("examples/build_output_handles", "use fol_runtime::std as rt;"),
             ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
             ("examples/core_defer", "use fol_runtime::core as rt;"),
             ("examples/core_records", "use fol_runtime::core as rt;"),
@@ -910,6 +913,9 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
     fn test_cli_example_build_summaries_surface_expected_models() {
         let cases = [
             ("examples/build_dep_handles", "fol_model=std"),
+            ("examples/build_dep_args", "fol_model=std"),
+            ("examples/build_install_prefix", "fol_model=std"),
+            ("examples/build_output_handles", "fol_model=std"),
             ("examples/core_blink_shape", "fol_model=core"),
             ("examples/core_defer", "fol_model=core"),
             ("examples/core_records", "fol_model=core"),
@@ -992,7 +998,7 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
 
     #[test]
     fn test_build_install_prefix_moves_without_changing_build_source() {
-        let root = temp_example_root("examples/build_dep_handles");
+        let root = temp_example_root("examples/build_install_prefix");
         let build_path = root.join("build.fol");
         let source = std::fs::read_to_string(&build_path).expect("example build.fol");
 
@@ -1044,6 +1050,185 @@ fn create_git_remote_from_logtiny_fixture(root: &std::path::Path) {
         assert_ne!(install_a, install_b);
         assert!(install_a.ends_with("/bin/demo"));
         assert!(install_b.ends_with("/bin/demo"));
+    }
+
+    #[test]
+    fn test_build_output_handle_example_keeps_generated_handles_composed() {
+        let root = temp_example_root("examples/build_output_handles");
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path).expect("example build.fol");
+        let request = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, &source)
+            .expect("output-handle example should evaluate")
+            .expect("output-handle example should produce a graph");
+
+        assert_eq!(evaluated.result.graph.generated_files().len(), 2);
+        assert!(evaluated
+            .result
+            .graph
+            .installs()
+            .iter()
+            .any(|install| install.name == "generated-cfg"));
+        assert!(evaluated
+            .result
+            .graph
+            .installs()
+            .iter()
+            .any(|install| install.name == "copied-banner"));
+    }
+
+    #[test]
+    fn test_build_dep_args_example_keeps_forwarded_dependency_args() {
+        let root = temp_example_root("examples/build_dep_args");
+        let build_path = root.join("build.fol");
+        let source = std::fs::read_to_string(&build_path).expect("example build.fol");
+        let request = BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                options: std::collections::BTreeMap::from([
+                    ("jobs".to_string(), "6".to_string()),
+                    ("flavor".to_string(), "strict".to_string()),
+                ]),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        };
+
+        let evaluated = evaluate_build_source(&request, &build_path, &source)
+            .expect("dep-arg example should evaluate")
+            .expect("dep-arg example should produce a graph");
+        let dep = evaluated
+            .evaluated
+            .dependencies
+            .iter()
+            .find(|dependency| dependency.alias == "shared")
+            .expect("shared dependency should be recorded");
+
+        assert_eq!(dep.args.get("jobs").map(String::as_str), Some("6"));
+        assert_eq!(dep.args.get("flavor").map(String::as_str), Some("strict"));
+    }
+
+    #[test]
+    fn test_cli_build_rejects_negative_build_surface_examples() {
+        let cases = [
+            (
+                "fail_dep_unknown_surface",
+                concat!(
+                    "pro[] build(): non = {\n",
+                    "    var build = .build();\n",
+                    "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                    "    var dep = build.add_dep({ alias = \"shared\", source = \"loc\", target = \"deps/shared\" });\n",
+                    "    var graph = build.graph();\n",
+                    "    var app = graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+                    "    var bindings = dep.generated(\"bindings\");\n",
+                    "    app.add_generated(bindings);\n",
+                    "    return;\n",
+                    "};\n",
+                ),
+                Some(concat!(
+                    "pro[] build(): non = {\n",
+                    "    var build = .build();\n",
+                    "    build.meta({ name = \"shared\", version = \"0.1.0\" });\n",
+                    "    var graph = build.graph();\n",
+                    "    var lib = graph.add_static_lib({ name = \"shared\", root = \"src/root.fol\", fol_model = \"alloc\" });\n",
+                    "    graph.install(lib);\n",
+                    "    return;\n",
+                    "};\n",
+                )),
+                "unknown generated file",
+            ),
+            (
+                "fail_dep_invalid_args",
+                concat!(
+                    "pro[] build(): non = {\n",
+                    "    var build = .build();\n",
+                    "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                    "    var graph = build.graph();\n",
+                    "    build.add_dep({ alias = \"core\", source = \"pkg\", target = \"core\", args = { target = graph } });\n",
+                    "    return;\n",
+                    "};\n",
+                ),
+                None,
+                "dependency arg 'target' must be bool, int, str, or an option handle",
+            ),
+            (
+                "fail_output_handle_usage",
+                concat!(
+                    "pro[] build(): non = {\n",
+                    "    var build = .build();\n",
+                    "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                    "    var graph = build.graph();\n",
+                    "    graph.install_file({ name = \"bad\", source = 1 });\n",
+                    "    return;\n",
+                    "};\n",
+                ),
+                None,
+                "install_file",
+            ),
+            (
+                "fail_install_projection",
+                concat!(
+                    "pro[] build(): non = {\n",
+                    "    var build = .build();\n",
+                    "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                    "    var graph = build.graph();\n",
+                    "    graph.install_dir({ name = \"assets\", path = \"\" });\n",
+                    "    return;\n",
+                    "};\n",
+                ),
+                None,
+                "directory target must not be empty",
+            ),
+        ];
+
+        for (label, build_source, dep_build_source, expected) in cases {
+            let root = unique_temp_root(label);
+            std::fs::create_dir_all(root.join("src")).expect("should create source root");
+            std::fs::write(root.join("build.fol"), build_source).expect("should write build file");
+            std::fs::write(
+                root.join("src/main.fol"),
+                "fun[] main(): int = {\n    return 7;\n};\n",
+            )
+            .expect("should write source");
+            if let Some(dep_source) = dep_build_source {
+                std::fs::create_dir_all(root.join("deps/shared/src"))
+                    .expect("should create dependency root");
+                std::fs::write(root.join("deps/shared/build.fol"), dep_source)
+                    .expect("should write dependency build");
+                std::fs::write(
+                    root.join("deps/shared/src/root.fol"),
+                    "fun[exp] helper(): int = {\n    return 1;\n};\n",
+                )
+                .expect("should write dependency source");
+            }
+
+            let output = run_fol_in_dir(&root, &["code", "build"]);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            assert!(
+                !output.status.success(),
+                "negative build example '{label}' should fail: stdout=\n{}\nstderr=\n{}",
+                stdout,
+                stderr
+            );
+            assert!(
+                stdout.contains(expected) || stderr.contains(expected),
+                "negative build example '{label}' should mention '{expected}': stdout=\n{}\nstderr=\n{}",
+                stdout,
+                stderr
+            );
+
+            std::fs::remove_dir_all(&root).ok();
+        }
     }
 
     #[test]

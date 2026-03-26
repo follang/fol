@@ -75,4 +75,4 @@ Use this section for:
 - control flow available inside `build.fol`
 - build options and `-D` flags
 - artifact types, modules, and generated files
-- the recorded near-term direction for dependency handles and output handles
+- dependency handles and unified output handles

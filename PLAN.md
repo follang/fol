@@ -414,19 +414,19 @@ If a new dependency/output/install shape is chosen:
 
 - add one standalone example focused on dependency handles
 
-### Slice 44
+### Slice 44 [complete]
 
 - add one standalone example focused on generated-output handle composition
 
-### Slice 45
+### Slice 45 [complete]
 
 - add one standalone example focused on dependency arg forwarding
 
-### Slice 46
+### Slice 46 [complete]
 
 - add one standalone example focused on install prefix behavior
 
-### Slice 47
+### Slice 47 [complete]
 
 - add negative examples for:
   - unknown dependency surface queries
@@ -436,17 +436,17 @@ If a new dependency/output/install shape is chosen:
 
 ## Epoch 10: Cleanup And Final Audit
 
-### Slice 48
+### Slice 48 [complete]
 
 - remove stale internal `.graph()` wording from build diagnostics/tests/docs
   that should now speak in terms of `.build()` and public handles
 
-### Slice 49
+### Slice 49 [complete]
 
 - audit editor/LSP completion for the new build-surface methods and handle
   member names
 
-### Slice 50
+### Slice 50 [complete]
 
 - final repo-wide scan for:
   - stale build docs

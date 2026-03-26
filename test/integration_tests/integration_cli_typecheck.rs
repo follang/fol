@@ -29,7 +29,7 @@ use super::*;
             .expect("package path should be utf-8")]);
         assert!(
             success.status.success(),
-            "modern ambient .graph() build should succeed: stdout=\n{}\nstderr=\n{}",
+            "modern ambient build.graph() build should succeed: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&success.stdout),
             String::from_utf8_lossy(&success.stderr)
         );

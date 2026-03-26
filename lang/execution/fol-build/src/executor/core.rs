@@ -763,14 +763,14 @@ fn validate_type_public_surface(
             return Err(public_graph_error(
                 package,
                 *syntax_id,
-                "public `Graph` type syntax is not part of build.fol; use `.graph()` and inferred locals instead",
+                "public `Graph` type syntax is not part of build.fol; use `.build().graph()` and inferred locals instead",
             ));
         }
         FolType::QualifiedNamed { path } if path.joined() == "Graph" => {
             return Err(public_graph_error(
                 package,
                 path.syntax_id,
-                "public `Graph` type syntax is not part of build.fol; use `.graph()` and inferred locals instead",
+                "public `Graph` type syntax is not part of build.fol; use `.build().graph()` and inferred locals instead",
             ));
         }
         FolType::Array { element_type, .. }

@@ -21,11 +21,6 @@ fn temp_build_package(source: &str) -> (PathBuf, PathBuf) {
         NEXT_ID.fetch_add(1, Ordering::Relaxed)
     ));
     fs::create_dir_all(&package_root).expect("temp package root should be created");
-    fs::write(
-        package_root.join("build.fol"),
-        "name: build-eval\nversion: 1.0.0\n",
-    )
-    .expect("package metadata should be written");
     fs::write(package_root.join("build.fol"), source).expect("build source should be written");
     (package_root.clone(), package_root.join("build.fol"))
 }
@@ -510,7 +505,7 @@ fn build_source_evaluator_rejects_invalid_dependency_arg_shapes_with_exact_diagn
 fn build_source_evaluator_extracts_and_replays_restricted_build_bodies() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    graph.add_exe(\"app\", \"src/app.fol\");\n",
         "    graph.add_test(\"app_test\", \"test/app.fol\");\n",
         "    graph.add_run(\"serve\", \"app\");\n",
@@ -550,7 +545,7 @@ fn build_source_evaluator_extracts_and_replays_restricted_build_bodies() {
 fn build_source_evaluator_supports_object_style_artifacts_and_handle_calls() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var target = graph.standard_target();\n",
         "    var optimize = graph.standard_optimize();\n",
         "    var app = graph.add_exe({\n",
@@ -606,7 +601,7 @@ fn build_source_evaluator_supports_object_style_artifacts_and_handle_calls() {
 fn build_source_evaluator_supports_user_option_record_configs() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var strip = graph.option({ name = \"strip\", kind = \"bool\", default = false });\n",
         "    var jobs = graph.option({ name = \"jobs\", kind = \"int\", default = 8 });\n",
         "    var flavor = graph.option({ name = \"flavor\", kind = \"enum\", default = \"fast\" });\n",
@@ -643,7 +638,7 @@ fn build_source_evaluator_supports_user_option_record_configs() {
 fn build_source_evaluator_reuses_bound_run_and_install_handles_as_step_dependencies() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var app = graph.add_exe(\"demo\", \"src/demo.fol\");\n",
         "    var run_app = graph.add_run(app);\n",
         "    var install_app = graph.install(app);\n",
@@ -690,7 +685,7 @@ fn build_source_evaluator_reuses_bound_run_and_install_handles_as_step_dependenc
 fn build_source_evaluator_rejects_unknown_handle_methods_explicitly() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var docs = graph.step(\"docs\");\n",
         "    docs.finish(docs);\n",
         "    return;\n",
@@ -717,7 +712,7 @@ fn build_source_evaluator_rejects_unknown_handle_methods_explicitly() {
 fn build_source_evaluator_supports_step_handle_depend_on_chains() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var lint = graph.step(\"lint\");\n",
         "    graph.step(\"docs\").depend_on(lint);\n",
         "    return;\n",
@@ -765,7 +760,7 @@ fn build_source_evaluator_supports_step_handle_depend_on_chains() {
 fn build_source_evaluator_supports_run_handle_depend_on_chains() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var lint = graph.step(\"lint\");\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    graph.add_run(app).depend_on(lint);\n",
@@ -814,7 +809,7 @@ fn build_source_evaluator_supports_run_handle_depend_on_chains() {
 fn build_source_evaluator_supports_install_handle_depend_on_chains() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var lint = graph.step(\"lint\");\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    graph.install(app).depend_on(lint);\n",
@@ -863,7 +858,7 @@ fn build_source_evaluator_supports_install_handle_depend_on_chains() {
 fn build_source_evaluator_keeps_step_like_handle_chains_stable() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var lint = graph.step(\"lint\");\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    var run_app = graph.add_run(app);\n",

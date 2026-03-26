@@ -398,7 +398,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var graph = .build().graph();\n",
                 "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"core\" });\n",
                 "};\n",
             ),
@@ -430,7 +430,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var graph = .build().graph();\n",
                 "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
                 "    graph.add_test({ name = \"tests\", root = \"test/app.fol\", fol_model = \"core\" });\n",
                 "};\n",
@@ -490,7 +490,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var graph = .build().graph();\n",
                 "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
                 "};\n",
             ),
@@ -526,7 +526,7 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var graph = .build().graph();\n",
                 "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
                 "    graph.add_test({ name = \"suite\", root = \"test/app.fol\", fol_model = \"core\" });\n",
                 "};\n",

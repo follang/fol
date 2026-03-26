@@ -17,11 +17,6 @@ fn temp_build_package(source: &str) -> (PathBuf, PathBuf) {
         NEXT_ID.fetch_add(1, Ordering::Relaxed)
     ));
     fs::create_dir_all(&package_root).expect("temp package root should be created");
-    fs::write(
-        package_root.join("build.fol"),
-        "name: build-eval\nversion: 1.0.0\n",
-    )
-    .expect("package metadata should be written");
     fs::write(package_root.join("build.fol"), source).expect("build source should be written");
     (package_root.clone(), package_root.join("build.fol"))
 }
@@ -30,7 +25,7 @@ fn temp_build_package(source: &str) -> (PathBuf, PathBuf) {
 fn build_source_evaluator_records_add_module_in_graph() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var m = graph.add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
         "    return;\n",
         "}\n",
@@ -79,7 +74,7 @@ fn build_source_evaluator_supports_inferred_build_locals_before_graph_work() {
     let source = concat!(
         "pro[] build(): non = {\n",
         "    var build = .build();\n",
-        "    .graph().add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
+        "    .build().graph().add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -205,10 +200,10 @@ fn build_source_evaluator_rejects_build_graph_arguments() {
 }
 
 #[test]
-fn build_source_evaluator_supports_direct_ambient_graph_calls() {
+fn build_source_evaluator_supports_direct_build_graph_calls() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    .graph().add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
+        "    .build().graph().add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -222,8 +217,8 @@ fn build_source_evaluator_supports_direct_ambient_graph_calls() {
     };
 
     let evaluated = evaluate_build_source(&request, &build_path, source)
-        .expect("ambient graph call should evaluate")
-        .expect("ambient graph call should produce operations");
+        .expect("build.graph call should evaluate")
+        .expect("build.graph call should produce operations");
 
     let modules = evaluated.result.graph.modules();
     assert_eq!(modules.len(), 1);
@@ -234,7 +229,7 @@ fn build_source_evaluator_supports_direct_ambient_graph_calls() {
 fn build_source_evaluator_supports_inferred_graph_locals() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    graph.add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
         "}\n",
     );
@@ -249,8 +244,8 @@ fn build_source_evaluator_supports_inferred_graph_locals() {
     };
 
     let evaluated = evaluate_build_source(&request, &build_path, source)
-        .expect("ambient graph local should evaluate")
-        .expect("ambient graph local should produce operations");
+        .expect("build.graph local should evaluate")
+        .expect("build.graph local should produce operations");
 
     let modules = evaluated.result.graph.modules();
     assert_eq!(modules.len(), 1);
@@ -264,7 +259,7 @@ fn build_source_evaluator_rejects_public_graph_type_annotations() {
         "    return;\n",
         "};\n",
         "pro[] build(): non = {\n",
-        "    var graph: Graph = .graph();\n",
+        "    var graph: Graph = .build().graph();\n",
         "    return;\n",
         "}\n",
     );
@@ -292,11 +287,11 @@ fn build_source_evaluator_rejects_public_graph_type_annotations() {
 fn build_source_evaluator_helpers_use_ambient_graph_without_graph_params() {
     let source = concat!(
         "fun[] make_lib(name: str, root: str): Artifact = {\n",
-        "    return .graph().add_static_lib({ name = name, root = root });\n",
+        "    return .build().graph().add_static_lib({ name = name, root = root });\n",
         "};\n",
         "pro[] build(): non = {\n",
         "    var lib = make_lib(\"core\", \"src/core.fol\");\n",
-        "    .graph().install(lib);\n",
+        "    .build().graph().install(lib);\n",
         "}\n",
     );
     let (package_root, build_path) = temp_build_package(source);
@@ -322,7 +317,7 @@ fn build_source_evaluator_helpers_use_ambient_graph_without_graph_params() {
 fn build_source_evaluator_records_artifact_link_in_graph() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    var lib = graph.add_static_lib({ name = \"core\", root = \"src/core.fol\" });\n",
         "    app.link(lib);\n",
@@ -354,7 +349,7 @@ fn build_source_evaluator_records_artifact_link_in_graph() {
 fn build_source_evaluator_records_artifact_import_in_graph() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var m = graph.add_module({ name = \"utils\", root = \"src/utils.fol\" });\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    app.import(m);\n",
@@ -391,7 +386,7 @@ fn build_source_evaluator_records_artifact_import_in_graph() {
 fn build_source_evaluator_records_run_add_arg_in_graph() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    var r = graph.add_run(app);\n",
         "    r.add_arg(\"--release\");\n",
@@ -427,7 +422,7 @@ fn build_source_evaluator_records_run_add_arg_in_graph() {
 fn build_source_evaluator_records_run_capture_stdout_in_graph() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    var r = graph.add_run(app);\n",
         "    var out = r.capture_stdout();\n",
@@ -462,7 +457,7 @@ fn build_source_evaluator_records_run_capture_stdout_in_graph() {
 fn build_source_evaluator_records_run_set_env_in_graph() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    var r = graph.add_run(app);\n",
         "    r.set_env(\"LOG_LEVEL\", \"debug\");\n",
@@ -497,7 +492,7 @@ fn build_source_evaluator_records_run_set_env_in_graph() {
 fn build_source_evaluator_records_step_attach_in_graph() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var header = graph.write_file({ name = \"version.h\", path = \"gen/version.h\", contents = \"// v1\" });\n",
         "    var compile = graph.step(\"compile\");\n",
         "    compile.attach(header);\n",
@@ -532,7 +527,7 @@ fn build_source_evaluator_records_step_attach_in_graph() {
 fn build_source_evaluator_records_artifact_add_generated_in_graph() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var gen = graph.write_file({ name = \"schema.fol\", path = \"gen/schema.fol\", contents = \"// gen\" });\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    app.add_generated(gen);\n",
@@ -608,7 +603,7 @@ fn build_source_evaluator_records_install_file_from_generated_handles() {
 fn build_source_evaluator_executes_when_condition_conditionally() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var optimize = graph.standard_optimize();\n",
         "    var app = graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
         "    when(optimize == \"release-fast\") {\n",
@@ -653,7 +648,7 @@ fn build_source_evaluator_executes_when_condition_conditionally() {
 fn build_source_evaluator_executes_helper_routine_called_from_build_entry() {
     let source = concat!(
         "fun[] make_lib(root: str): Artifact = {\n",
-        "    return .graph().add_static_lib({ name = root, root = root });\n",
+        "    return .build().graph().add_static_lib({ name = root, root = root });\n",
         "}\n",
         "pro[] build(): non = {\n",
         "    var core = make_lib(\"core\");\n",
@@ -684,7 +679,7 @@ fn build_source_evaluator_executes_helper_routine_called_from_build_entry() {
 fn build_source_evaluator_executes_loop_over_string_list() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    loop(name in {\"core\", \"io\", \"utils\"}) {\n",
         "        graph.add_static_lib({ name = name, root = name });\n",
         "    };\n",

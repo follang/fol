@@ -1,0 +1,18 @@
+pro[] build(): non = {
+    var build = .build();
+    build.meta({ name = "shared", version = "0.1.0" });
+
+    var graph = build.graph();
+    var jobs = graph.option({ name = "jobs", kind = "int", default = 2 });
+    var flavor = graph.option({ name = "flavor", kind = "enum", default = "strict" });
+
+    graph.write_file({ name = "dep-flags", path = "gen/flags.txt", contents = "configured" });
+
+    var lib = graph.add_static_lib({
+        name = "shared",
+        root = "src/root.fol",
+        fol_model = "alloc",
+    });
+    graph.install(lib);
+    return;
+};

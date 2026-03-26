@@ -108,7 +108,7 @@ The public layering is:
 - `build.add_dep({...})` for one direct dependency
 - `build.graph()` for artifact and step graph work
 
-The intended extension points on this public surface are:
+The public surface includes:
 
 - dependency handles returned from `build.add_dep({...})`
 - unified output handles for generated and copied files

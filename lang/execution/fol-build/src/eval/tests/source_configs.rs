@@ -20,11 +20,6 @@ fn temp_build_package(source: &str) -> (PathBuf, PathBuf) {
         NEXT_ID.fetch_add(1, Ordering::Relaxed)
     ));
     fs::create_dir_all(&package_root).expect("temp package root should be created");
-    fs::write(
-        package_root.join("build.fol"),
-        "name: build-eval\nversion: 1.0.0\n",
-    )
-    .expect("package metadata should be written");
     fs::write(package_root.join("build.fol"), source).expect("build source should be written");
     (package_root.clone(), package_root.join("build.fol"))
 }
@@ -33,7 +28,7 @@ fn temp_build_package(source: &str) -> (PathBuf, PathBuf) {
 fn build_source_evaluator_supports_object_style_dependency_configs() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var core = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"lazy\" });\n",
         "    return;\n",
         "}\n",
@@ -67,7 +62,7 @@ fn build_source_evaluator_supports_object_style_dependency_configs() {
 fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    graph.add_exe({ name = \"app\", root = \"src/app.fol\", fol_model = \"core\" });\n",
         "    graph.add_static_lib({ name = \"corelib\", root = \"src/lib.fol\", fol_model = \"alloc\" });\n",
         "    graph.add_shared_lib({ name = \"plugin\", root = \"src/plugin.fol\", fol_model = \"std\" });\n",
@@ -124,7 +119,7 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
 fn build_source_evaluator_rejects_unknown_artifact_fol_models() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    graph.add_exe({ name = \"app\", root = \"src/app.fol\", fol_model = \"hosted\" });\n",
         "    return;\n",
         "}\n",
@@ -153,7 +148,7 @@ fn build_source_evaluator_rejects_unknown_artifact_fol_models() {
 fn build_source_evaluator_supports_object_style_write_file_configs() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
         "    return;\n",
         "}\n",
@@ -186,7 +181,7 @@ fn build_source_evaluator_supports_object_style_write_file_configs() {
 fn build_source_evaluator_supports_object_style_copy_file_configs() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
         "    return;\n",
         "}\n",
@@ -219,7 +214,7 @@ fn build_source_evaluator_supports_object_style_copy_file_configs() {
 fn build_source_evaluator_supports_object_style_system_tool_configs() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var bindings = graph.add_system_tool({ tool = \"flatc\", output = \"gen/schema.fol\" });\n",
         "    return;\n",
         "}\n",
@@ -252,7 +247,7 @@ fn build_source_evaluator_supports_object_style_system_tool_configs() {
 fn build_source_evaluator_supports_object_style_codegen_configs() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var schema = graph.add_codegen({ kind = \"schema\", input = \"schema/api.yaml\", output = \"gen/api.fol\" });\n",
         "    return;\n",
         "}\n",
@@ -285,7 +280,7 @@ fn build_source_evaluator_supports_object_style_codegen_configs() {
 fn build_source_evaluator_keeps_generated_outputs_in_evaluated_programs() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
         "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
         "    return;\n",
@@ -324,7 +319,7 @@ fn build_source_evaluator_keeps_generated_outputs_in_evaluated_programs() {
 fn build_source_evaluator_keeps_mixed_generated_output_families() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var version = graph.write_file({ name = \"version\", path = \"gen/version.fol\", contents = \"generated\" });\n",
         "    var asset = graph.copy_file({ name = \"asset\", source = \"assets/logo.svg\", path = \"gen/logo.svg\" });\n",
         "    var tool = graph.add_system_tool({ tool = \"flatc\", output = \"gen/schema.fol\" });\n",
@@ -363,7 +358,7 @@ fn build_source_evaluator_keeps_mixed_generated_output_families() {
 fn build_source_evaluator_records_dependency_module_and_artifact_queries() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var core = graph.dependency({ alias = \"core\", package = \"org/core\" });\n",
         "    var module = core.module(\"root\");\n",
         "    var artifact = core.artifact(\"corelib\");\n",
@@ -405,7 +400,7 @@ fn build_source_evaluator_records_dependency_module_and_artifact_queries() {
 fn build_source_evaluator_records_dependency_step_and_generated_queries() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var core = graph.dependency({ alias = \"core\", package = \"org/core\" });\n",
         "    var step = core.step(\"check\");\n",
         "    var generated = core.generated(\"bindings\");\n",
@@ -447,7 +442,7 @@ fn build_source_evaluator_records_dependency_step_and_generated_queries() {
 fn build_source_evaluator_keeps_full_dependency_surface_usage_together() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var dep = graph.dependency({ alias = \"core\", package = \"org/core\", mode = \"on-demand\" });\n",
         "    var module = dep.module(\"root\");\n",
         "    var artifact = dep.artifact(\"corelib\");\n",
@@ -553,7 +548,7 @@ fn build_source_evaluator_keeps_dependency_queries_precise_for_build_add_dep_han
 fn build_source_evaluator_resolves_deferred_artifact_option_values_into_runtime_metadata() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var root = graph.option({ name = \"root\", kind = \"path\", default = \"src/demo.fol\" });\n",
         "    var target = graph.standard_target();\n",
         "    var optimize = graph.standard_optimize();\n",
@@ -593,7 +588,7 @@ fn build_source_evaluator_resolves_deferred_artifact_option_values_into_runtime_
 fn build_source_evaluator_applies_build_inputs_and_option_overrides_to_artifact_metadata() {
     let source = concat!(
         "pro[] build(): non = {\n",
-        "    var graph = .graph();\n",
+        "    var graph = .build().graph();\n",
         "    var root = graph.option({ name = \"root\", kind = \"path\", default = \"src/default.fol\" });\n",
         "    var target = graph.standard_target();\n",
         "    var optimize = graph.standard_optimize();\n",

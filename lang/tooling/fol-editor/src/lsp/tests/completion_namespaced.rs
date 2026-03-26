@@ -217,7 +217,7 @@ fn lsp_server_filters_echo_from_core_and_alloc_dot_completion() {
                 format!(
                     concat!(
                         "pro[] build(): non = {{\n",
-                        "    var graph = .graph();\n",
+                        "    var graph = .build().graph();\n",
                         "    graph.add_exe({{ name = \"demo\", root = \"src/main.fol\", fol_model = \"{}\" }});\n",
                         "}};\n",
                     ),
@@ -287,7 +287,7 @@ fn lsp_server_keeps_model_completion_context_isolated_across_workspace_members()
         root.join("app/build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var graph = .build().graph();\n",
                 "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"core\" });\n",
                 "};\n",
             ),
@@ -304,7 +304,7 @@ fn lsp_server_keeps_model_completion_context_isolated_across_workspace_members()
         root.join("tool/build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var graph = .build().graph();\n",
                 "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
                 "};\n",
             ),

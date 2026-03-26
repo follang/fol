@@ -199,7 +199,7 @@ fn lsp_server_filters_heap_type_surfaces_from_core_type_completion() {
         root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .graph();\n",
+                "    var graph = .build().graph();\n",
                 "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
                 "};\n",
             ),
@@ -249,6 +249,113 @@ fn lsp_server_filters_heap_type_surfaces_from_core_type_completion() {
     assert!(!labels.contains(&"seq".to_string()));
     assert!(!labels.contains(&"set".to_string()));
     assert!(!labels.contains(&"map".to_string()));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_returns_build_surface_completions_in_build_files() {
+    let (root, _) = sample_package_root("completion_build_surface");
+    let build_file = root.join("build.fol");
+    fs::write(
+        &build_file,
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = fs::read_to_string(&build_file).unwrap();
+    let uri = format!("file://{}", build_file.display());
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(500),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 10,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+
+    let labels = serde_json::from_value::<LspCompletionList>(completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(labels.contains(&"meta".to_string()));
+    assert!(labels.contains(&"add_dep".to_string()));
+    assert!(labels.contains(&"graph".to_string()));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_returns_dependency_handle_completions_in_build_files() {
+    let (root, _) = sample_package_root("completion_dependency_surface");
+    let build_file = root.join("build.fol");
+    fs::write(
+        &build_file,
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    var dep = build.add_dep({ alias = \"core\", source = \"pkg\", target = \"core\" });\n",
+            "    dep.\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = fs::read_to_string(&build_file).unwrap();
+    let uri = format!("file://{}", build_file.display());
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), &text);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(501),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 4,
+                        character: 8,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+
+    let labels = serde_json::from_value::<LspCompletionList>(completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(labels.contains(&"module".to_string()));
+    assert!(labels.contains(&"artifact".to_string()));
+    assert!(labels.contains(&"step".to_string()));
+    assert!(labels.contains(&"generated".to_string()));
 
     fs::remove_dir_all(root).ok();
 }

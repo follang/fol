@@ -250,7 +250,7 @@ fn lsp_server_formats_build_files_with_the_same_full_document_contract() {
     let root = temp_root("format_build");
     let build_path = root.join("build.fol");
     let build_uri = format!("file://{}", build_path.display());
-    let text = "pro[] build(): non = {\nvar graph = .graph();\nvar target = graph.standard_target();\nvar app = graph.add_exe({\nname = \"demo\",\nroot = \"src/main.fol\",\n});\ngraph.install(app);\n};\n";
+    let text = "pro[] build(): non = {\nvar graph = .build().graph();\nvar target = graph.standard_target();\nvar app = graph.add_exe({\nname = \"demo\",\nroot = \"src/main.fol\",\n});\ngraph.install(app);\n};\n";
     fs::write(&build_path, text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, build_uri.clone(), text);
@@ -274,7 +274,7 @@ fn lsp_server_formats_build_files_with_the_same_full_document_contract() {
     assert_eq!(edits.len(), 1);
     assert_eq!(
         edits[0].new_text,
-        "pro[] build(): non = {\n    var graph = .graph();\n    var target = graph.standard_target();\n    var app = graph.add_exe({\n        name = \"demo\",\n        root = \"src/main.fol\",\n    });\n    graph.install(app);\n};\n"
+        "pro[] build(): non = {\n    var graph = .build().graph();\n    var target = graph.standard_target();\n    var app = graph.add_exe({\n        name = \"demo\",\n        root = \"src/main.fol\",\n    });\n    graph.install(app);\n};\n"
     );
 
     fs::remove_dir_all(root).ok();
@@ -285,7 +285,7 @@ fn lsp_server_returns_no_build_file_formatting_edits_when_already_formatted() {
     let root = temp_root("format_build_noop");
     let build_path = root.join("build.fol");
     let build_uri = format!("file://{}", build_path.display());
-    let text = "pro[] build(): non = {\n    var graph = .graph();\n    var target = graph.standard_target();\n    graph.install(target);\n};\n";
+    let text = "pro[] build(): non = {\n    var graph = .build().graph();\n    var target = graph.standard_target();\n    graph.install(target);\n};\n";
     fs::write(&build_path, text).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     open_document(&mut server, build_uri.clone(), text);
@@ -647,7 +647,7 @@ fn lsp_server_keeps_active_fol_model_in_semantic_snapshots() {
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
-            "    var graph = .graph();\n",
+            "    var graph = .build().graph();\n",
             "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
             "};\n",
         ),
@@ -702,7 +702,7 @@ fn assert_semantic_model_via_hover(build_model: &str, expected: fol_typecheck::T
         format!(
             concat!(
                 "pro[] build(): non = {{\n",
-                "    var graph = .graph();\n",
+                "    var graph = .build().graph();\n",
                 "    graph.add_exe({{ name = \"demo\", root = \"src/main.fol\", fol_model = \"{}\" }});\n",
                 "}};\n",
             ),
@@ -2660,7 +2660,7 @@ fn lsp_server_surfaces_alloc_echo_model_diagnostics_from_open_documents() {
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
-            "    var graph = .graph();\n",
+            "    var graph = .build().graph();\n",
             "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"alloc\" });\n",
             "};\n",
         ),
@@ -2689,7 +2689,7 @@ fn lsp_server_surfaces_core_string_model_diagnostics_from_open_documents() {
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
-            "    var graph = .graph();\n",
+            "    var graph = .build().graph();\n",
             "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
             "};\n",
         ),
@@ -2718,7 +2718,7 @@ fn lsp_server_surfaces_core_heap_literal_boundary_from_open_documents() {
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
-            "    var graph = .graph();\n",
+            "    var graph = .build().graph();\n",
             "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
             "};\n",
         ),
