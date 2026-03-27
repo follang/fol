@@ -403,6 +403,9 @@ fn dependency_root_for_query(
             fol_package::PackageDependencySourceKind::Git => {
                 package_store_root.join(&dependency.alias)
             }
+            fol_package::PackageDependencySourceKind::Internal => {
+                package_store_root.join(&dependency.alias)
+            }
         });
     }
 

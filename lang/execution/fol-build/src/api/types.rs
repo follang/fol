@@ -423,8 +423,28 @@ impl SourceDirHandle {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DependencySourceKind {
+    Local,
+    PackageStore,
+    Git,
+    Internal,
+}
+
+impl DependencySourceKind {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Local => "loc",
+            Self::PackageStore => "pkg",
+            Self::Git => "git",
+            Self::Internal => "internal",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DependencyRequest {
     pub alias: String,
+    pub source_kind: DependencySourceKind,
     pub package: String,
     pub args: BTreeMap<String, DependencyArgValue>,
     pub evaluation_mode: Option<DependencyBuildEvaluationMode>,

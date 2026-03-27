@@ -835,7 +835,7 @@ fn workspace_typechecking_keeps_direct_std_import_declaration_facts() {
         &root,
         &[
             (
-                "std/fmt/lib.fol",
+                "std/fmt/root.fol",
                 concat!(
                     "typ[exp] Count: int;\n",
                     "var[exp] answer: Count = 42;\n",

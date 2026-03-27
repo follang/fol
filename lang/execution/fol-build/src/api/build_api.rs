@@ -537,12 +537,13 @@ impl<'a> BuildApi<'a> {
     ) -> Result<DependencyHandle, BuildApiError> {
         validate_build_name(&request.alias).map_err(super::types::BuildApiError::InvalidName)?;
         let alias = request.alias;
+        let source_kind = request.source_kind;
         let package = request.package;
         let evaluation_mode = request.evaluation_mode;
         let surface = request.surface;
         let module_id = self.graph.add_module(
             crate::graph::BuildModuleKind::Imported,
-            format!("{alias}:{package}"),
+            format!("{alias}:{}:{package}", source_kind.as_str()),
         );
         Ok(DependencyHandle {
             alias: alias.clone(),

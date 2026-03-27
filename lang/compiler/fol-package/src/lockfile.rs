@@ -208,6 +208,7 @@ fn source_kind_label(kind: PackageDependencySourceKind) -> &'static str {
         PackageDependencySourceKind::Local => "loc",
         PackageDependencySourceKind::PackageStore => "pkg",
         PackageDependencySourceKind::Git => "git",
+        PackageDependencySourceKind::Internal => "internal",
     }
 }
 
@@ -216,6 +217,7 @@ fn parse_source_kind(raw: &str) -> Result<PackageDependencySourceKind, PackageEr
         "loc" => Ok(PackageDependencySourceKind::Local),
         "pkg" => Ok(PackageDependencySourceKind::PackageStore),
         "git" => Ok(PackageDependencySourceKind::Git),
+        "internal" => Ok(PackageDependencySourceKind::Internal),
         _ => Err(PackageError::new(
             PackageErrorKind::InvalidInput,
             format!("package lockfile uses unsupported source kind '{raw}'"),

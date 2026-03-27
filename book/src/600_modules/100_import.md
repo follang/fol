@@ -9,7 +9,6 @@ use alias: source_kind = { source }
 
 Current source kinds are:
 - `loc` for local directory imports
-- `std` for standard-library directory imports
 - `pkg` for installed external packages
 
 ## What `use` imports
@@ -48,29 +47,6 @@ Also note:
 - no `build.fol` is required
 
 This makes `loc` useful for local workspace code, experiments, and monorepo-style sharing.
-
-### `std`
-
-`std` works like `loc`, except the directory is resolved from the toolchain's
-bundled standard-library root.
-
-So:
-
-- `std` imports are directory-backed
-- they are owned by the FOL toolchain
-- they ship with FOL under `lang/library/std`
-- they do not need user-managed package metadata in source code
-- users do not add `std` through `.build().add_dep(...)`
-
-Also note:
-
-- `std` is the importable library namespace
-- `core` and `memo` are capability modes selected through `fol_model`
-- `core` and `memo` are not imported with `use`
-- the bundled bootstrap surface is intentionally small right now:
-  - `std.fmt`
-  - `std.fmt.math`
-  - `std.io`
 
 ### `pkg`
 
@@ -131,29 +107,40 @@ So `use` and the build routine serve different jobs:
 - `pro[] build()` in `build.fol` = define package/build surface
 
 ## Standard library
-This is how including other libraries works, for example include `fmt` module from the bundled standard library:
+Bundled std is reached through the dependency system. In `build.fol`, add:
+
 ```
-use fmt: std = {"fmt"};
+build.add_dep({
+    alias = "std",
+    source = "internal",
+    target = "standard",
+});
+```
+
+Then import from the `std` dependency alias with `pkg`:
+
+```
+use std: pkg = {"std"};
 
 fun[] main(): int = {
-    return fmt::answer();
+    return std::fmt::answer();
 };
 ```
 To use only one namespace of `fmt`:
 ```
-use math: std = {"fmt/math"};
+use std: pkg = {"std"};
 
 fun[] main(): int = {
-    return math::answer();
+    return std::fmt::math::answer();
 };
 ```
 
 Using the bundled `std.io` bootstrap surface:
 ```
-use io: std = {"io"};
+use std: pkg = {"std"};
 
 fun[] main(): int = {
-    var shown: str = io::echo_str("hello");
+    var shown: str = std::io::echo_str("hello");
     return 7;
 };
 ```
@@ -181,7 +168,7 @@ External packages are imported through `pkg`:
 use space: pkg = {"space"};
 ```
 
-`pkg` imports are different from `loc` and `std`:
+`pkg` imports are different from `loc`:
 
 - the imported root is an installed package root
 - that root must contain `build.fol`

@@ -156,6 +156,20 @@ impl PackageSession {
         )
     }
 
+    pub fn load_internal_standard_package(&mut self) -> Result<PreparedPackage, PackageError> {
+        let std_root = self.config.std_root.clone().ok_or_else(|| {
+            let bundled = crate::bundled_std_root();
+            PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "internal dependency 'standard' requires bundled std at '{}' or an explicit --std-root <DIR> override",
+                    bundled.display()
+                ),
+            )
+        })?;
+        self.load_directory_package(Path::new(&std_root), PackageSourceKind::Standard)
+    }
+
     #[cfg(test)]
     pub(crate) fn loading_depth(&self) -> usize {
         self.loading_stack.len()
@@ -250,20 +264,28 @@ impl PackageSession {
 
         if let Some(store_root) = store_root {
             for dependency in metadata.dependencies.iter().filter(|dependency| {
-                dependency.source_kind == PackageDependencySourceKind::PackageStore
-                    && dependency.evaluation_mode == fol_build::DependencyBuildEvaluationMode::Eager
+                dependency.evaluation_mode == fol_build::DependencyBuildEvaluationMode::Eager
             }) {
-                let path_segments = dependency
-                    .target
-                    .split('/')
-                    .filter(|segment| !segment.trim().is_empty())
-                    .enumerate()
-                    .map(|(index, part)| UsePathSegment {
-                        separator: (index > 0).then_some(fol_parser::ast::UsePathSeparator::Slash),
-                        spelling: part.to_string(),
-                    })
-                    .collect::<Vec<_>>();
-                self.load_package_from_store(store_root, &path_segments)?;
+                match dependency.source_kind {
+                    PackageDependencySourceKind::PackageStore => {
+                        let path_segments = dependency
+                            .target
+                            .split('/')
+                            .filter(|segment| !segment.trim().is_empty())
+                            .enumerate()
+                            .map(|(index, part)| UsePathSegment {
+                                separator: (index > 0)
+                                    .then_some(fol_parser::ast::UsePathSeparator::Slash),
+                                spelling: part.to_string(),
+                            })
+                            .collect::<Vec<_>>();
+                        self.load_package_from_store(store_root, &path_segments)?;
+                    }
+                    PackageDependencySourceKind::Internal if dependency.target == "standard" => {
+                        self.load_internal_standard_package()?;
+                    }
+                    _ => {}
+                }
             }
         }
 

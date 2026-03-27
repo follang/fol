@@ -656,6 +656,21 @@ fn std_bundled_io_example_compiles_and_runs() {
 }
 
 #[test]
+fn std_explicit_pkg_example_compiles_and_runs() {
+    let fixture = PathBuf::from("examples/std_explicit_pkg");
+    let package_store_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("lang/library");
+    let compile_output =
+        compile_app_with_roots_keep_build_dir_expect_success(&fixture, None, Some(&package_store_root));
+    assert_artifact_paths_exist(&compile_output);
+
+    let binary = built_binary_path(&compile_output);
+    let run_output = Command::new(&binary)
+        .output()
+        .expect("should run compiled explicit std pkg example");
+    assert_exit_code(&run_output, 0);
+}
+
+#[test]
 fn pkg_basic_import_fixture_compiles_and_runs() {
     let root = fixture_root("pkg_basic_import");
     let app_root = root.join("app");

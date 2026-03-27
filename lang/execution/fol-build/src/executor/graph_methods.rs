@@ -698,6 +698,7 @@ impl BuildBodyExecutor {
                     origin,
                     kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
                         alias: alias.clone(),
+                        source_kind: crate::api::DependencySourceKind::PackageStore,
                         package,
                         args: forwarded_args,
                         evaluation_mode,

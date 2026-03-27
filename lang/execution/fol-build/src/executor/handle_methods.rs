@@ -95,11 +95,11 @@ impl BuildBodyExecutor {
                 let source = self.resolve_field_string(fields, "source").ok_or_else(|| {
                     self.invalid_config(method, "build.add_dep requires string field 'source'")
                 })?;
-                if !matches!(source.as_str(), "loc" | "pkg" | "git") {
+                if !matches!(source.as_str(), "loc" | "pkg" | "git" | "internal") {
                     return Err(self.invalid_config(
                         method,
                         format!(
-                            "dependency source must be one of: loc, pkg, git (got '{}')",
+                            "dependency source must be one of: loc, pkg, git, internal (got '{}')",
                             source
                         ),
                     ));
@@ -111,6 +111,15 @@ impl BuildBodyExecutor {
                     return Err(
                         self.invalid_config(method, "dependency 'target' must not be empty")
                     );
+                }
+                if source == "internal" && package != "standard" {
+                    return Err(self.invalid_config(
+                        method,
+                        format!(
+                            "dependency source 'internal' currently requires target = 'standard' (got '{}')",
+                            package
+                        ),
+                    ));
                 }
                 let git_version = match self.resolve_field_string(fields, "version") {
                     Some(version) => {
@@ -171,6 +180,13 @@ impl BuildBodyExecutor {
                     origin: None,
                     kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
                         alias: alias.clone(),
+                        source_kind: match source.as_str() {
+                            "loc" => crate::api::DependencySourceKind::Local,
+                            "pkg" => crate::api::DependencySourceKind::PackageStore,
+                            "git" => crate::api::DependencySourceKind::Git,
+                            "internal" => crate::api::DependencySourceKind::Internal,
+                            _ => unreachable!("validated dependency source"),
+                        },
                         package,
                         args,
                         evaluation_mode: Some(evaluation_mode),

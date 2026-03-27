@@ -120,6 +120,7 @@ fn build_evaluator_replays_graph_building_operations_into_a_validated_graph() {
                 origin: None,
                 kind: BuildEvaluationOperationKind::Dependency(DependencyRequest {
                     alias: "logtiny".to_string(),
+                    source_kind: crate::api::DependencySourceKind::PackageStore,
                     package: "org/logtiny".to_string(),
                     args: std::collections::BTreeMap::new(),
                     evaluation_mode: None,

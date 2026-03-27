@@ -132,7 +132,7 @@ same migration is too wide, this plan still requires:
 ## Epoch 1: Freeze The New Model
 
 ### Slice 1
-Status: pending
+Status: complete
 
 Write the finalized design contract into active docs before code movement.
 
@@ -145,7 +145,7 @@ Completion criteria:
 - docs stop describing `std` as a third `fol_model`
 
 ### Slice 2
-Status: pending
+Status: complete
 
 Add a top-level contract matrix test for the new split.
 
@@ -171,7 +171,7 @@ Completion criteria:
 - execution notes list all public seams that still encode the old model
 
 ### Slice 4
-Status: pending
+Status: complete
 
 Freeze the import-side target syntax for bundled std.
 
@@ -292,7 +292,7 @@ Completion criteria:
 ## Epoch 4: Introduce Bundled Internal Dependency Source
 
 ### Slice 15
-Status: pending
+Status: complete
 
 Define the public build API for internal shipped dependencies.
 
@@ -304,7 +304,7 @@ Completion criteria:
 - docs describe this as the shipped dependency source kind
 
 ### Slice 16
-Status: pending
+Status: complete
 
 Add build-eval validation for internal dependency configs.
 
@@ -314,7 +314,7 @@ Completion criteria:
 - bad `internal` target shapes fail clearly
 
 ### Slice 17
-Status: pending
+Status: complete
 
 Thread internal dependency requests through package metadata extraction.
 
@@ -325,7 +325,7 @@ Completion criteria:
   - `target = "standard"`
 
 ### Slice 18
-Status: pending
+Status: complete
 
 Teach dependency materialization/session code how to resolve bundled internal deps.
 
@@ -335,7 +335,7 @@ Completion criteria:
 - no network/package-store lookup is attempted for it
 
 ### Slice 19
-Status: pending
+Status: complete
 
 Add fetch/lockfile/frontend behavior for internal deps.
 
@@ -345,7 +345,7 @@ Completion criteria:
 - no fake git/pkg locator is used
 
 ### Slice 20
-Status: pending
+Status: complete
 
 Add a standalone example that declares bundled std explicitly in `build.fol`.
 
@@ -474,7 +474,7 @@ Completion criteria:
 ## Epoch 7: Settle Source Import Semantics
 
 ### Slice 31
-Status: pending
+Status: complete
 
 Choose whether bundled std continues to use special `std` import syntax.
 

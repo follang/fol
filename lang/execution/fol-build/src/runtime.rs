@@ -1,4 +1,5 @@
 use crate::artifact::BuildArtifactFolModel;
+use crate::api::DependencySourceKind;
 use crate::dependency::DependencyBuildEvaluationMode;
 use std::collections::BTreeMap;
 
@@ -135,6 +136,7 @@ impl BuildRuntimeStepBinding {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildRuntimeDependency {
     pub alias: String,
+    pub source_kind: DependencySourceKind,
     pub package: String,
     pub args: BTreeMap<String, String>,
     pub evaluation_mode: Option<DependencyBuildEvaluationMode>,
@@ -508,6 +510,7 @@ mod tests {
     fn runtime_dependency_records_capture_alias_package_and_query_kind() {
         let dependency = BuildRuntimeDependency {
             alias: "core".to_string(),
+            source_kind: crate::api::DependencySourceKind::PackageStore,
             package: "org/core".to_string(),
             args: BTreeMap::from([("target".to_string(), "wasm32-freestanding".to_string())]),
             evaluation_mode: Some(DependencyBuildEvaluationMode::Lazy),

@@ -419,6 +419,7 @@ mod tests {
         let dependency = api
             .dependency(DependencyRequest {
                 alias: "logtiny".to_string(),
+                source_kind: crate::DependencySourceKind::PackageStore,
                 package: "org/logtiny".to_string(),
                 args: std::collections::BTreeMap::from([
                     (

@@ -141,7 +141,7 @@ use super::*;
         fs::create_dir_all(&app_root)
             .expect("Should create the importing package root fixture directory");
         fs::write(
-            std_root.join("fmt/lib.fol"),
+            std_root.join("fmt/root.fol"),
             "fun[exp] shadow(): int = {\n    return 42;\n};\n",
         )
         .expect("Should write the override std fmt fixture");

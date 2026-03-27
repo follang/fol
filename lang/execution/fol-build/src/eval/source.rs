@@ -222,6 +222,7 @@ pub(super) fn build_evaluated_program(
                 .collect::<Result<std::collections::BTreeMap<_, _>, _>>()?;
             Ok(BuildRuntimeDependency {
                 alias: request.alias.clone(),
+                source_kind: request.source_kind.clone(),
                 package: request.package.clone(),
                 args,
                 evaluation_mode: request.evaluation_mode,

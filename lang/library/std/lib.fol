@@ -1,5 +1,3 @@
-use fmt: loc = {"fmt"};
-
 fun[exp] shipped_answer(): int = {
-    return fmt::answer();
+    return 7;
 };

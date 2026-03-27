@@ -828,7 +828,69 @@ fn build_source_evaluator_rejects_invalid_dependency_sources_with_exact_diagnost
 
     assert_eq!(
         error.message(),
-        "build.add_dep config is invalid: dependency source must be one of: loc, pkg, git (got 'http')"
+        "build.add_dep config is invalid: dependency source must be one of: loc, pkg, git, internal (got 'http')"
+    );
+}
+
+#[test]
+fn build_source_evaluator_accepts_internal_standard_dependencies() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("internal standard dependency should evaluate")
+        .expect("build body should produce operations");
+
+    assert_eq!(evaluated.result.dependency_requests.len(), 1);
+    assert_eq!(evaluated.result.dependency_requests[0].alias, "std");
+    assert_eq!(
+        evaluated.result.dependency_requests[0].source_kind,
+        crate::DependencySourceKind::Internal
+    );
+    assert_eq!(evaluated.result.dependency_requests[0].package, "standard");
+}
+
+#[test]
+fn build_source_evaluator_rejects_invalid_internal_dependency_targets() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var build = .build();\n",
+        "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+        "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"fmt\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("invalid internal dependency target should fail");
+
+    assert_eq!(
+        error.message(),
+        "build.add_dep config is invalid: dependency source 'internal' currently requires target = 'standard' (got 'fmt')"
     );
 }
 
@@ -1324,6 +1386,7 @@ fn evaluated_build_program_surface_keeps_runtime_metadata_and_graph_result() {
         )],
         dependencies: vec![crate::runtime::BuildRuntimeDependency {
             alias: "core".to_string(),
+            source_kind: crate::api::DependencySourceKind::PackageStore,
             package: "org/core".to_string(),
             args: std::collections::BTreeMap::new(),
             evaluation_mode: None,

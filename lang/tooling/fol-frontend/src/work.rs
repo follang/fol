@@ -182,6 +182,7 @@ fn dependency_kind_label(kind: fol_package::PackageDependencySourceKind) -> &'st
         fol_package::PackageDependencySourceKind::Local => "loc",
         fol_package::PackageDependencySourceKind::PackageStore => "pkg",
         fol_package::PackageDependencySourceKind::Git => "git",
+        fol_package::PackageDependencySourceKind::Internal => "internal",
     }
 }
 

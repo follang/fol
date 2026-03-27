@@ -305,6 +305,7 @@ pub fn fetch_workspace_with_config(
                     PackageDependencySourceKind::Local => "loc",
                     PackageDependencySourceKind::PackageStore => "pkg",
                     PackageDependencySourceKind::Git => "git",
+                    PackageDependencySourceKind::Internal => "internal",
                 },
                 package.evaluation_mode.as_str()
             ),
@@ -518,6 +519,49 @@ fn resolve_workspace_fetch(
                                 .to_string(),
                         });
                     }
+                }
+                fol_package::PackageDependencySourceKind::Internal => {
+                    if dependency.target != "standard" {
+                        return Err(FrontendError::new(
+                            crate::FrontendErrorKind::InvalidInput,
+                            format!(
+                                "internal dependency '{}' must use target 'standard' (got '{}')",
+                                dependency.alias, dependency.target
+                            ),
+                        ));
+                    }
+                    let std_root = workspace
+                        .std_root_override
+                        .clone()
+                        .or_else(fol_package::available_bundled_std_root)
+                        .ok_or_else(|| {
+                            FrontendError::new(
+                                crate::FrontendErrorKind::InvalidInput,
+                                format!(
+                                    "internal dependency '{}' requires bundled std or an explicit --std-root <DIR> override",
+                                    dependency.alias
+                                ),
+                            )
+                        })?;
+                    let alias_root = package_store_root.join(&dependency.alias);
+                    if alias_root.is_dir() {
+                        std::fs::remove_dir_all(&alias_root).map_err(FrontendError::from)?;
+                    } else if alias_root.exists() {
+                        std::fs::remove_file(&alias_root).map_err(FrontendError::from)?;
+                    }
+                    copy_package_projection(&std_root, &alias_root)?;
+                    let loaded = package_session
+                        .load_materialized_package(&alias_root)
+                        .map_err(FrontendError::from)?;
+                    resolved_dependencies.push(ResolvedDependencyPackage {
+                        alias: dependency.alias.clone(),
+                        root: PathBuf::from(loaded.identity.canonical_root.clone()),
+                        name: loaded.identity.display_name.clone(),
+                        version: String::new(),
+                        source_kind: PackageDependencySourceKind::Internal,
+                        evaluation_mode: dependency.evaluation_mode,
+                    });
+                    queued_roots.push(PathBuf::from(loaded.identity.canonical_root));
                 }
             }
         }
@@ -856,6 +900,49 @@ mod tests {
             .contains("prepared 1 workspace package(s) and resolved 1 package root(s) into"));
         assert_eq!(result.artifacts.len(), 5);
         assert_eq!(result.artifacts[4].path, Some(app));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn fetch_workspace_materializes_internal_standard_dependencies_under_alias() {
+        let root = temp_root("internal_standard");
+        let app = root.join("app");
+        fs::create_dir_all(app.join("src")).unwrap();
+        fs::write(
+            app.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "    var graph = build.graph();\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+                "};\n",
+            ),
+        )
+        .unwrap();
+        fs::write(app.join("src/main.fol"), "fun[] main(): int = { return 0; };\n").unwrap();
+
+        let workspace = FrontendWorkspace {
+            root: WorkspaceRoot::new(root.clone()),
+            members: vec![PackageRoot::new(app.clone())],
+            std_root_override: None,
+            package_store_root_override: Some(root.join(".fol/pkg")),
+            build_root: root.join(".fol/build"),
+            cache_root: root.join(".fol/cache"),
+            git_cache_root: root.join(".fol/cache/git"),
+        };
+
+        let result = fetch_workspace(&workspace).unwrap();
+        let std_alias_root = root.join(".fol/pkg/std");
+
+        assert!(result
+            .artifacts
+            .iter()
+            .any(|artifact| artifact.name == "std:internal:eager"));
+        assert!(std_alias_root.join("build.fol").is_file());
+        assert!(std_alias_root.join("fmt/lib.fol").is_file());
 
         fs::remove_dir_all(root).ok();
     }

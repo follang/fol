@@ -340,6 +340,7 @@ pro[] build(): non = {
 - `examples/std_cli`
 - `examples/std_bundled_fmt`
 - `examples/std_bundled_io`
+- `examples/std_explicit_pkg`
 - `examples/std_echo_min`
 - `examples/std_logtiny_git`
 - `examples/std_named_calls`

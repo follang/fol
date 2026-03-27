@@ -2,17 +2,31 @@
 
 FOL ships its standard library source with the toolchain.
 
-Normal usage:
+Finalized design contract:
 
-- `std` is resolved from the bundled tree at `lang/library/std`
-- users do not add `std` as a dependency
+- public capability modes are only:
+  - `core`
+  - `memo`
+- bundled standard-library package identity is:
+  - `standard`
+- the normal dependency alias in user projects is:
+  - `std`
+- source code should reach bundled std through the dependency system with `pkg`
+  imports, for example:
+  - `use std: pkg = {std};`
+
+Normal build usage:
+
 - users do not download `std` separately
+- users add the bundled standard library explicitly in `build.fol`:
 
-Model rules:
-
-- `fol_model = "core"`: `use std ...` is forbidden
-- `fol_model = "memo"`: `use std ...` is forbidden
-- `fol_model = "std"`: `use std ...` is allowed
+```fol
+build.add_dep({
+    alias = "std",
+    source = "internal",
+    target = "standard",
+});
+```
 
 Implementation split:
 
@@ -33,11 +47,11 @@ The FOL distribution should be read as three separate pieces:
   - `lang/library/std`
 - optional external dependencies:
   - added through `.build().add_dep(...)`
-  - not required for normal `std` usage
+  - bundled std uses the same dependency surface with `source = "internal"`
 
 Import rule:
 
-- only `std` is imported from source code
+- only `std` is imported from source code as a dependency alias
 - `core` and `memo` are selected through `fol_model`, not imported
 
 An explicit `--std-root <DIR>` override may still exist for development and testing, but it is not the normal user path.
@@ -79,6 +93,7 @@ Canonical bootstrap example packages:
 
 - `examples/std_bundled_fmt`
 - `examples/std_bundled_io`
+- `examples/std_explicit_pkg`
 
 Current shipped public routines:
 

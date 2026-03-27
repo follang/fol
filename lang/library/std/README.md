@@ -2,13 +2,21 @@
 
 This is the bundled FOL standard-library root.
 
-Normal toolchain behavior should resolve:
+Normal projects should declare:
 
-- `use ...: std = {...}`
+```fol
+build.add_dep({
+    alias = "std",
+    source = "internal",
+    target = "standard",
+});
+```
 
-against this tree automatically when:
+and then import bundled std through the dependency alias, for example:
 
-- `fol_model = "std"`
+```fol
+use std: pkg = {std};
+```
 
 Bundled std is the normal path.
 
@@ -59,6 +67,7 @@ Canonical bootstrap examples:
 
 - `examples/std_bundled_fmt`
 - `examples/std_bundled_io`
+- `examples/std_explicit_pkg`
 
 Anything outside that list should not be documented as already shipped.
 

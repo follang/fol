@@ -97,6 +97,7 @@ fn positive_runtime_model_examples() -> &'static [(&'static str, &'static str)] 
         ("examples/memo_surface_showcase", "memo"),
         ("examples/std_bundled_fmt", "std"),
         ("examples/std_bundled_io", "std"),
+        ("examples/std_explicit_pkg", "std"),
         ("examples/std_cli", "std"),
         ("examples/std_echo_min", "std"),
         ("examples/std_named_calls", "std"),
@@ -1497,6 +1498,7 @@ fn test_cli_build_emits_rust_for_model_examples() {
         ),
         ("examples/std_cli", "use fol_runtime::std as rt;"),
         ("examples/std_bundled_fmt", "use fol_runtime::std as rt;"),
+        ("examples/std_explicit_pkg", "use fol_runtime::std as rt;"),
         ("examples/std_echo_min", "use fol_runtime::std as rt;"),
         ("examples/std_named_calls", "use fol_runtime::std as rt;"),
         ("examples/std_surface_showcase", "use fol_runtime::std as rt;"),
@@ -1504,8 +1506,15 @@ fn test_cli_build_emits_rust_for_model_examples() {
 
     for (path, expected_import) in cases {
         let root = temp_example_root(path);
-
-        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        let build = if path == "examples/std_explicit_pkg" {
+            run_fol_with_store_in_dir(
+                &root,
+                &repo_root().join("lang/library"),
+                &["code", "build", "--keep-build-dir"],
+            )
+        } else {
+            run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"])
+        };
         assert!(
             build.status.success(),
             "example '{path}' should build: stdout=\n{}\nstderr=\n{}",
@@ -1551,6 +1560,7 @@ fn test_cli_example_build_summaries_surface_expected_models() {
         ("examples/memo_collections", "fol_model=memo"),
         ("examples/memo_surface_showcase", "fol_model=memo"),
         ("examples/std_bundled_fmt", "fol_model=std"),
+        ("examples/std_explicit_pkg", "fol_model=std"),
         ("examples/std_cli", "fol_model=std"),
         ("examples/std_echo_min", "fol_model=std"),
         ("examples/std_named_calls", "fol_model=std"),
@@ -1559,7 +1569,11 @@ fn test_cli_example_build_summaries_surface_expected_models() {
 
     for (path, expected_model) in cases {
         let root = temp_example_root(path);
-        let build = run_fol_in_dir(&root, &["code", "build"]);
+        let build = if path == "examples/std_explicit_pkg" {
+            run_fol_with_store_in_dir(&root, &repo_root().join("lang/library"), &["code", "build"])
+        } else {
+            run_fol_in_dir(&root, &["code", "build"])
+        };
         let stdout = String::from_utf8_lossy(&build.stdout);
         assert!(
             build.status.success(),
@@ -1581,6 +1595,7 @@ fn test_cli_std_examples_run_and_print_expected_output() {
     let cases = [
         ("examples/std_bundled_fmt", "7"),
         ("examples/std_bundled_io", "std-io"),
+        ("examples/std_explicit_pkg", "std-explicit-pkg"),
         ("examples/std_cli", "std-ready"),
         ("examples/std_echo_min", "9"),
         ("examples/std_named_calls", "host-ok-ready"),
@@ -1589,7 +1604,15 @@ fn test_cli_std_examples_run_and_print_expected_output() {
 
     for (path, expected_text) in cases {
         let root = temp_example_root(path);
-        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        let build = if path == "examples/std_explicit_pkg" {
+            run_fol_with_store_in_dir(
+                &root,
+                &repo_root().join("lang/library"),
+                &["code", "build", "--keep-build-dir"],
+            )
+        } else {
+            run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"])
+        };
         let build_stdout = String::from_utf8_lossy(&build.stdout);
         assert!(
             build.status.success(),
@@ -1771,7 +1794,7 @@ fn test_bundled_std_tree_stays_source_only_and_bootstrap_honest() {
         "bundled std should ship a real root source file"
     );
     assert!(
-        root.join("fmt/lib.fol").exists(),
+        root.join("fmt/root.fol").exists(),
         "bundled std bootstrap should ship std.fmt"
     );
     assert!(
@@ -3132,6 +3155,7 @@ fn test_docs_reference_real_example_packages() {
         "examples/memo_surface_showcase",
         "examples/std_bundled_fmt",
         "examples/std_bundled_io",
+        "examples/std_explicit_pkg",
         "examples/std_cli",
         "examples/std_echo_min",
         "examples/std_logtiny_git",
@@ -3239,6 +3263,130 @@ fn test_bundled_std_docs_and_readme_keep_the_shipped_surface_honest() {
 }
 
 #[test]
+fn test_standard_dependency_contract_matrix_holds() {
+    let temp_root = unique_temp_root("standard_dependency_contract");
+    let store_root = temp_root.join("pkg");
+    let core_root = temp_root.join("core_app");
+    let core_fail_root = temp_root.join("core_fail");
+    let memo_root = temp_root.join("memo_app");
+    let std_root = temp_root.join("std_app");
+    let missing_root = temp_root.join("missing_std_app");
+
+    write_model_app_package(
+        &core_root,
+        "core_app",
+        "core",
+        "fun[] main(): int = {\n    return 0;\n};\n",
+        false,
+    );
+    write_model_app_package(
+        &core_fail_root,
+        "core_fail",
+        "core",
+        "fun[] main(): int = {\n    var bad: str = \"nope\";\n    return .len(bad);\n};\n",
+        false,
+    );
+    write_model_app_package(
+        &memo_root,
+        "memo_app",
+        "memo",
+        "fun[] main(): int = {\n    var value: str = \"memo\";\n    return .len(value);\n};\n",
+        false,
+    );
+    write_model_app_package(
+        &std_root,
+        "std_app",
+        "std",
+        concat!(
+            "use std: pkg = {std};\n",
+            "fun[] main(): int = {\n",
+            "    return std::fmt::double(21);\n",
+            "};\n",
+        ),
+        false,
+    );
+    let std_build = std::fs::read_to_string(std_root.join("build.fol"))
+        .expect("std build should exist");
+    std::fs::write(
+        std_root.join("build.fol"),
+        std_build.replace(
+            "    var graph = build.graph();\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n    var graph = build.graph();\n",
+        ),
+    )
+    .expect("std build should add bundled standard dependency");
+
+    write_model_app_package(
+        &missing_root,
+        "missing_std_app",
+        "std",
+        concat!(
+            "use std: pkg = {std};\n",
+            "fun[] main(): int = {\n",
+            "    return std::fmt::answer();\n",
+            "};\n",
+        ),
+        false,
+    );
+
+    let core_build = run_fol_in_dir(&core_root, &["code", "build"]);
+    assert!(
+        core_build.status.success(),
+        "core app should build without std dependency: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&core_build.stdout),
+        String::from_utf8_lossy(&core_build.stderr)
+    );
+
+    let memo_build = run_fol_in_dir(&memo_root, &["code", "build"]);
+    assert!(
+        memo_build.status.success(),
+        "memo app should build without std dependency: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&memo_build.stdout),
+        String::from_utf8_lossy(&memo_build.stderr)
+    );
+
+    let core_fail = run_fol_in_dir(&core_fail_root, &["code", "build"]);
+    assert!(
+        !core_fail.status.success(),
+        "core app should reject heap-backed families: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&core_fail.stdout),
+        String::from_utf8_lossy(&core_fail.stderr)
+    );
+    assert!(String::from_utf8_lossy(&core_fail.stderr).contains("fol_model = core"));
+
+    let missing_build = run_fol_with_store_in_dir(&missing_root, &store_root, &["code", "build"]);
+    assert!(
+        !missing_build.status.success(),
+        "pkg std import without declared dependency materialization should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&missing_build.stdout),
+        String::from_utf8_lossy(&missing_build.stderr)
+    );
+
+    let workspace = fol_frontend::FrontendWorkspace {
+        root: fol_frontend::WorkspaceRoot::new(std_root.clone()),
+        members: vec![fol_frontend::PackageRoot::new(std_root.clone())],
+        std_root_override: None,
+        package_store_root_override: Some(store_root.clone()),
+        build_root: std_root.join(".fol/build"),
+        cache_root: std_root.join(".fol/cache"),
+        git_cache_root: std_root.join(".fol/cache/git"),
+        install_prefix: std_root.join(".fol/out"),
+    };
+    fol_frontend::fetch_workspace(&workspace)
+        .expect("internal standard dependency should materialize");
+
+    let std_build_output = run_fol_with_store_in_dir(&std_root, &store_root, &["code", "build"]);
+    assert!(
+        std_build_output.status.success(),
+        "declared internal standard dependency should unlock pkg std imports: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&std_build_output.stdout),
+        String::from_utf8_lossy(&std_build_output.stderr)
+    );
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
 fn test_bundled_std_bootstrap_contract_matrix_stays_coherent() {
     use fol_editor::{
         EditorConfig, EditorDocumentUri, EditorLspServer, JsonRpcId, JsonRpcNotification,
@@ -3330,7 +3478,15 @@ fn test_bundled_std_bootstrap_contract_matrix_stays_coherent() {
 fn test_positive_runtime_model_examples_build_with_expected_models_and_runtime_imports() {
     for (path, expected_model) in positive_runtime_model_examples() {
         let root = temp_example_root(path);
-        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        let build = if *path == "examples/std_explicit_pkg" {
+            run_fol_with_store_in_dir(
+                &root,
+                &repo_root().join("lang/library"),
+                &["code", "build", "--keep-build-dir"],
+            )
+        } else {
+            run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"])
+        };
         let stdout = String::from_utf8_lossy(&build.stdout);
         assert!(
             build.status.success(),

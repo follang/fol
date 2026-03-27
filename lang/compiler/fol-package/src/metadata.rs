@@ -29,6 +29,7 @@ pub enum PackageDependencySourceKind {
     Local,
     PackageStore,
     Git,
+    Internal,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -560,6 +561,19 @@ fn materialize_package_metadata_from_build(
         };
         match parsed.source_kind {
             PackageDependencySourceKind::Git => {}
+            PackageDependencySourceKind::Internal => {
+                if parsed.target != "standard" {
+                    return Err(PackageError::with_origin(
+                        PackageErrorKind::InvalidInput,
+                        format!(
+                            "package dependency '{}' in '{}' may use internal source only with target 'standard'",
+                            parsed.alias,
+                            path.display()
+                        ),
+                        dependency_origin.clone(),
+                    ));
+                }
+            }
             _ => {
                 if parsed.git_version.is_some() {
                     return Err(PackageError::with_origin(
@@ -670,11 +684,12 @@ fn parse_dependency_decl(
         "loc" => PackageDependencySourceKind::Local,
         "pkg" => PackageDependencySourceKind::PackageStore,
         "git" => PackageDependencySourceKind::Git,
+        "internal" => PackageDependencySourceKind::Internal,
         other => {
             return Err(PackageError::with_origin(
                 PackageErrorKind::InvalidInput,
                 format!(
-                    "package dependency '{}' in '{}' uses unsupported source '{}'; expected loc, pkg, or git",
+                    "package dependency '{}' in '{}' uses unsupported source '{}'; expected loc, pkg, git, or internal",
                     alias,
                     path.display(),
                     other
@@ -972,6 +987,33 @@ mod tests {
         );
         assert_eq!(metadata.dependencies[1].git_version, None);
         assert_eq!(metadata.dependencies[1].git_hash, None);
+
+        fs::remove_dir_all(build_path.parent().unwrap()).ok();
+    }
+
+    #[test]
+    fn build_metadata_materializer_keeps_internal_standard_dependencies() {
+        let build_path = write_build_fixture(
+            "build_dep_internal_standard",
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"demo\", version = \"1.0.0\" });\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "}\n",
+            ),
+        );
+
+        let metadata = parse_package_metadata_from_build(&build_path)
+            .expect("internal standard dependency should materialize");
+
+        assert_eq!(metadata.dependencies.len(), 1);
+        assert_eq!(metadata.dependencies[0].alias, "std");
+        assert_eq!(
+            metadata.dependencies[0].source_kind,
+            PackageDependencySourceKind::Internal
+        );
+        assert_eq!(metadata.dependencies[0].target, "standard");
 
         fs::remove_dir_all(build_path.parent().unwrap()).ok();
     }

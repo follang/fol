@@ -106,6 +106,18 @@ fn package_session_defaults_std_root_to_bundled_tree_when_unspecified() {
 }
 
 #[test]
+fn package_session_can_load_internal_standard_package() {
+    let mut session = PackageSession::with_config(PackageConfig::default());
+
+    let loaded = session
+        .load_internal_standard_package()
+        .expect("package session should load bundled internal standard package");
+
+    assert_eq!(loaded.source_kind(), PackageSourceKind::Standard);
+    assert_eq!(loaded.identity.display_name, "standard");
+}
+
+#[test]
 fn package_session_caches_prepared_packages_by_identity() {
     let mut session = PackageSession::new();
     let identity = PackageIdentity {
