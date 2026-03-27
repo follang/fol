@@ -327,13 +327,13 @@ Repo-wide stale sweep for:
 in active source, tests, docs, and examples.
 
 ### Slice 31
-Status: pending
+Status: complete
 
 Add one top-level scan test that fails if stale `fol_runtime::alloc` references
 reappear in the active repo surface.
 
 ### Slice 32
-Status: pending
+Status: complete
 
 Update docs that explain runtime tiers so the internal implementation seam is
 named `memo` consistently.
@@ -341,7 +341,7 @@ named `memo` consistently.
 ## Epoch 10: Bundled Std Phase-2 Closure
 
 ### Slice 33
-Status: pending
+Status: complete
 
 Update:
 
@@ -352,7 +352,7 @@ Update:
 to list exactly the new shipped bundled-std routines and examples.
 
 ### Slice 34
-Status: pending
+Status: complete
 
 Update contributor guidance so future std additions must:
 
@@ -362,7 +362,7 @@ Update contributor guidance so future std additions must:
 - avoid overstating unshipped surfaces
 
 ### Slice 35
-Status: pending
+Status: complete
 
 Add one top-level “shipped std honesty” matrix test that pins:
 
@@ -371,16 +371,16 @@ Add one top-level “shipped std honesty” matrix test that pins:
 - current canonical examples
 
 ### Slice 36
-Status: pending
+Status: complete
 
 Run `make build`.
 
 ### Slice 37
-Status: pending
+Status: complete
 
 Run `make test`.
 
 ### Slice 38
-Status: pending
+Status: complete
 
 Only if both pass, mark the plan complete.

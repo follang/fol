@@ -3500,6 +3500,10 @@ fn test_bundled_std_docs_and_readme_keep_the_shipped_surface_honest() {
         "lang/library/std/fmt/root.fol",
         "lang/library/std/fmt/math/lib.fol",
         "lang/library/std/io/lib.fol",
+        "examples/std_bundled_fmt/build.fol",
+        "examples/std_bundled_io/build.fol",
+        "examples/std_alias_pkg/build.fol",
+        "examples/std_substrate_echo/build.fol",
     ] {
         assert!(
             repo_root().join(path).is_file(),
@@ -3550,6 +3554,60 @@ fn test_bundled_std_docs_and_readme_keep_the_shipped_surface_honest() {
             "bundled std readme should not claim unshipped surface '{forbidden}'"
         );
     }
+}
+
+#[test]
+fn test_active_repo_surface_keeps_runtime_memo_name_and_no_stale_alloc_refs() {
+    let tracked_roots = [
+        "AGENTS.md",
+        "docs",
+        "book",
+        "examples",
+        "lang/library/std",
+        "lang/execution/fol-runtime/src",
+        "lang/execution/fol-backend/src",
+        "lang/tooling/fol-frontend/src",
+        "lang/tooling/fol-editor/src",
+        "test/integration_tests",
+    ];
+
+    let stale_needles = [
+        "fol_runtime::alloc",
+        "use fol_runtime::alloc",
+        "alloc as rt",
+        "runtime_module=fol_runtime::alloc",
+        "base_alloc_tier",
+        "pub mod alloc;",
+        "include_str!(\"alloc.rs\")",
+    ];
+
+    for root in tracked_roots {
+        let path = repo_root().join(root);
+        let mut command = std::process::Command::new("rg");
+        command.current_dir(repo_root()).args(["-n", "--fixed-strings"]);
+        command.arg("-g").arg("!test/integration_tests/integration_editor_and_build.rs");
+        for needle in stale_needles {
+            command.arg("-e").arg(needle);
+        }
+        let output = command
+            .arg(&path)
+            .output()
+            .expect("repo stale-name scan should run");
+
+        assert!(
+            !output.status.success(),
+            "active repo surface '{}' should not keep stale alloc runtime refs:\n{}",
+            root,
+            String::from_utf8_lossy(&output.stdout)
+        );
+    }
+
+    let runtime_models = std::fs::read_to_string(repo_root().join("docs/runtime-models.md"))
+        .expect("runtime-model docs should exist");
+    assert!(
+        runtime_models.contains("fol_runtime::memo"),
+        "runtime-model docs should name the internal memo seam"
+    );
 }
 
 #[test]

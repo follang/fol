@@ -124,5 +124,7 @@ Runtime-model reminder:
 Bundled std reminder:
 
 - `std` ships with FOL under `lang/library/std`
-- users do not add `std` through `.build().add_dep(...)`
-- normal hosted packages should rely on bundled `std`, not manual std setup
+- hosted packages add bundled std explicitly through:
+  `.build().add_dep({ alias = "std", source = "internal", target = "standard" })`
+- normal hosted packages should rely on the bundled shipped `std`, not an
+  external replacement package

@@ -253,7 +253,8 @@ Implemented today:
 - dynamic/string `.len(...)` requires `memo`
 - routed `run` / `test` are independent from bundled std presence
 - emitted Rust imports the matching internal runtime module
-- public `fol_model = "memo"` currently maps to the internal heap runtime module
+- public `fol_model = "memo"` currently maps to the internal heap runtime
+  module `fol_runtime::memo`
 - packages import bundled `std` only through explicit internal dependency
   declaration
 
