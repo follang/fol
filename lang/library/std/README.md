@@ -24,6 +24,13 @@ Use an explicit `--std-root <DIR>` override only for development and testing.
 
 `core` and `memo` are not imported from here. They remain compiler/runtime capability modes.
 
+Phase-2 scope:
+
+- bundled `std` should remain intentionally small
+- only real shipped public names should be documented here
+- the internal runtime `alloc` -> `memo` rename is implementation cleanup, not
+  a new public library family
+
 External dependencies stay separate from bundled std.
 
 - bundled std:
@@ -42,9 +49,13 @@ The current bundled bootstrap surface is intentionally tiny:
 
 - `std.fmt.answer(): int`
 - `std.fmt.double(int): int`
+- `std.fmt.triple(int): int`
+- `std.fmt.sum2(int, int): int`
 - `std.fmt.math.answer(): int`
 - `std.io.echo_int(int): int`
 - `std.io.echo_str(str): str`
+- `std.io.echo_bool(bol): bol`
+- `std.io.echo_chr(chr): chr`
 
 That is enough to prove:
 
@@ -69,9 +80,13 @@ Current shipped public routines:
 
 - `fmt::answer(): int`
 - `fmt::double(int): int`
+- `fmt::triple(int): int`
+- `fmt::sum2(int, int): int`
 - `fmt::math::answer(): int`
 - `io::echo_int(int): int`
 - `io::echo_str(str): str`
+- `io::echo_bool(bol): bol`
+- `io::echo_chr(chr): chr`
 
 Canonical bootstrap examples:
 

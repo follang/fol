@@ -1712,7 +1712,7 @@ fn test_cli_example_build_summaries_surface_expected_models() {
 #[test]
 fn test_cli_std_examples_run_and_print_expected_output() {
     let cases = [
-        ("examples/std_bundled_fmt", "7"),
+        ("examples/std_bundled_fmt", "13"),
         ("examples/std_bundled_io", "std-io"),
         ("examples/std_explicit_pkg", "std-explicit-pkg"),
         ("examples/std_cli", "std-ready"),
@@ -1819,7 +1819,7 @@ fn test_bundled_std_discovery_stays_coherent_across_cli_and_editor() {
         String::from_utf8_lossy(&run.stderr)
     );
     assert!(
-        String::from_utf8_lossy(&run.stdout).contains("7"),
+        String::from_utf8_lossy(&run.stdout).contains("13"),
         "bundled std example should print through hosted std flow: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&run.stdout),
         String::from_utf8_lossy(&run.stderr)
@@ -1896,6 +1896,12 @@ fn test_bundled_std_io_example_builds_and_runs_without_override() {
     assert!(
         stdout.contains("std-io"),
         "bundled std.io example should print through the std.io wrapper: stdout=\n{}\nstderr=\n{}",
+        stdout,
+        String::from_utf8_lossy(&run.stderr)
+    );
+    assert!(
+        stdout.contains("true") && stdout.contains("z"),
+        "bundled std.io example should exercise the new bool/char wrappers too: stdout=\n{}\nstderr=\n{}",
         stdout,
         String::from_utf8_lossy(&run.stderr)
     );
@@ -3489,15 +3495,36 @@ fn test_bundled_std_docs_and_readme_keep_the_shipped_surface_honest() {
     let bundled_std_readme = std::fs::read_to_string(repo_root().join("lang/library/std/README.md"))
         .expect("bundled std readme should exist");
 
+    for path in [
+        "lang/library/std/lib.fol",
+        "lang/library/std/fmt/root.fol",
+        "lang/library/std/fmt/math/lib.fol",
+        "lang/library/std/io/lib.fol",
+    ] {
+        assert!(
+            repo_root().join(path).is_file(),
+            "bundled std shipped-surface contract should keep file '{}'",
+            path
+        );
+    }
+    assert!(
+        !repo_root().join("lang/library/std/os").exists(),
+        "bundled std should not claim std.os before it ships honest source"
+    );
+
     for needle in [
         "std.fmt",
         "std.fmt.math",
         "std.io",
         "fmt::answer(): int",
         "fmt::double(int): int",
+        "fmt::triple(int): int",
+        "fmt::sum2(int, int): int",
         "fmt::math::answer(): int",
         "io::echo_int(int): int",
         "io::echo_str(str): str",
+        "io::echo_bool(bol): bol",
+        "io::echo_chr(chr): chr",
         "examples/std_bundled_fmt",
         "examples/std_bundled_io",
         "examples/std_alias_pkg",

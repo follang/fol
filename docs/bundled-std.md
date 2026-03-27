@@ -2,6 +2,13 @@
 
 FOL ships its standard library source with the toolchain.
 
+Current phase:
+
+- bundled `std` is still intentionally small
+- only actually shipped public names should be documented as available
+- internal runtime rename work is implementation cleanup, not a new public
+  library tier
+
 Finalized design contract:
 
 - public capability modes are only:
@@ -85,9 +92,13 @@ Current bootstrap routines:
 
 - `fmt::answer(): int`
 - `fmt::double(int): int`
+- `fmt::triple(int): int`
+- `fmt::sum2(int, int): int`
 - `fmt::math::answer(): int`
 - `io::echo_int(int): int`
 - `io::echo_str(str): str`
+- `io::echo_bool(bol): bol`
+- `io::echo_chr(chr): chr`
 
 `std.io` is intentionally narrow right now. It wraps the hosted `.echo(...)`
 primitive instead of replacing it.
@@ -119,9 +130,13 @@ Current shipped public routines:
 
 - `fmt::answer(): int`
 - `fmt::double(int): int`
+- `fmt::triple(int): int`
+- `fmt::sum2(int, int): int`
 - `fmt::math::answer(): int`
 - `io::echo_int(int): int`
 - `io::echo_str(str): str`
+- `io::echo_bool(bol): bol`
+- `io::echo_chr(chr): chr`
 
 Older hosted std examples should use bundled std modules when one already exists.
 That means current echo-based examples should prefer `std.io` instead of calling

@@ -1,526 +1,386 @@
-# PLAN: Finalize Capability Modes And Bundled Std
+# PLAN: Bundled Std Phase 2 And Internal `alloc` -> `memo`
 
-This plan freezes the final architecture for capability modes and bundled
-standard-library access.
+This plan combines the next two approved tracks:
+
+1. grow the bundled shipped `std` a little further
+2. rename the internal runtime seam from `alloc` to `memo`
 
 There is no compatibility path.
 
-If the repo still contains behavior or wording from older models, this plan
-deletes it.
+If a new name or contract is chosen, the old one is deleted.
 
-## Final Contract
+## Goals
 
-The target contract is:
-
-- public capability modes are only:
-  - `core`
-  - `memo`
-- omitted `fol_model` defaults to `memo`
-- `std` is not a capability mode
-- bundled std is only available through an explicit internal dependency:
-  - `source = "internal"`
-  - `target = "standard"`
-- normal projects are expected to bind bundled std as:
-  - `alias = "std"`
-- source code may only use bundled std after that dependency exists
-- the normal source-side import form is:
-  - `use std: pkg = {"std"};`
-- `core` and `memo` are not importable libraries
-- `graph.add_run(app)` is independent of std-library presence
-- direct hosted substrate like `.echo(...)` remains temporarily available as a
-  low-level primitive, but docs/examples should increasingly prefer bundled
-  `std::io`
-
-## Why
-
-This separates three concerns cleanly:
-
-- capability policy
-- bundled standard library availability
-- runnable artifact orchestration
-
-That means:
-
-- `fol_model` controls language/runtime legality
-- internal bundled dependency controls std-library availability
-- build graph run/install behavior is not secretly tied to std imports
-
-This avoids the older ambiguity where `std` tried to mean all of:
-
-- hosted runtime
-- standard library
-- runnability
-- import source kind
+- keep bundled `std` small, honest, and actually useful
+- keep `std` authored in FOL where practical
+- keep low-level hosted/runtime substrate in Rust
+- make internal runtime naming match the public `memo` model
+- stop leaking the old internal `alloc` name through backend output, tests,
+  traces, and docs
 
 ## Non-Goals
 
 This plan does not:
 
-- make `core` importable
-- make `memo` importable
-- add a public `std` source kind back
-- keep `fol_model = "std"`
-- add compatibility shims
-- add migration warnings
-- fully remove direct `.echo(...)` in the first pass
+- turn `core` or `memo` into importable libraries
+- make `std` ambient again
+- make `std` large
+- introduce speculative `std.os` surface without a real substrate API
+- keep `fol_runtime::alloc` around as a compatibility alias
 
-## Architectural Rules
+## Current Repo Reality
 
-### Capability modes
+The current bundled `std` tree is:
 
-Only these public mode spellings remain valid:
+- `lang/library/std/lib.fol`
+- `lang/library/std/fmt/root.fol`
+- `lang/library/std/fmt/math/lib.fol`
+- `lang/library/std/io/lib.fol`
 
-- `core`
-- `memo`
+Current shipped public routines are still tiny:
 
-Meaning:
+- `std::fmt::answer()`
+- `std::fmt::double(int)`
+- `std::fmt::math::answer()`
+- `std::io::echo_int(int)`
+- `std::io::echo_str(str)`
 
-- `core`
-  - no heap-backed surfaces
-  - no bundled std unless explicitly allowed later by policy
-- `memo`
-  - heap-backed surfaces allowed
-  - bundled std still requires explicit dependency
+The current internal runtime seam still uses:
 
-### Defaulting
+- `lang/execution/fol-runtime/src/alloc.rs`
+- `pub mod alloc;` in `lang/execution/fol-runtime/src/lib.rs`
+- backend emit paths like `use fol_runtime::alloc as rt;`
+- many integration and backend tests pinned to `fol_runtime::alloc`
 
-If an artifact omits `fol_model`, it should behave as:
+So the next real work is:
 
-- `fol_model = "memo"`
+- add a few more honest bundled-std helpers
+- rename the internal runtime seam completely
 
-This default must be consistent in:
+## Final Contract After This Plan
 
-- build evaluation
-- frontend summaries
-- routed planning
-- docs/examples/scaffolding
-- editor/LSP model reporting
+After this plan:
 
-### Bundled std
+- bundled `std` remains explicit and dependency-backed
+- bundled `std` ships a slightly larger but still honest FOL surface
+- internal runtime naming uses `memo` consistently:
+  - file/module paths
+  - backend runtime module selection
+  - emitted Rust imports
+  - trace output
+  - tests/docs/examples that mention the internal runtime seam
 
-Bundled std is a shipped internal dependency only.
-
-The canonical build declaration is:
-
-```fol
-build.add_dep({
-    alias = "std",
-    source = "internal",
-    target = "standard",
-});
-```
-
-The canonical source import is:
-
-```fol
-use std: pkg = {"std"};
-```
-
-### Import legality
-
-If bundled std is not declared, source code must not be able to use:
-
-```fol
-use std: pkg = {"std"};
-```
-
-or any alias-bound equivalent path.
-
-That must fail clearly in:
-
-- resolver
-- CLI
-- editor/LSP
-
-### Runnability
-
-This plan keeps runnability separate from std-library presence.
-
-That means:
-
-- `graph.add_run(app)` does not require bundled std
-- runnable `core` and `memo` artifacts are still allowed if otherwise valid
-- std-library use is about declared library availability, not whether an
-  artifact can be run
-
-### Hosted substrate
-
-`.echo(...)` remains temporarily available as low-level hosted substrate.
-
-Practical rule:
-
-- do not break working hosted primitives in this architecture pass
-- do shift user-facing docs/examples toward bundled `std::io`
-- keep the wording honest that `std::io` is the preferred public wrapper and
-  `.echo(...)` is substrate-level for now
-
-## Epoch 1: Freeze The Contract
+## Epoch 1: Freeze Scope And Honest Surface
 
 ### Slice 1
-Status: completed
+Status: complete
 
-Write the final contract into active top-level docs:
+Write the phase-2 scope into active docs:
 
-- `fol_model = core | memo`
-- default `memo`
-- std is explicit internal dependency
-- std is imported through `pkg`
-- `graph.add_run` is independent of std
+- bundled `std` is still intentionally small
+- only real shipped surfaces may be documented
+- internal runtime rename is implementation cleanup, not a public API change
 
 ### Slice 2
-Status: completed
+Status: complete
 
-Write the same contract into contributor-facing docs:
+Write the same scope into contributor guidance:
 
 - `AGENTS.md`
-- any active architecture notes under `docs/`
+- `lang/library/std/README.md`
 
 ### Slice 3
-Status: completed
+Status: complete
 
-Add one compiler/package/frontend contract matrix test that pins:
+Add one shipped-surface contract test that pins the currently documented
+bundled-std modules and forbids undocumented extras.
 
-- `core` valid
-- `memo` valid
-- omitted mode becomes `memo`
-- `std` mode invalid
+## Epoch 2: Expand `std.fmt` Slightly
 
 ### Slice 4
-Status: completed
+Status: complete
 
-Add one contract test that pins bundled std as:
+Audit the current `std.fmt` tree and choose one small expansion that stays
+honest and substrate-free.
 
-- `source = "internal"`
-- `target = "standard"`
+Examples of acceptable additions:
 
-and rejects alternative internal target spellings.
+- a tiny arithmetic helper family
+- a tiny string-composition helper family
+- a tiny boolean/name helper family
 
-## Epoch 2: Delete `std` As A Mode
+Do not invent large formatting machinery yet.
 
 ### Slice 5
-Status: completed
+Status: complete
 
-Remove `std` from public `fol_model` parsing/validation.
+Implement the chosen `std.fmt` additions in FOL under:
+
+- `lang/library/std/fmt/root.fol`
+- or a small nested namespace if needed
 
 ### Slice 6
-Status: completed
+Status: complete
 
-Update build-eval diagnostics so `fol_model = "std"` fails with exact contract
-wording.
+Add bundled-std example coverage for the new `std.fmt` routines.
 
 ### Slice 7
-Status: completed
+Status: complete
 
-Update typecheck/model-capability tests so public model matrices only mention:
+Add CLI/integration coverage proving the new `std.fmt` routines build and run
+through the shipped bundled std.
 
-- `core`
-- `memo`
+## Epoch 3: Expand `std.io` Slightly
 
 ### Slice 8
-Status: completed
+Status: complete
 
-Update frontend/routed planning summaries so they no longer surface `std` as a
-mode.
+Audit the current hosted substrate and choose one or two additional honest
+`std.io` wrappers.
+
+Only wrap real substrate that already exists cleanly.
 
 ### Slice 9
-Status: completed
+Status: complete
 
-Update editor/LSP model recovery and reporting so `std` is no longer treated as
-an artifact mode.
+Implement those wrappers in:
 
-## Epoch 3: Default To `memo`
+- `lang/library/std/io/lib.fol`
 
 ### Slice 10
-Status: completed
+Status: complete
 
-Make omitted artifact `fol_model` default to `memo` everywhere the build graph
-is evaluated.
+Add or update one canonical bundled-std example so `std.io` is the preferred
+public story instead of raw `.echo(...)` when equivalent wrappers exist.
 
 ### Slice 11
-Status: completed
+Status: pending
 
-Add integration coverage showing omitted `fol_model` builds as `memo`.
+Keep exactly one tiny explicit raw-substrate example and ensure docs label it
+as substrate-level, not preferred public style.
+
+## Epoch 4: Optional Tiny `std.os` Decision
 
 ### Slice 12
-Status: completed
+Status: pending
 
-Update scaffold/init/default example outputs to omit explicit `memo` where the
-default is intended, or keep it only if the chosen docs style wants explicit
-mode spelling. Pick one and apply it consistently.
+Audit whether there is one honest hosted/OS wrapper worth shipping now.
+
+If no honest surface exists, explicitly document that `std.os` remains absent.
 
 ### Slice 13
-Status: completed
+Status: pending
 
-Update summaries/docs so the default is stated concretely and not implied
-through older `std` wording.
+Only if there is a real honest wrapper:
 
-## Epoch 4: Explicit Bundled Std Dependency Semantics
+- add `lang/library/std/os/...`
+- add one example
+- add one integration test
+
+Otherwise mark the “no `std.os` yet” contract more strongly in docs/tests.
+
+## Epoch 5: Bundled Std Tooling And Editor Sync
 
 ### Slice 14
-Status: completed
+Status: pending
 
-Audit `build.add_dep({ source = "internal", target = "standard" })` through:
-
-- build eval
-- metadata extraction
-- package session preparation
-- resolver session loading
-
-and pin it as the only bundled-std acquisition path.
+Update editor/LSP completion coverage for any new bundled-std symbols.
 
 ### Slice 15
-Status: completed
+Status: pending
 
-Add dependency tests showing the normal alias is:
-
-- `std`
-
-but other aliases technically work if deliberately chosen.
+Update hover/definition coverage so new bundled-std public names resolve
+cleanly from real shipped examples.
 
 ### Slice 16
-Status: completed
+Status: pending
 
-Add resolver tests proving `use std: pkg = {"std"};` fails when the dependency
-was not declared.
+Update tree-sitter real-example highlight coverage for the new bundled-std
+example sources.
 
 ### Slice 17
-Status: completed
+Status: pending
 
-Add resolver tests proving alias mismatch fails cleanly:
+Add one top-level shipped-std scan test that keeps examples/docs/readme in sync
+with the real bundled module tree.
 
-- declared alias is not `std`
-- source still imports `{"std"}`
+## Epoch 6: Rename Runtime Module File And Export
 
 ### Slice 18
-Status: completed
+Status: pending
 
-Add integration coverage for bundled std through:
+Rename:
 
-- build
-- check
-- run
-- dump lowered
+- `lang/execution/fol-runtime/src/alloc.rs`
 
-using the explicit dependency only.
+to:
 
-## Epoch 5: Runnability Independence
+- `lang/execution/fol-runtime/src/memo.rs`
 
 ### Slice 19
-Status: completed
+Status: pending
 
-Audit build/frontend/run behavior so `graph.add_run(app)` no longer relies on a
-former `std` mode assumption.
+Update `lang/execution/fol-runtime/src/lib.rs` so the public internal module
+export is:
+
+- `pub mod memo;`
+
+and `pub mod alloc;` is deleted.
 
 ### Slice 20
-Status: completed
+Status: pending
 
-Add one positive `core` runnable example/fixture with no std dependency.
+Update internal runtime docs/comments to refer to `memo` instead of `alloc`.
 
 ### Slice 21
-Status: completed
+Status: pending
 
-Add one positive `memo` runnable example/fixture with no std dependency.
+Update internal runtime unit tests to assert:
+
+- `fol_runtime::memo::tier_name()`
+- `fol_runtime::std::base_memo_tier()` or equivalent renamed seam
+
+with no stale `alloc` naming left.
+
+## Epoch 7: Backend Runtime-Tier Cutover
 
 ### Slice 22
-Status: completed
+Status: pending
 
-Add integration tests proving:
+Update backend runtime-module selection so `BackendFolModel::Memo` maps to:
 
-- runnable `core` artifact without std dependency
-- runnable `memo` artifact without std dependency
-- std dependency presence is orthogonal to run-step legality
+- `fol_runtime::memo`
+
+instead of `fol_runtime::alloc`.
 
 ### Slice 23
-Status: completed
+Status: pending
 
-Update docs so they stop implying “hosted run requires std dependency” unless
-that is explicitly intended somewhere else.
+Update backend emitted Rust snapshots and tests so generated imports use:
 
-## Epoch 6: Hosted Substrate Versus Public Std
+- `use fol_runtime::memo as rt;`
+- `use fol_runtime::memo as rt_model;`
+
+where appropriate.
 
 ### Slice 24
-Status: completed
+Status: pending
 
-Freeze the wording around `.echo(...)`:
+Update backend trace output so it reports:
 
-- still allowed as substrate
-- not the preferred public-library story
-- `std.io` is the preferred wrapper
+- `runtime_module=fol_runtime::memo`
+
+instead of `fol_runtime::alloc`.
 
 ### Slice 25
-Status: completed
+Status: pending
 
-Add tests/docs showing:
+Update compile/build-route mapping tests that still pin emitted `alloc`
+runtime imports.
 
-- `memo` without std dependency can still use substrate-hosted behavior if the
-  language currently allows it
-- bundled `std.io` is a library wrapper, not the only path to hosted output
+## Epoch 8: Frontend And Integration Rename Sweep
 
 ### Slice 26
-Status: completed
+Status: pending
 
-Convert active public examples that are meant to demonstrate standard-library
-use so they prefer `std::io`.
+Update frontend compile/build-route tests that still assert:
+
+- `use fol_runtime::alloc as rt;`
+
+for memo artifacts.
 
 ### Slice 27
-Status: completed
+Status: pending
 
-Keep one intentionally small example that still demonstrates raw `.echo(...)`
-as substrate, and label it honestly.
+Update integration tests in:
 
-## Epoch 7: Editor And Tree-sitter Contract
+- `test/integration_tests/integration_editor_and_build.rs`
+
+so memo/runtime expectations use:
+
+- `use fol_runtime::memo as rt;`
 
 ### Slice 28
-Status: completed
+Status: pending
 
-Update LSP tests so capability reporting speaks only in `core` and `memo`, with
-bundled std handled as dependency presence.
+Update any routed/CLI human-readable trace text that still mentions the old
+internal runtime module.
 
 ### Slice 29
-Status: completed
+Status: pending
 
-Add editor diagnostics proving:
+Add one integration regression that explicitly proves memo artifacts now emit
+and run through the renamed internal `fol_runtime::memo` path.
 
-- `use std: pkg = {"std"};` without declared dependency fails in editor path
-- parser success but resolver failure is surfaced correctly
+## Epoch 9: Repo-Wide Stale Sweep
 
 ### Slice 30
-Status: completed
-
-Update tree-sitter/example coverage if any current corpus or fixture still
-describes `std` as a source kind or mode.
-
-### Slice 31
-Status: completed
-
-Add one editor integration regression for omitted `fol_model` defaulting to
-`memo`.
-
-## Epoch 8: Examples And Fixtures
-
-### Slice 32
-Status: completed
-
-Audit all checked-in examples so they follow one of these patterns only:
-
-- `core` with no std dependency
-- `memo` with no std dependency
-- `memo` plus explicit bundled std dependency
-
-### Slice 33
-Status: completed
-
-Add one minimal canonical example for:
-
-- `core` runnable without std
-- `memo` runnable without std
-- `memo` + bundled std dependency
-
-### Slice 34
-Status: completed
-
-Add one negative example:
-
-- `use std: pkg = {"std"};`
-- missing explicit internal std dependency
-
-### Slice 35
-Status: completed
-
-Update app fixtures and formal fixtures so none of them still encode the older
-`std`-mode story.
-
-## Epoch 9: Docs And Book Alignment
-
-### Slice 36
-Status: completed
-
-Rewrite runtime-model docs so they describe:
-
-- `core`
-- `memo`
-- bundled std dependency
-
-instead of `core/memo/std` as peer modes.
-
-### Slice 37
-Status: completed
-
-Rewrite import docs so bundled std is taught only through:
-
-- explicit internal dependency in `build.fol`
-- `use std: pkg = {"std"};`
-
-### Slice 38
-Status: completed
-
-Rewrite build docs so they clearly separate:
-
-- capability mode selection
-- bundled std dependency declaration
-- run/install graph setup
-
-### Slice 39
-Status: completed
-
-Rewrite book examples that still imply the removed `std` mode.
-
-### Slice 40
-Status: completed
-
-Update contributor guidance so future changes do not reintroduce:
-
-- `fol_model = "std"`
-- ambient std assumptions
-- `std` as a source kind
-
-## Epoch 10: Final Cleanup And Closure
-
-### Slice 41
-Status: completed
+Status: pending
 
 Repo-wide stale sweep for:
 
-- `fol_model = "std"`
-- “std mode”
-- `: std =`
-- docs that tie runnability to std presence
+- `fol_runtime::alloc`
+- `use fol_runtime::alloc`
+- `alloc as rt`
+- `runtime_module=fol_runtime::alloc`
 
-### Slice 42
-Status: completed
+in active source, tests, docs, and examples.
 
-Add one top-level sync test scanning docs/examples/fixtures for stale removed
-contracts:
+### Slice 31
+Status: pending
 
-- `fol_model = "std"`
-- `: std =`
+Add one top-level scan test that fails if stale `fol_runtime::alloc` references
+reappear in the active repo surface.
 
-### Slice 43
-Status: completed
+### Slice 32
+Status: pending
 
-Add one top-level sync test scanning docs/examples/fixtures for the required
-bundled-std contract:
+Update docs that explain runtime tiers so the internal implementation seam is
+named `memo` consistently.
 
-- `source = "internal"`
-- `target = "standard"`
-- `use std: pkg = {"std"};`
+## Epoch 10: Bundled Std Phase-2 Closure
 
-### Slice 44
-Status: completed
+### Slice 33
+Status: pending
 
-Run targeted negative integration checks for:
+Update:
 
-- missing std dependency
-- old `std` mode spelling
-- bad internal target
-- alias mismatch
+- `docs/bundled-std.md`
+- `lang/library/std/README.md`
+- relevant book pages
 
-### Slice 45
-Status: completed
+to list exactly the new shipped bundled-std routines and examples.
 
-Run the full repo gate:
+### Slice 34
+Status: pending
 
-- `make build`
-- `make test`
+Update contributor guidance so future std additions must:
 
-Only after that, mark the plan complete.
+- be real shipped FOL source
+- have example coverage
+- have editor/tree-sitter audit
+- avoid overstating unshipped surfaces
+
+### Slice 35
+Status: pending
+
+Add one top-level “shipped std honesty” matrix test that pins:
+
+- current bundled module tree
+- current public routine list
+- current canonical examples
+
+### Slice 36
+Status: pending
+
+Run `make build`.
+
+### Slice 37
+Status: pending
+
+Run `make test`.
+
+### Slice 38
+Status: pending
+
+Only if both pass, mark the plan complete.
