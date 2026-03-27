@@ -601,64 +601,6 @@ impl AstParser {
         Err(error)
     }
 
-    pub(super) fn parse_use_path(
-        &self,
-        tokens: &mut fol_lexer::lexer::stage3::Elements,
-    ) -> Result<String, ParseError> {
-        let mut path = String::new();
-
-        for _ in 0..512 {
-            self.skip_ignorable(tokens)?;
-            let token = tokens.curr(false)?;
-
-            if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyC)) {
-                let _ = tokens.bump();
-                self.ensure_complete_use_path(&token, &path)?;
-                return Ok(path);
-            }
-
-            if token.key().is_boundary() {
-                return Err(ParseError::from_token(
-                    &token,
-                    "Expected '}' to close use path".to_string(),
-                ));
-            }
-
-            Self::reject_illegal_token(&token)?;
-
-            let segment = match token.key() {
-                KEYWORD::Literal(LITERAL::CookedQuoted) | KEYWORD::Literal(LITERAL::RawQuoted) => {
-                    Self::exact_unquote_text(token.con())
-                }
-                _ => token.con().trim().to_string(),
-            };
-            if !segment.is_empty() {
-                path.push_str(&segment);
-            }
-
-            if tokens.bump().is_none() {
-                break;
-            }
-        }
-
-        let error = if let Ok(token) = tokens.curr(false) {
-            ParseError::from_token(
-                &token,
-                "Use path parsing exceeded safety bound".to_string(),
-            )
-        } else {
-            ParseError {
-                kind: ParseErrorKind::Syntax,
-                message: "Use path parsing exceeded safety bound".to_string(),
-                file: None,
-                line: 0,
-                column: 0,
-                length: 0,
-            }
-        };
-        Err(error)
-    }
-
     fn type_contracts_from_generics(
         &self,
         generics: &[Generic],

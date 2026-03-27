@@ -98,7 +98,7 @@ fn test_resolver_keeps_bundled_std_pkg_import_semantics_stable_through_package_p
     copy_tree(&bundled_std_root, &store_root.join("std"));
     fs::write(
         app_root.join("main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
     )
     .expect("Should write the importing bundled std pkg fixture");
 
@@ -159,7 +159,7 @@ fn test_resolver_keeps_pkg_import_semantics_stable_through_package_provider() {
     fs::write(
         app_root.join("main.fol"),
         concat!(
-            "use json: pkg = {json};\n",
+            "use json: pkg = {\"json\"};\n",
             "fun[] main(): int = {\n",
             "    return json::src::root::answer + json::src::fmt::formatted;\n",
             "};\n",

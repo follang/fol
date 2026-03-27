@@ -37,7 +37,7 @@ fn test_resolver_resolves_bundled_std_from_declared_pkg_alias() {
     materialize_bundled_std_alias(&store_root, "std");
     fs::write(
         app_root.join("main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
     )
     .expect("Should write the bundled std pkg import fixture");
 
@@ -87,7 +87,7 @@ fn test_resolver_reports_nested_bundled_std_namespaces_from_pkg_alias_root() {
     materialize_bundled_std_alias(&store_root, "std");
     fs::write(
         app_root.join("main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::math::answer();\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::math::answer();\n};\n",
     )
     .expect("Should write the bundled std namespace import fixture");
 
@@ -119,7 +119,7 @@ fn test_resolver_resolves_bundled_std_io_from_pkg_alias_root() {
     materialize_bundled_std_alias(&store_root, "std");
     fs::write(
         app_root.join("main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    return std::io::echo_int(7);\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::io::echo_int(7);\n};\n",
     )
     .expect("Should write the bundled std.io pkg import fixture");
 
@@ -160,7 +160,7 @@ fn test_resolver_reports_missing_bundled_std_dependency_alias_cleanly() {
     fs::create_dir_all(&store_root).expect("Should create the package store root fixture directory");
     fs::write(
         app_root.join("main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
     )
     .expect("Should write the missing std dependency alias fixture");
 
@@ -197,7 +197,7 @@ fn test_resolver_reports_alias_mismatches_for_bundled_std_pkg_imports() {
     materialize_bundled_std_alias(&store_root, "standard_lib");
     fs::write(
         app_root.join("main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
     )
     .expect("Should write the bundled std alias mismatch fixture");
 

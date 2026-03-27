@@ -11,7 +11,7 @@ fn test_resolver_lowers_top_level_use_declarations_into_import_records() {
         .expect("Should write the imported namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "use math: loc = {math};\nfun[] main(): int = {\n    return 0;\n};\n",
+        "use math: loc = {\"math\"};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write the top-level import fixture");
 
@@ -63,7 +63,7 @@ fn test_resolver_keeps_local_use_aliases_visible_in_routine_scopes() {
         .expect("Should write the imported helper namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    use helper: loc = {helper};\n    return helper;\n};\n",
+        "fun[] main(): int = {\n    use helper: loc = {\"helper\"};\n    return helper;\n};\n",
     )
     .expect("Should write the local import fixture");
 
@@ -123,7 +123,7 @@ fn test_resolver_rejects_duplicate_local_import_aliases() {
         .expect("Should write the second helper namespace fixture");
     fs::write(
         temp_root.join("main.fol"),
-        "fun[] main(): int = {\n    use helper: loc = {core::helper};\n    use helper: loc = {core::helper2};\n    return 0;\n};\n",
+        "fun[] main(): int = {\n    use helper: loc = {\"core::helper\"};\n    use helper: loc = {\"core::helper2\"};\n    return 0;\n};\n",
     )
     .expect("Should write the duplicate local import fixture");
 

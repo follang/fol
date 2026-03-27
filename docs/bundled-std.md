@@ -13,7 +13,7 @@ Finalized design contract:
   - `std`
 - source code should reach bundled std through the dependency system with `pkg`
   imports, for example:
-  - `use std: pkg = {std};`
+  - `use std: pkg = {"std"};`
 
 Normal build usage:
 

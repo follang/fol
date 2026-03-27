@@ -143,7 +143,7 @@ build.add_dep({
 Then source code imports it through the declared dependency alias:
 
 ```fol
-use std: pkg = {std};
+use std: pkg = {"std"};
 ```
 
 ## Quick selection rule

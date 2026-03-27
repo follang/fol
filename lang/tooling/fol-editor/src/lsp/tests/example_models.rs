@@ -63,12 +63,12 @@ fn lsp_server_reports_model_aware_diagnostics_for_real_example_roots() {
         ),
         (
             "examples/std_bundled_fmt",
-            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::math::answer();\n};\n",
+            "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::math::answer();\n};\n",
             None,
         ),
         (
             "examples/std_bundled_io",
-            "use std: pkg = {std};\nfun[] main(): int = {\n    var shown: str = std::io::echo_str(\"ok\");\n    return 7;\n};\n",
+            "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    var shown: str = std::io::echo_str(\"ok\");\n    return 7;\n};\n",
             None,
         ),
         (
@@ -183,7 +183,7 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
         ),
         (
             "examples/std_bundled_fmt",
-            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::math::;\n};\n",
+            "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::math::;\n};\n",
             LspPosition {
                 line: 1,
                 character: 27,
@@ -197,7 +197,7 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
         ),
         (
             "examples/std_bundled_io",
-            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::io::;\n};\n",
+            "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::io::;\n};\n",
             LspPosition {
                 line: 1,
                 character: 16,
@@ -333,7 +333,7 @@ fn lsp_server_reports_transitive_model_boundaries_for_real_workspaces() {
         .unwrap();
         fs::write(
             root.join("app/src/main.fol"),
-            format!("use shared: loc = {{\"../shared\"}};\n\n{app_source}"),
+            format!("use shared: loc = {"{\"../shared\"}};\n\n{app_source}"),
         )
         .unwrap();
         fs::write(root.join("shared/src/lib.fol"), dep_source).unwrap();

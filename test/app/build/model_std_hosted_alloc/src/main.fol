@@ -1,4 +1,4 @@
-use std: pkg = {std};
+use std: pkg = {"std"};
 
 fun[] banner(prefix: str = "std", extras: ... str): str = {
     return prefix + extras[0];

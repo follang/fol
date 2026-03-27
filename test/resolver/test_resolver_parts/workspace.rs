@@ -118,7 +118,7 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
     .expect("Should write json build definition");
     fs::write(
         store_root.join("json/src/lib.fol"),
-        "use core: pkg = {core};\nvar[exp] answer: int = core::src::shared;\n",
+        "use core: pkg = {\"core\"};\nvar[exp] answer: int = core::src::shared;\n",
     )
     .expect("Should write json package sources");
 
@@ -137,7 +137,7 @@ fn test_resolver_workspace_keeps_transitive_loaded_packages() {
 
     fs::write(
         app_root.join("main.fol"),
-        "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
+        "use json: pkg = {\"json\"};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
     )
     .expect("Should write the transitive import fixture");
 

@@ -223,7 +223,7 @@ fn test_runtime_model_modules_compile_through_root_integration_graph() {
         .expect("Should write the imported namespace fixture");
         fs::write(
             temp_root.join("main.fol"),
-            "use http: loc = {net::http};\nfun[] main(): int = {\n    return http;\n};\n",
+            "use http: loc = {\"net::http\"};\nfun[] main(): int = {\n    return http;\n};\n",
         )
         .expect("Should write the importing source unit fixture");
 

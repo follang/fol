@@ -19,7 +19,7 @@ fn test_resolver_collects_top_level_named_declarations_across_multiple_files() {
     .expect("Should write routine fixture");
     fs::write(
         temp_root.join("02_types.fol"),
-        "typ Text: int;\nali Count: int;\nuse core: loc = {core};\n",
+        "typ Text: int;\nali Count: int;\nuse core: loc = {\"core\"};\n",
     )
     .expect("Should write type fixture");
     fs::write(

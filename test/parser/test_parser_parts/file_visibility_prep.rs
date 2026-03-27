@@ -54,7 +54,7 @@ fn test_visibility_marked_declarations_stay_in_their_own_source_units() {
             ("10_hidden.fol", "let[hid] local: int = 2;\n"),
             (
                 "nested/20_branch.fol",
-                "use[hidden] cache: loc = {core::cache};\nvar branch: int = 3;\n",
+                "use[hidden] cache: loc = {\"core::cache\"};\nvar branch: int = 3;\n",
             ),
         ],
     );
@@ -119,7 +119,7 @@ fn test_parsed_top_levels_distinguish_package_namespace_and_file_scope() {
             ("10_hidden.fol", "let[hid] local: int = 2;\n"),
             (
                 "nested/20_branch.fol",
-                "use[hidden] cache: loc = {core::cache};\nvar branch: int = 3;\n",
+                "use[hidden] cache: loc = {\"core::cache\"};\nvar branch: int = 3;\n",
             ),
         ],
     );

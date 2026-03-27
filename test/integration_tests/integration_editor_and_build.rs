@@ -1142,7 +1142,7 @@ fn test_core_artifact_accepts_transitive_core_pkg_dependency() {
         "app",
         "core",
         concat!(
-            "use corelib: pkg = {corelib};\n",
+            "use corelib: pkg = {\"corelib\"};\n",
             "fun[] main(): int = {\n",
             "    return corelib::src::answer();\n",
             "};\n",
@@ -1179,7 +1179,7 @@ fn test_core_artifact_rejects_transitive_mem_pkg_dependency() {
         "app",
         "core",
         concat!(
-            "use memolib: pkg = {memolib};\n",
+            "use memolib: pkg = {\"memolib\"};\n",
             "fun[] main(): int = {\n",
             "    var value: str = memolib::src::helper();\n",
             "    return 0;\n",
@@ -1218,7 +1218,7 @@ fn test_core_artifact_rejects_transitive_std_pkg_dependency() {
         "app",
         "core",
         concat!(
-            "use stdlib: pkg = {stdlib};\n",
+            "use stdlib: pkg = {\"stdlib\"};\n",
             "fun[] main(): int = {\n",
             "    return stdlib::src::helper();\n",
             "};\n",
@@ -1261,7 +1261,7 @@ fn test_mem_artifact_accepts_transitive_mem_pkg_dependency() {
         "app",
         "memo",
         concat!(
-            "use memolib: pkg = {memolib};\n",
+            "use memolib: pkg = {\"memolib\"};\n",
             "fun[] main(): int = {\n",
             "    return memolib::src::size();\n",
             "};\n",
@@ -1298,7 +1298,7 @@ fn test_mem_artifact_rejects_transitive_std_echo_dependency() {
         "app",
         "memo",
         concat!(
-            "use stdlib: pkg = {stdlib};\n",
+            "use stdlib: pkg = {\"stdlib\"};\n",
             "fun[] main(): int = {\n",
             "    return stdlib::src::helper();\n",
             "};\n",
@@ -1349,9 +1349,9 @@ fn test_std_artifact_accepts_mixed_core_and_mem_pkg_dependencies() {
         "app",
         "std",
         concat!(
-            "use corelib: pkg = {corelib};\n",
-            "use memolib: pkg = {memolib};\n",
-            "use std: pkg = {std};\n",
+            "use corelib: pkg = {\"corelib\"};\n",
+            "use memolib: pkg = {\"memolib\"};\n",
+            "use std: pkg = {\"std\"};\n",
             "fun[] main(): int = {\n",
             "    return std::io::echo_int(corelib::src::answer() + memolib::src::size());\n",
             "};\n",
@@ -1419,8 +1419,8 @@ fn test_std_consumer_of_mem_pkg_dependency_emits_std_runtime_only() {
         "app",
         "std",
         concat!(
-            "use memolib: pkg = {memolib};\n",
-            "use std: pkg = {std};\n",
+            "use memolib: pkg = {\"memolib\"};\n",
+            "use std: pkg = {\"std\"};\n",
             "fun[] main(): int = {\n",
             "    return std::io::echo_int(memolib::src::size());\n",
             "};\n",
@@ -1465,7 +1465,7 @@ fn test_core_illegal_dependency_failure_happens_before_emission() {
         "app",
         "core",
         concat!(
-            "use memolib: pkg = {memolib};\n",
+            "use memolib: pkg = {\"memolib\"};\n",
             "fun[] main(): int = {\n",
             "    var value: str = memolib::src::helper();\n",
             "    return 0;\n",
@@ -1503,7 +1503,7 @@ fn test_build_fixtures_emit_runtime_imports_for_each_model() {
             "memo_std",
             true,
             concat!(
-                "use std: pkg = {std};\n",
+                "use std: pkg = {\"std\"};\n",
                 "fun[] main(): int = {\n",
                 "    return std::io::echo_int(7);\n",
                 "};\n",
@@ -1977,7 +1977,7 @@ fn test_build_rejects_std_imports_under_core_model() {
     .expect("should write app build");
     std::fs::write(
         app_root.join("src/main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    return 0;\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("should write app source");
 
@@ -2012,7 +2012,7 @@ fn test_build_rejects_std_imports_without_declared_dependency() {
     .expect("should write app build");
     std::fs::write(
         app_root.join("src/main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
     )
     .expect("should write app source");
 
@@ -3453,7 +3453,7 @@ fn test_standard_dependency_contract_matrix_holds() {
         "std_app",
         "memo",
         concat!(
-            "use std: pkg = {std};\n",
+            "use std: pkg = {\"std\"};\n",
             "fun[] main(): int = {\n",
             "    return std::fmt::double(21);\n",
             "};\n",
@@ -3476,7 +3476,7 @@ fn test_standard_dependency_contract_matrix_holds() {
         "missing_std_app",
         "memo",
         concat!(
-            "use std: pkg = {std};\n",
+            "use std: pkg = {\"std\"};\n",
             "fun[] main(): int = {\n",
             "    return std::fmt::answer();\n",
             "};\n",
@@ -4313,7 +4313,7 @@ fn test_cli_code_build_and_run_keep_std_model_runtime_path() {
     std::fs::write(
         root.join("src/main.fol"),
         concat!(
-            "use std: pkg = {std};\n",
+            "use std: pkg = {\"std\"};\n",
             "fun[] main(): int = {\n",
             "    return std::io::echo_int(7);\n",
             "};\n",

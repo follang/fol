@@ -1092,8 +1092,8 @@ mod tests {
             app_root.join("main.fol"),
             concat!(
                 "use shared: loc = {\"../shared\"};\n",
-                "use std: pkg = {std};\n",
-                "use math: pkg = {math};\n",
+                "use std: pkg = {\"std\"};\n",
+                "use math: pkg = {\"math\"};\n",
                 "fun[] main(): int = {\n",
                 "    return loc_answer + std::fmt::answer() + math::src::pkg_answer;\n",
                 "};\n",
@@ -1330,8 +1330,8 @@ mod tests {
             app_root.join("main.fol"),
             concat!(
                 "use shared: loc = {\"../shared\"};\n",
-                "use std: pkg = {std};\n",
-                "use math: pkg = {math};\n",
+                "use std: pkg = {\"std\"};\n",
+                "use math: pkg = {\"math\"};\n",
                 "fun[] main(): int = {\n",
                 "    return loc_answer + std::fmt::answer() + math::src::pkg_answer;\n",
                 "};\n",

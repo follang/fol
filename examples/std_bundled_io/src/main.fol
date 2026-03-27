@@ -1,4 +1,4 @@
-use std: pkg = {std};
+use std: pkg = {"std"};
 
 fun[] main(): int = {
     var shown: str = std::io::echo_str("std-io");

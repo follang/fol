@@ -412,8 +412,8 @@ fn app_harness_root_helpers_support_std_and_pkg_layouts() {
     fs::write(
         app_root.join("main.fol"),
         concat!(
-            "use std: pkg = {std};\n",
-            "use math: pkg = {math};\n",
+            "use std: pkg = {\"std\"};\n",
+            "use math: pkg = {\"math\"};\n",
             "fun[] main(): int = {\n",
             "    return std::fmt::answer();\n",
             "};\n",

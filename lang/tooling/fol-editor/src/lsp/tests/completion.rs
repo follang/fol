@@ -268,7 +268,7 @@ fn lsp_server_handles_completion_for_single_and_ambiguous_model_package_files() 
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
     )
     .unwrap();
     fs::write(

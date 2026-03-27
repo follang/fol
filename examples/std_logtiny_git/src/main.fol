@@ -1,4 +1,4 @@
-use logtiny: pkg = {logtiny};
+use logtiny: pkg = {"logtiny"};
 
 fun[] main(): int = {
     var ready: bol = logtiny::src::smoke();

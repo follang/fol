@@ -850,7 +850,7 @@ fn workspace_typechecking_keeps_direct_std_import_declaration_facts() {
             ),
             (
                 "app/main.fol",
-                "use std: pkg = {std};\nfun[] main(): int = {\n    return 0;\n};\n",
+                "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -898,7 +898,7 @@ fn workspace_typechecking_keeps_direct_pkg_import_declaration_facts() {
             ),
             (
                 "app/main.fol",
-                "use json: pkg = {json};\nfun[] main(): int = {\n    return 0;\n};\n",
+                "use json: pkg = {\"json\"};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -946,7 +946,7 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
             (
                 "store/json/src/lib.fol",
                 concat!(
-                    "use core: pkg = {core};\n",
+                    "use core: pkg = {\"core\"};\n",
                     "var[exp] answer: core::src::Count = 42;\n",
                     "fun[exp] bump(value: core::src::Count): core::src::Count = {\n",
                     "    return value + 1;\n",
@@ -955,7 +955,7 @@ fn workspace_typechecking_keeps_transitive_pkg_import_declaration_facts() {
             ),
             (
                 "app/main.fol",
-                "use json: pkg = {json};\nfun[] main(): int = {\n    return 0;\n};\n",
+                "use json: pkg = {\"json\"};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );

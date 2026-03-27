@@ -15,7 +15,7 @@ build.add_dep({
 and then import bundled std through the dependency alias, for example:
 
 ```fol
-use std: pkg = {std};
+use std: pkg = {"std"};
 ```
 
 Bundled std is the normal path.

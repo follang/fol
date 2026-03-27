@@ -537,12 +537,12 @@ fn session_recursively_loads_transitive_pkg_dependencies_from_store() {
     .expect("Should write the direct dependency build fixture");
     fs::write(
         store_root.join("json/lib.fol"),
-        "use core: pkg = {core};\nvar[exp] answer: int = core::shared;\n",
+        "use core: pkg = {\"core\"};\nvar[exp] answer: int = core::shared;\n",
     )
     .expect("Should write the direct dependency source");
     fs::write(
         app_root.join("main.fol"),
-        "use json: pkg = {json};\nfun[] main(): int = {\n    return answer;\n}\n",
+        "use json: pkg = {\"json\"};\nfun[] main(): int = {\n    return answer;\n}\n",
     )
     .expect("Should write the importing app source");
     let parsed = parse_package(
@@ -691,7 +691,7 @@ fn session_reuses_cached_shared_pkg_dependencies_across_multiple_dependents() {
     .expect("Should write the first direct dependency build fixture");
     fs::write(
         store_root.join("json/lib.fol"),
-        "use core: pkg = {core};\nvar[exp] left: int = core::shared;\n",
+        "use core: pkg = {\"core\"};\nvar[exp] left: int = core::shared;\n",
     )
     .expect("Should write the first direct dependency source");
     fs::write(
@@ -706,14 +706,14 @@ fn session_reuses_cached_shared_pkg_dependencies_across_multiple_dependents() {
     .expect("Should write the second direct dependency build fixture");
     fs::write(
         store_root.join("xml/lib.fol"),
-        "use core: pkg = {core};\nvar[exp] right: int = core::shared;\n",
+        "use core: pkg = {\"core\"};\nvar[exp] right: int = core::shared;\n",
     )
     .expect("Should write the second direct dependency source");
     fs::write(
         app_root.join("main.fol"),
         concat!(
-            "use json: pkg = {json};\n",
-            "use xml: pkg = {xml};\n",
+            "use json: pkg = {\"json\"};\n",
+            "use xml: pkg = {\"xml\"};\n",
             "fun[] main(): int = {\n",
             "    return left + right;\n",
             "}\n",

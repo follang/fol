@@ -590,7 +590,7 @@ mod tests {
         fs::create_dir_all(json_root.join("src/fmt")).expect("should create package source dirs");
         fs::write(
             app_dir.join("main.fol"),
-            "use json: pkg = {json}\nfun[] main(): int = { return json::src::answer }\n",
+            "use json: pkg = {\"json\"}\nfun[] main(): int = { return json::src::answer }\n",
         )
         .expect("should write app entry");
         fs::write(
@@ -769,7 +769,7 @@ mod tests {
 
         fs::write(
             app_dir.join("main.fol"),
-            "use shared: loc = {\"../shared\"}\nuse std: pkg = {std}\nuse json: pkg = {json}\nfun[] main(): int = { return shared::answer }\n",
+            "use shared: loc = {\"../shared\"}\nuse std: pkg = {\"std\"}\nuse json: pkg = {\"json\"}\nfun[] main(): int = { return shared::answer }\n",
         )
         .expect("should write app entry");
         fs::write(shared_dir.join("lib.fol"), "var[exp] answer: int = 1\n")

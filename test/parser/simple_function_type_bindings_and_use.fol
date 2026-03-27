@@ -1,4 +1,4 @@
-use callback: {fun loader(path: str): int} = {pkg::loader};
+use callback: {fun loader(path: str): int} = {"pkg::loader"};
 
 var transform: {fun (value: int): int};
 

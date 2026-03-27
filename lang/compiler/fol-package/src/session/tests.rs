@@ -809,7 +809,7 @@ fn package_session_preloads_transitive_pkg_dependencies() {
     .expect("Should write the direct dependency build fixture");
     fs::write(
         store_root.join("json/src/root/value.fol"),
-        "use core: pkg = {core};\nvar[exp] answer: int = core::src::root::shared;\n",
+        "use core: pkg = {\"core\"};\nvar[exp] answer: int = core::src::root::shared;\n",
     )
     .expect("Should write the direct dependency source fixture");
     let mut session = PackageSession::new();

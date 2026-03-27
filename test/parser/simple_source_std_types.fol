@@ -1,2 +1,2 @@
-use fmt: pkg = {fmt/log};
+use fmt: pkg = {"fmt/log"};
 typ StdPkg: pkg[pkg];

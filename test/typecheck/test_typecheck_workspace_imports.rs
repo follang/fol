@@ -894,7 +894,7 @@ fn legacy_single_package_typecheck_rejects_imported_std_values_explicitly() {
             ("store/std/src/lib.fol", "var[exp] answer: int = 42;\n"),
             (
                 "app/main.fol",
-                "use std: pkg = {std};\nfun[] main(): int = {\n    return std::src::answer;\n};\n",
+                "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::src::answer;\n};\n",
             ),
         ],
     );
@@ -942,7 +942,7 @@ fn legacy_single_package_typecheck_rejects_imported_pkg_values_explicitly() {
             ("store/json/src/lib.fol", "var[exp] answer: int = 42;\n"),
             (
                 "app/main.fol",
-                "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
+                "use json: pkg = {\"json\"};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
             ),
         ],
     );

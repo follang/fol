@@ -223,7 +223,7 @@ fn test_editor_sync_suite_lsp_completion_respects_model_examples() {
 
 #[test]
 fn test_editor_sync_suite_lsp_handles_bundled_std_definition_requests_without_override() {
-    let source = "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::math::answer();\n};\n";
+    let source = "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::math::answer();\n};\n";
     let root = copied_example_root("examples/std_bundled_fmt");
     let source_path = root.join("src/main.fol");
     std::fs::write(&source_path, source).expect("should write example source");
@@ -258,7 +258,7 @@ fn test_editor_sync_suite_lsp_handles_bundled_std_definition_requests_without_ov
 
 #[test]
 fn test_editor_sync_suite_lsp_handles_bundled_std_io_hover_and_definition_without_override() {
-    let source = "use std: pkg = {std};\nfun[] main(): int = {\n    return std::io::echo_int(7);\n};\n";
+    let source = "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::io::echo_int(7);\n};\n";
     let root = copied_example_root("examples/std_bundled_io");
     let source_path = root.join("src/main.fol");
     std::fs::write(&source_path, source).expect("should write example source");

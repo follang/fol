@@ -134,7 +134,7 @@ fn test_parse_package_retains_nested_use_decl_origins() {
     let fixture = temp_root.join("nested_use.fol");
     fs::write(
         &fixture,
-        "fun outer(): int = {\n    use warn: loc = {pkg::warn};\n    return 0;\n};\n",
+        "fun outer(): int = {\n    use warn: loc = {\"pkg::warn\"};\n    return 0;\n};\n",
     )
     .expect("Should write temporary nested-use fixture");
 

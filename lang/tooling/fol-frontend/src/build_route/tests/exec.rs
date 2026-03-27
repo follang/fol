@@ -1055,7 +1055,7 @@ fn execute_workspace_build_route_emits_std_runtime_module_imports() {
     fs::write(
         root.join("src/main.fol"),
         concat!(
-            "use std: pkg = {std};\n",
+            "use std: pkg = {\"std\"};\n",
             "fun[] main(): int = {\n",
             "    var shown: str = std::io::echo_str(\"ok\");\n",
             "    return .len(shown) - .len(shown);\n",
@@ -1245,7 +1245,7 @@ fn execute_workspace_build_route_keeps_step_specific_model_diagnostics_in_mixed_
     .unwrap();
     fs::write(
         root.join("app/main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
     )
     .unwrap();
     fs::write(
@@ -1311,7 +1311,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
     .unwrap();
     fs::write(
         root.join("app/main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
     )
     .unwrap();
     fs::write(
@@ -1379,7 +1379,7 @@ fn execute_workspace_build_route_run_selection_stays_std_with_same_root_core_tes
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "use std: pkg = {std};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
     )
     .unwrap();
     fs::write(

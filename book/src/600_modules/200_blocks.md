@@ -89,7 +89,7 @@ To acces the namespace there are two ways:
 ### Direct import
 
 ```
-use aNS: loc = { "home/folder/printing/logg" }
+use aNS: loc = {""home/folder/printing/logg""}
 
 pro[] main: int = {
     logg.warn("something")
@@ -99,7 +99,7 @@ pro[] main: int = {
 ### Code access
 
 ```
-use aNS: loc = { "home/folder/printing" }
+use aNS: loc = {""home/folder/printing""}
 
 pro[] main: int = {
     printing::logg.warn("something")

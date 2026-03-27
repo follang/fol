@@ -75,7 +75,7 @@ use super::*;
         .expect("Should write bundled std build fixture");
         fs::write(
             app_root.join("src/main.fol"),
-            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+            "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
         )
         .expect("Should write bundled std import fixture");
 
@@ -140,7 +140,7 @@ use super::*;
         .expect("Should write the app build fixture");
         fs::write(
             app_root.join("src/main.fol"),
-            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+            "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
         )
         .expect("Should write the std import fixture");
 
@@ -206,7 +206,7 @@ use super::*;
         .expect("Should write the app build fixture");
         fs::write(
             app_root.join("src/main.fol"),
-            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::shadow();\n};\n",
+            "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::shadow();\n};\n",
         )
         .expect("Should write the std import fixture");
 
@@ -281,7 +281,7 @@ use super::*;
         .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
+            "use json: pkg = {\"json\"};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
         )
         .expect("Should write the pkg import fixture");
 
@@ -373,7 +373,7 @@ use super::*;
         .expect("Should write the app build fixture");
         fs::write(
             app_root.join("src/main.fol"),
-            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+            "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
         )
         .expect("Should write the std import fixture");
 
@@ -434,7 +434,7 @@ use super::*;
         .expect("Should write the installed package export fixture");
         fs::write(
             app_root.join("main.fol"),
-            "use json: pkg = {json};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
+            "use json: pkg = {\"json\"};\nfun[] main(): int = {\n    return json::src::answer;\n};\n",
         )
         .expect("Should write the pkg import fixture");
 

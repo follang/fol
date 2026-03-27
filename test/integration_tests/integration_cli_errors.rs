@@ -79,7 +79,7 @@ use super::*;
         let main_file = temp_root.join("main.fol");
         fs::write(
             &main_file,
-            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n};\n",
+            "use alpha: loc = {\"alpha\"};\nuse beta: loc = {\"beta\"};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write ambiguous imported plain-name fixture");
 
@@ -206,7 +206,7 @@ use super::*;
         let main_file = app_root.join("main.fol");
         fs::write(
             &main_file,
-            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n};\n",
+            "use formal: loc = {\"../formal_pkg\"};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write loc misuse fixture");
 
@@ -281,7 +281,7 @@ use super::*;
         let main_file = temp_root.join("main.fol");
         fs::write(
             &main_file,
-            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n};\n",
+            "use alpha: loc = {\"alpha\"};\nuse beta: loc = {\"beta\"};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write ambiguous imported plain-name fixture");
 
@@ -366,7 +366,7 @@ use super::*;
         .expect("Should write app build fixture");
         fs::write(
             app_root.join("src/main.fol"),
-            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+            "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
         )
         .expect("Should write missing explicit std-root fixture");
 
@@ -423,7 +423,7 @@ fn test_cli_json_resolver_errors_report_missing_bundled_std_modules() {
     .expect("Should write app build fixture");
     fs::write(
         app_root.join("src/main.fol"),
-        "use os: pkg = {std/os};\nfun[] main(): int = {\n    return 0;\n};\n",
+        "use os: pkg = {\"std/os\"};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write missing bundled std module fixture");
 
@@ -477,7 +477,7 @@ fn test_cli_json_resolver_errors_keep_exact_bundled_std_module_paths() {
     .expect("Should write app build fixture");
     fs::write(
         app_root.join("src/main.fol"),
-        "use math: pkg = {std/fmt/missing};\nfun[] main(): int = {\n    return 0;\n};\n",
+        "use math: pkg = {\"std/fmt/missing\"};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write missing nested bundled std module fixture");
 
@@ -514,7 +514,7 @@ fn test_cli_json_resolver_errors_keep_exact_bundled_std_module_paths() {
 
         let temp_root = unique_temp_root("cli_json_resolver_unsupported_note");
         fs::create_dir_all(&temp_root).expect("Should create resolver fixture root");
-        fs::write(temp_root.join("main.fol"), "use fmt: mod = {core::fmt};\n")
+        fs::write(temp_root.join("main.fol"), "use fmt: mod = {\"core::fmt\"};\n")
             .expect("Should write unsupported import fixture");
 
         let output = run_fol(&[
@@ -563,7 +563,7 @@ fn test_cli_json_resolver_errors_keep_exact_bundled_std_module_paths() {
         .expect("Should write second imported exported value fixture");
         fs::write(
             temp_root.join("main.fol"),
-            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n};\n",
+            "use alpha: loc = {\"alpha\"};\nuse beta: loc = {\"beta\"};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write ambiguous imported plain-name fixture");
 
@@ -601,7 +601,7 @@ fn test_cli_json_resolver_errors_keep_exact_bundled_std_module_paths() {
             .expect("Should write formal package control file");
         fs::write(
             app_root.join("main.fol"),
-            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n};\n",
+            "use formal: loc = {\"../formal_pkg\"};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write loc misuse fixture");
 

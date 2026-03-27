@@ -580,7 +580,7 @@ use super::*;
             .expect("Should write formal package control file");
         fs::write(
             app_root.join("main.fol"),
-            "use formal: loc = {../formal_pkg};\nfun[] main(): int = {\n    return answer;\n};\n",
+            "use formal: loc = {\"../formal_pkg\"};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write package fixture");
         let package_output = run_fol(&[
@@ -612,7 +612,7 @@ use super::*;
         .expect("Should write second imported exported value fixture");
         fs::write(
             resolver_root.join("main.fol"),
-            "use alpha: loc = {alpha};\nuse beta: loc = {beta};\nfun[] main(): int = {\n    return answer;\n};\n",
+            "use alpha: loc = {\"alpha\"};\nuse beta: loc = {\"beta\"};\nfun[] main(): int = {\n    return answer;\n};\n",
         )
         .expect("Should write resolver fixture");
         let resolver_output = run_fol(&[

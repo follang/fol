@@ -2,7 +2,7 @@
 Recoverable
 ==================
 
-use shared: loc = {shared::lib}
+use shared: loc = {"shared::lib"}
 
 fun load(flag: bol): int / str = {
     when(flag) {

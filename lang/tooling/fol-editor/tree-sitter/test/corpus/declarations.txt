@@ -2,7 +2,7 @@
 Declarations
 ==================
 
-use shared: loc = {shared::lib}
+use shared: loc = {"shared::lib"}
 ali Result: seq[str]
 typ User: rec = {
     name: str
