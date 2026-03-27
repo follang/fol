@@ -321,6 +321,28 @@ mod tests {
     }
 
     #[test]
+    fn completion_context_defaults_to_plain_positions() {
+        let uri = EditorDocumentUri::from_file_path(PathBuf::from("/tmp/plain_context.fol")).unwrap();
+        let document = EditorDocument::new(
+            uri,
+            1,
+            "fun[] helper(): int = {\n    return 7;\n};\n\nfun[] main(): int = {\n    ret\n};\n"
+                .to_string(),
+        )
+        .unwrap();
+
+        let context = completion_context(
+            &document,
+            LspPosition {
+                line: 5,
+                character: 7,
+            },
+        );
+
+        assert_eq!(context, CompletionContext::Plain);
+    }
+
+    #[test]
     fn fallback_prefix_tables_match_current_v1_declaration_surface() {
         assert_eq!(
             FALLBACK_ROUTINE_PREFIXES,

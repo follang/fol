@@ -618,6 +618,61 @@ use super::*;
     }
 
     #[test]
+    fn test_docs_book_and_agents_keep_current_v1_editor_contract() {
+        let offenders = collect_lines_containing_any(
+            &[
+                repo_root().join("docs"),
+                repo_root().join("book"),
+                repo_root().join("AGENTS.md"),
+            ],
+            &[".md"],
+            &[
+                "rangeFormattingProvider",
+                "rename across packages",
+                "all compiler diagnostics have quick fixes",
+                "code actions for every compiler diagnostic",
+                "supports V2 editor behavior",
+            ],
+        );
+
+        assert!(
+            offenders.is_empty(),
+            "Docs, book, and contributor rules should not overclaim the shipped V1 editor surface:\n{}",
+            offenders.join("\n")
+        );
+
+        let lsp_book = std::fs::read_to_string(repo_root().join("book/src/050_tooling/500_lsp.md"))
+            .expect("LSP book chapter should exist");
+        assert!(
+            lsp_book.contains("code actions for compiler-suggested unresolved-name replacements"),
+            "LSP book should keep the current narrow code-action contract"
+        );
+        assert!(
+            lsp_book.contains("rename for same-file local and current-package top-level symbols"),
+            "LSP book should keep the current rename boundary"
+        );
+        assert!(
+            lsp_book.contains("`textDocument/rangeFormatting` remains unsupported"),
+            "LSP book should keep the current range-formatting boundary"
+        );
+
+        let editor_sync =
+            std::fs::read_to_string(repo_root().join("docs/editor-sync.md"))
+                .expect("editor sync docs should exist");
+        assert!(
+            editor_sync.contains("Current V1 non-goals"),
+            "editor sync docs should state the V1 editor non-goals explicitly"
+        );
+
+        let agents =
+            std::fs::read_to_string(repo_root().join("AGENTS.md")).expect("AGENTS should exist");
+        assert!(
+            agents.contains("Current V1 editor non-goals"),
+            "AGENTS should carry the current V1 editor non-goal guidance"
+        );
+    }
+
+    #[test]
     fn test_positive_std_package_roots_keep_explicit_internal_standard_contract() {
         use std::path::PathBuf;
 

@@ -780,6 +780,126 @@ fn lsp_server_returns_no_code_actions_for_typecheck_diagnostics_without_exact_re
 }
 
 #[test]
+fn lsp_server_keeps_current_v1_code_action_inventory_narrow_and_sorted() {
+    let (root, uri) = sample_package_root("code_action_inventory_v1");
+    fs::write(
+        root.join("src/main.fol"),
+        concat!(
+            "fun[] helper(): int = {\n",
+            "    return 1;\n",
+            "};\n\n",
+            "fun[] main(): int = {\n",
+            "    return hepler() + mian();\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri.clone(), &text);
+    let unresolved = diagnostics[0]
+        .diagnostics
+        .iter()
+        .filter(|diagnostic| diagnostic.code == "R1003")
+        .cloned()
+        .collect::<Vec<_>>();
+
+    assert_eq!(unresolved.len(), 2);
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(226),
+            method: "textDocument/codeAction".to_string(),
+            params: Some(
+                serde_json::to_value(LspCodeActionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    range: LspRange {
+                        start: LspPosition {
+                            line: 5,
+                            character: 11,
+                        },
+                        end: LspPosition {
+                            line: 5,
+                            character: 30,
+                        },
+                    },
+                    context: LspCodeActionContext {
+                        diagnostics: unresolved,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let actions: Vec<LspCodeAction> = serde_json::from_value(response.result.unwrap()).unwrap();
+    let titles = actions
+        .iter()
+        .map(|action| action.title.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(titles, vec!["replace with 'helper'", "replace with 'main'"]);
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_keeps_missing_std_dependency_without_quick_fix_for_now() {
+    let (root, uri) = sample_package_root("code_action_missing_std_dep");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("src/main.fol"),
+        "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+    )
+    .unwrap();
+    let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri.clone(), &text);
+    let diagnostic = diagnostics[0]
+        .diagnostics
+        .first()
+        .cloned()
+        .expect("missing std dependency diagnostic should be published");
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(227),
+            method: "textDocument/codeAction".to_string(),
+            params: Some(
+                serde_json::to_value(LspCodeActionParams {
+                    text_document: LspTextDocumentIdentifier { uri },
+                    range: diagnostic.range,
+                    context: LspCodeActionContext {
+                        diagnostics: vec![diagnostic],
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let actions: Vec<LspCodeAction> = serde_json::from_value(response.result.unwrap()).unwrap();
+
+    assert!(
+        actions.is_empty(),
+        "current V1 code actions should stay narrow until dedicated std quick fixes land"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_returns_same_package_namespaced_references() {
     let (root, uri) = sample_package_root("same_package_namespaced_references");
     fs::create_dir_all(root.join("src/api")).unwrap();

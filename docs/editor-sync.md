@@ -8,6 +8,16 @@ tree-sitter assets aligned.
 The editor layer should not become a second language implementation, and it
 should not depend on copied compiler name lists.
 
+Current V1 non-goals:
+
+- no V2-aware language/editor support
+- no editor-owned semantic divergence from compiler results
+- no broad rename outside the currently documented safe classes
+- no `textDocument/rangeFormatting` until structure-safe partial formatting
+  exists
+- no claims that code actions cover more than the currently shipped exact
+  replacement inventory
+
 The intended split is:
 
 - compiler crates own semantic truth

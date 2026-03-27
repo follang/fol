@@ -1,386 +1,513 @@
-# PLAN: Bundled Std Phase 2 And Internal `alloc` -> `memo`
+# fol-editor V1 Hardening Plan
 
-This plan combines the next two approved tracks:
+This plan is only for the current V1 language/editor contract.
 
-1. grow the bundled shipped `std` a little further
-2. rename the internal runtime seam from `alloc` to `memo`
+It does not introduce V2 language features.
+It does not create a second semantic implementation in the editor.
+It keeps compiler-backed analysis as the source of truth.
 
-There is no compatibility path.
+The goal is to make `fol-editor` materially better for the current shipped
+language:
 
-If a new name or contract is chosen, the old one is deleted.
+- better quick fixes
+- better completion
+- better hover / definition / references across real package boundaries
+- better diagnostics UX
+- stronger document / workspace symbols
+- safer rename in the currently-supported scope
+- stronger real-example and mixed-workspace coverage
 
-## Goals
+Non-goals for this plan:
 
-- keep bundled `std` small, honest, and actually useful
-- keep `std` authored in FOL where practical
-- keep low-level hosted/runtime substrate in Rust
-- make internal runtime naming match the public `memo` model
-- stop leaking the old internal `alloc` name through backend output, tests,
-  traces, and docs
+- no V2 syntax or semantic work
+- no editor-only semantic rules that compete with the compiler
+- no compatibility paths for removed syntax or removed build behavior
+- no speculative range formatting rollout unless formatter structure safety is
+  explicitly solved
 
-## Non-Goals
+## Epoch 1: Freeze V1 Editor Contract
 
-This plan does not:
+### Slice 1 [complete]
+Audit and pin the currently shipped `fol-editor` capability set in docs and
+tests:
 
-- turn `core` or `memo` into importable libraries
-- make `std` ambient again
-- make `std` large
-- introduce speculative `std.os` surface without a real substrate API
-- keep `fol_runtime::alloc` around as a compatibility alias
+- hover
+- definition
+- document symbols
+- workspace symbols
+- formatting
+- code actions
+- signature help
+- references
+- rename
+- semantic tokens
+- completion
 
-## Current Repo Reality
+Completion criteria:
 
-The current bundled `std` tree is:
+- `book/src/050_tooling/500_lsp.md` states the exact current surface
+- active lifecycle tests pin the advertised server capabilities
 
-- `lang/library/std/lib.fol`
-- `lang/library/std/fmt/root.fol`
-- `lang/library/std/fmt/math/lib.fol`
-- `lang/library/std/io/lib.fol`
+### Slice 2 [complete]
+Document the V1 editor non-goals explicitly:
 
-Current shipped public routines are still tiny:
+- no V2-aware language support
+- no range formatting
+- no editor-owned semantic divergence
+- no broad rename beyond current safe classes
 
-- `std::fmt::answer()`
-- `std::fmt::double(int)`
-- `std::fmt::math::answer()`
-- `std::io::echo_int(int)`
-- `std::io::echo_str(str)`
+Completion criteria:
 
-The current internal runtime seam still uses:
+- `docs/editor-sync.md` and `AGENTS.md` reflect the same boundary
 
-- `lang/execution/fol-runtime/src/alloc.rs`
-- `pub mod alloc;` in `lang/execution/fol-runtime/src/lib.rs`
-- backend emit paths like `use fol_runtime::alloc as rt;`
-- many integration and backend tests pinned to `fol_runtime::alloc`
+### Slice 3 [complete]
+Add a top-level regression that fails if active docs/examples describe
+unsupported editor features as already shipped.
 
-So the next real work is:
+Completion criteria:
 
-- add a few more honest bundled-std helpers
-- rename the internal runtime seam completely
+- suite fails on stale claims such as broad rename, broad code actions, or
+  range formatting
 
-## Final Contract After This Plan
+## Epoch 2: Code Actions Worth Using
 
-After this plan:
+### Slice 4 [complete]
+Audit the current code-action inventory in `fol-editor` and pin its exact
+starting behavior with direct tests.
 
-- bundled `std` remains explicit and dependency-backed
-- bundled `std` ships a slightly larger but still honest FOL surface
-- internal runtime naming uses `memo` consistently:
-  - file/module paths
-  - backend runtime module selection
-  - emitted Rust imports
-  - trace output
-  - tests/docs/examples that mention the internal runtime seam
+Completion criteria:
 
-## Epoch 1: Freeze Scope And Honest Surface
-
-### Slice 1
-Status: complete
-
-Write the phase-2 scope into active docs:
-
-- bundled `std` is still intentionally small
-- only real shipped surfaces may be documented
-- internal runtime rename is implementation cleanup, not a public API change
-
-### Slice 2
-Status: complete
-
-Write the same scope into contributor guidance:
-
-- `AGENTS.md`
-- `lang/library/std/README.md`
-
-### Slice 3
-Status: complete
-
-Add one shipped-surface contract test that pins the currently documented
-bundled-std modules and forbids undocumented extras.
-
-## Epoch 2: Expand `std.fmt` Slightly
-
-### Slice 4
-Status: complete
-
-Audit the current `std.fmt` tree and choose one small expansion that stays
-honest and substrate-free.
-
-Examples of acceptable additions:
-
-- a tiny arithmetic helper family
-- a tiny string-composition helper family
-- a tiny boolean/name helper family
-
-Do not invent large formatting machinery yet.
+- unresolved-name replacement behavior is locked with exact tests
+- parse-only and unsupported typecheck diagnostics remain action-free where
+  intended
 
 ### Slice 5
-Status: complete
+Add code actions for missing bundled std dependency diagnostics in the current
+V1 contract.
 
-Implement the chosen `std.fmt` additions in FOL under:
+Target behavior:
 
-- `lang/library/std/fmt/root.fol`
-- or a small nested namespace if needed
+- if code uses `use std: pkg = {"std"};` but build metadata lacks bundled std,
+  the editor offers a quick fix message appropriate to the current build model
+
+Completion criteria:
+
+- editor test proves a real quick fix is returned for the missing-std case
 
 ### Slice 6
-Status: complete
+Add code actions for wrong bundled std alias diagnostics.
 
-Add bundled-std example coverage for the new `std.fmt` routines.
+Target behavior:
+
+- when a package declared bundled std under a different alias but source uses
+  `std`, the editor can suggest the declared alias or the import correction
+
+Completion criteria:
+
+- real package test covers alias mismatch quick fix
 
 ### Slice 7
-Status: complete
+Add code actions for removed import syntax guidance where the compiler already
+produces exact replacement structure.
 
-Add CLI/integration coverage proving the new `std.fmt` routines build and run
-through the shipped bundled std.
+Target behavior:
 
-## Epoch 3: Expand `std.io` Slightly
+- unquoted import targets like `use x: pkg = {x};` offer the quoted fix when an
+  exact replacement is available
+
+Completion criteria:
+
+- parser/LSP path test proves quick fix appears only when the exact replacement
+  is safe
 
 ### Slice 8
-Status: complete
+Add code actions for invalid `fol_model` spellings when the compiler emits exact
+guidance.
 
-Audit the current hosted substrate and choose one or two additional honest
-`std.io` wrappers.
+Target behavior:
 
-Only wrap real substrate that already exists cleanly.
+- stale `std` mode or stale `mem` mode diagnostics can surface a quick fix to
+  `memo` where the replacement is exact
 
-### Slice 9
-Status: complete
+Completion criteria:
 
-Implement those wrappers in:
+- real `build.fol` editor test covers returned quick fix
 
-- `lang/library/std/io/lib.fol`
+### Slice 9 [complete]
+Tighten code-action ranking and deduplication so editor UX remains stable when
+multiple compiler suggestions exist on one line.
 
-### Slice 10
-Status: complete
+Completion criteria:
 
-Add or update one canonical bundled-std example so `std.io` is the preferred
-public story instead of raw `.echo(...)` when equivalent wrappers exist.
+- code actions sort deterministically
+- duplicate or overlapping edits do not multiply in the UI
+
+## Epoch 3: Completion Quality
+
+### Slice 10 [complete]
+Audit completion contexts and pin current plain / qualified / dot-trigger /
+type-position behavior with direct tests.
+
+Completion criteria:
+
+- completion tests explicitly cover each context class
 
 ### Slice 11
-Status: complete
+Improve bundled std package completion in the canonical V1 form:
 
-Keep exactly one tiny explicit raw-substrate example and ensure docs label it
-as substrate-level, not preferred public style.
+- `use std: pkg = {"std"};`
+- `std::...`
 
-## Epoch 4: Optional Tiny `std.os` Decision
+Completion criteria:
+
+- completion tests prove bundled std names appear only when the dependency is
+  actually declared
 
 ### Slice 12
-Status: complete
+Improve `pkg` import alias completion for declared dependencies.
 
-Audit whether there is one honest hosted/OS wrapper worth shipping now.
+Target behavior:
 
-If no honest surface exists, explicitly document that `std.os` remains absent.
+- declared aliases appear reliably in import positions
+- undeclared aliases do not leak into completion lists
+
+Completion criteria:
+
+- package-backed examples cover positive and negative alias completion
 
 ### Slice 13
-Status: complete
+Improve namespaced member completion for cross-package and bundled std symbols.
 
-Only if there is a real honest wrapper:
+Completion criteria:
 
-- add `lang/library/std/os/...`
-- add one example
-- add one integration test
-
-Otherwise mark the “no `std.os` yet” contract more strongly in docs/tests.
-
-## Epoch 5: Bundled Std Tooling And Editor Sync
+- completion after `std::`
+- completion after dependency alias namespace
+- no unrelated package bleed in the offered items
 
 ### Slice 14
-Status: complete
+Improve build-file completion around the current build system:
 
-Update editor/LSP completion coverage for any new bundled-std symbols.
+- `.build()`
+- build methods
+- graph methods
+- dependency-handle methods
+- output/path-handle methods
+
+Completion criteria:
+
+- build-file completion tests cover current public build API groups
 
 ### Slice 15
-Status: complete
+Improve mixed-workspace completion filtering so package-local ambiguity does not
+bleed wrong-model or wrong-package names into the list.
 
-Update hover/definition coverage so new bundled-std public names resolve
-cleanly from real shipped examples.
+Completion criteria:
+
+- mixed-model workspace completion stays conservative
+
+## Epoch 4: Hover, Definition, References
 
 ### Slice 16
-Status: complete
+Audit current hover behavior and pin bundled std hover output in real examples.
 
-Update tree-sitter real-example highlight coverage for the new bundled-std
-example sources.
+Completion criteria:
+
+- bundled std routine hover is stable and tested
 
 ### Slice 17
-Status: complete
+Strengthen definition jumps across:
 
-Add one top-level shipped-std scan test that keeps examples/docs/readme in sync
-with the real bundled module tree.
+- current package
+- declared dependency aliases
+- bundled std
 
-## Epoch 6: Rename Runtime Module File And Export
+Completion criteria:
+
+- definition tests prove cross-package jumps work for the shipped V1 forms
 
 ### Slice 18
-Status: complete
+Strengthen reference results for supported symbol classes across package roots.
 
-Rename:
+Completion criteria:
 
-- `lang/execution/fol-runtime/src/alloc.rs`
-
-to:
-
-- `lang/execution/fol-runtime/src/memo.rs`
+- same-file local references remain correct
+- current-package top-level references remain correct
+- supported package-backed references do not duplicate or miss obvious uses
 
 ### Slice 19
-Status: complete
+Add explicit negative navigation coverage for missing bundled std dependency and
+alias mismatch situations.
 
-Update `lang/execution/fol-runtime/src/lib.rs` so the public internal module
-export is:
+Completion criteria:
 
-- `pub mod memo;`
-
-and `pub mod alloc;` is deleted.
+- hover / definition / references fail cleanly with current diagnostics instead
+  of jumping to nonsense
 
 ### Slice 20
-Status: complete
+Tighten hover detail rendering so current V1 types and symbol kinds display more
+consistently in ordinary source and `build.fol`.
 
-Update internal runtime docs/comments to refer to `memo` instead of `alloc`.
+Completion criteria:
+
+- stable rendering tests for representative routine/type/build handles
+
+## Epoch 5: Diagnostics UX
 
 ### Slice 21
-Status: complete
+Audit current diagnostic adaptation and pin the intended editor-facing message
+shape:
 
-Update internal runtime unit tests to assert:
+- diagnostic code included
+- dedupe behavior
+- no extra editor-only semantic wording
 
-- `fol_runtime::memo::tier_name()`
-- `fol_runtime::std::base_memo_tier()` or equivalent renamed seam
+Completion criteria:
 
-with no stale `alloc` naming left.
-
-## Epoch 7: Backend Runtime-Tier Cutover
+- diagnostics tests lock the current shape
 
 ### Slice 22
-Status: complete
+Improve related-location / note projection where compiler diagnostics already
+carry meaningful extra locations.
 
-Update backend runtime-module selection so `BackendFolModel::Memo` maps to:
+Completion criteria:
 
-- `fol_runtime::memo`
-
-instead of `fol_runtime::alloc`.
+- editor diagnostics expose more compiler structure without inventing new logic
 
 ### Slice 23
-Status: complete
+Reduce noisy duplicate diagnostics during mid-edit invalid states.
 
-Update backend emitted Rust snapshots and tests so generated imports use:
+Completion criteria:
 
-- `use fol_runtime::memo as rt;`
-- `use fol_runtime::memo as rt_model;`
-
-where appropriate.
+- editor retains useful diagnostics while avoiding repeated cascade spam in the
+  open file
 
 ### Slice 24
-Status: complete
+Add explicit V1 coverage for current important diagnostic classes:
 
-Update backend trace output so it reports:
+- missing std dependency
+- std alias mismatch
+- invalid import target syntax
+- invalid `fol_model`
+- model-boundary violations in `core` / `memo`
 
-- `runtime_module=fol_runtime::memo`
+Completion criteria:
 
-instead of `fol_runtime::alloc`.
+- editor tests map these diagnostics to stable LSP output
 
 ### Slice 25
-Status: complete
+Audit build-file diagnostics and ensure build-specific failures remain readable
+and current-contract-oriented in the editor.
 
-Update compile/build-route mapping tests that still pin emitted `alloc`
-runtime imports.
+Completion criteria:
 
-## Epoch 8: Frontend And Integration Rename Sweep
+- build-file editor tests cover current public build errors
+
+## Epoch 6: Symbols and Outline
 
 ### Slice 26
-Status: complete
+Audit document symbols for nested namespaces, imports, and current shipped
+standard-library examples.
 
-Update frontend compile/build-route tests that still assert:
+Completion criteria:
 
-- `use fol_runtime::alloc as rt;`
-
-for memo artifacts.
+- representative document-symbol snapshots are pinned
 
 ### Slice 27
-Status: complete
+Improve workspace symbol relevance and filtering for current open workspace
+members.
 
-Update integration tests in:
+Completion criteria:
 
-- `test/integration_tests/integration_editor_and_build.rs`
-
-so memo/runtime expectations use:
-
-- `use fol_runtime::memo as rt;`
+- workspace symbol tests behave better for mixed package sets
 
 ### Slice 28
-Status: complete
+Ensure bundled std examples and dependency-backed packages contribute correct
+document/workspace symbols.
 
-Update any routed/CLI human-readable trace text that still mentions the old
-internal runtime module.
+Completion criteria:
+
+- symbol tests include bundled std examples and declared dependency examples
 
 ### Slice 29
-Status: complete
+Add explicit negative coverage to ensure unsupported or unresolved entities do
+not masquerade as symbols.
 
-Add one integration regression that explicitly proves memo artifacts now emit
-and run through the renamed internal `fol_runtime::memo` path.
+Completion criteria:
 
-## Epoch 9: Repo-Wide Stale Sweep
+- unresolved imports and malformed syntax do not produce misleading symbol
+  entries
+
+## Epoch 7: Rename Hardening
 
 ### Slice 30
-Status: complete
+Audit current rename support and pin the current safe boundary:
 
-Repo-wide stale sweep for:
+- same-file locals
+- current-package top-level symbols
 
-- `fol_runtime::alloc`
-- `use fol_runtime::alloc`
-- `alloc as rt`
-- `runtime_module=fol_runtime::alloc`
+Completion criteria:
 
-in active source, tests, docs, and examples.
+- tests and docs state the supported boundary explicitly
 
 ### Slice 31
-Status: complete
+Harden same-file local rename behavior through more syntax shapes:
 
-Add one top-level scan test that fails if stale `fol_runtime::alloc` references
-reappear in the active repo surface.
+- routine locals
+- parameters
+- pattern/destructure bindings where currently supported
+
+Completion criteria:
+
+- rename tests cover the currently intended local symbol classes
 
 ### Slice 32
-Status: complete
+Harden current-package top-level rename so all touched files update correctly in
+the supported cases.
 
-Update docs that explain runtime tiers so the internal implementation seam is
-named `memo` consistently.
+Completion criteria:
 
-## Epoch 10: Bundled Std Phase-2 Closure
+- multi-file package rename tests are reliable
 
 ### Slice 33
-Status: complete
+Add explicit negative rename coverage for unsupported cases:
 
-Update:
+- cross-package rename
+- ambiguous mixed-workspace symbols
+- unresolved symbols
 
-- `docs/bundled-std.md`
-- `lang/library/std/README.md`
-- relevant book pages
+Completion criteria:
 
-to list exactly the new shipped bundled-std routines and examples.
+- editor rejects these cleanly rather than producing partial edits
+
+## Epoch 8: Workspace Recovery and Real Examples
 
 ### Slice 34
-Status: complete
+Audit workspace mapping and active-model recovery against the current V1
+contract:
 
-Update contributor guidance so future std additions must:
+- `core`
+- `memo`
+- bundled std declared or not
 
-- be real shipped FOL source
-- have example coverage
-- have editor/tree-sitter audit
-- avoid overstating unshipped surfaces
+Completion criteria:
+
+- mapping tests cover single-artifact, uniform-package, and mixed-artifact roots
 
 ### Slice 35
-Status: complete
+Strengthen ambiguous-file behavior in mixed-model workspaces so the editor keeps
+model unknown when it should remain conservative.
 
-Add one top-level “shipped std honesty” matrix test that pins:
+Completion criteria:
 
-- current bundled module tree
-- current public routine list
-- current canonical examples
+- ambiguous helper-file tests remain conservative
 
 ### Slice 36
-Status: complete
+Add real-example editor coverage for the current canonical examples:
 
-Run `make build`.
+- bundled std example packages
+- no-std runnable examples
+- raw substrate example
+- quoted import syntax examples
+
+Completion criteria:
+
+- example-model tests and integration editor tests cover these roots directly
 
 ### Slice 37
-Status: complete
+Tighten overlay/materialization behavior so editor tests do not rely on shared
+temp state or incidental build artifacts.
 
-Run `make test`.
+Completion criteria:
+
+- editor tests are stable under repeated runs and parallel CI-like pressure
+
+## Epoch 9: Tree-sitter and Presentation Sync
 
 ### Slice 38
-Status: complete
+Audit tree-sitter highlight/query coverage for current shipped V1 examples and
+current import/build syntax.
 
-Only if both pass, mark the plan complete.
+Completion criteria:
+
+- real-example highlight tests cover quoted imports and current build syntax
+
+### Slice 39
+Add explicit tree-sitter/editor sync coverage for bundled std import forms:
+
+- `use std: pkg = {"std"};`
+
+Completion criteria:
+
+- stale removed import forms fail the editor tree-sitter suite
+
+### Slice 40
+Audit semantic-token output for current build-file and package-backed std
+examples.
+
+Completion criteria:
+
+- semantic-token tests cover bundled std and build-file identifiers with current
+  public naming
+
+### Slice 41
+Keep compiler-backed registry sync honest:
+
+- builtin names
+- intrinsic names
+- source kinds
+- model capability filtering
+
+Completion criteria:
+
+- top-level editor-sync regressions fail on drift
+
+## Epoch 10: Docs, Contributor Rules, Closure
+
+### Slice 42 [complete]
+Update the book’s LSP chapter so it matches the actual post-hardening V1 editor
+surface and limitations.
+
+Completion criteria:
+
+- `book/src/050_tooling/500_lsp.md` reflects real shipped behavior
+
+### Slice 43 [complete]
+Update `docs/editor-sync.md` with the final V1 editor-hardening expectations and
+the exact responsibilities that remain compiler-backed versus manual.
+
+Completion criteria:
+
+- contributor guidance is current and testable
+
+### Slice 44 [complete]
+Update `AGENTS.md` so future feature work is forced to consider:
+
+- code actions
+- completion
+- navigation
+- tree-sitter/editor mirror
+
+Completion criteria:
+
+- contributor rules mention editor checks for current V1 surfaces
+
+### Slice 45 [complete]
+Add a top-level stale-claim scan over docs/examples/tests so removed or
+unsupported editor claims do not creep back in.
+
+Completion criteria:
+
+- tests fail on stale claims such as unsupported broad rename, unsupported range
+  formatting, or ambient std import behavior
+
+## Done Definition
+
+This plan is complete when:
+
+- `fol-editor` remains compiler-backed for semantics
+- V1 quick fixes are materially more useful
+- completion/navigation are stronger for real package and bundled std workflows
+- diagnostics, symbols, and rename are more reliable in the current supported
+  scope
+- tree-sitter/editor sync stays honest
+- docs/tests/examples describe only the real shipped V1 editor surface
