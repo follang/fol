@@ -317,12 +317,12 @@ Status: completed
 Add one positive `core` runnable example/fixture with no std dependency.
 
 ### Slice 21
-Status: pending
+Status: completed
 
 Add one positive `memo` runnable example/fixture with no std dependency.
 
 ### Slice 22
-Status: pending
+Status: completed
 
 Add integration tests proving:
 
@@ -331,7 +331,7 @@ Add integration tests proving:
 - std dependency presence is orthogonal to run-step legality
 
 ### Slice 23
-Status: pending
+Status: completed
 
 Update docs so they stop implying “hosted run requires std dependency” unless
 that is explicitly intended somewhere else.
@@ -339,7 +339,7 @@ that is explicitly intended somewhere else.
 ## Epoch 6: Hosted Substrate Versus Public Std
 
 ### Slice 24
-Status: pending
+Status: completed
 
 Freeze the wording around `.echo(...)`:
 
@@ -348,7 +348,7 @@ Freeze the wording around `.echo(...)`:
 - `std.io` is the preferred wrapper
 
 ### Slice 25
-Status: pending
+Status: completed
 
 Add tests/docs showing:
 
@@ -357,13 +357,13 @@ Add tests/docs showing:
 - bundled `std.io` is a library wrapper, not the only path to hosted output
 
 ### Slice 26
-Status: pending
+Status: completed
 
 Convert active public examples that are meant to demonstrate standard-library
 use so they prefer `std::io`.
 
 ### Slice 27
-Status: pending
+Status: completed
 
 Keep one intentionally small example that still demonstrates raw `.echo(...)`
 as substrate, and label it honestly.
@@ -371,13 +371,13 @@ as substrate, and label it honestly.
 ## Epoch 7: Editor And Tree-sitter Contract
 
 ### Slice 28
-Status: pending
+Status: completed
 
 Update LSP tests so capability reporting speaks only in `core` and `memo`, with
 bundled std handled as dependency presence.
 
 ### Slice 29
-Status: pending
+Status: completed
 
 Add editor diagnostics proving:
 
@@ -385,7 +385,7 @@ Add editor diagnostics proving:
 - parser success but resolver failure is surfaced correctly
 
 ### Slice 30
-Status: pending
+Status: completed
 
 Update tree-sitter/example coverage if any current corpus or fixture still
 describes `std` as a source kind or mode.

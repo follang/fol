@@ -367,7 +367,7 @@ fn lsp_server_handles_completion_for_single_and_ambiguous_model_package_files() 
         .collect::<Vec<_>>();
     assert!(
         notes_labels.iter().any(|label| label == "echo"),
-        "ambiguous package-local files should not overfilter to a non-std model: {notes_labels:?}"
+        "ambiguous package-local files should not overfilter to a non-hosted package model: {notes_labels:?}"
     );
     assert!(
         notes_labels.iter().any(|label| label == "len"),

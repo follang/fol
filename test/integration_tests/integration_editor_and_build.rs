@@ -159,10 +159,12 @@ fn expected_runtime_import_for_model(model: &str) -> String {
 
 fn positive_runtime_model_examples() -> &'static [(&'static str, &'static str)] {
     &[
+        ("examples/core_run_min", "core"),
         ("examples/core_blink_shape", "core"),
         ("examples/core_defer", "core"),
         ("examples/core_records", "core"),
         ("examples/core_surface_showcase", "core"),
+        ("examples/memo_run_min", "memo"),
         ("examples/memo_defaults", "memo"),
         ("examples/memo_containers", "memo"),
         ("examples/memo_collections", "memo"),
@@ -173,6 +175,7 @@ fn positive_runtime_model_examples() -> &'static [(&'static str, &'static str)] 
         ("examples/std_cli", "std"),
         ("examples/std_echo_min", "std"),
         ("examples/std_named_calls", "std"),
+        ("examples/std_substrate_echo", "std"),
         ("examples/std_surface_showcase", "std"),
         ("examples/mixed_models_workspace", "std"),
     ]
@@ -960,7 +963,7 @@ fn test_build_fixture_std_model_runs_echo_programs() {
     let stdout = String::from_utf8_lossy(&run.stdout);
     assert!(
         stdout.contains("std-ready"),
-        "std echo fixture should print through the std model binary: stdout=\n{}\nstderr=\n{}",
+        "std echo fixture should print through the hosted std runtime path: stdout=\n{}\nstderr=\n{}",
         stdout,
         String::from_utf8_lossy(&run.stderr)
     );
@@ -1715,6 +1718,7 @@ fn test_cli_std_examples_run_and_print_expected_output() {
         ("examples/std_cli", "std-ready"),
         ("examples/std_echo_min", "9"),
         ("examples/std_named_calls", "host-ok-ready"),
+        ("examples/std_substrate_echo", "11"),
         ("examples/std_surface_showcase", "std-hosted-full"),
     ];
 
@@ -1742,6 +1746,36 @@ fn test_cli_std_examples_run_and_print_expected_output() {
             stdout.contains(expected_text),
             "std example '{path}' should print '{expected_text}': stdout=\n{}\nstderr=\n{}",
             stdout,
+            String::from_utf8_lossy(&run.stderr)
+        );
+    }
+}
+
+#[test]
+fn test_cli_core_and_memo_examples_run_without_bundled_std_dependency() {
+    for path in ["examples/core_run_min", "examples/memo_run_min"] {
+        let root = temp_example_root(path);
+        let build = run_example_compile(&root, true);
+        let build_stdout = String::from_utf8_lossy(&build.stdout);
+        assert!(
+            build.status.success(),
+            "no-std runnable example '{path}' should build: stdout=\n{}\nstderr=\n{}",
+            build_stdout,
+            String::from_utf8_lossy(&build.stderr)
+        );
+
+        let run = run_fol_in_dir(&root, &["code", "run"]);
+        let run_stdout = String::from_utf8_lossy(&run.stdout);
+        assert!(
+            run.status.success(),
+            "no-std runnable example '{path}' should run: stdout=\n{}\nstderr=\n{}",
+            run_stdout,
+            String::from_utf8_lossy(&run.stderr)
+        );
+        assert!(
+            run_stdout.contains("ran "),
+            "no-std runnable example '{path}' should report a run summary: stdout=\n{}\nstderr=\n{}",
+            run_stdout,
             String::from_utf8_lossy(&run.stderr)
         );
     }
@@ -3298,10 +3332,12 @@ fn test_docs_reference_real_example_packages() {
     let build_docs = std::fs::read_to_string(repo_root().join("book/src/055_build/_index.md"))
         .expect("build docs index should exist");
     let runtime_examples = [
+        "examples/core_run_min",
         "examples/core_blink_shape",
         "examples/core_defer",
         "examples/core_records",
         "examples/core_surface_showcase",
+        "examples/memo_run_min",
         "examples/memo_defaults",
         "examples/memo_containers",
         "examples/memo_collections",
@@ -3314,6 +3350,7 @@ fn test_docs_reference_real_example_packages() {
         "examples/std_echo_min",
         "examples/std_logtiny_git",
         "examples/std_named_calls",
+        "examples/std_substrate_echo",
         "examples/std_surface_showcase",
         "examples/mixed_models_workspace",
     ];
@@ -4350,13 +4387,13 @@ fn test_cli_code_build_and_run_keep_std_model_runtime_path() {
     );
     assert!(
         run_stdout.contains("7"),
-        "std model run should execute through runtime std path: stdout=\n{}\nstderr=\n{}",
+        "memo+standard run should execute through runtime std path: stdout=\n{}\nstderr=\n{}",
         run_stdout,
         String::from_utf8_lossy(&run.stderr)
     );
     assert!(
         run_stdout.contains("ran "),
-        "std model run should report a run summary: stdout=\n{}\nstderr=\n{}",
+        "memo+standard run should report a run summary: stdout=\n{}\nstderr=\n{}",
         run_stdout,
         String::from_utf8_lossy(&run.stderr)
     );

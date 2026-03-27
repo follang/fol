@@ -17,6 +17,7 @@ Finalized design contract:
   imports, for example:
   - `use std: pkg = {"std"};`
 - `graph.add_run(...)` is independent of std-library presence
+- runnable `core` and `memo` examples do not need bundled std at all
 
 Normal build usage:
 
@@ -95,6 +96,7 @@ Current rule:
 
 - `.echo(...)` remains the low-level hosted substrate
 - `std.io` is the first bundled public wrapper over that substrate
+- runnable artifacts still do not need bundled std unless they actually import it
 
 That keeps the first shipped std honest:
 
@@ -105,10 +107,13 @@ That keeps the first shipped std honest:
 
 Canonical bootstrap example packages:
 
+- `examples/core_run_min`
+- `examples/memo_run_min`
 - `examples/std_bundled_fmt`
 - `examples/std_bundled_io`
 - `examples/std_explicit_pkg`
 - `examples/std_alias_pkg`
+- `examples/std_substrate_echo`
 
 Current shipped public routines:
 
@@ -122,6 +127,10 @@ Older hosted std examples should use bundled std modules when one already exists
 That means current echo-based examples should prefer `std.io` instead of calling
 `.echo(...)` directly unless the example is explicitly about the primitive
 substrate.
+
+The explicit raw-substrate example is:
+
+- `examples/std_substrate_echo`
 
 ## Editing Bundled Std
 

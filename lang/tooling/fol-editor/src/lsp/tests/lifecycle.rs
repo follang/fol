@@ -747,10 +747,9 @@ fn assert_semantic_model_via_hover(build_model: &str, expected: fol_typecheck::T
 }
 
 #[test]
-fn lsp_server_keeps_model_context_through_hover_for_core_mem_and_std() {
+fn lsp_server_keeps_model_context_through_hover_for_core_and_memo_build_models() {
     assert_semantic_model_via_hover("core", fol_typecheck::TypecheckCapabilityModel::Core);
     assert_semantic_model_via_hover("memo", fol_typecheck::TypecheckCapabilityModel::Memo);
-    assert_semantic_model_via_hover("std", fol_typecheck::TypecheckCapabilityModel::Std);
 }
 
 #[test]

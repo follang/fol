@@ -157,6 +157,16 @@ use std: pkg = {"std"};
 
 The intent is to keep capability growth and dependency growth explicit.
 
+Runnable examples without bundled std:
+
+- `examples/core_run_min`
+- `examples/memo_run_min`
+
+Hosted std examples with explicit bundled dependency:
+
+- `examples/std_bundled_io`
+- `examples/std_substrate_echo`
+
 ## Choose your model
 
 Use `core` when the artifact can stay array-only and fixed-shape:
@@ -197,6 +207,8 @@ Direct boundary reminder:
 
 - a `core` artifact must not declare `str`, `seq`, `vec`, `set`, or `map`
 - a `memo` artifact must not call `.echo(...)`
+- a `core` or `memo` artifact may still be runnable without bundled std if it
+  does not import bundled std APIs
 
 Transitive boundary reminder:
 

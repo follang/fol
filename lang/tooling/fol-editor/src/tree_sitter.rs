@@ -1169,6 +1169,14 @@ mod tests {
                 ["punctuation.delimiter", "function"].as_slice(),
             ),
             (
+                repo_root().join("examples/core_run_min/src/main.fol"),
+                ["function", "type.builtin"].as_slice(),
+            ),
+            (
+                repo_root().join("examples/memo_run_min/src/main.fol"),
+                ["function", "type.builtin"].as_slice(),
+            ),
+            (
                 repo_root().join("examples/core_defer/src/main.fol"),
                 ["keyword.exception", "type.builtin"].as_slice(),
             ),
@@ -1182,6 +1190,10 @@ mod tests {
             ),
             (
                 repo_root().join("examples/std_echo_min/src/main.fol"),
+                ["function.builtin", "operator"].as_slice(),
+            ),
+            (
+                repo_root().join("examples/std_substrate_echo/src/main.fol"),
                 ["function.builtin", "operator"].as_slice(),
             ),
         ];

@@ -154,6 +154,37 @@ fn lsp_server_returns_semantic_tokens_for_real_model_examples() {
 }
 
 #[test]
+fn lsp_server_reports_missing_bundled_std_dependency_from_editor_path() {
+    let (root, uri) = super::helpers::sample_package_root("missing_bundled_std_dep");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let text = "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, text);
+    let messages = diagnostics
+        .iter()
+        .flat_map(|published| published.diagnostics.iter())
+        .map(|diagnostic| diagnostic.message.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(
+        messages.iter().any(|message| message.contains("std")),
+        "missing bundled std dependency should surface through the editor resolver path: {messages:?}"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
     let cases = [
         (
