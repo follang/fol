@@ -237,19 +237,19 @@ Make omitted artifact `fol_model` default to `memo` everywhere the build graph
 is evaluated.
 
 ### Slice 11
-Status: pending
+Status: completed
 
 Add integration coverage showing omitted `fol_model` builds as `memo`.
 
 ### Slice 12
-Status: pending
+Status: completed
 
 Update scaffold/init/default example outputs to omit explicit `memo` where the
 default is intended, or keep it only if the chosen docs style wants explicit
 mode spelling. Pick one and apply it consistently.
 
 ### Slice 13
-Status: pending
+Status: completed
 
 Update summaries/docs so the default is stated concretely and not implied
 through older `std` wording.
@@ -257,7 +257,7 @@ through older `std` wording.
 ## Epoch 4: Explicit Bundled Std Dependency Semantics
 
 ### Slice 14
-Status: pending
+Status: completed
 
 Audit `build.add_dep({ source = "internal", target = "standard" })` through:
 
@@ -269,7 +269,7 @@ Audit `build.add_dep({ source = "internal", target = "standard" })` through:
 and pin it as the only bundled-std acquisition path.
 
 ### Slice 15
-Status: pending
+Status: completed
 
 Add dependency tests showing the normal alias is:
 
@@ -278,13 +278,13 @@ Add dependency tests showing the normal alias is:
 but other aliases technically work if deliberately chosen.
 
 ### Slice 16
-Status: pending
+Status: completed
 
 Add resolver tests proving `use std: pkg = {"std"};` fails when the dependency
 was not declared.
 
 ### Slice 17
-Status: pending
+Status: completed
 
 Add resolver tests proving alias mismatch fails cleanly:
 
@@ -292,7 +292,7 @@ Add resolver tests proving alias mismatch fails cleanly:
 - source still imports `{"std"}`
 
 ### Slice 18
-Status: pending
+Status: completed
 
 Add integration coverage for bundled std through:
 
@@ -306,13 +306,13 @@ using the explicit dependency only.
 ## Epoch 5: Runnability Independence
 
 ### Slice 19
-Status: pending
+Status: completed
 
 Audit build/frontend/run behavior so `graph.add_run(app)` no longer relies on a
 former `std` mode assumption.
 
 ### Slice 20
-Status: pending
+Status: completed
 
 Add one positive `core` runnable example/fixture with no std dependency.
 
