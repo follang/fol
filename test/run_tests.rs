@@ -84,6 +84,80 @@ mod integration_tests {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
     }
 
+    fn collect_files_with_suffixes(root: &Path, suffixes: &[&str], out: &mut Vec<PathBuf>) {
+        if root.is_file() {
+            let path_text = root.to_string_lossy();
+            if suffixes.iter().any(|suffix| path_text.ends_with(suffix)) {
+                out.push(root.to_path_buf());
+            }
+            return;
+        }
+
+        for entry in std::fs::read_dir(root).expect("Should read fixture directory") {
+            let entry = entry.expect("Should read fixture directory entry");
+            let path = entry.path();
+            if entry.file_type().expect("Should read file type").is_dir() {
+                collect_files_with_suffixes(&path, suffixes, out);
+            } else {
+                let path_text = path.to_string_lossy();
+                if suffixes.iter().any(|suffix| path_text.ends_with(suffix)) {
+                    out.push(path);
+                }
+            }
+        }
+    }
+
+    fn collect_unquoted_use_target_lines(
+        paths: &[PathBuf],
+        suffixes: &[&str],
+        ignored_snippets: &[&str],
+    ) -> Vec<String> {
+        let mut files = Vec::new();
+        for path in paths {
+            collect_files_with_suffixes(path, suffixes, &mut files);
+        }
+        files.sort();
+
+        let mut offenders = Vec::new();
+        for file in files {
+            let text = std::fs::read_to_string(&file).expect("Should read source fixture file");
+            for (index, line) in text.lines().enumerate() {
+                if ignored_snippets.iter().any(|snippet| line.contains(snippet)) {
+                    continue;
+                }
+                if line_has_unquoted_use_target(line) {
+                    offenders.push(format!("{}:{}:{}", file.display(), index + 1, line.trim()));
+                }
+            }
+        }
+        offenders
+    }
+
+    fn line_has_unquoted_use_target(line: &str) -> bool {
+        let mut remainder = line;
+        while let Some(use_index) = remainder.find("use ") {
+            let use_slice = &remainder[use_index..];
+            for marker in ["= {", "={"] {
+                if let Some(index) = use_slice.find(marker) {
+                    let after_brace = &use_slice[index + marker.len()..];
+                    let trimmed = after_brace.trim_start();
+                    if !trimmed.starts_with('"')
+                        && !trimmed.starts_with('\'')
+                        && !trimmed.starts_with("\\\"")
+                        && !trimmed.starts_with("\\'")
+                    {
+                        return true;
+                    }
+                    break;
+                }
+            }
+
+            remainder = &use_slice["use ".len()..];
+        }
+
+        false
+    }
+
     fn copy_dir_all(src: &Path, dst: &Path) {
         std::fs::create_dir_all(dst).expect("Should create copied directory root");
         for entry in std::fs::read_dir(src).expect("Should read source directory") {

@@ -247,12 +247,12 @@ Status: completed
 Delete resolver tests that still embed old unquoted `pkg` targets.
 
 ### Slice 21
-Status: pending
+Status: completed
 
 Delete resolver tests that still embed old unquoted `loc` targets.
 
 ### Slice 22
-Status: pending
+Status: completed
 
 Harden bundled `standard` / alias-backed `pkg` resolution tests so they only use
 quoted targets.
@@ -260,24 +260,24 @@ quoted targets.
 ## Epoch 5: Lowering, Typecheck, And Backend Fixtures
 
 ### Slice 23
-Status: pending
+Status: completed
 
 Update lowerer tests that embed source strings with old unquoted import targets.
 
 ### Slice 24
-Status: pending
+Status: completed
 
 Update typecheck tests that embed source strings with old unquoted import
 targets.
 
 ### Slice 25
-Status: pending
+Status: completed
 
 Update backend emit/layout tests that embed source strings with old unquoted
 import targets.
 
 ### Slice 26
-Status: pending
+Status: completed
 
 Add one cross-layer regression proving a quoted `pkg` import survives:
 
@@ -288,7 +288,7 @@ Add one cross-layer regression proving a quoted `pkg` import survives:
 - backend emit
 
 ### Slice 27
-Status: pending
+Status: completed
 
 Add one cross-layer regression proving a quoted `loc` import survives:
 
@@ -301,27 +301,27 @@ Add one cross-layer regression proving a quoted `loc` import survives:
 ## Epoch 6: Frontend, CLI, And Workspace Fixtures
 
 ### Slice 28
-Status: pending
+Status: completed
 
 Update CLI compile fixtures using old unquoted `std` imports.
 
 ### Slice 29
-Status: pending
+Status: completed
 
 Update CLI compile fixtures using old unquoted `pkg` imports.
 
 ### Slice 30
-Status: pending
+Status: completed
 
 Update CLI/typecheck fixtures using old unquoted `loc` imports.
 
 ### Slice 31
-Status: pending
+Status: completed
 
 Update routed/integration workspace fixtures to the quoted target form only.
 
 ### Slice 32
-Status: pending
+Status: completed
 
 Add a CLI negative regression that explicitly proves:
 

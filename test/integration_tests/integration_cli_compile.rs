@@ -465,6 +465,93 @@ use super::*;
     }
 
     #[test]
+    fn test_repo_fixtures_only_use_quoted_import_targets_in_resolver_and_cli_paths() {
+        let offenders = collect_unquoted_use_target_lines(
+            &[
+                repo_root().join("test/resolver"),
+                repo_root().join("test/integration_tests"),
+                repo_root().join("lang/tooling/fol-frontend/src/build_route/tests"),
+            ],
+            &[".rs", ".fol"],
+            &["use std: pkg = {std};"],
+        );
+
+        assert!(
+            offenders.is_empty(),
+            "Resolver, CLI, and routed workspace fixtures should only use quoted import targets:\n{}",
+            offenders.join("\n")
+        );
+    }
+
+    #[test]
+    fn test_repo_fixtures_only_use_quoted_import_targets_in_lower_type_and_backend_paths() {
+        let offenders = collect_unquoted_use_target_lines(
+            &[
+                repo_root().join("lang/compiler/fol-lower/src"),
+                repo_root().join("test/typecheck"),
+                repo_root().join("lang/execution/fol-backend/src"),
+            ],
+            &[".rs", ".fol"],
+            &[],
+        );
+
+        assert!(
+            offenders.is_empty(),
+            "Lowering, typecheck, and backend fixtures should only use quoted import targets:\n{}",
+            offenders.join("\n")
+        );
+    }
+
+    #[test]
+    fn test_cli_rejects_unquoted_std_import_targets_with_parser_guidance() {
+        use std::fs;
+
+        let temp_root = unique_temp_root("cli_unquoted_std_import");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(app_root.join("src"))
+            .expect("Should create explicit std dependency fixture root");
+        fs::write(
+            app_root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "    var graph = build.graph();\n",
+                "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+                "    graph.install(app);\n",
+                "};\n",
+            ),
+        )
+        .expect("Should write the app build fixture");
+        fs::write(
+            app_root.join("src/main.fol"),
+            "use std: pkg = {std};\nfun[] main(): int = {\n    return 0;\n};\n",
+        )
+        .expect("Should write the unquoted std import fixture");
+
+        let output = run_fol(&[
+            app_root
+                .to_str()
+                .expect("Temporary app fixture path should be valid UTF-8"),
+        ]);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+
+        assert!(
+            !output.status.success(),
+            "CLI should reject unquoted std import targets, got status {:?} and output:\n{}",
+            output.status.code(),
+            stdout
+        );
+        assert!(
+            stdout.contains("Import targets must be quoted string literals inside braces"),
+            "Parser diagnostics should point directly at the quoted-target rule"
+        );
+
+        fs::remove_dir_all(&temp_root).ok();
+    }
+
+    #[test]
     fn test_cli_dump_lowered_succeeds_for_intrinsic_comparison_calls() {
         use std::fs;
 

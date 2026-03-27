@@ -1383,4 +1383,97 @@ mod tests {
 
         assert!(output.status.success());
     }
+
+    #[test]
+    fn backend_emit_accepts_quoted_loc_imports_through_the_full_workspace_chain() {
+        let fixture_root = temp_root("quoted_loc_workspace");
+        let app_root = fixture_root.join("app");
+        let shared_root = fixture_root.join("shared");
+
+        fs::create_dir_all(&app_root).expect("app root");
+        fs::create_dir_all(&shared_root).expect("shared root");
+        fs::write(
+            app_root.join("main.fol"),
+            concat!(
+                "use shared: loc = {\"../shared\"};\n",
+                "fun[] main(): int = {\n",
+                "    return shared::answer;\n",
+                "};\n",
+            ),
+        )
+        .expect("app source");
+        fs::write(
+            shared_root.join("lib.fol"),
+            "var[exp] answer: int = 7;\n",
+        )
+        .expect("shared source");
+
+        let output = build_and_run_workspace(
+            &app_root.join("main.fol"),
+            PackageConfig::default(),
+            ResolverConfig::default(),
+        );
+
+        let _ = fs::remove_dir_all(&fixture_root);
+
+        assert!(
+            output.status.success(),
+            "Quoted loc imports should survive parse, resolve, lower, typecheck, and backend emit"
+        );
+    }
+
+    #[test]
+    fn backend_emit_accepts_quoted_pkg_imports_through_the_full_workspace_chain() {
+        let fixture_root = temp_root("quoted_pkg_workspace");
+        let app_root = fixture_root.join("app");
+        let pkg_root = fixture_root.join("pkg");
+        let json_root = pkg_root.join("json");
+
+        fs::create_dir_all(&app_root).expect("app root");
+        fs::create_dir_all(json_root.join("src")).expect("pkg root");
+        fs::write(
+            app_root.join("main.fol"),
+            concat!(
+                "use json: pkg = {\"json\"};\n",
+                "fun[] main(): int = {\n",
+                "    return json::src::answer;\n",
+                "};\n",
+            ),
+        )
+        .expect("app source");
+        fs::write(
+            json_root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"json\", version = \"0.1.0\" });\n",
+                "};\n",
+            ),
+        )
+        .expect("pkg build");
+        fs::write(
+            json_root.join("src/lib.fol"),
+            "var[exp] answer: int = 9;\n",
+        )
+        .expect("pkg source");
+
+        let output = build_and_run_workspace(
+            &app_root.join("main.fol"),
+            PackageConfig {
+                package_store_root: Some(pkg_root.display().to_string()),
+                ..PackageConfig::default()
+            },
+            ResolverConfig {
+                package_store_root: Some(pkg_root.display().to_string()),
+                ..ResolverConfig::default()
+            },
+        );
+
+        let _ = fs::remove_dir_all(&fixture_root);
+
+        assert!(
+            output.status.success(),
+            "Quoted pkg imports should survive parse, resolve, lower, typecheck, and backend emit"
+        );
+    }
 }
