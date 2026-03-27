@@ -415,7 +415,7 @@ fn type_echo_intrinsic(
     let origin = origin_for(resolved, syntax_id);
     if typed.capability_model() != crate::TypecheckCapabilityModel::Std {
         let message = format!(
-            "'.echo(...)' requires 'fol_model = std'; current artifact model is '{}'",
+            "'.echo(...)' requires hosted std support; declare build.add_dep({{ alias = \"std\", source = \"internal\", target = \"standard\" }}) and use 'fol_model = memo' (current artifact model is '{}')",
             typed.capability_model().as_str()
         );
         return Err(match origin {

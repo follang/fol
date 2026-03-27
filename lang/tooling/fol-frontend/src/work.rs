@@ -11,6 +11,9 @@ pub fn work_info(workspace: &FrontendWorkspace) -> FrontendCommandResult {
     if let Some(distribution) = artifact_model_distribution_line(workspace) {
         summary.push(distribution);
     }
+    if let Some(distribution) = bundled_std_distribution_line(workspace) {
+        summary.push(distribution);
+    }
     let mut result = FrontendCommandResult::new("work info", summary.join("\n"));
     result.artifacts.push(FrontendArtifactSummary::new(
         FrontendArtifactKind::WorkspaceRoot,
@@ -222,6 +225,26 @@ fn artifact_model_distribution_line(workspace: &FrontendWorkspace) -> Option<Str
     Some(format!("artifact_models=core={core},memo={memo}"))
 }
 
+fn bundled_std_distribution_line(workspace: &FrontendWorkspace) -> Option<String> {
+    let mut declared = 0usize;
+
+    for member in &workspace.members {
+        let metadata =
+            fol_package::parse_package_metadata_from_build(&member.root.join("build.fol")).ok()?;
+        if metadata.dependencies.iter().any(|dependency| {
+            dependency.source_kind == fol_package::PackageDependencySourceKind::Internal
+                && dependency.target == "standard"
+        }) {
+            declared += 1;
+        }
+    }
+
+    Some(format!(
+        "bundled_std_members={declared}/{}",
+        workspace.members.len()
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::{work_deps, work_info, work_list, work_status};
@@ -274,6 +297,7 @@ mod tests {
         let result = work_info(&workspace);
 
         assert!(result.summary.contains("artifact_models=core=1,memo=2"));
+        assert!(result.summary.contains("bundled_std_members=1/1"));
 
         fs::remove_dir_all(&root).ok();
     }

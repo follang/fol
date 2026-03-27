@@ -1229,7 +1229,7 @@ fn echo_intrinsic_requires_std_fol_model_in_core() {
     assert_eq!(errors[0].kind(), TypecheckErrorKind::Unsupported);
     assert!(errors[0]
         .message()
-        .contains("'.echo(...)' requires 'fol_model = std'"));
+        .contains("'.echo(...)' requires hosted std support"));
     assert!(errors[0].message().contains("current artifact model is 'core'"));
 }
 
@@ -1249,7 +1249,7 @@ fn echo_intrinsic_requires_std_fol_model_in_mem() {
     assert_eq!(errors[0].kind(), TypecheckErrorKind::Unsupported);
     assert!(errors[0]
         .message()
-        .contains("'.echo(...)' requires 'fol_model = std'"));
+        .contains("'.echo(...)' requires hosted std support"));
     assert!(errors[0].message().contains("current artifact model is 'memo'"));
 }
 
@@ -1290,7 +1290,7 @@ fn public_runtime_model_matrix_keeps_mem_between_core_and_std() {
     assert_eq!(mem_echo_errors.len(), 1);
     assert!(mem_echo_errors[0]
         .message()
-        .contains("'.echo(...)' requires 'fol_model = std'"));
+        .contains("'.echo(...)' requires hosted std support"));
 
     let std_typed = typecheck_fixture_folder_with_config(
         &[("main.fol", "fun[] main(): int = {\n    return .echo(1);\n};\n")],

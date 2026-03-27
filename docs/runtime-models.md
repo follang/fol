@@ -22,10 +22,9 @@ Import reminder:
 
 Recommended style:
 
-- always spell `fol_model` explicitly in `build.fol`
-- treat `core`, `memo`, and `std` as contract choices, not convenience labels
-- do not treat `std` as the informal baseline just because the current backend
-  emits hosted Rust
+- spell `fol_model` explicitly when the artifact is `core`
+- treat `core` and `memo` as capability choices
+- treat bundled `std` as a declared internal dependency, not as a third model
 
 ## Tiers
 
@@ -100,7 +99,6 @@ Adds:
 Still forbidden:
 
 - `.echo(...)`
-- hosted `run` / `test` execution semantics
 - process/console/filesystem/network services
 
 Choose `memo` when:
@@ -126,51 +124,36 @@ fun[] main(): int = {
 };
 ```
 
-### `std`
+## Bundled `std`
 
-Meaning:
+`std` is not a third `fol_model`.
 
-- hosted runtime services on top of `memo`
+It is the bundled standard-library package shipped with FOL.
 
-Adds:
-
-- `.echo(...)`
-- hosted process outcome behavior
-- ordinary host-executed `run` / `test`
-- future OS/runtime services
-
-Choose `std` when:
-
-- the artifact is a normal host tool or CLI
-- the artifact needs `.echo(...)`
-- the artifact is expected to run through `fol code run` or routed `test`
-
-Allowed example:
+Projects opt into it explicitly in `build.fol`:
 
 ```fol
-fun[] main(): int = {
-    var shown: int = .echo(9);
-    return 9;
-};
+build.add_dep({
+    alias = "std",
+    source = "internal",
+    target = "standard",
+});
 ```
 
-Forbidden example:
+Then source code imports it through the declared dependency alias:
 
 ```fol
-ali CounterPtr: ptr[int];
+use std: pkg = {std};
 ```
-
-`std` widens runtime capability, but it does not opt into later V3/V4 language
-surfaces automatically.
 
 ## Quick selection rule
 
 - pick `core` first if the artifact can stay array-only and no-heap
-- move to `memo` only when you actually need `str` or dynamic containers
-- move to `std` only when you actually need hosted runtime behavior
+- move to `memo` when you actually need `str` or dynamic containers
+- add bundled `std` only when the package genuinely needs shipped hosted-library
+  wrappers
 
-The intent is to keep capability growth explicit. `std` is not the semantic
-baseline for every artifact just because the current backend is hosted Rust.
+The intent is to keep capability growth and dependency growth explicit.
 
 ## Choose your model
 
@@ -197,15 +180,14 @@ graph.add_static_lib({
 });
 ```
 
-Move to `std` only when the artifact itself needs hosted behavior such as
-`.echo(...)` or routed host execution:
+Add bundled `std` when the package needs shipped hosted-library wrappers:
 
 ```fol
-var graph = .build().graph();
-graph.add_exe({
-    name = "tool",
-    root = "src/main.fol",
-    fol_model = "memo",
+var build = .build();
+build.add_dep({
+    alias = "std",
+    source = "internal",
+    target = "standard",
 });
 ```
 
@@ -218,10 +200,10 @@ Transitive boundary reminder:
 
 - a `core` artifact still cannot consume heap-backed API from a `memo`
   dependency
-- a `memo` artifact still cannot consume hosted-only API from a `std`
-  dependency
-- a `std` artifact may consume both `core` and `memo` dependencies in one
-  graph
+- a `core` or `memo` artifact cannot consume bundled `std` APIs unless the
+  bundled internal `standard` dependency was declared
+- a `memo` artifact with bundled `std` may consume both `core` and `memo`
+  dependencies in one graph
 
 ## Transitive boundary rule
 
@@ -233,32 +215,33 @@ That means:
 - a `core` artifact cannot consume heap-backed API from a `memo` package just
   because the dependency itself was declared with `fol_model = "memo"`
 - a `core` or `memo` artifact cannot reach `.echo(...)` indirectly through an
-  imported `std` package
-- a `std` artifact may consume `core` and `memo` packages in the same graph
+  imported bundled `std` package unless the package declared internal
+  `standard`
+- a `memo` artifact with bundled `std` may consume `core` and `memo` packages
+  in the same graph
 
 The consuming artifact model always wins.
 
-## Guarantees by model
+## Guarantees by capability
 
-| Model   | Heap | Hosted runtime | Typical artifact shape |
-|---------|------|----------------|------------------------|
-| `core`  | no   | no             | embedded logic, fixed-shape libs |
-| `memo` | yes  | no             | heap utilities, container-heavy libs |
-| `std`   | yes  | yes            | CLIs, host tools, integration executables |
+| Capability | Heap | Bundled `std` allowed by itself | Typical artifact shape |
+|------------|------|----------------------------------|------------------------|
+| `core`     | no   | no                               | embedded logic, fixed-shape libs |
+| `memo`     | yes  | only when dependency declared    | heap utilities, host tools, bundled-std consumers |
 
 ## Current implementation status
 
 Implemented today:
 
-- `.echo(...)` requires `std`
+- `.echo(...)` requires hosted std support
 - `str`, `vec`, `seq`, `set`, and `map` are rejected in `core`
 - array `.len(...)` stays valid in `core`
-- dynamic/string `.len(...)` requires `memo` or `std`
-- routed `run` / `test` reject non-`std` artifacts
+- dynamic/string `.len(...)` requires `memo`
+- routed `run` / `test` are independent from bundled std presence
 - emitted Rust imports the matching internal runtime module
 - public `fol_model = "memo"` currently maps to the internal heap runtime module
-- `fol-runtime` is the single runtime crate with internal `core`, heap, and
-  `std` ownership
+- packages import bundled `std` only through explicit internal dependency
+  declaration
 
 ## Runtime export contract
 
@@ -306,6 +289,7 @@ need targeted tree-sitter or editor UX updates.
 pro[] build(): non = {
     var build = .build();
     build.meta({ name = "mixed_models_workspace", version = "0.1.0" });
+    build.add_dep({ alias = "std", source = "internal", target = "standard" });
     var graph = build.graph();
     var corelib = graph.add_static_lib({
         name = "corelib",
@@ -341,6 +325,7 @@ pro[] build(): non = {
 - `examples/std_bundled_fmt`
 - `examples/std_bundled_io`
 - `examples/std_explicit_pkg`
+- `examples/std_alias_pkg`
 - `examples/std_echo_min`
 - `examples/std_logtiny_git`
 - `examples/std_named_calls`
@@ -353,3 +338,4 @@ Negative example packages:
 - `examples/fail_memo_echo`
 - `examples/fail_core_alloc_boundary`
 - `examples/fail_core_std_import`
+- `examples/fail_memo_std_missing_dep`

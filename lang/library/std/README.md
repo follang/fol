@@ -49,7 +49,7 @@ The current bundled bootstrap surface is intentionally tiny:
 That is enough to prove:
 
 - the toolchain ships a real importable `std`
-- bundled std resolves without extra dependency setup
+- bundled std resolves through one explicit internal dependency declaration
 - FOL-authored std modules compile and run under `fol_model = "memo"`
 
 `std.io` is currently just a thin FOL wrapper over the hosted `.echo(...)`
@@ -78,6 +78,7 @@ Canonical bootstrap examples:
 - `examples/std_bundled_fmt`
 - `examples/std_bundled_io`
 - `examples/std_explicit_pkg`
+- `examples/std_alias_pkg`
 
 Anything outside that list should not be documented as already shipped.
 

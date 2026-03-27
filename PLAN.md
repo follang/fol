@@ -447,7 +447,7 @@ Completion criteria:
   - explicit internal `standard` dependency
 
 ### Slice 29
-Status: pending
+Status: completed
 
 Update routed workspace/model reporting to reflect the new split.
 
@@ -556,7 +556,7 @@ Completion criteria:
 - generated Rust import tests remain honest
 
 ### Slice 39
-Status: pending
+Status: completed
 
 Tighten build summaries and `work info` to surface:
 
@@ -585,7 +585,7 @@ Completion criteria:
 ## Epoch 9: Update Bundled `std` Itself
 
 ### Slice 41
-Status: pending
+Status: completed
 
 Rewrite [lang/library/std/README.md](/home/bresilla/data/code/bresilla/fol/lang/library/std/README.md)
 for the new dependency model.
@@ -596,7 +596,7 @@ Completion criteria:
 - README says projects still declare it explicitly as internal dependency
 
 ### Slice 42
-Status: pending
+Status: completed
 
 Update bundled std bootstrap examples to the new explicit-dependency model.
 
@@ -607,7 +607,7 @@ Completion criteria:
 - both declare internal `standard` dependency explicitly
 
 ### Slice 43
-Status: pending
+Status: completed
 
 Add one negative example for missing bundled std dependency.
 
@@ -616,7 +616,7 @@ Completion criteria:
 - checked-in example fails because `std` is imported without adding internal `standard`
 
 ### Slice 44
-Status: pending
+Status: completed
 
 Add one alias-variation example showing that bundled std is just a dependency root.
 
@@ -630,7 +630,7 @@ Completion criteria:
 ## Epoch 10: Final Cleanup And Closure
 
 ### Slice 45
-Status: pending
+Status: completed
 
 Update book chapters to remove the old “`std` is a model” explanation.
 
@@ -642,7 +642,7 @@ Completion criteria:
   - internal `standard` dependency
 
 ### Slice 46
-Status: pending
+Status: completed
 
 Update contributor docs and AGENTS guidance.
 
@@ -653,7 +653,7 @@ Completion criteria:
   - bundled std is explicit internal dependency
 
 ### Slice 47
-Status: pending
+Status: completed
 
 Run a repo-wide stale wording sweep for:
 
@@ -666,7 +666,7 @@ Completion criteria:
 - active docs/examples/tests contain no stale public wording
 
 ### Slice 48
-Status: pending
+Status: completed
 
 Add a final contract integration test.
 
@@ -691,7 +691,7 @@ Completion criteria:
   - bundled internal `standard`
 
 ### Slice 50
-Status: pending
+Status: completed
 
 Close the plan with an honesty audit.
 

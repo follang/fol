@@ -692,7 +692,7 @@ fn execute_workspace_build_route_rejects_echo_for_mem_model_artifacts() {
     assert_eq!(error.diagnostics().len(), 1);
     assert!(error.diagnostics()[0]
         .message
-        .contains("'.echo(...)' requires 'fol_model = std'"));
+        .contains("'.echo(...)' requires hosted std support"));
     assert!(error.diagnostics()[0]
         .message
         .contains("current artifact model is 'memo'"));
@@ -1345,7 +1345,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
     )
     .expect("mixed workspace routed build should succeed");
 
-    assert!(result.summary.contains("fol_model=core,memo"));
+    assert!(result.summary.contains("capability_mode=core,memo"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -1408,7 +1408,7 @@ fn execute_workspace_build_route_run_selection_stays_std_with_same_root_core_tes
     )
     .expect("run selection should stay on the std executable");
 
-    assert!(result.summary.contains("fol_model=memo"));
+    assert!(result.summary.contains("capability_mode=memo"));
 
     fs::remove_dir_all(root).ok();
 }

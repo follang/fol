@@ -77,7 +77,8 @@ being split by `fol-model`, so the rule is:
 
 - `core` artifacts must not rely on heap-backed or hosted facilities
 - `memo` artifacts may use heap-backed facilities but not hosted services
-- `std` artifacts may use hosted services
+- bundled `std` wrappers require a `memo` artifact plus explicit internal
+  `standard` dependency
 
 In the current implementation that means:
 

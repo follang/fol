@@ -107,13 +107,13 @@ That means:
 - completion should hide surfaces that are invalid for the active model
 - mixed-model workspaces should not silently bleed one model into another
 
-## Model matrix
+## Capability matrix
 
-| Model | Type completion | Intrinsic completion | Diagnostics focus | Example packages |
-|-------|-----------------|----------------------|-------------------|------------------|
-| `core` | scalar, array, record, entry, shell surfaces only | no `std`-only intrinsics, no heap-only guidance | reject `str`, dynamic containers, dynamic `.len(...)`, `.echo(...)` | `examples/core_blink_shape`, `examples/core_defer`, `examples/core_records`, `examples/core_surface_showcase` |
-| `memo` | `core` types plus `str`, `vec`, `seq`, `set`, `map` | no `std`-only intrinsics | reject `.echo(...)`; allow heap-backed strings and containers | `examples/memo_defaults`, `examples/memo_containers`, `examples/memo_collections`, `examples/memo_surface_showcase` |
-| `std` | all currently implemented type surfaces | all currently implemented V1 intrinsics valid for host artifacts | ordinary semantic/type diagnostics plus hosted-runtime behavior | `examples/std_bundled_fmt`, `examples/std_bundled_io`, `examples/std_cli`, `examples/std_echo_min`, `examples/std_named_calls`, `examples/std_surface_showcase` |
+| Capability mode | Bundled std declared | Type completion | Intrinsic completion | Diagnostics focus | Example packages |
+|-----------------|----------------------|-----------------|----------------------|-------------------|------------------|
+| `core` | no | scalar, array, record, entry, shell surfaces only | no hosted or heap-only guidance | reject `str`, dynamic containers, dynamic `.len(...)`, bundled std imports, `.echo(...)` | `examples/core_blink_shape`, `examples/core_defer`, `examples/core_records`, `examples/core_surface_showcase`, `examples/fail_core_std_import` |
+| `memo` | no | `core` types plus `str`, `vec`, `seq`, `set`, `map` | no bundled std wrappers or hosted intrinsics | reject bundled std imports and `.echo(...)`; allow heap-backed strings and containers | `examples/memo_defaults`, `examples/memo_containers`, `examples/memo_collections`, `examples/memo_surface_showcase`, `examples/fail_memo_echo`, `examples/fail_memo_std_missing_dep` |
+| `memo` | yes | `memo` types plus bundled `std` package exports under the declared alias | bundled `std` wrappers and hosted-runtime behavior | ordinary semantic/type diagnostics plus dependency-backed std import behavior | `examples/std_bundled_fmt`, `examples/std_bundled_io`, `examples/std_cli`, `examples/std_echo_min`, `examples/std_named_calls`, `examples/std_surface_showcase`, `examples/std_alias_pkg` |
 
 For mixed-model workspaces, editor tests should also cover
 `examples/mixed_models_workspace`.
@@ -140,7 +140,7 @@ Editor-facing expectations:
   `fol_model`
 - ambiguous package-local files should stay conservative and avoid bleeding a
   narrower model into unrelated helpers
-- build files that declare `fol_model = "core" | "memo" | "std"` should stay
+- build files that declare `fol_model = "core" | "memo"` should stay
   discoverable in semantic token and tree-sitter coverage
 - negative model examples such as `examples/fail_core_heap_reject` and
   `examples/fail_memo_echo` should keep surfacing the same LSP boundary class
@@ -152,7 +152,8 @@ The minimum test gates for editor sync are:
 - compiler constants match tree-sitter query name families
 - compiler intrinsics match editor highlight/completion name families
 - model-boundary diagnostics match between LSP and build-mode compilation
-- real example packages for `core`, `memo`, and `std` stay editor-readable
+- real example packages for `core`, `memo`, and bundled-std-backed `memo` stay
+  editor-readable
 
 ## Contributor rule
 
@@ -195,7 +196,7 @@ When you add or change a language feature, the editor sync bar is:
      or `symbols.scm`
    - keep structural edits minimal and covered by tests
 6. If the feature changes `fol_model` legality:
-   - add or update `core` / `memo` / `std` editor example coverage
+   - add or update `core` / `memo` editor example coverage
    - verify LSP diagnostics match `fol code build`
 7. If the feature adds or changes bundled `std` public names:
    - update bundled std examples that should demonstrate the new names

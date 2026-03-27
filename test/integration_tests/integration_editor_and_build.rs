@@ -137,12 +137,16 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     target
 }
 
-fn materialize_local_bundled_std_alias(root: &std::path::Path) {
+fn materialize_local_bundled_std_alias_as(root: &std::path::Path, alias: &str) {
     let bundled_std_root =
         fol_package::available_bundled_std_root().expect("bundled std root should exist");
-    copy_dir_all(&bundled_std_root, &root.join(".fol/pkg/std"));
+    copy_dir_all(&bundled_std_root, &root.join(".fol/pkg").join(alias));
     std::fs::write(root.join("fol.work.yaml"), "package_store_root: .fol/pkg\n")
         .expect("should write workspace package-store override");
+}
+
+fn materialize_local_bundled_std_alias(root: &std::path::Path) {
+    materialize_local_bundled_std_alias_as(root, "std");
 }
 
 fn expected_runtime_import_for_model(model: &str) -> String {
@@ -865,8 +869,8 @@ fn test_build_fixture_mem_model_supports_string_values() {
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
-            String::from_utf8_lossy(&build.stdout).contains("fol_model=memo"),
-            "memo string fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout).contains("capability_mode=memo"),
+            "memo string fixture should surface its capability mode in the build summary: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&build.stdout),
             String::from_utf8_lossy(&build.stderr)
         );
@@ -903,7 +907,7 @@ fn test_build_fixture_mem_model_supports_full_heap_surface() {
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
-        String::from_utf8_lossy(&build.stdout).contains("fol_model=memo"),
+        String::from_utf8_lossy(&build.stdout).contains("capability_mode=memo"),
         "memo full-surface fixture should surface its model in the build summary: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
@@ -1064,7 +1068,7 @@ fn test_build_fixture_core_model_supports_foundation_surface() {
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
-            String::from_utf8_lossy(&build.stdout).contains("fol_model=core"),
+            String::from_utf8_lossy(&build.stdout).contains("capability_mode=core"),
             "core foundation fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&build.stdout),
             String::from_utf8_lossy(&build.stderr)
@@ -1153,7 +1157,7 @@ fn test_core_artifact_accepts_transitive_core_pkg_dependency() {
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
-    assert!(String::from_utf8_lossy(&build.stdout).contains("fol_model=core"));
+    assert!(String::from_utf8_lossy(&build.stdout).contains("capability_mode=core"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
@@ -1230,7 +1234,7 @@ fn test_core_artifact_rejects_transitive_std_pkg_dependency() {
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
-    assert!(stderr.contains("'.echo(...)' requires 'fol_model = std'"));
+    assert!(stderr.contains("'.echo(...)' requires hosted std support"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
@@ -1272,7 +1276,7 @@ fn test_mem_artifact_accepts_transitive_mem_pkg_dependency() {
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
-    assert!(String::from_utf8_lossy(&build.stdout).contains("fol_model=memo"));
+    assert!(String::from_utf8_lossy(&build.stdout).contains("capability_mode=memo"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
@@ -1310,7 +1314,7 @@ fn test_mem_artifact_rejects_transitive_std_echo_dependency() {
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
-    assert!(stderr.contains("'.echo(...)' requires 'fol_model = std'"));
+    assert!(stderr.contains("'.echo(...)' requires hosted std support"));
     assert!(stderr.contains("current artifact model is 'memo'"));
 
     std::fs::remove_dir_all(&temp_root).ok();
@@ -1861,6 +1865,38 @@ fn test_bundled_std_io_example_builds_and_runs_without_override() {
         stdout,
         String::from_utf8_lossy(&run.stderr)
     );
+}
+
+#[test]
+fn test_bundled_std_alias_example_builds_with_materialized_alias_root() {
+    let root = temp_example_root("examples/std_alias_pkg");
+    materialize_local_bundled_std_alias_as(&root, "standard_lib");
+    std::fs::remove_file(root.join("fol.work.yaml"))
+        .expect("alias build test should remove workspace override before CLI build");
+
+    let build = run_fol_with_store_in_dir(
+        &root,
+        &root.join(".fol/pkg"),
+        &["code", "build", "--keep-build-dir"],
+    );
+    assert!(
+        build.status.success(),
+        "bundled std alias example should build with a materialized alias root: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout),
+        String::from_utf8_lossy(&build.stderr)
+    );
+
+    let generated = find_file_by_name(&emitted_crate_root(&build), "main.rs")
+        .expect("bundled std alias example should emit main.rs");
+    let source = std::fs::read_to_string(&generated).expect("generated main should load");
+    assert!(source.contains("use fol_runtime::std as rt;"));
+
+    let binary = built_binary_path(&build);
+    let run = std::process::Command::new(&binary)
+        .output()
+        .expect("bundled std alias example should run");
+    assert!(run.status.success(), "bundled std alias example should execute");
+    assert!(String::from_utf8_lossy(&run.stdout).contains("10"));
 }
 
 #[test]
@@ -3252,6 +3288,7 @@ fn test_work_info_surfaces_model_distribution_for_mixed_model_example() {
         String::from_utf8_lossy(&info.stderr)
     );
     assert!(stdout.contains("artifact_models=core=1,memo=2"));
+    assert!(stdout.contains("bundled_std_members=1/1"));
 }
 
 #[test]
@@ -3272,6 +3309,7 @@ fn test_docs_reference_real_example_packages() {
         "examples/std_bundled_fmt",
         "examples/std_bundled_io",
         "examples/std_explicit_pkg",
+        "examples/std_alias_pkg",
         "examples/std_cli",
         "examples/std_echo_min",
         "examples/std_logtiny_git",
@@ -3355,6 +3393,7 @@ fn test_bundled_std_docs_and_readme_keep_the_shipped_surface_honest() {
         "io::echo_str(str): str",
         "examples/std_bundled_fmt",
         "examples/std_bundled_io",
+        "examples/std_alias_pkg",
     ] {
         assert!(
             bundled_std_docs.contains(needle),
@@ -3492,12 +3531,15 @@ fn test_standard_dependency_contract_matrix_holds() {
         .expect("internal standard dependency should materialize");
 
     let std_build_output = run_fol_with_store_in_dir(&std_root, &store_root, &["code", "build"]);
+    let std_stdout = String::from_utf8_lossy(&std_build_output.stdout);
     assert!(
         std_build_output.status.success(),
         "declared internal standard dependency should unlock pkg std imports: stdout=\n{}\nstderr=\n{}",
-        String::from_utf8_lossy(&std_build_output.stdout),
+        std_stdout,
         String::from_utf8_lossy(&std_build_output.stderr)
     );
+    assert!(std_stdout.contains("capability_mode=memo"));
+    assert!(std_stdout.contains("bundled_std=1/1"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
@@ -3623,7 +3665,7 @@ fn test_negative_runtime_model_examples_fail_with_expected_boundary_class() {
         (
             "examples/fail_memo_echo",
             None,
-            "'.echo(...)' requires 'fol_model = std'",
+            "'.echo(...)' requires hosted std support",
         ),
         (
             "examples/fail_core_alloc_boundary",
@@ -3634,6 +3676,11 @@ fn test_negative_runtime_model_examples_fail_with_expected_boundary_class() {
             "examples/fail_core_std_import",
             None,
             "bundled std imports require 'fol_model = memo'; current artifact model is 'core'",
+        ),
+        (
+            "examples/fail_memo_std_missing_dep",
+            None,
+            "std",
         ),
     ];
 
@@ -3825,7 +3872,7 @@ fn test_build_fixtures_core_model_reject_forbidden_surfaces() {
         ),
         (
             "model_core_reject_echo",
-            "'.echo(...)' requires 'fol_model = std'",
+            "'.echo(...)' requires hosted std support",
         ),
     ];
 
@@ -3861,7 +3908,7 @@ fn test_build_fixture_mem_model_rejects_echo() {
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
-    assert!(stderr.contains("'.echo(...)' requires 'fol_model = std'"));
+    assert!(stderr.contains("'.echo(...)' requires hosted std support"));
     assert!(stderr.contains("current artifact model is 'memo'"));
 }
 
@@ -3898,7 +3945,7 @@ fn test_negative_mem_model_example_fails_with_hosted_boundary_diagnostic() {
         stderr
     );
     assert!(
-        stderr.contains("'.echo(...)' requires 'fol_model = std'"),
+        stderr.contains("'.echo(...)' requires hosted std support"),
         "negative memo model example should keep the hosted-boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
@@ -4181,7 +4228,7 @@ fn test_cli_code_build_keeps_memo_echo_boundary_diagnostic() {
     assert!(!output.status.success(), "memo echo boundary should fail");
     assert!(
         stderr
-            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'memo'"),
+            .contains("'.echo(...)' requires hosted std support"),
         "CLI should preserve the memo echo boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&output.stdout),
         stderr

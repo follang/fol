@@ -320,6 +320,10 @@ fn validate_dependency_queries_for_member(
         .clone()
         .or_else(|| workspace.package_store_root_override.clone())
         .unwrap_or_else(|| workspace.root.root.join(".fol").join("pkg"));
+    let std_root = workspace
+        .std_root_override
+        .clone()
+        .or_else(fol_package::available_bundled_std_root);
 
     for query in &evaluated.evaluated.dependency_queries {
         let metadata_dependency = metadata
@@ -334,6 +338,7 @@ fn validate_dependency_queries_for_member(
         let dependency_root = dependency_root_for_query(
             &member.member_root,
             &package_store_root,
+            std_root.as_deref(),
             metadata_dependency,
             evaluated_dependency,
         )?;
@@ -391,6 +396,7 @@ fn validate_dependency_queries_for_member(
 fn dependency_root_for_query(
     member_root: &Path,
     package_store_root: &Path,
+    std_root: Option<&Path>,
     metadata_dependency: Option<&fol_package::PackageDependencyDecl>,
     evaluated_dependency: Option<&fol_package::DependencyRequest>,
 ) -> FrontendResult<PathBuf> {
@@ -404,7 +410,9 @@ fn dependency_root_for_query(
                 package_store_root.join(&dependency.alias)
             }
             fol_package::PackageDependencySourceKind::Internal => {
-                package_store_root.join(&dependency.alias)
+                std_root
+                    .map(Path::to_path_buf)
+                    .unwrap_or_else(|| package_store_root.join(&dependency.alias))
             }
         });
     }
@@ -724,10 +732,15 @@ fn artifact_selection(
         package_root: member.member_root.clone(),
         label: artifact.name.clone(),
         root_module: Some(artifact.root_module.clone()),
+        capability_model: match backend_fol_model(artifact.fol_model) {
+            fol_backend::BackendFolModel::Std => fol_backend::BackendFolModel::Memo,
+            other => other,
+        },
         fol_model: crate::compile::effective_runtime_model_for_package(
             &member.member_root,
             backend_fol_model(artifact.fol_model),
         ),
+        has_bundled_std: crate::compile::package_declares_bundled_std(&member.member_root),
     }
 }
 

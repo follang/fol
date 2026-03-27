@@ -105,6 +105,7 @@ Canonical bootstrap example packages:
 - `examples/std_bundled_fmt`
 - `examples/std_bundled_io`
 - `examples/std_explicit_pkg`
+- `examples/std_alias_pkg`
 
 Current shipped public routines:
 

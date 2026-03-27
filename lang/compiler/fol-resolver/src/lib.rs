@@ -6,9 +6,9 @@
 //! - resolve plain and qualified value, call, type, and inquiry references
 //! - expose imported exported names through plain lookup after supported imports
 //! - resolve `use loc` imports against the loaded source set
-//! - resolve `use std` imports against the bundled std root by default
+//! - resolve dependency-rooted `use pkg` imports, including bundled std aliases
 //! - permit explicit std-root overrides for development/testing
-//! - resolve `use pkg` imports against installed `build.fol` + `build.fol` roots
+//! - resolve `use pkg` imports against installed `build.fol` package roots
 //! - mount only `build.fol`-declared export roots for consumer-visible `pkg` imports
 //! - keep file-private `hid` visibility inside the owning source unit only
 //! - treat built-in `str` as a builtin instead of a user-defined type lookup

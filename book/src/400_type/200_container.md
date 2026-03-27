@@ -2,9 +2,10 @@
 
 Model reminder:
 
-- examples here that call `.echo(...)` assume a `std` artifact context
+- examples here that call `.echo(...)` assume a `memo` artifact with bundled
+  `std` support available
 - `arr[...]` is valid in `core`
-- `vec[...]`, `seq[...]`, `set[...]`, and `map[...]` require `memo` or `std`
+- `vec[...]`, `seq[...]`, `set[...]`, and `map[...]` require `memo`
 
 Containers are of compound types. They contain other primitive or constructed types. To access the types in container those brackets are used: `[]`, so:
 ```

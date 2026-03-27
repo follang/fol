@@ -270,7 +270,8 @@ Current intrinsic note:
 
 Model reminder:
 
-- any routine example that calls `.echo(...)` assumes a `std` artifact context
+- any routine example that calls `.echo(...)` assumes a `memo` artifact with
+  bundled `std` support available
 - routine examples without hosted behavior should stay valid in `core` or
   `memo` where the surrounding chapter claims they are model-neutral
 

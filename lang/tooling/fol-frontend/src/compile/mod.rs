@@ -2,6 +2,7 @@ use crate::{
     FrontendArtifactKind, FrontendArtifactSummary, FrontendCommandResult, FrontendConfig,
     FrontendError, FrontendErrorKind, FrontendProfile, FrontendResult, FrontendWorkspace,
 };
+use fol_build::{evaluate_build_source, BuildEvaluationInputs, BuildEvaluationRequest};
 use std::{fs, path::Path};
 
 #[cfg(test)]
@@ -12,7 +13,9 @@ pub(crate) struct FrontendArtifactExecutionSelection {
     pub package_root: std::path::PathBuf,
     pub label: String,
     pub root_module: Option<String>,
+    pub capability_model: fol_backend::BackendFolModel,
     pub fol_model: fol_backend::BackendFolModel,
+    pub has_bundled_std: bool,
 }
 
 pub(crate) fn package_declares_bundled_std(root: &std::path::Path) -> bool {
@@ -38,11 +41,54 @@ pub(crate) fn effective_runtime_model_for_package(
     }
 }
 
-fn summarize_fol_models<I>(models: I) -> String
+fn declared_capability_model_for_package(root: &std::path::Path) -> fol_backend::BackendFolModel {
+    let build_path = root.join("build.fol");
+    let Some(source) = fs::read_to_string(&build_path).ok() else {
+        return fol_backend::BackendFolModel::Memo;
+    };
+    let Some(evaluated) = evaluate_build_source(
+        &BuildEvaluationRequest {
+            package_root: root.display().to_string(),
+            inputs: BuildEvaluationInputs {
+                working_directory: root.display().to_string(),
+                ..BuildEvaluationInputs::default()
+            },
+            operations: Vec::new(),
+        },
+        &build_path,
+        &source,
+    )
+    .ok()
+    .flatten()
+    else {
+        return fol_backend::BackendFolModel::Memo;
+    };
+
+    if evaluated
+        .evaluated
+        .artifacts
+        .iter()
+        .all(|artifact| artifact.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Core)
+    {
+        fol_backend::BackendFolModel::Core
+    } else {
+        fol_backend::BackendFolModel::Memo
+    }
+}
+
+fn summarize_capability_modes<I>(models: I) -> String
 where
     I: IntoIterator<Item = fol_backend::BackendFolModel>,
 {
-    let mut models = models.into_iter().collect::<Vec<_>>();
+    let mut models = models
+        .into_iter()
+        .map(|model| match model {
+            fol_backend::BackendFolModel::Core => fol_backend::BackendFolModel::Core,
+            fol_backend::BackendFolModel::Memo | fol_backend::BackendFolModel::Std => {
+                fol_backend::BackendFolModel::Memo
+            }
+        })
+        .collect::<Vec<_>>();
     models.sort_by_key(|model| match model {
         fol_backend::BackendFolModel::Core => 0,
         fol_backend::BackendFolModel::Memo => 1,
@@ -54,7 +100,15 @@ where
         .map(|model| model.as_str())
         .collect::<Vec<_>>()
         .join(",");
-    format!("fol_model={rendered}")
+    format!("capability_mode={rendered}")
+}
+
+fn summarize_bundled_std_presence(selections: &[FrontendArtifactExecutionSelection]) -> String {
+    let with_std = selections
+        .iter()
+        .filter(|selection| selection.has_bundled_std)
+        .count();
+    format!("bundled_std={with_std}/{}", selections.len())
 }
 
 fn produced_artifact_count(result: &FrontendCommandResult) -> usize {
@@ -122,10 +176,12 @@ pub fn build_workspace_for_profile_with_config(
                 .unwrap_or("package")
                 .to_string(),
             root_module: None,
+            capability_model: declared_capability_model_for_package(&member.root),
             fol_model: effective_runtime_model_for_package(
                 &member.root,
-                fol_backend::BackendFolModel::Memo,
+                declared_capability_model_for_package(&member.root),
             ),
+            has_bundled_std: package_declares_bundled_std(&member.root),
         })
         .collect::<Vec<_>>();
     build_selected_artifacts_for_profile_with_config(workspace, config, profile, &selections)
@@ -205,9 +261,10 @@ pub(crate) fn build_selected_artifacts_for_profile_with_config(
         .count();
     let output_count = produced_artifact_count(&result);
     result.summary = format!(
-        "built {binary_count} workspace package(s) into {} ({}, install_prefix={}, outputs={output_count})",
+        "built {binary_count} workspace package(s) into {} ({}, {}, install_prefix={}, outputs={output_count})",
         output_root.display(),
-        summarize_fol_models(selections.iter().map(|selection| selection.fol_model)),
+        summarize_capability_modes(selections.iter().map(|selection| selection.capability_model)),
+        summarize_bundled_std_presence(selections),
         workspace.install_prefix.display()
     );
     Ok(result)
@@ -285,9 +342,18 @@ pub fn run_workspace_with_args_and_config(
     let mut result = FrontendCommandResult::new(
         "run",
         format!(
-            "ran {} ({})",
+            "ran {} ({}, bundled_std={})",
             binary.display(),
-            summarize_fol_models([fol_backend::BackendFolModel::Std])
+            summarize_capability_modes(workspace.members.iter().map(|member| declared_capability_model_for_package(&member.root))),
+            if workspace
+                .members
+                .iter()
+                .any(|member| package_declares_bundled_std(&member.root))
+            {
+                "1/1"
+            } else {
+                "0/1"
+            }
         ),
     );
     result.artifacts.push(FrontendArtifactSummary::new(
@@ -357,9 +423,10 @@ pub(crate) fn run_selected_artifact_with_args_and_config(
     let mut result = FrontendCommandResult::new(
         "run",
         format!(
-            "ran {} ({})",
+            "ran {} ({}, bundled_std={})",
             binary.display(),
-            summarize_fol_models([selection.fol_model])
+            summarize_capability_modes([selection.capability_model]),
+            if selection.has_bundled_std { "1/1" } else { "0/1" }
         ),
     );
     result.artifacts.push(FrontendArtifactSummary::new(
@@ -430,9 +497,10 @@ pub(crate) fn test_selected_artifacts_with_config(
     let mut result = FrontendCommandResult::new(
         "test",
         format!(
-            "tested {} workspace artifact(s) ({})",
+            "tested {} workspace artifact(s) ({}, {})",
             binaries.len(),
-            summarize_fol_models(selections.iter().map(|selection| selection.fol_model))
+            summarize_capability_modes(selections.iter().map(|selection| selection.capability_model)),
+            summarize_bundled_std_presence(selections)
         ),
     );
     for binary in binaries {
@@ -675,6 +743,10 @@ fn validate_build_dependency_queries(
         .clone()
         .or_else(|| workspace.package_store_root_override.clone())
         .unwrap_or_else(|| workspace.root.root.join(".fol").join("pkg"));
+    let std_root = workspace
+        .std_root_override
+        .clone()
+        .or_else(fol_package::available_bundled_std_root);
 
     for query in &evaluated.evaluated.dependency_queries {
         let metadata_dependency = metadata
@@ -689,6 +761,7 @@ fn validate_build_dependency_queries(
         let dependency_root = resolve_dependency_query_root(
             package_root,
             &package_store_root,
+            std_root.as_deref(),
             metadata_dependency,
             evaluated_dependency,
         )?;
@@ -746,6 +819,7 @@ fn validate_build_dependency_queries(
 fn resolve_dependency_query_root(
     package_root: &Path,
     package_store_root: &Path,
+    std_root: Option<&Path>,
     metadata_dependency: Option<&fol_package::PackageDependencyDecl>,
     evaluated_dependency: Option<&fol_package::DependencyRequest>,
 ) -> FrontendResult<std::path::PathBuf> {
@@ -761,7 +835,9 @@ fn resolve_dependency_query_root(
                 package_store_root.join(&dependency.alias)
             }
             fol_package::PackageDependencySourceKind::Internal => {
-                package_store_root.join(&dependency.alias)
+                std_root
+                    .map(Path::to_path_buf)
+                    .unwrap_or_else(|| package_store_root.join(&dependency.alias))
             }
         });
     }
@@ -976,8 +1052,22 @@ fn test_workspace_selected_with_config(
     }
 
     result.summary = format!(
-        "tested {tested_count} workspace package(s) ({})",
-        summarize_fol_models([fol_backend::BackendFolModel::Std])
+        "tested {tested_count} workspace package(s) ({}, bundled_std={})",
+        summarize_capability_modes(
+            workspace
+                .members
+                .iter()
+                .map(|member| declared_capability_model_for_package(&member.root))
+        ),
+        if workspace
+            .members
+            .iter()
+            .any(|member| package_declares_bundled_std(&member.root))
+        {
+            "1/1"
+        } else {
+            "0/1"
+        }
     );
     Ok(result)
 }

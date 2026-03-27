@@ -2745,7 +2745,7 @@ fn lsp_server_surfaces_alloc_echo_model_diagnostics_from_open_documents() {
         .iter()
         .any(|diagnostic| diagnostic
             .message
-            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'memo'")));
+            .contains("'.echo(...)' requires hosted std support")));
 
     fs::remove_dir_all(root).ok();
 }

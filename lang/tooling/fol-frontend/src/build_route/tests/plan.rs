@@ -219,27 +219,15 @@ fn projected_step_plans_keep_step_descriptions() {
 }
 
 #[test]
-fn workspace_route_model_guard_rejects_untargeted_non_std_models() {
-    let error = super::super::ensure_std_workspace_route_models(
+fn workspace_route_model_guard_allows_untargeted_core_and_memo_models() {
+    super::super::ensure_std_workspace_route_models(
         "run",
         &[
             fol_backend::BackendFolModel::Core,
             fol_backend::BackendFolModel::Memo,
         ],
     )
-    .expect_err("untargeted non-std routed run should be rejected");
-
-    assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
-    assert!(error
-        .message()
-        .contains("run command requires 'fol_model = std'"));
-    assert!(error.message().contains("core, memo"));
-}
-
-#[test]
-fn workspace_route_model_guard_accepts_untargeted_std_models() {
-    super::super::ensure_std_workspace_route_models("test", &[fol_backend::BackendFolModel::Std])
-        .expect("untargeted std routed test should remain allowed");
+    .expect("untargeted routed run should stay independent from bundled std");
 }
 
 #[test]

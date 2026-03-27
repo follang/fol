@@ -94,7 +94,8 @@ fn build_workspace_runs_the_backend_for_runnable_members() {
     assert!(result
         .summary
         .contains("built 1 workspace package(s) into "));
-    assert!(result.summary.contains("fol_model=memo"));
+    assert!(result.summary.contains("capability_mode=memo"));
+    assert!(result.summary.contains("bundled_std=0/1"));
     assert_eq!(result.artifacts.len(), 2);
     assert_eq!(result.artifacts[0].kind, FrontendArtifactKind::BuildRoot);
     assert_eq!(result.artifacts[1].kind, FrontendArtifactKind::Binary);
@@ -395,7 +396,10 @@ fn test_workspace_runs_single_workspace_members() {
     let result = test_workspace(&workspace).unwrap();
 
     assert_eq!(result.command, "test");
-    assert_eq!(result.summary, "tested 1 workspace package(s) (fol_model=memo)");
+    assert_eq!(
+        result.summary,
+        "tested 1 workspace package(s) (capability_mode=memo, bundled_std=0/1)"
+    );
     assert_eq!(result.artifacts.len(), 1);
 
     fs::remove_dir_all(root).ok();
@@ -432,7 +436,10 @@ fn test_package_selects_a_single_named_workspace_member() {
     let result = test_package(&workspace, "lib").unwrap();
 
     assert_eq!(result.command, "test");
-    assert_eq!(result.summary, "tested 1 workspace package(s) (fol_model=memo)");
+    assert_eq!(
+        result.summary,
+        "tested 1 workspace package(s) (capability_mode=memo, bundled_std=0/1)"
+    );
     assert_eq!(result.artifacts.len(), 1);
 
     fs::remove_dir_all(root).ok();

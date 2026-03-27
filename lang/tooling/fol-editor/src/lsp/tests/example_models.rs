@@ -59,7 +59,7 @@ fn lsp_server_reports_model_aware_diagnostics_for_real_example_roots() {
         (
             "examples/memo_defaults",
             "fun[] main(): int = {\n    return .echo(7);\n};\n",
-            Some("'.echo(...)' requires 'fol_model = std'"),
+            Some("'.echo(...)' requires hosted std support"),
         ),
         (
             "examples/std_bundled_fmt",
@@ -288,7 +288,7 @@ fn lsp_server_reports_transitive_model_boundaries_for_real_workspaces() {
             "std",
             "fun[exp] ping(): int = {\n    return .echo(7);\n};\n",
             "fun[] main(): int = {\n    return shared.ping();\n};\n",
-            "'.echo(...)' requires 'fol_model = std'",
+            "'.echo(...)' requires hosted std support",
         ),
     ];
 

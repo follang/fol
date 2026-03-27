@@ -64,10 +64,8 @@ The important boundary is semantic and runtime-facing:
 - `core` artifacts may still use arrays, records, routines, control flow, and
   `defer`
 - `memo` artifacts may use heap-backed runtime types but not hosted services
-- `std` artifacts are the only artifacts that may use hosted services such as
-  `.echo(...)` and ordinary host-executed `run` / `test`
-- `std` should not be treated as the informal baseline just because the current
-  backend is hosted
+- bundled `std` wrappers require an explicit internal `standard` dependency
+- hosted `run` / `test` are not tied to bundled std presence
 
 Current implementation note:
 
