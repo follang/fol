@@ -578,6 +578,8 @@ use super::*;
         let offenders = collect_lines_containing_any(
             &[
                 repo_root().join("examples"),
+                repo_root().join("test/apps/fixtures"),
+                repo_root().join("test/app/formal"),
                 repo_root().join("docs"),
                 repo_root().join("book"),
                 repo_root().join("AGENTS.md"),
@@ -589,6 +591,81 @@ use super::*;
         assert!(
             offenders.is_empty(),
             "Examples, docs, and book should not use the removed `std` import kind:\n{}",
+            offenders.join("\n")
+        );
+    }
+
+    #[test]
+    fn test_examples_fixtures_docs_and_book_do_not_use_removed_std_mode_contracts() {
+        let offenders = collect_lines_containing_any(
+            &[
+                repo_root().join("examples"),
+                repo_root().join("test/apps/fixtures"),
+                repo_root().join("test/app/formal"),
+                repo_root().join("docs"),
+                repo_root().join("book"),
+                repo_root().join("AGENTS.md"),
+            ],
+            &[".fol", ".md"],
+            &["fol_model = \"std\"", "std mode"],
+        );
+
+        assert!(
+            offenders.is_empty(),
+            "Examples, fixtures, docs, and book should not keep removed std-mode contracts:\n{}",
+            offenders.join("\n")
+        );
+    }
+
+    #[test]
+    fn test_positive_std_package_roots_keep_explicit_internal_standard_contract() {
+        use std::path::PathBuf;
+
+        let roots = [
+            repo_root().join("examples"),
+            repo_root().join("test/apps/fixtures"),
+            repo_root().join("test/app/formal"),
+        ];
+        let mut build_files = Vec::new();
+        for root in roots {
+            collect_files_with_suffixes(&root, &["build.fol"], &mut build_files);
+        }
+        build_files.sort();
+
+        let mut offenders = Vec::new();
+        for build_file in build_files {
+            let root = build_file
+                .parent()
+                .expect("build.fol should have a package root parent");
+            let root_text = root.to_string_lossy();
+            if root_text.contains("/fail_") || root_text.contains("_fail") {
+                continue;
+            }
+
+            let mut fol_files = Vec::<PathBuf>::new();
+            collect_files_with_suffixes(root, &[".fol"], &mut fol_files);
+            let imports_std = fol_files.iter().any(|path| {
+                std::fs::read_to_string(path)
+                    .map(|text| text.contains("use std: pkg = {\"std\"};"))
+                    .unwrap_or(false)
+            });
+
+            if !imports_std {
+                continue;
+            }
+
+            let build_text =
+                std::fs::read_to_string(&build_file).expect("should read build.fol for contract scan");
+            if !build_text.contains("source = \"internal\"")
+                || !build_text.contains("target = \"standard\"")
+            {
+                offenders.push(build_file.display().to_string());
+            }
+        }
+
+        assert!(
+            offenders.is_empty(),
+            "Positive std-consuming package roots should declare bundled std explicitly:\n{}",
             offenders.join("\n")
         );
     }

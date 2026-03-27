@@ -753,6 +753,63 @@ fn lsp_server_keeps_model_context_through_hover_for_core_and_memo_build_models()
 }
 
 #[test]
+fn lsp_server_defaults_omitted_build_model_to_memo_in_hover_semantics() {
+    let (root, uri) = sample_package_root("semantic_model_hover_default_memo");
+    let text = "fun[] main(): int = {\n    var value: str = \"ok\";\n    return .len(value);\n};\n";
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+
+    let open = open_document(&mut server, uri.clone(), text);
+    assert_eq!(open.len(), 1);
+    assert!(
+        open[0].diagnostics.is_empty(),
+        "omitted fol_model should default to memo and accept heap-backed surface: {open:#?}"
+    );
+
+    let hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(703),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 12,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let _hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+
+    let snapshot = server
+        .session
+        .semantic_snapshots
+        .get(uri.as_str())
+        .expect("semantic snapshot should be cached after hover");
+    assert_eq!(
+        snapshot.snapshot.active_fol_model,
+        Some(fol_typecheck::TypecheckCapabilityModel::Memo)
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_keeps_model_context_isolated_across_mixed_workspace_packages() {
     let (root, _) = copied_example_package_root("examples/mixed_models_workspace");
     let core_uri = format!("file://{}", root.join("core/lib.fol").display());

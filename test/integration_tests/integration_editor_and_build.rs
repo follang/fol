@@ -2062,6 +2062,76 @@ fn test_build_rejects_std_imports_without_declared_dependency() {
 }
 
 #[test]
+fn test_final_std_contract_negative_paths_fail_cleanly() {
+    let temp_root = unique_temp_root("final_std_contract_negatives");
+
+    let old_std_mode = temp_root.join("old_std_mode");
+    std::fs::create_dir_all(old_std_mode.join("src")).expect("should create std-mode app source root");
+    std::fs::write(
+        old_std_mode.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+            "};\n",
+        ),
+    )
+    .expect("should write std-mode build");
+    std::fs::write(old_std_mode.join("src/main.fol"), "fun[] main(): int = { return 0; };\n")
+        .expect("should write std-mode main");
+    let old_std_mode_output = run_fol_in_dir(&old_std_mode, &["code", "build"]);
+    let old_std_mode_stderr = String::from_utf8_lossy(&old_std_mode_output.stderr);
+    assert!(
+        !old_std_mode_output.status.success(),
+        "old std-mode spelling should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&old_std_mode_output.stdout),
+        old_std_mode_stderr
+    );
+    assert!(
+        old_std_mode_stderr.contains("artifact fol_model no longer accepts 'std'"),
+        "old std-mode spelling should keep the exact guidance: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&old_std_mode_output.stdout),
+        old_std_mode_stderr
+    );
+
+    let bad_internal = temp_root.join("bad_internal_target");
+    std::fs::create_dir_all(bad_internal.join("src")).expect("should create bad-internal app source root");
+    std::fs::write(
+        bad_internal.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"stdlib\" });\n",
+            "    var graph = build.graph();\n",
+            "    graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "};\n",
+        ),
+    )
+    .expect("should write bad-internal build");
+    std::fs::write(bad_internal.join("src/main.fol"), "fun[] main(): int = { return 0; };\n")
+        .expect("should write bad-internal main");
+    let bad_internal_output = run_fol_in_dir(&bad_internal, &["code", "build"]);
+    let bad_internal_stderr = String::from_utf8_lossy(&bad_internal_output.stderr);
+    assert!(
+        !bad_internal_output.status.success(),
+        "bad internal target should fail: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&bad_internal_output.stdout),
+        bad_internal_stderr
+    );
+    assert!(
+        bad_internal_stderr.contains("may use internal source only with target 'standard'"),
+        "bad internal target should keep the exact bundled-std target diagnostic: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&bad_internal_output.stdout),
+        bad_internal_stderr
+    );
+
+    std::fs::remove_dir_all(&temp_root).ok();
+}
+
+#[test]
 fn test_build_install_prefix_moves_without_changing_build_source() {
     let root = temp_example_root("examples/build_install_prefix");
     let build_path = root.join("build.fol");

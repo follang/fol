@@ -391,7 +391,7 @@ Update tree-sitter/example coverage if any current corpus or fixture still
 describes `std` as a source kind or mode.
 
 ### Slice 31
-Status: pending
+Status: completed
 
 Add one editor integration regression for omitted `fol_model` defaulting to
 `memo`.
@@ -399,7 +399,7 @@ Add one editor integration regression for omitted `fol_model` defaulting to
 ## Epoch 8: Examples And Fixtures
 
 ### Slice 32
-Status: pending
+Status: completed
 
 Audit all checked-in examples so they follow one of these patterns only:
 
@@ -408,7 +408,7 @@ Audit all checked-in examples so they follow one of these patterns only:
 - `memo` plus explicit bundled std dependency
 
 ### Slice 33
-Status: pending
+Status: completed
 
 Add one minimal canonical example for:
 
@@ -417,7 +417,7 @@ Add one minimal canonical example for:
 - `memo` + bundled std dependency
 
 ### Slice 34
-Status: pending
+Status: completed
 
 Add one negative example:
 
@@ -425,7 +425,7 @@ Add one negative example:
 - missing explicit internal std dependency
 
 ### Slice 35
-Status: pending
+Status: completed
 
 Update app fixtures and formal fixtures so none of them still encode the older
 `std`-mode story.
@@ -433,7 +433,7 @@ Update app fixtures and formal fixtures so none of them still encode the older
 ## Epoch 9: Docs And Book Alignment
 
 ### Slice 36
-Status: pending
+Status: completed
 
 Rewrite runtime-model docs so they describe:
 
@@ -444,7 +444,7 @@ Rewrite runtime-model docs so they describe:
 instead of `core/memo/std` as peer modes.
 
 ### Slice 37
-Status: pending
+Status: completed
 
 Rewrite import docs so bundled std is taught only through:
 
@@ -452,7 +452,7 @@ Rewrite import docs so bundled std is taught only through:
 - `use std: pkg = {"std"};`
 
 ### Slice 38
-Status: pending
+Status: completed
 
 Rewrite build docs so they clearly separate:
 
@@ -461,12 +461,12 @@ Rewrite build docs so they clearly separate:
 - run/install graph setup
 
 ### Slice 39
-Status: pending
+Status: completed
 
 Rewrite book examples that still imply the removed `std` mode.
 
 ### Slice 40
-Status: pending
+Status: completed
 
 Update contributor guidance so future changes do not reintroduce:
 
@@ -477,7 +477,7 @@ Update contributor guidance so future changes do not reintroduce:
 ## Epoch 10: Final Cleanup And Closure
 
 ### Slice 41
-Status: pending
+Status: completed
 
 Repo-wide stale sweep for:
 
@@ -487,7 +487,7 @@ Repo-wide stale sweep for:
 - docs that tie runnability to std presence
 
 ### Slice 42
-Status: pending
+Status: completed
 
 Add one top-level sync test scanning docs/examples/fixtures for stale removed
 contracts:
@@ -496,7 +496,7 @@ contracts:
 - `: std =`
 
 ### Slice 43
-Status: pending
+Status: completed
 
 Add one top-level sync test scanning docs/examples/fixtures for the required
 bundled-std contract:
@@ -506,7 +506,7 @@ bundled-std contract:
 - `use std: pkg = {"std"};`
 
 ### Slice 44
-Status: pending
+Status: completed
 
 Run targeted negative integration checks for:
 
@@ -516,7 +516,7 @@ Run targeted negative integration checks for:
 - alias mismatch
 
 ### Slice 45
-Status: pending
+Status: completed
 
 Run the full repo gate:
 
