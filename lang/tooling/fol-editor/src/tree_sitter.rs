@@ -641,6 +641,51 @@ mod tests {
     }
 
     #[test]
+    fn corpus_and_editor_fixtures_keep_quoted_import_targets_only() {
+        let corpus = fol_tree_sitter_corpus();
+        for case in corpus {
+            if case.source.contains("use ") {
+                assert!(
+                    case.source.contains("{\""),
+                    "tree-sitter corpus '{}' should keep quoted import targets:\n{}",
+                    case.name,
+                    case.source
+                );
+                assert!(
+                    !case.source.contains("{std}")
+                        && !case.source.contains("{json}")
+                        && !case.source.contains("{../"),
+                    "tree-sitter corpus '{}' should not keep stale unquoted import targets:\n{}",
+                    case.name,
+                    case.source
+                );
+            }
+        }
+
+        for relative in [
+            "lang/tooling/fol-editor/tests/fixtures/formatter/imports.formatted.fol",
+            "lang/tooling/fol-editor/tests/fixtures/formatter/imports.misformatted.fol",
+        ] {
+            let source = std::fs::read_to_string(repo_root().join(relative))
+                .expect("editor fixture should read");
+            assert!(
+                source.contains("{\""),
+                "editor fixture '{}' should use quoted import targets:\n{}",
+                relative,
+                source
+            );
+            assert!(
+                !source.contains("{std}")
+                    && !source.contains("{json}")
+                    && !source.contains("{../"),
+                "editor fixture '{}' should not use stale unquoted import targets:\n{}",
+                relative,
+                source
+            );
+        }
+    }
+
+    #[test]
     fn generated_bundle_highlight_query_validates_against_tree_sitter() {
         let root = build_bundle_root("valid");
         let output = run_tree_sitter_query(

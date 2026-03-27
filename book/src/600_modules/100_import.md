@@ -4,7 +4,7 @@ An import declaration states that the source file containing the declaration dep
 
 Syntax to import a library is:
 ```
-use alias: source_kind = { source }
+use alias: source_kind = {"source"}
 ```
 
 Current source kinds are:
@@ -166,6 +166,18 @@ External packages are imported through `pkg`:
 
 ```
 use space: pkg = {"space"};
+```
+
+Nested installed package paths use the same quoted target rule:
+
+```
+use nested: pkg = {"other/package/nested"};
+```
+
+Old unquoted targets are invalid and should fail in the parser:
+
+```fol
+use std: pkg = {std};
 ```
 
 `pkg` imports are different from `loc`:

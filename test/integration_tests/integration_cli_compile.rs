@@ -552,6 +552,48 @@ use super::*;
     }
 
     #[test]
+    fn test_examples_and_docs_keep_quoted_import_targets_only() {
+        let offenders = collect_unquoted_use_target_lines(
+            &[
+                repo_root().join("examples"),
+                repo_root().join("test/apps/fixtures"),
+                repo_root().join("test/app/formal"),
+                repo_root().join("docs"),
+                repo_root().join("book"),
+                repo_root().join("AGENTS.md"),
+            ],
+            &[".fol", ".md"],
+            &["use std: pkg = {std};"],
+        );
+
+        assert!(
+            offenders.is_empty(),
+            "Examples, fixtures, docs, and book should keep quoted import targets only:\n{}",
+            offenders.join("\n")
+        );
+    }
+
+    #[test]
+    fn test_examples_and_docs_do_not_use_removed_std_source_kind_examples() {
+        let offenders = collect_lines_containing_any(
+            &[
+                repo_root().join("examples"),
+                repo_root().join("docs"),
+                repo_root().join("book"),
+                repo_root().join("AGENTS.md"),
+            ],
+            &[".fol", ".md"],
+            &[": std = "],
+        );
+
+        assert!(
+            offenders.is_empty(),
+            "Examples, docs, and book should not use the removed `std` import kind:\n{}",
+            offenders.join("\n")
+        );
+    }
+
+    #[test]
     fn test_cli_dump_lowered_succeeds_for_intrinsic_comparison_calls() {
         use std::fs;
 

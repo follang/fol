@@ -272,6 +272,29 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
 }
 
 #[test]
+fn lsp_server_reports_parser_failure_for_unquoted_import_targets() {
+    let (root, uri) = copied_example_package_root("examples/std_bundled_fmt");
+    let source = "use std: pkg = {std};\nfun[] main(): int = {\n    return 0;\n};\n";
+    fs::write(root.join("src/main.fol"), source).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri, source);
+    let messages = diagnostics
+        .iter()
+        .flat_map(|published| published.diagnostics.iter())
+        .map(|diagnostic| diagnostic.message.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(
+        messages
+            .iter()
+            .any(|message| message.contains("quoted string literals inside braces")),
+        "editor path should surface parser guidance for unquoted import targets, got: {messages:?}"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_reports_transitive_model_boundaries_for_real_workspaces() {
     let cases = [
         (

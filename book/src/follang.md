@@ -89,7 +89,7 @@ For the current user-facing tool workflow, read
 ## Example
 
 ```fol
-use log: std = {"fmt/log"};
+use log: pkg = {"std/fmt/log"};
 
 var[hid] prefix: str = "arith";
 

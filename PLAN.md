@@ -332,31 +332,31 @@ fails with a parser error that points at quoted import targets.
 ## Epoch 7: Editor And Tree-sitter
 
 ### Slice 33
-Status: pending
+Status: completed
 
 Audit editor parse/semantic fixtures that still use old unquoted targets and
 convert them.
 
 ### Slice 34
-Status: pending
+Status: completed
 
 Update LSP completion tests that include `use` declarations so they only use
 quoted targets.
 
 ### Slice 35
-Status: pending
+Status: completed
 
 Update LSP navigation/hover tests that include `use` declarations so they only
 use quoted targets.
 
 ### Slice 36
-Status: pending
+Status: completed
 
 Update tree-sitter example coverage and syntax snapshots for quoted import
 targets only.
 
 ### Slice 37
-Status: pending
+Status: completed
 
 Add one editor regression proving a missing quote in a `use` target surfaces as
 syntax/parser failure in the editor path, not a later resolver failure.
@@ -364,23 +364,23 @@ syntax/parser failure in the editor path, not a later resolver failure.
 ## Epoch 8: Examples And App Fixtures
 
 ### Slice 38
-Status: pending
+Status: completed
 
 Convert all checked-in `examples/` package imports to quoted targets.
 
 ### Slice 39
-Status: pending
+Status: completed
 
 Convert all `test/apps/fixtures` imports to quoted targets.
 
 ### Slice 40
-Status: pending
+Status: completed
 
 Convert formal package fixtures under `test/app/formal` to quoted targets where
 they declare source imports.
 
 ### Slice 41
-Status: pending
+Status: completed
 
 Add one positive example showing bundled std import with the final form:
 
@@ -389,7 +389,7 @@ use std: pkg = {"std"};
 ```
 
 ### Slice 42
-Status: pending
+Status: completed
 
 Add one positive example showing nested external package import with the final
 form:
@@ -399,19 +399,19 @@ use nested: pkg = {"other/package/nested"};
 ```
 
 ### Slice 43
-Status: pending
+Status: completed
 
 Add one negative example showing old unquoted import target rejection.
 
 ## Epoch 9: Docs And Book
 
 ### Slice 44
-Status: pending
+Status: completed
 
 Update the build/import docs to teach quoted import targets only.
 
 ### Slice 45
-Status: pending
+Status: completed
 
 Update runtime/bundled-std docs to teach:
 
@@ -420,13 +420,13 @@ Update runtime/bundled-std docs to teach:
 and remove old brace-with-bare-name examples.
 
 ### Slice 46
-Status: pending
+Status: completed
 
 Update book chapters covering modules/imports/source origins so every shown
 `use` target is quoted.
 
 ### Slice 47
-Status: pending
+Status: completed
 
 Update contributor docs and `AGENTS.md` to pin the new import contract and say
 explicitly that old unquoted forms must not be reintroduced.
@@ -434,7 +434,7 @@ explicitly that old unquoted forms must not be reintroduced.
 ## Epoch 10: Final Cleanup
 
 ### Slice 48
-Status: pending
+Status: completed
 
 Repo-wide stale sweep for:
 
@@ -447,13 +447,13 @@ Repo-wide stale sweep for:
 and all similar unquoted forms.
 
 ### Slice 49
-Status: pending
+Status: completed
 
 Add one top-level sync/integration test that scans canonical examples/docs for
 stale unquoted import targets.
 
 ### Slice 50
-Status: pending
+Status: completed
 
 Run the full repo gate after the cutover:
 

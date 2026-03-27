@@ -41,8 +41,8 @@ ownership. It is just a shorter way to call a receiver-qualified routine.
 Accessing namespaces is done through the double-colon operator `::`:
 
 ```fol
-use log: std = {"fmt/log"};
-io::console::write_out.echo();
+use log: pkg = {"std/fmt/log"};
+log::io::console::write_out.echo();
 ```
 
 

@@ -133,6 +133,29 @@ mod integration_tests {
         offenders
     }
 
+    fn collect_lines_containing_any(
+        paths: &[PathBuf],
+        suffixes: &[&str],
+        needles: &[&str],
+    ) -> Vec<String> {
+        let mut files = Vec::new();
+        for path in paths {
+            collect_files_with_suffixes(path, suffixes, &mut files);
+        }
+        files.sort();
+
+        let mut offenders = Vec::new();
+        for file in files {
+            let text = std::fs::read_to_string(&file).expect("Should read source fixture file");
+            for (index, line) in text.lines().enumerate() {
+                if needles.iter().any(|needle| line.contains(needle)) {
+                    offenders.push(format!("{}:{}:{}", file.display(), index + 1, line.trim()));
+                }
+            }
+        }
+        offenders
+    }
+
     fn line_has_unquoted_use_target(line: &str) -> bool {
         let mut remainder = line;
         while let Some(use_index) = remainder.find("use ") {
