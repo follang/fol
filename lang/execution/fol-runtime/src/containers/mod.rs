@@ -1,7 +1,7 @@
 //! Runtime container helper functions used by executable FOL V1 programs.
 
 use crate::{
-    alloc::{FolMap, FolSeq, FolSet, FolVec},
+    memo::{FolMap, FolSeq, FolSet, FolVec},
     error::{RuntimeError, RuntimeErrorKind},
     value::FolInt,
 };
@@ -147,7 +147,7 @@ mod tests {
         index_array, index_seq, index_vec, lookup_map, render_array, render_map, render_seq,
         render_set, render_vec, slice_seq, slice_vec, FolArray,
     };
-    use crate::alloc::{FolMap, FolSeq, FolSet, FolVec};
+    use crate::memo::{FolMap, FolSeq, FolSet, FolVec};
     use crate::error::RuntimeErrorKind;
 
     #[test]
@@ -161,7 +161,7 @@ mod tests {
     }
 
     #[test]
-    fn linear_heap_vectors_stay_available_through_alloc() {
+    fn linear_heap_vectors_stay_available_through_memo() {
         let values = FolVec::new(vec![1, 2, 3]);
 
         assert_eq!(values.len(), 3);

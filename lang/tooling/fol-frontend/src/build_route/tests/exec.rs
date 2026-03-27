@@ -1017,7 +1017,7 @@ fn execute_workspace_build_route_emits_mem_runtime_module_imports() {
     .expect("memo-model routed build should succeed");
 
     let main_rs = emitted_main_rs_from_result(&result);
-    assert!(main_rs.contains("use fol_runtime::alloc as rt_model;"));
+    assert!(main_rs.contains("use fol_runtime::memo as rt_model;"));
 
     fs::remove_dir_all(root).ok();
 }

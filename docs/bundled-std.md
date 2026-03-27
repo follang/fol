@@ -143,9 +143,12 @@ That means current echo-based examples should prefer `std.io` instead of calling
 `.echo(...)` directly unless the example is explicitly about the primitive
 substrate.
 
-The explicit raw-substrate example is:
+The one explicit raw-substrate example is:
 
 - `examples/std_substrate_echo`
+
+No other shipped example should use raw `.echo(...)` when an equivalent bundled
+`std.io` wrapper already exists.
 
 ## Editing Bundled Std
 

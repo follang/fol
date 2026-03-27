@@ -3,12 +3,12 @@ use super::*;
 #[test]
 fn test_runtime_model_modules_compile_through_root_integration_graph() {
     assert_eq!(fol_runtime::core::tier_name(), "core");
-    assert_eq!(fol_runtime::alloc::tier_name(), "alloc");
+    assert_eq!(fol_runtime::memo::tier_name(), "memo");
     assert_eq!(fol_runtime::std::tier_name(), "std");
 
-    assert_eq!(fol_runtime::alloc::base_tier(), fol_runtime::core::TIER);
+    assert_eq!(fol_runtime::memo::base_core_tier(), fol_runtime::core::TIER);
     assert_eq!(fol_runtime::std::base_core_tier(), fol_runtime::core::TIER);
-    assert_eq!(fol_runtime::std::base_alloc_tier(), fol_runtime::alloc::TIER);
+    assert_eq!(fol_runtime::std::base_memo_tier(), fol_runtime::memo::TIER);
 }
 
     #[test]

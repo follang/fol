@@ -9,7 +9,7 @@
 //! Minimal pattern:
 //!
 //! ```no_run
-//! use fol_runtime::alloc::{
+//! use fol_runtime::memo::{
 //!     render_record, FolEchoFormat, FolInt, FolNamedValue, FolRecord,
 //! };
 //!
@@ -42,7 +42,7 @@
 //! ```
 
 use crate::{
-    alloc::{FolMap, FolSeq, FolSet, FolStr, FolVec},
+    memo::{FolMap, FolSeq, FolSet, FolStr, FolVec},
     containers::FolArray,
     shell::{FolError, FolOption},
 };
@@ -349,7 +349,7 @@ mod tests {
 
     #[test]
     fn model_module_example_shapes_show_backend_authorship_pattern() {
-        use crate::alloc::{
+        use crate::memo::{
             render_entry, render_record, FolEchoFormat, FolEntry, FolInt, FolNamedValue, FolRecord,
         };
 

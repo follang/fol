@@ -48,7 +48,7 @@ impl BackendRuntimeTier {
     pub fn runtime_module_path(self) -> &'static str {
         match self {
             Self::Core => "fol_runtime::core",
-            Self::Memo => "fol_runtime::alloc",
+            Self::Memo => "fol_runtime::memo",
             Self::Std => "fol_runtime::std",
         }
     }
@@ -302,7 +302,7 @@ mod tests {
         );
         assert_eq!(
             BackendRuntimeTier::from(BackendFolModel::Memo).runtime_module_path(),
-            "fol_runtime::alloc"
+            "fol_runtime::memo"
         );
         assert_eq!(
             BackendRuntimeTier::from(BackendFolModel::Std).runtime_module_path(),

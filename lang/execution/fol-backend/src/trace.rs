@@ -280,7 +280,7 @@ mod tests {
     }
 
     #[test]
-    fn backend_trace_reports_public_mem_tier_with_internal_alloc_runtime_module() {
+    fn backend_trace_reports_public_memo_tier_with_internal_memo_runtime_module() {
         let session = crate::BackendSession::new(sample_lowered_workspace());
         let trace = build_backend_trace(
             &session,
@@ -295,6 +295,6 @@ mod tests {
         assert!(trace.records()[0].detail.contains("runtime_tier=memo"));
         assert!(trace.records()[0]
             .detail
-            .contains("runtime_module=fol_runtime::alloc"));
+            .contains("runtime_module=fol_runtime::memo"));
     }
 }

@@ -11,8 +11,8 @@
 //! Current `V1` runtime scope:
 //!
 //! - builtin scalar support
-//! - alloc-tier strings
-//! - alloc-tier heap containers and container helpers
+//! - memo-tier strings
+//! - memo-tier heap containers and container helpers
 //! - optional/error shells
 //! - recoverable routine results
 //! - backend-facing runtime hooks such as `.echo(...)`
@@ -20,10 +20,10 @@
 //! The runtime model is converging on explicit internal tiers:
 //!
 //! - [`core`]
-//! - [`alloc`]
+//! - [`memo`]
 //! - [`std`]
 //!
-//! The heap-backed runtime families now belong to [`alloc`], while [`containers`]
+//! The heap-backed runtime families now belong to [`memo`], while [`containers`]
 //! remains the helper layer for indexing, slicing, and rendering.
 //!
 //! Explicitly out of scope for this milestone:
@@ -87,12 +87,12 @@
 //! - `ExtractRecoverableError`
 //!   - must extract the error lane of [`abi::FolRecover`]
 //! - `ConstructLinear`
-//!   - sequence and vector lowering must map to [`alloc::FolSeq`] and
-//!     [`alloc::FolVec`]
+//!   - sequence and vector lowering must map to [`memo::FolSeq`] and
+//!     [`memo::FolVec`]
 //! - `ConstructSet`
-//!   - must map to [`alloc::FolSet`] to preserve deterministic ordering
+//!   - must map to [`memo::FolSet`] to preserve deterministic ordering
 //! - `ConstructMap`
-//!   - must map to [`alloc::FolMap`] to preserve deterministic ordering
+//!   - must map to [`memo::FolMap`] to preserve deterministic ordering
 //! - `ConstructOptional`
 //!   - must map to [`shell::FolOption`]
 //! - `ConstructError`
@@ -125,10 +125,10 @@
 //!   hyphen-to-underscore rule
 //! - prefer one stable model alias per emitted module, such as
 //!   `use fol_runtime::core as rt;`
-//!   - or `alloc` / `std` depending on the artifact's `fol_model`
+//!   - or `memo` / `std` depending on the artifact's `fol_model`
 //! - use fully qualified imports for less-common runtime modules when needed,
 //!   for example:
-//!   - `fol_runtime::alloc::FolSeq`
+//!   - `fol_runtime::memo::FolSeq`
 //!   - `fol_runtime::shell::FolOption`
 //!   - `fol_runtime::abi::FolRecover`
 //!
@@ -159,10 +159,10 @@
 //!    where runtime formatting needs to stay stable.
 //! 5. Map lowered container, shell, and recoverable shapes onto the public
 //!    runtime types:
-//!    - [`alloc::FolVec`]
-//!    - [`alloc::FolSeq`]
-//!    - [`alloc::FolSet`]
-//!    - [`alloc::FolMap`]
+//!    - [`memo::FolVec`]
+//!    - [`memo::FolSeq`]
+//!    - [`memo::FolSet`]
+//!    - [`memo::FolMap`]
 //!    - [`shell::FolOption`]
 //!    - [`shell::FolError`]
 //!    - [`abi::FolRecover`]
@@ -185,7 +185,7 @@
 //! then optimize behind that contract.
 
 pub mod abi;
-pub mod alloc;
+pub mod memo;
 pub mod aggregate;
 pub mod builtins;
 pub mod containers;
@@ -208,7 +208,7 @@ mod tests {
     use super::*;
 
     const CORE_SOURCE: &str = include_str!("core.rs");
-    const ALLOC_SOURCE: &str = include_str!("alloc.rs");
+    const MEMO_SOURCE: &str = include_str!("memo.rs");
     const STD_SOURCE: &str = include_str!("std.rs");
 
     #[test]
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn public_runtime_module_shell_is_importable() {
-        assert_eq!(alloc::module_name(), "alloc");
+        assert_eq!(memo::module_name(), "memo");
         assert_eq!(abi::module_name(), "abi");
         assert_eq!(aggregate::module_name(), "aggregate");
         assert_eq!(builtins::module_name(), "builtins");
@@ -236,9 +236,9 @@ mod tests {
         assert!(!core::HAS_HEAP);
         assert!(!core::HAS_OS);
 
-        assert_eq!(alloc::tier_name(), "alloc");
-        assert!(alloc::HAS_HEAP);
-        assert!(!alloc::HAS_OS);
+        assert_eq!(memo::tier_name(), "memo");
+        assert!(memo::HAS_HEAP);
+        assert!(!memo::HAS_OS);
 
         assert_eq!(std::tier_name(), "std");
         assert!(std::HAS_HEAP);
@@ -251,40 +251,40 @@ mod tests {
         assert!(!CORE_SOURCE.contains("FolVec("));
         assert!(!CORE_SOURCE.contains("FolSeq("));
         assert!(!CORE_SOURCE.contains("pub fn echo"));
-        assert!(!CORE_SOURCE.contains("pub use crate::alloc::"));
+        assert!(!CORE_SOURCE.contains("pub use crate::memo::"));
         assert!(!CORE_SOURCE.contains("FolProcessOutcome"));
 
-        assert!(ALLOC_SOURCE.contains("pub struct FolStr"));
-        assert!(ALLOC_SOURCE.contains("pub struct FolVec"));
-        assert!(ALLOC_SOURCE.contains("pub struct FolSeq"));
-        assert!(!ALLOC_SOURCE.contains("pub fn echo"));
-        assert!(!ALLOC_SOURCE.contains("FolProcessOutcome"));
+        assert!(MEMO_SOURCE.contains("pub struct FolStr"));
+        assert!(MEMO_SOURCE.contains("pub struct FolVec"));
+        assert!(MEMO_SOURCE.contains("pub struct FolSeq"));
+        assert!(!MEMO_SOURCE.contains("pub fn echo"));
+        assert!(!MEMO_SOURCE.contains("FolProcessOutcome"));
 
         assert!(STD_SOURCE.contains("pub fn echo"));
         assert!(STD_SOURCE.contains("FolProcessOutcome"));
-        assert!(STD_SOURCE.contains("pub use crate::alloc::{FolMap, FolSeq, FolSet, FolStr, FolVec};"));
+        assert!(STD_SOURCE.contains("pub use crate::memo::{FolMap, FolSeq, FolSet, FolStr, FolVec};"));
     }
 
     #[test]
     fn runtime_model_flags_and_helpers_freeze_backend_contract() {
         assert_eq!(core::capabilities().name, "core");
-        assert_eq!(alloc::capabilities().name, "alloc");
+        assert_eq!(memo::capabilities().name, "memo");
         assert_eq!(std::capabilities().name, "std");
 
         assert!(!core::capabilities().has_heap);
         assert!(!core::capabilities().has_os);
-        assert!(alloc::capabilities().has_heap);
-        assert!(!alloc::capabilities().has_os);
+        assert!(memo::capabilities().has_heap);
+        assert!(!memo::capabilities().has_os);
         assert!(std::capabilities().has_heap);
         assert!(std::capabilities().has_os);
 
         let core_len: fn(&[i64; 2]) -> i64 = core::len::<[i64; 2]>;
-        let alloc_len: fn(&alloc::FolStr) -> i64 = alloc::len::<alloc::FolStr>;
-        let std_echo: fn(alloc::FolStr) -> alloc::FolStr = std::echo::<alloc::FolStr>;
+        let memo_len: fn(&memo::FolStr) -> i64 = memo::len::<memo::FolStr>;
+        let std_echo: fn(memo::FolStr) -> memo::FolStr = std::echo::<memo::FolStr>;
 
         assert_eq!(core_len(&[1, 2]), 2);
-        assert_eq!(alloc_len(&alloc::FolStr::from("Ada")), 3);
-        assert_eq!(std_echo(alloc::FolStr::from("ok")), alloc::FolStr::from("ok"));
+        assert_eq!(memo_len(&memo::FolStr::from("Ada")), 3);
+        assert_eq!(std_echo(memo::FolStr::from("ok")), memo::FolStr::from("ok"));
     }
 
     #[test]
@@ -318,51 +318,51 @@ mod tests {
 
     #[test]
     fn public_recoverable_abi_freezes_success_path_through_model_modules() {
-        let value = alloc::FolRecover::<alloc::FolInt, alloc::FolStr>::ok(7);
+        let value = memo::FolRecover::<memo::FolInt, memo::FolStr>::ok(7);
 
-        assert!(!alloc::check_recoverable(&value));
-        assert!(alloc::recoverable_succeeded(&value));
+        assert!(!memo::check_recoverable(&value));
+        assert!(memo::recoverable_succeeded(&value));
         assert_eq!(value.value_ref(), Some(&7));
-        assert_eq!(Result::<alloc::FolInt, alloc::FolStr>::from(value), Ok(7));
+        assert_eq!(Result::<memo::FolInt, memo::FolStr>::from(value), Ok(7));
     }
 
     #[test]
     fn public_recoverable_abi_freezes_failure_path_through_model_modules() {
-        let value = alloc::FolRecover::<alloc::FolInt, alloc::FolStr>::err(
-            alloc::FolStr::from("bad-input"),
+        let value = memo::FolRecover::<memo::FolInt, memo::FolStr>::err(
+            memo::FolStr::from("bad-input"),
         );
 
-        assert!(alloc::check_recoverable(&value));
-        assert!(!alloc::recoverable_succeeded(&value));
+        assert!(memo::check_recoverable(&value));
+        assert!(!memo::recoverable_succeeded(&value));
         assert_eq!(
             value.error_ref().map(|error| error.as_str()),
             Some("bad-input")
         );
-        assert_eq!(Result::<alloc::FolInt, alloc::FolStr>::from(value), Err(alloc::FolStr::from("bad-input")));
+        assert_eq!(Result::<memo::FolInt, memo::FolStr>::from(value), Err(memo::FolStr::from("bad-input")));
     }
 
     #[test]
     fn public_shell_values_stay_distinct_from_recoverable_results() {
-        let optional = alloc::FolOption::some(7);
-        let error_shell = alloc::FolError::new(alloc::FolStr::from("broken"));
+        let optional = memo::FolOption::some(7);
+        let error_shell = memo::FolError::new(memo::FolStr::from("broken"));
         let recoverable =
-            alloc::FolRecover::<alloc::FolInt, alloc::FolStr>::err(alloc::FolStr::from("broken"));
+            memo::FolRecover::<memo::FolInt, memo::FolStr>::err(memo::FolStr::from("broken"));
 
         assert_eq!(
-            ::std::any::type_name::<alloc::FolOption<alloc::FolInt>>(),
+            ::std::any::type_name::<memo::FolOption<memo::FolInt>>(),
             "fol_runtime::shell::FolOption<i64>"
         );
         assert_eq!(
-            ::std::any::type_name::<alloc::FolError<alloc::FolStr>>(),
-            "fol_runtime::shell::FolError<fol_runtime::alloc::FolStr>"
+            ::std::any::type_name::<memo::FolError<memo::FolStr>>(),
+            "fol_runtime::shell::FolError<fol_runtime::memo::FolStr>"
         );
         assert_eq!(
-            ::std::any::type_name::<alloc::FolRecover<alloc::FolInt, alloc::FolStr>>(),
-            "fol_runtime::abi::FolRecover<i64, fol_runtime::alloc::FolStr>"
+            ::std::any::type_name::<memo::FolRecover<memo::FolInt, memo::FolStr>>(),
+            "fol_runtime::abi::FolRecover<i64, fol_runtime::memo::FolStr>"
         );
 
-        assert_eq!(alloc::unwrap_optional_shell(optional), Ok(7));
-        assert_eq!(alloc::unwrap_error_shell(error_shell), alloc::FolStr::from("broken"));
-        assert!(alloc::check_recoverable(&recoverable));
+        assert_eq!(memo::unwrap_optional_shell(optional), Ok(7));
+        assert_eq!(memo::unwrap_error_shell(error_shell), memo::FolStr::from("broken"));
+        assert!(memo::check_recoverable(&recoverable));
     }
 }

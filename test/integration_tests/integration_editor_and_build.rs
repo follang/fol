@@ -151,7 +151,7 @@ fn materialize_local_bundled_std_alias(root: &std::path::Path) {
 
 fn expected_runtime_import_for_model(model: &str) -> String {
     let runtime_module = match model {
-        "memo" => "alloc",
+        "memo" => "memo",
         other => other,
     };
     format!("use fol_runtime::{runtime_module} as rt;")
@@ -918,7 +918,7 @@ fn test_build_fixture_mem_model_supports_full_heap_surface() {
     let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
         .expect("memo full-surface fixture should emit main.rs");
     let emitted = std::fs::read_to_string(&generated).expect("generated main should load");
-    assert!(emitted.contains("use fol_runtime::alloc as rt;"));
+    assert!(emitted.contains("use fol_runtime::memo as rt;"));
 }
 
 #[test]
@@ -1445,7 +1445,7 @@ fn test_std_consumer_of_mem_pkg_dependency_emits_std_runtime_only() {
         .expect("std memo-consumer should emit main.rs");
     let source = std::fs::read_to_string(&emitted).expect("generated main should load");
     assert!(source.contains("use fol_runtime::std as rt;"));
-    assert!(!source.contains("use fol_runtime::alloc as rt;"));
+    assert!(!source.contains("use fol_runtime::memo as rt;"));
     assert!(!source.contains("use fol_runtime::core as rt;"));
 
     std::fs::remove_dir_all(&temp_root).ok();
@@ -1584,43 +1584,43 @@ fn test_build_fixtures_emit_runtime_imports_for_each_model() {
 #[test]
 fn test_cli_build_emits_rust_for_model_examples() {
     let cases = [
-        ("examples/build_dep_handles", "use fol_runtime::alloc as rt;"),
-        ("examples/build_dep_args", "use fol_runtime::alloc as rt;"),
-        ("examples/build_dep_exports", "use fol_runtime::alloc as rt;"),
-        ("examples/build_dep_paths", "use fol_runtime::alloc as rt;"),
-        ("examples/build_dep_modes", "use fol_runtime::alloc as rt;"),
+        ("examples/build_dep_handles", "use fol_runtime::memo as rt;"),
+        ("examples/build_dep_args", "use fol_runtime::memo as rt;"),
+        ("examples/build_dep_exports", "use fol_runtime::memo as rt;"),
+        ("examples/build_dep_paths", "use fol_runtime::memo as rt;"),
+        ("examples/build_dep_modes", "use fol_runtime::memo as rt;"),
         (
             "examples/build_described_steps",
-            "use fol_runtime::alloc as rt;",
+            "use fol_runtime::memo as rt;",
         ),
         (
             "examples/build_generated_dirs",
-            "use fol_runtime::alloc as rt;",
+            "use fol_runtime::memo as rt;",
         ),
         (
             "examples/build_install_prefix",
-            "use fol_runtime::alloc as rt;",
+            "use fol_runtime::memo as rt;",
         ),
         (
             "examples/build_output_handles",
-            "use fol_runtime::alloc as rt;",
+            "use fol_runtime::memo as rt;",
         ),
-        ("examples/build_system_lib", "use fol_runtime::alloc as rt;"),
-        ("examples/build_system_tool", "use fol_runtime::alloc as rt;"),
-        ("examples/build_source_paths", "use fol_runtime::alloc as rt;"),
+        ("examples/build_system_lib", "use fol_runtime::memo as rt;"),
+        ("examples/build_system_tool", "use fol_runtime::memo as rt;"),
+        ("examples/build_source_paths", "use fol_runtime::memo as rt;"),
         ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
         ("examples/core_defer", "use fol_runtime::core as rt;"),
         ("examples/core_records", "use fol_runtime::core as rt;"),
         ("examples/core_surface_showcase", "use fol_runtime::core as rt;"),
-        ("examples/memo_defaults", "use fol_runtime::alloc as rt;"),
-        ("examples/memo_containers", "use fol_runtime::alloc as rt;"),
+        ("examples/memo_defaults", "use fol_runtime::memo as rt;"),
+        ("examples/memo_containers", "use fol_runtime::memo as rt;"),
         (
             "examples/memo_collections",
-            "use fol_runtime::alloc as rt;",
+            "use fol_runtime::memo as rt;",
         ),
         (
             "examples/memo_surface_showcase",
-            "use fol_runtime::alloc as rt;",
+            "use fol_runtime::memo as rt;",
         ),
         ("examples/std_cli", "use fol_runtime::std as rt;"),
         ("examples/std_bundled_fmt", "use fol_runtime::std as rt;"),
@@ -3100,15 +3100,15 @@ fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
         ("examples/core_defer", "use fol_runtime::core as rt;"),
         (
             "examples/memo_collections",
-            "use fol_runtime::alloc as rt;",
+            "use fol_runtime::memo as rt;",
         ),
-        ("examples/memo_defaults", "use fol_runtime::alloc as rt;"),
+        ("examples/memo_defaults", "use fol_runtime::memo as rt;"),
         (
             "examples/build_generated_dirs",
-            "use fol_runtime::alloc as rt;",
+            "use fol_runtime::memo as rt;",
         ),
-        ("examples/build_system_lib", "use fol_runtime::alloc as rt;"),
-        ("examples/build_system_tool", "use fol_runtime::alloc as rt;"),
+        ("examples/build_system_lib", "use fol_runtime::memo as rt;"),
+        ("examples/build_system_tool", "use fol_runtime::memo as rt;"),
         ("examples/std_cli", "use fol_runtime::std as rt;"),
         ("examples/std_bundled_fmt", "use fol_runtime::std as rt;"),
         ("examples/std_echo_min", "use fol_runtime::std as rt;"),
@@ -3145,12 +3145,12 @@ fn test_model_examples_keep_runtime_imports_clean_across_emitted_rust_trees() {
         (
             "examples/core_records",
             "use fol_runtime::core as rt;",
-            Some("use fol_runtime::alloc"),
+            Some("use fol_runtime::memo"),
             Some("use fol_runtime::std"),
         ),
         (
             "examples/memo_collections",
-            "use fol_runtime::alloc as rt;",
+            "use fol_runtime::memo as rt;",
             None,
             Some("use fol_runtime::std"),
         ),
@@ -3528,6 +3528,7 @@ fn test_bundled_std_docs_and_readme_keep_the_shipped_surface_honest() {
         "examples/std_bundled_fmt",
         "examples/std_bundled_io",
         "examples/std_alias_pkg",
+        "examples/std_substrate_echo",
     ] {
         assert!(
             bundled_std_docs.contains(needle),
@@ -3873,7 +3874,7 @@ fn test_runtime_model_regression_matrix_stays_coherent_across_layers() {
         (
             "test/app/build/model_memo_surface_full",
             true,
-            Some("use fol_runtime::alloc as rt;"),
+            Some("use fol_runtime::memo as rt;"),
         ),
         (
             "examples/fail_core_heap_reject",

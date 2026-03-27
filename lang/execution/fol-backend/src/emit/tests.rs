@@ -236,14 +236,14 @@ mod tests {
             .contains("use fol_runtime::core as rt;"));
         assert!(mem_emitted
             .contents
-            .contains("use fol_runtime::alloc as rt_model;"));
+            .contains("use fol_runtime::memo as rt_model;"));
         assert!(mem_emitted
             .contents
-            .contains("use fol_runtime::alloc as rt;"));
+            .contains("use fol_runtime::memo as rt;"));
         assert!(core_emitted
             .contents
             .contains("let _runtime_tier = rt_model::tier_name();"));
-        assert!(!core_emitted.contents.contains("use fol_runtime::alloc"));
+        assert!(!core_emitted.contents.contains("use fol_runtime::memo"));
         assert!(!core_emitted.contents.contains("use fol_runtime::std"));
         assert!(!mem_emitted.contents.contains("use fol_runtime::core"));
         assert!(!mem_emitted.contents.contains("use fol_runtime::std"));
@@ -259,7 +259,7 @@ mod tests {
         assert!(std_emitted.contents.contains("use fol_runtime::std as rt_model;"));
         assert!(std_emitted.contents.contains("use fol_runtime::std as rt;"));
         assert!(!std_emitted.contents.contains("use fol_runtime::core"));
-        assert!(!std_emitted.contents.contains("use fol_runtime::alloc"));
+        assert!(!std_emitted.contents.contains("use fol_runtime::memo"));
     }
 
     #[test]
@@ -327,7 +327,7 @@ mod tests {
             .contents
             .contains("use fol_runtime::core as rt_model;"));
         assert!(emitted[0].contents.contains("use fol_runtime::core as rt;"));
-        assert!(!emitted[0].contents.contains("use fol_runtime::alloc"));
+        assert!(!emitted[0].contents.contains("use fol_runtime::memo"));
         assert!(!emitted[0].contents.contains("use fol_runtime::std"));
         assert!(emitted[0].contents.contains("rt_model::tier_name()"));
     }
@@ -354,8 +354,8 @@ mod tests {
                 continue;
             }
             assert!(
-                !file.contents.contains("use fol_runtime::alloc"),
-                "core artifact should not import alloc runtime paths in {}:\n{}",
+                !file.contents.contains("use fol_runtime::memo"),
+                "core artifact should not import memo runtime paths in {}:\n{}",
                 file.path,
                 file.contents
             );
@@ -455,13 +455,13 @@ mod tests {
 
         assert!(main_rs
             .contents
-            .contains("use fol_runtime::alloc as rt;"));
+            .contains("use fol_runtime::memo as rt;"));
         assert!(main_rs
             .contents
-            .contains("use fol_runtime::alloc as rt_model;"));
+            .contains("use fol_runtime::memo as rt_model;"));
         assert!(root_namespace
             .contents
-            .contains("use fol_runtime::alloc as rt_model;"));
+            .contains("use fol_runtime::memo as rt_model;"));
     }
 
     #[test]
@@ -485,7 +485,7 @@ mod tests {
             .map(|file| file.contents.as_str())
             .collect::<Vec<_>>()
             .join("\n");
-        assert!(!snapshot.contains("use fol_runtime::alloc"));
+        assert!(!snapshot.contains("use fol_runtime::memo"));
         assert!(!snapshot.contains("use fol_runtime::std"));
         assert!(!snapshot.contains("rt::echo("));
         assert!(!snapshot.contains("FolSeq"));
@@ -523,7 +523,7 @@ mod tests {
             .join("\n");
         assert!(core_snapshot.contains("use fol_runtime::core as rt;"));
         assert!(core_snapshot.contains("rt::len("));
-        assert!(!core_snapshot.contains("use fol_runtime::alloc"));
+        assert!(!core_snapshot.contains("use fol_runtime::memo"));
         assert!(!core_snapshot.contains("use fol_runtime::std"));
 
         let mem_root = temp_root("mem_len_emit");
@@ -553,7 +553,7 @@ mod tests {
             .map(|file| file.contents.as_str())
             .collect::<Vec<_>>()
             .join("\n");
-        assert!(mem_snapshot.contains("use fol_runtime::alloc as rt;"));
+        assert!(mem_snapshot.contains("use fol_runtime::memo as rt;"));
         assert!(mem_snapshot.contains("rt::len("));
         assert!(!mem_snapshot.contains("use fol_runtime::std"));
 

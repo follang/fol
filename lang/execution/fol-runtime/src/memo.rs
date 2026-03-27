@@ -1,4 +1,4 @@
-//! Heap-enabled, OS-free runtime tier surface.
+//! Heap-enabled, OS-free memo runtime tier surface.
 
 pub use crate::abi::{check_recoverable, recoverable_succeeded, FolRecover};
 pub use crate::aggregate::{
@@ -27,17 +27,17 @@ use std::{
 
 pub const HAS_HEAP: bool = true;
 pub const HAS_OS: bool = false;
-pub const TIER: RuntimeTier = RuntimeTier::new("alloc", HAS_HEAP, HAS_OS);
+pub const TIER: RuntimeTier = RuntimeTier::new("memo", HAS_HEAP, HAS_OS);
 
 pub fn module_name() -> &'static str {
-    "alloc"
+    "memo"
 }
 
 pub fn tier_name() -> &'static str {
     TIER.name
 }
 
-pub fn base_tier() -> RuntimeTier {
+pub fn base_core_tier() -> RuntimeTier {
     core::capabilities()
 }
 
@@ -310,20 +310,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn alloc_tier_marks_heap_without_os() {
-        assert_eq!(module_name(), "alloc");
-        assert_eq!(tier_name(), "alloc");
+    fn memo_tier_marks_heap_without_os() {
+        assert_eq!(module_name(), "memo");
+        assert_eq!(tier_name(), "memo");
         assert!(HAS_HEAP);
         assert!(!HAS_OS);
         assert_eq!(capabilities(), TIER);
     }
 
     #[test]
-    fn alloc_tier_builds_on_core_tier() {
-        assert_eq!(base_tier(), core::TIER);
-        assert!(!base_tier().has_heap);
+    fn memo_tier_builds_on_core_tier() {
+        assert_eq!(base_core_tier(), core::TIER);
+        assert!(!base_core_tier().has_heap);
         assert!(capabilities().has_heap);
-        assert_eq!(capabilities().has_os, base_tier().has_os);
+        assert_eq!(capabilities().has_os, base_core_tier().has_os);
     }
 
     #[test]

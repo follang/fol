@@ -223,7 +223,7 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
                 trigger_kind: Some(2),
                 trigger_character: Some(":".to_string()),
             }),
-            vec!["answer"],
+            vec!["answer", "double", "sum2", "triple"],
             vec![],
         ),
         (
@@ -237,7 +237,7 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
                 trigger_kind: Some(2),
                 trigger_character: Some(":".to_string()),
             }),
-            vec!["echo_int", "echo_str"],
+            vec!["echo_bool", "echo_chr", "echo_int", "echo_str"],
             vec![],
         ),
         (

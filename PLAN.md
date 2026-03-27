@@ -154,7 +154,7 @@ Add or update one canonical bundled-std example so `std.io` is the preferred
 public story instead of raw `.echo(...)` when equivalent wrappers exist.
 
 ### Slice 11
-Status: pending
+Status: complete
 
 Keep exactly one tiny explicit raw-substrate example and ensure docs label it
 as substrate-level, not preferred public style.
@@ -162,14 +162,14 @@ as substrate-level, not preferred public style.
 ## Epoch 4: Optional Tiny `std.os` Decision
 
 ### Slice 12
-Status: pending
+Status: complete
 
 Audit whether there is one honest hosted/OS wrapper worth shipping now.
 
 If no honest surface exists, explicitly document that `std.os` remains absent.
 
 ### Slice 13
-Status: pending
+Status: complete
 
 Only if there is a real honest wrapper:
 
@@ -182,24 +182,24 @@ Otherwise mark the “no `std.os` yet” contract more strongly in docs/tests.
 ## Epoch 5: Bundled Std Tooling And Editor Sync
 
 ### Slice 14
-Status: pending
+Status: complete
 
 Update editor/LSP completion coverage for any new bundled-std symbols.
 
 ### Slice 15
-Status: pending
+Status: complete
 
 Update hover/definition coverage so new bundled-std public names resolve
 cleanly from real shipped examples.
 
 ### Slice 16
-Status: pending
+Status: complete
 
 Update tree-sitter real-example highlight coverage for the new bundled-std
 example sources.
 
 ### Slice 17
-Status: pending
+Status: complete
 
 Add one top-level shipped-std scan test that keeps examples/docs/readme in sync
 with the real bundled module tree.
@@ -207,7 +207,7 @@ with the real bundled module tree.
 ## Epoch 6: Rename Runtime Module File And Export
 
 ### Slice 18
-Status: pending
+Status: complete
 
 Rename:
 
@@ -218,7 +218,7 @@ to:
 - `lang/execution/fol-runtime/src/memo.rs`
 
 ### Slice 19
-Status: pending
+Status: complete
 
 Update `lang/execution/fol-runtime/src/lib.rs` so the public internal module
 export is:
@@ -228,12 +228,12 @@ export is:
 and `pub mod alloc;` is deleted.
 
 ### Slice 20
-Status: pending
+Status: complete
 
 Update internal runtime docs/comments to refer to `memo` instead of `alloc`.
 
 ### Slice 21
-Status: pending
+Status: complete
 
 Update internal runtime unit tests to assert:
 
@@ -245,7 +245,7 @@ with no stale `alloc` naming left.
 ## Epoch 7: Backend Runtime-Tier Cutover
 
 ### Slice 22
-Status: pending
+Status: complete
 
 Update backend runtime-module selection so `BackendFolModel::Memo` maps to:
 
@@ -254,7 +254,7 @@ Update backend runtime-module selection so `BackendFolModel::Memo` maps to:
 instead of `fol_runtime::alloc`.
 
 ### Slice 23
-Status: pending
+Status: complete
 
 Update backend emitted Rust snapshots and tests so generated imports use:
 
@@ -264,7 +264,7 @@ Update backend emitted Rust snapshots and tests so generated imports use:
 where appropriate.
 
 ### Slice 24
-Status: pending
+Status: complete
 
 Update backend trace output so it reports:
 
@@ -273,7 +273,7 @@ Update backend trace output so it reports:
 instead of `fol_runtime::alloc`.
 
 ### Slice 25
-Status: pending
+Status: complete
 
 Update compile/build-route mapping tests that still pin emitted `alloc`
 runtime imports.
@@ -281,7 +281,7 @@ runtime imports.
 ## Epoch 8: Frontend And Integration Rename Sweep
 
 ### Slice 26
-Status: pending
+Status: complete
 
 Update frontend compile/build-route tests that still assert:
 
@@ -290,7 +290,7 @@ Update frontend compile/build-route tests that still assert:
 for memo artifacts.
 
 ### Slice 27
-Status: pending
+Status: complete
 
 Update integration tests in:
 
@@ -301,13 +301,13 @@ so memo/runtime expectations use:
 - `use fol_runtime::memo as rt;`
 
 ### Slice 28
-Status: pending
+Status: complete
 
 Update any routed/CLI human-readable trace text that still mentions the old
 internal runtime module.
 
 ### Slice 29
-Status: pending
+Status: complete
 
 Add one integration regression that explicitly proves memo artifacts now emit
 and run through the renamed internal `fol_runtime::memo` path.
@@ -315,7 +315,7 @@ and run through the renamed internal `fol_runtime::memo` path.
 ## Epoch 9: Repo-Wide Stale Sweep
 
 ### Slice 30
-Status: pending
+Status: complete
 
 Repo-wide stale sweep for:
 

@@ -68,6 +68,13 @@ substrate.
 
 `std.os` is still deferred until it has one honest user-facing API.
 
+The only shipped raw-substrate example is:
+
+- `examples/std_substrate_echo`
+
+Everything else should prefer bundled `std.io` once an equivalent wrapper
+exists.
+
 ## Shipped Surface Summary
 
 Current shipped bundled modules:

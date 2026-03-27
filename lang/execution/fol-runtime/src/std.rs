@@ -3,7 +3,7 @@
 use crate::core::RuntimeTier;
 
 pub use crate::{crate_name, CRATE_NAME};
-pub use crate::alloc::{FolMap, FolSeq, FolSet, FolStr, FolVec};
+pub use crate::memo::{FolMap, FolSeq, FolSet, FolStr, FolVec};
 pub use crate::abi::{check_recoverable, recoverable_succeeded, FolRecover};
 pub use crate::aggregate::{
     render_echo, render_entry, render_entry_debug, render_record, render_record_debug,
@@ -95,8 +95,8 @@ pub fn base_core_tier() -> RuntimeTier {
     crate::core::capabilities()
 }
 
-pub fn base_alloc_tier() -> RuntimeTier {
-    crate::alloc::capabilities()
+pub fn base_memo_tier() -> RuntimeTier {
+    crate::memo::capabilities()
 }
 
 pub fn capabilities() -> RuntimeTier {
@@ -126,10 +126,10 @@ mod tests {
     }
 
     #[test]
-    fn std_tier_builds_on_core_and_alloc_tiers() {
+    fn std_tier_builds_on_core_and_memo_tiers() {
         assert_eq!(base_core_tier(), crate::core::TIER);
-        assert_eq!(base_alloc_tier(), crate::alloc::TIER);
-        assert!(base_alloc_tier().has_heap);
+        assert_eq!(base_memo_tier(), crate::memo::TIER);
+        assert!(base_memo_tier().has_heap);
         assert!(capabilities().has_heap);
         assert!(capabilities().has_os);
     }
