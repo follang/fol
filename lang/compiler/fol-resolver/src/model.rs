@@ -135,6 +135,7 @@ pub struct ResolvedImport {
     pub alias_symbol: SymbolId,
     pub alias_name: String,
     pub path_type: FolType,
+    pub import_target: String,
     pub path_segments: Vec<UsePathSegment>,
     pub scope: ScopeId,
     pub source_unit: SourceUnitId,

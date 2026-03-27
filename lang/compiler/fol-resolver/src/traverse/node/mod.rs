@@ -883,6 +883,7 @@ pub fn traverse_node(
         AstNode::UseDecl {
             name,
             path_type,
+            import_target,
             path_segments,
             ..
         } => {
@@ -902,6 +903,7 @@ pub fn traverse_node(
                     symbol_id,
                     name,
                     path_type.clone(),
+                    import_target.clone(),
                     path_segments.clone(),
                 );
                 imports::resolve_import_target_with_session(session, program, import_id)?;

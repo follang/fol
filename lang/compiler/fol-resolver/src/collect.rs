@@ -204,6 +204,7 @@ fn collect_symbols_from_top_level(
         AstNode::UseDecl {
             name,
             path_type,
+            import_target,
             path_segments,
             ..
         } => {
@@ -223,6 +224,7 @@ fn collect_symbols_from_top_level(
                 symbol_id,
                 name,
                 path_type.clone(),
+                import_target.clone(),
                 path_segments.clone(),
             );
         }
@@ -393,6 +395,7 @@ pub(crate) fn insert_import_record(
     alias_symbol: SymbolId,
     alias_name: &str,
     path_type: FolType,
+    import_target: String,
     path_segments: Vec<UsePathSegment>,
 ) -> ImportId {
     let import_id = program.imports.push(ResolvedImport {
@@ -400,6 +403,7 @@ pub(crate) fn insert_import_record(
         alias_symbol,
         alias_name: alias_name.to_string(),
         path_type,
+        import_target,
         path_segments,
         scope: scope_id,
         source_unit: source_unit_id,

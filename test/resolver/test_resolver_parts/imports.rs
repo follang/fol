@@ -31,13 +31,9 @@ fn test_resolver_lowers_top_level_use_declarations_into_import_records() {
 
     assert_eq!(import_symbol.kind, SymbolKind::ImportAlias);
     assert_eq!(
-        import
-            .path_segments
-            .iter()
-            .map(|segment| segment.spelling.as_str())
-            .collect::<Vec<_>>(),
-        vec!["math"],
-        "Resolver import records should preserve parsed use-path segments"
+        import.import_target,
+        "math",
+        "Resolver import records should preserve canonical import targets"
     );
     assert!(
         matches!(

@@ -84,15 +84,17 @@ pub enum AstNode {
         type_def: TypeDefinition,
     },
 
-    /// Use declaration: use[options] name: type = { path }
+    /// Use declaration: use[options] name: type = { "path" }
     ///
-    /// `path_segments` retains the parsed import segment/separator structure for
-    /// later import work.
+    /// `import_target` is the canonical quoted import target payload.
+    /// `path_segments` is retained temporarily as parser structure while the
+    /// rest of the pipeline finishes moving off the old segment-first model.
     UseDecl {
         syntax_id: Option<SyntaxNodeId>,
         options: Vec<super::options::UseOption>,
         name: String,
         path_type: FolType,
+        import_target: String,
         path_segments: Vec<super::options::UsePathSegment>,
     },
 

@@ -142,6 +142,40 @@ impl PackageSession {
         )
     }
 
+    pub fn load_package_from_store_target(
+        &mut self,
+        store_root: &Path,
+        import_target: &str,
+    ) -> Result<PreparedPackage, PackageError> {
+        let target_root = resolve_directory_target(store_root, import_target);
+        let canonical_root =
+            canonical_directory_root(target_root.as_path(), PackageSourceKind::Package)?;
+        let canonical_root_str = canonical_root.to_string_lossy().to_string();
+        if let Some(cached) =
+            self.cached_package_by_root(PackageSourceKind::Package, &canonical_root_str)
+        {
+            return Ok(cached);
+        }
+        let build_path = canonical_root.join("build.fol");
+        if !build_path.is_file() {
+            return Err(PackageError::new(
+                PackageErrorKind::InvalidInput,
+                format!(
+                    "package pkg import target '{}' is missing required package build file '{}'",
+                    canonical_root.display(),
+                    build_path.display()
+                ),
+            ));
+        }
+
+        self.load_formal_package_root(
+            canonical_root.as_path(),
+            canonical_root_str,
+            PackageSourceKind::Package,
+            Some(store_root),
+        )
+    }
+
     pub fn load_materialized_package(
         &mut self,
         package_root: &Path,
@@ -497,6 +531,56 @@ pub fn resolve_directory_path(source_dir: &Path, path_segments: &[UsePathSegment
     } else {
         source_dir.join(relative)
     }
+}
+
+pub fn resolve_directory_target(source_dir: &Path, import_target: &str) -> PathBuf {
+    let mut relative = PathBuf::new();
+    for segment in import_target_segments(import_target) {
+        relative.push(segment);
+    }
+    if relative.is_absolute() {
+        relative
+    } else {
+        source_dir.join(relative)
+    }
+}
+
+fn import_target_segments(import_target: &str) -> Vec<&str> {
+    if import_target.contains("://") {
+        return vec![import_target];
+    }
+
+    let mut parts = Vec::new();
+    let mut start = 0usize;
+    let bytes = import_target.as_bytes();
+    let mut i = 0usize;
+    while i < bytes.len() {
+        if bytes[i] == b'/' {
+            if start != i {
+                parts.push(&import_target[start..i]);
+            }
+            start = i + 1;
+            i += 1;
+            continue;
+        }
+
+        if bytes[i] == b':' && i + 1 < bytes.len() && bytes[i + 1] == b':' {
+            if start != i {
+                parts.push(&import_target[start..i]);
+            }
+            start = i + 2;
+            i += 2;
+            continue;
+        }
+
+        i += 1;
+    }
+
+    if start < import_target.len() {
+        parts.push(&import_target[start..]);
+    }
+
+    parts
 }
 
 fn import_source_label(source_kind: PackageSourceKind) -> &'static str {

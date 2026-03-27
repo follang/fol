@@ -4,7 +4,7 @@ use crate::{
     traverse, ResolverError, ResolverErrorKind, ResolverResult,
 };
 use fol_package::{effective_std_root, PackageSession, PreparedPackage};
-use fol_parser::ast::{ParsedPackage, UsePathSegment};
+use fol_parser::ast::ParsedPackage;
 use std::collections::BTreeMap;
 use std::path::Path;
 
@@ -174,14 +174,14 @@ impl ResolverSession {
         self.load_prepared_package(prepared)
     }
 
-    pub(crate) fn load_package_from_store(
+    pub(crate) fn load_package_from_store_target(
         &mut self,
         store_root: &Path,
-        package_path: &[UsePathSegment],
+        import_target: &str,
     ) -> Result<LoadedPackage, ResolverError> {
         let prepared = self
             .package_session
-            .load_package_from_store(store_root, package_path)?;
+            .load_package_from_store_target(store_root, import_target)?;
         self.load_prepared_package(prepared)
     }
 

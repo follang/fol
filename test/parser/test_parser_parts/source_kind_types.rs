@@ -18,15 +18,11 @@ fn test_former_std_type_references_now_lower_as_pkg() {
                 AstNode::UseDecl {
                     name,
                     path_type: FolType::Package { name: kind_name },
-                    path_segments,
+                    import_target,
                     ..
                 } if name == "json"
                     && kind_name.is_empty()
-                    && path_segments.as_slice()
-                        == [fol_parser::ast::UsePathSegment {
-                            separator: None,
-                            spelling: "json".to_string(),
-                        }]
+                    && import_target == "json"
             )));
             assert!(declarations.iter().any(|node| matches!(
                 node,

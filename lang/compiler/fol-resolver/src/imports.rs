@@ -4,7 +4,7 @@ use crate::{
     ResolverSession, ScopeId,
 };
 use fol_parser::ast::FolType;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub fn resolve_import_targets(
     session: &mut ResolverSession,
@@ -106,7 +106,7 @@ fn resolve_location_target_from_disk(
         .expect("import source unit should exist while resolving imports");
     let source_path = Path::new(&source_unit.path);
     let source_dir = source_path.parent().unwrap_or_else(|| Path::new("."));
-    let target_path = resolve_directory_path(source_dir, &import.path_segments);
+    let target_path = fol_package::resolve_directory_target(source_dir, &import.import_target);
     let loaded =
         session.load_package_from_directory(target_path.as_path(), PackageSourceKind::Local)?;
     program.mount_loaded_package(&loaded)
@@ -122,16 +122,12 @@ fn resolve_package_target_from_store(
             ResolverErrorKind::InvalidInput,
             format!(
                 "resolver pkg import '{}' requires an explicit package store root",
-                import
-                    .path_segments
-                    .iter()
-                    .map(|segment| segment.spelling.as_str())
-                    .collect::<Vec<_>>()
-                    .join("/")
+                import.import_target
             ),
         )
     })?;
-    let loaded = session.load_package_from_store(Path::new(&store_root), &import.path_segments)?;
+    let loaded =
+        session.load_package_from_store_target(Path::new(&store_root), &import.import_target)?;
     program.mount_loaded_package(&loaded)
 }
 
@@ -143,12 +139,7 @@ fn resolve_location_target_in_loaded_set(
         .source_unit(import.source_unit)
         .expect("import source unit should exist while resolving imports");
     let package = &source_unit.package;
-    let relative_suffix = import
-        .path_segments
-        .iter()
-        .map(|segment| segment.spelling.clone())
-        .collect::<Vec<_>>();
-    let joined = relative_suffix.join("::");
+    let joined = import.import_target.clone();
     let mut candidate_names = std::collections::BTreeSet::new();
 
     if !joined.is_empty() {
@@ -225,22 +216,6 @@ fn import_error_from(
             error.kind(),
             error.message().to_string(),
         )
-    }
-}
-
-fn resolve_directory_path(
-    source_dir: &Path,
-    path_segments: &[fol_parser::ast::UsePathSegment],
-) -> PathBuf {
-    let mut relative = PathBuf::new();
-    for segment in path_segments {
-        relative.push(&segment.spelling);
-    }
-
-    if relative.is_absolute() {
-        relative
-    } else {
-        source_dir.join(relative)
     }
 }
 

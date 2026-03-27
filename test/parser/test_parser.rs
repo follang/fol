@@ -74,27 +74,9 @@ fn fol_type_named_text_is(typ: &FolType, expected: &str) -> bool {
     typ.named_text().as_deref() == Some(expected)
 }
 
-fn use_path_segments_text(
-    path_segments: &[fol_parser::ast::UsePathSegment],
-) -> String {
-    let mut path = String::new();
-
-    for segment in path_segments {
-        if let Some(separator) = &segment.separator {
-            path.push_str(match separator {
-                fol_parser::ast::UsePathSeparator::Slash => "/",
-                fol_parser::ast::UsePathSeparator::DoubleColon => "::",
-            });
-        }
-        path.push_str(&segment.spelling);
-    }
-
-    path
-}
-
 fn use_decl_path_text(node: &AstNode) -> Option<String> {
     match node {
-        AstNode::UseDecl { path_segments, .. } => Some(use_path_segments_text(path_segments)),
+        AstNode::UseDecl { import_target, .. } => Some(import_target.clone()),
         _ => None,
     }
 }

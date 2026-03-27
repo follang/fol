@@ -147,7 +147,7 @@ pub use model::{PreparedExportMount, PreparedPackage};
 pub use paths::{git_cache_path, git_store_path};
 pub use session::{
     canonical_directory_root, infer_package_root, parse_directory_package_syntax,
-    resolve_directory_path, PackageSession,
+    resolve_directory_path, resolve_directory_target, PackageSession,
 };
 
 #[cfg(test)]

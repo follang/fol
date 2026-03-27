@@ -184,33 +184,33 @@ source-kind side correctly while enforcing quoted targets.
 ## Epoch 3: AST And Parser Model Cleanup
 
 ### Slice 11
-Status: pending
+Status: completed
 
 Replace `UsePathSegment`-first parser output with a canonical stored import
 target string on `AstNode::UseDecl`.
 
 ### Slice 12
-Status: pending
+Status: completed
 
 If full immediate replacement is too invasive, add the canonical string field
 first and migrate all downstream consumers to it before deleting the old segment
 field.
 
 ### Slice 13
-Status: pending
+Status: completed
 
 Update parser test helpers that currently reconstruct text from
 `path_segments`.
 
 ### Slice 14
-Status: pending
+Status: completed
 
 Remove parser utilities/tests whose only purpose was preserving old structured
 path segment separators such as `Slash` vs `DoubleColon`, unless that structure
 is still needed elsewhere for unrelated syntax.
 
 ### Slice 15
-Status: pending
+Status: completed
 
 Delete stale AST comments that describe `use` paths as structured segment trees
 if the public parser contract is now string-based.
@@ -218,31 +218,31 @@ if the public parser contract is now string-based.
 ## Epoch 4: Resolver And Package Resolution
 
 ### Slice 16
-Status: pending
+Status: completed
 
 Move resolver import loading to consume the canonical string import target
 instead of reconstructed segment text.
 
 ### Slice 17
-Status: pending
+Status: completed
 
 Update `pkg` import normalization to interpret the quoted string as the package
 target exactly.
 
 ### Slice 18
-Status: pending
+Status: completed
 
 Update `loc` import normalization to interpret the quoted string as the relative
 or direct local path exactly.
 
 ### Slice 19
-Status: pending
+Status: completed
 
 Add resolver errors for malformed or unsupported quoted targets only if they are
 still semantically invalid after parsing.
 
 ### Slice 20
-Status: pending
+Status: completed
 
 Delete resolver tests that still embed old unquoted `pkg` targets.
 

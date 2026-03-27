@@ -3,6 +3,7 @@ use crate::ast::{UsePathSegment, UsePathSeparator};
 
 #[derive(Debug, Clone)]
 struct ParsedUsePath {
+    raw: String,
     segments: Vec<UsePathSegment>,
 }
 
@@ -61,7 +62,7 @@ impl AstParser {
             if matches!(token.key(), KEYWORD::Symbol(SYMBOL::CurlyO)) {
                 let raw = self.parse_quoted_use_path(tokens)?;
                 let segments = self.parse_use_path_segments(&raw, &token)?;
-                paths.push(ParsedUsePath { segments });
+                paths.push(ParsedUsePath { raw, segments });
             } else {
                 return Err(ParseError::from_token(
                     &token,
@@ -152,6 +153,7 @@ impl AstParser {
                 options: options.clone(),
                 name,
                 path_type: path_type.clone(),
+                import_target: path.raw,
                 path_segments: path.segments,
             })
             .collect())
