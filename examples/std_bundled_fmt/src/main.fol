@@ -1,6 +1,6 @@
-use fmt: std = {"fmt"};
+use std: pkg = {std};
 
 fun[] main(): int = {
-    var shown: int = .echo(fmt::answer());
+    var shown: int = .echo(std::fmt::answer());
     return 0;
 };

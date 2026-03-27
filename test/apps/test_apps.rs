@@ -47,6 +47,24 @@ fn compile_app(entry: &Path) -> std::process::Output {
     run_fol(&[entry.to_str().expect("fixture path should be valid utf-8")])
 }
 
+fn bundled_std_store_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("lang/library")
+}
+
+fn copy_dir_all(src: &Path, dst: &Path) {
+    fs::create_dir_all(dst).expect("copy root should be creatable");
+    for entry in fs::read_dir(src).expect("copy source should be readable") {
+        let entry = entry.expect("copy entry should be readable");
+        let file_type = entry.file_type().expect("copy type should be readable");
+        let to = dst.join(entry.file_name());
+        if file_type.is_dir() {
+            copy_dir_all(&entry.path(), &to);
+        } else {
+            fs::copy(entry.path(), &to).expect("copy entry should succeed");
+        }
+    }
+}
+
 fn compile_app_keep_build_dir(entry: &Path) -> std::process::Output {
     run_fol(&[
         "--keep-build-dir",
@@ -371,30 +389,37 @@ fn app_harness_run_helper_executes_built_binary() {
 fn app_harness_root_helpers_support_std_and_pkg_layouts() {
     let temp_root = unique_temp_root("root_helpers");
     let app_root = temp_root.join("app");
-    let std_root = temp_root.join("std");
     let pkg_root = temp_root.join("pkg");
     let math_root = pkg_root.join("math");
 
     fs::create_dir_all(&app_root).expect("app root");
-    fs::create_dir_all(std_root.join("fmt")).expect("std root");
     fs::create_dir_all(math_root.join("src")).expect("pkg src");
+    fs::write(
+        app_root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    var graph = build.graph();\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"main.fol\" });\n",
+            "    graph.install(app);\n",
+            "};\n",
+        ),
+    )
+    .expect("app build");
 
     fs::write(
         app_root.join("main.fol"),
         concat!(
-            "use fmt: std = {\"fmt\"};\n",
+            "use std: pkg = {std};\n",
             "use math: pkg = {math};\n",
             "fun[] main(): int = {\n",
-            "    return fmt::answer();\n",
+            "    return std::fmt::answer();\n",
             "};\n",
         ),
     )
     .expect("app source");
-    fs::write(
-        std_root.join("fmt").join("lib.fol"),
-        "fun[exp] answer(): int = {\n    return 3;\n};\n",
-    )
-    .expect("std source");
     fs::write(math_root.join("build.fol"), "name: math\nversion: 0.1.0\n")
         .expect("pkg manifest");
     fs::write(
@@ -405,7 +430,10 @@ fn app_harness_root_helpers_support_std_and_pkg_layouts() {
     fs::write(math_root.join("src").join("lib.fol"), "var[exp] pkg_answer: int = 4;\n")
         .expect("pkg source");
 
-    compile_app_with_roots_expect_success(&app_root, Some(&std_root), Some(&pkg_root));
+    let merged_store_root = temp_root.join("store");
+    copy_dir_all(&bundled_std_store_root().join("std"), &merged_store_root.join("std"));
+    copy_dir_all(&math_root, &merged_store_root.join("math"));
+    compile_app_with_roots_expect_success(&app_root, None, Some(&merged_store_root));
 
     fs::remove_dir_all(&temp_root).ok();
 }
@@ -608,7 +636,11 @@ fn std_basic_import_fixture_compiles_and_runs() {
     let root = fixture_root("std_basic_import");
     let app_root = root.join("app");
 
-    let compile_output = compile_app_keep_build_dir_expect_success(&app_root);
+    let compile_output = compile_app_with_roots_keep_build_dir_expect_success(
+        &app_root,
+        None,
+        Some(&bundled_std_store_root()),
+    );
     assert_artifact_paths_exist(&compile_output);
 
     let binary = built_binary_path(&compile_output);
@@ -623,7 +655,11 @@ fn std_namespace_import_fixture_compiles_and_runs() {
     let root = fixture_root("std_namespace_import");
     let app_root = root.join("app");
 
-    let compile_output = compile_app_keep_build_dir_expect_success(&app_root);
+    let compile_output = compile_app_with_roots_keep_build_dir_expect_success(
+        &app_root,
+        None,
+        Some(&bundled_std_store_root()),
+    );
     assert_artifact_paths_exist(&compile_output);
 
     let binary = built_binary_path(&compile_output);
@@ -637,10 +673,17 @@ fn std_namespace_import_fixture_compiles_and_runs() {
 fn std_bundled_fmt_example_compiles_and_runs() {
     let fixture = PathBuf::from("examples/std_bundled_fmt");
 
-    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    let compile_output = compile_app_with_roots_keep_build_dir_expect_success(
+        &fixture,
+        None,
+        Some(&bundled_std_store_root()),
+    );
     assert_artifact_paths_exist(&compile_output);
 
-    let run_output = compile_and_run_app(&fixture);
+    let binary = built_binary_path(&compile_output);
+    let run_output = Command::new(&binary)
+        .output()
+        .expect("should run compiled bundled std fmt example");
     assert_exit_code(&run_output, 0);
 }
 
@@ -648,19 +691,25 @@ fn std_bundled_fmt_example_compiles_and_runs() {
 fn std_bundled_io_example_compiles_and_runs() {
     let fixture = PathBuf::from("examples/std_bundled_io");
 
-    let compile_output = compile_app_keep_build_dir_expect_success(&fixture);
+    let compile_output = compile_app_with_roots_keep_build_dir_expect_success(
+        &fixture,
+        None,
+        Some(&bundled_std_store_root()),
+    );
     assert_artifact_paths_exist(&compile_output);
 
-    let run_output = compile_and_run_app(&fixture);
+    let binary = built_binary_path(&compile_output);
+    let run_output = Command::new(&binary)
+        .output()
+        .expect("should run compiled bundled std io example");
     assert_exit_code(&run_output, 0);
 }
 
 #[test]
 fn std_explicit_pkg_example_compiles_and_runs() {
     let fixture = PathBuf::from("examples/std_explicit_pkg");
-    let package_store_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("lang/library");
     let compile_output =
-        compile_app_with_roots_keep_build_dir_expect_success(&fixture, None, Some(&package_store_root));
+        compile_app_with_roots_keep_build_dir_expect_success(&fixture, None, Some(&bundled_std_store_root()));
     assert_artifact_paths_exist(&compile_output);
 
     let binary = built_binary_path(&compile_output);
@@ -708,13 +757,14 @@ fn pkg_transitive_import_fixture_compiles_and_runs() {
 fn mixed_loc_std_pkg_fixture_compiles_and_runs() {
     let root = fixture_root("mixed_loc_std_pkg");
     let app_root = root.join("app");
-    let std_root = root.join("std");
-    let pkg_root = root.join("pkg");
+    let merged_store_root = unique_temp_root("mixed_loc_std_pkg_store");
+    copy_dir_all(&bundled_std_store_root().join("std"), &merged_store_root.join("std"));
+    copy_dir_all(&root.join("pkg/math"), &merged_store_root.join("math"));
 
     let compile_output = compile_app_with_roots_keep_build_dir_expect_success(
         &app_root,
-        Some(&std_root),
-        Some(&pkg_root),
+        None,
+        Some(&merged_store_root),
     );
     assert_artifact_paths_exist(&compile_output);
 
@@ -723,6 +773,7 @@ fn mixed_loc_std_pkg_fixture_compiles_and_runs() {
         .output()
         .expect("should run compiled mixed import fixture");
     assert_exit_code(&run_output, 0);
+    fs::remove_dir_all(&merged_store_root).ok();
 }
 
 #[test]

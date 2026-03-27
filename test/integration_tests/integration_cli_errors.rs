@@ -347,10 +347,26 @@ use super::*;
 
         let temp_root = unique_temp_root("cli_json_resolver_std_override");
         let missing_std_root = temp_root.join("missing-std");
-        fs::create_dir_all(&temp_root).expect("Should create resolver fixture root");
+        let store_root = temp_root.join("pkg");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(app_root.join("src")).expect("Should create resolver fixture root");
         fs::write(
-            temp_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
+            app_root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "    var graph = build.graph();\n",
+                "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+                "    graph.install(app);\n",
+                "};\n",
+            ),
+        )
+        .expect("Should write app build fixture");
+        fs::write(
+            app_root.join("src/main.fol"),
+            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
         )
         .expect("Should write missing explicit std-root fixture");
 
@@ -360,7 +376,11 @@ use super::*;
             missing_std_root
                 .to_str()
                 .expect("Missing explicit std-root path should be valid UTF-8"),
-            temp_root
+            "--package-store-root",
+            store_root
+                .to_str()
+                .expect("Package store root path should be valid UTF-8"),
+            app_root
                 .to_str()
                 .expect("Resolver fixture path should be valid UTF-8"),
         ]);
@@ -375,27 +395,46 @@ use super::*;
         let message = diagnostic["message"]
             .as_str()
             .expect("Resolver diagnostic message should stay a string");
-    assert!(message.contains("does not exist"));
-    assert!(message.contains("missing-std"));
+        assert!(message.contains("does not exist"));
 
-    fs::remove_dir_all(&temp_root).ok();
-}
+        fs::remove_dir_all(&temp_root).ok();
+    }
 
 #[test]
 fn test_cli_json_resolver_errors_report_missing_bundled_std_modules() {
     use std::fs;
 
     let temp_root = unique_temp_root("cli_json_missing_bundled_std_module");
-    fs::create_dir_all(&temp_root).expect("Should create resolver fixture root");
+    let app_root = temp_root.join("app");
+    fs::create_dir_all(app_root.join("src")).expect("Should create resolver fixture root");
     fs::write(
-        temp_root.join("main.fol"),
-        "use os: std = {os};\nfun[] main(): int = {\n    return 0;\n};\n",
+        app_root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    var graph = build.graph();\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "};\n",
+        ),
+    )
+    .expect("Should write app build fixture");
+    fs::write(
+        app_root.join("src/main.fol"),
+        "use os: pkg = {std/os};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write missing bundled std module fixture");
 
     let output = run_fol(&[
         "--json",
-        temp_root
+        "--package-store-root",
+        repo_root()
+            .join("lang/library")
+            .to_str()
+            .expect("Bundled library root should be valid UTF-8"),
+        app_root
             .to_str()
             .expect("Resolver fixture path should be valid UTF-8"),
     ]);
@@ -409,8 +448,8 @@ fn test_cli_json_resolver_errors_report_missing_bundled_std_modules() {
     let message = diagnostic["message"]
         .as_str()
         .expect("Resolver diagnostic message should stay a string");
-    assert!(message.contains("resolver std import target"));
-    assert!(message.contains("os"));
+    assert!(message.contains("resolver pkg import target"));
+    assert!(message.contains("std/os"));
 
     fs::remove_dir_all(&temp_root).ok();
 }
@@ -420,16 +459,36 @@ fn test_cli_json_resolver_errors_keep_exact_bundled_std_module_paths() {
     use std::fs;
 
     let temp_root = unique_temp_root("cli_json_missing_nested_bundled_std_module");
-    fs::create_dir_all(&temp_root).expect("Should create resolver fixture root");
+    let app_root = temp_root.join("app");
+    fs::create_dir_all(app_root.join("src")).expect("Should create resolver fixture root");
     fs::write(
-        temp_root.join("main.fol"),
-        "use math: std = {fmt/missing};\nfun[] main(): int = {\n    return 0;\n};\n",
+        app_root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    var graph = build.graph();\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "    graph.install(app);\n",
+            "};\n",
+        ),
+    )
+    .expect("Should write app build fixture");
+    fs::write(
+        app_root.join("src/main.fol"),
+        "use math: pkg = {std/fmt/missing};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("Should write missing nested bundled std module fixture");
 
     let output = run_fol(&[
         "--json",
-        temp_root
+        "--package-store-root",
+        repo_root()
+            .join("lang/library")
+            .to_str()
+            .expect("Bundled library root should be valid UTF-8"),
+        app_root
             .to_str()
             .expect("Resolver fixture path should be valid UTF-8"),
     ]);
@@ -443,8 +502,8 @@ fn test_cli_json_resolver_errors_keep_exact_bundled_std_module_paths() {
     let message = diagnostic["message"]
         .as_str()
         .expect("Resolver diagnostic message should stay a string");
-    assert!(message.contains("resolver std import target"));
-    assert!(message.contains("fmt/missing"));
+    assert!(message.contains("resolver pkg import target"));
+    assert!(message.contains("std/fmt/missing"));
 
     fs::remove_dir_all(&temp_root).ok();
 }

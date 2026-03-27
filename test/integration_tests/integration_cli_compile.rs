@@ -56,16 +56,37 @@ use super::*;
         use std::fs;
 
         let temp_root = unique_temp_root("cli_bundled_std_import");
-        fs::create_dir_all(&temp_root).expect("Should create bundled std import fixture root");
+        let app_root = temp_root.join("app");
+        fs::create_dir_all(app_root.join("src"))
+            .expect("Should create bundled std import fixture root");
         fs::write(
-            temp_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
+            app_root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "    var graph = build.graph();\n",
+                "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+                "    graph.install(app);\n",
+                "};\n",
+            ),
+        )
+        .expect("Should write bundled std build fixture");
+        fs::write(
+            app_root.join("src/main.fol"),
+            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
         )
         .expect("Should write bundled std import fixture");
 
         let output = run_fol(&[
             "--json",
-            temp_root
+            "--package-store-root",
+            repo_root()
+                .join("lang/library")
+                .to_str()
+                .expect("Bundled library root should be valid UTF-8"),
+            app_root
                 .to_str()
                 .expect("Temporary bundled std fixture path should be valid UTF-8"),
         ]);
@@ -84,31 +105,50 @@ use super::*;
     fn test_cli_resolves_std_imports_with_explicit_std_root_configuration() {
         use std::fs;
 
-        // Keep one narrow override suite. Normal CLI flows should use bundled
-        // std without requiring this flag.
+        // Dependency-backed std imports are satisfied through the explicit
+        // package-store root used for the declared alias.
         let temp_root = unique_temp_root("cli_std_root_import");
-        let std_root = temp_root.join("std");
+        let store_root = temp_root.join("pkg");
         let app_root = temp_root.join("app");
-        fs::create_dir_all(std_root.join("fmt"))
+        fs::create_dir_all(store_root.join("std/fmt"))
             .expect("Should create the standard-library fixture directory");
-        fs::create_dir_all(&app_root)
+        fs::create_dir_all(app_root.join("src"))
             .expect("Should create the importing package root fixture directory");
         fs::write(
-            std_root.join("fmt/value.fol"),
+            store_root.join("std/build.fol"),
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"std\", version = \"0.1.0\" });\n};\n",
+        )
+        .expect("Should write the standard-library build fixture");
+        fs::write(
+            store_root.join("std/fmt/root.fol"),
             "fun[exp] answer(): int = {\n    return 42;\n};\n",
         )
         .expect("Should write the standard-library export fixture");
         fs::write(
-            app_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer();\n};\n",
+            app_root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "    var graph = build.graph();\n",
+                "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+                "    graph.install(app);\n",
+                "};\n",
+            ),
+        )
+        .expect("Should write the app build fixture");
+        fs::write(
+            app_root.join("src/main.fol"),
+            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
         )
         .expect("Should write the std import fixture");
 
         let output = run_fol(&[
-            "--std-root",
-            std_root
+            "--package-store-root",
+            store_root
                 .to_str()
-                .expect("Temporary std-root fixture path should be valid UTF-8"),
+                .expect("Temporary package-store root should be valid UTF-8"),
             app_root
                 .to_str()
                 .expect("Temporary app fixture path should be valid UTF-8"),
@@ -117,7 +157,7 @@ use super::*;
 
         assert!(
             output.status.success(),
-            "CLI should resolve std imports through an explicit std-root flag, got status {:?} and output:;\n{};",
+            "CLI should resolve std imports through an explicit package-store root, got status {:?} and output:;\n{};",
             output.status.code(),
             stdout,
         );
@@ -134,24 +174,49 @@ use super::*;
         use std::fs;
 
         let temp_root = unique_temp_root("cli_std_root_override_swap");
-        let std_root = temp_root.join("std");
+        let store_root = temp_root.join("pkg");
         let app_root = temp_root.join("app");
-        fs::create_dir_all(std_root.join("fmt"))
+        fs::create_dir_all(store_root.join("std/fmt"))
             .expect("Should create the override std fmt directory");
-        fs::create_dir_all(&app_root)
+        fs::create_dir_all(app_root.join("src"))
             .expect("Should create the importing package root fixture directory");
         fs::write(
-            std_root.join("fmt/root.fol"),
+            store_root.join("std/build.fol"),
+            "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"std\", version = \"0.1.0\" });\n};\n",
+        )
+        .expect("Should write the override std build fixture");
+        fs::write(
+            store_root.join("std/fmt/root.fol"),
             "fun[exp] shadow(): int = {\n    return 42;\n};\n",
         )
         .expect("Should write the override std fmt fixture");
         fs::write(
-            app_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::shadow();\n};\n",
+            app_root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "    var graph = build.graph();\n",
+                "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+                "    graph.install(app);\n",
+                "};\n",
+            ),
+        )
+        .expect("Should write the app build fixture");
+        fs::write(
+            app_root.join("src/main.fol"),
+            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::shadow();\n};\n",
         )
         .expect("Should write the std import fixture");
 
-        let default_output = run_fol(&[app_root
+        let default_output = run_fol(&[
+            "--package-store-root",
+            repo_root()
+                .join("lang/library")
+                .to_str()
+                .expect("Temporary package-store root should be valid UTF-8"),
+            app_root
             .to_str()
             .expect("Temporary app fixture path should be valid UTF-8")]);
         assert!(
@@ -162,10 +227,10 @@ use super::*;
         );
 
         let override_output = run_fol(&[
-            "--std-root",
-            std_root
+            "--package-store-root",
+            store_root
                 .to_str()
-                .expect("Temporary std-root fixture path should be valid UTF-8"),
+                .expect("Temporary package-store root should be valid UTF-8"),
             app_root
                 .to_str()
                 .expect("Temporary app fixture path should be valid UTF-8"),
@@ -290,16 +355,35 @@ use super::*;
 
         let temp_root = unique_temp_root("cli_dump_lowered_std");
         let app_root = temp_root.join("app");
-        fs::create_dir_all(&app_root)
+        fs::create_dir_all(app_root.join("src"))
             .expect("Should create the importing package root fixture directory");
         fs::write(
-            app_root.join("main.fol"),
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
+            app_root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "    var graph = build.graph();\n",
+                "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+                "    graph.install(app);\n",
+                "};\n",
+            ),
+        )
+        .expect("Should write the app build fixture");
+        fs::write(
+            app_root.join("src/main.fol"),
+            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
         )
         .expect("Should write the std import fixture");
 
         let output = run_fol(&[
             "--dump-lowered",
+            "--package-store-root",
+            repo_root()
+                .join("lang/library")
+                .to_str()
+                .expect("Bundled library root should be valid UTF-8"),
             app_root
                 .to_str()
                 .expect("Temporary app fixture path should be valid UTF-8"),
@@ -314,7 +398,7 @@ use super::*;
         );
         assert!(stdout.contains("workspace entry=app"));
         assert!(stdout.contains("package app"));
-        assert!(stdout.contains("package fmt"));
+        assert!(stdout.contains("package std"));
         assert!(stdout.contains("entry-candidates"));
 
         fs::remove_dir_all(&temp_root).ok();

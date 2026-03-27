@@ -84,14 +84,6 @@ pub(crate) fn resolve_import_target_with_session(
             }
             Ok(())
         }
-        FolType::Standard { .. } => {
-            let target_scope = resolve_standard_target_from_disk(session, program, &import)
-                .map_err(|error| import_error_from(program, import.alias_symbol, error))?;
-            if let Some(import_slot) = program.imports.get_mut(import_id) {
-                import_slot.target_scope = Some(target_scope);
-            }
-            Ok(())
-        }
         FolType::Package { .. } => {
             let target_scope = resolve_package_target_from_store(session, program, &import)
                 .map_err(|error| import_error_from(program, import.alias_symbol, error))?;
@@ -117,33 +109,6 @@ fn resolve_location_target_from_disk(
     let target_path = resolve_directory_path(source_dir, &import.path_segments);
     let loaded =
         session.load_package_from_directory(target_path.as_path(), PackageSourceKind::Local)?;
-    program.mount_loaded_package(&loaded)
-}
-
-fn resolve_standard_target_from_disk(
-    session: &mut ResolverSession,
-    program: &mut ResolvedProgram,
-    import: &crate::ResolvedImport,
-) -> Result<ScopeId, ResolverError> {
-    let std_root = session.config().std_root.as_deref().ok_or_else(|| {
-        let bundled = fol_package::bundled_std_root();
-        ResolverError::new(
-            ResolverErrorKind::InvalidInput,
-            format!(
-                "resolver std import '{}' requires bundled std at '{}' or an explicit --std-root <DIR> override",
-                import
-                    .path_segments
-                    .iter()
-                    .map(|segment| segment.spelling.as_str())
-                    .collect::<Vec<_>>()
-                    .join("/"),
-                bundled.display(),
-            ),
-        )
-    })?;
-    let target_path = resolve_directory_path(Path::new(std_root), &import.path_segments);
-    let loaded =
-        session.load_package_from_directory(target_path.as_path(), PackageSourceKind::Standard)?;
     program.mount_loaded_package(&loaded)
 }
 
@@ -284,7 +249,6 @@ fn import_kind_label(path_type: &FolType) -> &'static str {
         FolType::Package { .. } => "pkg",
         FolType::Location { .. } => "loc",
         FolType::Module { .. } => "mod",
-        FolType::Standard { .. } => "std",
         _ => "unknown",
     }
 }

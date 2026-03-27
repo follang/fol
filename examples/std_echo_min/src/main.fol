@@ -1,6 +1,6 @@
-use io: std = {io};
+use std: pkg = {std};
 
 fun[] main(): int = {
-    var shown: int = io::echo_int(9);
+    var shown: int = std::io::echo_int(9);
     return 9;
 };

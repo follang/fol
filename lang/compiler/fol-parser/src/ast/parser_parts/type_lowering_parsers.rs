@@ -21,13 +21,6 @@ impl AstParser {
                     name.clone()
                 }
             }
-            FolType::Standard { name } => {
-                if name.is_empty() {
-                    "std".to_string()
-                } else {
-                    name.clone()
-                }
-            }
             FolType::Never => "nev".to_string(),
             FolType::Union { .. } => "uni".to_string(),
             _ => format!("{:?}", typ),

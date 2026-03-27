@@ -829,13 +829,17 @@ fn workspace_typechecking_keeps_direct_loc_import_declaration_facts() {
 #[test]
 fn workspace_typechecking_keeps_direct_std_import_declaration_facts() {
     let root = unique_temp_dir("workspace_direct_std_decls");
-    let std_root = root.join("std");
-    create_dir_all(&std_root).expect("Std root should be creatable");
+    let store_root = root.join("store");
+    create_dir_all(&store_root).expect("Package store root should be creatable");
     write_fixture_files(
         &root,
         &[
             (
-                "std/fmt/root.fol",
+                "store/std/build.fol",
+                "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"std\", version = \"0.1.0\" });\n};\n",
+            ),
+            (
+                "store/std/src/lib.fol",
                 concat!(
                     "typ[exp] Count: int;\n",
                     "var[exp] answer: Count = 42;\n",
@@ -846,7 +850,7 @@ fn workspace_typechecking_keeps_direct_std_import_declaration_facts() {
             ),
             (
                 "app/main.fol",
-                "use fmt: std = {fmt};\nfun[] main(): int = {\n    return 0;\n};\n",
+                "use std: pkg = {std};\nfun[] main(): int = {\n    return 0;\n};\n",
             ),
         ],
     );
@@ -855,13 +859,13 @@ fn workspace_typechecking_keeps_direct_std_import_declaration_facts() {
         &root,
         "app",
         ResolverConfig {
-            std_root: Some(
-                std_root
+            std_root: None,
+            package_store_root: Some(
+                store_root
                     .to_str()
-                    .expect("Std root should be valid UTF-8")
+                    .expect("package store root should be valid UTF-8")
                     .to_string(),
             ),
-            package_store_root: None,
         },
     )
     .expect("Workspace entry typing should keep direct std import declaration facts");

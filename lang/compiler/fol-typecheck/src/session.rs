@@ -3,7 +3,6 @@ use crate::{
     TypecheckErrorKind, TypecheckResult, TypedExportMount, TypedPackage, TypedProgram,
     TypedWorkspace,
 };
-use fol_parser::ast::FolType;
 use fol_resolver::{MountedSymbolProvenance, PackageIdentity, SymbolId};
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -604,24 +603,35 @@ fn validate_import_capability_model(
     resolved: &fol_resolver::ResolvedProgram,
     capability_model: crate::TypecheckCapabilityModel,
 ) -> TypecheckResult<()> {
-    if capability_model == crate::TypecheckCapabilityModel::Std {
+    if capability_model != crate::TypecheckCapabilityModel::Core {
         return Ok(());
     }
 
     let mut errors = Vec::new();
     for import in resolved.imports.iter() {
-        if !matches!(import.path_type, FolType::Standard { .. }) {
+        let Some(target_scope) = import.target_scope else {
+            continue;
+        };
+        let Some(scope) = resolved.scope(target_scope) else {
+            continue;
+        };
+        let fol_resolver::ScopeKind::ProgramRoot { package } = &scope.kind else {
+            continue;
+        };
+        if package != "std" {
             continue;
         }
         let origin = resolved
             .symbol(import.alias_symbol)
             .and_then(|symbol| symbol.origin.clone());
         let message = format!(
-            "'use ...: std = {{...}}' requires 'fol_model = std'; current artifact model is '{}'",
+            "bundled std imports require 'fol_model = memo' or 'std'; current artifact model is '{}'",
             capability_model.as_str()
         );
         errors.push(match origin {
-            Some(origin) => TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin),
+            Some(origin) => {
+                TypecheckError::with_origin(TypecheckErrorKind::Unsupported, message, origin)
+            }
             None => TypecheckError::new(TypecheckErrorKind::Unsupported, message),
         });
     }

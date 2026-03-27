@@ -769,7 +769,7 @@ mod tests {
 
         fs::write(
             app_dir.join("main.fol"),
-            "use shared: loc = {\"../shared\"}\nuse fmt: std = {fmt}\nuse json: pkg = {json}\nfun[] main(): int = { return shared::answer }\n",
+            "use shared: loc = {\"../shared\"}\nuse std: pkg = {std}\nuse json: pkg = {json}\nfun[] main(): int = { return shared::answer }\n",
         )
         .expect("should write app entry");
         fs::write(shared_dir.join("lib.fol"), "var[exp] answer: int = 1\n")

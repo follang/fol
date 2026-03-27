@@ -845,7 +845,6 @@ fn validate_type_public_surface(
         | FolType::Test { .. }
         | FolType::Package { .. }
         | FolType::Location { .. }
-        | FolType::Standard { .. }
         | FolType::Named { .. }
         | FolType::QualifiedNamed { .. } => {}
     }

@@ -87,6 +87,9 @@ pub(super) fn copied_example_package_root(example_path: &str) -> (PathBuf, Strin
         .expect("checked-in example path should canonicalize");
     let root = temp_root(&format!("example_copy_{}", example_path.replace('/', "_")));
     copy_dir_all(&source, &root);
+    let bundled_std_root =
+        fol_package::available_bundled_std_root().expect("bundled std root should exist");
+    copy_dir_all(&bundled_std_root, &root.join(".fol/pkg/std"));
     let uri = format!("file://{}", root.join("src/main.fol").display());
     (root, uri)
 }

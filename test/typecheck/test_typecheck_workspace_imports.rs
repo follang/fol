@@ -882,15 +882,19 @@ fn legacy_single_package_typecheck_rejects_imported_loc_values_explicitly() {
 #[test]
 fn legacy_single_package_typecheck_rejects_imported_std_values_explicitly() {
     let root = unique_temp_dir("reopened_std_import");
-    let std_root = root.join("std");
-    create_dir_all(&std_root).expect("Std root should be creatable");
+    let store_root = root.join("store");
+    create_dir_all(&store_root).expect("Package store root should be creatable");
     write_fixture_files(
         &root,
         &[
-            ("std/fmt/value.fol", "var[exp] answer: int = 42;\n"),
+            (
+                "store/std/build.fol",
+                "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"std\", version = \"0.1.0\" });\n};\n",
+            ),
+            ("store/std/src/lib.fol", "var[exp] answer: int = 42;\n"),
             (
                 "app/main.fol",
-                "use fmt: std = {fmt};\nfun[] main(): int = {\n    return answer;\n};\n",
+                "use std: pkg = {std};\nfun[] main(): int = {\n    return std::src::answer;\n};\n",
             ),
         ],
     );
@@ -899,13 +903,13 @@ fn legacy_single_package_typecheck_rejects_imported_std_values_explicitly() {
         &root,
         "app",
         ResolverConfig {
-            std_root: Some(
-                std_root
+            std_root: None,
+            package_store_root: Some(
+                store_root
                     .to_str()
-                    .expect("std fixture path should be utf8")
+                    .expect("package store root should be utf8")
                     .to_string(),
             ),
-            package_store_root: None,
         },
     )
     .expect_err("legacy single-package typechecking should still reject imported std values");

@@ -108,8 +108,7 @@ pub fn resolve_type_reference(
         | FolType::Module { .. }
         | FolType::Block { .. }
         | FolType::Test { .. }
-        | FolType::Location { .. }
-        | FolType::Standard { .. } => {}
+        | FolType::Location { .. } => {}
     }
 
     Ok(())

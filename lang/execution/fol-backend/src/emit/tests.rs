@@ -1078,13 +1078,24 @@ mod tests {
         fs::create_dir_all(std_root.join("fmt")).expect("std root");
         fs::create_dir_all(&pkg_math_root).expect("pkg root");
         fs::write(
+            app_root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "};\n",
+            ),
+        )
+        .expect("app build");
+        fs::write(
             app_root.join("main.fol"),
             concat!(
                 "use shared: loc = {\"../shared\"};\n",
-                "use fmt: std = {\"fmt\"};\n",
+                "use std: pkg = {std};\n",
                 "use math: pkg = {math};\n",
                 "fun[] main(): int = {\n",
-                "    return loc_answer + fmt::answer() + math::src::pkg_answer;\n",
+                "    return loc_answer + std::fmt::answer() + math::src::pkg_answer;\n",
                 "};\n",
             ),
         )
@@ -1303,15 +1314,26 @@ mod tests {
         fs::create_dir_all(&shared_root).expect("shared root");
         fs::create_dir_all(std_root.join("fmt")).expect("std root");
         fs::create_dir_all(&pkg_math_root).expect("pkg root");
+        fs::write(
+            app_root.join("build.fol"),
+            concat!(
+                "pro[] build(): non = {\n",
+                "    var build = .build();\n",
+                "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "};\n",
+            ),
+        )
+        .expect("app build");
 
         fs::write(
             app_root.join("main.fol"),
             concat!(
                 "use shared: loc = {\"../shared\"};\n",
-                "use fmt: std = {\"fmt\"};\n",
+                "use std: pkg = {std};\n",
                 "use math: pkg = {math};\n",
                 "fun[] main(): int = {\n",
-                "    return loc_answer + fmt::answer() + math::src::pkg_answer;\n",
+                "    return loc_answer + std::fmt::answer() + math::src::pkg_answer;\n",
                 "};\n",
             ),
         )

@@ -1,6 +1,6 @@
-use io: std = {"io"};
+use std: pkg = {std};
 
 fun[] main(): int = {
-    var shown: str = io::echo_str("std-io");
+    var shown: str = std::io::echo_str("std-io");
     return 7;
 };

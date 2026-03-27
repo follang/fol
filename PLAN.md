@@ -362,7 +362,7 @@ Completion criteria:
 ## Epoch 5: Move Bundled `std` Onto The Dependency System
 
 ### Slice 21
-Status: pending
+Status: complete
 
 Stop globally mounting bundled std during normal resolution.
 
@@ -371,7 +371,7 @@ Completion criteria:
 - normal resolution does not expose std unless declared as a dependency
 
 ### Slice 22
-Status: pending
+Status: complete
 
 Wire bundled std visibility through declared dependency aliases.
 
@@ -381,7 +381,7 @@ Completion criteria:
 - a different alias also works if declared intentionally
 
 ### Slice 23
-Status: pending
+Status: complete
 
 Add negative coverage for missing bundled std dependency declarations.
 
@@ -390,7 +390,7 @@ Completion criteria:
 - code importing std without declaring internal `standard` dependency fails clearly
 
 ### Slice 24
-Status: pending
+Status: complete
 
 Add negative coverage for declaring bundled std under one alias and importing under
 another.
@@ -400,7 +400,7 @@ Completion criteria:
 - dependency alias mismatch fails clearly
 
 ### Slice 25
-Status: pending
+Status: complete
 
 Update resolver/package docs to explain bundled std as dependency-backed.
 
@@ -483,7 +483,7 @@ Completion criteria:
 - one implementation direction is chosen and documented
 
 ### Slice 32
-Status: pending
+Status: complete
 
 If the chosen direction is dependency-backed `pkg` only, delete the special `std`
 source kind.
@@ -494,7 +494,7 @@ Completion criteria:
 - old special std import path is removed
 
 ### Slice 33
-Status: pending
+Status: complete
 
 If temporary std import sugar remains, make it resolve strictly through declared
 internal dependency aliases.
@@ -505,7 +505,7 @@ Completion criteria:
 - tests prove it depends on declared bundled std dependency presence
 
 ### Slice 34
-Status: pending
+Status: complete
 
 Update parser/resolver/editor tests for the chosen import contract.
 
@@ -514,7 +514,7 @@ Completion criteria:
 - completion/hover/definition tests reflect the final import form
 
 ### Slice 35
-Status: pending
+Status: complete
 
 Update all active examples to the final import form.
 

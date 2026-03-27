@@ -4,9 +4,9 @@ use crate::{
 };
 use fol_diagnostics::Diagnostic;
 use fol_diagnostics::ToDiagnostic;
-use fol_package::{PackageSession, PackageSourceKind};
+use fol_package::{PackageConfig, PackageSession, PackageSourceKind};
 use fol_parser::ast::AstParser;
-use fol_resolver::Resolver;
+use fol_resolver::{Resolver, ResolverConfig};
 use fol_stream::{FileStream, Source, SourceType};
 use fol_typecheck::{TypecheckConfig, Typechecker};
 use std::path::Path;
@@ -135,7 +135,14 @@ pub(super) fn analyze_document_semantics(
             });
         }
 
-        let mut package_session = PackageSession::new();
+        let package_store_root = package_root.join(".fol/pkg");
+        let mut package_session = if package_store_root.is_dir() {
+            let mut config = PackageConfig::default();
+            config.package_store_root = Some(package_store_root.to_string_lossy().to_string());
+            PackageSession::with_config(config)
+        } else {
+            PackageSession::new()
+        };
         #[cfg(test)]
         LOAD_DIRECTORY_PACKAGE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let prepared =
@@ -166,10 +173,19 @@ pub(super) fn analyze_document_semantics(
                 }
             };
 
+        let package_store_root = package_root.join(".fol/pkg");
         let mut resolver = Resolver::new();
         #[cfg(test)]
         RESOLVE_WORKSPACE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let resolved = match resolver.resolve_prepared_workspace(prepared) {
+        let resolved = match resolver.resolve_prepared_workspace_with_config(
+            prepared,
+            ResolverConfig {
+                std_root: None,
+                package_store_root: package_store_root
+                    .is_dir()
+                    .then(|| package_store_root.to_string_lossy().to_string()),
+            },
+        ) {
             Ok(resolved) => resolved,
             Err(errors) => {
                 let diagnostics = errors

@@ -54,6 +54,66 @@ fn collect_rust_source_files(root: &std::path::Path) -> Vec<std::path::PathBuf> 
     found
 }
 
+fn emitted_crate_root(output: &std::process::Output) -> std::path::PathBuf {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let root = stdout
+        .lines()
+        .find_map(|line| {
+            let plain = strip_ansi(line);
+            if let Some(tail) = plain.split("crate_root=").nth(1) {
+                return tail.split(" binary=").next().map(str::trim).map(str::to_string);
+            }
+            if plain.contains("emitted-rust") {
+                return plain.split_whitespace().last().map(str::to_string);
+            }
+            None
+        })
+        .expect("compile success should report a crate root");
+    std::path::PathBuf::from(root)
+}
+
+fn built_binary_path(output: &std::process::Output) -> std::path::PathBuf {
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let binary = stdout
+        .lines()
+        .find_map(|line| {
+            let plain = strip_ansi(line);
+            if let Some(tail) = plain.split("binary=").nth(1) {
+                return Some(tail.trim().to_string());
+            }
+            if plain.contains("binary") {
+                return plain.split_whitespace().last().map(str::to_string);
+            }
+            None
+        })
+        .expect("compile success should report a binary path");
+    std::path::PathBuf::from(binary)
+}
+
+fn example_declares_bundled_std(root: &std::path::Path) -> bool {
+    std::fs::read_to_string(root.join("build.fol"))
+        .map(|source| source.contains("source = \"internal\"") && source.contains("target = \"standard\""))
+        .unwrap_or(false)
+}
+
+fn run_example_compile(root: &std::path::Path, keep_build_dir: bool) -> std::process::Output {
+    if example_declares_bundled_std(root) {
+        if keep_build_dir {
+            run_fol_with_store_in_dir(
+                root,
+                &repo_root().join("lang/library"),
+                &["code", "build", "--keep-build-dir"],
+            )
+        } else {
+            run_fol_with_store_in_dir(root, &repo_root().join("lang/library"), &["code", "build"])
+        }
+    } else if keep_build_dir {
+        run_fol_in_dir(root, &["code", "build", "--keep-build-dir"])
+    } else {
+        run_fol_in_dir(root, &["code", "build"])
+    }
+}
+
 fn copy_dir_all(src: &std::path::Path, dst: &std::path::Path) {
     std::fs::create_dir_all(dst).expect("should create destination directory");
     for entry in std::fs::read_dir(src).expect("should read source directory") {
@@ -75,6 +135,14 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
     let target = temp_root.join("workspace");
     copy_dir_all(&source, &target);
     target
+}
+
+fn materialize_local_bundled_std_alias(root: &std::path::Path) {
+    let bundled_std_root =
+        fol_package::available_bundled_std_root().expect("bundled std root should exist");
+    copy_dir_all(&bundled_std_root, &root.join(".fol/pkg/std"));
+    std::fs::write(root.join("fol.work.yaml"), "package_store_root: .fol/pkg\n")
+        .expect("should write workspace package-store override");
 }
 
 fn expected_runtime_import_for_model(model: &str) -> String {
@@ -1506,15 +1574,7 @@ fn test_cli_build_emits_rust_for_model_examples() {
 
     for (path, expected_import) in cases {
         let root = temp_example_root(path);
-        let build = if path == "examples/std_explicit_pkg" {
-            run_fol_with_store_in_dir(
-                &root,
-                &repo_root().join("lang/library"),
-                &["code", "build", "--keep-build-dir"],
-            )
-        } else {
-            run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"])
-        };
+        let build = run_example_compile(&root, true);
         assert!(
             build.status.success(),
             "example '{path}' should build: stdout=\n{}\nstderr=\n{}",
@@ -1522,7 +1582,7 @@ fn test_cli_build_emits_rust_for_model_examples() {
             String::from_utf8_lossy(&build.stderr)
         );
 
-        let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+        let generated = find_file_by_name(&emitted_crate_root(&build), "main.rs")
             .expect("generated example backend source should exist");
         let source =
             std::fs::read_to_string(&generated).expect("generated example source should load");
@@ -1539,41 +1599,37 @@ fn test_cli_build_emits_rust_for_model_examples() {
 #[test]
 fn test_cli_example_build_summaries_surface_expected_models() {
     let cases = [
-        ("examples/build_dep_handles", "fol_model=std"),
-        ("examples/build_dep_args", "fol_model=std"),
-        ("examples/build_dep_exports", "fol_model=std"),
-        ("examples/build_dep_paths", "fol_model=std"),
-        ("examples/build_dep_modes", "fol_model=std"),
-        ("examples/build_described_steps", "fol_model=std"),
-        ("examples/build_generated_dirs", "fol_model=std"),
-        ("examples/build_install_prefix", "fol_model=std"),
-        ("examples/build_output_handles", "fol_model=std"),
-        ("examples/build_system_lib", "fol_model=std"),
-        ("examples/build_system_tool", "fol_model=std"),
-        ("examples/build_source_paths", "fol_model=std"),
-        ("examples/core_blink_shape", "fol_model=core"),
-        ("examples/core_defer", "fol_model=core"),
-        ("examples/core_records", "fol_model=core"),
-        ("examples/core_surface_showcase", "fol_model=core"),
-        ("examples/memo_defaults", "fol_model=memo"),
-        ("examples/memo_containers", "fol_model=memo"),
-        ("examples/memo_collections", "fol_model=memo"),
-        ("examples/memo_surface_showcase", "fol_model=memo"),
-        ("examples/std_bundled_fmt", "fol_model=std"),
-        ("examples/std_explicit_pkg", "fol_model=std"),
-        ("examples/std_cli", "fol_model=std"),
-        ("examples/std_echo_min", "fol_model=std"),
-        ("examples/std_named_calls", "fol_model=std"),
-        ("examples/std_surface_showcase", "fol_model=std"),
+        ("examples/build_dep_handles", "std"),
+        ("examples/build_dep_args", "std"),
+        ("examples/build_dep_exports", "std"),
+        ("examples/build_dep_paths", "std"),
+        ("examples/build_dep_modes", "std"),
+        ("examples/build_described_steps", "std"),
+        ("examples/build_generated_dirs", "std"),
+        ("examples/build_install_prefix", "std"),
+        ("examples/build_output_handles", "std"),
+        ("examples/build_system_lib", "std"),
+        ("examples/build_system_tool", "std"),
+        ("examples/build_source_paths", "std"),
+        ("examples/core_blink_shape", "core"),
+        ("examples/core_defer", "core"),
+        ("examples/core_records", "core"),
+        ("examples/core_surface_showcase", "core"),
+        ("examples/memo_defaults", "memo"),
+        ("examples/memo_containers", "memo"),
+        ("examples/memo_collections", "memo"),
+        ("examples/memo_surface_showcase", "memo"),
+        ("examples/std_bundled_fmt", "std"),
+        ("examples/std_explicit_pkg", "std"),
+        ("examples/std_cli", "std"),
+        ("examples/std_echo_min", "std"),
+        ("examples/std_named_calls", "std"),
+        ("examples/std_surface_showcase", "std"),
     ];
 
     for (path, expected_model) in cases {
         let root = temp_example_root(path);
-        let build = if path == "examples/std_explicit_pkg" {
-            run_fol_with_store_in_dir(&root, &repo_root().join("lang/library"), &["code", "build"])
-        } else {
-            run_fol_in_dir(&root, &["code", "build"])
-        };
+        let build = run_example_compile(&root, true);
         let stdout = String::from_utf8_lossy(&build.stdout);
         assert!(
             build.status.success(),
@@ -1581,12 +1637,17 @@ fn test_cli_example_build_summaries_surface_expected_models() {
             stdout,
             String::from_utf8_lossy(&build.stderr)
         );
+        let generated = find_file_by_name(&emitted_crate_root(&build), "main.rs")
+            .expect("generated example backend source should exist");
+        let source =
+            std::fs::read_to_string(&generated).expect("generated example source should load");
+        let expected_import = expected_runtime_import_for_model(expected_model);
         assert!(
-                stdout.contains(expected_model),
-                "example '{path}' should surface '{expected_model}' in the build summary: stdout=\n{}\nstderr=\n{}",
-                stdout,
-                String::from_utf8_lossy(&build.stderr)
-            );
+            source.contains(&expected_import),
+            "example '{path}' should map to runtime import '{expected_import}' in {:?}:\n{}",
+            generated,
+            source
+        );
     }
 }
 
@@ -1604,15 +1665,7 @@ fn test_cli_std_examples_run_and_print_expected_output() {
 
     for (path, expected_text) in cases {
         let root = temp_example_root(path);
-        let build = if path == "examples/std_explicit_pkg" {
-            run_fol_with_store_in_dir(
-                &root,
-                &repo_root().join("lang/library"),
-                &["code", "build", "--keep-build-dir"],
-            )
-        } else {
-            run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"])
-        };
+        let build = run_example_compile(&root, true);
         let build_stdout = String::from_utf8_lossy(&build.stdout);
         assert!(
             build.status.success(),
@@ -1620,20 +1673,7 @@ fn test_cli_std_examples_run_and_print_expected_output() {
             build_stdout,
             String::from_utf8_lossy(&build.stderr)
         );
-        let binary = build_stdout
-            .lines()
-            .find_map(|line| {
-                let plain = strip_ansi(line);
-                if plain.contains("binary") {
-                    plain.split_whitespace().last().map(str::to_string)
-                } else {
-                    None
-                }
-            })
-            .expect("std example build should report a binary path")
-            .trim()
-            .to_string();
-        let run = std::process::Command::new(&binary)
+        let run = std::process::Command::new(built_binary_path(&build))
             .output()
             .expect("built std example should execute");
         let stdout = String::from_utf8_lossy(&run.stdout);
@@ -1661,7 +1701,12 @@ fn test_bundled_std_discovery_stays_coherent_across_cli_and_editor() {
     };
 
     let root = temp_example_root("examples/std_bundled_fmt");
-    let build = run_fol_in_dir(&root, &["code", "build"]);
+    let store_root = repo_root().join("lang/library");
+    let build = run_fol_with_store_in_dir(
+        &root,
+        &store_root,
+        &[root.to_str().expect("example root should be valid UTF-8")],
+    );
     assert!(
         build.status.success(),
         "bundled std example should build: stdout=\n{}\nstderr=\n{}",
@@ -1669,7 +1714,15 @@ fn test_bundled_std_discovery_stays_coherent_across_cli_and_editor() {
         String::from_utf8_lossy(&build.stderr)
     );
 
-    let run = run_fol_in_dir(&root, &["code", "run"]);
+    let binary = String::from_utf8_lossy(&build.stdout)
+        .lines()
+        .find_map(|line| line.split("binary=").nth(1))
+        .expect("build should report a binary path")
+        .trim()
+        .to_string();
+    let run = std::process::Command::new(&binary)
+        .output()
+        .expect("bundled std example binary should execute");
     assert!(
         run.status.success(),
         "bundled std example should run: stdout=\n{}\nstderr=\n{}",
@@ -1683,6 +1736,7 @@ fn test_bundled_std_discovery_stays_coherent_across_cli_and_editor() {
         String::from_utf8_lossy(&run.stderr)
     );
 
+    materialize_local_bundled_std_alias(&root);
     let source_path = root.join("src/main.fol");
     let source = std::fs::read_to_string(&source_path).expect("example source should load");
     let uri = EditorDocumentUri::from_file_path(source_path)
@@ -1737,7 +1791,7 @@ fn test_bundled_std_discovery_stays_coherent_across_cli_and_editor() {
 #[test]
 fn test_bundled_std_io_example_builds_and_runs_without_override() {
     let root = temp_example_root("examples/std_bundled_io");
-    let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+    let build = run_example_compile(&root, true);
     let stdout = String::from_utf8_lossy(&build.stdout);
     assert!(
         build.status.success(),
@@ -1745,18 +1799,7 @@ fn test_bundled_std_io_example_builds_and_runs_without_override() {
         stdout,
         String::from_utf8_lossy(&build.stderr)
     );
-    let binary = stdout
-        .lines()
-        .find_map(|line| {
-            let plain = strip_ansi(line);
-            if plain.contains("binary") {
-                plain.split_whitespace().last().map(str::to_string)
-            } else {
-                None
-            }
-        })
-        .expect("bundled std.io build should report a binary path");
-    let run = std::process::Command::new(binary.trim())
+    let run = std::process::Command::new(built_binary_path(&build))
         .output()
         .expect("bundled std.io example should run");
     let stdout = String::from_utf8_lossy(&run.stdout);
@@ -1819,7 +1862,19 @@ fn test_bundled_std_tree_stays_source_only_and_bootstrap_honest() {
 fn test_build_rejects_std_imports_under_core_model() {
     let temp_root = unique_temp_root("build_core_use_std_reject");
     let app_root = temp_root.join("app");
+    let store_root = temp_root.join("pkg");
     std::fs::create_dir_all(app_root.join("src")).expect("should create app source root");
+    std::fs::create_dir_all(store_root.join("std/fmt")).expect("should create std source root");
+    std::fs::write(
+        store_root.join("std/build.fol"),
+        "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"std\", version = \"0.1.0\" });\n};\n",
+    )
+    .expect("should write std build");
+    std::fs::write(
+        store_root.join("std/fmt/root.fol"),
+        "fun[exp] answer(): int = {\n    return 42;\n};\n",
+    )
+    .expect("should write std source");
     std::fs::write(
         app_root.join("build.fol"),
         concat!(
@@ -1835,15 +1890,15 @@ fn test_build_rejects_std_imports_under_core_model() {
     .expect("should write app build");
     std::fs::write(
         app_root.join("src/main.fol"),
-        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
+        "use std: pkg = {std};\nfun[] main(): int = {\n    return 0;\n};\n",
     )
     .expect("should write app source");
 
-    let build = run_fol_in_dir(&app_root, &["code", "build"]);
+    let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&build.stderr);
     assert!(!build.status.success(), "core std-import app should fail");
     assert!(
-        stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'core'"),
+        stderr.contains("bundled std imports require 'fol_model = memo' or 'std'; current artifact model is 'core'"),
         "core std-import app should keep the capability diagnostic: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
@@ -1851,8 +1906,8 @@ fn test_build_rejects_std_imports_under_core_model() {
 }
 
 #[test]
-fn test_build_rejects_std_imports_under_mem_model() {
-    let temp_root = unique_temp_root("build_mem_use_std_reject");
+fn test_build_rejects_std_imports_without_declared_dependency() {
+    let temp_root = unique_temp_root("build_memo_use_std_missing_dep");
     let app_root = temp_root.join("app");
     std::fs::create_dir_all(app_root.join("src")).expect("should create app source root");
     std::fs::write(
@@ -1870,16 +1925,16 @@ fn test_build_rejects_std_imports_under_mem_model() {
     .expect("should write app build");
     std::fs::write(
         app_root.join("src/main.fol"),
-        "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::answer();\n};\n",
+        "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
     )
     .expect("should write app source");
 
     let build = run_fol_in_dir(&app_root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&build.stderr);
-    assert!(!build.status.success(), "memo std-import app should fail");
+    assert!(!build.status.success(), "memo std-import app should fail without declared dependency");
     assert!(
-        stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'memo'"),
-        "memo std-import app should keep the capability diagnostic: stdout=\n{}\nstderr=\n{}",
+        stderr.contains(".fol/pkg/std") || stderr.contains("resolver pkg import target"),
+        "memo std-import app should fail because bundled std is dependency-backed: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
@@ -2859,7 +2914,7 @@ fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
     for (path, expected_import) in cases {
         let root = temp_example_root(path);
 
-        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        let build = run_example_compile(&root, true);
         assert!(
             build.status.success(),
             "example '{path}' should build: stdout=\n{}\nstderr=\n{}",
@@ -2867,7 +2922,7 @@ fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
             String::from_utf8_lossy(&build.stderr)
         );
 
-        let generated = find_file_by_name(&root.join(".fol/build"), "src.rs")
+        let generated = find_file_by_name(&emitted_crate_root(&build), "src.rs")
             .expect("generated package source should exist");
         let source =
             std::fs::read_to_string(&generated).expect("generated package source should load");
@@ -2906,7 +2961,7 @@ fn test_model_examples_keep_runtime_imports_clean_across_emitted_rust_trees() {
 
     for (path, required, forbid_a, forbid_b) in cases {
         let root = temp_example_root(path);
-        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        let build = run_example_compile(&root, true);
         assert!(
             build.status.success(),
             "example '{path}' should build: stdout=\n{}\nstderr=\n{}",
@@ -2914,7 +2969,7 @@ fn test_model_examples_keep_runtime_imports_clean_across_emitted_rust_trees() {
             String::from_utf8_lossy(&build.stderr)
         );
 
-        let rust_files = collect_rust_source_files(&root.join(".fol/build"));
+        let rust_files = collect_rust_source_files(&emitted_crate_root(&build));
         assert!(
             !rust_files.is_empty(),
             "example '{path}' should emit Rust source files"
@@ -3395,38 +3450,32 @@ fn test_bundled_std_bootstrap_contract_matrix_stays_coherent() {
     };
 
     let root = temp_example_root("examples/std_bundled_io");
-    let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+    let store_root = repo_root().join("lang/library");
+    let build = run_fol_with_store_in_dir(
+        &root,
+        &store_root,
+        &["--keep-build-dir", root.to_str().expect("example root should be valid UTF-8")],
+    );
     assert!(
         build.status.success(),
         "bundled std contract matrix example should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
-    let stdout = String::from_utf8_lossy(&build.stdout);
-    assert!(stdout.contains("fol_model=std"));
-
-    let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+    let crate_root = emitted_crate_root(&build);
+    let generated = find_file_by_name(&crate_root, "main.rs")
         .expect("bundled std contract matrix should emit backend source");
     let source = std::fs::read_to_string(&generated).expect("generated source should load");
     assert!(source.contains("use fol_runtime::std as rt;"));
 
-    let binary = stdout
-        .lines()
-        .find_map(|line| {
-            let plain = strip_ansi(line);
-            if plain.contains("binary") {
-                plain.split_whitespace().last().map(str::to_string)
-            } else {
-                None
-            }
-        })
-        .expect("bundled std contract matrix build should report a binary path");
-    let run = std::process::Command::new(binary.trim())
+    let binary = built_binary_path(&build);
+    let run = std::process::Command::new(&binary)
         .output()
         .expect("bundled std contract matrix binary should run");
     assert!(run.status.success());
     assert!(String::from_utf8_lossy(&run.stdout).contains("std-io"));
 
+    materialize_local_bundled_std_alias(&root);
     let source_path = root.join("src/main.fol");
     let text = std::fs::read_to_string(&source_path).expect("example source should load");
     let uri = EditorDocumentUri::from_file_path(source_path)
@@ -3478,15 +3527,7 @@ fn test_bundled_std_bootstrap_contract_matrix_stays_coherent() {
 fn test_positive_runtime_model_examples_build_with_expected_models_and_runtime_imports() {
     for (path, expected_model) in positive_runtime_model_examples() {
         let root = temp_example_root(path);
-        let build = if *path == "examples/std_explicit_pkg" {
-            run_fol_with_store_in_dir(
-                &root,
-                &repo_root().join("lang/library"),
-                &["code", "build", "--keep-build-dir"],
-            )
-        } else {
-            run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"])
-        };
+        let build = run_example_compile(&root, true);
         let stdout = String::from_utf8_lossy(&build.stdout);
         assert!(
             build.status.success(),
@@ -3495,13 +3536,7 @@ fn test_positive_runtime_model_examples_build_with_expected_models_and_runtime_i
             String::from_utf8_lossy(&build.stderr)
         );
         if *path != "examples/mixed_models_workspace" {
-            assert!(
-                stdout.contains(&format!("fol_model={expected_model}")),
-                "positive runtime model example '{path}' should surface model '{expected_model}': stdout=\n{}\nstderr=\n{}",
-                stdout,
-                String::from_utf8_lossy(&build.stderr)
-            );
-            let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
+            let generated = find_file_by_name(&emitted_crate_root(&build), "main.rs")
                 .expect("generated backend source should exist");
             let source =
                 std::fs::read_to_string(&generated).expect("generated backend source should load");
@@ -3537,14 +3572,35 @@ fn test_negative_runtime_model_examples_fail_with_expected_boundary_class() {
         (
             "examples/fail_core_std_import",
             None,
-            "'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'core'",
+            "bundled std imports require 'fol_model = memo' or 'std'; current artifact model is 'core'",
         ),
     ];
 
     for (path, subdir, expected_message) in cases {
         let root = temp_example_root(path);
         let working_root = subdir.map(|value| root.join(value)).unwrap_or(root.clone());
-        let build = run_fol_in_dir(&working_root, &["code", "build"]);
+        let store_root = if path == "examples/fail_core_std_import" {
+            let root = unique_temp_root("fail_core_std_import_matrix_store");
+            std::fs::create_dir_all(root.join("std/fmt")).expect("should create std source root");
+            std::fs::write(
+                root.join("std/build.fol"),
+                "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"std\", version = \"0.1.0\" });\n};\n",
+            )
+            .expect("should write std build");
+            std::fs::write(
+                root.join("std/fmt/root.fol"),
+                "fun[exp] answer(): int = {\n    return 42;\n};\n",
+            )
+            .expect("should write std source");
+            Some(root)
+        } else {
+            None
+        };
+        let build = if let Some(store_root) = store_root.as_ref() {
+            run_fol_with_store_in_dir(&working_root, store_root, &["code", "build"])
+        } else {
+            run_fol_in_dir(&working_root, &["code", "build"])
+        };
         let stderr = String::from_utf8_lossy(&build.stderr);
         assert!(
             !build.status.success(),
@@ -3558,6 +3614,9 @@ fn test_negative_runtime_model_examples_fail_with_expected_boundary_class() {
             String::from_utf8_lossy(&build.stdout),
             stderr
         );
+        if let Some(store_root) = store_root {
+            std::fs::remove_dir_all(store_root).ok();
+        }
     }
 }
 
@@ -3567,12 +3626,12 @@ fn test_runtime_model_regression_matrix_stays_coherent_across_layers() {
         (
             "test/app/build/model_core_surface_full",
             true,
-            Some("fol_model=core"),
+            Some("use fol_runtime::core as rt;"),
         ),
         (
             "test/app/build/model_memo_surface_full",
             true,
-            Some("fol_model=memo"),
+            Some("use fol_runtime::alloc as rt;"),
         ),
         (
             "examples/fail_core_heap_reject",
@@ -3587,7 +3646,11 @@ fn test_runtime_model_regression_matrix_stays_coherent_across_layers() {
         } else {
             repo_root().join(path)
         };
-        let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
+        let build = if path.starts_with("examples/") {
+            run_example_compile(&root, true)
+        } else {
+            run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"])
+        };
         let combined = format!(
             "{}\n{}",
             String::from_utf8_lossy(&build.stdout),
@@ -3599,10 +3662,23 @@ fn test_runtime_model_regression_matrix_stays_coherent_across_layers() {
             "runtime matrix direct case '{path}' should have success={should_succeed}: output=\n{combined}"
         );
         if let Some(expected) = expected {
-            assert!(
-                combined.contains(expected),
-                "runtime matrix direct case '{path}' should mention '{expected}': output=\n{combined}"
-            );
+            if should_succeed {
+                let generated = find_file_by_name(&emitted_crate_root(&build), "main.rs")
+                    .expect("generated backend source should exist");
+                let source = std::fs::read_to_string(&generated)
+                    .expect("generated backend source should load");
+                assert!(
+                    source.contains(expected),
+                    "runtime matrix direct case '{path}' should emit '{expected}' in {:?}:\n{}",
+                    generated,
+                    source
+                );
+            } else {
+                assert!(
+                    combined.contains(expected),
+                    "runtime matrix direct case '{path}' should mention '{expected}': output=\n{combined}"
+                );
+            }
         }
     }
 
@@ -3613,9 +3689,9 @@ fn test_runtime_model_regression_matrix_stays_coherent_across_layers() {
     assert!(run_stdout.contains("7"));
 
     let emitted_root = temp_example_root("examples/std_surface_showcase");
-    let build = run_fol_in_dir(&emitted_root, &["code", "build", "--keep-build-dir"]);
+    let build = run_example_compile(&emitted_root, true);
     assert!(build.status.success(), "std emitted-import matrix should build");
-    let generated = find_file_by_name(&emitted_root.join(".fol/build"), "main.rs")
+    let generated = find_file_by_name(&emitted_crate_root(&build), "main.rs")
         .expect("generated std source should exist");
     let source = std::fs::read_to_string(generated).expect("generated std source should load");
     assert!(source.contains("use fol_runtime::std as rt;"));
@@ -3787,7 +3863,19 @@ fn test_negative_transitive_core_mem_boundary_example_fails_cleanly() {
 #[test]
 fn test_negative_core_std_import_example_fails_with_std_boundary_diagnostic() {
     let root = temp_example_root("examples/fail_core_std_import");
-    let build = run_fol_in_dir(&root, &["code", "build"]);
+    let store_root = unique_temp_root("fail_core_std_import_store");
+    std::fs::create_dir_all(store_root.join("std/fmt")).expect("should create std source root");
+    std::fs::write(
+        store_root.join("std/build.fol"),
+        "pro[] build(): non = {\n    var build = .build();\n    build.meta({ name = \"std\", version = \"0.1.0\" });\n};\n",
+    )
+    .expect("should write std build");
+    std::fs::write(
+        store_root.join("std/fmt/root.fol"),
+        "fun[exp] answer(): int = {\n    return 42;\n};\n",
+    )
+    .expect("should write std source");
+    let build = run_fol_with_store_in_dir(&root, &store_root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&build.stderr);
 
     assert!(
@@ -3797,11 +3885,12 @@ fn test_negative_core_std_import_example_fails_with_std_boundary_diagnostic() {
         stderr
     );
     assert!(
-        stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'core'"),
+        stderr.contains("bundled std imports require 'fol_model = memo' or 'std'; current artifact model is 'core'"),
         "negative core std-import example should keep the bundled std boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
+    std::fs::remove_dir_all(store_root).ok();
 }
 
 #[test]

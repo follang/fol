@@ -63,12 +63,12 @@ fn lsp_server_reports_model_aware_diagnostics_for_real_example_roots() {
         ),
         (
             "examples/std_bundled_fmt",
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::math::answer();\n};\n",
+            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::math::answer();\n};\n",
             None,
         ),
         (
             "examples/std_bundled_io",
-            "use io: std = {io};\nfun[] main(): int = {\n    var shown: str = io::echo_str(\"ok\");\n    return 7;\n};\n",
+            "use std: pkg = {std};\nfun[] main(): int = {\n    var shown: str = std::io::echo_str(\"ok\");\n    return 7;\n};\n",
             None,
         ),
         (
@@ -183,10 +183,10 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
         ),
         (
             "examples/std_bundled_fmt",
-            "use fmt: std = {fmt};\nfun[] main(): int = {\n    return fmt::math::;\n};\n",
+            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::fmt::math::;\n};\n",
             LspPosition {
                 line: 1,
-                character: 22,
+                character: 27,
             },
             Some(LspCompletionContext {
                 trigger_kind: Some(2),
@@ -197,10 +197,10 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
         ),
         (
             "examples/std_bundled_io",
-            "use io: std = {io};\nfun[] main(): int = {\n    return io::;\n};\n",
+            "use std: pkg = {std};\nfun[] main(): int = {\n    return std::io::;\n};\n",
             LspPosition {
                 line: 1,
-                character: 15,
+                character: 16,
             },
             Some(LspCompletionContext {
                 trigger_kind: Some(2),

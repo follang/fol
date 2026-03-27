@@ -925,8 +925,7 @@ fn unsupported_type_error(resolved: &ResolvedProgram, typ: &FolType) -> Typechec
         | FolType::Module { .. }
         | FolType::Block { .. }
         | FolType::Test { .. }
-        | FolType::Location { .. }
-        | FolType::Standard { .. } => {
+        | FolType::Location { .. } => {
             "package/build-specific type surfaces are not yet supported"
         }
         _ => "this type surface is not yet supported",
