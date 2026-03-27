@@ -843,16 +843,6 @@ impl BuildBodyExecutor {
                         match raw.as_str() {
                             "core" => BuildArtifactFolModel::Core,
                             "memo" => BuildArtifactFolModel::Memo,
-                            "std"
-                                if std::path::Path::new(&self.package_root_str)
-                                    .file_name()
-                                    .and_then(|name| name.to_str())
-                                    == Some("std")
-                                    || self.package_root_str.ends_with("/lang/library/std")
-                                    || self.package_root_str.ends_with("\\lang\\library\\std") =>
-                            {
-                                BuildArtifactFolModel::Std
-                            }
                             "std" => {
                                 return Err(BuildEvaluationError::new(
                                     BuildEvaluationErrorKind::InvalidInput,

@@ -20,7 +20,6 @@ pub enum BuildArtifactFolModel {
     Core,
     #[default]
     Memo,
-    Std,
 }
 
 impl BuildArtifactFolModel {
@@ -28,7 +27,6 @@ impl BuildArtifactFolModel {
         match self {
             Self::Core => "core",
             Self::Memo => "memo",
-            Self::Std => "std",
         }
     }
 
@@ -36,7 +34,6 @@ impl BuildArtifactFolModel {
         match raw {
             "core" => Some(Self::Core),
             "memo" => Some(Self::Memo),
-            "std" => Some(Self::Std),
             _ => None,
         }
     }
@@ -262,7 +259,7 @@ mod tests {
             output_name: "app".to_string(),
             linkage: BuildArtifactLinkage::Executable,
             target: BuildArtifactTargetConfig {
-                fol_model: BuildArtifactFolModel::Std,
+                fol_model: BuildArtifactFolModel::Memo,
                 target: None,
                 optimize: None,
             },
@@ -372,13 +369,12 @@ mod tests {
             BuildArtifactFolModel::parse("memo"),
             Some(BuildArtifactFolModel::Memo)
         );
-        assert_eq!(BuildArtifactFolModel::parse("std"), Some(BuildArtifactFolModel::Std));
+        assert_eq!(BuildArtifactFolModel::parse("std"), None);
         assert_eq!(BuildArtifactFolModel::parse("alloc"), None);
         assert_eq!(BuildArtifactFolModel::parse("mem"), None);
         assert_eq!(BuildArtifactFolModel::parse("hosted"), None);
         assert_eq!(BuildArtifactFolModel::Core.as_str(), "core");
         assert_eq!(BuildArtifactFolModel::Memo.as_str(), "memo");
-        assert_eq!(BuildArtifactFolModel::Std.as_str(), "std");
     }
 
     #[test]

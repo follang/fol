@@ -23,8 +23,10 @@ Import reminder:
 Recommended style:
 
 - spell `fol_model` explicitly when the artifact is `core`
+- omit `fol_model` when the artifact is meant to take the default `memo`
 - treat `core` and `memo` as capability choices
 - treat bundled `std` as a declared internal dependency, not as a third model
+- treat `graph.add_run(...)` as independent from std-library presence
 
 ## Tiers
 

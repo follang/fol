@@ -314,7 +314,6 @@ fn typecheck_model_for_build_model(model: BuildArtifactFolModel) -> TypecheckCap
     match model {
         BuildArtifactFolModel::Core => TypecheckCapabilityModel::Core,
         BuildArtifactFolModel::Memo => TypecheckCapabilityModel::Memo,
-        BuildArtifactFolModel::Std => TypecheckCapabilityModel::Std,
     }
 }
 
@@ -489,7 +488,7 @@ mod tests {
         let memo_mapping =
             map_document_workspace(&root.join("memo/lib.fol"), &EditorConfig::default()).unwrap();
 
-        assert_eq!(app_mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
+        assert_eq!(app_mapping.active_fol_model, Some(TypecheckCapabilityModel::Memo));
         assert_eq!(core_mapping.active_fol_model, Some(TypecheckCapabilityModel::Core));
         assert_eq!(memo_mapping.active_fol_model, Some(TypecheckCapabilityModel::Memo));
 

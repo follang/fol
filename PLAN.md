@@ -1,463 +1,526 @@
-# PLAN: Quoted Import Targets Only
+# PLAN: Finalize Capability Modes And Bundled Std
 
-This plan replaces the current mixed import-target surface with one strict rule:
+This plan freezes the final architecture for capability modes and bundled
+standard-library access.
 
-- the thing inside `use ... = { ... }` is always a string literal
-- unquoted import targets are deleted
-- there is no compatibility path
-- there is no dual parser mode
-- there is no migration warning period
+There is no compatibility path.
 
-Examples of the target syntax:
+If the repo still contains behavior or wording from older models, this plan
+deletes it.
 
-```fol
-use std: pkg = {"std"};
-use io: pkg = {"std/io"};
-use logtiny: pkg = {"logtiny"};
-use shared: loc = {"../shared"};
-use nested: pkg = {"other/package/nested"};
-```
+## Final Contract
 
-Examples that must become invalid:
+The target contract is:
 
-```fol
-use std: pkg = {std};
-use io: pkg = {std/io};
-use logtiny: pkg = {logtiny};
-use shared: loc = {../shared};
-use math: loc = {core::math};
-```
+- public capability modes are only:
+  - `core`
+  - `memo`
+- omitted `fol_model` defaults to `memo`
+- `std` is not a capability mode
+- bundled std is only available through an explicit internal dependency:
+  - `source = "internal"`
+  - `target = "standard"`
+- normal projects are expected to bind bundled std as:
+  - `alias = "std"`
+- source code may only use bundled std after that dependency exists
+- the normal source-side import form is:
+  - `use std: pkg = {"std"};`
+- `core` and `memo` are not importable libraries
+- `graph.add_run(app)` is independent of std-library presence
+- direct hosted substrate like `.echo(...)` remains temporarily available as a
+  low-level primitive, but docs/examples should increasingly prefer bundled
+  `std::io`
 
 ## Why
 
-The current surface is inconsistent:
+This separates three concerns cleanly:
 
-- parser fixtures already accept quoted targets
-- some docs already teach quoted targets
-- many tests/examples still use unquoted targets
-- the parser still contains fallback logic for direct unquoted paths
-- import targets are conceptually data, not expression syntax
+- capability policy
+- bundled standard library availability
+- runnable artifact orchestration
 
-The language should settle on one representation:
+That means:
 
-- import target path = string literal payload
+- `fol_model` controls language/runtime legality
+- internal bundled dependency controls std-library availability
+- build graph run/install behavior is not secretly tied to std imports
 
-That makes the grammar simpler and more explicit:
+This avoids the older ambiguity where `std` tried to mean all of:
 
-- `pkg`, `loc`, and any future import providers all use the same target form
-- nested package paths stop being a special mini-language in braces
-- parser and editor highlighting become easier to reason about
-- diagnostics can point at a string target instead of ambiguous segment syntax
+- hosted runtime
+- standard library
+- runnability
+- import source kind
 
-## Deep impact
+## Non-Goals
 
-This is not a docs-only cleanup. It goes through:
+This plan does not:
 
-- lexer token expectations around textual literals in `use`
-- parser `use` declaration path handling
-- AST/storage of parsed import targets
-- parser tests and fixtures
-- resolver import target normalization and diagnostics
-- frontend and integration fixtures
-- lowering and typecheck tests that embed source snippets
-- editor/LSP parse fixtures, semantic tests, completion examples
-- tree-sitter examples/highlight coverage
-- book/docs/examples
+- make `core` importable
+- make `memo` importable
+- add a public `std` source kind back
+- keep `fol_model = "std"`
+- add compatibility shims
+- add migration warnings
+- fully remove direct `.echo(...)` in the first pass
 
-The old unquoted form must be deleted completely.
+## Architectural Rules
 
-## Final contract
+### Capability modes
 
-After this plan:
+Only these public mode spellings remain valid:
 
-- `use ...: pkg = {"..."};` is required
-- `use ...: loc = {"..."};` is required
-- the string contents carry the import target
-- braces remain part of the `use` surface
-- quoted targets may contain `/`
-- quoted targets may contain relative loc paths like `../shared`
-- quoted targets may contain plain package names like `std` or `json`
-- unquoted identifiers, unquoted path segments, and `::`-assembled targets inside
-  the braces are rejected
+- `core`
+- `memo`
 
-## AST direction
+Meaning:
 
-Current parser state already preserves `path_segments` on `AstNode::UseDecl`.
-That reflects the old structured path syntax.
+- `core`
+  - no heap-backed surfaces
+  - no bundled std unless explicitly allowed later by policy
+- `memo`
+  - heap-backed surfaces allowed
+  - bundled std still requires explicit dependency
 
-Target direction:
+### Defaulting
 
-- `AstNode::UseDecl` should store a canonical import target string
-- if structured segments are still needed internally for a short refactor stage,
-  that is an implementation detail only
-- the parser contract should become string-first, not segment-first
+If an artifact omits `fol_model`, it should behave as:
 
-## Epoch 1: Freeze Contract
+- `fol_model = "memo"`
+
+This default must be consistent in:
+
+- build evaluation
+- frontend summaries
+- routed planning
+- docs/examples/scaffolding
+- editor/LSP model reporting
+
+### Bundled std
+
+Bundled std is a shipped internal dependency only.
+
+The canonical build declaration is:
+
+```fol
+build.add_dep({
+    alias = "std",
+    source = "internal",
+    target = "standard",
+});
+```
+
+The canonical source import is:
+
+```fol
+use std: pkg = {"std"};
+```
+
+### Import legality
+
+If bundled std is not declared, source code must not be able to use:
+
+```fol
+use std: pkg = {"std"};
+```
+
+or any alias-bound equivalent path.
+
+That must fail clearly in:
+
+- resolver
+- CLI
+- editor/LSP
+
+### Runnability
+
+This plan keeps runnability separate from std-library presence.
+
+That means:
+
+- `graph.add_run(app)` does not require bundled std
+- runnable `core` and `memo` artifacts are still allowed if otherwise valid
+- std-library use is about declared library availability, not whether an
+  artifact can be run
+
+### Hosted substrate
+
+`.echo(...)` remains temporarily available as low-level hosted substrate.
+
+Practical rule:
+
+- do not break working hosted primitives in this architecture pass
+- do shift user-facing docs/examples toward bundled `std::io`
+- keep the wording honest that `std::io` is the preferred public wrapper and
+  `.echo(...)` is substrate-level for now
+
+## Epoch 1: Freeze The Contract
 
 ### Slice 1
 Status: completed
 
-Write the top-level contract into active docs:
+Write the final contract into active top-level docs:
 
-- import target in `use` braces is string-only
-- unquoted targets are removed
-- applies equally to `pkg` and `loc`
+- `fol_model = core | memo`
+- default `memo`
+- std is explicit internal dependency
+- std is imported through `pkg`
+- `graph.add_run` is independent of std
 
 ### Slice 2
 Status: completed
 
-Add/adjust parser-level contract tests that describe the target surface before
-implementation changes:
+Write the same contract into contributor-facing docs:
 
-- quoted `pkg`
-- quoted `loc`
-- quoted nested package path
-- quoted relative loc path
+- `AGENTS.md`
+- any active architecture notes under `docs/`
 
 ### Slice 3
 Status: completed
 
-Add explicit negative parser tests for:
+Add one compiler/package/frontend contract matrix test that pins:
 
-- `{std}`
-- `{std/io}`
-- `{json}`
-- `{../shared}`
-- `{core::math}`
+- `core` valid
+- `memo` valid
+- omitted mode becomes `memo`
+- `std` mode invalid
 
 ### Slice 4
 Status: completed
 
-Audit and document all known import providers currently in use:
+Add one contract test that pins bundled std as:
 
-- `pkg`
-- `loc`
+- `source = "internal"`
+- `target = "standard"`
 
-and pin that they all share the same quoted-target rule.
+and rejects alternative internal target spellings.
 
-## Epoch 2: Parser Cutover
+## Epoch 2: Delete `std` As A Mode
 
 ### Slice 5
 Status: completed
 
-Remove the parser branch that accepts direct unquoted `use` paths in
-`parse_use_paths`.
+Remove `std` from public `fol_model` parsing/validation.
 
 ### Slice 6
 Status: completed
 
-Tighten `parse_use_paths` so valid targets come only from:
-
-- `{ "..." }`
-- `{ '...' }` if single-quoted text literals are still accepted as textual literals
-
-or reject single-quoted string targets too, if the language wants one canonical
-string literal style. Choose one and apply it consistently.
+Update build-eval diagnostics so `fol_model = "std"` fails with exact contract
+wording.
 
 ### Slice 7
 Status: completed
 
-Delete `parse_direct_use_path` if it becomes dead after the cutover.
+Update typecheck/model-capability tests so public model matrices only mention:
+
+- `core`
+- `memo`
 
 ### Slice 8
 Status: completed
 
-Delete or radically simplify `ensure_complete_use_path` if it only existed for
-the old segment-assembled form.
+Update frontend/routed planning summaries so they no longer surface `std` as a
+mode.
 
 ### Slice 9
 Status: completed
 
-Change parser diagnostics to say:
+Update editor/LSP model recovery and reporting so `std` is no longer treated as
+an artifact mode.
 
-- expected string literal import target
-- import targets must be quoted
-
-instead of segment-oriented messages like “Expected name after `::` in use path”.
+## Epoch 3: Default To `memo`
 
 ### Slice 10
 Status: completed
 
-Update parser tests around colonless `use` declarations so they still parse the
-source-kind side correctly while enforcing quoted targets.
-
-## Epoch 3: AST And Parser Model Cleanup
+Make omitted artifact `fol_model` default to `memo` everywhere the build graph
+is evaluated.
 
 ### Slice 11
-Status: completed
+Status: pending
 
-Replace `UsePathSegment`-first parser output with a canonical stored import
-target string on `AstNode::UseDecl`.
+Add integration coverage showing omitted `fol_model` builds as `memo`.
 
 ### Slice 12
-Status: completed
+Status: pending
 
-If full immediate replacement is too invasive, add the canonical string field
-first and migrate all downstream consumers to it before deleting the old segment
-field.
+Update scaffold/init/default example outputs to omit explicit `memo` where the
+default is intended, or keep it only if the chosen docs style wants explicit
+mode spelling. Pick one and apply it consistently.
 
 ### Slice 13
-Status: completed
+Status: pending
 
-Update parser test helpers that currently reconstruct text from
-`path_segments`.
+Update summaries/docs so the default is stated concretely and not implied
+through older `std` wording.
+
+## Epoch 4: Explicit Bundled Std Dependency Semantics
 
 ### Slice 14
-Status: completed
+Status: pending
 
-Remove parser utilities/tests whose only purpose was preserving old structured
-path segment separators such as `Slash` vs `DoubleColon`, unless that structure
-is still needed elsewhere for unrelated syntax.
+Audit `build.add_dep({ source = "internal", target = "standard" })` through:
+
+- build eval
+- metadata extraction
+- package session preparation
+- resolver session loading
+
+and pin it as the only bundled-std acquisition path.
 
 ### Slice 15
-Status: completed
+Status: pending
 
-Delete stale AST comments that describe `use` paths as structured segment trees
-if the public parser contract is now string-based.
+Add dependency tests showing the normal alias is:
 
-## Epoch 4: Resolver And Package Resolution
+- `std`
+
+but other aliases technically work if deliberately chosen.
 
 ### Slice 16
-Status: completed
+Status: pending
 
-Move resolver import loading to consume the canonical string import target
-instead of reconstructed segment text.
+Add resolver tests proving `use std: pkg = {"std"};` fails when the dependency
+was not declared.
 
 ### Slice 17
-Status: completed
+Status: pending
 
-Update `pkg` import normalization to interpret the quoted string as the package
-target exactly.
+Add resolver tests proving alias mismatch fails cleanly:
+
+- declared alias is not `std`
+- source still imports `{"std"}`
 
 ### Slice 18
-Status: completed
+Status: pending
 
-Update `loc` import normalization to interpret the quoted string as the relative
-or direct local path exactly.
+Add integration coverage for bundled std through:
+
+- build
+- check
+- run
+- dump lowered
+
+using the explicit dependency only.
+
+## Epoch 5: Runnability Independence
 
 ### Slice 19
-Status: completed
+Status: pending
 
-Add resolver errors for malformed or unsupported quoted targets only if they are
-still semantically invalid after parsing.
+Audit build/frontend/run behavior so `graph.add_run(app)` no longer relies on a
+former `std` mode assumption.
 
 ### Slice 20
-Status: completed
+Status: pending
 
-Delete resolver tests that still embed old unquoted `pkg` targets.
+Add one positive `core` runnable example/fixture with no std dependency.
 
 ### Slice 21
-Status: completed
+Status: pending
 
-Delete resolver tests that still embed old unquoted `loc` targets.
+Add one positive `memo` runnable example/fixture with no std dependency.
 
 ### Slice 22
-Status: completed
+Status: pending
 
-Harden bundled `standard` / alias-backed `pkg` resolution tests so they only use
-quoted targets.
+Add integration tests proving:
 
-## Epoch 5: Lowering, Typecheck, And Backend Fixtures
+- runnable `core` artifact without std dependency
+- runnable `memo` artifact without std dependency
+- std dependency presence is orthogonal to run-step legality
 
 ### Slice 23
-Status: completed
+Status: pending
 
-Update lowerer tests that embed source strings with old unquoted import targets.
+Update docs so they stop implying “hosted run requires std dependency” unless
+that is explicitly intended somewhere else.
+
+## Epoch 6: Hosted Substrate Versus Public Std
 
 ### Slice 24
-Status: completed
+Status: pending
 
-Update typecheck tests that embed source strings with old unquoted import
-targets.
+Freeze the wording around `.echo(...)`:
+
+- still allowed as substrate
+- not the preferred public-library story
+- `std.io` is the preferred wrapper
 
 ### Slice 25
-Status: completed
+Status: pending
 
-Update backend emit/layout tests that embed source strings with old unquoted
-import targets.
+Add tests/docs showing:
+
+- `memo` without std dependency can still use substrate-hosted behavior if the
+  language currently allows it
+- bundled `std.io` is a library wrapper, not the only path to hosted output
 
 ### Slice 26
-Status: completed
+Status: pending
 
-Add one cross-layer regression proving a quoted `pkg` import survives:
-
-- parse
-- resolve
-- lower
-- typecheck
-- backend emit
+Convert active public examples that are meant to demonstrate standard-library
+use so they prefer `std::io`.
 
 ### Slice 27
-Status: completed
+Status: pending
 
-Add one cross-layer regression proving a quoted `loc` import survives:
+Keep one intentionally small example that still demonstrates raw `.echo(...)`
+as substrate, and label it honestly.
 
-- parse
-- resolve
-- lower
-- typecheck
-- backend emit
-
-## Epoch 6: Frontend, CLI, And Workspace Fixtures
+## Epoch 7: Editor And Tree-sitter Contract
 
 ### Slice 28
-Status: completed
+Status: pending
 
-Update CLI compile fixtures using old unquoted `std` imports.
+Update LSP tests so capability reporting speaks only in `core` and `memo`, with
+bundled std handled as dependency presence.
 
 ### Slice 29
-Status: completed
+Status: pending
 
-Update CLI compile fixtures using old unquoted `pkg` imports.
+Add editor diagnostics proving:
+
+- `use std: pkg = {"std"};` without declared dependency fails in editor path
+- parser success but resolver failure is surfaced correctly
 
 ### Slice 30
-Status: completed
+Status: pending
 
-Update CLI/typecheck fixtures using old unquoted `loc` imports.
+Update tree-sitter/example coverage if any current corpus or fixture still
+describes `std` as a source kind or mode.
 
 ### Slice 31
-Status: completed
+Status: pending
 
-Update routed/integration workspace fixtures to the quoted target form only.
+Add one editor integration regression for omitted `fol_model` defaulting to
+`memo`.
+
+## Epoch 8: Examples And Fixtures
 
 ### Slice 32
-Status: completed
+Status: pending
 
-Add a CLI negative regression that explicitly proves:
+Audit all checked-in examples so they follow one of these patterns only:
 
-- `use std: pkg = {std};`
-
-fails with a parser error that points at quoted import targets.
-
-## Epoch 7: Editor And Tree-sitter
+- `core` with no std dependency
+- `memo` with no std dependency
+- `memo` plus explicit bundled std dependency
 
 ### Slice 33
-Status: completed
+Status: pending
 
-Audit editor parse/semantic fixtures that still use old unquoted targets and
-convert them.
+Add one minimal canonical example for:
+
+- `core` runnable without std
+- `memo` runnable without std
+- `memo` + bundled std dependency
 
 ### Slice 34
-Status: completed
+Status: pending
 
-Update LSP completion tests that include `use` declarations so they only use
-quoted targets.
-
-### Slice 35
-Status: completed
-
-Update LSP navigation/hover tests that include `use` declarations so they only
-use quoted targets.
-
-### Slice 36
-Status: completed
-
-Update tree-sitter example coverage and syntax snapshots for quoted import
-targets only.
-
-### Slice 37
-Status: completed
-
-Add one editor regression proving a missing quote in a `use` target surfaces as
-syntax/parser failure in the editor path, not a later resolver failure.
-
-## Epoch 8: Examples And App Fixtures
-
-### Slice 38
-Status: completed
-
-Convert all checked-in `examples/` package imports to quoted targets.
-
-### Slice 39
-Status: completed
-
-Convert all `test/apps/fixtures` imports to quoted targets.
-
-### Slice 40
-Status: completed
-
-Convert formal package fixtures under `test/app/formal` to quoted targets where
-they declare source imports.
-
-### Slice 41
-Status: completed
-
-Add one positive example showing bundled std import with the final form:
-
-```fol
-use std: pkg = {"std"};
-```
-
-### Slice 42
-Status: completed
-
-Add one positive example showing nested external package import with the final
-form:
-
-```fol
-use nested: pkg = {"other/package/nested"};
-```
-
-### Slice 43
-Status: completed
-
-Add one negative example showing old unquoted import target rejection.
-
-## Epoch 9: Docs And Book
-
-### Slice 44
-Status: completed
-
-Update the build/import docs to teach quoted import targets only.
-
-### Slice 45
-Status: completed
-
-Update runtime/bundled-std docs to teach:
+Add one negative example:
 
 - `use std: pkg = {"std"};`
+- missing explicit internal std dependency
 
-and remove old brace-with-bare-name examples.
+### Slice 35
+Status: pending
 
-### Slice 46
-Status: completed
+Update app fixtures and formal fixtures so none of them still encode the older
+`std`-mode story.
 
-Update book chapters covering modules/imports/source origins so every shown
-`use` target is quoted.
+## Epoch 9: Docs And Book Alignment
 
-### Slice 47
-Status: completed
+### Slice 36
+Status: pending
 
-Update contributor docs and `AGENTS.md` to pin the new import contract and say
-explicitly that old unquoted forms must not be reintroduced.
+Rewrite runtime-model docs so they describe:
 
-## Epoch 10: Final Cleanup
+- `core`
+- `memo`
+- bundled std dependency
 
-### Slice 48
-Status: completed
+instead of `core/memo/std` as peer modes.
+
+### Slice 37
+Status: pending
+
+Rewrite import docs so bundled std is taught only through:
+
+- explicit internal dependency in `build.fol`
+- `use std: pkg = {"std"};`
+
+### Slice 38
+Status: pending
+
+Rewrite build docs so they clearly separate:
+
+- capability mode selection
+- bundled std dependency declaration
+- run/install graph setup
+
+### Slice 39
+Status: pending
+
+Rewrite book examples that still imply the removed `std` mode.
+
+### Slice 40
+Status: pending
+
+Update contributor guidance so future changes do not reintroduce:
+
+- `fol_model = "std"`
+- ambient std assumptions
+- `std` as a source kind
+
+## Epoch 10: Final Cleanup And Closure
+
+### Slice 41
+Status: pending
 
 Repo-wide stale sweep for:
 
-- `pkg = {std}`
-- `pkg = {json}`
-- `pkg = {logtiny}`
-- `loc = {math}`
-- `loc = {../shared}`
+- `fol_model = "std"`
+- “std mode”
+- `: std =`
+- docs that tie runnability to std presence
 
-and all similar unquoted forms.
+### Slice 42
+Status: pending
 
-### Slice 49
-Status: completed
+Add one top-level sync test scanning docs/examples/fixtures for stale removed
+contracts:
 
-Add one top-level sync/integration test that scans canonical examples/docs for
-stale unquoted import targets.
+- `fol_model = "std"`
+- `: std =`
 
-### Slice 50
-Status: completed
+### Slice 43
+Status: pending
 
-Run the full repo gate after the cutover:
+Add one top-level sync test scanning docs/examples/fixtures for the required
+bundled-std contract:
+
+- `source = "internal"`
+- `target = "standard"`
+- `use std: pkg = {"std"};`
+
+### Slice 44
+Status: pending
+
+Run targeted negative integration checks for:
+
+- missing std dependency
+- old `std` mode spelling
+- bad internal target
+- alias mismatch
+
+### Slice 45
+Status: pending
+
+Run the full repo gate:
 
 - `make build`
 - `make test`
 
-and only then mark the plan complete.
+Only after that, mark the plan complete.

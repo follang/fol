@@ -665,7 +665,7 @@ fn artifact_models(
     models.sort_by_key(|model| match model {
         fol_backend::BackendFolModel::Core => 0,
         fol_backend::BackendFolModel::Memo => 1,
-        fol_backend::BackendFolModel::Std => 2,
+        fol_backend::BackendFolModel::Std => 1,
     });
     models.dedup();
     models
@@ -753,9 +753,6 @@ fn backend_fol_model(
         }
         fol_package::build_artifact::BuildArtifactFolModel::Memo => {
             fol_backend::BackendFolModel::Memo
-        }
-        fol_package::build_artifact::BuildArtifactFolModel::Std => {
-            fol_backend::BackendFolModel::Std
         }
     }
 }

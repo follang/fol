@@ -7,6 +7,8 @@ Finalized design contract:
 - public capability modes are only:
   - `core`
   - `memo`
+- omitted `fol_model` defaults to:
+  - `memo`
 - bundled standard-library package identity is:
   - `standard`
 - the normal dependency alias in user projects is:
@@ -14,6 +16,7 @@ Finalized design contract:
 - source code should reach bundled std through the dependency system with `pkg`
   imports, for example:
   - `use std: pkg = {"std"};`
+- `graph.add_run(...)` is independent of std-library presence
 
 Normal build usage:
 

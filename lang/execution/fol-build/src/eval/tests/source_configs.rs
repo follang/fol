@@ -124,7 +124,7 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
     );
     assert_eq!(
         evaluated.evaluated.artifacts[2].fol_model,
-        BuildArtifactFolModel::Std
+        BuildArtifactFolModel::Memo
     );
     assert_eq!(
         evaluated.evaluated.artifacts[3].fol_model,
@@ -169,7 +169,36 @@ fn build_source_evaluator_rejects_unknown_artifact_fol_models() {
     assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
     assert_eq!(
         error.message(),
-        "artifact fol_model must be one of: core, memo, std (got 'hosted')"
+        "artifact fol_model must be one of: core, memo (got 'hosted')"
+    );
+}
+
+#[test]
+fn build_source_evaluator_rejects_removed_std_artifact_model_with_exact_guidance() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    graph.add_exe({ name = \"app\", root = \"src/app.fol\", fol_model = \"std\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let error = evaluate_build_source(&request, &build_path, source)
+        .expect_err("removed std fol_model should fail build evaluation");
+
+    assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
+    assert_eq!(
+        error.message(),
+        "artifact fol_model no longer accepts 'std'; use 'memo' and declare bundled std through build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" })"
     );
 }
 

@@ -217,7 +217,7 @@ fn artifact_model_distribution_line(workspace: &FrontendWorkspace) -> Option<Str
         for artifact in &evaluated.evaluated.artifacts {
             match artifact.fol_model {
                 BuildArtifactFolModel::Core => core += 1,
-                BuildArtifactFolModel::Memo | BuildArtifactFolModel::Std => memo += 1,
+                BuildArtifactFolModel::Memo => memo += 1,
             }
         }
     }

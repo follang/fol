@@ -381,7 +381,7 @@ mod tests {
 
         assert_eq!(exe.kind, BuildRuntimeArtifactKind::Executable);
         assert_eq!(exe.root_module, "src/app.fol");
-        assert_eq!(exe.fol_model, BuildArtifactFolModel::Std);
+        assert_eq!(exe.fol_model, BuildArtifactFolModel::Memo);
         assert_eq!(exe.target, None);
         assert_eq!(exe.optimize, None);
         assert_eq!(test.kind, BuildRuntimeArtifactKind::Test);

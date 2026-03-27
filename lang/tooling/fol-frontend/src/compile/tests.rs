@@ -1,8 +1,9 @@
 use super::{
     backend_config, build_workspace, build_workspace_for_profile_with_config,
-    build_workspace_with_config, check_workspace, emit_lowered, emit_rust,
-    profile_build_root, run_workspace, run_workspace_with_args_and_config, test_package,
-    test_workspace, test_workspace_with_config, typecheck_capability_model,
+    build_workspace_with_config, check_workspace, declared_capability_model_for_package,
+    effective_runtime_model_for_package, emit_lowered, emit_rust, profile_build_root,
+    run_workspace, run_workspace_with_args_and_config, test_package, test_workspace,
+    test_workspace_with_config, typecheck_capability_model,
 };
 use crate::{
     FrontendArtifactKind, FrontendConfig, FrontendProfile, FrontendWorkspace, PackageRoot,
@@ -173,6 +174,36 @@ fn frontend_maps_backend_fol_models_into_typecheck_models() {
         typecheck_capability_model(BackendFolModel::Std),
         fol_typecheck::TypecheckCapabilityModel::Std
     );
+}
+
+#[test]
+fn declared_capability_model_defaults_to_memo_and_ignores_bundled_std_dependency() {
+    let root =
+        std::env::temp_dir().join(format!("fol_frontend_capability_default_{}", std::process::id()));
+    let app = root.join("app");
+    fs::create_dir_all(app.join("src")).unwrap();
+    fs::write(
+        app.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    var graph = build.graph();\n",
+            "    graph.add_exe({ name = \"app\", root = \"src/main.fol\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(app.join("src/main.fol"), "fun[] main(): int = { return 0; };\n").unwrap();
+
+    assert_eq!(declared_capability_model_for_package(&app), BackendFolModel::Memo);
+    assert_eq!(
+        effective_runtime_model_for_package(&app, BackendFolModel::Memo),
+        BackendFolModel::Std
+    );
+
+    fs::remove_dir_all(root).ok();
 }
 
 #[test]
