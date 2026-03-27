@@ -257,8 +257,10 @@ fn lsp_server_handles_completion_for_single_and_ambiguous_model_package_files() 
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
-            "    var graph = .build().graph();\n",
-            "    graph.add_exe({ name = \"host\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+            "    var build = .build();\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    var graph = build.graph();\n",
+            "    graph.add_exe({ name = \"host\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
             "    graph.add_test({ name = \"suite\", root = \"test/app.fol\", fol_model = \"core\" });\n",
             "};\n",
         ),
@@ -266,7 +268,7 @@ fn lsp_server_handles_completion_for_single_and_ambiguous_model_package_files() 
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return .echo(7);\n};\n",
+        "use std: pkg = {std};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
     )
     .unwrap();
     fs::write(

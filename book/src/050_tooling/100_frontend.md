@@ -28,7 +28,7 @@ The frontend owns:
 
 Bundled std reminder:
 
-- hosted binary scaffolds should default to `fol_model = "std"`
+- hosted binary scaffolds should default to `fol_model = "memo"`
 - scaffolded projects should rely on bundled `std`
 - scaffolding should not teach manual std dependency setup
 

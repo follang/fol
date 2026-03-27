@@ -100,10 +100,12 @@ fn lsp_server_keeps_build_file_semantic_tokens_for_all_model_declarations() {
         root.join("build.fol"),
         concat!(
             "pro[] build(): non = {\n",
-            "    var graph = .build().graph();\n",
+            "    var build = .build();\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    var graph = build.graph();\n",
             "    graph.add_static_lib({ name = \"corelib\", root = \"src/main.fol\", fol_model = \"core\" });\n",
             "    graph.add_static_lib({ name = \"alloclib\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
-            "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+            "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
             "};\n",
         ),
     )

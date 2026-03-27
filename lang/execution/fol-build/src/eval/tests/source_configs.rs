@@ -94,7 +94,7 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
         "    var graph = .build().graph();\n",
         "    graph.add_exe({ name = \"app\", root = \"src/app.fol\", fol_model = \"core\" });\n",
         "    graph.add_static_lib({ name = \"memolib\", root = \"src/lib.fol\", fol_model = \"memo\" });\n",
-        "    graph.add_shared_lib({ name = \"plugin\", root = \"src/plugin.fol\", fol_model = \"std\" });\n",
+        "    graph.add_shared_lib({ name = \"plugin\", root = \"src/plugin.fol\", fol_model = \"memo\" });\n",
         "    graph.add_test({ name = \"tests\", root = \"test/app.fol\", fol_model = \"memo\" });\n",
         "    return;\n",
         "}\n",

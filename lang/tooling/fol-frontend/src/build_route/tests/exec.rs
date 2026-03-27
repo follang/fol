@@ -1039,11 +1039,12 @@ fn execute_workspace_build_route_emits_std_runtime_module_imports() {
             "pro[] build(): non = {\n",
             "    var build = .build();\n",
             "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
-            "    var graph = .graph();\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    var graph = build.graph();\n",
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"std\",\n",
+            "        fol_model = \"memo\",\n",
             "    });\n",
             "    graph.install(app);\n",
             "    return;\n",
@@ -1054,9 +1055,10 @@ fn execute_workspace_build_route_emits_std_runtime_module_imports() {
     fs::write(
         root.join("src/main.fol"),
         concat!(
+            "use std: pkg = {std};\n",
             "fun[] main(): int = {\n",
-            "    .echo(\"ok\");\n",
-            "    return 0;\n",
+            "    var shown: str = std::io::echo_str(\"ok\");\n",
+            "    return .len(shown) - .len(shown);\n",
             "};\n",
         ),
     )
@@ -1135,7 +1137,7 @@ fn execute_workspace_build_route_rejects_run_for_selected_core_model_artifacts()
         git_cache_root: root.join(".fol/cache/git"),
     };
 
-    let error = execute_workspace_build_route(
+    let result = execute_workspace_build_route(
         &workspace,
         &FrontendConfig::default(),
         &FrontendWorkspaceBuildRequest {
@@ -1144,14 +1146,10 @@ fn execute_workspace_build_route_rejects_run_for_selected_core_model_artifacts()
             run_args: Vec::new(),
         },
     )
-    .expect_err("core-model selected run should be rejected during routed execution");
+    .expect("core-model selected run should remain routable");
 
-    assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
-    assert!(error
-        .message()
-        .contains("workspace build step 'serve' resolves artifact 'demo'"));
-    assert!(error.message().contains("'fol_model = core'"));
-    assert!(error.message().contains("run requires 'fol_model = std'"));
+    assert_eq!(result.steps.len(), 1);
+    assert!(result.summary.contains("executed"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -1199,7 +1197,7 @@ fn execute_workspace_build_route_rejects_test_for_selected_mem_model_artifacts()
         git_cache_root: root.join(".fol/cache/git"),
     };
 
-    let error = execute_workspace_build_route(
+    let result = execute_workspace_build_route(
         &workspace,
         &FrontendConfig::default(),
         &FrontendWorkspaceBuildRequest {
@@ -1208,14 +1206,10 @@ fn execute_workspace_build_route_rejects_test_for_selected_mem_model_artifacts()
             run_args: Vec::new(),
         },
     )
-    .expect_err("memo-model selected test should be rejected during routed execution");
+    .expect("memo-model selected test should remain routable");
 
-    assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
-    assert!(error
-        .message()
-        .contains("workspace build step 'test' resolves artifact 'demo_test'"));
-    assert!(error.message().contains("'fol_model = memo'"));
-    assert!(error.message().contains("test requires 'fol_model = std'"));
+    assert_eq!(result.steps.len(), 1);
+    assert!(result.summary.contains("executed"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -1239,7 +1233,8 @@ fn execute_workspace_build_route_keeps_step_specific_model_diagnostics_in_mixed_
             "    var build = .build();\n",
             "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = .graph();\n",
-            "    var host = graph.add_exe({ name = \"host\", root = \"app/main.fol\", fol_model = \"std\" });\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    var host = graph.add_exe({ name = \"host\", root = \"app/main.fol\", fol_model = \"memo\" });\n",
             "    var blink = graph.add_exe({ name = \"blink\", root = \"core/main.fol\", fol_model = \"core\" });\n",
             "    graph.add_run(\"host_run\", host);\n",
             "    graph.add_run(\"blink_run\", blink);\n",
@@ -1250,7 +1245,7 @@ fn execute_workspace_build_route_keeps_step_specific_model_diagnostics_in_mixed_
     .unwrap();
     fs::write(
         root.join("app/main.fol"),
-        "fun[] main(): int = {\n    return .echo(7);\n};\n",
+        "use std: pkg = {std};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
     )
     .unwrap();
     fs::write(
@@ -1268,7 +1263,7 @@ fn execute_workspace_build_route_keeps_step_specific_model_diagnostics_in_mixed_
         git_cache_root: root.join(".fol/cache/git"),
     };
 
-    let error = execute_workspace_build_route(
+    let result = execute_workspace_build_route(
         &workspace,
         &FrontendConfig::default(),
         &FrontendWorkspaceBuildRequest {
@@ -1277,13 +1272,10 @@ fn execute_workspace_build_route_keeps_step_specific_model_diagnostics_in_mixed_
             run_args: Vec::new(),
         },
     )
-    .expect_err("non-std custom run step should be rejected with the step name");
+    .expect("non-hosted custom run steps should remain routable");
 
-    assert!(error
-        .message()
-        .contains("workspace build step 'blink_run' resolves artifact 'blink'"));
-    assert!(error.message().contains("'fol_model = core'"));
-    assert!(error.message().contains("run requires 'fol_model = std'"));
+    assert_eq!(result.steps.len(), 1);
+    assert!(result.summary.contains("executed"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -1307,8 +1299,9 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
             "pro[] build(): non = {\n",
             "    var build = .build();\n",
             "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
-            "    var graph = .graph();\n",
-            "    graph.add_exe({ name = \"tool\", root = \"app/main.fol\", fol_model = \"std\" });\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    var graph = build.graph();\n",
+            "    graph.add_exe({ name = \"tool\", root = \"app/main.fol\", fol_model = \"memo\" });\n",
             "    graph.add_static_lib({ name = \"blink\", root = \"core/lib.fol\", fol_model = \"core\" });\n",
             "    graph.add_static_lib({ name = \"heap\", root = \"memo/lib.fol\", fol_model = \"memo\" });\n",
             "    return;\n",
@@ -1318,7 +1311,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
     .unwrap();
     fs::write(
         root.join("app/main.fol"),
-        "fun[] main(): int = {\n    return .echo(7);\n};\n",
+        "use std: pkg = {std};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
     )
     .unwrap();
     fs::write(
@@ -1352,7 +1345,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
     )
     .expect("mixed workspace routed build should succeed");
 
-    assert!(result.summary.contains("fol_model=core,memo,std"));
+    assert!(result.summary.contains("fol_model=core,memo"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -1374,8 +1367,9 @@ fn execute_workspace_build_route_run_selection_stays_std_with_same_root_core_tes
             "pro[] build(): non = {\n",
             "    var build = .build();\n",
             "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
-            "    var graph = .graph();\n",
-            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    var graph = build.graph();\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
             "    graph.add_test({ name = \"suite\", root = \"src/tests.fol\", fol_model = \"core\" });\n",
             "    graph.add_run(app);\n",
             "    return;\n",
@@ -1385,7 +1379,7 @@ fn execute_workspace_build_route_run_selection_stays_std_with_same_root_core_tes
     .unwrap();
     fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): int = {\n    return .echo(7);\n};\n",
+        "use std: pkg = {std};\nfun[] main(): int = {\n    var shown: str = std::io::echo_int(7);\n    return .len(shown);\n};\n",
     )
     .unwrap();
     fs::write(
@@ -1414,7 +1408,7 @@ fn execute_workspace_build_route_run_selection_stays_std_with_same_root_core_tes
     )
     .expect("run selection should stay on the std executable");
 
-    assert!(result.summary.contains("fol_model=std"));
+    assert!(result.summary.contains("fol_model=memo"));
 
     fs::remove_dir_all(root).ok();
 }

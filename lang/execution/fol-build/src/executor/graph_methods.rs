@@ -840,15 +840,41 @@ impl BuildBodyExecutor {
                                 BuildEvaluationErrorKind::InvalidInput,
                                 format!("{method} config is invalid: artifact 'fol_model' must be a string"),
                             ))?;
-                        BuildArtifactFolModel::parse(raw.as_str()).ok_or_else(|| {
-                            BuildEvaluationError::new(
-                                BuildEvaluationErrorKind::InvalidInput,
-                                format!(
-                                    "artifact fol_model must be one of: core, memo, std (got '{}')",
-                                    raw
-                                ),
-                            )
-                        })?
+                        match raw.as_str() {
+                            "core" => BuildArtifactFolModel::Core,
+                            "memo" => BuildArtifactFolModel::Memo,
+                            "std"
+                                if std::path::Path::new(&self.package_root_str)
+                                    .file_name()
+                                    .and_then(|name| name.to_str())
+                                    == Some("std")
+                                    || self.package_root_str.ends_with("/lang/library/std")
+                                    || self.package_root_str.ends_with("\\lang\\library\\std") =>
+                            {
+                                BuildArtifactFolModel::Std
+                            }
+                            "std" => {
+                                return Err(BuildEvaluationError::new(
+                                    BuildEvaluationErrorKind::InvalidInput,
+                                    "artifact fol_model no longer accepts 'std'; use 'memo' and declare bundled std through build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" })".to_string(),
+                                ))
+                            }
+                            "mem" => {
+                                return Err(BuildEvaluationError::new(
+                                    BuildEvaluationErrorKind::InvalidInput,
+                                    "artifact fol_model no longer accepts 'mem'; use 'memo'".to_string(),
+                                ))
+                            }
+                            _ => {
+                                return Err(BuildEvaluationError::new(
+                                    BuildEvaluationErrorKind::InvalidInput,
+                                    format!(
+                                        "artifact fol_model must be one of: core, memo (got '{}')",
+                                        raw
+                                    ),
+                                ))
+                            }
+                        }
                     }
                     None => BuildArtifactFolModel::Memo,
                 };

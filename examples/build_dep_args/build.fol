@@ -32,7 +32,7 @@ pro[] build(): non = {
     var app = graph.add_exe({
         name = "demo",
         root = "src/main.fol",
-        fol_model = "std",
+        fol_model = "memo",
     });
     var shared_root = shared.module("root");
     app.import(shared_root);

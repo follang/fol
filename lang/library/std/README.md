@@ -24,6 +24,16 @@ Use an explicit `--std-root <DIR>` override only for development and testing.
 
 `core` and `memo` are not imported from here. They remain compiler/runtime capability modes.
 
+External dependencies stay separate from bundled std.
+
+- bundled std:
+  - `source = "internal"`
+  - `target = "standard"`
+  - normally `alias = "std"`
+- external packages:
+  - `source = "loc" | "pkg" | "git"`
+  - example: `examples/std_logtiny_git`
+
 ## Bootstrap Scope
 
 `std` should start small and grow gradually.
@@ -40,7 +50,7 @@ That is enough to prove:
 
 - the toolchain ships a real importable `std`
 - bundled std resolves without extra dependency setup
-- FOL-authored std modules compile and run under `fol_model = "std"`
+- FOL-authored std modules compile and run under `fol_model = "memo"`
 
 `std.io` is currently just a thin FOL wrapper over the hosted `.echo(...)`
 substrate.

@@ -427,7 +427,7 @@ mod tests {
             map_document_workspace(&document, &EditorConfig::default()).expect("mapping should succeed");
 
         assert_eq!(mapping.package_root, Some(root.clone()));
-        assert_eq!(mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
+        assert_eq!(mapping.active_fol_model, Some(TypecheckCapabilityModel::Memo));
 
         fs::remove_dir_all(root).ok();
     }
@@ -444,8 +444,10 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .build().graph();\n",
-                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+                "    var build = .build();\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "    var graph = build.graph();\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
                 "    graph.add_test({ name = \"tests\", root = \"test/app.fol\", fol_model = \"core\" });\n",
                 "};\n",
             ),
@@ -470,7 +472,7 @@ mod tests {
         let build_mapping = map_document_workspace(&root.join("build.fol"), &EditorConfig::default())
             .expect("mapping should succeed");
 
-        assert_eq!(src_mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
+        assert_eq!(src_mapping.active_fol_model, Some(TypecheckCapabilityModel::Memo));
         assert_eq!(test_mapping.active_fol_model, Some(TypecheckCapabilityModel::Core));
         assert_eq!(build_mapping.active_fol_model, None);
 
@@ -540,8 +542,10 @@ mod tests {
             root.join("build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .build().graph();\n",
-                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+                "    var build = .build();\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "    var graph = build.graph();\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
                 "    graph.add_test({ name = \"suite\", root = \"test/app.fol\", fol_model = \"core\" });\n",
                 "};\n",
             ),

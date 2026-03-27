@@ -1,6 +1,6 @@
 use std: pkg = {std};
 
 fun[] main(): int = {
-    var shown: int = .echo(std::fmt::answer());
+    var shown: int = std::io::echo_int(std::fmt::answer());
     return 0;
 };

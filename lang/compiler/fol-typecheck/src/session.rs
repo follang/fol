@@ -625,7 +625,7 @@ fn validate_import_capability_model(
             .symbol(import.alias_symbol)
             .and_then(|symbol| symbol.origin.clone());
         let message = format!(
-            "bundled std imports require 'fol_model = memo' or 'std'; current artifact model is '{}'",
+            "bundled std imports require 'fol_model = memo'; current artifact model is '{}'",
             capability_model.as_str()
         );
         errors.push(match origin {

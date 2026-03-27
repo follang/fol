@@ -1,3 +1,5 @@
+use std: pkg = {std};
+
 fun[] banner(prefix: str = "std", extras: ... str): str = {
     return prefix + extras[0];
 };
@@ -5,6 +7,6 @@ fun[] banner(prefix: str = "std", extras: ... str): str = {
 fun[] main(): int = {
     var parts: seq[str] = {"-tool"};
     var text: str = banner("std", ...parts);
-    var shown: str = .echo(text);
+    var shown: str = std::io::echo_str(text);
     return 7;
 };

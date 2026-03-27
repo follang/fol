@@ -1,0 +1,9 @@
+[package]
+name = "fol-build-mixed_models-424e30b5491f"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+fol-runtime = { path = "/home/bresilla/data/code/bresilla/fol/lang/execution/fol-runtime" }

@@ -304,8 +304,10 @@ fn lsp_server_keeps_model_completion_context_isolated_across_workspace_members()
         root.join("tool/build.fol"),
             concat!(
                 "pro[] build(): non = {\n",
-                "    var graph = .build().graph();\n",
-                "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+                "    var build = .build();\n",
+                "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                "    var graph = build.graph();\n",
+                "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
                 "};\n",
             ),
     )

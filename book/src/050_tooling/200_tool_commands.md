@@ -31,7 +31,7 @@ Use `work` for:
 
 Scaffold reminder:
 
-- `fol work init --bin` creates a hosted binary package with `fol_model = "std"`
+- `fol work init --bin` creates a hosted binary package with `fol_model = "memo"`
 - scaffolded packages rely on bundled `std` automatically
 - scaffolded packages do not add `std` as an explicit dependency
 

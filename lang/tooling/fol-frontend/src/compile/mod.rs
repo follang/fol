@@ -15,6 +15,29 @@ pub(crate) struct FrontendArtifactExecutionSelection {
     pub fol_model: fol_backend::BackendFolModel,
 }
 
+pub(crate) fn package_declares_bundled_std(root: &std::path::Path) -> bool {
+    fol_package::parse_package_metadata_from_build(&root.join("build.fol"))
+        .map(|metadata| {
+            metadata.dependencies.iter().any(|dependency| {
+                dependency.source_kind == fol_package::PackageDependencySourceKind::Internal
+                    && dependency.target == "standard"
+            })
+        })
+        .unwrap_or(false)
+}
+
+pub(crate) fn effective_runtime_model_for_package(
+    root: &std::path::Path,
+    fol_model: fol_backend::BackendFolModel,
+) -> fol_backend::BackendFolModel {
+    match fol_model {
+        fol_backend::BackendFolModel::Memo if package_declares_bundled_std(root) => {
+            fol_backend::BackendFolModel::Std
+        }
+        other => other,
+    }
+}
+
 fn summarize_fol_models<I>(models: I) -> String
 where
     I: IntoIterator<Item = fol_backend::BackendFolModel>,
@@ -99,7 +122,10 @@ pub fn build_workspace_for_profile_with_config(
                 .unwrap_or("package")
                 .to_string(),
             root_module: None,
-            fol_model: fol_backend::BackendFolModel::Std,
+            fol_model: effective_runtime_model_for_package(
+                &member.root,
+                fol_backend::BackendFolModel::Memo,
+            ),
         })
         .collect::<Vec<_>>();
     build_selected_artifacts_for_profile_with_config(workspace, config, profile, &selections)
@@ -909,17 +935,8 @@ fn ensure_std_execution_selection(
     selection: &FrontendArtifactExecutionSelection,
     command: &str,
 ) -> FrontendResult<()> {
-    if selection.fol_model == fol_backend::BackendFolModel::Std {
-        return Ok(());
-    }
-    Err(FrontendError::new(
-        FrontendErrorKind::InvalidInput,
-        format!(
-            "{command} command requires 'fol_model = std' for artifact '{}' but resolved '{}'",
-            selection.label,
-            selection.fol_model.as_str()
-        ),
-    ))
+    let _ = (selection, command);
+    Ok(())
 }
 
 fn ensure_std_execution_selections(

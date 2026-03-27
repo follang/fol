@@ -1,0 +1,9 @@
+[package]
+name = "fol-build-model_alloc-c8fc97a4e99f"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+
+[dependencies]
+fol-runtime = { path = "/home/bresilla/data/code/bresilla/fol/lang/execution/fol-runtime" }

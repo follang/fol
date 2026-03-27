@@ -205,7 +205,7 @@ var graph = .build().graph();
 graph.add_exe({
     name = "tool",
     root = "src/main.fol",
-    fol_model = "std",
+    fol_model = "memo",
 });
 ```
 
@@ -322,7 +322,7 @@ pro[] build(): non = {
     var tool = graph.add_exe({
         name = "tool",
         root = "src/main.fol",
-        fol_model = "std",
+        fol_model = "memo",
     });
 }
 ```

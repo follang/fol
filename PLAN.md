@@ -268,7 +268,7 @@ Completion criteria:
 - the resulting artifact reports `memo`
 
 ### Slice 13
-Status: pending
+Status: complete
 
 Add diagnostics for stale `fol_model = "std"` and `fol_model = "mem"`.
 
@@ -413,7 +413,7 @@ Completion criteria:
 ## Epoch 6: Replace `std` As A Model With `std` As A Dependency
 
 ### Slice 26
-Status: pending
+Status: complete
 
 Remove public `fol_model = "std"` acceptance everywhere.
 
@@ -423,7 +423,7 @@ Completion criteria:
 - frontend and editor diagnostics reject it too
 
 ### Slice 27
-Status: pending
+Status: complete
 
 Rewrite runtime-model docs around:
 
@@ -436,7 +436,7 @@ Completion criteria:
 - no active doc still presents `std` as a third model
 
 ### Slice 28
-Status: pending
+Status: complete
 
 Update integration examples that currently use `fol_model = "std"`.
 
@@ -457,7 +457,7 @@ Completion criteria:
 - mixed-workspace reports no longer describe std as a model
 
 ### Slice 30
-Status: pending
+Status: complete
 
 Add a matrix test covering:
 
@@ -527,7 +527,7 @@ Completion criteria:
 ## Epoch 8: Harden Runtime And Build Semantics
 
 ### Slice 36
-Status: pending
+Status: complete
 
 Add explicit tests proving `graph.add_run(...)` is independent from std dependency.
 
@@ -537,7 +537,7 @@ Completion criteria:
 - diagnostics only fail for actual language/runtime restrictions, not for lack of std
 
 ### Slice 37
-Status: pending
+Status: complete
 
 Add tests proving hosted std wrappers still require bundled std dependency presence.
 
@@ -546,7 +546,7 @@ Completion criteria:
 - `std.io` usage without the internal `standard` dependency fails
 
 ### Slice 38
-Status: pending
+Status: complete
 
 Audit backend/runtime import selection under the new split.
 
@@ -568,7 +568,7 @@ Completion criteria:
 - summaries help users understand why std imports are or are not available
 
 ### Slice 40
-Status: pending
+Status: complete
 
 Add mixed-workspace regression coverage:
 
@@ -679,7 +679,7 @@ Completion criteria:
   - missing dependency failure
 
 ### Slice 49
-Status: pending
+Status: complete
 
 Audit the `xtra/logtiny` style external-dependency examples against the new std
 story.

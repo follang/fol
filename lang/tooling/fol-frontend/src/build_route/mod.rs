@@ -724,7 +724,10 @@ fn artifact_selection(
         package_root: member.member_root.clone(),
         label: artifact.name.clone(),
         root_module: Some(artifact.root_module.clone()),
-        fol_model: backend_fol_model(artifact.fol_model),
+        fol_model: crate::compile::effective_runtime_model_for_package(
+            &member.member_root,
+            backend_fol_model(artifact.fol_model),
+        ),
     }
 }
 
@@ -856,23 +859,8 @@ fn ensure_std_workspace_route_models(
     command: &str,
     models: &[fol_backend::BackendFolModel],
 ) -> FrontendResult<()> {
-    if models
-        .iter()
-        .all(|model| *model == fol_backend::BackendFolModel::Std)
-    {
-        return Ok(());
-    }
-    let resolved = models
-        .iter()
-        .map(|model| model.as_str())
-        .collect::<Vec<_>>()
-        .join(", ");
-    Err(FrontendError::new(
-        FrontendErrorKind::InvalidInput,
-        format!(
-            "{command} command requires 'fol_model = std' for workspace-routed execution but resolved model(s): {resolved}"
-        ),
-    ))
+    let _ = (command, models);
+    Ok(())
 }
 
 fn ensure_std_workspace_step_selection(
@@ -880,17 +868,8 @@ fn ensure_std_workspace_step_selection(
     step_name: &str,
     selection: &crate::compile::FrontendArtifactExecutionSelection,
 ) -> FrontendResult<()> {
-    if selection.fol_model == fol_backend::BackendFolModel::Std {
-        return Ok(());
-    }
-    Err(FrontendError::new(
-        FrontendErrorKind::InvalidInput,
-        format!(
-            "workspace build step '{step_name}' resolves artifact '{}' with 'fol_model = {}', but {command} requires 'fol_model = std'",
-            selection.label,
-            selection.fol_model.as_str()
-        ),
-    ))
+    let _ = (command, step_name, selection);
+    Ok(())
 }
 
 fn ensure_std_workspace_step_selections(

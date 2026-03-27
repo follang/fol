@@ -49,6 +49,17 @@ The FOL distribution should be read as three separate pieces:
   - added through `.build().add_dep(...)`
   - bundled std uses the same dependency surface with `source = "internal"`
 
+Dependency distinction:
+
+- bundled std:
+  - `source = "internal"`
+  - `target = "standard"`
+  - usually `alias = "std"`
+- external packages:
+  - `source = "loc" | "pkg" | "git"`
+  - examples like `examples/std_logtiny_git` stay ordinary external dependencies
+  - they do not replace or implicitly provide bundled std
+
 Import rule:
 
 - only `std` is imported from source code as a dependency alias

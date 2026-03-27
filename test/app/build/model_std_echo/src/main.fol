@@ -1,4 +1,6 @@
+use std: pkg = {std};
+
 fun[] main(): int = {
-    var shown: str = .echo("std-ready");
+    var shown: str = std::io::echo_str("std-ready");
     return .len(shown) - .len(shown);
 };

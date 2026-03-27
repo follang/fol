@@ -917,7 +917,7 @@ mod tests {
                 "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
                 "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
                 "    var graph = build.graph();\n",
-                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"std\" });\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
                 "};\n",
             ),
         )

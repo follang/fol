@@ -6,7 +6,7 @@ pro[] build(): non = {
     var app = graph.add_exe({
         name = "demo",
         root = "src/main.fol",
-        fol_model = "std",
+        fol_model = "memo",
     });
     var template = graph.file_from_root("config/defaults.toml");
     var assets = graph.dir_from_root("assets");

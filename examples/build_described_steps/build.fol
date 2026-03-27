@@ -6,7 +6,7 @@ pro[] build(): non = {
     var app = graph.add_exe({
         name = "demo",
         root = "src/main.fol",
-        fol_model = "std",
+        fol_model = "memo",
     });
     var compile = graph.step("compile", "Compile the executable");
     var docs = graph.step("docs", "Generate package documentation");

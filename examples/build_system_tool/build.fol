@@ -6,7 +6,7 @@ pro[] build(): non = {
     var app = graph.add_exe({
         name = "demo",
         root = "src/main.fol",
-        fol_model = "std",
+        fol_model = "memo",
     });
     var schema = graph.file_from_root("schema/api.yaml");
     var defaults = graph.write_file({

@@ -31,7 +31,7 @@ Adds an executable artifact.
 var app = graph.add_exe({
     name     = "app",
     root     = "src/main.fol",
-    fol_model = "std",   // spell this explicitly for each artifact
+    fol_model = "memo",   // spell this explicitly for each artifact
     target   = target,    // optional
     optimize = optimize,  // optional
 });
@@ -97,7 +97,7 @@ pro[] build(): non = {
     var tool = graph.add_exe({
         name = "tool",
         root = "app/main.fol",
-        fol_model = "std",
+        fol_model = "memo",
     });
 
     graph.install(tool);
