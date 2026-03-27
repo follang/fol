@@ -18,8 +18,8 @@ pub enum BuildArtifactLinkage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BuildArtifactFolModel {
     Core,
-    Mem,
     #[default]
+    Memo,
     Std,
 }
 
@@ -27,7 +27,7 @@ impl BuildArtifactFolModel {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Core => "core",
-            Self::Mem => "mem",
+            Self::Memo => "memo",
             Self::Std => "std",
         }
     }
@@ -35,7 +35,7 @@ impl BuildArtifactFolModel {
     pub fn parse(raw: &str) -> Option<Self> {
         match raw {
             "core" => Some(Self::Core),
-            "mem" => Some(Self::Mem),
+            "memo" => Some(Self::Memo),
             "std" => Some(Self::Std),
             _ => None,
         }
@@ -302,7 +302,7 @@ mod tests {
             output_name: "fol_plugin".to_string(),
             linkage: BuildArtifactLinkage::Shared,
             target: BuildArtifactTargetConfig {
-                fol_model: BuildArtifactFolModel::Mem,
+                fol_model: BuildArtifactFolModel::Memo,
                 target: Some("x86_64-linux-gnu".to_string()),
                 optimize: Some("release".to_string()),
             },
@@ -336,7 +336,7 @@ mod tests {
         assert_eq!(definition.modules.roots.len(), 2);
         assert_eq!(definition.output_name, "fol_plugin");
         assert_eq!(definition.linkage, BuildArtifactLinkage::Shared);
-        assert_eq!(definition.target.fol_model, BuildArtifactFolModel::Mem);
+        assert_eq!(definition.target.fol_model, BuildArtifactFolModel::Memo);
         assert_eq!(
             definition.target.target.as_deref(),
             Some("x86_64-linux-gnu")
@@ -369,26 +369,27 @@ mod tests {
     fn artifact_fol_models_parse_and_render_canonically() {
         assert_eq!(BuildArtifactFolModel::parse("core"), Some(BuildArtifactFolModel::Core));
         assert_eq!(
-            BuildArtifactFolModel::parse("mem"),
-            Some(BuildArtifactFolModel::Mem)
+            BuildArtifactFolModel::parse("memo"),
+            Some(BuildArtifactFolModel::Memo)
         );
         assert_eq!(BuildArtifactFolModel::parse("std"), Some(BuildArtifactFolModel::Std));
         assert_eq!(BuildArtifactFolModel::parse("alloc"), None);
+        assert_eq!(BuildArtifactFolModel::parse("mem"), None);
         assert_eq!(BuildArtifactFolModel::parse("hosted"), None);
         assert_eq!(BuildArtifactFolModel::Core.as_str(), "core");
-        assert_eq!(BuildArtifactFolModel::Mem.as_str(), "mem");
+        assert_eq!(BuildArtifactFolModel::Memo.as_str(), "memo");
         assert_eq!(BuildArtifactFolModel::Std.as_str(), "std");
     }
 
     #[test]
-    fn artifact_target_config_defaults_to_std_model() {
+    fn artifact_target_config_defaults_to_memo_model() {
         let config = BuildArtifactTargetConfig {
             fol_model: BuildArtifactFolModel::default(),
             target: None,
             optimize: None,
         };
 
-        assert_eq!(config.fol_model, BuildArtifactFolModel::Std);
+        assert_eq!(config.fol_model, BuildArtifactFolModel::Memo);
     }
 
     #[test]

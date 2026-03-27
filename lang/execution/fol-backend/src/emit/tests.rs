@@ -222,11 +222,11 @@ mod tests {
         let mem_emitted = emit_main_rs_for_config(
             &session,
             &BackendConfig {
-                fol_model: BackendFolModel::Mem,
+                fol_model: BackendFolModel::Memo,
                 ..BackendConfig::default()
             },
         )
-        .expect("mem main");
+        .expect("memo main");
 
         assert!(core_emitted
             .contents
@@ -375,11 +375,11 @@ mod tests {
         let artifact = emit_generated_crate_skeleton_for_config(
             &session,
             &BackendConfig {
-                fol_model: BackendFolModel::Mem,
+                fol_model: BackendFolModel::Memo,
                 ..BackendConfig::default()
             },
         )
-        .expect("mem artifact");
+        .expect("memo artifact");
 
         let BackendArtifact::RustSourceCrate { files, .. } = artifact else {
             panic!("expected RustSourceCrate artifact");
@@ -391,7 +391,7 @@ mod tests {
             }
             assert!(
                 !file.contents.contains("use fol_runtime::std"),
-                "mem artifact should not import std runtime paths in {}:\n{}",
+                "memo artifact should not import std runtime paths in {}:\n{}",
                 file.path,
                 file.contents
             );
@@ -434,7 +434,7 @@ mod tests {
         let artifact = emit_generated_crate_skeleton_for_config(
             &session,
             &BackendConfig {
-                fol_model: BackendFolModel::Mem,
+                fol_model: BackendFolModel::Memo,
                 ..BackendConfig::default()
             },
         )
@@ -540,11 +540,11 @@ mod tests {
         let mem_artifact = emit_generated_crate_skeleton_for_config(
             &mem_session,
             &BackendConfig {
-                fol_model: BackendFolModel::Mem,
+                fol_model: BackendFolModel::Memo,
                 ..BackendConfig::default()
             },
         )
-        .expect("mem artifact");
+        .expect("memo artifact");
         let BackendArtifact::RustSourceCrate { files: mem_files, .. } = mem_artifact else {
             panic!("expected RustSourceCrate artifact");
         };

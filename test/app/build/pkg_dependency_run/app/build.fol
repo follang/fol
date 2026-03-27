@@ -7,6 +7,7 @@ pro[] build(): non = {
     var app = graph.add_exe({
         name = "pkg_dependency_run_app",
         root = "src/main.fol",
+        fol_model = "std",
         target = target,
         optimize = optimize,
     });

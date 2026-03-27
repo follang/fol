@@ -444,7 +444,7 @@ mod tests {
                     artifacts: vec![DependencyArtifactSurface {
                         name: "logtiny".to_string(),
                         artifact_kind: "static-lib".to_string(),
-                        fol_model: "mem".to_string(),
+                        fol_model: "memo".to_string(),
                     }],
                     steps: vec![DependencyStepSurface {
                         name: "check".to_string(),

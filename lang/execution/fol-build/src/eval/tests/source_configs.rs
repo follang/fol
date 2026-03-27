@@ -93,9 +93,9 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
         "pro[] build(): non = {\n",
         "    var graph = .build().graph();\n",
         "    graph.add_exe({ name = \"app\", root = \"src/app.fol\", fol_model = \"core\" });\n",
-        "    graph.add_static_lib({ name = \"corelib\", root = \"src/lib.fol\", fol_model = \"mem\" });\n",
+        "    graph.add_static_lib({ name = \"memolib\", root = \"src/lib.fol\", fol_model = \"memo\" });\n",
         "    graph.add_shared_lib({ name = \"plugin\", root = \"src/plugin.fol\", fol_model = \"std\" });\n",
-        "    graph.add_test({ name = \"tests\", root = \"test/app.fol\", fol_model = \"mem\" });\n",
+        "    graph.add_test({ name = \"tests\", root = \"test/app.fol\", fol_model = \"memo\" });\n",
         "    return;\n",
         "}\n",
     );
@@ -120,7 +120,7 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
     );
     assert_eq!(
         evaluated.evaluated.artifacts[1].fol_model,
-        BuildArtifactFolModel::Mem
+        BuildArtifactFolModel::Memo
     );
     assert_eq!(
         evaluated.evaluated.artifacts[2].fol_model,
@@ -128,7 +128,7 @@ fn build_source_evaluator_keeps_artifact_fol_models_in_evaluated_programs() {
     );
     assert_eq!(
         evaluated.evaluated.artifacts[3].fol_model,
-        BuildArtifactFolModel::Mem
+        BuildArtifactFolModel::Memo
     );
     assert_eq!(
         evaluated.evaluated.artifacts[1].kind,
@@ -169,7 +169,37 @@ fn build_source_evaluator_rejects_unknown_artifact_fol_models() {
     assert_eq!(error.kind(), BuildEvaluationErrorKind::InvalidInput);
     assert_eq!(
         error.message(),
-        "artifact fol_model must be one of: core, mem, std (got 'hosted')"
+        "artifact fol_model must be one of: core, memo, std (got 'hosted')"
+    );
+}
+
+#[test]
+fn build_source_evaluator_defaults_omitted_artifact_fol_model_to_memo() {
+    let source = concat!(
+        "pro[] build(): non = {\n",
+        "    var graph = .build().graph();\n",
+        "    graph.add_exe({ name = \"app\", root = \"src/app.fol\" });\n",
+        "    return;\n",
+        "}\n",
+    );
+    let (package_root, build_path) = temp_build_package(source);
+    let request = BuildEvaluationRequest {
+        package_root: package_root.display().to_string(),
+        inputs: BuildEvaluationInputs {
+            working_directory: package_root.display().to_string(),
+            ..BuildEvaluationInputs::default()
+        },
+        operations: Vec::new(),
+    };
+
+    let evaluated = evaluate_build_source(&request, &build_path, source)
+        .expect("omitted fol_model should evaluate")
+        .expect("build body should produce a graph");
+
+    assert_eq!(evaluated.evaluated.artifacts.len(), 1);
+    assert_eq!(
+        evaluated.evaluated.artifacts[0].fol_model,
+        BuildArtifactFolModel::Memo
     );
 }
 

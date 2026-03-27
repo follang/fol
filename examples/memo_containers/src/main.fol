@@ -4,5 +4,5 @@ fun[] label(prefix: str, extras: ... str): str = {
 
 fun[] main(): str = {
     var names: seq[str] = {"-alpha"};
-    return label(prefix = "mem", ...names);
+    return label(prefix = "memo", ...names);
 };

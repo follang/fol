@@ -80,7 +80,7 @@ impl BuildRuntimeArtifact {
             name: name.into(),
             kind,
             root_module: root_module.into(),
-            fol_model: BuildArtifactFolModel::Std,
+            fol_model: BuildArtifactFolModel::Memo,
             target: None,
             optimize: None,
         }

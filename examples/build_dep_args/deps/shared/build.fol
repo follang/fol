@@ -12,7 +12,7 @@ pro[] build(): non = {
     var lib = graph.add_static_lib({
         name = "shared",
         root = "src/root.fol",
-        fol_model = "mem",
+        fol_model = "memo",
     });
     build.export_module({ name = "root", module = root });
     graph.install(lib);

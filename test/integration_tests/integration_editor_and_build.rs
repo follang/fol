@@ -79,7 +79,7 @@ fn temp_example_root(example_path: &str) -> std::path::PathBuf {
 
 fn expected_runtime_import_for_model(model: &str) -> String {
     let runtime_module = match model {
-        "mem" => "alloc",
+        "memo" => "alloc",
         other => other,
     };
     format!("use fol_runtime::{runtime_module} as rt;")
@@ -91,10 +91,10 @@ fn positive_runtime_model_examples() -> &'static [(&'static str, &'static str)] 
         ("examples/core_defer", "core"),
         ("examples/core_records", "core"),
         ("examples/core_surface_showcase", "core"),
-        ("examples/mem_defaults", "mem"),
-        ("examples/mem_containers", "mem"),
-        ("examples/mem_collections", "mem"),
-        ("examples/mem_surface_showcase", "mem"),
+        ("examples/memo_defaults", "memo"),
+        ("examples/memo_containers", "memo"),
+        ("examples/memo_collections", "memo"),
+        ("examples/memo_surface_showcase", "memo"),
         ("examples/std_bundled_fmt", "std"),
         ("examples/std_bundled_io", "std"),
         ("examples/std_cli", "std"),
@@ -760,24 +760,24 @@ fn test_build_fixture_d_options_accepts_option_overrides() {
 
 #[test]
 fn test_build_fixture_mem_model_supports_string_values() {
-    let root = build_fixture_root("model_mem_str");
+    let root = build_fixture_root("model_memo_str");
 
     let build = run_fol_in_dir(&root, &["code", "build"]);
     assert!(
         build.status.success(),
-        "mem string fixture should build: stdout=\n{}\nstderr=\n{}",
+        "memo string fixture should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
         String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
-        "mem string fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+        "memo string fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
-            String::from_utf8_lossy(&build.stdout).contains("fol_model=mem"),
-            "mem string fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
+            String::from_utf8_lossy(&build.stdout).contains("fol_model=memo"),
+            "memo string fixture should surface its fol_model in the build summary: stdout=\n{}\nstderr=\n{}",
             String::from_utf8_lossy(&build.stdout),
             String::from_utf8_lossy(&build.stderr)
         );
@@ -785,18 +785,18 @@ fn test_build_fixture_mem_model_supports_string_values() {
 
 #[test]
 fn test_build_fixture_mem_model_supports_sequences() {
-    let root = build_fixture_root("model_mem_seq");
+    let root = build_fixture_root("model_memo_seq");
 
     let build = run_fol_in_dir(&root, &["code", "build"]);
     assert!(
         build.status.success(),
-        "mem sequence fixture should build: stdout=\n{}\nstderr=\n{}",
+        "memo sequence fixture should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
         String::from_utf8_lossy(&build.stdout).contains("built 1 workspace package(s)"),
-        "mem sequence fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
+        "memo sequence fixture should report a build summary: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
@@ -804,23 +804,23 @@ fn test_build_fixture_mem_model_supports_sequences() {
 
 #[test]
 fn test_build_fixture_mem_model_supports_full_heap_surface() {
-    let root = build_fixture_root("model_mem_surface_full");
+    let root = build_fixture_root("model_memo_surface_full");
 
     let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
     assert!(
         build.status.success(),
-        "mem full-surface fixture should build: stdout=\n{}\nstderr=\n{}",
+        "memo full-surface fixture should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
-        String::from_utf8_lossy(&build.stdout).contains("fol_model=mem"),
-        "mem full-surface fixture should surface its model in the build summary: stdout=\n{}\nstderr=\n{}",
+        String::from_utf8_lossy(&build.stdout).contains("fol_model=memo"),
+        "memo full-surface fixture should surface its model in the build summary: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     let generated = find_file_by_name(&root.join(".fol/build"), "main.rs")
-        .expect("mem full-surface fixture should emit main.rs");
+        .expect("memo full-surface fixture should emit main.rs");
     let emitted = std::fs::read_to_string(&generated).expect("generated main should load");
     assert!(emitted.contains("use fol_runtime::alloc as rt;"));
 }
@@ -876,7 +876,7 @@ fn test_build_fixture_std_model_supports_hosted_mem_surfaces() {
     let build = run_fol_in_dir(&root, &["code", "build", "--keep-build-dir"]);
     assert!(
         build.status.success(),
-        "std hosted-mem fixture should build: stdout=\n{}\nstderr=\n{}",
+        "std hosted-memo fixture should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
@@ -892,23 +892,23 @@ fn test_build_fixture_std_model_supports_hosted_mem_surfaces() {
                 None
             }
         })
-        .expect("std hosted-mem build should report a binary path")
+        .expect("std hosted-memo build should report a binary path")
         .trim()
         .to_string();
 
     let run = Command::new(&binary)
         .output()
-        .expect("std hosted-mem fixture binary should execute");
+        .expect("std hosted-memo fixture binary should execute");
     assert!(
         run.status.success(),
-        "std hosted-mem fixture binary should run: stdout=\n{}\nstderr=\n{}",
+        "std hosted-memo fixture binary should run: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&run.stdout),
         String::from_utf8_lossy(&run.stderr)
     );
     let stdout = String::from_utf8_lossy(&run.stdout);
     assert!(
         stdout.contains("std-ready"),
-        "std hosted-mem fixture should print through std runtime: stdout=\n{}\nstderr=\n{}",
+        "std hosted-memo fixture should print through std runtime: stdout=\n{}\nstderr=\n{}",
         stdout,
         String::from_utf8_lossy(&run.stderr)
     );
@@ -1001,8 +1001,8 @@ fn test_build_fixture_mixed_models_workspace_keeps_per_artifact_models() {
         .expect("corelib");
     let mem = artifacts
         .iter()
-        .find(|a| a.name == "memlib")
-        .expect("memlib");
+        .find(|a| a.name == "memolib")
+        .expect("memolib");
     let tool = artifacts.iter().find(|a| a.name == "tool").expect("tool");
 
     assert_eq!(
@@ -1011,7 +1011,7 @@ fn test_build_fixture_mixed_models_workspace_keeps_per_artifact_models() {
     );
     assert_eq!(
         mem.fol_model,
-        fol_package::build_artifact::BuildArtifactFolModel::Mem
+        fol_package::build_artifact::BuildArtifactFolModel::Memo
     );
     assert_eq!(
         tool.fol_model,
@@ -1076,9 +1076,9 @@ fn test_core_artifact_rejects_transitive_mem_pkg_dependency() {
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
-        &store_root.join("memlib"),
-        "memlib",
-        "mem",
+        &store_root.join("memolib"),
+        "memolib",
+        "memo",
         "lib.fol",
         "fun[exp] helper(): str = {\n    return \"ok\";\n};\n",
     );
@@ -1087,9 +1087,9 @@ fn test_core_artifact_rejects_transitive_mem_pkg_dependency() {
         "app",
         "core",
         concat!(
-            "use memlib: pkg = {memlib};\n",
+            "use memolib: pkg = {memolib};\n",
             "fun[] main(): int = {\n",
-            "    var value: str = memlib::src::helper();\n",
+            "    var value: str = memolib::src::helper();\n",
             "    return 0;\n",
             "};\n",
         ),
@@ -1100,7 +1100,7 @@ fn test_core_artifact_rejects_transitive_mem_pkg_dependency() {
     let stderr = String::from_utf8_lossy(&build.stderr);
     assert!(
         !build.status.success(),
-        "core->mem pkg dependency should fail: stdout=\n{}\nstderr=\n{}",
+        "core->memo pkg dependency should fail: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
@@ -1150,13 +1150,13 @@ fn test_core_artifact_rejects_transitive_std_pkg_dependency() {
 
 #[test]
 fn test_mem_artifact_accepts_transitive_mem_pkg_dependency() {
-    let temp_root = unique_temp_root("model_mem_dep_mem");
+    let temp_root = unique_temp_root("model_memo_dep_mem");
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
-        &store_root.join("memlib"),
-        "memlib",
-        "mem",
+        &store_root.join("memolib"),
+        "memolib",
+        "memo",
         "lib.fol",
         concat!(
             "fun[exp] size(): int = {\n",
@@ -1168,11 +1168,11 @@ fn test_mem_artifact_accepts_transitive_mem_pkg_dependency() {
     write_model_app_package(
         &app_root,
         "app",
-        "mem",
+        "memo",
         concat!(
-            "use memlib: pkg = {memlib};\n",
+            "use memolib: pkg = {memolib};\n",
             "fun[] main(): int = {\n",
-            "    return memlib::src::size();\n",
+            "    return memolib::src::size();\n",
             "};\n",
         ),
         false,
@@ -1181,18 +1181,18 @@ fn test_mem_artifact_accepts_transitive_mem_pkg_dependency() {
     let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build"]);
     assert!(
         build.status.success(),
-        "mem->mem pkg dependency should build: stdout=\n{}\nstderr=\n{}",
+        "memo->memo pkg dependency should build: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
-    assert!(String::from_utf8_lossy(&build.stdout).contains("fol_model=mem"));
+    assert!(String::from_utf8_lossy(&build.stdout).contains("fol_model=memo"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
 
 #[test]
 fn test_mem_artifact_rejects_transitive_std_echo_dependency() {
-    let temp_root = unique_temp_root("model_mem_dep_std");
+    let temp_root = unique_temp_root("model_memo_dep_std");
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
@@ -1205,7 +1205,7 @@ fn test_mem_artifact_rejects_transitive_std_echo_dependency() {
     write_model_app_package(
         &app_root,
         "app",
-        "mem",
+        "memo",
         concat!(
             "use stdlib: pkg = {stdlib};\n",
             "fun[] main(): int = {\n",
@@ -1219,12 +1219,12 @@ fn test_mem_artifact_rejects_transitive_std_echo_dependency() {
     let stderr = String::from_utf8_lossy(&build.stderr);
     assert!(
         !build.status.success(),
-        "mem should reject transitive std echo dependency: stdout=\n{}\nstderr=\n{}",
+        "memo should reject transitive std echo dependency: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
     assert!(stderr.contains("'.echo(...)' requires 'fol_model = std'"));
-    assert!(stderr.contains("current artifact model is 'mem'"));
+    assert!(stderr.contains("current artifact model is 'memo'"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
@@ -1242,9 +1242,9 @@ fn test_std_artifact_accepts_mixed_core_and_mem_pkg_dependencies() {
         "fun[exp] answer(): int = {\n    return 5;\n};\n",
     );
     write_formal_model_package(
-        &store_root.join("memlib"),
-        "memlib",
-        "mem",
+        &store_root.join("memolib"),
+        "memolib",
+        "memo",
         "lib.fol",
         concat!(
             "fun[exp] size(): int = {\n",
@@ -1259,9 +1259,9 @@ fn test_std_artifact_accepts_mixed_core_and_mem_pkg_dependencies() {
         "std",
         concat!(
             "use corelib: pkg = {corelib};\n",
-            "use memlib: pkg = {memlib};\n",
+            "use memolib: pkg = {memolib};\n",
             "fun[] main(): int = {\n",
-            "    return .echo(corelib::src::answer() + memlib::src::size());\n",
+            "    return .echo(corelib::src::answer() + memolib::src::size());\n",
             "};\n",
         ),
         true,
@@ -1309,9 +1309,9 @@ fn test_std_consumer_of_mem_pkg_dependency_emits_std_runtime_only() {
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
-        &store_root.join("memlib"),
-        "memlib",
-        "mem",
+        &store_root.join("memolib"),
+        "memolib",
+        "memo",
         "lib.fol",
         concat!(
             "fun[exp] size(): int = {\n",
@@ -1325,9 +1325,9 @@ fn test_std_consumer_of_mem_pkg_dependency_emits_std_runtime_only() {
         "app",
         "std",
         concat!(
-            "use memlib: pkg = {memlib};\n",
+            "use memolib: pkg = {memolib};\n",
             "fun[] main(): int = {\n",
-            "    return .echo(memlib::src::size());\n",
+            "    return .echo(memolib::src::size());\n",
             "};\n",
         ),
         true,
@@ -1336,12 +1336,12 @@ fn test_std_consumer_of_mem_pkg_dependency_emits_std_runtime_only() {
     let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build", "--keep-build-dir"]);
     assert!(
         build.status.success(),
-        "std mem-consumer build should succeed: stdout=\n{}\nstderr=\n{}",
+        "std memo-consumer build should succeed: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     let emitted = find_file_by_name(&app_root.join(".fol/build"), "main.rs")
-        .expect("std mem-consumer should emit main.rs");
+        .expect("std memo-consumer should emit main.rs");
     let source = std::fs::read_to_string(&emitted).expect("generated main should load");
     assert!(source.contains("use fol_runtime::std as rt;"));
     assert!(!source.contains("use fol_runtime::alloc as rt;"));
@@ -1356,9 +1356,9 @@ fn test_core_illegal_dependency_failure_happens_before_emission() {
     let store_root = temp_root.join("store");
     let app_root = temp_root.join("app");
     write_formal_model_package(
-        &store_root.join("memlib"),
-        "memlib",
-        "mem",
+        &store_root.join("memolib"),
+        "memolib",
+        "memo",
         "lib.fol",
         "fun[exp] helper(): str = {\n    return \"ok\";\n};\n",
     );
@@ -1367,9 +1367,9 @@ fn test_core_illegal_dependency_failure_happens_before_emission() {
         "app",
         "core",
         concat!(
-            "use memlib: pkg = {memlib};\n",
+            "use memolib: pkg = {memolib};\n",
             "fun[] main(): int = {\n",
-            "    var value: str = memlib::src::helper();\n",
+            "    var value: str = memolib::src::helper();\n",
             "    return 0;\n",
             "};\n",
         ),
@@ -1379,13 +1379,13 @@ fn test_core_illegal_dependency_failure_happens_before_emission() {
     let build = run_fol_with_store_in_dir(&app_root, &store_root, &["code", "build", "--keep-build-dir"]);
     assert!(
         !build.status.success(),
-        "illegal core mem-consumer should fail: stdout=\n{}\nstderr=\n{}",
+        "illegal core memo-consumer should fail: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         String::from_utf8_lossy(&build.stderr)
     );
     assert!(
         find_file_by_name(&app_root.join(".fol/build"), "main.rs").is_none(),
-        "illegal core mem-consumer should fail before Rust emission"
+        "illegal core memo-consumer should fail before Rust emission"
     );
 
     std::fs::remove_dir_all(&temp_root).ok();
@@ -1396,8 +1396,8 @@ fn test_build_fixtures_emit_runtime_imports_for_each_model() {
     let cases = [
         ("core", "fun[] main(): int = {\n    return 7;\n};\n"),
         (
-            "mem",
-            "fun[] main(): str = {\n    return \"mem-ready\";\n};\n",
+            "memo",
+            "fun[] main(): str = {\n    return \"memo-ready\";\n};\n",
         ),
         ("std", "fun[] main(): int = {\n    return .echo(7);\n};\n"),
     ];
@@ -1485,14 +1485,14 @@ fn test_cli_build_emits_rust_for_model_examples() {
         ("examples/core_defer", "use fol_runtime::core as rt;"),
         ("examples/core_records", "use fol_runtime::core as rt;"),
         ("examples/core_surface_showcase", "use fol_runtime::core as rt;"),
-        ("examples/mem_defaults", "use fol_runtime::alloc as rt;"),
-        ("examples/mem_containers", "use fol_runtime::alloc as rt;"),
+        ("examples/memo_defaults", "use fol_runtime::alloc as rt;"),
+        ("examples/memo_containers", "use fol_runtime::alloc as rt;"),
         (
-            "examples/mem_collections",
+            "examples/memo_collections",
             "use fol_runtime::alloc as rt;",
         ),
         (
-            "examples/mem_surface_showcase",
+            "examples/memo_surface_showcase",
             "use fol_runtime::alloc as rt;",
         ),
         ("examples/std_cli", "use fol_runtime::std as rt;"),
@@ -1546,10 +1546,10 @@ fn test_cli_example_build_summaries_surface_expected_models() {
         ("examples/core_defer", "fol_model=core"),
         ("examples/core_records", "fol_model=core"),
         ("examples/core_surface_showcase", "fol_model=core"),
-        ("examples/mem_defaults", "fol_model=mem"),
-        ("examples/mem_containers", "fol_model=mem"),
-        ("examples/mem_collections", "fol_model=mem"),
-        ("examples/mem_surface_showcase", "fol_model=mem"),
+        ("examples/memo_defaults", "fol_model=memo"),
+        ("examples/memo_containers", "fol_model=memo"),
+        ("examples/memo_collections", "fol_model=memo"),
+        ("examples/memo_surface_showcase", "fol_model=memo"),
         ("examples/std_bundled_fmt", "fol_model=std"),
         ("examples/std_cli", "fol_model=std"),
         ("examples/std_echo_min", "fol_model=std"),
@@ -1839,7 +1839,7 @@ fn test_build_rejects_std_imports_under_mem_model() {
             "    var build = .build();\n",
             "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
             "    var graph = build.graph();\n",
-            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"mem\" });\n",
+            "    var app = graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
             "    graph.install(app);\n",
             "};\n",
         ),
@@ -1853,10 +1853,10 @@ fn test_build_rejects_std_imports_under_mem_model() {
 
     let build = run_fol_in_dir(&app_root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&build.stderr);
-    assert!(!build.status.success(), "mem std-import app should fail");
+    assert!(!build.status.success(), "memo std-import app should fail");
     assert!(
-        stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'mem'"),
-        "mem std-import app should keep the capability diagnostic: stdout=\n{}\nstderr=\n{}",
+        stderr.contains("'use ...: std = {...}' requires 'fol_model = std'; current artifact model is 'memo'"),
+        "memo std-import app should keep the capability diagnostic: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
@@ -2293,7 +2293,7 @@ fn test_build_dependency_surfaces_stay_empty_without_explicit_exports() {
                 "    var build = .build();\n",
                 "    build.meta({ name = \"shared\", version = \"0.1.0\" });\n",
                 "    var graph = build.graph();\n",
-                "    var lib = graph.add_static_lib({ name = \"shared\", root = \"src/root.fol\", fol_model = \"mem\" });\n",
+                "    var lib = graph.add_static_lib({ name = \"shared\", root = \"src/root.fol\", fol_model = \"memo\" });\n",
                 "    graph.install(lib);\n",
                 "    return;\n",
                 "};\n",
@@ -2445,7 +2445,7 @@ fn test_cli_build_rejects_negative_build_surface_examples() {
                     "    var build = .build();\n",
                     "    build.meta({ name = \"shared\", version = \"0.1.0\" });\n",
                     "    var graph = build.graph();\n",
-                    "    var lib = graph.add_static_lib({ name = \"shared\", root = \"src/root.fol\", fol_model = \"mem\" });\n",
+                    "    var lib = graph.add_static_lib({ name = \"shared\", root = \"src/root.fol\", fol_model = \"memo\" });\n",
                     "    graph.install(lib);\n",
                     "    return;\n",
                     "};\n",
@@ -2562,8 +2562,8 @@ fn test_cli_build_and_run_mixed_model_example_workspace() {
             && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Core
     }));
     assert!(artifacts.iter().any(|a| {
-        a.name == "memlib"
-            && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Mem
+        a.name == "memolib"
+            && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Memo
     }));
     assert!(artifacts.iter().any(|a| {
         a.name == "tool" && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Std
@@ -2640,7 +2640,7 @@ fn test_cli_run_rejects_mem_example_route() {
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"mem\",\n",
+            "        fol_model = \"memo\",\n",
             "    });\n",
             "    graph.add_run(app);\n",
             "    return;\n",
@@ -2650,22 +2650,22 @@ fn test_cli_run_rejects_mem_example_route() {
     .expect("should write build file");
     std::fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): str = {\n    return \"mem\";\n};\n",
+        "fun[] main(): str = {\n    return \"memo\";\n};\n",
     )
     .expect("should write source");
 
     let run = run_fol_in_dir(&root, &["code", "run"]);
     let stderr = String::from_utf8_lossy(&run.stderr);
-    assert!(!run.status.success(), "mem route should be rejected");
-    assert!(stderr.contains("fol_model = mem"));
+    assert!(!run.status.success(), "memo route should be rejected");
+    assert!(stderr.contains("fol_model = memo"));
     assert!(stderr.contains("run requires 'fol_model = std'"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
 
 #[test]
-fn test_cli_test_rejects_mem_example_route() {
-    let temp_root = unique_temp_root("test_mem_route_reject");
+fn test_cli_test_rejects_memo_example_route() {
+    let temp_root = unique_temp_root("test_memo_route_reject");
     let root = temp_root.join("demo");
     std::fs::create_dir_all(root.join("src")).expect("should create source root");
     std::fs::write(
@@ -2678,7 +2678,7 @@ fn test_cli_test_rejects_mem_example_route() {
             "    var tests = graph.add_test({\n",
             "        name = \"demo-tests\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"mem\",\n",
+            "        fol_model = \"memo\",\n",
             "    });\n",
             "    return;\n",
             "};\n",
@@ -2687,13 +2687,13 @@ fn test_cli_test_rejects_mem_example_route() {
     .expect("should write build file");
     std::fs::write(
         root.join("src/main.fol"),
-        "fun[] main(): str = {\n    return \"mem\";\n};\n",
+        "fun[] main(): str = {\n    return \"memo\";\n};\n",
     )
     .expect("should write source");
 
     let run = run_fol_in_dir(&root, &["code", "test"]);
     let stderr = String::from_utf8_lossy(&run.stderr);
-    assert!(!run.status.success(), "mem test route should be rejected");
+    assert!(!run.status.success(), "memo test route should be rejected");
     assert!(stderr.contains("test requires 'fol_model = std'"));
 
     std::fs::remove_dir_all(&temp_root).ok();
@@ -2712,7 +2712,7 @@ fn test_cli_run_rejects_ambiguous_non_std_models_with_resolved_models() {
             "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
             "    var graph = build.graph();\n",
             "    var blink = graph.add_exe({ name = \"blink\", root = \"src/blink.fol\", fol_model = \"core\" });\n",
-            "    var heap = graph.add_exe({ name = \"heap\", root = \"src/heap.fol\", fol_model = \"mem\" });\n",
+            "    var heap = graph.add_exe({ name = \"heap\", root = \"src/heap.fol\", fol_model = \"memo\" });\n",
             "    graph.install(blink);\n",
             "    graph.install(heap);\n",
             "    return;\n",
@@ -2729,13 +2729,13 @@ fn test_cli_run_rejects_ambiguous_non_std_models_with_resolved_models() {
         root.join("src/heap.fol"),
         "fun[] main(): int = {\n    var shown: str = \"ok\";\n    return 0;\n};\n",
     )
-    .expect("should write mem source");
+    .expect("should write memo source");
 
     let run = run_fol_in_dir(&root, &["code", "run"]);
     let stderr = String::from_utf8_lossy(&run.stderr);
     assert!(!run.status.success(), "mixed non-std route should be rejected");
     assert!(stderr.contains("requires an explicit named step"));
-    assert!(stderr.contains("resolved model(s): core, mem"));
+    assert!(stderr.contains("resolved model(s): core, memo"));
 
     std::fs::remove_dir_all(&temp_root).ok();
 }
@@ -2818,10 +2818,10 @@ fn test_cli_examples_emit_runtime_imports_in_generated_package_sources() {
         ("examples/core_blink_shape", "use fol_runtime::core as rt;"),
         ("examples/core_defer", "use fol_runtime::core as rt;"),
         (
-            "examples/mem_collections",
+            "examples/memo_collections",
             "use fol_runtime::alloc as rt;",
         ),
-        ("examples/mem_defaults", "use fol_runtime::alloc as rt;"),
+        ("examples/memo_defaults", "use fol_runtime::alloc as rt;"),
         (
             "examples/build_generated_dirs",
             "use fol_runtime::std as rt;",
@@ -2868,7 +2868,7 @@ fn test_model_examples_keep_runtime_imports_clean_across_emitted_rust_trees() {
             Some("use fol_runtime::std"),
         ),
         (
-            "examples/mem_collections",
+            "examples/memo_collections",
             "use fol_runtime::alloc as rt;",
             None,
             Some("use fol_runtime::std"),
@@ -2941,8 +2941,8 @@ fn test_std_logtiny_git_example_builds_against_local_git_remote() {
                 "target = \"git+https://github.com/bresilla/logtiny.git\",",
                 &format!("target = \"git+file://{}\",", remote_root.display()),
             )
-            .replace("version = \"tag:v0.1.2\",", "version = \"tag:v0.1.0\",")
-            .replace("hash = \"f49abfa1038f\",", &format!("hash = \"{short_hash}\",")),
+            .replace("version = \"tag:v0.1.3\",", "version = \"tag:v0.1.0\",")
+            .replace("hash = \"b242d319644a\",", &format!("hash = \"{short_hash}\",")),
     )
     .expect("git example build file should rewrite");
 
@@ -3027,10 +3027,10 @@ fn test_std_logtiny_git_example_supports_branch_tag_commit_and_hash_fields() {
                 "target = \"git+https://github.com/bresilla/logtiny.git\",",
                 &target_line,
             )
-            .replace("version = \"tag:v0.1.2\",", &version_line);
+            .replace("version = \"tag:v0.1.3\",", &version_line);
         let build_source = match hash_line {
-            Some(hash_line) => build_source.replace("hash = \"f49abfa1038f\",", &hash_line),
-            None => build_source.replace("        hash = \"f49abfa1038f\",\n", ""),
+            Some(hash_line) => build_source.replace("hash = \"b242d319644a\",", &hash_line),
+            None => build_source.replace("        hash = \"b242d319644a\",\n", ""),
         };
         std::fs::write(
             &build_path,
@@ -3080,8 +3080,8 @@ fn test_mixed_model_example_keeps_graph_models_and_std_emission() {
             && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Core
     }));
     assert!(artifacts.iter().any(|a| {
-        a.name == "memlib"
-            && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Mem
+        a.name == "memolib"
+            && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Memo
     }));
     assert!(artifacts.iter().any(|a| {
         a.name == "tool" && a.fol_model == fol_package::build_artifact::BuildArtifactFolModel::Std
@@ -3112,7 +3112,7 @@ fn test_work_info_surfaces_model_distribution_for_mixed_model_example() {
         stdout,
         String::from_utf8_lossy(&info.stderr)
     );
-    assert!(stdout.contains("artifact_models=core=1,mem=1,std=1"));
+    assert!(stdout.contains("artifact_models=core=1,memo=1,std=1"));
 }
 
 #[test]
@@ -3126,10 +3126,10 @@ fn test_docs_reference_real_example_packages() {
         "examples/core_defer",
         "examples/core_records",
         "examples/core_surface_showcase",
-        "examples/mem_defaults",
-        "examples/mem_containers",
-        "examples/mem_collections",
-        "examples/mem_surface_showcase",
+        "examples/memo_defaults",
+        "examples/memo_containers",
+        "examples/memo_collections",
+        "examples/memo_surface_showcase",
         "examples/std_bundled_fmt",
         "examples/std_bundled_io",
         "examples/std_cli",
@@ -3175,7 +3175,7 @@ fn test_docs_reference_real_example_packages() {
             }
             let name = path.file_name()?.to_str()?;
             let is_runtime_model_example = name.starts_with("core_")
-                || name.starts_with("mem_")
+                || name.starts_with("memo_")
                 || name.starts_with("std_")
                 || name == "mixed_models_workspace";
             is_runtime_model_example.then(|| format!("examples/{name}"))
@@ -3226,7 +3226,7 @@ fn test_bundled_std_docs_and_readme_keep_the_shipped_surface_honest() {
         );
     }
 
-    for forbidden in ["std.os/lib.fol", "std.mem", "std.fs", "std.net"] {
+    for forbidden in ["std.os/lib.fol", "std.memo", "std.fs", "std.net"] {
         assert!(
             !bundled_std_docs.contains(forbidden),
             "bundled std docs should not claim unshipped surface '{forbidden}'"
@@ -3369,7 +3369,7 @@ fn test_negative_runtime_model_examples_fail_with_expected_boundary_class() {
             "str requires heap support and is unavailable in 'fol_model = core'",
         ),
         (
-            "examples/fail_mem_echo",
+            "examples/fail_memo_echo",
             None,
             "'.echo(...)' requires 'fol_model = std'",
         ),
@@ -3414,9 +3414,9 @@ fn test_runtime_model_regression_matrix_stays_coherent_across_layers() {
             Some("fol_model=core"),
         ),
         (
-            "test/app/build/model_mem_surface_full",
+            "test/app/build/model_memo_surface_full",
             true,
-            Some("fol_model=mem"),
+            Some("fol_model=memo"),
         ),
         (
             "examples/fail_core_heap_reject",
@@ -3555,17 +3555,17 @@ fn test_build_fixtures_core_model_reject_forbidden_surfaces() {
 
 #[test]
 fn test_build_fixture_mem_model_rejects_echo() {
-    let root = build_fixture_root("model_mem_reject_echo");
+    let root = build_fixture_root("model_memo_reject_echo");
     let build = run_fol_in_dir(&root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&build.stderr);
     assert!(
         !build.status.success(),
-        "mem echo fixture should fail: stdout=\n{}\nstderr=\n{}",
+        "memo echo fixture should fail: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
     assert!(stderr.contains("'.echo(...)' requires 'fol_model = std'"));
-    assert!(stderr.contains("current artifact model is 'mem'"));
+    assert!(stderr.contains("current artifact model is 'memo'"));
 }
 
 #[test]
@@ -3590,19 +3590,19 @@ fn test_negative_core_model_example_fails_with_heap_boundary_diagnostic() {
 
 #[test]
 fn test_negative_mem_model_example_fails_with_hosted_boundary_diagnostic() {
-    let root = temp_example_root("examples/fail_mem_echo");
+    let root = temp_example_root("examples/fail_memo_echo");
     let build = run_fol_in_dir(&root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&build.stderr);
 
     assert!(
         !build.status.success(),
-        "negative mem model example should fail: stdout=\n{}\nstderr=\n{}",
+        "negative memo model example should fail: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
     assert!(
         stderr.contains("'.echo(...)' requires 'fol_model = std'"),
-        "negative mem model example should keep the hosted-boundary wording: stdout=\n{}\nstderr=\n{}",
+        "negative memo model example should keep the hosted-boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
@@ -3616,13 +3616,13 @@ fn test_negative_transitive_core_mem_boundary_example_fails_cleanly() {
 
     assert!(
         !build.status.success(),
-        "negative transitive core/mem example should fail: stdout=\n{}\nstderr=\n{}",
+        "negative transitive core/memo example should fail: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
     assert!(
         stderr.contains("str requires heap support and is unavailable in 'fol_model = core'"),
-        "negative transitive core/mem example should keep the heap-boundary wording: stdout=\n{}\nstderr=\n{}",
+        "negative transitive core/memo example should keep the heap-boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&build.stdout),
         stderr
     );
@@ -3837,8 +3837,8 @@ fn test_cli_code_build_keeps_core_string_boundary_diagnostic() {
 }
 
 #[test]
-fn test_cli_code_build_keeps_mem_echo_boundary_diagnostic() {
-    let temp_root = unique_temp_root("build_mem_echo_boundary");
+fn test_cli_code_build_keeps_memo_echo_boundary_diagnostic() {
+    let temp_root = unique_temp_root("build_memo_echo_boundary");
     let root = temp_root.join("demo");
     std::fs::create_dir_all(root.join("src")).expect("should create source root");
     std::fs::write(
@@ -3851,7 +3851,7 @@ fn test_cli_code_build_keeps_mem_echo_boundary_diagnostic() {
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"mem\",\n",
+            "        fol_model = \"memo\",\n",
             "    });\n",
             "    graph.install(app);\n",
             "    return;\n",
@@ -3868,11 +3868,11 @@ fn test_cli_code_build_keeps_mem_echo_boundary_diagnostic() {
     let output = run_fol_in_dir(&root, &["code", "build"]);
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    assert!(!output.status.success(), "mem echo boundary should fail");
+    assert!(!output.status.success(), "memo echo boundary should fail");
     assert!(
         stderr
-            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'mem'"),
-        "CLI should preserve the mem echo boundary wording: stdout=\n{}\nstderr=\n{}",
+            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'memo'"),
+        "CLI should preserve the memo echo boundary wording: stdout=\n{}\nstderr=\n{}",
         String::from_utf8_lossy(&output.stdout),
         stderr
     );
@@ -4100,8 +4100,8 @@ fn test_frontend_fetches_public_logtiny_from_github() {
     create_app_with_git_dependency_from_url(
         &app_root,
         "git+https://github.com/bresilla/logtiny.git",
-        Some("tag:v0.1.2"),
-        Some("f49abfa1038f"),
+        Some("tag:v0.1.3"),
+        Some("b242d319644a"),
     );
 
     let output = run_fol_in_dir(&app_root, &["pack", "fetch"]);
@@ -4137,20 +4137,20 @@ fn test_frontend_fetches_public_logtiny_version_matrix_from_github() {
         (
             "tag",
             "git+https://github.com/bresilla/logtiny.git",
-            Some("tag:v0.1.2"),
+            Some("tag:v0.1.3"),
             None,
         ),
         (
             "commit",
             "git+https://github.com/bresilla/logtiny.git",
-            Some("commit:f49abfa1038f0f5a3a2e09b9b3dd533182551006"),
+            Some("commit:b242d319644a125fb09167802b5f517418dc9437"),
             None,
         ),
         (
             "hash",
             "git+https://github.com/bresilla/logtiny.git",
             Some("branch:develop"),
-            Some("f49abfa1038f"),
+            Some("b242d319644a"),
         ),
     ];
 

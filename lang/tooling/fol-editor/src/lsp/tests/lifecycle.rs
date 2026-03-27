@@ -749,7 +749,7 @@ fn assert_semantic_model_via_hover(build_model: &str, expected: fol_typecheck::T
 #[test]
 fn lsp_server_keeps_model_context_through_hover_for_core_mem_and_std() {
     assert_semantic_model_via_hover("core", fol_typecheck::TypecheckCapabilityModel::Core);
-    assert_semantic_model_via_hover("mem", fol_typecheck::TypecheckCapabilityModel::Mem);
+    assert_semantic_model_via_hover("memo", fol_typecheck::TypecheckCapabilityModel::Memo);
     assert_semantic_model_via_hover("std", fol_typecheck::TypecheckCapabilityModel::Std);
 }
 
@@ -757,15 +757,15 @@ fn lsp_server_keeps_model_context_through_hover_for_core_mem_and_std() {
 fn lsp_server_keeps_model_context_isolated_across_mixed_workspace_packages() {
     let (root, _) = copied_example_package_root("examples/mixed_models_workspace");
     let core_uri = format!("file://{}", root.join("core/lib.fol").display());
-    let mem_uri = format!("file://{}", root.join("mem/lib.fol").display());
+    let memo_uri = format!("file://{}", root.join("memo/lib.fol").display());
     let std_uri = format!("file://{}", root.join("app/main.fol").display());
     let core_text = fs::read_to_string(root.join("core/lib.fol")).unwrap();
-    let mem_text = fs::read_to_string(root.join("mem/lib.fol")).unwrap();
+    let memo_text = fs::read_to_string(root.join("memo/lib.fol")).unwrap();
     let std_text = fs::read_to_string(root.join("app/main.fol")).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
 
     open_document(&mut server, core_uri.clone(), &core_text);
-    open_document(&mut server, mem_uri.clone(), &mem_text);
+    open_document(&mut server, memo_uri.clone(), &memo_text);
     open_document(&mut server, std_uri.clone(), &std_text);
 
     for (id, uri, line, character, expected) in [
@@ -778,10 +778,10 @@ fn lsp_server_keeps_model_context_isolated_across_mixed_workspace_packages() {
         ),
         (
             781_i64,
-            mem_uri.as_str(),
+            memo_uri.as_str(),
             1_u32,
             12_u32,
-            fol_typecheck::TypecheckCapabilityModel::Mem,
+            fol_typecheck::TypecheckCapabilityModel::Memo,
         ),
         (
             782_i64,
@@ -2729,7 +2729,7 @@ fn lsp_server_surfaces_alloc_echo_model_diagnostics_from_open_documents() {
         concat!(
             "pro[] build(): non = {\n",
             "    var graph = .build().graph();\n",
-            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"mem\" });\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
             "};\n",
         ),
     )
@@ -2745,7 +2745,7 @@ fn lsp_server_surfaces_alloc_echo_model_diagnostics_from_open_documents() {
         .iter()
         .any(|diagnostic| diagnostic
             .message
-            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'mem'")));
+            .contains("'.echo(...)' requires 'fol_model = std'; current artifact model is 'memo'")));
 
     fs::remove_dir_all(root).ok();
 }

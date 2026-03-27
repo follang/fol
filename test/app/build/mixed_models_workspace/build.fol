@@ -7,10 +7,10 @@ pro[] build(): non = {
         root = "core/lib.fol",
         fol_model = "core",
     });
-    var memlib = graph.add_static_lib({
-        name = "memlib",
-        root = "mem/lib.fol",
-        fol_model = "mem",
+    var memolib = graph.add_static_lib({
+        name = "memolib",
+        root = "memo/lib.fol",
+        fol_model = "memo",
     });
     var tool = graph.add_exe({
         name = "tool",

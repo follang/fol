@@ -1,11 +1,10 @@
 pro[] build(): non = {
     var build = .build();
-    build.meta({ name = "mem_surface_showcase", version = "0.1.0" });
+    build.meta({ name = "memo_defaults", version = "0.1.0" });
     var graph = build.graph();
     var app = graph.add_exe({
-        name = "mem-surface-showcase",
+        name = "memo-defaults",
         root = "src/main.fol",
-        fol_model = "mem",
     });
     graph.install(app);
     return;

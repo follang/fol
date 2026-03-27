@@ -22,7 +22,7 @@ where
     let mut models = models.into_iter().collect::<Vec<_>>();
     models.sort_by_key(|model| match model {
         fol_backend::BackendFolModel::Core => 0,
-        fol_backend::BackendFolModel::Mem => 1,
+        fol_backend::BackendFolModel::Memo => 1,
         fol_backend::BackendFolModel::Std => 2,
     });
     models.dedup();
@@ -868,7 +868,7 @@ fn typecheck_capability_model(
 ) -> fol_typecheck::TypecheckCapabilityModel {
     match fol_model {
         fol_backend::BackendFolModel::Core => fol_typecheck::TypecheckCapabilityModel::Core,
-        fol_backend::BackendFolModel::Mem => fol_typecheck::TypecheckCapabilityModel::Mem,
+        fol_backend::BackendFolModel::Memo => fol_typecheck::TypecheckCapabilityModel::Memo,
         fol_backend::BackendFolModel::Std => fol_typecheck::TypecheckCapabilityModel::Std,
     }
 }

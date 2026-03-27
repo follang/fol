@@ -653,7 +653,7 @@ fn execute_workspace_build_route_rejects_echo_for_mem_model_artifacts() {
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"mem\",\n",
+            "        fol_model = \"memo\",\n",
             "    });\n",
             "    graph.install(app);\n",
             "    return;\n",
@@ -685,7 +685,7 @@ fn execute_workspace_build_route_rejects_echo_for_mem_model_artifacts() {
             run_args: Vec::new(),
         },
     )
-    .expect_err("mem-model .echo should be rejected during routed build execution");
+    .expect_err("memo-model .echo should be rejected during routed build execution");
 
     assert_eq!(error.kind(), crate::FrontendErrorKind::CommandFailed);
     assert!(error.message().contains("compilation failed"));
@@ -695,7 +695,7 @@ fn execute_workspace_build_route_rejects_echo_for_mem_model_artifacts() {
         .contains("'.echo(...)' requires 'fol_model = std'"));
     assert!(error.diagnostics()[0]
         .message
-        .contains("current artifact model is 'mem'"));
+        .contains("current artifact model is 'memo'"));
 
     fs::remove_dir_all(root).ok();
 }
@@ -849,7 +849,7 @@ fn execute_workspace_build_route_accepts_dynamic_len_for_mem_model_artifacts() {
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"mem\",\n",
+            "        fol_model = \"memo\",\n",
             "    });\n",
             "    graph.install(app);\n",
             "    return;\n",
@@ -885,7 +885,7 @@ fn execute_workspace_build_route_accepts_dynamic_len_for_mem_model_artifacts() {
             run_args: Vec::new(),
         },
     )
-    .expect("mem-model dynamic .len should remain buildable during routed execution");
+    .expect("memo-model dynamic .len should remain buildable during routed execution");
 
     fs::remove_dir_all(root).ok();
 }
@@ -975,7 +975,7 @@ fn execute_workspace_build_route_emits_mem_runtime_module_imports() {
             "    var app = graph.add_exe({\n",
             "        name = \"demo\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"mem\",\n",
+            "        fol_model = \"memo\",\n",
             "    });\n",
             "    graph.install(app);\n",
             "    return;\n",
@@ -1014,7 +1014,7 @@ fn execute_workspace_build_route_emits_mem_runtime_module_imports() {
             run_args: Vec::new(),
         },
     )
-    .expect("mem-model routed build should succeed");
+    .expect("memo-model routed build should succeed");
 
     let main_rs = emitted_main_rs_from_result(&result);
     assert!(main_rs.contains("use fol_runtime::alloc as rt_model;"));
@@ -1177,7 +1177,7 @@ fn execute_workspace_build_route_rejects_test_for_selected_mem_model_artifacts()
             "    graph.add_test({\n",
             "        name = \"demo_test\",\n",
             "        root = \"src/main.fol\",\n",
-            "        fol_model = \"mem\",\n",
+            "        fol_model = \"memo\",\n",
             "    });\n",
             "    return;\n",
             "};\n",
@@ -1208,13 +1208,13 @@ fn execute_workspace_build_route_rejects_test_for_selected_mem_model_artifacts()
             run_args: Vec::new(),
         },
     )
-    .expect_err("mem-model selected test should be rejected during routed execution");
+    .expect_err("memo-model selected test should be rejected during routed execution");
 
     assert_eq!(error.kind(), crate::FrontendErrorKind::InvalidInput);
     assert!(error
         .message()
         .contains("workspace build step 'test' resolves artifact 'demo_test'"));
-    assert!(error.message().contains("'fol_model = mem'"));
+    assert!(error.message().contains("'fol_model = memo'"));
     assert!(error.message().contains("test requires 'fol_model = std'"));
 
     fs::remove_dir_all(root).ok();
@@ -1300,7 +1300,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
     ));
     fs::create_dir_all(root.join("app")).unwrap();
     fs::create_dir_all(root.join("core")).unwrap();
-    fs::create_dir_all(root.join("mem")).unwrap();
+    fs::create_dir_all(root.join("memo")).unwrap();
     fs::write(
         root.join("build.fol"),
         concat!(
@@ -1310,7 +1310,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
             "    var graph = .graph();\n",
             "    graph.add_exe({ name = \"tool\", root = \"app/main.fol\", fol_model = \"std\" });\n",
             "    graph.add_static_lib({ name = \"blink\", root = \"core/lib.fol\", fol_model = \"core\" });\n",
-            "    graph.add_static_lib({ name = \"heap\", root = \"mem/lib.fol\", fol_model = \"mem\" });\n",
+            "    graph.add_static_lib({ name = \"heap\", root = \"memo/lib.fol\", fol_model = \"memo\" });\n",
             "    return;\n",
             "};\n",
         ),
@@ -1327,7 +1327,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
     )
     .unwrap();
     fs::write(
-        root.join("mem/lib.fol"),
+        root.join("memo/lib.fol"),
         "fun[] helper(): int = {\n    var values: seq[int] = {1};\n    return .len(values);\n};\n",
     )
     .unwrap();
@@ -1352,7 +1352,7 @@ fn execute_workspace_build_route_build_summary_lists_all_models_for_mixed_worksp
     )
     .expect("mixed workspace routed build should succeed");
 
-    assert!(result.summary.contains("fol_model=core,mem,std"));
+    assert!(result.summary.contains("fol_model=core,memo,std"));
 
     fs::remove_dir_all(root).ok();
 }

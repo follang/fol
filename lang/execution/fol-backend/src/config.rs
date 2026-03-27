@@ -14,7 +14,7 @@ impl BackendTarget {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum BackendFolModel {
     Core,
-    Mem,
+    Memo,
     #[default]
     Std,
 }
@@ -23,7 +23,7 @@ impl BackendFolModel {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Core => "core",
-            Self::Mem => "mem",
+            Self::Memo => "memo",
             Self::Std => "std",
         }
     }
@@ -32,7 +32,7 @@ impl BackendFolModel {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackendRuntimeTier {
     Core,
-    Mem,
+    Memo,
     Std,
 }
 
@@ -40,7 +40,7 @@ impl BackendRuntimeTier {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Core => "core",
-            Self::Mem => "mem",
+            Self::Memo => "memo",
             Self::Std => "std",
         }
     }
@@ -48,7 +48,7 @@ impl BackendRuntimeTier {
     pub fn runtime_module_path(self) -> &'static str {
         match self {
             Self::Core => "fol_runtime::core",
-            Self::Mem => "fol_runtime::alloc",
+            Self::Memo => "fol_runtime::alloc",
             Self::Std => "fol_runtime::std",
         }
     }
@@ -59,7 +59,7 @@ impl From<BackendFolModel> for BackendRuntimeTier {
     fn from(value: BackendFolModel) -> Self {
         match value {
             BackendFolModel::Core => Self::Core,
-            BackendFolModel::Mem => Self::Mem,
+            BackendFolModel::Memo => Self::Memo,
             BackendFolModel::Std => Self::Std,
         }
     }
@@ -283,7 +283,7 @@ mod tests {
     fn backend_config_defaults_to_std_fol_model() {
         assert_eq!(BackendConfig::default().fol_model, BackendFolModel::Std);
         assert_eq!(BackendFolModel::Core.as_str(), "core");
-        assert_eq!(BackendFolModel::Mem.as_str(), "mem");
+        assert_eq!(BackendFolModel::Memo.as_str(), "memo");
         assert_eq!(BackendFolModel::Std.as_str(), "std");
         assert_eq!(
             BackendConfig::default().runtime_tier(),
@@ -294,14 +294,14 @@ mod tests {
     #[test]
     fn backend_runtime_tier_tracks_fol_model_and_module_paths() {
         assert_eq!(BackendRuntimeTier::from(BackendFolModel::Core).as_str(), "core");
-        assert_eq!(BackendRuntimeTier::from(BackendFolModel::Mem).as_str(), "mem");
+        assert_eq!(BackendRuntimeTier::from(BackendFolModel::Memo).as_str(), "memo");
         assert_eq!(BackendRuntimeTier::from(BackendFolModel::Std).as_str(), "std");
         assert_eq!(
             BackendRuntimeTier::from(BackendFolModel::Core).runtime_module_path(),
             "fol_runtime::core"
         );
         assert_eq!(
-            BackendRuntimeTier::from(BackendFolModel::Mem).runtime_module_path(),
+            BackendRuntimeTier::from(BackendFolModel::Memo).runtime_module_path(),
             "fol_runtime::alloc"
         );
         assert_eq!(

@@ -313,7 +313,7 @@ fn infer_active_fol_model(
 fn typecheck_model_for_build_model(model: BuildArtifactFolModel) -> TypecheckCapabilityModel {
     match model {
         BuildArtifactFolModel::Core => TypecheckCapabilityModel::Core,
-        BuildArtifactFolModel::Mem => TypecheckCapabilityModel::Mem,
+        BuildArtifactFolModel::Memo => TypecheckCapabilityModel::Memo,
         BuildArtifactFolModel::Std => TypecheckCapabilityModel::Std,
     }
 }
@@ -484,12 +484,12 @@ mod tests {
             map_document_workspace(&root.join("app/main.fol"), &EditorConfig::default()).unwrap();
         let core_mapping =
             map_document_workspace(&root.join("core/lib.fol"), &EditorConfig::default()).unwrap();
-        let mem_mapping =
-            map_document_workspace(&root.join("mem/lib.fol"), &EditorConfig::default()).unwrap();
+        let memo_mapping =
+            map_document_workspace(&root.join("memo/lib.fol"), &EditorConfig::default()).unwrap();
 
         assert_eq!(app_mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
         assert_eq!(core_mapping.active_fol_model, Some(TypecheckCapabilityModel::Core));
-        assert_eq!(mem_mapping.active_fol_model, Some(TypecheckCapabilityModel::Mem));
+        assert_eq!(memo_mapping.active_fol_model, Some(TypecheckCapabilityModel::Memo));
 
         fs::remove_dir_all(root).ok();
     }
@@ -505,7 +505,7 @@ mod tests {
             concat!(
                 "pro[] build(): non = {\n",
                 "    var graph = .build().graph();\n",
-                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"mem\" });\n",
+                "    graph.add_exe({ name = \"app\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
                 "};\n",
             ),
         )
@@ -523,7 +523,7 @@ mod tests {
 
         let mapping = map_document_workspace(&root.join("notes.fol"), &EditorConfig::default())
             .expect("mapping should succeed for package-local helper file");
-        assert_eq!(mapping.active_fol_model, Some(TypecheckCapabilityModel::Mem));
+        assert_eq!(mapping.active_fol_model, Some(TypecheckCapabilityModel::Memo));
 
         fs::remove_dir_all(root).ok();
     }

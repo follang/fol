@@ -843,13 +843,13 @@ impl BuildBodyExecutor {
                             BuildEvaluationError::new(
                                 BuildEvaluationErrorKind::InvalidInput,
                                 format!(
-                                    "artifact fol_model must be one of: core, mem, std (got '{}')",
+                                    "artifact fol_model must be one of: core, memo, std (got '{}')",
                                     raw
                                 ),
                             )
                         })?
                     }
-                    None => BuildArtifactFolModel::Std,
+                    None => BuildArtifactFolModel::Memo,
                 };
                 let optimize = fields
                     .iter()
@@ -871,7 +871,7 @@ impl BuildBodyExecutor {
                 let root_module = self
                     .parse_config_value(root_arg, &["path", "string"])
                     .ok_or_else(|| self.unsupported(method))?;
-                (name, root_module, BuildArtifactFolModel::Std, None, None)
+                (name, root_module, BuildArtifactFolModel::Memo, None, None)
             }
             _ => return Err(self.unsupported(method)),
         };

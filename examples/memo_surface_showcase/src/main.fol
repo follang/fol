@@ -1,4 +1,4 @@
-fun[] label(prefix: str = "mem", extras: ... str): str = {
+fun[] label(prefix: str = "memo", extras: ... str): str = {
     return prefix + extras[0] + extras[1];
 };
 

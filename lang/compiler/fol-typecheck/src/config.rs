@@ -1,7 +1,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum TypecheckCapabilityModel {
     Core,
-    Mem,
+    Memo,
     #[default]
     Std,
 }
@@ -10,7 +10,7 @@ impl TypecheckCapabilityModel {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Core => "core",
-            Self::Mem => "mem",
+            Self::Memo => "memo",
             Self::Std => "std",
         }
     }

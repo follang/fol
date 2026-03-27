@@ -1241,7 +1241,7 @@ fn echo_intrinsic_requires_std_fol_model_in_mem() {
             "fun[] main(): int = {\n    return .echo(1);\n};\n",
         )],
         TypecheckConfig {
-            capability_model: TypecheckCapabilityModel::Mem,
+            capability_model: TypecheckCapabilityModel::Memo,
         },
     );
 
@@ -1250,7 +1250,7 @@ fn echo_intrinsic_requires_std_fol_model_in_mem() {
     assert!(errors[0]
         .message()
         .contains("'.echo(...)' requires 'fol_model = std'"));
-    assert!(errors[0].message().contains("current artifact model is 'mem'"));
+    assert!(errors[0].message().contains("current artifact model is 'memo'"));
 }
 
 #[test]
@@ -1269,7 +1269,7 @@ fn public_runtime_model_matrix_keeps_mem_between_core_and_std() {
     let mem_typed = typecheck_fixture_folder_with_config(
         &[("main.fol", "fun[] main(): str = {\n    return \"heap\";\n};\n")],
         TypecheckConfig {
-            capability_model: TypecheckCapabilityModel::Mem,
+            capability_model: TypecheckCapabilityModel::Memo,
         },
     );
     let mem_syntax_id = find_named_routine_syntax_id(&mem_typed, "main");
@@ -1284,7 +1284,7 @@ fn public_runtime_model_matrix_keeps_mem_between_core_and_std() {
     let mem_echo_errors = typecheck_fixture_folder_errors_with_config(
         &[("main.fol", "fun[] main(): int = {\n    return .echo(1);\n};\n")],
         TypecheckConfig {
-            capability_model: TypecheckCapabilityModel::Mem,
+            capability_model: TypecheckCapabilityModel::Memo,
         },
     );
     assert_eq!(mem_echo_errors.len(), 1);

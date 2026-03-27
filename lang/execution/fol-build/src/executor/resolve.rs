@@ -104,7 +104,7 @@ impl BuildBodyExecutor {
             AstNode::Literal(Literal::String(s)) => Some(ExecArtifact {
                 name: s.clone(),
                 root_module: ExecConfigValue::Literal(String::new()),
-                fol_model: BuildArtifactFolModel::Std,
+                fol_model: BuildArtifactFolModel::Memo,
                 target: None,
                 optimize: None,
             }),

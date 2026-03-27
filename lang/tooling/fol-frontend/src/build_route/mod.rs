@@ -653,7 +653,7 @@ fn artifact_models(
         .collect::<Vec<_>>();
     models.sort_by_key(|model| match model {
         fol_backend::BackendFolModel::Core => 0,
-        fol_backend::BackendFolModel::Mem => 1,
+        fol_backend::BackendFolModel::Memo => 1,
         fol_backend::BackendFolModel::Std => 2,
     });
     models.dedup();
@@ -732,8 +732,8 @@ fn backend_fol_model(
         fol_package::build_artifact::BuildArtifactFolModel::Core => {
             fol_backend::BackendFolModel::Core
         }
-        fol_package::build_artifact::BuildArtifactFolModel::Mem => {
-            fol_backend::BackendFolModel::Mem
+        fol_package::build_artifact::BuildArtifactFolModel::Memo => {
+            fol_backend::BackendFolModel::Memo
         }
         fol_package::build_artifact::BuildArtifactFolModel::Std => {
             fol_backend::BackendFolModel::Std

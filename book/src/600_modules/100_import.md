@@ -65,8 +65,8 @@ So:
 Also note:
 
 - `std` is the importable library namespace
-- `core` and `mem` are capability modes selected through `fol_model`
-- `core` and `mem` are not imported with `use`
+- `core` and `memo` are capability modes selected through `fol_model`
+- `core` and `memo` are not imported with `use`
 - the bundled bootstrap surface is intentionally small right now:
   - `std.fmt`
   - `std.fmt.math`

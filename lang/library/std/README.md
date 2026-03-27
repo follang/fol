@@ -14,7 +14,7 @@ Bundled std is the normal path.
 
 Use an explicit `--std-root <DIR>` override only for development and testing.
 
-`core` and `mem` are not imported from here. They remain compiler/runtime capability modes.
+`core` and `memo` are not imported from here. They remain compiler/runtime capability modes.
 
 ## Bootstrap Scope
 

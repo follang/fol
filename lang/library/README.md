@@ -6,7 +6,7 @@ Current intent:
 
 - `std` lives here as bundled source
 - users should not download `std` separately for normal usage
-- `core` and `mem` remain compiler/runtime capability modes, not importable libraries
+- `core` and `memo` remain compiler/runtime capability modes, not importable libraries
 
 The normal bundled standard-library root is:
 

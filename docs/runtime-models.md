@@ -18,12 +18,12 @@ It is:
 Import reminder:
 
 - only `std` is an importable source-level library namespace
-- `core` and `mem` are compiler/runtime capability choices, not `use` targets
+- `core` and `memo` are compiler/runtime capability choices, not `use` targets
 
 Recommended style:
 
 - always spell `fol_model` explicitly in `build.fol`
-- treat `core`, `mem`, and `std` as contract choices, not convenience labels
+- treat `core`, `memo`, and `std` as contract choices, not convenience labels
 - do not treat `std` as the informal baseline just because the current backend
   emits hosted Rust
 
@@ -81,7 +81,7 @@ fun[] label(): str = {
 };
 ```
 
-### `mem`
+### `memo`
 
 Meaning:
 
@@ -103,7 +103,7 @@ Still forbidden:
 - hosted `run` / `test` execution semantics
 - process/console/filesystem/network services
 
-Choose `mem` when:
+Choose `memo` when:
 
 - the artifact needs strings or dynamic containers
 - the artifact still should not depend on hosted OS/runtime services
@@ -121,7 +121,7 @@ Forbidden example:
 
 ```fol
 fun[] main(): int = {
-    .echo("mem-nope");
+    .echo("memo-nope");
     return 0;
 };
 ```
@@ -130,7 +130,7 @@ fun[] main(): int = {
 
 Meaning:
 
-- hosted runtime services on top of `mem`
+- hosted runtime services on top of `memo`
 
 Adds:
 
@@ -166,7 +166,7 @@ surfaces automatically.
 ## Quick selection rule
 
 - pick `core` first if the artifact can stay array-only and no-heap
-- move to `mem` only when you actually need `str` or dynamic containers
+- move to `memo` only when you actually need `str` or dynamic containers
 - move to `std` only when you actually need hosted runtime behavior
 
 The intent is to keep capability growth explicit. `std` is not the semantic
@@ -185,7 +185,7 @@ graph.add_static_lib({
 });
 ```
 
-Move to `mem` when the artifact itself genuinely needs heap-backed strings or
+Move to `memo` when the artifact itself genuinely needs heap-backed strings or
 dynamic containers:
 
 ```fol
@@ -193,7 +193,7 @@ var graph = .build().graph();
 graph.add_static_lib({
     name = "text",
     root = "src/lib.fol",
-    fol_model = "mem",
+    fol_model = "memo",
 });
 ```
 
@@ -212,15 +212,15 @@ graph.add_exe({
 Direct boundary reminder:
 
 - a `core` artifact must not declare `str`, `seq`, `vec`, `set`, or `map`
-- a `mem` artifact must not call `.echo(...)`
+- a `memo` artifact must not call `.echo(...)`
 
 Transitive boundary reminder:
 
-- a `core` artifact still cannot consume heap-backed API from a `mem`
+- a `core` artifact still cannot consume heap-backed API from a `memo`
   dependency
-- a `mem` artifact still cannot consume hosted-only API from a `std`
+- a `memo` artifact still cannot consume hosted-only API from a `std`
   dependency
-- a `std` artifact may consume both `core` and `mem` dependencies in one
+- a `std` artifact may consume both `core` and `memo` dependencies in one
   graph
 
 ## Transitive boundary rule
@@ -230,11 +230,11 @@ the dependency's own artifact boundary.
 
 That means:
 
-- a `core` artifact cannot consume heap-backed API from a `mem` package just
-  because the dependency itself was declared with `fol_model = "mem"`
-- a `core` or `mem` artifact cannot reach `.echo(...)` indirectly through an
+- a `core` artifact cannot consume heap-backed API from a `memo` package just
+  because the dependency itself was declared with `fol_model = "memo"`
+- a `core` or `memo` artifact cannot reach `.echo(...)` indirectly through an
   imported `std` package
-- a `std` artifact may consume `core` and `mem` packages in the same graph
+- a `std` artifact may consume `core` and `memo` packages in the same graph
 
 The consuming artifact model always wins.
 
@@ -243,7 +243,7 @@ The consuming artifact model always wins.
 | Model   | Heap | Hosted runtime | Typical artifact shape |
 |---------|------|----------------|------------------------|
 | `core`  | no   | no             | embedded logic, fixed-shape libs |
-| `mem` | yes  | no             | heap utilities, container-heavy libs |
+| `memo` | yes  | no             | heap utilities, container-heavy libs |
 | `std`   | yes  | yes            | CLIs, host tools, integration executables |
 
 ## Current implementation status
@@ -253,10 +253,10 @@ Implemented today:
 - `.echo(...)` requires `std`
 - `str`, `vec`, `seq`, `set`, and `map` are rejected in `core`
 - array `.len(...)` stays valid in `core`
-- dynamic/string `.len(...)` requires `mem` or `std`
+- dynamic/string `.len(...)` requires `memo` or `std`
 - routed `run` / `test` reject non-`std` artifacts
 - emitted Rust imports the matching internal runtime module
-- public `fol_model = "mem"` currently maps to the internal heap runtime module
+- public `fol_model = "memo"` currently maps to the internal heap runtime module
 - `fol-runtime` is the single runtime crate with internal `core`, heap, and
   `std` ownership
 
@@ -276,10 +276,10 @@ public surfaces.
 - `fol_runtime::std`
   - hosted hooks such as `.echo(...)`
   - hosted process-outcome helpers
-  - mem-tier heap types re-exported for host artifacts
+  - memo-tier heap types re-exported for host artifacts
 
 Backend authors should not import a wider tier than the lowered artifact
-actually requires. `core` emission should stay `core`-only. `mem` emission
+actually requires. `core` emission should stay `core`-only. `memo` emission
 currently routes through the internal heap runtime module and must not silently
 widen to `std`. `std` is the only tier that may rely on
 hosted runtime entry and console hooks.
@@ -315,8 +315,8 @@ pro[] build(): non = {
 
     var heaplib = graph.add_static_lib({
         name = "heaplib",
-        root = "src/mem/lib.fol",
-        fol_model = "mem",
+        root = "src/memo/lib.fol",
+        fol_model = "memo",
     });
 
     var tool = graph.add_exe({
@@ -333,10 +333,10 @@ pro[] build(): non = {
 - `examples/core_defer`
 - `examples/core_records`
 - `examples/core_surface_showcase`
-- `examples/mem_defaults`
-- `examples/mem_containers`
-- `examples/mem_collections`
-- `examples/mem_surface_showcase`
+- `examples/memo_defaults`
+- `examples/memo_containers`
+- `examples/memo_collections`
+- `examples/memo_surface_showcase`
 - `examples/std_cli`
 - `examples/std_bundled_fmt`
 - `examples/std_bundled_io`
@@ -349,6 +349,6 @@ pro[] build(): non = {
 Negative example packages:
 
 - `examples/fail_core_heap_reject`
-- `examples/fail_mem_echo`
+- `examples/fail_memo_echo`
 - `examples/fail_core_alloc_boundary`
 - `examples/fail_core_std_import`

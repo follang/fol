@@ -191,7 +191,7 @@ fn shorten_revision(revision: &str) -> String {
 
 fn artifact_model_distribution_line(workspace: &FrontendWorkspace) -> Option<String> {
     let mut core = 0usize;
-    let mut mem = 0usize;
+    let mut memo = 0usize;
     let mut std = 0usize;
 
     for member in &workspace.members {
@@ -214,13 +214,13 @@ fn artifact_model_distribution_line(workspace: &FrontendWorkspace) -> Option<Str
         for artifact in &evaluated.evaluated.artifacts {
             match artifact.fol_model {
                 BuildArtifactFolModel::Core => core += 1,
-                BuildArtifactFolModel::Mem => mem += 1,
+                BuildArtifactFolModel::Memo => memo += 1,
                 BuildArtifactFolModel::Std => std += 1,
             }
         }
     }
 
-    Some(format!("artifact_models=core={core},mem={mem},std={std}"))
+    Some(format!("artifact_models=core={core},memo={memo},std={std}"))
 }
 
 #[cfg(test)]
@@ -254,7 +254,7 @@ mod tests {
                 "    var graph = build.graph();\n",
                 "    graph.add_exe({ name = \"tool\", root = \"src/main.fol\", fol_model = \"std\" });\n",
                 "    graph.add_static_lib({ name = \"corelib\", root = \"src/core.fol\", fol_model = \"core\" });\n",
-                "    graph.add_static_lib({ name = \"memlib\", root = \"src/mem.fol\", fol_model = \"mem\" });\n",
+                "    graph.add_static_lib({ name = \"memolib\", root = \"src/memo.fol\", fol_model = \"memo\" });\n",
                 "    return;\n",
                 "};\n",
             ),
@@ -273,7 +273,7 @@ mod tests {
 
         let result = work_info(&workspace);
 
-        assert!(result.summary.contains("artifact_models=core=1,mem=1,std=1"));
+        assert!(result.summary.contains("artifact_models=core=1,memo=1,std=1"));
 
         fs::remove_dir_all(&root).ok();
     }

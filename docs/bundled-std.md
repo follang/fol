@@ -11,12 +11,12 @@ Normal usage:
 Model rules:
 
 - `fol_model = "core"`: `use std ...` is forbidden
-- `fol_model = "mem"`: `use std ...` is forbidden
+- `fol_model = "memo"`: `use std ...` is forbidden
 - `fol_model = "std"`: `use std ...` is allowed
 
 Implementation split:
 
-- `core` and `mem` remain compiler/runtime capability layers in Rust
+- `core` and `memo` remain compiler/runtime capability layers in Rust
 - `std` is the importable bundled library and should grow mostly in FOL
 
 ## What Ships With FOL
@@ -28,7 +28,7 @@ The FOL distribution should be read as three separate pieces:
   - resolver
   - typechecker
   - backend
-  - runtime-owned `core` and `mem` capability support
+  - runtime-owned `core` and `memo` capability support
 - bundled library source:
   - `lang/library/std`
 - optional external dependencies:
@@ -38,7 +38,7 @@ The FOL distribution should be read as three separate pieces:
 Import rule:
 
 - only `std` is imported from source code
-- `core` and `mem` are selected through `fol_model`, not imported
+- `core` and `memo` are selected through `fol_model`, not imported
 
 An explicit `--std-root <DIR>` override may still exist for development and testing, but it is not the normal user path.
 

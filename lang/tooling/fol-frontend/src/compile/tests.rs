@@ -165,8 +165,8 @@ fn frontend_maps_backend_fol_models_into_typecheck_models() {
         fol_typecheck::TypecheckCapabilityModel::Core
     );
     assert_eq!(
-        typecheck_capability_model(BackendFolModel::Mem),
-        fol_typecheck::TypecheckCapabilityModel::Mem
+        typecheck_capability_model(BackendFolModel::Memo),
+        fol_typecheck::TypecheckCapabilityModel::Memo
     );
     assert_eq!(
         typecheck_capability_model(BackendFolModel::Std),

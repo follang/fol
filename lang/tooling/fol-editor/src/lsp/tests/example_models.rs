@@ -29,7 +29,7 @@ fn decode_semantic_tokens(data: &[u32]) -> Vec<(u32, u32, u32, u32, u32)> {
 fn lsp_server_opens_real_model_example_packages_cleanly() {
     for example in [
         "examples/core_defer",
-        "examples/mem_defaults",
+        "examples/memo_defaults",
         "examples/std_bundled_fmt",
         "examples/std_bundled_io",
         "examples/std_echo_min",
@@ -57,7 +57,7 @@ fn lsp_server_reports_model_aware_diagnostics_for_real_example_roots() {
             Some("str requires heap support and is unavailable in 'fol_model = core'"),
         ),
         (
-            "examples/mem_defaults",
+            "examples/memo_defaults",
             "fun[] main(): int = {\n    return .echo(7);\n};\n",
             Some("'.echo(...)' requires 'fol_model = std'"),
         ),
@@ -108,7 +108,7 @@ fn lsp_server_reports_model_aware_diagnostics_for_real_example_roots() {
 fn lsp_server_returns_semantic_tokens_for_real_model_examples() {
     for example in [
         "examples/core_defer",
-        "examples/mem_defaults",
+        "examples/memo_defaults",
         "examples/std_bundled_fmt",
         "examples/std_bundled_io",
         "examples/std_echo_min",
@@ -168,7 +168,7 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
             vec!["str", "seq", "vec", "set", "map", "echo"],
         ),
         (
-            "examples/mem_defaults",
+            "examples/memo_defaults",
             "fun[] main(): int = {\n    return .;\n};\n",
             LspPosition {
                 line: 1,
@@ -277,14 +277,14 @@ fn lsp_server_reports_transitive_model_boundaries_for_real_workspaces() {
         (
             "transitive_core_alloc",
             "core",
-            "mem",
+            "memo",
             "fun[exp] label(): str = {\n    return \"heap\";\n};\n",
             "fun[] main(): int = {\n    return .len(shared.label());\n};\n",
             "str requires heap support and is unavailable in 'fol_model = core'",
         ),
         (
             "transitive_alloc_std",
-            "mem",
+            "memo",
             "std",
             "fun[exp] ping(): int = {\n    return .echo(7);\n};\n",
             "fun[] main(): int = {\n    return shared.ping();\n};\n",

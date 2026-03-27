@@ -266,8 +266,8 @@ var dep = build.add_dep({
     alias = "logtiny",
     source = "git",
     target = "git+https://github.com/bresilla/logtiny.git",
-    version = "tag:v0.1.2",
-    hash = "f49abfa1038f",
+    version = "tag:v0.1.3",
+    hash = "b242d319644a",
     mode = "lazy",
 });
 ```

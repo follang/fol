@@ -285,14 +285,14 @@ mod tests {
         let trace = build_backend_trace(
             &session,
             &BackendConfig {
-                fol_model: BackendFolModel::Mem,
+                fol_model: BackendFolModel::Memo,
                 ..BackendConfig::default()
             },
         )
         .expect("trace");
 
-        assert!(trace.records()[0].detail.contains("fol_model=mem"));
-        assert!(trace.records()[0].detail.contains("runtime_tier=mem"));
+        assert!(trace.records()[0].detail.contains("fol_model=memo"));
+        assert!(trace.records()[0].detail.contains("runtime_tier=memo"));
         assert!(trace.records()[0]
             .detail
             .contains("runtime_module=fol_runtime::alloc"));
