@@ -209,11 +209,28 @@ fn lsp_server_locks_dot_intrinsic_completion_matrix() {
 }
 
 #[test]
-fn lsp_server_filters_echo_from_core_and_alloc_dot_completion() {
-    for (model, expected_echo) in [("core", false), ("memo", false), ("std", true)] {
-        let (root, uri) = sample_package_root(&format!("completion_dot_model_{model}"));
+fn lsp_server_filters_echo_from_core_and_memo_without_and_with_std() {
+    for (label, model, declare_std, expected_echo) in [
+        ("core", "core", false, false),
+        ("memo", "memo", false, false),
+        ("memo_with_std", "memo", true, true),
+    ] {
+        let (root, uri) = sample_package_root(&format!("completion_dot_model_{label}"));
         fs::write(
             root.join("build.fol"),
+            if declare_std {
+                format!(
+                    concat!(
+                        "pro[] build(): non = {{\n",
+                        "    var build = .build();\n",
+                        "    build.add_dep({{ alias = \"std\", source = \"internal\", target = \"standard\" }});\n",
+                        "    var graph = build.graph();\n",
+                        "    graph.add_exe({{ name = \"demo\", root = \"src/main.fol\", fol_model = \"{}\" }});\n",
+                        "}};\n",
+                    ),
+                    model
+                )
+            } else {
                 format!(
                     concat!(
                         "pro[] build(): non = {{\n",
@@ -221,8 +238,9 @@ fn lsp_server_filters_echo_from_core_and_alloc_dot_completion() {
                         "    graph.add_exe({{ name = \"demo\", root = \"src/main.fol\", fol_model = \"{}\" }});\n",
                         "}};\n",
                     ),
-                model
-            ),
+                    model
+                )
+            },
         )
         .unwrap();
         fs::write(

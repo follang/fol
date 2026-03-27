@@ -68,6 +68,28 @@ pub(crate) fn completion_context_with_lsp(
         if context.trigger_character.as_deref() == Some(".") {
             return CompletionContext::DotTrigger;
         }
+        if context.trigger_character.as_deref() == Some(":") {
+            let Some(offset) = position_to_offset(&document.text, position) else {
+                return CompletionContext::Plain;
+            };
+            let prefix = &document.text[..offset];
+            let line_prefix = prefix
+                .rsplit_once('\n')
+                .map(|(_, tail)| tail)
+                .unwrap_or(prefix);
+            let trimmed = line_prefix.trim_end();
+            if let Some((qualifier, _)) = trimmed.rsplit_once("::") {
+                let qualifier = qualifier
+                    .rsplit(|c: char| !(c.is_ascii_alphanumeric() || c == '_' || c == ':'))
+                    .next()
+                    .unwrap_or("")
+                    .trim_matches(':')
+                    .to_string();
+                if !qualifier.is_empty() {
+                    return CompletionContext::QualifiedPath { qualifier };
+                }
+            }
+        }
     }
     completion_context(document, position)
 }
@@ -269,7 +291,7 @@ fn completion_item_detail_priority(item: &EditorCompletionItem) -> u8 {
 #[cfg(test)]
 mod tests {
     use super::{
-        completion_context_with_lsp, dedupe_completion_items, fallback_decl_name,
+        completion_context, completion_context_with_lsp, dedupe_completion_items, fallback_decl_name,
         FALLBACK_ALIAS_PREFIXES, FALLBACK_ROUTINE_PREFIXES, FALLBACK_TYPE_PREFIXES,
         CompletionContext,
         EditorCompletionItem,

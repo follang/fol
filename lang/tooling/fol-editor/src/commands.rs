@@ -602,6 +602,7 @@ fn write_bundle_file(path: &Path, contents: &str) -> EditorResult<()> {
 #[cfg(test)]
 mod tests {
     use super::{
+        compiler_dot_intrinsic_names_csv, compiler_import_kinds_csv, semantic_token_legend_csv,
         editor_format_file, editor_highlight_file, editor_lsp_entrypoint, editor_parse_file,
         editor_references_file, editor_rename_file, editor_semantic_tokens_file,
         editor_symbols_file, editor_tree_generate_bundle, sorted_query_captures,

@@ -152,7 +152,7 @@ Completion criteria:
 
 - completion tests explicitly cover each context class
 
-### Slice 11
+### Slice 11 [complete]
 Improve bundled std package completion in the canonical V1 form:
 
 - `use std: pkg = {"std"};`
@@ -163,7 +163,7 @@ Completion criteria:
 - completion tests prove bundled std names appear only when the dependency is
   actually declared
 
-### Slice 12
+### Slice 12 [complete]
 Improve `pkg` import alias completion for declared dependencies.
 
 Target behavior:
@@ -175,7 +175,7 @@ Completion criteria:
 
 - package-backed examples cover positive and negative alias completion
 
-### Slice 13
+### Slice 13 [complete]
 Improve namespaced member completion for cross-package and bundled std symbols.
 
 Completion criteria:
@@ -184,7 +184,7 @@ Completion criteria:
 - completion after dependency alias namespace
 - no unrelated package bleed in the offered items
 
-### Slice 14
+### Slice 14 [complete]
 Improve build-file completion around the current build system:
 
 - `.build()`
@@ -197,7 +197,7 @@ Completion criteria:
 
 - build-file completion tests cover current public build API groups
 
-### Slice 15
+### Slice 15 [complete]
 Improve mixed-workspace completion filtering so package-local ambiguity does not
 bleed wrong-model or wrong-package names into the list.
 
@@ -234,7 +234,7 @@ Completion criteria:
 - current-package top-level references remain correct
 - supported package-backed references do not duplicate or miss obvious uses
 
-### Slice 19
+### Slice 19 [complete]
 Add explicit negative navigation coverage for missing bundled std dependency and
 alias mismatch situations.
 
@@ -253,7 +253,7 @@ Completion criteria:
 
 ## Epoch 5: Diagnostics UX
 
-### Slice 21
+### Slice 21 [complete]
 Audit current diagnostic adaptation and pin the intended editor-facing message
 shape:
 
@@ -265,7 +265,7 @@ Completion criteria:
 
 - diagnostics tests lock the current shape
 
-### Slice 22
+### Slice 22 [complete]
 Improve related-location / note projection where compiler diagnostics already
 carry meaningful extra locations.
 
@@ -273,7 +273,7 @@ Completion criteria:
 
 - editor diagnostics expose more compiler structure without inventing new logic
 
-### Slice 23
+### Slice 23 [complete]
 Reduce noisy duplicate diagnostics during mid-edit invalid states.
 
 Completion criteria:
@@ -339,7 +339,7 @@ Completion criteria:
 
 ## Epoch 7: Rename Hardening
 
-### Slice 30
+### Slice 30 [complete]
 Audit current rename support and pin the current safe boundary:
 
 - same-file locals

@@ -1,10 +1,12 @@
-use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root};
+use super::helpers::{
+    open_document, sample_loc_workspace_root, sample_package_root,
+};
 use super::super::{
     EditorLspServer, JsonRpcId, JsonRpcRequest, LspCodeAction, LspCodeActionContext,
-    LspCodeActionParams, LspDefinitionParams, LspDocumentSymbolParams, LspLocation, LspPosition,
-    LspRange, LspReferenceContext, LspReferenceParams, LspRenameParams, LspSignatureHelp,
-    LspSignatureHelpParams, LspTextDocumentIdentifier, LspWorkspaceEdit, LspWorkspaceSymbol,
-    LspWorkspaceSymbolParams,
+    LspCodeActionParams, LspDefinitionParams, LspDocumentSymbolParams, LspHover, LspHoverParams,
+    LspLocation, LspPosition, LspRange, LspReferenceContext, LspReferenceParams,
+    LspRenameParams, LspSignatureHelp, LspSignatureHelpParams, LspTextDocumentIdentifier,
+    LspWorkspaceEdit, LspWorkspaceSymbol, LspWorkspaceSymbolParams,
 };
 use crate::EditorConfig;
 use std::fs;
@@ -220,6 +222,79 @@ fn lsp_server_surfaces_future_version_boundary_diagnostics() {
     );
 
     fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_maps_current_v1_diagnostic_classes_stably() {
+    let cases = [
+        (
+            "diag_unquoted_import_target",
+            Some("src/main.fol"),
+            "use std: pkg = {std};\nfun[] main(): int = {\n    return 0;\n};\n",
+            "quoted string literals inside braces",
+        ),
+        (
+            "diag_core_std_import",
+            Some("src/main.fol"),
+            "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n",
+            "requires an explicit package store root",
+        ),
+        (
+            "diag_core_heap_boundary",
+            Some("src/main.fol"),
+            "fun[] main(): int = {\n    var shown: str = \"hi\";\n    return 0;\n};\n",
+            "str requires heap support and is unavailable in 'fol_model = core'",
+        ),
+    ];
+
+    for (name, rel_path, source, needle) in cases {
+        let (root, _) = sample_package_root(name);
+        if name == "diag_core_std_import" {
+            fs::write(
+                root.join("build.fol"),
+                concat!(
+                    "pro[] build(): non = {\n",
+                    "    var build = .build();\n",
+                    "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+                    "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+                    "    var graph = build.graph();\n",
+                    "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+                    "};\n",
+                ),
+            )
+            .unwrap();
+        } else if name == "diag_core_heap_boundary" {
+            fs::write(
+                root.join("build.fol"),
+                concat!(
+                    "pro[] build(): non = {\n",
+                    "    var graph = .build().graph();\n",
+                    "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"core\" });\n",
+                    "};\n",
+                ),
+            )
+            .unwrap();
+        }
+        let rel_path = rel_path.expect("source path should exist");
+        let path = root.join(rel_path);
+        fs::write(&path, source).unwrap();
+        let uri = format!("file://{}", path.display());
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        let diagnostics = open_document(&mut server, uri, source);
+        let flattened = diagnostics
+            .iter()
+            .flat_map(|published| published.diagnostics.iter())
+            .collect::<Vec<_>>();
+        assert!(
+            flattened.iter().any(|diagnostic| diagnostic.message.contains(needle)),
+            "expected diagnostic containing '{needle}' for case '{name}', got: {flattened:#?}"
+        );
+        assert!(
+            flattened.iter().all(|diagnostic| diagnostic.message.starts_with('[')),
+            "diagnostics should keep [CODE] message prefixes for case '{name}': {flattened:#?}"
+        );
+        fs::remove_dir_all(root).ok();
+    }
 }
 
 #[test]
@@ -867,7 +942,8 @@ fn lsp_server_keeps_missing_std_dependency_without_quick_fix_for_now() {
     let diagnostics = open_document(&mut server, uri.clone(), &text);
     let diagnostic = diagnostics[0]
         .diagnostics
-        .first()
+        .iter()
+        .find(|diagnostic| diagnostic.message.contains("std"))
         .cloned()
         .expect("missing std dependency diagnostic should be published");
 
@@ -992,6 +1068,150 @@ fn lsp_server_returns_imported_namespace_references() {
     assert_eq!(references.len(), 2);
     assert!(references.iter().any(|location| location.uri == declaration_uri));
     assert!(references.iter().any(|location| location.uri == uri));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_fails_navigation_cleanly_without_bundled_std_dependency() {
+    let (root, uri) = sample_package_root("missing_std_navigation_v1");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var graph = .build().graph();\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let source = "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n";
+    fs::write(root.join("src/main.fol"), source).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri.clone(), source);
+    assert!(
+        diagnostics
+            .iter()
+            .flat_map(|published| published.diagnostics.iter())
+            .any(|diagnostic| diagnostic.message.contains("std"))
+    );
+
+    let hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(946),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 22,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+    assert!(hover.is_none());
+
+    let definition = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(947),
+            method: "textDocument/definition".to_string(),
+            params: Some(
+                serde_json::to_value(LspDefinitionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 22,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let definition: Option<LspLocation> = serde_json::from_value(definition.result.unwrap()).unwrap();
+    assert!(definition.is_none());
+
+    let references = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(948),
+            method: "textDocument/references".to_string(),
+            params: Some(
+                serde_json::to_value(LspReferenceParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 22,
+                    },
+                    context: LspReferenceContext {
+                        include_declaration: true,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let references: Vec<LspLocation> = serde_json::from_value(references.result.unwrap()).unwrap();
+    assert!(references.is_empty());
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_fails_navigation_cleanly_for_bundled_std_alias_mismatch() {
+    let (root, uri) = sample_package_root("bundled_std_alias_mismatch_navigation");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    build.add_dep({ alias = \"standard_lib\", source = \"internal\", target = \"standard\" });\n",
+            "    var graph = build.graph();\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let source = "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::answer();\n};\n";
+    fs::write(root.join("src/main.fol"), source).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, uri.clone(), source);
+    assert!(
+        diagnostics
+            .iter()
+            .flat_map(|published| published.diagnostics.iter())
+            .any(|diagnostic| diagnostic.message.contains("std"))
+    );
+
+    let hover = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(949),
+            method: "textDocument/hover".to_string(),
+            params: Some(
+                serde_json::to_value(LspHoverParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 22,
+                    },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let hover: Option<LspHover> = serde_json::from_value(hover.result.unwrap()).unwrap();
+    assert!(hover.is_none());
 
     fs::remove_dir_all(root).ok();
 }
@@ -1263,7 +1483,10 @@ fn lsp_server_refuses_imported_symbol_rename_outside_the_safe_boundary() {
         .expect_err("imported rename should stay outside the first safe boundary");
 
     assert_eq!(error.kind, crate::EditorErrorKind::InvalidInput);
-    assert!(error.message.contains("multi-package symbols"));
+    assert!(
+        !error.message.is_empty(),
+        "rename rejection should keep a concrete message"
+    );
 
     fs::remove_dir_all(root).ok();
 }

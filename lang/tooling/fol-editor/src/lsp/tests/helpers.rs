@@ -38,6 +38,7 @@ pub(super) fn sample_loc_workspace_root(label: &str) -> (PathBuf, String) {
     let shared_src = root.join("shared/src");
     fs::create_dir_all(&app_src).unwrap();
     fs::create_dir_all(&shared_src).unwrap();
+    fs::write(root.join("fol.work.yaml"), "members:\n  - app\n  - shared\n").unwrap();
 
     fs::write(
         root.join("app/build.fol"),
@@ -52,7 +53,7 @@ pub(super) fn sample_loc_workspace_root(label: &str) -> (PathBuf, String) {
 
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared.helper();\n};\n",
+        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper();\n};\n",
     )
     .unwrap();
     fs::write(

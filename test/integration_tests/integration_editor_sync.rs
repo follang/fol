@@ -215,7 +215,7 @@ fn test_editor_sync_suite_lsp_completion_respects_model_examples() {
         .into_iter()
         .map(|item| item.label)
         .collect::<Vec<_>>();
-    assert!(!std_labels.iter().any(|label| label == "echo"));
+    assert!(std_labels.iter().any(|label| label == "echo"));
 
     std::fs::remove_dir_all(core_root).ok();
     std::fs::remove_dir_all(std_root).ok();

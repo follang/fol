@@ -1,6 +1,7 @@
 use crate::{EditorConfig, EditorDocument, EditorError, EditorErrorKind, EditorResult};
 use fol_package::{
     build_artifact::BuildArtifactFolModel, build_runtime::BuildRuntimeArtifact,
+    build_api::DependencySourceKind, build_runtime::BuildRuntimeDependency,
     evaluate_build_source, BuildEvaluationInputs, BuildEvaluationRequest,
 };
 use fol_typecheck::TypecheckCapabilityModel;
@@ -273,13 +274,19 @@ fn recover_active_fol_model(
     )
     .ok()
     .flatten()?;
-    infer_active_fol_model(package_root, document_path, &evaluated.evaluated.artifacts)
+    infer_active_fol_model(
+        package_root,
+        document_path,
+        &evaluated.evaluated.artifacts,
+        &evaluated.evaluated.dependencies,
+    )
 }
 
 fn infer_active_fol_model(
     package_root: &Path,
     document_path: &Path,
     artifacts: &[BuildRuntimeArtifact],
+    dependencies: &[BuildRuntimeDependency],
 ) -> Option<TypecheckCapabilityModel> {
     if artifacts.is_empty() {
         return None;
@@ -295,26 +302,42 @@ fn infer_active_fol_model(
         })
         .collect::<Vec<_>>();
     if matching_artifacts.len() == 1 {
-        return Some(typecheck_model_for_build_model(matching_artifacts[0].fol_model));
+        return Some(typecheck_model_for_build_model(
+            matching_artifacts[0].fol_model,
+            dependencies,
+        ));
     }
 
     let first = artifacts[0].fol_model;
     if artifacts.iter().all(|artifact| artifact.fol_model == first) {
-        return Some(typecheck_model_for_build_model(first));
+        return Some(typecheck_model_for_build_model(first, dependencies));
     }
 
     if artifacts.len() == 1 {
-        return Some(typecheck_model_for_build_model(first));
+        return Some(typecheck_model_for_build_model(first, dependencies));
     }
 
     None
 }
 
-fn typecheck_model_for_build_model(model: BuildArtifactFolModel) -> TypecheckCapabilityModel {
+fn typecheck_model_for_build_model(
+    model: BuildArtifactFolModel,
+    dependencies: &[BuildRuntimeDependency],
+) -> TypecheckCapabilityModel {
     match model {
         BuildArtifactFolModel::Core => TypecheckCapabilityModel::Core,
-        BuildArtifactFolModel::Memo => TypecheckCapabilityModel::Memo,
+        BuildArtifactFolModel::Memo => {
+            if dependencies.iter().any(is_internal_standard_dependency) {
+                TypecheckCapabilityModel::Std
+            } else {
+                TypecheckCapabilityModel::Memo
+            }
+        }
     }
+}
+
+fn is_internal_standard_dependency(dependency: &BuildRuntimeDependency) -> bool {
+    dependency.source_kind == DependencySourceKind::Internal && dependency.package == "standard"
 }
 
 #[cfg(test)]

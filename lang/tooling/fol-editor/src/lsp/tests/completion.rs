@@ -2,7 +2,9 @@ use super::super::{
     EditorLspServer, JsonRpcId, JsonRpcRequest, LspCompletionList, LspCompletionParams,
     LspPosition, LspTextDocumentIdentifier,
 };
-use super::helpers::{open_document, sample_loc_workspace_root, sample_package_root};
+use super::helpers::{
+    copied_example_package_root, open_document, sample_loc_workspace_root, sample_package_root,
+};
 use crate::EditorConfig;
 use std::fs;
 
@@ -923,6 +925,267 @@ fn lsp_server_locks_loc_and_same_package_namespace_completion() {
         .collect::<Vec<_>>();
     assert!(imported_labels.contains(&"helper"));
     assert!(!imported_labels.contains(&"tools"));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_completes_bundled_std_names_only_when_declared() {
+    let (root, uri) = copied_example_package_root("examples/std_bundled_fmt");
+    let source = "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return std::fmt::;\n};\n";
+    fs::write(root.join("src/main.fol"), source).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), source);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(504),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 21,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let labels = serde_json::from_value::<LspCompletionList>(completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(labels.contains(&"answer".to_string()));
+    assert!(labels.contains(&"double".to_string()));
+    assert!(labels.contains(&"math".to_string()));
+
+    fs::remove_dir_all(root).ok();
+
+    let (root, uri) = sample_package_root("completion_std_without_declared_dep");
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"demo\", version = \"0.1.0\" });\n",
+            "    var graph = build.graph();\n",
+            "    graph.add_exe({ name = \"demo\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(root.join("src/main.fol"), source).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), source);
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(505),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 2,
+                        character: 21,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let labels = serde_json::from_value::<LspCompletionList>(completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(
+        !labels.contains(&"answer".to_string()) && !labels.contains(&"double".to_string()),
+        "bundled std members should not complete without a declared std dependency: {labels:?}"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_completes_declared_aliases_without_leaking_undeclared_ones() {
+    let (root, uri) = copied_example_package_root("examples/std_bundled_fmt");
+    fs::create_dir_all(root.join("shared/src")).unwrap();
+    fs::write(
+        root.join("shared/build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"shared\", version = \"0.1.0\" });\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("shared/src/lib.fol"),
+        "fun[exp] helper(): int = {\n    return 7;\n};\n",
+    )
+    .unwrap();
+    let source = concat!(
+        "use std: pkg = {\"std\"};\n",
+        "use shared: loc = {\"../shared\"};\n",
+        "\n",
+        "fun[] main(): int = {\n",
+        "    return ;\n",
+        "};\n",
+    );
+    fs::write(root.join("src/main.fol"), source).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), source);
+
+    let completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(506),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 4,
+                        character: 11,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let labels = serde_json::from_value::<LspCompletionList>(completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(labels.contains(&"std".to_string()));
+    assert!(labels.contains(&"shared".to_string()));
+    assert!(!labels.contains(&"other".to_string()));
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
+fn lsp_server_keeps_bundled_std_and_dependency_members_separate_after_qualification() {
+    let (root, uri) = copied_example_package_root("examples/std_bundled_fmt");
+    fs::create_dir_all(root.join("shared/src")).unwrap();
+    fs::write(
+        root.join("shared/build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"shared\", version = \"0.1.0\" });\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    fs::write(
+        root.join("shared/src/lib.fol"),
+        "fun[exp] helper(): int = {\n    return 7;\n};\n",
+    )
+    .unwrap();
+    fs::write(
+        root.join("build.fol"),
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"std_bundled_fmt\", version = \"0.1.0\" });\n",
+            "    build.add_dep({ alias = \"std\", source = \"internal\", target = \"standard\" });\n",
+            "    build.add_dep({ alias = \"shared\", source = \"loc\", target = \"shared\" });\n",
+            "    var graph = build.graph();\n",
+            "    graph.add_exe({ name = \"std_bundled_fmt\", root = \"src/main.fol\", fol_model = \"memo\" });\n",
+            "    return;\n",
+            "};\n",
+        ),
+    )
+    .unwrap();
+    let source = concat!(
+        "use std: pkg = {\"std\"};\n",
+        "use shared: loc = {\"shared\"};\n",
+        "\n",
+        "fun[] main(): int = {\n",
+        "    return std::fmt::answer() + shared::;\n",
+        "};\n",
+    );
+    fs::write(root.join("src/main.fol"), source).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), source);
+
+    let std_completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(507),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 4,
+                        character: 21,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let std_labels = serde_json::from_value::<LspCompletionList>(std_completion.result.unwrap())
+        .unwrap()
+        .items
+        .into_iter()
+        .map(|item| item.label)
+        .collect::<Vec<_>>();
+    assert!(std_labels.contains(&"answer".to_string()));
+    assert!(std_labels.contains(&"double".to_string()));
+    assert!(!std_labels.contains(&"helper".to_string()));
+
+    let shared_completion = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(508),
+            method: "textDocument/completion".to_string(),
+            params: Some(
+                serde_json::to_value(LspCompletionParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    position: LspPosition {
+                        line: 4,
+                        character: 41,
+                    },
+                    context: None,
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let shared_labels =
+        serde_json::from_value::<LspCompletionList>(shared_completion.result.unwrap())
+            .unwrap()
+            .items
+            .into_iter()
+            .map(|item| item.label)
+            .collect::<Vec<_>>();
+    assert!(!shared_labels.contains(&"answer".to_string()));
+    assert!(!shared_labels.contains(&"double".to_string()));
 
     fs::remove_dir_all(root).ok();
 }

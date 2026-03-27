@@ -347,7 +347,11 @@ impl SemanticSnapshot {
                 return dedupe_completion_items(items);
             }
             CompletionContext::QualifiedPath { qualifier } => {
-                return self.qualified_completion_items(&qualifier);
+                let items = self.qualified_completion_items(&qualifier);
+                if items.is_empty() {
+                    return self.fallback_qualified_completion_items(&qualifier);
+                }
+                return items;
             }
             CompletionContext::DotTrigger => return self.dot_intrinsic_fallback_completion_items(),
         }
@@ -773,11 +777,14 @@ impl SemanticSnapshot {
             return Vec::new();
         };
         let text = std::fs::read_to_string(&self.source_document_path).unwrap_or_default();
+        let mut parts = qualifier.split("::");
+        let root_alias = parts.next().unwrap_or(qualifier);
+        let namespace_suffix = parts.collect::<Vec<_>>().join("/");
         let rel_path = text.lines().find_map(|line| {
             let trimmed = line.trim();
             let rest = trimmed.strip_prefix("use ")?;
             let (alias, rhs) = rest.split_once(':')?;
-            (alias.trim() == qualifier).then_some(rhs.trim().to_string())
+            (alias.trim() == root_alias).then_some(rhs.trim().to_string())
         });
         let Some(rhs) = rel_path else {
             return Vec::new();
@@ -789,8 +796,32 @@ impl SemanticSnapshot {
         let Some(end) = tail.find('"') else {
             return Vec::new();
         };
-        let target = package_root.join(&tail[..end]);
-        fallback_items_from_package_dir(&target)
+        let import_target = &tail[..end];
+        let mut target = if rhs.starts_with("pkg") {
+            package_root.join(".fol/pkg").join(import_target)
+        } else {
+            package_root.join(import_target)
+        };
+        if !namespace_suffix.is_empty() {
+            target = target.join(namespace_suffix);
+        }
+        let mut items = fallback_items_from_package_dir(&target);
+        if let Ok(entries) = std::fs::read_dir(&target) {
+            for entry in entries.filter_map(Result::ok) {
+                let path = entry.path();
+                if entry.file_type().map(|kind| kind.is_dir()).unwrap_or(false) {
+                    if let Some(name) = path.file_name().and_then(|name| name.to_str()) {
+                        items.push(EditorCompletionItem {
+                            label: name.to_string(),
+                            kind: 9,
+                            detail: Some("namespace".to_string()),
+                            insert_text: None,
+                        });
+                    }
+                }
+            }
+        }
+        items
     }
 
     // FALLBACK: reads filesystem directories for namespace items
