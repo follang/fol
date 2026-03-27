@@ -1,8 +1,8 @@
 use super::helpers::{copied_example_package_root, open_document};
 use super::super::{
     EditorLspServer, JsonRpcId, JsonRpcRequest, LspCompletionContext, LspCompletionList,
-    LspCompletionParams, LspPosition, LspSemanticTokens, LspSemanticTokensParams,
-    LspTextDocumentIdentifier,
+    LspCompletionParams, LspDocumentSymbolParams, LspPosition, LspSemanticTokens,
+    LspSemanticTokensParams, LspTextDocumentIdentifier, LspWorkspaceSymbolParams,
 };
 use crate::EditorConfig;
 use std::fs;
@@ -44,6 +44,98 @@ fn lsp_server_opens_real_model_example_packages_cleanly() {
             "real example '{example}' should open without editor diagnostics: {diagnostics:#?}"
         );
 
+        fs::remove_dir_all(root).ok();
+    }
+}
+
+#[test]
+fn lsp_server_returns_document_symbols_for_real_example_roots() {
+    for example in [
+        "examples/std_bundled_fmt",
+        "examples/std_bundled_io",
+        "examples/core_run_min",
+        "examples/memo_run_min",
+    ] {
+        let (root, uri) = copied_example_package_root(example);
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        let mut server = EditorLspServer::new(EditorConfig::default());
+        open_document(&mut server, uri.clone(), &text);
+
+        let response = server
+            .handle_request(JsonRpcRequest {
+                jsonrpc: "2.0".to_string(),
+                id: JsonRpcId::Number(981),
+                method: "textDocument/documentSymbol".to_string(),
+                params: Some(
+                    serde_json::to_value(LspDocumentSymbolParams {
+                        text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                    })
+                    .unwrap(),
+                ),
+            })
+            .unwrap()
+            .unwrap();
+        let symbols: Vec<crate::LspDocumentSymbol> =
+            serde_json::from_value(response.result.unwrap()).unwrap();
+
+        assert!(
+            symbols.iter().any(|symbol| symbol.name == "main"),
+            "real example '{example}' should surface a main symbol: {symbols:#?}"
+        );
+
+        fs::remove_dir_all(root).ok();
+    }
+}
+
+#[test]
+fn lsp_server_returns_workspace_symbols_for_open_real_examples() {
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let mut roots = Vec::new();
+    for example in ["examples/std_bundled_fmt", "examples/std_bundled_io"] {
+        let (root, uri) = copied_example_package_root(example);
+        let text = fs::read_to_string(root.join("src/main.fol")).unwrap();
+        open_document(&mut server, uri, &text);
+        roots.push(root);
+    }
+
+    let response = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(982),
+            method: "workspace/symbol".to_string(),
+            params: Some(
+                serde_json::to_value(LspWorkspaceSymbolParams {
+                    query: "main".to_string(),
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let symbols: Vec<crate::LspWorkspaceSymbol> =
+        serde_json::from_value(response.result.unwrap()).unwrap();
+    assert!(
+        symbols
+            .iter()
+            .filter(|symbol| {
+                symbol.name.contains("::src::main")
+                    || symbol.name == "main"
+                    || symbol
+                        .container_name
+                        .as_deref()
+                        .map(|name| name.contains("src::main"))
+                        .unwrap_or(false)
+            })
+            .count()
+            >= 2,
+        "open real examples should contribute workspace symbols: {symbols:#?}"
+    );
+    assert!(
+        symbols.iter().any(|symbol| symbol.name == "std::answer"),
+        "bundled std example roots should contribute std workspace symbols too: {symbols:#?}"
+    );
+
+    for root in roots {
         fs::remove_dir_all(root).ok();
     }
 }

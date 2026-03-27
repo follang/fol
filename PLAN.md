@@ -281,7 +281,7 @@ Completion criteria:
 - editor retains useful diagnostics while avoiding repeated cascade spam in the
   open file
 
-### Slice 24
+### Slice 24 [complete]
 Add explicit V1 coverage for current important diagnostic classes:
 
 - missing std dependency
@@ -294,7 +294,7 @@ Completion criteria:
 
 - editor tests map these diagnostics to stable LSP output
 
-### Slice 25
+### Slice 25 [complete]
 Audit build-file diagnostics and ensure build-specific failures remain readable
 and current-contract-oriented in the editor.
 
@@ -304,7 +304,7 @@ Completion criteria:
 
 ## Epoch 6: Symbols and Outline
 
-### Slice 26
+### Slice 26 [complete]
 Audit document symbols for nested namespaces, imports, and current shipped
 standard-library examples.
 
@@ -312,7 +312,7 @@ Completion criteria:
 
 - representative document-symbol snapshots are pinned
 
-### Slice 27
+### Slice 27 [complete]
 Improve workspace symbol relevance and filtering for current open workspace
 members.
 
@@ -320,7 +320,7 @@ Completion criteria:
 
 - workspace symbol tests behave better for mixed package sets
 
-### Slice 28
+### Slice 28 [complete]
 Ensure bundled std examples and dependency-backed packages contribute correct
 document/workspace symbols.
 
@@ -328,7 +328,7 @@ Completion criteria:
 
 - symbol tests include bundled std examples and declared dependency examples
 
-### Slice 29
+### Slice 29 [complete]
 Add explicit negative coverage to ensure unsupported or unresolved entities do
 not masquerade as symbols.
 
@@ -381,7 +381,7 @@ Completion criteria:
 
 ## Epoch 8: Workspace Recovery and Real Examples
 
-### Slice 34
+### Slice 34 [complete]
 Audit workspace mapping and active-model recovery against the current V1
 contract:
 
@@ -393,7 +393,7 @@ Completion criteria:
 
 - mapping tests cover single-artifact, uniform-package, and mixed-artifact roots
 
-### Slice 35
+### Slice 35 [complete]
 Strengthen ambiguous-file behavior in mixed-model workspaces so the editor keeps
 model unknown when it should remain conservative.
 
@@ -401,7 +401,7 @@ Completion criteria:
 
 - ambiguous helper-file tests remain conservative
 
-### Slice 36
+### Slice 36 [complete]
 Add real-example editor coverage for the current canonical examples:
 
 - bundled std example packages
@@ -423,7 +423,7 @@ Completion criteria:
 
 ## Epoch 9: Tree-sitter and Presentation Sync
 
-### Slice 38
+### Slice 38 [complete]
 Audit tree-sitter highlight/query coverage for current shipped V1 examples and
 current import/build syntax.
 

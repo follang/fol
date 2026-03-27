@@ -455,6 +455,20 @@ mod tests {
     }
 
     #[test]
+    fn workspace_mapping_recovers_bundled_std_alias_example_model_without_override() {
+        let root = copied_example_root("examples/std_alias_pkg");
+        let document = root.join("src/main.fol");
+
+        let mapping =
+            map_document_workspace(&document, &EditorConfig::default()).expect("mapping should succeed");
+
+        assert_eq!(mapping.package_root, Some(root.clone()));
+        assert_eq!(mapping.active_fol_model, Some(TypecheckCapabilityModel::Std));
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn workspace_mapping_uses_matching_artifact_root_in_mixed_model_package() {
         let root = temp_root("mapping_model_mixed");
         let src = root.join("src");
@@ -591,6 +605,23 @@ mod tests {
 
         let mapping = map_document_workspace(&root.join("notes.fol"), &EditorConfig::default())
             .expect("mapping should succeed for package-local helper file");
+        assert_eq!(mapping.active_fol_model, None);
+
+        fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
+    fn workspace_mapping_keeps_real_mixed_workspace_helper_files_conservative() {
+        let root = copied_example_root("examples/mixed_models_workspace");
+        let helper = root.join("notes.fol");
+        fs::write(
+            &helper,
+            "fun[] helper(): int = {\n    return 7;\n};\n",
+        )
+        .unwrap();
+
+        let mapping = map_document_workspace(&helper, &EditorConfig::default())
+            .expect("mapping should succeed for real mixed-workspace helper file");
         assert_eq!(mapping.active_fol_model, None);
 
         fs::remove_dir_all(root).ok();

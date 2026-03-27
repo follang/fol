@@ -204,6 +204,59 @@ fn lsp_server_workspace_symbols_sort_and_qualify_results_deterministically() {
 }
 
 #[test]
+fn lsp_server_keeps_unresolved_and_malformed_documents_out_of_symbol_results() {
+    let (root, uri) = sample_package_root("symbol_negative_v1");
+    let text = "use std: pkg = {std};\nfun[] main(: int = {\n    return 0;\n};\n";
+    fs::write(root.join("src/main.fol"), text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    open_document(&mut server, uri.clone(), text);
+
+    let document = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(91),
+            method: "textDocument/documentSymbol".to_string(),
+            params: Some(
+                serde_json::to_value(LspDocumentSymbolParams {
+                    text_document: LspTextDocumentIdentifier { uri: uri.clone() },
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let document_symbols: Vec<crate::LspDocumentSymbol> =
+        serde_json::from_value(document.result.unwrap()).unwrap();
+    assert!(
+        document_symbols.is_empty(),
+        "malformed source should not invent document symbols: {document_symbols:#?}"
+    );
+
+    let workspace = server
+        .handle_request(JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: JsonRpcId::Number(92),
+            method: "workspace/symbol".to_string(),
+            params: Some(
+                serde_json::to_value(LspWorkspaceSymbolParams {
+                    query: "std".to_string(),
+                })
+                .unwrap(),
+            ),
+        })
+        .unwrap()
+        .unwrap();
+    let workspace_symbols: Vec<LspWorkspaceSymbol> =
+        serde_json::from_value(workspace.result.unwrap()).unwrap();
+    assert!(
+        workspace_symbols.is_empty(),
+        "malformed source should not contribute misleading workspace symbols: {workspace_symbols:#?}"
+    );
+
+    fs::remove_dir_all(root).ok();
+}
+
+#[test]
 fn lsp_server_surfaces_future_version_boundary_diagnostics() {
     let (root, uri) = sample_package_root("future_boundary");
     let text = "typ Shape(geo): rec[] = {\n    size: int;\n};\n\nfun[] main(): int = {\n    return 0;\n};\n";
@@ -295,6 +348,34 @@ fn lsp_server_maps_current_v1_diagnostic_classes_stably() {
         );
         fs::remove_dir_all(root).ok();
     }
+}
+
+#[test]
+fn lsp_server_surfaces_build_file_diagnostics_with_current_contract_wording() {
+    let (root, _) = sample_package_root("build_file_diagnostics_v1");
+    let build_path = root.join("build.fol");
+    let build_uri = format!("file://{}", build_path.display());
+    let build_text = "pro[] build(): non = {\n    return grahp;\n};\n";
+    fs::write(&build_path, build_text).unwrap();
+    let mut server = EditorLspServer::new(EditorConfig::default());
+    let diagnostics = open_document(&mut server, build_uri, build_text);
+    let flattened = diagnostics
+        .iter()
+        .flat_map(|published| published.diagnostics.iter())
+        .collect::<Vec<_>>();
+
+    assert!(
+        flattened.iter().any(|diagnostic| diagnostic.code == "R1003"),
+        "build-file diagnostics should keep unresolved-name codes in-editor: {flattened:#?}"
+    );
+    assert!(
+        flattened
+            .iter()
+            .any(|diagnostic| diagnostic.message.starts_with("[R1003]")),
+        "build-file diagnostics should keep editor-facing [CODE] prefixes: {flattened:#?}"
+    );
+
+    fs::remove_dir_all(root).ok();
 }
 
 #[test]

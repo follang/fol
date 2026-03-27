@@ -780,6 +780,31 @@ mod tests {
     }
 
     #[test]
+    fn generated_bundle_highlights_keep_real_bundled_std_import_examples_queryable() {
+        let root = build_bundle_root("std_import_examples");
+        for relative in ["examples/std_bundled_fmt/src/main.fol", "examples/std_alias_pkg/src/main.fol"] {
+            let output = run_tree_sitter_query(
+                &root,
+                &root.join("queries/fol/highlights.scm"),
+                &repo_root().join(relative),
+            );
+
+            assert!(
+                output.status.success(),
+                "tree-sitter highlight query failed for '{}':\nstdout:\n{}\nstderr:\n{}",
+                relative,
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            assert!(stdout.contains("namespace"), "expected namespace captures for '{}':\n{}", relative, stdout);
+            assert!(stdout.contains("function"), "expected function captures for '{}':\n{}", relative, stdout);
+        }
+
+        std::fs::remove_dir_all(root).ok();
+    }
+
+    #[test]
     fn invalid_highlight_query_node_references_fail_bundle_validation() {
         let root = build_bundle_root("invalid");
         let query_path = root.join("queries/fol/highlights.scm");
