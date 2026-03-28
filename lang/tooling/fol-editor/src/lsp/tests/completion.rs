@@ -601,11 +601,11 @@ fn lsp_server_returns_visible_named_type_completions_in_type_positions() {
     let (root, uri) = sample_loc_workspace_root("completion_named_types");
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\nfun[] main(): shared::Status = {\n    var report: shared::Report = ;\n    return shared::Pending;\n};\n",
+        "use shared: loc = {\"../../shared\"};\n\nfun[] main(): shared::Status = {\n    var report: shared::Report = ;\n    return shared::Pending;\n};\n",
     )
     .unwrap();
     fs::write(
-        root.join("shared/src/lib.fol"),
+        root.join("shared/lib.fol"),
         "typ[exp] Status: ent = {\n    case Pending;\n};\n\ntyp[exp] Report: rec = {\n    value: int;\n};\n",
     )
     .unwrap();
@@ -650,11 +650,11 @@ fn lsp_server_locks_type_completion_matrix() {
     let (root, uri) = sample_loc_workspace_root("completion_type_matrix");
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\ntyp[] Local: rec = {\n    value: int;\n};\n\nfun[] main(): int = {\n    var target: ;\n    return 0;\n};\n",
+        "use shared: loc = {\"../../shared\"};\n\ntyp[] Local: rec = {\n    value: int;\n};\n\nfun[] main(): int = {\n    var target: ;\n    return 0;\n};\n",
     )
     .unwrap();
     fs::write(
-        root.join("shared/src/lib.fol"),
+        root.join("shared/lib.fol"),
         "typ[exp] Status: ent = {\n    case Pending;\n};\n\ntyp[exp] Report: rec = {\n    value: int;\n};\n",
     )
     .unwrap();
@@ -791,7 +791,7 @@ fn lsp_server_keeps_local_and_imported_namespace_members_separate() {
     fs::create_dir_all(root.join("app/src/api")).unwrap();
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return api::helper() + shared::;\n};\n",
+        "use shared: loc = {\"../../shared\"};\n\nfun[] main(): int = {\n    return api::helper() + shared::;\n};\n",
     )
     .unwrap();
     fs::write(
@@ -800,7 +800,7 @@ fn lsp_server_keeps_local_and_imported_namespace_members_separate() {
     )
     .unwrap();
     fs::write(
-        root.join("shared/src/lib.fol"),
+        root.join("shared/lib.fol"),
         "fun[exp] helper(): int = {\n    return 9;\n};\n",
     )
     .unwrap();
@@ -846,7 +846,7 @@ fn lsp_server_locks_loc_and_same_package_namespace_completion() {
     fs::create_dir_all(root.join("app/src/api/tools")).unwrap();
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return api::;\n};\n",
+        "use shared: loc = {\"../../shared\"};\n\nfun[] main(): int = {\n    return api::;\n};\n",
     )
     .unwrap();
     fs::write(
@@ -860,7 +860,7 @@ fn lsp_server_locks_loc_and_same_package_namespace_completion() {
     )
     .unwrap();
     fs::write(
-        root.join("shared/src/lib.fol"),
+        root.join("shared/lib.fol"),
         "fun[exp] helper(): int = {\n    return 9;\n};\n",
     )
     .unwrap();
@@ -1021,7 +1021,7 @@ fn lsp_server_completes_bundled_std_names_only_when_declared() {
 #[test]
 fn lsp_server_completes_declared_aliases_without_leaking_undeclared_ones() {
     let (root, uri) = copied_example_package_root("examples/std_bundled_fmt");
-    fs::create_dir_all(root.join("shared/src")).unwrap();
+    fs::create_dir_all(root.join("shared")).unwrap();
     fs::write(
         root.join("shared/build.fol"),
         concat!(
@@ -1034,13 +1034,13 @@ fn lsp_server_completes_declared_aliases_without_leaking_undeclared_ones() {
     )
     .unwrap();
     fs::write(
-        root.join("shared/src/lib.fol"),
+        root.join("shared/lib.fol"),
         "fun[exp] helper(): int = {\n    return 7;\n};\n",
     )
     .unwrap();
     let source = concat!(
         "use std: pkg = {\"std\"};\n",
-        "use shared: loc = {\"../shared\"};\n",
+        "use shared: loc = {\"../../shared\"};\n",
         "\n",
         "fun[] main(): int = {\n",
         "    return ;\n",
@@ -1085,7 +1085,7 @@ fn lsp_server_completes_declared_aliases_without_leaking_undeclared_ones() {
 #[test]
 fn lsp_server_keeps_bundled_std_and_dependency_members_separate_after_qualification() {
     let (root, uri) = copied_example_package_root("examples/std_bundled_fmt");
-    fs::create_dir_all(root.join("shared/src")).unwrap();
+    fs::create_dir_all(root.join("shared")).unwrap();
     fs::write(
         root.join("shared/build.fol"),
         concat!(
@@ -1098,7 +1098,7 @@ fn lsp_server_keeps_bundled_std_and_dependency_members_separate_after_qualificat
     )
     .unwrap();
     fs::write(
-        root.join("shared/src/lib.fol"),
+        root.join("shared/lib.fol"),
         "fun[exp] helper(): int = {\n    return 7;\n};\n",
     )
     .unwrap();

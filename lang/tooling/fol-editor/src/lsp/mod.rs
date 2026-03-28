@@ -383,6 +383,7 @@ impl EditorLspServer {
         let snapshot = self.semantic_snapshot(uri, &document)?;
         let hit = snapshot
             .reference_at(position)
+            .as_ref()
             .and_then(|reference| snapshot.hover_for_reference(reference));
         Ok(hit)
     }
@@ -396,6 +397,7 @@ impl EditorLspServer {
         let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(snapshot
             .reference_at(position)
+            .as_ref()
             .and_then(|reference| snapshot.definition_for_reference(reference)))
     }
 
@@ -447,6 +449,7 @@ impl EditorLspServer {
         let snapshot = self.semantic_snapshot(uri, &document)?;
         Ok(snapshot
             .reference_at(position)
+            .as_ref()
             .map(|reference| snapshot.references_for_reference(reference, include_declaration))
             .unwrap_or_default())
     }
@@ -465,7 +468,7 @@ impl EditorLspServer {
                 format!("no rename target at {}:{}", position.line, position.character),
             )
         })?;
-        snapshot.rename_for_reference(reference, new_name)
+        snapshot.rename_for_reference(&reference, new_name)
     }
 
     pub fn workspace_symbols(

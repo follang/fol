@@ -4,7 +4,7 @@ use crate::{
     LspWorkspaceEdit,
 };
 use fol_intrinsics::IntrinsicSurface;
-use fol_parser::ast::{AstNode, SyntaxNodeId};
+use fol_parser::ast::{AstNode, ParsedSourceUnitKind, SyntaxNodeId};
 use fol_typecheck::{
     editor_builtin_type_names, editor_container_type_names, editor_implemented_intrinsics,
     editor_intrinsic_available_in_model, editor_shell_type_names,
@@ -35,7 +35,10 @@ pub(super) fn semantic_token_types() -> &'static [&'static str] {
 
 #[derive(Debug)]
 pub(crate) struct SemanticSnapshot {
+    pub(super) source_analysis_root: PathBuf,
+    pub(super) analyzed_analysis_root: PathBuf,
     pub(super) analyzed_path: Option<PathBuf>,
+    pub(super) analyzed_package_root: Option<PathBuf>,
     pub(super) source_document_path: PathBuf,
     pub(super) source_package_root: Option<PathBuf>,
     pub(super) active_fol_model: Option<TypecheckCapabilityModel>,
@@ -46,20 +49,28 @@ pub(crate) struct SemanticSnapshot {
 }
 
 impl SemanticSnapshot {
+    fn map_analyzed_file_to_source(&self, file: &str) -> String {
+        let analyzed = Path::new(file);
+        analyzed
+            .strip_prefix(&self.analyzed_analysis_root)
+            .ok()
+            .map(|relative| self.source_analysis_root.join(relative))
+            .unwrap_or_else(|| analyzed.to_path_buf())
+            .to_string_lossy()
+            .to_string()
+    }
+
     pub(super) fn signature_help(
         &self,
         document: &EditorDocument,
         position: LspPosition,
     ) -> Option<LspSignatureHelp> {
-        let resolved = self.resolved_workspace.as_ref()?;
         let typed = self.typed_workspace.as_ref()?;
         let (package, program) = self.current_resolved_package()?;
         let typed_package = typed.package(&package.identity)?;
         let cursor_offset = offset_for_position(&document.text, position)?;
         let call_site = self.call_site_at_position(program, document, cursor_offset)?;
-        let reference = program
-            .all_references()
-            .find(|reference| reference.syntax_id == Some(call_site.callee_syntax_id))?;
+        let reference = reference_for_syntax_id(program, call_site.callee_syntax_id)?;
         let symbol_id = reference.resolved?;
         let declared_type = typed_package.program.typed_symbol(symbol_id)?.declared_type?;
         let signature = match typed_package.program.type_table().get(declared_type) {
@@ -86,8 +97,6 @@ impl SemanticSnapshot {
         } else {
             Some(call_site.active_parameter.min(parameters.len().saturating_sub(1)) as u32)
         };
-
-        let _ = resolved;
         Some(LspSignatureHelp {
             signatures: vec![LspSignatureInformation {
                 label,
@@ -247,6 +256,7 @@ impl SemanticSnapshot {
             ) {
                 continue;
             }
+            let package_root = Path::new(&package.prepared.identity.canonical_root);
 
             for symbol in package.program.all_symbols() {
                 if !completion_symbol_is_root_visible(&package.program, symbol) {
@@ -268,19 +278,31 @@ impl SemanticSnapshot {
                 let Some(file) = origin.file.as_ref() else {
                     continue;
                 };
+                if !Path::new(file).starts_with(package_root) {
+                    continue;
+                }
                 let Some(source_unit) = package.program.source_units.get(symbol.source_unit) else {
                     continue;
                 };
+                if source_unit.kind != ParsedSourceUnitKind::Ordinary {
+                    continue;
+                }
 
-                let qualified_name = if source_unit.namespace == package.identity.display_name {
+                let package_root_namespace = source_unit.namespace == package.identity.display_name
+                    || source_unit.namespace
+                        == format!("{}::src", package.identity.display_name);
+                let qualified_name = if package_root_namespace {
                     symbol.name.clone()
                 } else {
                     format!("{}::{}", source_unit.namespace, symbol.name)
                 };
-                let container_name = Some(format!(
-                    "{} ({})",
-                    source_unit.namespace, package.identity.display_name
-                ));
+                let container_namespace = if package_root_namespace {
+                    package.identity.display_name.as_str()
+                } else {
+                    source_unit.namespace.as_str()
+                };
+                let container_name =
+                    Some(format!("{container_namespace} ({})", package.identity.display_name));
                 if !query.is_empty() {
                     let package_name = package.identity.display_name.to_ascii_lowercase();
                     let namespace = source_unit.namespace.to_ascii_lowercase();
@@ -299,9 +321,9 @@ impl SemanticSnapshot {
                     name: qualified_name,
                     kind: symbol_kind_code(symbol.kind),
                     location: LspLocation {
-                        uri: format!("file://{file}"),
+                        uri: format!("file://{}", self.map_analyzed_file_to_source(file)),
                         range: location_to_range(&fol_diagnostics::DiagnosticLocation {
-                            file: Some(file.clone()),
+                            file: Some(self.map_analyzed_file_to_source(file)),
                             line: origin.line,
                             column: origin.column,
                             length: Some(origin.length),
@@ -939,18 +961,10 @@ impl SemanticSnapshot {
     pub(super) fn reference_at(
         &self,
         position: LspPosition,
-    ) -> Option<&fol_resolver::ResolvedReference> {
-        use super::analysis::syntax_at_position;
-        let resolved = self.resolved_workspace.as_ref()?;
+    ) -> Option<fol_resolver::ResolvedReference> {
+        let program = self.current_program()?;
         let analyzed_path = self.analyzed_path.as_ref()?;
-        let needle = resolved.packages().find_map(|package| {
-            let program = &package.program;
-            let syntax_id = syntax_at_position(program, analyzed_path.as_path(), position)?;
-            program
-                .all_references()
-                .find(|reference| reference.syntax_id == Some(syntax_id))
-        })?;
-        Some(needle)
+        reference_at_position_in_program(program, analyzed_path.as_path(), position)
     }
 
     // COMPILER-BACKED: resolved symbol + typed type (no text fallback)
@@ -958,44 +972,42 @@ impl SemanticSnapshot {
         &self,
         reference: &fol_resolver::ResolvedReference,
     ) -> Option<LspHover> {
-        let resolved = self.resolved_workspace.as_ref()?;
-        for package in resolved.packages() {
-            let program = &package.program;
-            if let Some(symbol_id) = reference.resolved {
-                let symbol = program.symbol(symbol_id)?;
-                let origin = symbol.origin.as_ref()?;
-                let type_summary = self
+        let (package, program) = self.current_resolved_package()?;
+        let symbol_id = reference.resolved?;
+        let symbol = program.symbol(symbol_id)?;
+        let origin = symbol.origin.as_ref()?;
+        let type_summary = self
+            .typed_workspace
+            .as_ref()
+            .and_then(|typed| typed.package(&package.identity))
+            .and_then(|typed_package| typed_package.program.typed_symbol(symbol_id))
+            .and_then(|typed_symbol| typed_symbol.declared_type)
+            .map(|type_id| {
+                let typed_package = self
                     .typed_workspace
                     .as_ref()
                     .and_then(|typed| typed.package(&package.identity))
-                    .and_then(|typed_package| typed_package.program.typed_symbol(symbol_id))
-                    .and_then(|typed_symbol| typed_symbol.declared_type)
-                    .map(|type_id| {
-                        let typed_package = self
-                            .typed_workspace
-                            .as_ref()
-                            .and_then(|typed| typed.package(&package.identity))
-                            .expect("typed package should exist when declared type is available");
-                        render_checked_type(typed_package.program.type_table(), type_id)
-                    })
-                    .unwrap_or_else(|| "unknown".to_string());
-                return Some(LspHover {
-                    contents: format!(
-                        "{} {}: {}",
-                        render_symbol_kind(symbol.kind),
-                        symbol.name,
-                        type_summary
-                    ),
-                    range: Some(location_to_range(&fol_diagnostics::DiagnosticLocation {
-                        file: origin.file.clone(),
-                        line: origin.line,
-                        column: origin.column,
-                        length: Some(origin.length),
-                    })),
-                });
-            }
-        }
-        None
+                    .expect("typed package should exist when declared type is available");
+                render_checked_type(typed_package.program.type_table(), type_id)
+            })
+            .unwrap_or_else(|| "unknown".to_string());
+        Some(LspHover {
+            contents: format!(
+                "{} {}: {}",
+                render_symbol_kind(symbol.kind),
+                symbol.name,
+                type_summary
+            ),
+            range: Some(location_to_range(&fol_diagnostics::DiagnosticLocation {
+                file: origin
+                    .file
+                    .as_deref()
+                    .map(|file| self.map_analyzed_file_to_source(file)),
+                line: origin.line,
+                column: origin.column,
+                length: Some(origin.length),
+            })),
+        })
     }
 
     // COMPILER-BACKED: resolved symbol origin (no text fallback)
@@ -1003,25 +1015,20 @@ impl SemanticSnapshot {
         &self,
         reference: &fol_resolver::ResolvedReference,
     ) -> Option<LspLocation> {
-        let resolved = self.resolved_workspace.as_ref()?;
-        for package in resolved.packages() {
-            let program = &package.program;
-            if let Some(symbol_id) = reference.resolved {
-                let symbol = program.symbol(symbol_id)?;
-                let origin = symbol.origin.as_ref()?;
-                let file = origin.file.as_ref()?;
-                return Some(LspLocation {
-                    uri: format!("file://{file}"),
-                    range: location_to_range(&fol_diagnostics::DiagnosticLocation {
-                        file: Some(file.clone()),
-                        line: origin.line,
-                        column: origin.column,
-                        length: Some(origin.length),
-                    }),
-                });
-            }
-        }
-        None
+        let (_, program) = self.current_resolved_package()?;
+        let symbol_id = reference.resolved?;
+        let symbol = program.symbol(symbol_id)?;
+        let origin = symbol.origin.as_ref()?;
+        let file = self.map_analyzed_file_to_source(origin.file.as_ref()?);
+        Some(LspLocation {
+            uri: format!("file://{file}"),
+            range: location_to_range(&fol_diagnostics::DiagnosticLocation {
+                file: Some(file),
+                line: origin.line,
+                column: origin.column,
+                length: Some(origin.length),
+            }),
+        })
     }
 
     pub(super) fn references_for_reference(
@@ -1029,53 +1036,50 @@ impl SemanticSnapshot {
         reference: &fol_resolver::ResolvedReference,
         include_declaration: bool,
     ) -> Vec<LspLocation> {
-        let Some(resolved) = self.resolved_workspace.as_ref() else {
+        let Some((_, program)) = self.current_resolved_package() else {
             return Vec::new();
         };
         let Some(symbol_id) = reference.resolved else {
             return Vec::new();
         };
         let mut locations = Vec::new();
+        let Some(symbol) = program.symbol(symbol_id) else {
+            return Vec::new();
+        };
 
-        for package in resolved.packages() {
-            let program = &package.program;
-            let Some(symbol) = program.symbol(symbol_id) else {
-                continue;
-            };
-
-            if include_declaration {
-                if let Some(origin) = symbol.origin.as_ref() {
-                    if let Some(file) = origin.file.as_ref() {
-                        locations.push(LspLocation {
-                            uri: format!("file://{file}"),
-                            range: location_to_range(&fol_diagnostics::DiagnosticLocation {
-                                file: Some(file.clone()),
-                                line: origin.line,
-                                column: origin.column,
-                                length: Some(origin.length),
-                            }),
-                        });
-                    }
+        if include_declaration {
+            if let Some(origin) = symbol.origin.as_ref() {
+                if let Some(file) = origin.file.as_ref() {
+                    let source_file = self.map_analyzed_file_to_source(file);
+                    locations.push(LspLocation {
+                        uri: format!("file://{source_file}"),
+                        range: location_to_range(&fol_diagnostics::DiagnosticLocation {
+                            file: Some(source_file),
+                            line: origin.line,
+                            column: origin.column,
+                            length: Some(origin.length),
+                        }),
+                    });
                 }
             }
+        }
 
-            for hit in program.all_references().filter(|hit| hit.resolved == Some(symbol_id)) {
-                let Some(syntax_id) = hit.syntax_id else { continue };
-                let Some(origin) = program.syntax_index().origin(syntax_id) else {
-                    continue;
-                };
-                let Some(file) = origin.file.as_ref() else { continue };
-                locations.push(LspLocation {
-                    uri: format!("file://{file}"),
-                    range: location_to_range(&fol_diagnostics::DiagnosticLocation {
-                        file: Some(file.clone()),
-                        line: origin.line,
-                        column: origin.column,
-                        length: Some(origin.length),
-                    }),
-                });
-            }
-            break;
+        for hit in program.all_references().filter(|hit| hit.resolved == Some(symbol_id)) {
+            let Some(syntax_id) = hit.syntax_id else { continue };
+            let Some(origin) = program.syntax_index().origin(syntax_id) else {
+                continue;
+            };
+            let Some(file) = origin.file.as_ref() else { continue };
+            let source_file = self.map_analyzed_file_to_source(file);
+            locations.push(LspLocation {
+                uri: format!("file://{source_file}"),
+                range: location_to_range(&fol_diagnostics::DiagnosticLocation {
+                    file: Some(source_file),
+                    line: origin.line,
+                    column: origin.column,
+                    length: Some(origin.length),
+                }),
+            });
         }
 
         locations.sort_by(|left, right| {
@@ -1093,7 +1097,7 @@ impl SemanticSnapshot {
         reference: &fol_resolver::ResolvedReference,
         new_name: &str,
     ) -> EditorResult<LspWorkspaceEdit> {
-        let resolved = self.resolved_workspace.as_ref().ok_or_else(|| {
+        self.resolved_workspace.as_ref().ok_or_else(|| {
             EditorError::new(
                 EditorErrorKind::InvalidInput,
                 "rename requires a resolved workspace",
@@ -1109,13 +1113,20 @@ impl SemanticSnapshot {
             )
         })?;
         let analyzed_path_text = analyzed_path.to_string_lossy().to_string();
-        let source_package_root = self.source_package_root.as_ref();
+        let analyzed_package_root = self.analyzed_package_root.as_ref();
 
-        for package in resolved.packages() {
-            let program = &package.program;
-            let Some(symbol) = program.symbol(symbol_id) else {
-                continue;
-            };
+        let (_, program) = self.current_resolved_package().ok_or_else(|| {
+            EditorError::new(
+                EditorErrorKind::InvalidInput,
+                "rename target symbol was not found in the resolved workspace",
+            )
+        })?;
+        let Some(symbol) = program.symbol(symbol_id) else {
+            return Err(EditorError::new(
+                EditorErrorKind::InvalidInput,
+                "rename target symbol was not found in the resolved workspace",
+            ));
+        };
 
             if !matches!(
                 symbol.kind,
@@ -1148,7 +1159,7 @@ impl SemanticSnapshot {
                     | fol_resolver::SymbolKind::Definition
             );
             let path_is_in_current_package = |file: &str| {
-                source_package_root
+                analyzed_package_root
                     .map(|root| Path::new(file).starts_with(root))
                     .unwrap_or(false)
             };
@@ -1175,10 +1186,10 @@ impl SemanticSnapshot {
                 ));
             }
             edits.push((
-                declaration_file.clone(),
+                self.map_analyzed_file_to_source(declaration_file),
                 LspTextEdit {
                     range: location_to_range(&fol_diagnostics::DiagnosticLocation {
-                        file: Some(declaration_file.clone()),
+                        file: Some(self.map_analyzed_file_to_source(declaration_file)),
                         line: declaration.line,
                         column: declaration.column,
                         length: Some(declaration.length),
@@ -1202,10 +1213,10 @@ impl SemanticSnapshot {
                     ));
                 }
                 edits.push((
-                    file.clone(),
+                    self.map_analyzed_file_to_source(file),
                     LspTextEdit {
                         range: location_to_range(&fol_diagnostics::DiagnosticLocation {
-                            file: Some(file.clone()),
+                            file: Some(self.map_analyzed_file_to_source(file)),
                             line: origin.line,
                             column: origin.column,
                             length: Some(origin.length),
@@ -1244,13 +1255,7 @@ impl SemanticSnapshot {
                     .then(left.range.start.character.cmp(&right.range.start.character))
                 });
             }
-            return Ok(LspWorkspaceEdit { changes });
-        }
-
-        Err(EditorError::new(
-            EditorErrorKind::InvalidInput,
-            "rename target symbol was not found in the resolved workspace",
-        ))
+        Ok(LspWorkspaceEdit { changes })
     }
 
     // COMPILER-BACKED: resolved symbols by path (no text fallback)
@@ -1420,6 +1425,149 @@ fn signature_call_site(
         active_parameter: active_parameter_index(text, open_paren, cursor_offset),
         span_len: close_paren.saturating_sub(callee_start),
     })
+}
+
+fn reference_for_syntax_id(
+    program: &fol_resolver::ResolvedProgram,
+    syntax_id: SyntaxNodeId,
+) -> Option<fol_resolver::ResolvedReference> {
+    if let Some(reference) = program
+        .all_references()
+        .find(|reference| reference.syntax_id == Some(syntax_id))
+    {
+        return Some(reference.clone());
+    }
+    let origin = program.syntax_index().origin(syntax_id)?;
+    let file = origin.file.as_deref()?;
+    let line = origin.line;
+    let column = origin.column;
+    let mut best_reference: Option<(&fol_resolver::ResolvedReference, usize)> = None;
+    for reference in program.all_references() {
+        let Some(reference_syntax_id) = reference.syntax_id else {
+            continue;
+        };
+        let Some(reference_origin) = program.syntax_index().origin(reference_syntax_id) else {
+            continue;
+        };
+        if reference_origin.file.as_deref()? != file {
+            continue;
+        }
+        if !origin_contains(reference_origin, line, column) {
+            continue;
+        }
+        match best_reference {
+            Some((_, best_len)) if best_len <= reference_origin.length => {}
+            _ => best_reference = Some((reference, reference_origin.length.max(1))),
+        }
+    }
+    if let Some((reference, _)) = best_reference {
+        return Some(reference.clone());
+    }
+
+    let mut best_symbol: Option<(&fol_resolver::ResolvedSymbol, usize)> = None;
+    for symbol in program.all_symbols() {
+        let Some(symbol_origin) = symbol.origin.as_ref() else {
+            continue;
+        };
+        if symbol_origin.file.as_deref()? != file {
+            continue;
+        }
+        if !origin_contains(symbol_origin, line, column) {
+            continue;
+        }
+        match best_symbol {
+            Some((_, best_len)) if best_len <= symbol_origin.length => {}
+            _ => best_symbol = Some((symbol, symbol_origin.length.max(1))),
+        }
+    }
+    best_symbol.map(|(symbol, _)| fol_resolver::ResolvedReference {
+        id: fol_resolver::ReferenceId(usize::MAX),
+        kind: fol_resolver::ReferenceKind::Identifier,
+        syntax_id: Some(syntax_id),
+        name: symbol.name.clone(),
+        scope: symbol.scope,
+        source_unit: symbol.source_unit,
+        resolved: Some(symbol.id),
+    })
+}
+
+fn reference_at_position_in_program(
+    program: &fol_resolver::ResolvedProgram,
+    path: &Path,
+    position: LspPosition,
+) -> Option<fol_resolver::ResolvedReference> {
+    use super::analysis::syntax_at_position;
+
+    if let Some(syntax_id) = syntax_at_position(program, path, position) {
+        if let Some(reference) = reference_for_syntax_id(program, syntax_id) {
+            return Some(reference);
+        }
+    }
+
+    let path_text = path.to_string_lossy();
+    let line = position.line as usize + 1;
+    let column = position.character as usize + 1;
+    let mut best_reference: Option<(&fol_resolver::ResolvedReference, usize)> = None;
+    for reference in program.all_references() {
+        let Some(syntax_id) = reference.syntax_id else {
+            continue;
+        };
+        let Some(origin) = program.syntax_index().origin(syntax_id) else {
+            continue;
+        };
+        let Some(file) = origin.file.as_ref() else {
+            continue;
+        };
+        if file != &path_text {
+            continue;
+        }
+        if !origin_contains(origin, line, column) {
+            continue;
+        }
+        match best_reference {
+            Some((_, best_len)) if best_len <= origin.length => {}
+            _ => best_reference = Some((reference, origin.length.max(1))),
+        }
+    }
+    if let Some((reference, _)) = best_reference {
+        return Some(reference.clone());
+    }
+
+    let mut best_symbol: Option<(&fol_resolver::ResolvedSymbol, usize)> = None;
+    for symbol in program.all_symbols() {
+        let Some(origin) = symbol.origin.as_ref() else {
+            continue;
+        };
+        let Some(file) = origin.file.as_ref() else {
+            continue;
+        };
+        if file != &path_text {
+            continue;
+        }
+        if !origin_contains(origin, line, column) {
+            continue;
+        }
+        match best_symbol {
+            Some((_, best_len)) if best_len <= origin.length => {}
+            _ => best_symbol = Some((symbol, origin.length.max(1))),
+        }
+    }
+    best_symbol.map(|(symbol, _)| fol_resolver::ResolvedReference {
+        id: fol_resolver::ReferenceId(usize::MAX),
+        kind: fol_resolver::ReferenceKind::Identifier,
+        syntax_id: None,
+        name: symbol.name.clone(),
+        scope: symbol.scope,
+        source_unit: symbol.source_unit,
+        resolved: Some(symbol.id),
+    })
+}
+
+fn origin_contains(origin: &fol_parser::ast::SyntaxOrigin, line: usize, column: usize) -> bool {
+    let start_line = origin.line;
+    let start_column = origin.column;
+    let end_column = start_column + origin.length.max(1);
+    line == start_line && column >= start_column && column <= end_column
 }
 
 fn offset_for_origin(text: &str, origin: &fol_parser::ast::SyntaxOrigin) -> Option<usize> {

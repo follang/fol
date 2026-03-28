@@ -124,7 +124,10 @@ pub(super) fn analyze_document_semantics(
             .collect::<Vec<_>>();
         if !parser_lsp_diags.is_empty() {
             return Ok(SemanticSnapshot {
+                source_analysis_root: mapping.analysis_root.clone(),
+                analyzed_analysis_root: overlay.analysis_root().to_path_buf(),
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
+                analyzed_package_root: overlay.package_root().map(Path::to_path_buf),
                 source_document_path: mapping.document_path.clone(),
                 source_package_root: mapping.package_root.clone(),
                 active_fol_model: mapping.active_fol_model,
@@ -161,7 +164,10 @@ pub(super) fn analyze_document_semantics(
                         vec![diagnostic_to_lsp(&diagnostic)]
                     };
                     return Ok(SemanticSnapshot {
+                        source_analysis_root: mapping.analysis_root.clone(),
+                        analyzed_analysis_root: overlay.analysis_root().to_path_buf(),
                         analyzed_path: Some(overlay.document_path().to_path_buf()),
+                        analyzed_package_root: overlay.package_root().map(Path::to_path_buf),
                         source_document_path: mapping.document_path.clone(),
                         source_package_root: mapping.package_root.clone(),
                         active_fol_model: mapping.active_fol_model,
@@ -193,7 +199,10 @@ pub(super) fn analyze_document_semantics(
                     .map(|error| error.to_diagnostic())
                     .collect::<Vec<_>>();
                 return Ok(SemanticSnapshot {
+                    source_analysis_root: mapping.analysis_root.clone(),
+                    analyzed_analysis_root: overlay.analysis_root().to_path_buf(),
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
+                    analyzed_package_root: overlay.package_root().map(Path::to_path_buf),
                     source_document_path: mapping.document_path.clone(),
                     source_package_root: mapping.package_root.clone(),
                     active_fol_model: mapping.active_fol_model,
@@ -218,7 +227,10 @@ pub(super) fn analyze_document_semantics(
         TYPECHECK_WORKSPACE_CALLS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         match typechecker.check_resolved_workspace(resolved.clone()) {
             Ok(typed_workspace) => Ok(SemanticSnapshot {
+                source_analysis_root: mapping.analysis_root.clone(),
+                analyzed_analysis_root: overlay.analysis_root().to_path_buf(),
                 analyzed_path: Some(overlay.document_path().to_path_buf()),
+                analyzed_package_root: overlay.package_root().map(Path::to_path_buf),
                 source_document_path: mapping.document_path.clone(),
                 source_package_root: mapping.package_root.clone(),
                 active_fol_model: mapping.active_fol_model,
@@ -233,7 +245,10 @@ pub(super) fn analyze_document_semantics(
                     .map(|error| error.to_diagnostic())
                     .collect::<Vec<_>>();
                 Ok(SemanticSnapshot {
+                    source_analysis_root: mapping.analysis_root.clone(),
+                    analyzed_analysis_root: overlay.analysis_root().to_path_buf(),
                     analyzed_path: Some(overlay.document_path().to_path_buf()),
+                    analyzed_package_root: overlay.package_root().map(Path::to_path_buf),
                     source_document_path: mapping.document_path.clone(),
                     source_package_root: mapping.package_root.clone(),
                     active_fol_model: mapping.active_fol_model,
@@ -253,7 +268,10 @@ pub(super) fn analyze_document_semantics(
     } else {
         let diagnostics = parse_single_file_diagnostics(&mapping.document_path, &document.text)?;
         Ok(SemanticSnapshot {
+            source_analysis_root: mapping.analysis_root.clone(),
+            analyzed_analysis_root: mapping.analysis_root.clone(),
             analyzed_path: Some(mapping.document_path.clone()),
+            analyzed_package_root: mapping.package_root.clone(),
             source_document_path: mapping.document_path.clone(),
             source_package_root: mapping.package_root.clone(),
             active_fol_model: mapping.active_fol_model,

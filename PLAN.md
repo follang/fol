@@ -1,513 +1,237 @@
-# fol-editor V1 Hardening Plan
+# fol-editor Baseline Repair Plan
 
-This plan is only for the current V1 language/editor contract.
+This plan is only for repairing the current `fol-editor` baseline so the
+remaining V1 slices can be executed safely.
 
-It does not introduce V2 language features.
-It does not create a second semantic implementation in the editor.
-It keeps compiler-backed analysis as the source of truth.
+It is not a feature-growth plan.
+It is not V2 work.
+It is not a compatibility plan.
 
-The goal is to make `fol-editor` materially better for the current shipped
-language:
+The goal is simple:
 
-- better quick fixes
-- better completion
-- better hover / definition / references across real package boundaries
-- better diagnostics UX
-- stronger document / workspace symbols
-- safer rename in the currently-supported scope
-- stronger real-example and mixed-workspace coverage
+- make the current `fol-editor` navigation/editor baseline green
+- remove stale tests that no longer match compiler-backed truth
+- repair the shared editor seams that block further slice batches
 
-Non-goals for this plan:
+Success criteria for this repair plan:
 
-- no V2 syntax or semantic work
-- no editor-only semantic rules that compete with the compiler
-- no compatibility paths for removed syntax or removed build behavior
-- no speculative range formatting rollout unless formatter structure safety is
-  explicitly solved
+- `cargo test -p fol-editor navigation -- --nocapture` passes
+- `make build` passes
+- `make test` passes
+- the repo is clean except for unrelated user-owned changes
 
-## Epoch 1: Freeze V1 Editor Contract
+## Epoch 1: Reconfirm The Baseline
 
-### Slice 1 [complete]
-Audit and pin the currently shipped `fol-editor` capability set in docs and
-tests:
-
-- hover
-- definition
-- document symbols
-- workspace symbols
-- formatting
-- code actions
-- signature help
-- references
-- rename
-- semantic tokens
-- completion
+### Slice 1 (complete)
+Re-run the targeted failing navigation/editor baseline and pin the exact red set
+in notes/tests.
 
 Completion criteria:
 
-- `book/src/050_tooling/500_lsp.md` states the exact current surface
-- active lifecycle tests pin the advertised server capabilities
+- the failing test inventory is re-confirmed on the committed baseline
+- failures are grouped by root cause, not treated as unrelated noise
 
-### Slice 2 [complete]
-Document the V1 editor non-goals explicitly:
-
-- no V2-aware language support
-- no range formatting
-- no editor-owned semantic divergence
-- no broad rename beyond current safe classes
+### Slice 2 (complete)
+Audit the remaining open slices in the previous editor plan and mark which are
+blocked by baseline faults rather than missing feature work.
 
 Completion criteria:
 
-- `docs/editor-sync.md` and `AGENTS.md` reflect the same boundary
+- a short mapping exists from failing tests to blocking root causes
 
-### Slice 3 [complete]
-Add a top-level regression that fails if active docs/examples describe
-unsupported editor features as already shipped.
+## Epoch 2: Workspace And Overlay Repair
 
-Completion criteria:
-
-- suite fails on stale claims such as broad rename, broad code actions, or
-  range formatting
-
-## Epoch 2: Code Actions Worth Using
-
-### Slice 4 [complete]
-Audit the current code-action inventory in `fol-editor` and pin its exact
-starting behavior with direct tests.
-
-Completion criteria:
-
-- unresolved-name replacement behavior is locked with exact tests
-- parse-only and unsupported typecheck diagnostics remain action-free where
-  intended
-
-### Slice 5
-Add code actions for missing bundled std dependency diagnostics in the current
-V1 contract.
+### Slice 3 (complete)
+Repair editor overlay/materialization behavior for multi-package and workspace
+roots.
 
 Target behavior:
 
-- if code uses `use std: pkg = {"std"};` but build metadata lacks bundled std,
-  the editor offers a quick fix message appropriate to the current build model
+- local/workspace imports resolve against the copied analysis tree correctly
+- sibling packages are available during overlay analysis
+- the analyzed document remains traceable back to the real source path
 
 Completion criteria:
 
-- editor test proves a real quick fix is returned for the missing-std case
+- workspace-symbol and local-workspace navigation tests stop failing due to
+  missing copied roots
 
-### Slice 6
-Add code actions for wrong bundled std alias diagnostics.
+### Slice 4 (complete)
+Repair path normalization between overlay paths and source paths.
 
 Target behavior:
 
-- when a package declared bundled std under a different alias but source uses
-  `std`, the editor can suggest the declared alias or the import correction
+- definition/references/rename/symbol results point back to real source files
+- editor does not leak temp overlay paths to LSP consumers
 
 Completion criteria:
 
-- real package test covers alias mismatch quick fix
+- workspace/member navigation results use source paths consistently
 
-### Slice 7
-Add code actions for removed import syntax guidance where the compiler already
-produces exact replacement structure.
+## Epoch 3: Navigation Lookup Repair
+
+### Slice 5 (complete)
+Relax editor-side navigation lookup so it is not limited to exact resolver
+reference node hits when a symbol can still be identified safely.
 
 Target behavior:
 
-- unquoted import targets like `use x: pkg = {x};` offer the quoted fix when an
-  exact replacement is available
+- definition/references/rename work when the cursor lands on a declaration
+- same-package namespaced use sites resolve more reliably
+- imported namespace navigation becomes less brittle
 
 Completion criteria:
 
-- parser/LSP path test proves quick fix appears only when the exact replacement
-  is safe
+- failing same-file and same-package navigation tests turn green
 
-### Slice 8
-Add code actions for invalid `fol_model` spellings when the compiler emits exact
-guidance.
+### Slice 6 (complete)
+Repair same-file local reference inclusion/exclusion behavior.
 
 Target behavior:
 
-- stale `std` mode or stale `mem` mode diagnostics can surface a quick fix to
-  `memo` where the replacement is exact
+- include-declaration and exclude-declaration paths both behave correctly
+- local references do not lose the declaration location
 
 Completion criteria:
 
-- real `build.fol` editor test covers returned quick fix
+- local reference tests are green
 
-### Slice 9 [complete]
-Tighten code-action ranking and deduplication so editor UX remains stable when
-multiple compiler suggestions exist on one line.
-
-Completion criteria:
-
-- code actions sort deterministically
-- duplicate or overlapping edits do not multiply in the UI
-
-## Epoch 3: Completion Quality
-
-### Slice 10 [complete]
-Audit completion contexts and pin current plain / qualified / dot-trigger /
-type-position behavior with direct tests.
-
-Completion criteria:
-
-- completion tests explicitly cover each context class
-
-### Slice 11 [complete]
-Improve bundled std package completion in the canonical V1 form:
-
-- `use std: pkg = {"std"};`
-- `std::...`
-
-Completion criteria:
-
-- completion tests prove bundled std names appear only when the dependency is
-  actually declared
-
-### Slice 12 [complete]
-Improve `pkg` import alias completion for declared dependencies.
+### Slice 7 (complete)
+Repair current-package multi-file rename lookup.
 
 Target behavior:
 
-- declared aliases appear reliably in import positions
-- undeclared aliases do not leak into completion lists
+- same-package top-level rename finds the declaration and usage files
+- build-entry rename still rejects cleanly at the current safe boundary
 
 Completion criteria:
 
-- package-backed examples cover positive and negative alias completion
+- top-level rename tests and same-package rename tests are green
 
-### Slice 13 [complete]
-Improve namespaced member completion for cross-package and bundled std symbols.
+## Epoch 4: Local Origin Repair
 
-Completion criteria:
+### Slice 8 (complete)
+Repair missing declaration-origin data for local bindings and parameters.
 
-- completion after `std::`
-- completion after dependency alias namespace
-- no unrelated package bleed in the offered items
+Target behavior:
 
-### Slice 14 [complete]
-Improve build-file completion around the current build system:
-
-- `.build()`
-- build methods
-- graph methods
-- dependency-handle methods
-- output/path-handle methods
+- rename/reference flows can find declaration locations for locals/parameters
+- solution may be compiler-backed origin propagation or a narrow editor fallback,
+  but it must stay honest and deterministic
 
 Completion criteria:
 
-- build-file completion tests cover current public build API groups
+- local binding rename test is green
+- parameter rename test is green
 
-### Slice 15 [complete]
-Improve mixed-workspace completion filtering so package-local ambiguity does not
-bleed wrong-model or wrong-package names into the list.
+### Slice 9 (complete)
+Audit local-origin repair across other supported local classes.
 
-Completion criteria:
+Target behavior:
 
-- mixed-model workspace completion stays conservative
-
-## Epoch 4: Hover, Definition, References
-
-### Slice 16
-Audit current hover behavior and pin bundled std hover output in real examples.
+- label/destructure/capture/loop-binder classes do not regress silently
 
 Completion criteria:
 
-- bundled std routine hover is stable and tested
+- tests or explicit audit notes cover the currently supported local classes
 
-### Slice 17
-Strengthen definition jumps across:
+## Epoch 5: Signature Help Repair
 
-- current package
-- declared dependency aliases
-- bundled std
+### Slice 10 (complete)
+Repair plain-call signature help.
 
 Completion criteria:
 
-- definition tests prove cross-package jumps work for the shipped V1 forms
+- plain routine-call signature help test is green
 
-### Slice 18
-Strengthen reference results for supported symbol classes across package roots.
-
-Completion criteria:
-
-- same-file local references remain correct
-- current-package top-level references remain correct
-- supported package-backed references do not duplicate or miss obvious uses
-
-### Slice 19 [complete]
-Add explicit negative navigation coverage for missing bundled std dependency and
-alias mismatch situations.
+### Slice 11 (complete)
+Repair qualified-call signature help.
 
 Completion criteria:
 
-- hover / definition / references fail cleanly with current diagnostics instead
-  of jumping to nonsense
+- qualified namespaced call signature help test is green
 
-### Slice 20
-Tighten hover detail rendering so current V1 types and symbol kinds display more
-consistently in ordinary source and `build.fol`.
+### Slice 12 (complete)
+Repair build-file signature help.
 
 Completion criteria:
 
-- stable rendering tests for representative routine/type/build handles
+- build-file helper-call signature help test is green
 
-## Epoch 5: Diagnostics UX
+## Epoch 6: Quick Fix Truth Alignment
 
-### Slice 21 [complete]
-Audit current diagnostic adaptation and pin the intended editor-facing message
-shape:
+### Slice 13 (complete)
+Re-audit unresolved-name quick-fix expectations against the actual diagnostic
+suggestion path.
 
-- diagnostic code included
-- dedupe behavior
-- no extra editor-only semantic wording
+Target behavior:
 
-Completion criteria:
-
-- diagnostics tests lock the current shape
-
-### Slice 22 [complete]
-Improve related-location / note projection where compiler diagnostics already
-carry meaningful extra locations.
+- if compiler-backed suggestions exist, editor surfaces them
+- if they do not exist, tests stop pretending they do
 
 Completion criteria:
 
-- editor diagnostics expose more compiler structure without inventing new logic
+- unresolved-name quick-fix tests match real compiler-backed truth
 
-### Slice 23 [complete]
-Reduce noisy duplicate diagnostics during mid-edit invalid states.
-
-Completion criteria:
-
-- editor retains useful diagnostics while avoiding repeated cascade spam in the
-  open file
-
-### Slice 24 [complete]
-Add explicit V1 coverage for current important diagnostic classes:
-
-- missing std dependency
-- std alias mismatch
-- invalid import target syntax
-- invalid `fol_model`
-- model-boundary violations in `core` / `memo`
+### Slice 14 (complete)
+Repair requested-diagnostic-context filtering for code actions.
 
 Completion criteria:
 
-- editor tests map these diagnostics to stable LSP output
+- code actions only appear when the requested diagnostic matches
 
-### Slice 25 [complete]
-Audit build-file diagnostics and ensure build-specific failures remain readable
-and current-contract-oriented in the editor.
-
-Completion criteria:
-
-- build-file editor tests cover current public build errors
-
-## Epoch 6: Symbols and Outline
-
-### Slice 26 [complete]
-Audit document symbols for nested namespaces, imports, and current shipped
-standard-library examples.
+### Slice 15 (complete)
+Re-audit typecheck-only no-action expectations.
 
 Completion criteria:
 
-- representative document-symbol snapshots are pinned
+- tests prove action-free behavior for typecheck diagnostics without exact
+  replacements
+- stale assumptions are deleted
 
-### Slice 27 [complete]
-Improve workspace symbol relevance and filtering for current open workspace
-members.
+## Epoch 7: Diagnostics And Wording Repair
 
-Completion criteria:
+### Slice 16 (complete)
+Repair future-version boundary diagnostic expectations.
 
-- workspace symbol tests behave better for mixed package sets
+Target behavior:
 
-### Slice 28 [complete]
-Ensure bundled std examples and dependency-backed packages contribute correct
-document/workspace symbols.
-
-Completion criteria:
-
-- symbol tests include bundled std examples and declared dependency examples
-
-### Slice 29 [complete]
-Add explicit negative coverage to ensure unsupported or unresolved entities do
-not masquerade as symbols.
+- tests match the actual current compiler/editor wording and related-info shape
+- no stale requirement for a `V2` literal if the real diagnostic changed
 
 Completion criteria:
 
-- unresolved imports and malformed syntax do not produce misleading symbol
-  entries
+- future-boundary editor test is green and honest
 
-## Epoch 7: Rename Hardening
-
-### Slice 30 [complete]
-Audit current rename support and pin the current safe boundary:
-
-- same-file locals
-- current-package top-level symbols
+### Slice 17 (complete)
+Sweep the remaining navigation tests for stale current-contract wording.
 
 Completion criteria:
 
-- tests and docs state the supported boundary explicitly
+- tests refer to the real current V1 contract only
 
-### Slice 31
-Harden same-file local rename behavior through more syntax shapes:
+## Epoch 8: Close The Baseline
 
-- routine locals
-- parameters
-- pattern/destructure bindings where currently supported
+### Slice 18 (complete)
+Run the full targeted editor navigation suite and ensure it is green.
 
 Completion criteria:
 
-- rename tests cover the currently intended local symbol classes
+- `cargo test -p fol-editor navigation -- --nocapture` passes
 
-### Slice 32
-Harden current-package top-level rename so all touched files update correctly in
-the supported cases.
-
-Completion criteria:
-
-- multi-file package rename tests are reliable
-
-### Slice 33
-Add explicit negative rename coverage for unsupported cases:
-
-- cross-package rename
-- ambiguous mixed-workspace symbols
-- unresolved symbols
+### Slice 19 (complete)
+Run the repo gate.
 
 Completion criteria:
 
-- editor rejects these cleanly rather than producing partial edits
+- `make build` passes
+- `make test` passes
 
-## Epoch 8: Workspace Recovery and Real Examples
-
-### Slice 34 [complete]
-Audit workspace mapping and active-model recovery against the current V1
-contract:
-
-- `core`
-- `memo`
-- bundled std declared or not
+### Slice 20 (complete)
+Commit the repair batch and mark this repair plan complete.
 
 Completion criteria:
 
-- mapping tests cover single-artifact, uniform-package, and mixed-artifact roots
-
-### Slice 35 [complete]
-Strengthen ambiguous-file behavior in mixed-model workspaces so the editor keeps
-model unknown when it should remain conservative.
-
-Completion criteria:
-
-- ambiguous helper-file tests remain conservative
-
-### Slice 36 [complete]
-Add real-example editor coverage for the current canonical examples:
-
-- bundled std example packages
-- no-std runnable examples
-- raw substrate example
-- quoted import syntax examples
-
-Completion criteria:
-
-- example-model tests and integration editor tests cover these roots directly
-
-### Slice 37
-Tighten overlay/materialization behavior so editor tests do not rely on shared
-temp state or incidental build artifacts.
-
-Completion criteria:
-
-- editor tests are stable under repeated runs and parallel CI-like pressure
-
-## Epoch 9: Tree-sitter and Presentation Sync
-
-### Slice 38 [complete]
-Audit tree-sitter highlight/query coverage for current shipped V1 examples and
-current import/build syntax.
-
-Completion criteria:
-
-- real-example highlight tests cover quoted imports and current build syntax
-
-### Slice 39
-Add explicit tree-sitter/editor sync coverage for bundled std import forms:
-
-- `use std: pkg = {"std"};`
-
-Completion criteria:
-
-- stale removed import forms fail the editor tree-sitter suite
-
-### Slice 40
-Audit semantic-token output for current build-file and package-backed std
-examples.
-
-Completion criteria:
-
-- semantic-token tests cover bundled std and build-file identifiers with current
-  public naming
-
-### Slice 41
-Keep compiler-backed registry sync honest:
-
-- builtin names
-- intrinsic names
-- source kinds
-- model capability filtering
-
-Completion criteria:
-
-- top-level editor-sync regressions fail on drift
-
-## Epoch 10: Docs, Contributor Rules, Closure
-
-### Slice 42 [complete]
-Update the book’s LSP chapter so it matches the actual post-hardening V1 editor
-surface and limitations.
-
-Completion criteria:
-
-- `book/src/050_tooling/500_lsp.md` reflects real shipped behavior
-
-### Slice 43 [complete]
-Update `docs/editor-sync.md` with the final V1 editor-hardening expectations and
-the exact responsibilities that remain compiler-backed versus manual.
-
-Completion criteria:
-
-- contributor guidance is current and testable
-
-### Slice 44 [complete]
-Update `AGENTS.md` so future feature work is forced to consider:
-
-- code actions
-- completion
-- navigation
-- tree-sitter/editor mirror
-
-Completion criteria:
-
-- contributor rules mention editor checks for current V1 surfaces
-
-### Slice 45 [complete]
-Add a top-level stale-claim scan over docs/examples/tests so removed or
-unsupported editor claims do not creep back in.
-
-Completion criteria:
-
-- tests fail on stale claims such as unsupported broad rename, unsupported range
-  formatting, or ambient std import behavior
-
-## Done Definition
-
-This plan is complete when:
-
-- `fol-editor` remains compiler-backed for semantics
-- V1 quick fixes are materially more useful
-- completion/navigation are stronger for real package and bundled std workflows
-- diagnostics, symbols, and rename are more reliable in the current supported
-  scope
-- tree-sitter/editor sync stays honest
-- docs/tests/examples describe only the real shipped V1 editor surface
+- committed with one conventional-commit title only
+- `PLAN.md` fully marked complete
+- worktree left clean except unrelated user-owned changes

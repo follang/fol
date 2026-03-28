@@ -35,29 +35,29 @@ pub(super) fn sample_package_root(label: &str) -> (PathBuf, String) {
 pub(super) fn sample_loc_workspace_root(label: &str) -> (PathBuf, String) {
     let root = temp_root(label);
     let app_src = root.join("app/src");
-    let shared_src = root.join("shared/src");
+    let shared_src = root.join("shared");
     fs::create_dir_all(&app_src).unwrap();
     fs::create_dir_all(&shared_src).unwrap();
     fs::write(root.join("fol.work.yaml"), "members:\n  - app\n  - shared\n").unwrap();
 
     fs::write(
         root.join("app/build.fol"),
-        "pro[] build(): non = {\n    return;\n};\n",
+        concat!(
+            "pro[] build(): non = {\n",
+            "    var build = .build();\n",
+            "    build.meta({ name = \"app\", version = \"0.1.0\" });\n",
+            "    return;\n",
+            "};\n",
+        ),
     )
     .unwrap();
-    fs::write(
-        root.join("shared/build.fol"),
-        "pro[] build(): non = {\n    return;\n};\n",
-    )
-    .unwrap();
-
     fs::write(
         root.join("app/src/main.fol"),
-        "use shared: loc = {\"../shared\"};\n\nfun[] main(): int = {\n    return shared::helper();\n};\n",
+        "use shared: loc = {\"../../shared\"};\n\nfun[] main(): int = {\n    return shared::helper();\n};\n",
     )
     .unwrap();
     fs::write(
-        root.join("shared/src/lib.fol"),
+        root.join("shared/lib.fol"),
         "fun[exp] helper(): int = {\n    return 9;\n};\n",
     )
     .unwrap();

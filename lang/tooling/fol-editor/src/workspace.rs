@@ -117,7 +117,9 @@ pub fn materialize_analysis_overlay(
     mapping: &EditorWorkspaceMapping,
     document: &EditorDocument,
 ) -> EditorResult<EditorAnalysisOverlay> {
-    let overlay_source_root = mapping.package_root.as_ref().unwrap_or(&mapping.analysis_root);
+    // Multi-package editor analysis needs the full analysis tree, not only the
+    // current package root, so sibling local-import targets remain available.
+    let overlay_source_root = &mapping.analysis_root;
     let stamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .expect("system time should be after epoch")

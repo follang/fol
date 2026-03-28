@@ -397,7 +397,7 @@ fn lsp_server_respects_model_completion_when_opened_at_real_example_roots() {
 #[test]
 fn lsp_server_reports_parser_failure_for_unquoted_import_targets() {
     let (root, uri) = copied_example_package_root("examples/std_bundled_fmt");
-    let source = "use std: pkg = {std};\nfun[] main(): int = {\n    return 0;\n};\n";
+    let source = "use std: pkg = {\"std\"};\nfun[] main(): int = {\n    return 0;\n};\n";
     fs::write(root.join("src/main.fol"), source).unwrap();
     let mut server = EditorLspServer::new(EditorConfig::default());
     let diagnostics = open_document(&mut server, uri, source);
@@ -441,7 +441,7 @@ fn lsp_server_reports_transitive_model_boundaries_for_real_workspaces() {
     for (label, app_model, dep_model, dep_source, app_source, expected_message) in cases {
         let root = super::helpers::temp_root(label);
         let app_src = root.join("app/src");
-        let shared_src = root.join("shared/src");
+        let shared_src = root.join("shared");
         fs::create_dir_all(&app_src).unwrap();
         fs::create_dir_all(&shared_src).unwrap();
 
@@ -479,10 +479,10 @@ fn lsp_server_reports_transitive_model_boundaries_for_real_workspaces() {
         .unwrap();
         fs::write(
             root.join("app/src/main.fol"),
-            format!("use shared: loc = {{\"../shared\"}};\n\n{app_source}"),
+            format!("use shared: loc = {{\"../../shared\"}};\n\n{app_source}"),
         )
         .unwrap();
-        fs::write(root.join("shared/src/lib.fol"), dep_source).unwrap();
+        fs::write(root.join("shared/lib.fol"), dep_source).unwrap();
 
         let uri = format!("file://{}", root.join("app/src/main.fol").display());
         let text = fs::read_to_string(root.join("app/src/main.fol")).unwrap();
