@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
+            window.path_to_searchindex_js = "../searchindex-0ba88dfd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -198,7 +198,7 @@ should not collapse back into ad hoc string-only graph APIs</li>
 <pre><code class="language-fol">var app = graph.add_exe({
     name     = "app",
     root     = "src/main.fol",
-    fol_model = "std",   // spell this explicitly for each artifact
+    fol_model = "memo",   // spell this explicitly for each artifact
     target   = target,    // optional
     optimize = optimize,  // optional
 });
@@ -212,22 +212,22 @@ package root.</p>
 <ul>
 <li><code>core</code>
 no heap, no OS/runtime services</li>
-<li><code>alloc</code>
+<li><code>memo</code>
 heap-backed facilities, still no OS/runtime services</li>
 <li><code>std</code>
-hosted/runtime services on top of <code>alloc</code></li>
+hosted/runtime services on top of <code>memo</code></li>
 </ul>
-<p>If omitted today, <code>fol_model</code> behaves like <code>std</code>, but the recommended style is
-to spell it explicitly so the artifact contract is visible in <code>build.fol</code>.</p>
+<p>The recommended style is to spell <code>fol_model</code> explicitly on every artifact so
+the capability contract is visible in <code>build.fol</code>.</p>
 <p>The important boundary is semantic and runtime-facing:</p>
 <ul>
 <li><code>core</code> artifacts must not use heap-backed <code>str</code>, <code>vec</code>, <code>seq</code>, <code>set</code>, or
 <code>map</code></li>
 <li><code>core</code> artifacts may still use arrays, records, routines, control flow, and
 <code>defer</code></li>
-<li><code>alloc</code> artifacts may use heap-backed runtime types but not hosted services</li>
-<li><code>std</code> artifacts are the only artifacts that may use hosted services such as
-<code>.echo(...)</code> and ordinary host-executed <code>run</code> / <code>test</code></li>
+<li><code>memo</code> artifacts may use heap-backed runtime types but not hosted services</li>
+<li>bundled <code>std</code> wrappers require an explicit internal <code>standard</code> dependency</li>
+<li>hosted <code>run</code> / <code>test</code> are not tied to bundled std presence</li>
 </ul>
 <p>Current implementation note:</p>
 <ul>
@@ -247,15 +247,15 @@ should not yet be read as “finished embedded backend support”</li>
         root = "core/lib.fol",
         fol_model = "core",
     });
-    var alloclib = graph.add_static_lib({
-        name = "alloclib",
-        root = "alloc/lib.fol",
-        fol_model = "alloc",
+    var memolib = graph.add_static_lib({
+        name = "memolib",
+        root = "memo/lib.fol",
+        fol_model = "memo",
     });
     var tool = graph.add_exe({
         name = "tool",
         root = "app/main.fol",
-        fol_model = "std",
+        fol_model = "memo",
     });
 
     graph.install(tool);

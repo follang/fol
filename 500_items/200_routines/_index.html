@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-9fa70407.js";
+            window.path_to_searchindex_js = "../../searchindex-0ba88dfd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-aca3346a.js"></script>
@@ -384,6 +384,13 @@ unwrap or plain propagation.</p>
 <li><code>check(...)</code> is a keyword intrinsic for recoverable-call inspection</li>
 <li><code>panic(...)</code> is a keyword intrinsic for immediate abort</li>
 <li><code>as</code> and <code>cast</code> are registry-owned but still deferred in current <code>V1</code></li>
+</ul>
+<p>Model reminder:</p>
+<ul>
+<li>any routine example that calls <code>.echo(...)</code> assumes a <code>memo</code> artifact with
+bundled <code>std</code> support available</li>
+<li>routine examples without hosted behavior should stay valid in <code>core</code> or
+<code>memo</code> where the surrounding chapter claims they are model-neutral</li>
 </ul>
 <p>The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.</p>
 <pre><code>pro main(): int = {

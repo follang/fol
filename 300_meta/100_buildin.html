@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
+            window.path_to_searchindex_js = "../searchindex-0ba88dfd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -185,10 +185,10 @@ compiler-owned operations such as <code>.eq(...)</code>, <code>.len(...)</code>,
 <code>panic(...)</code></li>
 <li><code>core</code>:
 the minimal runtime model with no heap and no OS/runtime services</li>
-<li><code>alloc</code>:
+<li><code>memo</code>:
 heap-backed library/runtime support without OS/runtime services</li>
 <li><code>std</code>:
-hosted/runtime services on top of <code>alloc</code>, such as console, filesystem,
+hosted/runtime services on top of <code>memo</code>, such as console, filesystem,
 networking, serialization, and other richer services</li>
 </ul>
 <p>This split is not a source-level import trick and not an object-system feature.
@@ -228,8 +228,9 @@ through the current runtime layer where policy matters. The runtime contract is
 being split by <code>fol-model</code>, so the rule is:</p>
 <ul>
 <li><code>core</code> artifacts must not rely on heap-backed or hosted facilities</li>
-<li><code>alloc</code> artifacts may use heap-backed facilities but not hosted services</li>
-<li><code>std</code> artifacts may use hosted services</li>
+<li><code>memo</code> artifacts may use heap-backed facilities but not hosted services</li>
+<li>bundled <code>std</code> wrappers require a <code>memo</code> artifact plus explicit internal
+<code>standard</code> dependency</li>
 </ul>
 <p>In the current implementation that means:</p>
 <ul>
@@ -280,7 +281,7 @@ families, the compiler reports an intrinsic-specific type error.</p>
 </ul>
 <p>In the current compiler, <code>.len(...)</code> is the only implemented query intrinsic.
 Under the runtime model split, array <code>.len(...)</code> belongs to <code>core</code>, while
-string and dynamic-container <code>.len(...)</code> belongs to <code>alloc</code>/<code>std</code>.</p>
+string and dynamic-container <code>.len(...)</code> belongs to <code>memo</code>/<code>std</code>.</p>
 <h3 id="diagnostic"><a class="header" href="#diagnostic">Diagnostic</a></h3>
 <pre><code class="language-fol">.echo(value)
 </code></pre>
@@ -290,7 +291,7 @@ string and dynamic-container <code>.len(...)</code> belongs to <code>alloc</code
 <li>it emits the value through the <code>std</code> runtime hook</li>
 <li>it then forwards the same value unchanged</li>
 </ul>
-<p><code>.echo(...)</code> belongs to <code>std</code>, not <code>core</code> or <code>alloc</code>.</p>
+<p><code>.echo(...)</code> belongs to <code>std</code>, not <code>core</code> or <code>memo</code>.</p>
 <p>So this is valid:</p>
 <pre><code class="language-fol">fun[] main(flag: bol): bol = {
     return .echo(flag)

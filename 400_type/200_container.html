@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
+            window.path_to_searchindex_js = "../searchindex-0ba88dfd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -175,6 +175,13 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="container"><a class="header" href="#container">Container</a></h1>
+<p>Model reminder:</p>
+<ul>
+<li>examples here that call <code>.echo(...)</code> assume a <code>memo</code> artifact with bundled
+<code>std</code> support available</li>
+<li><code>arr[...]</code> is valid in <code>core</code></li>
+<li><code>vec[...]</code>, <code>seq[...]</code>, <code>set[...]</code>, and <code>map[...]</code> require <code>memo</code></li>
+</ul>
 <p>Containers are of compound types. They contain other primitive or constructed types. To access the types in container those brackets are used: <code>[]</code>, so:</p>
 <pre><code>var container: type = { element, element, element }             // declaring a container
 var varable: type = container[2]                                // accessing the last element

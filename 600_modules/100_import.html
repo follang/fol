@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
+            window.path_to_searchindex_js = "../searchindex-0ba88dfd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -177,12 +177,11 @@
                         <h1 id="imports"><a class="header" href="#imports">Imports</a></h1>
 <p>An import declaration states that the source file containing the declaration depends on functionality of the imported package and enables access to exported identifiers of that package.</p>
 <p>Syntax to import a library is:</p>
-<pre><code>use alias: source_kind = { source }
+<pre><code>use alias: source_kind = {"source"}
 </code></pre>
 <p>Current source kinds are:</p>
 <ul>
 <li><code>loc</code> for local directory imports</li>
-<li><code>std</code> for standard-library directory imports</li>
 <li><code>pkg</code> for installed external packages</li>
 </ul>
 <h2 id="what-use-imports"><a class="header" href="#what-use-imports">What <code>use</code> imports</a></h2>
@@ -217,14 +216,6 @@ Imports are for reaching another package or another namespace boundary.</p>
 <li>no <code>build.fol</code> is required</li>
 </ul>
 <p>This makes <code>loc</code> useful for local workspace code, experiments, and monorepo-style sharing.</p>
-<h3 id="std"><a class="header" href="#std"><code>std</code></a></h3>
-<p><code>std</code> works like <code>loc</code>, except the directory is resolved from the toolchain’s standard-library root.</p>
-<p>So:</p>
-<ul>
-<li><code>std</code> imports are directory-backed</li>
-<li>they are owned by the FOL toolchain</li>
-<li>they do not need user-managed package metadata in source code</li>
-</ul>
 <h3 id="pkg"><a class="header" href="#pkg"><code>pkg</code></a></h3>
 <p><code>pkg</code> is for formal external packages.</p>
 <p>Unlike <code>loc</code> and <code>std</code>, a <code>pkg</code> import does not just point at an arbitrary source directory.
@@ -276,27 +267,35 @@ direct dependencies, and the build graph</li>
 <li><code>use</code> = consume functionality</li>
 <li><code>pro[] build()</code> in <code>build.fol</code> = define package/build surface</li>
 </ul>
-<h2 id="system-libraries"><a class="header" href="#system-libraries">System libraries</a></h2>
-<p>This is how including other libraries works, for example include <code>fmt</code> module from standard library:</p>
-<pre><code>use fmt: std = {"fmt"};
-
-pro main: ini = {
-    fmt::log.warn("Last warning!...")
-}
+<h2 id="standard-library"><a class="header" href="#standard-library">Standard library</a></h2>
+<p>Bundled std is reached through the dependency system. In <code>build.fol</code>, add:</p>
+<pre><code>build.add_dep({
+    alias = "std",
+    source = "internal",
+    target = "standard",
+});
 </code></pre>
-<p>To use only the <code>log</code> namespace of <code>fmt</code> module:</p>
-<pre><code>use log: std = {"fmt/log"};
+<p>Then import from the <code>std</code> dependency alias with <code>pkg</code>:</p>
+<pre><code>use std: pkg = {"std"};
 
-pro[] main: int = {
-    log.warn("Last warning!...")
-}
+fun[] main(): int = {
+    return std::fmt::answer();
+};
 </code></pre>
-<p>But let’s say you only wanna use ONLY the <code>warn</code> functionality of <code>log</code> namespace from <code>fmt</code> module:</p>
-<pre><code>use warn: std = {"fmt/log"};
+<p>To use only one namespace of <code>fmt</code>:</p>
+<pre><code>use std: pkg = {"std"};
 
-pro[] main: int = {
-    warn("Last warning!...")
-}
+fun[] main(): int = {
+    return std::fmt::math::answer();
+};
+</code></pre>
+<p>Using the bundled <code>std.io</code> bootstrap surface:</p>
+<pre><code>use std: pkg = {"std"};
+
+fun[] main(): int = {
+    var shown: str = std::io::echo_str("hello");
+    return 7;
+};
 </code></pre>
 <h2 id="local-libraries"><a class="header" href="#local-libraries">Local libraries</a></h2>
 <p>To include a local package or namespace, point <code>loc</code> at the directory:</p>
@@ -313,7 +312,13 @@ But if the target directory already defines <code>build.fol</code> at its root, 
 <p>External packages are imported through <code>pkg</code>:</p>
 <pre><code>use space: pkg = {"space"};
 </code></pre>
-<p><code>pkg</code> imports are different from <code>loc</code> and <code>std</code>:</p>
+<p>Nested installed package paths use the same quoted target rule:</p>
+<pre><code>use nested: pkg = {"other/package/nested"};
+</code></pre>
+<p>Old unquoted targets are invalid and should fail in the parser:</p>
+<pre><code class="language-fol">use std: pkg = {std};
+</code></pre>
+<p><code>pkg</code> imports are different from <code>loc</code>:</p>
 <ul>
 <li>the imported root is an installed package root</li>
 <li>that root must contain <code>build.fol</code></li>

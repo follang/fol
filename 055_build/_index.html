@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
+            window.path_to_searchindex_js = "../searchindex-0ba88dfd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -271,6 +271,21 @@ public <code>Graph</code> or <code>Build</code> type.</p>
 <li><code>examples/build_install_prefix</code></li>
 <li><code>examples/build_system_lib</code></li>
 <li><code>examples/build_system_tool</code></li>
+</ul>
+<p>Runtime-model reminder:</p>
+<ul>
+<li>examples that rely on hosted behavior such as <code>.echo(...)</code> or routed
+execution should spell <code>fol_model = "memo"</code></li>
+<li><code>core</code> and <code>memo</code> examples in the build book should stay free of hosted
+assumptions</li>
+</ul>
+<p>Bundled std reminder:</p>
+<ul>
+<li><code>std</code> ships with FOL under <code>lang/library/std</code></li>
+<li>hosted packages add bundled std explicitly through:
+<code>.build().add_dep({ alias = "std", source = "internal", target = "standard" })</code></li>
+<li>normal hosted packages should rely on the bundled shipped <code>std</code>, not an
+external replacement package</li>
 </ul>
 
                     </main>

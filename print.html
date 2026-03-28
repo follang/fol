@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-9fa70407.js";
+            window.path_to_searchindex_js = "searchindex-0ba88dfd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-aca3346a.js"></script>
@@ -248,7 +248,7 @@ each (binder in iterable) { ... }
 <p>For the current user-facing tool workflow, read
 <a href="#frontend-workflow">Frontend Workflow</a>.</p>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
-<pre><code class="language-fol">use log: std = {"fmt/log"};
+<pre><code class="language-fol">use log: pkg = {"std/fmt/log"};
 
 var[hid] prefix: str = "arith";
 
@@ -481,6 +481,12 @@ and LSP surfaces used for ordinary source files</li>
 <li>shell completions</li>
 <li>user-facing summaries and workflow errors</li>
 </ul>
+<p>Bundled std reminder:</p>
+<ul>
+<li>hosted binary scaffolds should default to <code>fol_model = "memo"</code></li>
+<li>scaffolded projects should rely on bundled <code>std</code></li>
+<li>scaffolding should not teach manual std dependency setup</li>
+</ul>
 <p>Compiler truth remains in the compiler crates.</p>
 <h2 id="public-command-groups"><a class="header" href="#public-command-groups">Public Command Groups</a></h2>
 <p>The root command groups are:</p>
@@ -564,6 +570,12 @@ fol work deps
 <li>creating package/workspace roots</li>
 <li>inspecting workspace structure</li>
 <li>seeing member and dependency state</li>
+</ul>
+<p>Scaffold reminder:</p>
+<ul>
+<li><code>fol work init --bin</code> creates a hosted binary package with <code>fol_model = "memo"</code></li>
+<li>scaffolded packages rely on bundled <code>std</code> automatically</li>
+<li>scaffolded packages do not add <code>std</code> as an explicit dependency</li>
 </ul>
 <h2 id="pack"><a class="header" href="#pack">Pack</a></h2>
 <p>Package acquisition commands:</p>
@@ -1263,6 +1275,9 @@ of copied by hand.</p>
 <li>completion</li>
 <li>the same compiler-backed behavior for ordinary source files and <code>build.fol</code></li>
 </ul>
+<p>This is a V1 surface only.
+The editor does not claim V2-aware language support, broad rename outside the
+documented safe classes, or range formatting.</p>
 <p>That means build files should not need a separate editor mode.
 <code>build.fol</code> goes through the same language server entrypoint as the rest of the
 package.</p>
@@ -1507,6 +1522,21 @@ public <code>Graph</code> or <code>Build</code> type.</p>
 <li><code>examples/build_system_lib</code></li>
 <li><code>examples/build_system_tool</code></li>
 </ul>
+<p>Runtime-model reminder:</p>
+<ul>
+<li>examples that rely on hosted behavior such as <code>.echo(...)</code> or routed
+execution should spell <code>fol_model = "memo"</code></li>
+<li><code>core</code> and <code>memo</code> examples in the build book should stay free of hosted
+assumptions</li>
+</ul>
+<p>Bundled std reminder:</p>
+<ul>
+<li><code>std</code> ships with FOL under <code>lang/library/std</code></li>
+<li>hosted packages add bundled std explicitly through:
+<code>.build().add_dep({ alias = "std", source = "internal", target = "standard" })</code></li>
+<li>normal hosted packages should rely on the bundled shipped <code>std</code>, not an
+external replacement package</li>
+</ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="buildfol"><a class="header" href="#buildfol">build.fol</a></h1>
 <p><code>build.fol</code> is a file-bound FOL compilation unit. It is the build specification
@@ -1679,8 +1709,8 @@ build.add_dep({
     alias = "logtiny",
     source = "git",
     target = "git+https://github.com/bresilla/logtiny.git",
-    version = "tag:v0.1.1",
-    hash = "77df4240d6f0",
+    version = "tag:v0.1.3",
+    hash = "b242d319644a",
 });
 </code></pre>
 <p>For git dependencies:</p>
@@ -1822,7 +1852,7 @@ should not collapse back into ad hoc string-only graph APIs</li>
 <pre><code class="language-fol">var app = graph.add_exe({
     name     = "app",
     root     = "src/main.fol",
-    fol_model = "std",   // spell this explicitly for each artifact
+    fol_model = "memo",   // spell this explicitly for each artifact
     target   = target,    // optional
     optimize = optimize,  // optional
 });
@@ -1836,22 +1866,22 @@ package root.</p>
 <ul>
 <li><code>core</code>
 no heap, no OS/runtime services</li>
-<li><code>alloc</code>
+<li><code>memo</code>
 heap-backed facilities, still no OS/runtime services</li>
 <li><code>std</code>
-hosted/runtime services on top of <code>alloc</code></li>
+hosted/runtime services on top of <code>memo</code></li>
 </ul>
-<p>If omitted today, <code>fol_model</code> behaves like <code>std</code>, but the recommended style is
-to spell it explicitly so the artifact contract is visible in <code>build.fol</code>.</p>
+<p>The recommended style is to spell <code>fol_model</code> explicitly on every artifact so
+the capability contract is visible in <code>build.fol</code>.</p>
 <p>The important boundary is semantic and runtime-facing:</p>
 <ul>
 <li><code>core</code> artifacts must not use heap-backed <code>str</code>, <code>vec</code>, <code>seq</code>, <code>set</code>, or
 <code>map</code></li>
 <li><code>core</code> artifacts may still use arrays, records, routines, control flow, and
 <code>defer</code></li>
-<li><code>alloc</code> artifacts may use heap-backed runtime types but not hosted services</li>
-<li><code>std</code> artifacts are the only artifacts that may use hosted services such as
-<code>.echo(...)</code> and ordinary host-executed <code>run</code> / <code>test</code></li>
+<li><code>memo</code> artifacts may use heap-backed runtime types but not hosted services</li>
+<li>bundled <code>std</code> wrappers require an explicit internal <code>standard</code> dependency</li>
+<li>hosted <code>run</code> / <code>test</code> are not tied to bundled std presence</li>
 </ul>
 <p>Current implementation note:</p>
 <ul>
@@ -1871,15 +1901,15 @@ should not yet be read as “finished embedded backend support”</li>
         root = "core/lib.fol",
         fol_model = "core",
     });
-    var alloclib = graph.add_static_lib({
-        name = "alloclib",
-        root = "alloc/lib.fol",
-        fol_model = "alloc",
+    var memolib = graph.add_static_lib({
+        name = "memolib",
+        root = "memo/lib.fol",
+        fol_model = "memo",
     });
     var tool = graph.add_exe({
         name = "tool",
         root = "app/main.fol",
-        fol_model = "std",
+        fol_model = "memo",
     });
 
     graph.install(tool);
@@ -2367,8 +2397,8 @@ var dep = build.add_dep({
     alias = "logtiny",
     source = "git",
     target = "git+https://github.com/bresilla/logtiny.git",
-    version = "tag:v0.1.1",
-    hash = "77df4240d6f0",
+    version = "tag:v0.1.3",
+    hash = "b242d319644a",
     mode = "lazy",
 });
 </code></pre>
@@ -3749,8 +3779,8 @@ a single dot <code>.</code>, a routine name, and a parenthesized expression list
 ownership. It is just a shorter way to call a receiver-qualified routine.</p>
 <h2 id="namespace-access"><a class="header" href="#namespace-access">Namespace Access</a></h2>
 <p>Accessing namespaces is done through the double-colon operator <code>::</code>:</p>
-<pre><code class="language-fol">use log: std = {"fmt/log"};
-io::console::write_out.echo();
+<pre><code class="language-fol">use log: pkg = {"std/fmt/log"};
+log::io::console::write_out.echo();
 </code></pre>
 <h2 id="container-access"><a class="header" href="#container-access">Container Access</a></h2>
 <h3 id="array-vectors-sequences-sets"><a class="header" href="#array-vectors-sequences-sets">Array, Vectors, Sequences, Sets</a></h3>
@@ -3928,10 +3958,10 @@ compiler-owned operations such as <code>.eq(...)</code>, <code>.len(...)</code>,
 <code>panic(...)</code></li>
 <li><code>core</code>:
 the minimal runtime model with no heap and no OS/runtime services</li>
-<li><code>alloc</code>:
+<li><code>memo</code>:
 heap-backed library/runtime support without OS/runtime services</li>
 <li><code>std</code>:
-hosted/runtime services on top of <code>alloc</code>, such as console, filesystem,
+hosted/runtime services on top of <code>memo</code>, such as console, filesystem,
 networking, serialization, and other richer services</li>
 </ul>
 <p>This split is not a source-level import trick and not an object-system feature.
@@ -3971,8 +4001,9 @@ through the current runtime layer where policy matters. The runtime contract is
 being split by <code>fol-model</code>, so the rule is:</p>
 <ul>
 <li><code>core</code> artifacts must not rely on heap-backed or hosted facilities</li>
-<li><code>alloc</code> artifacts may use heap-backed facilities but not hosted services</li>
-<li><code>std</code> artifacts may use hosted services</li>
+<li><code>memo</code> artifacts may use heap-backed facilities but not hosted services</li>
+<li>bundled <code>std</code> wrappers require a <code>memo</code> artifact plus explicit internal
+<code>standard</code> dependency</li>
 </ul>
 <p>In the current implementation that means:</p>
 <ul>
@@ -4023,7 +4054,7 @@ families, the compiler reports an intrinsic-specific type error.</p>
 </ul>
 <p>In the current compiler, <code>.len(...)</code> is the only implemented query intrinsic.
 Under the runtime model split, array <code>.len(...)</code> belongs to <code>core</code>, while
-string and dynamic-container <code>.len(...)</code> belongs to <code>alloc</code>/<code>std</code>.</p>
+string and dynamic-container <code>.len(...)</code> belongs to <code>memo</code>/<code>std</code>.</p>
 <h3 id="diagnostic"><a class="header" href="#diagnostic">Diagnostic</a></h3>
 <pre><code class="language-fol">.echo(value)
 </code></pre>
@@ -4033,7 +4064,7 @@ string and dynamic-container <code>.len(...)</code> belongs to <code>alloc</code
 <li>it emits the value through the <code>std</code> runtime hook</li>
 <li>it then forwards the same value unchanged</li>
 </ul>
-<p><code>.echo(...)</code> belongs to <code>std</code>, not <code>core</code> or <code>alloc</code>.</p>
+<p><code>.echo(...)</code> belongs to <code>std</code>, not <code>core</code> or <code>memo</code>.</p>
 <p>So this is valid:</p>
 <pre><code class="language-fol">fun[] main(flag: bol): bol = {
     return .echo(flag)
@@ -4285,6 +4316,13 @@ Current `V1` intrinsic note:
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="container"><a class="header" href="#container">Container</a></h1>
+<p>Model reminder:</p>
+<ul>
+<li>examples here that call <code>.echo(...)</code> assume a <code>memo</code> artifact with bundled
+<code>std</code> support available</li>
+<li><code>arr[...]</code> is valid in <code>core</code></li>
+<li><code>vec[...]</code>, <code>seq[...]</code>, <code>set[...]</code>, and <code>map[...]</code> require <code>memo</code></li>
+</ul>
 <p>Containers are of compound types. They contain other primitive or constructed types. To access the types in container those brackets are used: <code>[]</code>, so:</p>
 <pre><code>var container: type = { element, element, element }             // declaring a container
 var varable: type = container[2]                                // accessing the last element
@@ -4955,6 +4993,13 @@ unwrap or plain propagation.</p>
 <li><code>check(...)</code> is a keyword intrinsic for recoverable-call inspection</li>
 <li><code>panic(...)</code> is a keyword intrinsic for immediate abort</li>
 <li><code>as</code> and <code>cast</code> are registry-owned but still deferred in current <code>V1</code></li>
+</ul>
+<p>Model reminder:</p>
+<ul>
+<li>any routine example that calls <code>.echo(...)</code> assumes a <code>memo</code> artifact with
+bundled <code>std</code> support available</li>
+<li>routine examples without hosted behavior should stay valid in <code>core</code> or
+<code>memo</code> where the surrounding chapter claims they are model-neutral</li>
 </ul>
 <p>The final expression in the function will be used as return value. For this to be used, the return type of the function needs to be defined (so the function cnat be in the short form)). ver this can be used only in one statement body.</p>
 <pre><code>pro main(): int = {
@@ -5827,12 +5872,11 @@ pro main: int = {
 <h1 id="imports"><a class="header" href="#imports">Imports</a></h1>
 <p>An import declaration states that the source file containing the declaration depends on functionality of the imported package and enables access to exported identifiers of that package.</p>
 <p>Syntax to import a library is:</p>
-<pre><code>use alias: source_kind = { source }
+<pre><code>use alias: source_kind = {"source"}
 </code></pre>
 <p>Current source kinds are:</p>
 <ul>
 <li><code>loc</code> for local directory imports</li>
-<li><code>std</code> for standard-library directory imports</li>
 <li><code>pkg</code> for installed external packages</li>
 </ul>
 <h2 id="what-use-imports"><a class="header" href="#what-use-imports">What <code>use</code> imports</a></h2>
@@ -5867,14 +5911,6 @@ Imports are for reaching another package or another namespace boundary.</p>
 <li>no <code>build.fol</code> is required</li>
 </ul>
 <p>This makes <code>loc</code> useful for local workspace code, experiments, and monorepo-style sharing.</p>
-<h3 id="std"><a class="header" href="#std"><code>std</code></a></h3>
-<p><code>std</code> works like <code>loc</code>, except the directory is resolved from the toolchain’s standard-library root.</p>
-<p>So:</p>
-<ul>
-<li><code>std</code> imports are directory-backed</li>
-<li>they are owned by the FOL toolchain</li>
-<li>they do not need user-managed package metadata in source code</li>
-</ul>
 <h3 id="pkg"><a class="header" href="#pkg"><code>pkg</code></a></h3>
 <p><code>pkg</code> is for formal external packages.</p>
 <p>Unlike <code>loc</code> and <code>std</code>, a <code>pkg</code> import does not just point at an arbitrary source directory.
@@ -5926,27 +5962,35 @@ direct dependencies, and the build graph</li>
 <li><code>use</code> = consume functionality</li>
 <li><code>pro[] build()</code> in <code>build.fol</code> = define package/build surface</li>
 </ul>
-<h2 id="system-libraries"><a class="header" href="#system-libraries">System libraries</a></h2>
-<p>This is how including other libraries works, for example include <code>fmt</code> module from standard library:</p>
-<pre><code>use fmt: std = {"fmt"};
-
-pro main: ini = {
-    fmt::log.warn("Last warning!...")
-}
+<h2 id="standard-library"><a class="header" href="#standard-library">Standard library</a></h2>
+<p>Bundled std is reached through the dependency system. In <code>build.fol</code>, add:</p>
+<pre><code>build.add_dep({
+    alias = "std",
+    source = "internal",
+    target = "standard",
+});
 </code></pre>
-<p>To use only the <code>log</code> namespace of <code>fmt</code> module:</p>
-<pre><code>use log: std = {"fmt/log"};
+<p>Then import from the <code>std</code> dependency alias with <code>pkg</code>:</p>
+<pre><code>use std: pkg = {"std"};
 
-pro[] main: int = {
-    log.warn("Last warning!...")
-}
+fun[] main(): int = {
+    return std::fmt::answer();
+};
 </code></pre>
-<p>But let’s say you only wanna use ONLY the <code>warn</code> functionality of <code>log</code> namespace from <code>fmt</code> module:</p>
-<pre><code>use warn: std = {"fmt/log"};
+<p>To use only one namespace of <code>fmt</code>:</p>
+<pre><code>use std: pkg = {"std"};
 
-pro[] main: int = {
-    warn("Last warning!...")
-}
+fun[] main(): int = {
+    return std::fmt::math::answer();
+};
+</code></pre>
+<p>Using the bundled <code>std.io</code> bootstrap surface:</p>
+<pre><code>use std: pkg = {"std"};
+
+fun[] main(): int = {
+    var shown: str = std::io::echo_str("hello");
+    return 7;
+};
 </code></pre>
 <h2 id="local-libraries"><a class="header" href="#local-libraries">Local libraries</a></h2>
 <p>To include a local package or namespace, point <code>loc</code> at the directory:</p>
@@ -5963,7 +6007,13 @@ But if the target directory already defines <code>build.fol</code> at its root, 
 <p>External packages are imported through <code>pkg</code>:</p>
 <pre><code>use space: pkg = {"space"};
 </code></pre>
-<p><code>pkg</code> imports are different from <code>loc</code> and <code>std</code>:</p>
+<p>Nested installed package paths use the same quoted target rule:</p>
+<pre><code>use nested: pkg = {"other/package/nested"};
+</code></pre>
+<p>Old unquoted targets are invalid and should fail in the parser:</p>
+<pre><code class="language-fol">use std: pkg = {std};
+</code></pre>
+<p><code>pkg</code> imports are different from <code>loc</code>:</p>
 <ul>
 <li>the imported root is an installed package root</li>
 <li>that root must contain <code>build.fol</code></li>
@@ -6041,7 +6091,7 @@ pro[] main: int = {
 <li>or code access with <code>::</code></li>
 </ul>
 <h3 id="direct-import"><a class="header" href="#direct-import">Direct import</a></h3>
-<pre><code>use aNS: loc = { "home/folder/printing/logg" }
+<pre><code>use aNS: loc = {""home/folder/printing/logg""}
 
 pro[] main: int = {
     logg.warn("something")
@@ -6049,7 +6099,7 @@ pro[] main: int = {
 
 </code></pre>
 <h3 id="code-access"><a class="header" href="#code-access">Code access</a></h3>
-<pre><code>use aNS: loc = { "home/folder/printing" }
+<pre><code>use aNS: loc = {""home/folder/printing""}
 
 pro[] main: int = {
     printing::logg.warn("something")
@@ -6806,6 +6856,12 @@ mechanism.</p>
 <p>This is control-flow sugar.</p>
 <p>It is not an ownership system, destructor system, object system, or async
 cleanup system.</p>
+<p>Model reminder:</p>
+<ul>
+<li>the <code>.echo(...)</code> examples below assume <code>fol_model = "memo"</code></li>
+<li><code>defer</code> itself is not std-only; it is valid in <code>core</code>, <code>memo</code>, and <code>std</code>
+within the current V1 surface</li>
+</ul>
 <h2 id="basic-form"><a class="header" href="#basic-form">Basic form</a></h2>
 <pre><code class="language-fol">pro[] main(): int = {
     defer {

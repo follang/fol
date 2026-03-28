@@ -35,7 +35,7 @@
             const path_to_root = "../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-9fa70407.js";
+            window.path_to_searchindex_js = "../searchindex-0ba88dfd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-aca3346a.js"></script>
@@ -243,7 +243,7 @@ pro[] main: int = {
 <li>or code access with <code>::</code></li>
 </ul>
 <h3 id="direct-import"><a class="header" href="#direct-import">Direct import</a></h3>
-<pre><code>use aNS: loc = { "home/folder/printing/logg" }
+<pre><code>use aNS: loc = {""home/folder/printing/logg""}
 
 pro[] main: int = {
     logg.warn("something")
@@ -251,7 +251,7 @@ pro[] main: int = {
 
 </code></pre>
 <h3 id="code-access"><a class="header" href="#code-access">Code access</a></h3>
-<pre><code>use aNS: loc = { "home/folder/printing" }
+<pre><code>use aNS: loc = {""home/folder/printing""}
 
 pro[] main: int = {
     printing::logg.warn("something")

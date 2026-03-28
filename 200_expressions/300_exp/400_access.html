@@ -35,7 +35,7 @@
             const path_to_root = "../../";
             const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../../searchindex-9fa70407.js";
+            window.path_to_searchindex_js = "../../searchindex-0ba88dfd.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../../toc-aca3346a.js"></script>
@@ -200,8 +200,8 @@ a single dot <code>.</code>, a routine name, and a parenthesized expression list
 ownership. It is just a shorter way to call a receiver-qualified routine.</p>
 <h2 id="namespace-access"><a class="header" href="#namespace-access">Namespace Access</a></h2>
 <p>Accessing namespaces is done through the double-colon operator <code>::</code>:</p>
-<pre><code class="language-fol">use log: std = {"fmt/log"};
-io::console::write_out.echo();
+<pre><code class="language-fol">use log: pkg = {"std/fmt/log"};
+log::io::console::write_out.echo();
 </code></pre>
 <h2 id="container-access"><a class="header" href="#container-access">Container Access</a></h2>
 <h3 id="array-vectors-sequences-sets"><a class="header" href="#array-vectors-sequences-sets">Array, Vectors, Sequences, Sets</a></h3>
